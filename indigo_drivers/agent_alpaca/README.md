@@ -25,7 +25,7 @@ indigo_server indigo_agent_alpaca ...
 
 ### General
 
-Mapping from INDIGO names to ALPACA device numers is maintained and made persistent in AGENT_ALPACA_DEVICES property. 
+Mapping from INDIGO names to ALPACA device numers is maintained and made persistent in AGENT_ALPACA_DEVICES property.
 
 All web configuration requests are redirected to INDIGO Server root.
 
@@ -267,7 +267,7 @@ Your driver had 0 errors, 0 warnings and 1 issues
 ConformanceCheck ASCOM Device Conformance Checker Version 6.5.7500.22515, Build time: 7/14/2020 12:30:30 PM
 ConformanceCheck Running on: ASCOM Platform 6.5 SP1 6.5.1.3234
 
-ConformanceCheck Driver ProgID: ASCOM.AlpacaDynamic1.Rotator
+ConformanceCheck Driver ProgID: ASCOM.AlpacaDynamic2.Rotator
 
 Error handling
 Error number for "Not Implemented" is: 80040400
@@ -276,90 +276,87 @@ Error number for "Value Not Set 1" is: 80040402
 Error number for "Value Not Set 2" is: 80040403
 Error messages will not be interpreted to infer state.
 
-08:10:31.270 Driver Access Checks              OK       
-08:10:32.254 AccessChecks                      OK       Successfully created driver using late binding
-08:10:32.973 AccessChecks                      OK       Successfully connected using late binding
-08:10:32.973 AccessChecks                      INFO     The driver is a COM object
-08:10:33.832 AccessChecks                      INFO     Driver does not expose interface IRotator
-08:10:33.848 AccessChecks                      INFO     Driver does not expose interface IRotatorV2
-08:10:33.863 AccessChecks                      OK       Successfully created driver using driver access toolkit
-08:10:34.535 AccessChecks                      OK       Successfully connected using driver access toolkit
+12:21:04.508 Driver Access Checks              OK       
+12:21:05.430 AccessChecks                      OK       Successfully created driver using late binding
+12:21:06.117 AccessChecks                      OK       Successfully connected using late binding
+12:21:06.117 AccessChecks                      INFO     The driver is a COM object
+12:21:07.493 AccessChecks                      INFO     Driver does not expose interface IRotator
+12:21:07.508 AccessChecks                      INFO     Driver does not expose interface IRotatorV2
+12:21:07.524 AccessChecks                      OK       Successfully created driver using driver access toolkit
+12:21:08.198 AccessChecks                      OK       Successfully connected using driver access toolkit
 
 Conform is using ASCOM.DriverAccess.Rotator to get a Rotator object
-08:10:34.582 ConformanceCheck                  OK       Driver instance created successfully
-08:10:35.207 ConformanceCheck                  OK       Connected OK
+12:21:08.226 ConformanceCheck                  OK       Driver instance created successfully
+12:21:08.851 ConformanceCheck                  OK       Connected OK
 
 Common Driver Methods
-08:10:35.505 InterfaceVersion                  OK       1
-08:10:35.551 Connected                         OK       True
-08:10:35.582 Description                       OK       Field Rotator Simulator
-08:10:35.630 DriverInfo                        OK       ASCOM Dynamic Driver v6.5.1.3234 - REMOTE DEVICE: indigo_rotator_simulator
-08:10:35.676 DriverVersion                     OK       2.0.0.2
-08:10:35.754 Name                              OK       Field Rotator Simulator
-08:10:35.816 CommandString                     INFO     Conform cannot test the CommandString method
-08:10:35.816 CommandBlind                      INFO     Conform cannot test the CommandBlind method
-08:10:35.816 CommandBool                       INFO     Conform cannot test the CommandBool method
-08:10:35.832 Action                            INFO     Conform cannot test the Action method
-08:10:35.847 SupportedActions                  OK       Driver returned an empty action list
+12:21:08.930 InterfaceVersion                  OK       1
+12:21:08.977 Connected                         OK       True
+12:21:09.025 Description                       OK       Field Rotator Simulator
+12:21:09.072 DriverInfo                        OK       ASCOM Dynamic Driver v6.5.1.3234 - REMOTE DEVICE: indigo_rotator_simulator
+12:21:09.134 DriverVersion                     OK       2.0.0.2
+12:21:09.525 Name                              OK       Field Rotator Simulator
+12:21:09.606 CommandString                     INFO     Conform cannot test the CommandString method
+12:21:09.617 CommandBlind                      INFO     Conform cannot test the CommandBlind method
+12:21:09.617 CommandBool                       INFO     Conform cannot test the CommandBool method
+12:21:09.633 Action                            INFO     Conform cannot test the Action method
+12:21:09.678 SupportedActions                  OK       Driver returned an empty action list
 
 Can Properties
-08:10:36.004 CanReverse                        OK       False
+12:21:09.820 CanReverse                        OK       False
 
 Pre-run Checks
-08:10:36.144 Pre-run Check                     OK       Rotator is stationary
+12:21:10.024 Pre-run Check                     OK       Rotator is stationary
 
 Properties
-08:10:36.254 IsMoving                          OK       False
-08:10:36.473 Position                          OK       0
-08:10:36.550 TargetPosition                    OK       0
-08:10:36.629 StepSize                          OK       Optional member threw a PropertyNotImplementedException exception.
-08:10:36.677 Reverse Read                      OK       when CanReverse is False and a PropertyNotImplementedException exception was generated as expected
-08:10:36.771 Reverse Write                     OK       when CanReverse is False and a PropertyNotImplementedException exception was generated as expected
+12:21:10.119 IsMoving                          OK       False
+12:21:10.211 Position                          OK       0
+12:21:10.259 TargetPosition                    OK       0
+12:21:10.307 StepSize                          OK       Optional member threw a PropertyNotImplementedException exception.
+12:21:10.354 Reverse Read                      OK       when CanReverse is False and a PropertyNotImplementedException exception was generated as expected
+12:21:10.463 Reverse Write                     OK       when CanReverse is False and a PropertyNotImplementedException exception was generated as expected
 
 Methods
-08:10:36.847 Halt                              OK       Halt command successful
-08:10:48.333 MoveAbsolute                      OK       Asynchronous move successful to: 45 degrees
-08:10:48.363 MoveAbsolute                      OK       Rotator is at the expected position: 45
-08:11:08.832 MoveAbsolute                      OK       Asynchronous move successful to: 135 degrees
-08:11:08.878 MoveAbsolute                      OK       Rotator is at the expected position: 135
-08:11:29.660 MoveAbsolute                      OK       Asynchronous move successful to: 225 degrees
-08:11:29.708 MoveAbsolute                      OK       Rotator is at the expected position: 225
-08:11:50.254 MoveAbsolute                      OK       Asynchronous move successful to: 315 degrees
-08:11:50.284 MoveAbsolute                      OK       Rotator is at the expected position: 315
-08:13:21.254 MoveAbsolute                      OK       Asynchronous move successful to: -90 degrees
-08:13:21.284 MoveAbsolute                      INFO     Rotator supports angles < 0.0
-08:13:21.302 MoveAbsolute                      ISSUE    Rotator is 45.000 degrees from expected position -90, which is more than the conformance value of 2.0 degrees
-08:15:02.003 MoveAbsolute                      OK       Asynchronous move successful to: 360 degrees
-08:15:02.050 MoveAbsolute                      ISSUE    Rotator is 45.000 degrees from expected position 360, which is more than the conformance value of 2.0 degrees
-08:15:05.160 Move                              OK       Asynchronous move successful - moved by -10 degrees to: 350 degrees
-08:15:05.206 Move                              OK       Rotator is at the expected position: 350
-08:15:08.253 Move                              OK       Asynchronous move successful - moved by 10 degrees to: 360 degrees
-08:15:08.269 Move                              OK       Rotator is at the expected position: 360
-08:15:18.066 Move                              OK       Asynchronous move successful - moved by -40 degrees to: 320 degrees
-08:15:18.082 Move                              OK       Rotator is at the expected position: 320
-08:15:27.378 Move                              OK       Asynchronous move successful - moved by 40 degrees to: 360 degrees
-08:15:27.425 Move                              OK       Rotator is at the expected position: 360
-08:15:57.113 Move                              OK       Asynchronous move successful - moved by -130 degrees to: 230 degrees
-08:15:57.144 Move                              OK       Rotator is at the expected position: 230
-08:16:26.972 Move                              OK       Asynchronous move successful - moved by 130 degrees to: 360 degrees
-08:16:27.004 Move                              OK       Rotator is at the expected position: 360
-08:17:51.367 Move                              OK       Asynchronous move successful - moved by -375 degrees to: -15 degrees
-08:17:51.379 Move                              INFO     Rotator supports angles < 0.0
-08:17:51.394 Move                              OK       Rotator is at the expected position: -15
-08:19:15.769 Move                              OK       Asynchronous move successful - moved by 375 degrees to: 360 degrees
-08:19:15.833 Move                              OK       Rotator is at the expected position: 360
+12:21:10.540 Halt                              OK       Halt command successful
+12:21:21.602 MoveAbsolute                      OK       Asynchronous move successful to: 45 degrees
+12:21:21.633 MoveAbsolute                      OK       Rotator is at the expected position: 45
+12:21:42.070 MoveAbsolute                      OK       Asynchronous move successful to: 135 degrees
+12:21:42.118 MoveAbsolute                      OK       Rotator is at the expected position: 135
+12:22:03.055 MoveAbsolute                      OK       Asynchronous move successful to: 225 degrees
+12:22:03.071 MoveAbsolute                      OK       Rotator is at the expected position: 225
+12:22:23.883 MoveAbsolute                      OK       Asynchronous move successful to: 315 degrees
+12:22:23.914 MoveAbsolute                      OK       Rotator is at the expected position: 315
+12:22:24.008 MoveAbsolute                      OK       Movement to large negative angle -405 degrees
+12:22:24.133 MoveAbsolute                      OK       Movement to large positive angle 405 degrees
+12:22:27.102 Move                              OK       Asynchronous move successful - moved by -10 degrees to: 305 degrees
+12:22:27.117 Move                              OK       Rotator is at the expected position: 305
+12:22:30.071 Move                              OK       Asynchronous move successful - moved by 10 degrees to: 315 degrees
+12:22:30.086 Move                              OK       Rotator is at the expected position: 315
+12:22:39.539 Move                              OK       Asynchronous move successful - moved by -40 degrees to: 275 degrees
+12:22:39.586 Move                              OK       Rotator is at the expected position: 275
+12:22:49.039 Move                              OK       Asynchronous move successful - moved by 40 degrees to: 315 degrees
+12:22:49.087 Move                              OK       Rotator is at the expected position: 315
+12:23:18.476 Move                              OK       Asynchronous move successful - moved by -130 degrees to: 185 degrees
+12:23:18.508 Move                              OK       Rotator is at the expected position: 185
+12:23:48.367 Move                              OK       Asynchronous move successful - moved by 130 degrees to: 315 degrees
+12:23:48.399 Move                              OK       Rotator is at the expected position: 315
+12:25:12.633 Move                              OK       Asynchronous move successful - moved by -375 degrees to: -60 degrees
+12:25:12.696 Move                              INFO     Rotator supports angles < 0.0
+12:25:12.711 Move                              OK       Rotator is at the expected position: -60
+12:26:36.695 Move                              OK       Asynchronous move successful - moved by 375 degrees to: 315 degrees
+12:26:36.742 Move                              OK       Rotator is at the expected position: 315
 
 Performance
-08:19:21.128 Position                          INFO     Transaction rate: 398.5 per second
-08:19:26.255 TargetPosition                    INFO     Transaction rate: 491.6 per second
-08:19:26.285 StepSize                          INFO     Skipping test as property is not supported
-08:19:31.347 IsMoving                          INFO     Transaction rate: 328.4 per second
+12:26:41.883 Position                          INFO     Transaction rate: 328.4 per second
+12:26:46.899 TargetPosition                    INFO     Transaction rate: 355.4 per second
+12:26:46.899 StepSize                          INFO     Skipping test as property is not supported
+12:26:51.930 IsMoving                          INFO     Transaction rate: 353.2 per second
 
 Conformance test complete
 
-Your driver had 0 errors, 0 warnings and 2 issues 
+No errors, warnings or issues found: your driver passes ASCOM validation!!
 
---------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
 
 ConformanceCheck ASCOM Device Conformance Checker Version 6.5.7500.22515, Build time: 14/07/2020 13:30:30
 ConformanceCheck Running on: ASCOM Platform 6.5 SP1 6.5.1.3234

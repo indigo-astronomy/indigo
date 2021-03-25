@@ -88,6 +88,9 @@ typedef struct indigo_alpaca_device_struct {
 			double targetposition;
 			bool reversed;
 			double stepsize;
+			bool haslimits;
+			double min;
+			double max;
 		} rotator;
 		struct {
 			bool cansetguiderates;
