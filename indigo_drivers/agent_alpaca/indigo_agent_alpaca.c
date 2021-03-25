@@ -229,7 +229,7 @@ static void alpaca_v1_description_handler(int socket, char *method, char *path, 
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char buffer[512];
 	parse_url_params(params, &client_id, &client_transaction_id);
-	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-ALPACA Bridge\", \"ServerVersion\": \"%d.%d-%s\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerURL\": \"https://www.indigo-astronomy.org\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, client_transaction_id, server_transaction_id++);
+	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"ServerVersion\": \"%d.%d-%s\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerURL\": \"https://www.indigo-astronomy.org\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, client_transaction_id, server_transaction_id++);
 	send_json_response(socket, path, 200, "OK", buffer);
 }
 
@@ -538,7 +538,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 							indigo_define_property(indigo_agent_alpaca_device, private_data->devices_property, NULL);
 							save_config(indigo_agent_alpaca_device);
 						} else {
-							indigo_send_message(indigo_agent_alpaca_device, "Too many ALPACA devices configured");
+							indigo_send_message(indigo_agent_alpaca_device, "Too many Alpaca devices configured");
 						}
 					}
 				}
@@ -618,7 +618,7 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, "ASCOM ALPACA bridge agent", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "ASCOM Alpaca bridge agent", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
