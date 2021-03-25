@@ -23,7 +23,7 @@
  \file alpaca_focuser.c
  */
 
-#include <indigo/indigo_wheel_driver.h>
+#include <indigo/indigo_focuser_driver.h>
 
 #include "alpaca_common.h"
 
