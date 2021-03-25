@@ -23,7 +23,7 @@
  \file alpaca_focuser.c
  */
 
-#include <indigo/indigo_wheel_driver.h>
+#include <indigo/indigo_focuser_driver.h>
 
 #include "alpaca_common.h"
 
@@ -260,52 +260,52 @@ long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "interfaceversion")) {
 		uint32_t value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "absolute")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_absolute(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "ismoving")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_ismoving(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxincrement")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_maxincrement(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxstep")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_maxstep(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "position")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "stepsize")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_stepsize(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "tempcomp")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_tempcomp(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "tempcompavailable")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_tempcompavailable(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "temperature")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_temperature(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	return 0;
 }
@@ -314,7 +314,7 @@ long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "tempcomp")) {
 		bool value = !strcasecmp(param_1, "TempComp=true");
 		indigo_alpaca_error result = alpaca_set_tempcomp(alpaca_device, version, value);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "move")) {
 		int32_t value = 0;
@@ -323,11 +323,11 @@ long indigo_alpaca_focuser_set_command(indigo_alpaca_device *alpaca_device, int 
 			result = alpaca_move(alpaca_device, version, value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "halt")) {
 		indigo_alpaca_error result = alpaca_halt(alpaca_device, version);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	return 0;
 }
