@@ -32,8 +32,8 @@
 extern "C" {
 #endif
 
-#define ALPACA_AGENT_NAME	"ALPACA Agent"
-	
+#define ALPACA_AGENT_NAME	"Alpaca Agent"
+
 /** Create ASCOM ALPACA bridge agent instance
  */
 
@@ -44,4 +44,3 @@ extern indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_dri
 #endif
 
 #endif /* agent_alpaca_h */
-
