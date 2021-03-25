@@ -21,6 +21,34 @@ indigo_server indigo_agent_alpaca ...
 
 ## Status: Under development
 
+## Notes
+
+### General
+
+Mapping from INDIGO names to ALPACA device numers is maintained and made persistent in AGENT_ALPACA_DEVICES property. 
+
+All web configuration requests are redirected to INDIGO Server root.
+
+### Wheel
+
+IFilterWheelV2 implemented, no limitations
+
+### Focuser
+
+IFocuserV1 implemented, no limitations
+
+### Mount
+
+ITelescopeV3 implemented with exception of MoveAxis method group (not compatible with INDIGO substantially)
+
+### Guider
+
+Sufficient subset of ITelescopeV3 implemented, no limitations
+
+### Lightbox
+
+ICoverCalibratorV1 implemented, HaltCover is dummy method (no couterpart in INDIGO)
+
 --------------------------------------------------------------------------------------------------------------
 
 ConformanceCheck ASCOM Device Conformance Checker Version 6.5.7500.22515, Build time: 14/07/2020 13:30:30

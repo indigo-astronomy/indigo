@@ -23,7 +23,7 @@
  \file alpaca_rotator.c
  */
 
-#include <indigo/indigo_wheel_driver.h>
+#include <indigo/indigo_rotator_driver.h>
 
 #include "alpaca_common.h"
 
@@ -207,42 +207,42 @@ long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "interfaceversion")) {
 		uint32_t value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "canreverse")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_canreverse(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "reverse")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_reverse(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "ismoving")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_ismoving(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "position")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "targetposition")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_targetposition(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "mechanicalposition")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "stepsize")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_stepsize(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	return 0;
 }
@@ -251,7 +251,7 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "reverse")) {
 		bool value = !strcasecmp(param_1, "Reverse=true");
 		indigo_alpaca_error result = alpaca_set_reverse(alpaca_device, version, value);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "sync")) {
 		double value = 0;
@@ -260,7 +260,7 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 			result = alpaca_move_relative(alpaca_device, version, value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "move")) {
 		double value = 0;
@@ -269,7 +269,7 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 			result = alpaca_move_relative(alpaca_device, version, value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (
 		!strcmp(command, "moveabsolute") ||
@@ -281,11 +281,11 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 			result = alpaca_move_absolute(alpaca_device, version, value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "halt")) {
 		indigo_alpaca_error result = alpaca_halt(alpaca_device, version);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	return 0;
 }
