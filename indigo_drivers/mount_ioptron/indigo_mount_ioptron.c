@@ -72,11 +72,11 @@ static bool ieq_command(indigo_device *device, char *command, char *response, in
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 10000;
 		// flush
 	while (true) {
 		fd_set readout;
+		tv.tv_sec = 0;
+		tv.tv_usec = 10000;
 		FD_ZERO(&readout);
 		FD_SET(PRIVATE_DATA->handle, &readout);
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);

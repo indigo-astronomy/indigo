@@ -58,13 +58,13 @@ typedef struct {
 static bool moonlite_command(indigo_device *device, char *command, char *response, int max) {
 	char c;
 	struct timeval tv;
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	if (response != NULL) {
 		int index = 0;
 		while (index < max) {
 			fd_set readout;
+			tv.tv_sec = 1;
+			tv.tv_usec = 0;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);

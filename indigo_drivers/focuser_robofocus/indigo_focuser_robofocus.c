@@ -67,8 +67,6 @@ typedef struct {
 static bool robofocus_command(indigo_device *device, char *command, char *response) {
 	char c;
 	struct timeval tv;
-	tv.tv_sec = 1;
-	tv.tv_usec = 0;
 	unsigned sum = 0, i_count = 0, o_count = 0;
 	char buffer[9];
 	for (int i = 0; i < 8; i++)
@@ -78,6 +76,8 @@ static bool robofocus_command(indigo_device *device, char *command, char *respon
 	bool done = false;
 	while (!done) {
 		fd_set readout;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
 		FD_ZERO(&readout);
 		FD_SET(PRIVATE_DATA->handle, &readout);
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
