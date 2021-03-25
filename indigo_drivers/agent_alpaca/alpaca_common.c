@@ -98,6 +98,8 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 		indigo_alpaca_wheel_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "FOCUSER_", 8)) {
 		indigo_alpaca_focuser_update_property(alpaca_device, property);
+	} else if (!strncmp(property->name, "ROTATOR_", 8)) {
+		indigo_alpaca_rotator_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "MOUNT_", 6)) {
 		indigo_alpaca_mount_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "GUIDER_", 7)) {
@@ -316,16 +318,30 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 		return snprintf(buffer, buffer_length, "\"Value\": \"%f\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	long result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_WHEEL) == INDIGO_INTERFACE_WHEEL && (result = indigo_alpaca_wheel_get_command(alpaca_device, version, command, buffer, buffer_length)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_FOCUSER) == INDIGO_INTERFACE_FOCUSER && (result = indigo_alpaca_focuser_get_command(alpaca_device, version, command, buffer, buffer_length)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_MOUNT) == INDIGO_INTERFACE_MOUNT && (result = indigo_alpaca_mount_get_command(alpaca_device, version, command, buffer, buffer_length)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_GUIDER) == INDIGO_INTERFACE_GUIDER && (result = indigo_alpaca_guider_get_command(alpaca_device, version, command, buffer, buffer_length)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_INTERFACE_AUX_LIGHTBOX && (result = indigo_alpaca_lightbox_get_command(alpaca_device, version, command, buffer, buffer_length)))
-		return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_WHEEL) == INDIGO_INTERFACE_WHEEL &&
+		(result = indigo_alpaca_wheel_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_FOCUSER) == INDIGO_INTERFACE_FOCUSER &&
+		(result = indigo_alpaca_focuser_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_ROTATOR) == INDIGO_INTERFACE_ROTATOR &&
+		(result = indigo_alpaca_rotator_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_MOUNT) == INDIGO_INTERFACE_MOUNT &&
+		(result = indigo_alpaca_mount_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_GUIDER) == INDIGO_INTERFACE_GUIDER &&
+		(result = indigo_alpaca_guider_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_INTERFACE_AUX_LIGHTBOX &&
+		(result = indigo_alpaca_lightbox_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
 	// TBD other device types
 	return 0;
 }
@@ -364,15 +380,29 @@ long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version,
 		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
 	}
 	long result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_WHEEL) == INDIGO_INTERFACE_WHEEL && (result = indigo_alpaca_wheel_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_FOCUSER) == INDIGO_INTERFACE_FOCUSER && (result = indigo_alpaca_focuser_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_MOUNT) == INDIGO_INTERFACE_MOUNT && (result = indigo_alpaca_mount_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_GUIDER) == INDIGO_INTERFACE_GUIDER && (result = indigo_alpaca_guider_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
-		return result;
-	if ((alpaca_device->indigo_interface & INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_INTERFACE_AUX_LIGHTBOX && (result = indigo_alpaca_lightbox_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2)))
-		return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_WHEEL) == INDIGO_INTERFACE_WHEEL &&
+		(result = indigo_alpaca_wheel_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_FOCUSER) == INDIGO_INTERFACE_FOCUSER &&
+		(result = indigo_alpaca_focuser_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_ROTATOR) == INDIGO_INTERFACE_ROTATOR &&
+		(result = indigo_alpaca_rotator_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_MOUNT) == INDIGO_INTERFACE_MOUNT &&
+		(result = indigo_alpaca_mount_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_GUIDER) == INDIGO_INTERFACE_GUIDER &&
+		(result = indigo_alpaca_guider_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
+	if (
+		(alpaca_device->indigo_interface & INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_INTERFACE_AUX_LIGHTBOX &&
+		(result = indigo_alpaca_lightbox_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
 	return 0;
 }

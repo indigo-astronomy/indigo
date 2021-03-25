@@ -81,6 +81,14 @@ typedef struct indigo_alpaca_device_struct {
 			double temperature;
 		} focuser;
 		struct {
+			bool canreverse;
+			bool ismoving;
+			double mechanicalposition;
+			double position;
+			bool reversed;
+			double stepsize;
+		} rotator;
+		struct {
 			bool cansetguiderates;
 			double guideratedeclination;
 			double guideraterightascension;
@@ -152,6 +160,10 @@ extern long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device
 extern void indigo_alpaca_lightbox_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 extern long indigo_alpaca_lightbox_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+
+extern void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+extern long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern indigo_device *indigo_agent_alpaca_device;
 extern indigo_client *indigo_agent_alpaca_client;
