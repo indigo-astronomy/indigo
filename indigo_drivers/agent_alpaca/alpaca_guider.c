@@ -193,32 +193,32 @@ long indigo_alpaca_guider_get_command(indigo_alpaca_device *alpaca_device, int v
 	if (!strcmp(command, "interfaceversion")) {
 		uint32_t value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "canpulseguide")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_canpulseguide(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "cansetguiderates")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_cansetguiderates(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "ispulseguiding")) {
 		bool value = false;
 		indigo_alpaca_error result = alpaca_get_ispulseguiding(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "guideratedeclination")) {
 		double value = false;
 		indigo_alpaca_error result = alpaca_get_guideratedeclination(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "guideraterightascension")) {
 		double value = false;
 		indigo_alpaca_error result = alpaca_get_guideraterightascension(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "atpark")) {
 		return snprintf(buffer, buffer_length, "\"Value\": false, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
@@ -255,7 +255,7 @@ long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int v
 			result = alpaca_set_guideratedeclination(alpaca_device, version, value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "guideraterightascensionrate")) {
 		double value = 0;
@@ -264,7 +264,7 @@ long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int v
 			result = alpaca_set_guideraterightascension(alpaca_device, version, value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "pulseguide")) {
 		int direction = 0;
@@ -274,7 +274,7 @@ long indigo_alpaca_guider_set_command(indigo_alpaca_device *alpaca_device, int v
 			result = alpaca_pulseguide(alpaca_device, version, direction, duration);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strncmp(command, "slew", 4)) {
 		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
