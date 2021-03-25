@@ -549,7 +549,7 @@ indigo_result indigo_save_property(indigo_device *device, int *file_handle, indi
 	if (property == NULL)
 		return INDIGO_FAILED;
 	if (DEVICE_CONTEXT && pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex)) {
-		INDIGO_ERROR(indigo_error("Failed to save property %s for %s (locked)", property->name, device->name));
+		INDIGO_DEBUG(indigo_debug("Config file is locked, property '%s.%s' not saved", device->name, property->name));
 		return INDIGO_FAILED;
 	}
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
@@ -611,7 +611,7 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 	if (property == NULL)
 		return INDIGO_FAILED;
 	if (DEVICE_CONTEXT && pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex)) {
-		INDIGO_ERROR(indigo_error("Failed to save property %s items for %s (locked)", property->name, device->name));
+		INDIGO_DEBUG(indigo_debug("Config file is locked, property '%s.%s' not saved", device->name, property->name));
 		return INDIGO_FAILED;
 	}
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
