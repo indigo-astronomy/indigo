@@ -282,6 +282,36 @@ static indigo_alpaca_error alpaca_get_trackingrates(indigo_alpaca_device *device
 	return indigo_alpaca_error_OK;
 }
 
+static indigo_alpaca_error alpaca_get_sideofpier(indigo_alpaca_device *device, int version, int *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (device->mount.sideofpier == 0) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->mount.sideofpier - 1;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_alignmentmode(indigo_alpaca_device *device, int version, int *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (device->mount.sideofpier == 0) {
+		*value = 1;
+	} else {
+		*value = 2;
+	}
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
 static indigo_alpaca_error alpaca_set_guideratedeclination(indigo_alpaca_device *device, int version, double value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
@@ -707,6 +737,15 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 					alpaca_device->mount.trackingrates[3] = true;
 				}
 			}
+		} else if (!strcmp(property->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (!strcmp(item->name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME)) {
+						alpaca_device->mount.sideofpier = item->sw.value ? 2 : 1;
+					}
+				}
+			}
 		}
 	}
 }
@@ -826,6 +865,16 @@ long indigo_alpaca_mount_get_command(indigo_alpaca_device *alpaca_device, int ve
 		if (value[0])
 			return snprintf(buffer, buffer_length, "\"Value\": [ 0%s%s%s ], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value[0] ? ", 1" : "", value[1] ? ", 2" : "", value[3] ? ", 3" : "", result, indigo_alpaca_error_string(result));
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
+	if (!strcmp(command, "sideofpier")) {
+		int value = false;
+		indigo_alpaca_error result = alpaca_get_sideofpier(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "alignmentmode")) {
+		int value = false;
+		indigo_alpaca_error result = alpaca_get_alignmentmode(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 //--------------- unfinished
 	if (!strncmp(command, "can", 3)) {
