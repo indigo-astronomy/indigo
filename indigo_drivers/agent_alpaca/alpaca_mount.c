@@ -257,6 +257,31 @@ static indigo_alpaca_error alpaca_get_tracking(indigo_alpaca_device *device, int
 	return indigo_alpaca_error_OK;
 }
 
+static indigo_alpaca_error alpaca_get_trackingrate(indigo_alpaca_device *device, int version, int *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->mount.trackingrate;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_trackingrates(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	value[0] = device->mount.trackingrates[0];
+	value[1] = device->mount.trackingrates[1];
+	value[2] = device->mount.trackingrates[2];
+	value[3] = device->mount.trackingrates[3];
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
 static indigo_alpaca_error alpaca_set_guideratedeclination(indigo_alpaca_device *device, int version, double value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
@@ -269,7 +294,7 @@ static indigo_alpaca_error alpaca_set_guideratedeclination(indigo_alpaca_device 
 	}
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_DEC_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return indigo_alpaca_wait_for_double(&device->mount.guideratedeclination, value, 30);
 }
 
 static indigo_alpaca_error alpaca_set_guideraterightascension(indigo_alpaca_device *device, int version, double value) {
@@ -284,7 +309,7 @@ static indigo_alpaca_error alpaca_set_guideraterightascension(indigo_alpaca_devi
 	}
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_GUIDE_RATE_PROPERTY_NAME, MOUNT_GUIDE_RATE_RA_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return indigo_alpaca_wait_for_double(&device->mount.guideraterightascension, value, 30);
 }
 
 static indigo_alpaca_error alpaca_set_targetdeclination(indigo_alpaca_device *device, int version, double value) {
@@ -328,6 +353,33 @@ static indigo_alpaca_error alpaca_set_tracking(indigo_alpaca_device *device, int
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_TRACKING_PROPERTY_NAME, value ? MOUNT_TRACKING_ON_ITEM_NAME : MOUNT_TRACKING_OFF_ITEM_NAME, true);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_wait_for_bool(&device->mount.tracking, value, 30);
+}
+
+static indigo_alpaca_error alpaca_set_trackingrate(indigo_alpaca_device *device, int version, int value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	switch (value) {
+		case 0:
+			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME, true);
+			break;
+		case 1:
+			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME, true);
+			break;
+		case 2:
+			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME, true);
+			break;
+		case 3:
+			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_TRACK_RATE_PROPERTY_NAME, MOUNT_TRACK_RATE_KING_ITEM_NAME, true);
+			break;
+		default:
+			pthread_mutex_unlock(&device->mutex);
+			return indigo_alpaca_error_InvalidValue;
+	}
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_wait_for_int32(&device->mount.trackingrate, value, 30);
 }
 
 static indigo_alpaca_error alpaca_park(indigo_alpaca_device *device, int version) {
@@ -384,7 +436,7 @@ static indigo_alpaca_error alpaca_slewtotarget(indigo_alpaca_device *device, int
 	const double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_wait_for_bool(&device->mount.slewing, true, 300);
+	return indigo_alpaca_wait_for_bool(&device->mount.slewing, false, 300);
 }
 
 static indigo_alpaca_error alpaca_slewtotargetasync(indigo_alpaca_device *device, int version) {
@@ -456,7 +508,7 @@ static indigo_alpaca_error alpaca_slewtocoordinates(indigo_alpaca_device *device
 	const double values[] = { rightascension, declination };
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_wait_for_bool(&device->mount.slewing, true, 300);
+	return indigo_alpaca_wait_for_bool(&device->mount.slewing, false, 300);
 }
 
 static indigo_alpaca_error alpaca_slewtocoordinatesasync(indigo_alpaca_device *device, int version, double rightascension, double declination) {
@@ -512,7 +564,7 @@ static indigo_alpaca_error alpaca_synctocoordinates(indigo_alpaca_device *device
 	const double values[] = { rightascension, declination };
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_wait_for_bool(&device->mount.slewing, true, 300);
+	return indigo_alpaca_wait_for_bool(&device->mount.slewing, false, 300);
 }
 
 static indigo_alpaca_error alpaca_abortslew(indigo_alpaca_device *device, int version) {
@@ -633,6 +685,29 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 				}
 			}
 		}
+	} else if (!strcmp(property->name, MOUNT_TRACK_RATE_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, MOUNT_TRACK_RATE_SIDEREAL_ITEM_NAME)) {
+					if (item->sw.value)
+						alpaca_device->mount.trackingrate = 0;
+					alpaca_device->mount.trackingrates[0] = true;
+				} else if (!strcmp(item->name, MOUNT_TRACK_RATE_LUNAR_ITEM_NAME)) {
+					if (item->sw.value)
+						alpaca_device->mount.trackingrate = 1;
+					alpaca_device->mount.trackingrates[1] = true;
+				} else if (!strcmp(item->name, MOUNT_TRACK_RATE_SOLAR_ITEM_NAME)) {
+					if (item->sw.value)
+						alpaca_device->mount.trackingrate = 2;
+					alpaca_device->mount.trackingrates[2] = true;
+				} else if (!strcmp(item->name, MOUNT_TRACK_RATE_KING_ITEM_NAME)) {
+					if (item->sw.value)
+						alpaca_device->mount.trackingrate = 3;
+					alpaca_device->mount.trackingrates[3] = true;
+				}
+			}
+		}
 	}
 }
 
@@ -740,12 +815,21 @@ long indigo_alpaca_mount_get_command(indigo_alpaca_device *alpaca_device, int ve
 		indigo_alpaca_error result = alpaca_get_tracking(alpaca_device, version, &value);
 		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
 	}
+	if (!strcmp(command, "trackingrate")) {
+		int value = false;
+		indigo_alpaca_error result = alpaca_get_trackingrate(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "trackingrates")) {
+		bool value[4] = { false };
+		indigo_alpaca_error result = alpaca_get_trackingrates(alpaca_device, version, value);
+		if (value[0])
+			return snprintf(buffer, buffer_length, "\"Value\": [ 0%s%s%s ], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value[0] ? ", 1" : "", value[1] ? ", 2" : "", value[3] ? ", 3" : "", result, indigo_alpaca_error_string(result));
+		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
 //--------------- unfinished
 	if (!strncmp(command, "can", 3)) {
 		return snprintf(buffer, buffer_length, "\"Value\": false, \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
-	}
-	if (!strcmp(command, "trackingrates")) {
-		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "axisrates")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
@@ -769,7 +853,7 @@ long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int ve
 			result = indigo_alpaca_error_InvalidValue;
 		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
 	}
-	if (!strcmp(command, "guideraterightascensionrate")) {
+	if (!strcmp(command, "guideraterightascension")) {
 		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "GuideRateRightAscension=%lf", &value) == 1)
@@ -779,8 +863,17 @@ long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int ve
 		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "tracking")) {
-		bool value = !strcmp(param_1, "Tracking=true");
+		bool value = !strcasecmp(param_1, "Tracking=true");
 		indigo_alpaca_error result = alpaca_set_tracking(alpaca_device, version, value);
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "trackingrate")) {
+		int value = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "TrackingRate=%d", &value) == 1)
+			result = alpaca_set_trackingrate(alpaca_device, version, value);
+		else
+			result = indigo_alpaca_error_InvalidValue;
 		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "targetdeclination")) {
