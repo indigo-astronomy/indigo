@@ -67,8 +67,6 @@ typedef struct {
 static bool lakeside_command(indigo_device *device, char *command, char *response, int timeout) {
 	char c;
 	struct timeval tv;
-	tv.tv_sec = timeout / 1000000;
-	tv.tv_usec = timeout % 1000000;
 	if (command != NULL) {
 		if (!indigo_write(PRIVATE_DATA->handle, command, strlen(command)))
 			return false;
@@ -77,6 +75,8 @@ static bool lakeside_command(indigo_device *device, char *command, char *respons
 		int index = 0;
 		while (index < 10) {
 			fd_set readout;
+			tv.tv_sec = timeout / 1000000;
+			tv.tv_usec = timeout % 1000000;
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
