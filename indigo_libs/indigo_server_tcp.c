@@ -112,7 +112,7 @@ static void start_worker_thread(int *client_socket) {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
 			while ((res = indigo_read_line(socket, request, BUFFER_SIZE)) >= 0) {
-				bool keep_alive = false;
+				bool keep_alive = true;
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
 					char *space = strchr(path, ' ');
@@ -125,8 +125,8 @@ static void start_worker_thread(int *client_socket) {
 					while (indigo_read_line(socket, header, BUFFER_SIZE) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
 							strncpy(websocket_key, header + 19, sizeof(websocket_key));
-						if (!strcasecmp(header, "Connection: keep-alive"))
-							keep_alive = true;
+						if (!strcasecmp(header, "Connection: close"))
+							keep_alive = false;
 					}
 					if (!strcmp(path, "/")) {
 						if (*websocket_key) {
