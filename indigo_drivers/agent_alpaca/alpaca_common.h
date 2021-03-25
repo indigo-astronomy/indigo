@@ -113,6 +113,7 @@ typedef struct indigo_alpaca_device_struct {
 			bool tracking;
 			int trackingrate;
 			bool trackingrates[4];
+			int sideofpier;
 		} mount;
 		struct {
 			bool canpulseguide;
