@@ -23,7 +23,7 @@
  \file alpaca_lightbox.c
  */
 
-#include <indigo/indigo_wheel_driver.h>
+#include <indigo/indigo_aux_driver.h>
 
 #include "alpaca_common.h"
 

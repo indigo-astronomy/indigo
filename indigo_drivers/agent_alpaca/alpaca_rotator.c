@@ -23,7 +23,7 @@
  \file alpaca_rotator.c
  */
 
-#include <indigo/indigo_wheel_driver.h>
+#include <indigo/indigo_rotator_driver.h>
 
 #include "alpaca_common.h"
 
