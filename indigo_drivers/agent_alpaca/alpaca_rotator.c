@@ -129,6 +129,10 @@ static indigo_alpaca_error alpaca_move_absolute(indigo_alpaca_device *device, in
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidOperation;
 	}
+	if ((device->rotator.min > value) || (device->rotator.max < value)) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidValue;
+	}
 
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
 	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, value);
@@ -147,8 +151,14 @@ static indigo_alpaca_error alpaca_move_relative(indigo_alpaca_device *device, in
 		return indigo_alpaca_error_InvalidOperation;
 	}
 
+	double absolute_value = device->rotator.position + value;
+	if ((device->rotator.min > absolute_value) || (device->rotator.max < absolute_value)) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidValue;
+	}
+
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
-	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, device->rotator.position + value);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, absolute_value);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -186,6 +196,10 @@ void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, 
 				alpaca_device->rotator.position = item->number.value;
 				alpaca_device->rotator.targetposition = item->number.target;
 				alpaca_device->rotator.mechanicalposition = item->number.value;
+				if (!alpaca_device->rotator.haslimits) {
+					alpaca_device->rotator.min = item->number.min;
+					alpaca_device->rotator.max = item->number.max;
+				}
 			}
 		}
 	}
@@ -195,6 +209,18 @@ void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, 
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, ROTATOR_DIRECTION_NORMAL_ITEM_NAME)) {
 				alpaca_device->rotator.reversed = !item->sw.value;
+			}
+		}
+	}
+	if (!strcmp(property->name, ROTATOR_LIMITS_PROPERTY_NAME)) {
+		alpaca_device->rotator.haslimits = true;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME)) {
+				alpaca_device->rotator.max = item->number.value;
+			}
+			if (!strcmp(item->name, ROTATOR_LIMITS_MIN_POSITION_ITEM_NAME)) {
+				alpaca_device->rotator.min = item->number.value;
 			}
 		}
 	}
