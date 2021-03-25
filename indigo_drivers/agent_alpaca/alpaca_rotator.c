@@ -72,7 +72,7 @@ static indigo_alpaca_error alpaca_halt(indigo_alpaca_device *device, int version
 	return indigo_alpaca_wait_for_bool(&device->rotator.ismoving, false, 30);
 }
 
-void indigo_alpaca_rootator_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
+void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
 }
 
 long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
