@@ -43,7 +43,35 @@ static indigo_alpaca_error alpaca_get_ismoving(indigo_alpaca_device *device, int
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int version, uint32_t *value) {
+static indigo_alpaca_error alpaca_get_canreverse(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->rotator.canreverse;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_reverse(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (device->rotator.canreverse) {
+		*value = device->rotator.reversed;
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_OK;
+	}
+
+	*value = false;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_NotImplemented;
+}
+
+static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int version, double *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -54,11 +82,88 @@ static indigo_alpaca_error alpaca_get_position(indigo_alpaca_device *device, int
 	return indigo_alpaca_error_OK;
 }
 
+static indigo_alpaca_error alpaca_get_targetposition(indigo_alpaca_device *device, int version, double *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->rotator.targetposition;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
 static indigo_alpaca_error alpaca_get_stepsize(indigo_alpaca_device *device, int version, double *value) {
 	if (!device->connected) {
 		return indigo_alpaca_error_NotConnected;
 	}
 	return indigo_alpaca_error_NotImplemented;
+}
+
+static indigo_alpaca_error alpaca_set_reverse(indigo_alpaca_device *device, int version, bool value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (device->rotator.ismoving) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidOperation;
+	}
+	if (device->rotator.canreverse) {
+		indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_DIRECTION_PROPERTY_NAME, ROTATOR_DIRECTION_REVERSED_ITEM_NAME, value);
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_OK;
+	}
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_NotImplemented;
+}
+
+static indigo_alpaca_error alpaca_move_absolute(indigo_alpaca_device *device, int version, double value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (device->rotator.ismoving) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidOperation;
+	}
+
+	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, value);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_move_relative(indigo_alpaca_device *device, int version, double value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (device->rotator.ismoving) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidOperation;
+	}
+
+	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, device->rotator.position + value);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_sync(indigo_alpaca_device *device, int version, double value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+
+	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, value);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
 }
 
 static indigo_alpaca_error alpaca_halt(indigo_alpaca_device *device, int version) {
@@ -73,12 +178,114 @@ static indigo_alpaca_error alpaca_halt(indigo_alpaca_device *device, int version
 }
 
 void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
+	if (!strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
+		alpaca_device->rotator.ismoving = property->state == INDIGO_BUSY_STATE;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, ROTATOR_POSITION_ITEM_NAME)) {
+				alpaca_device->rotator.position = item->number.value;
+				alpaca_device->rotator.targetposition = item->number.target;
+				alpaca_device->rotator.mechanicalposition = item->number.value;
+			}
+		}
+	}
+	if (!strcmp(property->name, ROTATOR_DIRECTION_PROPERTY_NAME)) {
+		alpaca_device->rotator.canreverse = true;
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, ROTATOR_DIRECTION_NORMAL_ITEM_NAME)) {
+				alpaca_device->rotator.reversed = !item->sw.value;
+			}
+		}
+	}
 }
 
 long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
+	if (!strcmp(command, "supportedactions")) {
+		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
+	if (!strcmp(command, "interfaceversion")) {
+		uint32_t value;
+		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "canreverse")) {
+		bool value = false;
+		indigo_alpaca_error result = alpaca_get_canreverse(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "reverse")) {
+		bool value = false;
+		indigo_alpaca_error result = alpaca_get_reverse(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "ismoving")) {
+		bool value = false;
+		indigo_alpaca_error result = alpaca_get_ismoving(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %s, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value ? "true" : "false", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "position")) {
+		double value = 0;
+		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "targetposition")) {
+		double value = 0;
+		indigo_alpaca_error result = alpaca_get_targetposition(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "mechanicalposition")) {
+		double value = 0;
+		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "stepsize")) {
+		double value = 0;
+		indigo_alpaca_error result = alpaca_get_stepsize(alpaca_device, version, &value);
+		return snprintf(buffer, buffer_length, "\"Value\": %f, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	}
 	return 0;
 }
 
 long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
+	if (!strcmp(command, "reverse")) {
+		bool value = !strcasecmp(param_1, "Reverse=true");
+		indigo_alpaca_error result = alpaca_set_reverse(alpaca_device, version, value);
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "sync")) {
+		double value = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "Position=%lf", &value) == 1)
+			result = alpaca_move_relative(alpaca_device, version, value);
+		else
+			result = indigo_alpaca_error_InvalidValue;
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "move")) {
+		double value = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "Position=%lf", &value) == 1)
+			result = alpaca_move_relative(alpaca_device, version, value);
+		else
+			result = indigo_alpaca_error_InvalidValue;
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
+	if (
+		!strcmp(command, "moveabsolute") ||
+		!strcmp(command, "movemechanical")
+	) {
+		double value = 0;
+		indigo_alpaca_error result;
+		if (sscanf(param_1, "Position=%lf", &value) == 1)
+			result = alpaca_move_absolute(alpaca_device, version, value);
+		else
+			result = indigo_alpaca_error_InvalidValue;
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
+	if (!strcmp(command, "halt")) {
+		indigo_alpaca_error result = alpaca_halt(alpaca_device, version);
+		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
 	return 0;
 }
