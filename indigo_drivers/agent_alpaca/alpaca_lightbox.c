@@ -213,27 +213,27 @@ long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int
 	if (!strcmp(command, "interfaceversion")) {
 		uint32_t value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "brightness")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_brightness(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxbrightness")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_maxbrightness(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %u, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "calibratorstate")) {
 		int value = 0;
 		indigo_alpaca_error result = alpaca_get_calibratorstate(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "coverstate")) {
 		int value = 0;
 		indigo_alpaca_error result = alpaca_get_coverstate(alpaca_device, version, &value);
-		return snprintf(buffer, buffer_length, "\"Value\": %d, \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	return 0;
 }
@@ -241,7 +241,7 @@ long indigo_alpaca_lightbox_get_command(indigo_alpaca_device *alpaca_device, int
 long indigo_alpaca_lightbox_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
 	if (!strcmp(command, "calibratoroff")) {
 		indigo_alpaca_error result = alpaca_calibratoroff(alpaca_device, version);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "calibratoron")) {
 		uint32_t value = 1;
@@ -250,19 +250,19 @@ long indigo_alpaca_lightbox_set_command(indigo_alpaca_device *alpaca_device, int
 			result = alpaca_calibratoron(alpaca_device, version, value);
 		else
 			result = indigo_alpaca_error_InvalidValue;
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "closecover")) {
 		indigo_alpaca_error result = alpaca_closecover(alpaca_device, version);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "opencover")) {
 		indigo_alpaca_error result = alpaca_opencover(alpaca_device, version);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "haltcover")) {
 		indigo_alpaca_error result = alpaca_haltcover(alpaca_device, version);
-		return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	return 0;
 }

@@ -134,6 +134,10 @@ typedef struct indigo_alpaca_device_struct {
 } indigo_alpaca_device;
 
 extern char *indigo_alpaca_error_string(int code);
+extern long indigo_alpaca_append_error(char *buffer, long buffer_length, indigo_alpaca_error result);
+extern long indigo_alpaca_append_value_bool(char *buffer, long buffer_length, bool value, indigo_alpaca_error result);
+extern long indigo_alpaca_append_value_int(char *buffer, long buffer_length, int value, indigo_alpaca_error result);
+extern long indigo_alpaca_append_value_double(char *buffer, long buffer_length, double value, indigo_alpaca_error result);
 
 extern bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
 extern bool indigo_alpaca_wait_for_int32(int32_t *reference, int32_t value, int timeout);
