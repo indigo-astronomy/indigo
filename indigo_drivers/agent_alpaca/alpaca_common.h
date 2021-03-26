@@ -181,4 +181,6 @@ extern long indigo_alpaca_dome_set_command(indigo_alpaca_device *alpaca_device, 
 extern indigo_device *indigo_agent_alpaca_device;
 extern indigo_client *indigo_agent_alpaca_client;
 
+#define IS_DEVICE_TYPE(device, type) ((device->indigo_interface & type) == type)
+
 #endif /* alpaca_common_h */

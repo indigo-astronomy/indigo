@@ -328,47 +328,44 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 		double value;
 		indigo_alpaca_error result = alpaca_get_latitude(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
-		//return snprintf(buffer, buffer_length, "\"Value\": \"%f\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "sitelongitude")) {
 		double value;
 		indigo_alpaca_error result = alpaca_get_longitude(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
-		//return snprintf(buffer, buffer_length, "\"Value\": \"%f\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	if (!strcmp(command, "siteelevation")) {
 		double value;
 		indigo_alpaca_error result = alpaca_get_elevation(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
-		//return snprintf(buffer, buffer_length, "\"Value\": \"%f\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 	}
 	long result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_WHEEL) == INDIGO_INTERFACE_WHEEL &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_WHEEL) &&
 		(result = indigo_alpaca_wheel_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_FOCUSER) == INDIGO_INTERFACE_FOCUSER &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_FOCUSER) &&
 		(result = indigo_alpaca_focuser_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_ROTATOR) == INDIGO_INTERFACE_ROTATOR &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_ROTATOR) &&
 		(result = indigo_alpaca_rotator_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_MOUNT) == INDIGO_INTERFACE_MOUNT &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT) &&
 		(result = indigo_alpaca_mount_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_GUIDER) == INDIGO_INTERFACE_GUIDER &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_GUIDER) &&
 		(result = indigo_alpaca_guider_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_DOME) == INDIGO_INTERFACE_DOME &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_DOME) &&
 		(result = indigo_alpaca_dome_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_INTERFACE_AUX_LIGHTBOX &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_LIGHTBOX) &&
 		(result = indigo_alpaca_lightbox_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
 	// TBD other device types
@@ -410,31 +407,31 @@ long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version,
 	}
 	long result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_WHEEL) == INDIGO_INTERFACE_WHEEL &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_WHEEL) &&
 		(result = indigo_alpaca_wheel_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_FOCUSER) == INDIGO_INTERFACE_FOCUSER &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_FOCUSER) &&
 		(result = indigo_alpaca_focuser_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_ROTATOR) == INDIGO_INTERFACE_ROTATOR &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_ROTATOR) &&
 		(result = indigo_alpaca_rotator_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_MOUNT) == INDIGO_INTERFACE_MOUNT &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT) &&
 		(result = indigo_alpaca_mount_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_GUIDER) == INDIGO_INTERFACE_GUIDER &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_GUIDER) &&
 		(result = indigo_alpaca_guider_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_DOME) == INDIGO_INTERFACE_DOME &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_DOME) &&
 		(result = indigo_alpaca_dome_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	if (
-		(alpaca_device->indigo_interface & INDIGO_INTERFACE_AUX_LIGHTBOX) == INDIGO_INTERFACE_AUX_LIGHTBOX &&
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_LIGHTBOX) &&
 		(result = indigo_alpaca_lightbox_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	return 0;
