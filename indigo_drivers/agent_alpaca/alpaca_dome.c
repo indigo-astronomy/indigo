@@ -23,7 +23,7 @@
  \file alpaca_dome.c
  */
 
-#include <indigo/indigo_rotator_driver.h>
+#include <indigo/indigo_dome_driver.h>
 
 #include "alpaca_common.h"
 

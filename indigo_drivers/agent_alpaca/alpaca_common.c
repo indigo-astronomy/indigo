@@ -94,6 +94,8 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 				}
 			}
 		}
+	} else if (!strncmp(property->name, "CCD_", 4)) {
+		indigo_alpaca_ccd_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "WHEEL_", 6)) {
 		indigo_alpaca_wheel_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "FOCUSER_", 8)) {
@@ -341,6 +343,10 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 	}
 	long result;
 	if (
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD) &&
+		(result = indigo_alpaca_ccd_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
+	if (
 		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_WHEEL) &&
 		(result = indigo_alpaca_wheel_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
@@ -406,6 +412,10 @@ long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version,
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	long result;
+	if (
+		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD) &&
+		(result = indigo_alpaca_ccd_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
 	if (
 		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_WHEEL) &&
 		(result = indigo_alpaca_wheel_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
