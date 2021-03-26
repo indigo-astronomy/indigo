@@ -565,6 +565,10 @@
 		59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */; };
 		59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */; };
 		59D762A424B8802100745F97 /* libqhyccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 597E4FCD23EEE637007E0BF8 /* libqhyccd.a */; };
+		59D8BBC5260E624600B904EE /* alpaca_dome.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBC4260E624600B904EE /* alpaca_dome.c */; };
+		59D8BBC6260E624600B904EE /* alpaca_dome.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBC4260E624600B904EE /* alpaca_dome.c */; };
+		59D8BBD6260E628B00B904EE /* alpaca_ccd.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBD5260E628B00B904EE /* alpaca_ccd.c */; };
+		59D8BBD7260E628B00B904EE /* alpaca_ccd.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBD5260E628B00B904EE /* alpaca_ccd.c */; };
 		59D9681921A2FE3F0069A64C /* USB2ST4_Conv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9680721A2FE380069A64C /* USB2ST4_Conv.h */; };
 		59D9682F21A2FE5D0069A64C /* EFW_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9681D21A2FE580069A64C /* EFW_filter.h */; };
 		59D9684221A2FFC40069A64C /* libdsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D9683521A2FFBC0069A64C /* libdsusb.h */; };
@@ -2568,6 +2572,8 @@
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
+		59D8BBC4260E624600B904EE /* alpaca_dome.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_dome.c; sourceTree = "<group>"; };
+		59D8BBD5260E628B00B904EE /* alpaca_ccd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_ccd.c; sourceTree = "<group>"; };
 		59D967EC21A2AE660069A64C /* Makefile.drv */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drv; sourceTree = "<group>"; };
 		59D967ED21A2AF770069A64C /* Makefile.drvs */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drvs; sourceTree = "<group>"; };
 		59D967EE21A2EA930069A64C /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -5388,12 +5394,14 @@
 				597BD14B2601381F00239274 /* indigo_agent_alpaca.c */,
 				597BD1792602553E00239274 /* alpaca_common.h */,
 				597BD18126025D1800239274 /* alpaca_common.c */,
+				59D8BBD5260E628B00B904EE /* alpaca_ccd.c */,
 				597BD16D2602552900239274 /* alpaca_wheel.c */,
 				597BD19226067B0100239274 /* alpaca_focuser.c */,
 				597BD1C4260BBA5000239274 /* alpaca_mount.c */,
 				597BD1B3260A597400239274 /* alpaca_guider.c */,
 				597BD1CE260CE2A700239274 /* alpaca_rotator.c */,
 				597BD19C2606974800239274 /* alpaca_lightbox.c */,
+				59D8BBC4260E624600B904EE /* alpaca_dome.c */,
 			);
 			path = agent_alpaca;
 			sourceTree = "<group>";
@@ -12826,6 +12834,7 @@
 				598A1BA7259BA94A00C0B34C /* NSDictionary+DDHidExtras.m in Sources */,
 				598A1BA8259BA94A00C0B34C /* indigo_dome_driver.c in Sources */,
 				598A1BA9259BA94A00C0B34C /* indigo_aux_sqm.c in Sources */,
+				59D8BBD7260E628B00B904EE /* alpaca_ccd.c in Sources */,
 				598A1BAA259BA94A00C0B34C /* indigo_wheel_manual.c in Sources */,
 				598A1BAB259BA94A00C0B34C /* indigo_aux_dragonfly.c in Sources */,
 				598A1BAC259BA94A00C0B34C /* DDHidKeyboard.m in Sources */,
@@ -12863,6 +12872,7 @@
 				598A1BCB259BA94A00C0B34C /* indigo_agent_mount.c in Sources */,
 				598A1BCC259BA94A00C0B34C /* indigo_aux_cloudwatcher.c in Sources */,
 				598A1BCD259BA94A00C0B34C /* indigo_client_xml.c in Sources */,
+				59D8BBC6260E624600B904EE /* alpaca_dome.c in Sources */,
 				598A1BCE259BA94A00C0B34C /* indigo_focuser_dmfc.c in Sources */,
 				598A1BCF259BA94A00C0B34C /* indigo_mount_driver.c in Sources */,
 				598A1BD0259BA94A00C0B34C /* indigo_ica_ptp.m in Sources */,
@@ -13029,6 +13039,7 @@
 				595F2929211E211200380EF4 /* NSDictionary+DDHidExtras.m in Sources */,
 				59DD69CE1FC1D30300AEF0DF /* indigo_dome_driver.c in Sources */,
 				9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */,
+				59D8BBD6260E628B00B904EE /* alpaca_ccd.c in Sources */,
 				59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */,
 				591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */,
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,
@@ -13066,6 +13077,7 @@
 				9D7244F421F1CFEC0028FDF4 /* indigo_agent_mount.c in Sources */,
 				59F7E5EA2457669D00EF273A /* indigo_aux_cloudwatcher.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
+				59D8BBC5260E624600B904EE /* alpaca_dome.c in Sources */,
 				9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */,
 				59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */,
 				59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */,
