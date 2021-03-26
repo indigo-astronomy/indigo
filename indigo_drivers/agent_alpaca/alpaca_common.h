@@ -174,6 +174,10 @@ extern void indigo_alpaca_rotator_update_property(indigo_alpaca_device *alpaca_d
 extern long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 extern long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
+extern void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
+extern long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_dome_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+
 extern indigo_device *indigo_agent_alpaca_device;
 extern indigo_client *indigo_agent_alpaca_client;
 
