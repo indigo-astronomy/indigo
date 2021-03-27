@@ -122,11 +122,16 @@ static void start_worker_thread(int *client_socket) {
 					if (params)
 						*params++ = 0;
 					char websocket_key[256] = "";
+					bool use_gzip = false;
 					while (indigo_read_line(socket, header, BUFFER_SIZE) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
 							strncpy(websocket_key, header + 19, sizeof(websocket_key));
 						if (!strcasecmp(header, "Connection: close"))
 							keep_alive = false;
+						if (!strncasecmp(header, "Accept-Encoding:", 16)) {
+							if (strstr(header + 16, "gzip"))
+							use_gzip = true;
+						}
 					}
 					if (!strcmp(path, "/")) {
 						if (*websocket_key) {
@@ -179,11 +184,19 @@ static void start_worker_thread(int *client_socket) {
 							if (working_copy) {
 								char working_format[INDIGO_NAME_SIZE];
 								strcpy(working_format, entry->format);
+								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 								if (indigo_use_blob_buffering) {
-									memcpy(working_copy, entry->content, working_size);
+									if (use_gzip && working_size > 1024 && strcmp(entry->format, ".jpeg")) {
+										unsigned compressed_size = (unsigned)working_size;
+										indigo_compress("image", entry->content, (unsigned)working_size, working_copy, &compressed_size);
+										INDIGO_PRINTF(socket, "Content-Encoding: gzip\r\n");
+										INDIGO_PRINTF(socket, "X-Uncompressed-Content-Length: %ld\r\n", working_size);
+										working_size = compressed_size;
+									} else {
+										memcpy(working_copy, entry->content, working_size);
+									}
 									pthread_mutex_unlock(&entry->mutext);
 								}
-								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								if (!strcmp(entry->format, ".jpeg")) {
 									INDIGO_PRINTF(socket, "Content-Type: image/jpeg\r\n");
