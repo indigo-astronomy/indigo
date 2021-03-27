@@ -31,7 +31,6 @@
 #include <pthread.h>
 #include <dirent.h>
 #include <errno.h>
-#include <zlib.h>
 
 #include <arpa/inet.h>
 #include <sys/types.h>
@@ -44,6 +43,7 @@
 #endif
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_io.h>
 #include <indigo/indigo_server_tcp.h>
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_client.h>
@@ -425,27 +425,6 @@ static double h2deg(double ra) {
 	return ra > 12 ? (ra - 24) * 15 : ra * 15;
 }
 
-static void indigo_compress(char *name, char *buffer, unsigned size, unsigned char **data, unsigned *data_size) {
-	z_stream defstream;
-	defstream.zalloc = Z_NULL;
-	defstream.zfree = Z_NULL;
-	defstream.opaque = Z_NULL;
-	defstream.avail_in = size;
-	defstream.next_in = (Bytef *)buffer;
-	defstream.avail_out = *data_size;
-	defstream.next_out = (Bytef *)*data;
-	gz_header header = { 0 };
-	header.name = (Bytef *)name;
-	header.comment = Z_NULL;
-	header.extra = Z_NULL;
-	int r = deflateInit2(&defstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 9, Z_DEFAULT_STRATEGY);
-	r = deflateSetHeader(&defstream, &header);
-	r = deflate(&defstream, Z_FINISH);
-	r = deflateEnd(&defstream);
-	*data_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)*data);
-	*data = indigo_safe_realloc(*data, *data_size);
-}
-
 static void *indigo_add_star_json_resource(int max_mag) {
 	int buffer_size = 1024 * 1024;
 	char *buffer =  malloc(buffer_size);
@@ -479,7 +458,7 @@ static void *indigo_add_star_json_resource(int max_mag) {
 	size += sprintf(buffer + size, "]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
-	indigo_compress("stars.json", buffer, size, &data, &data_size);
+	indigo_compress("stars.json", buffer, size, data, &data_size);
 	free(buffer);
 	indigo_server_add_resource("/data/stars.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;
@@ -506,7 +485,7 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 	size += sprintf(buffer + size, "]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
-	indigo_compress("stars.json", buffer, size, &data, &data_size);
+	indigo_compress("stars.json", buffer, size, data, &data_size);
 	free(buffer);
 	indigo_server_add_resource("/data/dsos.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;
@@ -659,7 +638,7 @@ static void *indigo_add_constellations_lines_json_resource() {
 	size += sprintf(buffer + size, "]}}]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
-	indigo_compress("constellations.lines.json", buffer, size, &data, &data_size);
+	indigo_compress("constellations.lines.json", buffer, size, data, &data_size);
 	free(buffer);
 	indigo_server_add_resource("/data/constellations.lines.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;

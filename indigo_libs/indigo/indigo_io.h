@@ -102,6 +102,20 @@ extern bool indigo_printf(int handle, const char *format, ...);
 
 extern int indigo_scanf(int handle, const char *format, ...);
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
+/** Compress with gzip.
+ */
+
+extern void indigo_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
+
+/** Decompress with gzip.
+ */
+
+extern void indigo_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
+
+#endif
+
 #ifdef __cplusplus
 }
 #endif

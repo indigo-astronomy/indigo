@@ -39,6 +39,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <zlib.h>
 #endif
 
 #if defined(INDIGO_WINDOWS)
@@ -448,3 +449,42 @@ int indigo_scanf(int handle, const char *format, ...) {
 	free(buffer);
 	return count;
 }
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
+void indigo_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
+	z_stream defstream;
+	defstream.zalloc = Z_NULL;
+	defstream.zfree = Z_NULL;
+	defstream.opaque = Z_NULL;
+	defstream.avail_in = in_size;
+	defstream.next_in = (Bytef *)in_buffer;
+	defstream.avail_out = *out_size;
+	defstream.next_out = (Bytef *)out_buffer;
+	gz_header header = { 0 };
+	header.name = (Bytef *)name;
+	header.comment = Z_NULL;
+	header.extra = Z_NULL;
+	int r = deflateInit2(&defstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 9, Z_DEFAULT_STRATEGY);
+	r = deflateSetHeader(&defstream, &header);
+	r = deflate(&defstream, Z_FINISH);
+	r = deflateEnd(&defstream);
+	*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
+}
+
+void indigo_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
+	z_stream infstream;
+	infstream.zalloc = Z_NULL;
+	infstream.zfree = Z_NULL;
+	infstream.opaque = Z_NULL;
+	infstream.avail_in = in_size;
+	infstream.next_in = (Bytef *)in_buffer;
+	infstream.avail_out = *out_size;
+	infstream.next_out = (Bytef *)out_buffer;
+	int r = inflateInit2(&infstream, MAX_WBITS + 16);
+	r = inflate(&infstream, Z_NO_FLUSH);
+	r = inflateEnd(&infstream);
+	*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
+}
+
+#endif
