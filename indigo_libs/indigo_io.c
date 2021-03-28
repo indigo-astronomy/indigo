@@ -242,6 +242,8 @@ int indigo_open_serial_with_config(const char *dev_file, const char *baudconfig)
 
 #endif /* Linux and Mac */
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
 static int open_socket(const char *host, int port, int type) {
 	struct addrinfo *address_list, *address;
 	if (getaddrinfo(host, NULL, NULL, &address_list) != 0) {
@@ -268,6 +270,43 @@ static int open_socket(const char *host, int port, int type) {
 	return handle;
 }
 
+#endif
+
+#if defined(INDIGO_WINDOWS)
+
+static int open_socket(const char *host, int port, int type) {
+	struct sockaddr_in srv_info;
+	struct hostent *he;
+	int sock;
+	struct timeval timeout;
+	timeout.tv_sec = 5;
+	timeout.tv_usec = 0;
+	if ((he = gethostbyname(host)) == NULL) {
+		return -1;
+	}
+	if ((sock = socket(AF_INET, type, 0))== -1) {
+		return -1;
+	}
+	memset(&srv_info, 0, sizeof(srv_info));
+	srv_info.sin_family = AF_INET;
+	srv_info.sin_port = htons(port);
+	srv_info.sin_addr = *((struct in_addr *)he->h_addr);
+	if (connect(sock, (struct sockaddr *)&srv_info, sizeof(struct sockaddr))<0) {
+		return -1;
+	}
+	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+		close(sock);
+		return -1;
+	}
+	if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+		close(sock);
+		return -1;
+	}
+	return sock;
+}
+
+#endif
+
 int indigo_open_tcp(const char *host, int port) {
 	return open_socket(host, port, SOCK_STREAM);
 }
@@ -275,6 +314,7 @@ int indigo_open_tcp(const char *host, int port) {
 int indigo_open_udp(const char *host, int port) {
 	return open_socket(host, port, SOCK_DGRAM);
 }
+
 
 bool indigo_is_device_url(const char *name, const char *prefix) {
 	if (!name) return false;
