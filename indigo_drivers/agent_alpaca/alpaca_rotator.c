@@ -270,7 +270,7 @@ long indigo_alpaca_rotator_get_command(indigo_alpaca_device *alpaca_device, int 
 		indigo_alpaca_error result = alpaca_get_stepsize(alpaca_device, version, &value);
 	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
-	return 0;
+	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
 
 long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
@@ -313,5 +313,5 @@ long indigo_alpaca_rotator_set_command(indigo_alpaca_device *alpaca_device, int 
 		indigo_alpaca_error result = alpaca_halt(alpaca_device, version);
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
-	return 0;
+	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
