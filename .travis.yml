@@ -19,6 +19,7 @@ matrix:
         apt:
           sources:
             - ubuntu-toolchain-r-test
+            - sourceline 'deb [trusted=yes] https://indigo-astronomy.github.io/indigo_ppa/ppa indigo main'
           packages:
             - build-essential gcc-6
       env:
@@ -45,7 +46,7 @@ matrix:
         - MATRIX_EVAL="CC=gcc-8 && CXX=g++-8"
 
 before_install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update && sudo apt-get install -y bash build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc ; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update && sudo apt-get install -y bash build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev fxload libcurl4-gnutls-dev libgphoto2-dev git curl dpkg fakeroot fxload libusb-1.0-0 libgudev-1.0-0 libgphoto2-6 libavahi-compat-libdnssd1 psmisc indigo-astrometry; fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then sh tools/cltools.sh ; fi
   - eval "${MATRIX_EVAL}"
 
