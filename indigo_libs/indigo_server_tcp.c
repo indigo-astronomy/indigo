@@ -257,7 +257,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
 							keep_alive = false;
 						} else if (resource->handler) {
-							keep_alive = resource->handler(socket, "GET", path, params);
+							keep_alive = resource->handler(socket, use_gzip ? "GET/GZIP" : "GET", path, params);
 						} else if (resource->data) {
 							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
