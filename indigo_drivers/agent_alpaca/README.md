@@ -29,6 +29,10 @@ Mapping from INDIGO names to ALPACA device numers is maintained and made persist
 
 All web configuration requests are redirected to INDIGO Server root.
 
+### CCD
+
+ICameraV3 implemented, no DSLR support, ASCOM binning is always 1x1, INDIGO camera mode is mapped to ASCOM readout mode. No image compression yet.
+
 ### Wheel
 
 IFilterWheelV2 implemented, no limitations
