@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -821,8 +821,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 		if (!mfp_set_max_position(device, PRIVATE_DATA->max_position)) {
@@ -837,8 +837,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		if (!mfp_set_speed(device, (uint32_t)FOCUSER_SPEED_ITEM->number.target)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_set_speed(%d) failed", PRIVATE_DATA->handle);
@@ -921,8 +921,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_STEP_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_STEP_MODE_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(X_STEP_MODE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		X_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		stepmode_t mode = STEP_MODE_FULL;
 		if(X_STEP_MODE_FULL_ITEM->sw.value) {
@@ -951,8 +951,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_SETTLE_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SETTLE_TIME_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(X_SETTLE_TIME_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		X_SETTLE_TIME_PROPERTY->state = INDIGO_OK_STATE;
 
 		if (!mfp_set_settle_buffer(device, (uint32_t)X_SETTLE_TIME_ITEM->number.target)) {
@@ -971,8 +971,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_COILS_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_COILS_MODE_PROPERTY
-		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(X_COILS_MODE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		X_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		coilsmode_t mode = COILS_MODE_IDLE_OFF;
 		if(X_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
