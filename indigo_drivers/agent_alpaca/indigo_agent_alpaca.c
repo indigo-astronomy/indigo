@@ -303,10 +303,10 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		send_text_response(socket, path, 400, "Bad Request", "No such device");
 		return true;
 	}
-	if (!strcmp(method, "GET")) {
+	if (!strncmp(method, "GET", 3)) {
 		parse_url_params(params, &client_id, &client_transaction_id);
 		if (!strncmp(command, "imagearray", 10)) {
-			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++);
+			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"));
 			return false;
 		} else {
 			long index = snprintf(buffer, BUFFER_SIZE, "{ ");

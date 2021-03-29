@@ -24,6 +24,7 @@
  */
 
 #include <math.h>
+#include <zlib.h>
 
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_ccd_driver.h>
@@ -353,8 +354,12 @@ static indigo_alpaca_error alpaca_get_sensortype(indigo_alpaca_device *device, i
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
+	if (!strncasecmp(device->ccd.readoutmodes_names[device->ccd.readoutmode], "rgb", 3))
+		*value = 1;
+	else
+		*value = 0;
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_NotImplemented;
+	return indigo_alpaca_error_OK;
 }
 
 static indigo_alpaca_error alpaca_get_sensorname(indigo_alpaca_device *device, int version, char **value) {
@@ -878,7 +883,7 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
-					if (item->blob.value && item->blob.size > 0)
+					if (item->blob.value && item->blob.size > 0 && *alpaca_device->ccd.lastexposuretarttime)
 						alpaca_device->ccd.imageready = item;
 					else
 						alpaca_device->ccd.imageready = NULL;
@@ -1297,10 +1302,18 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
 
-void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id) {
+#define PRINTF(fmt, ...) if (use_gzip) gzprintf(gzf, fmt, ##__VA_ARGS__); else indigo_printf(socket, fmt, ##__VA_ARGS__);
+
+void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip) {
 	indigo_alpaca_error result = indigo_alpaca_error_OK;
 	indigo_blob_entry *entry;
-	indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+	gzFile gzf = NULL;
+	if (use_gzip) {
+		indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
+		gzf = gzdopen(socket, "w");
+	} else {
+		indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+	}
 	if (alpaca_device->ccd.imageready && (entry = indigo_validate_blob(alpaca_device->ccd.imageready))) {
 		pthread_mutex_lock(&entry->mutext);
 		indigo_raw_header *header = (indigo_raw_header *)(entry->content);
@@ -1308,70 +1321,78 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		int height = header->height;
 		switch (header->signature) {
 			case INDIGO_RAW_MONO8: {
-				indigo_printf(socket, "{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+				PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
 				uint8_t *data = entry->content + sizeof(indigo_raw_header);
 				for (int col = 0; col < width; col++) {
-					if (col == 0)
-						indigo_printf(socket, "[");
-					else
-						indigo_printf(socket, ", [");
-					for (int row = 0; row < height; row++) {
-						if (row == 0)
-							indigo_printf(socket, "%d", *data++);
-						else
-							indigo_printf(socket, ", %d", *data++);
+					if (col == 0) {
+						PRINTF("[");
+					} else {
+						PRINTF(", [");
 					}
-					indigo_printf(socket, "]");
+					for (int row = 0; row < height; row++) {
+						if (row == 0) {
+							PRINTF("%d", *data++);
+						} else {
+							PRINTF(", %d", *data++);
+						}
+					}
+					PRINTF("]");
 				}
 				break;
 			}
 			case INDIGO_RAW_MONO16: {
-				indigo_printf(socket, "{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+				PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
 				uint16_t *data = entry->content + sizeof(indigo_raw_header);
 				for (int col = 0; col < width; col++) {
-					if (col == 0)
-						indigo_printf(socket, "[");
-					else
-						indigo_printf(socket, ", [");
-					for (int row = 0; row < height; row++) {
-						if (row == 0)
-							indigo_printf(socket, "%d", *data++);
-						else
-							indigo_printf(socket, ", %d", *data++);
+					if (col == 0) {
+						PRINTF("[");
+					} else {
+						PRINTF(", [");
 					}
-					indigo_printf(socket, "]");
+					for (int row = 0; row < height; row++) {
+						if (row == 0) {
+							PRINTF("%d", *data++);
+						} else {
+							PRINTF(", %d", *data++);
+						}
+					}
+					PRINTF("]");
 				}
 				break;
 			}
 			case INDIGO_RAW_RGB24: {
-				indigo_printf(socket, "{ \"Type\": 2, \"Rank\": 3, \"Value\": [");
-				uint16_t *data = entry->content + sizeof(indigo_raw_header);
+				PRINTF("{ \"Type\": 2, \"Rank\": 3, \"Value\": [");
+				uint8_t *data = entry->content + sizeof(indigo_raw_header);
 				for (int col = 0; col < width; col++) {
-					if (col == 0)
-						indigo_printf(socket, "[");
-					else
-						indigo_printf(socket, ", [");
+					if (col == 0) {
+						PRINTF("[");
+					} else {
+						PRINTF(", [");
+					}
 					for (int row = 0; row < height; row++) {
 						int r = *data++;
 						int g = *data++;
 						int b = *data++;
-						if (row == 0)
-							indigo_printf(socket, "[%d,%d,%d]", r, g, b);
-						else
-							indigo_printf(socket, ",[%d,%d,%d]", r, g, b);
+						if (row == 0) {
+							PRINTF("[%d,%d,%d]", r, g, b);
+						} else {
+							PRINTF(",[%d,%d,%d]", r, g, b);
+						}
 					}
-					indigo_printf(socket, "]");
+					PRINTF("]");
 				}
 				break;
 			}
 			default:
-				indigo_printf(socket, "{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+				PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
 				break;
 		}
 		pthread_mutex_unlock(&entry->mutext);
 	} else {
-		indigo_printf(socket, "{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+		PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
 		result = indigo_alpaca_error_InvalidOperation;
 	}
-	indigo_printf(socket, "], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", result, indigo_alpaca_error_string(result), client_transaction_id, server_transaction_id);
+	PRINTF("], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", result, indigo_alpaca_error_string(result), client_transaction_id, server_transaction_id);
+	if (use_gzip)
+		gzclose(gzf);
 }
