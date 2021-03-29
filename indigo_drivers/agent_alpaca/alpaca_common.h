@@ -62,11 +62,49 @@ typedef struct indigo_alpaca_device_struct {
 	double elevation;
 	union {
 		struct {
+			bool canabortexposure;
+			bool cangetcoolerpower;
+			bool cangetccdtemperature;
+			bool cansetccdtemperature;
+			uint32_t binx;
+			uint32_t biny;
+			int camerastate;
+			uint32_t cameraxsize;
+			uint32_t cameraysize;
+			uint32_t startx;
+			uint32_t starty;
+			uint32_t numx;
+			uint32_t numy;
+			double ccdtemperature;
+			double setccdtemperature;
+			bool cooleron;
+			double coolerpower;
+			double electronsperadu;
+			double fullwellcapacity;
+			indigo_item *imageready;
+			uint32_t maxadu;
+			double pixelsizex;
+			double pixelsizey;
+			double exposuremin;
+			double exposuremax;
+			double lastexposureduration;
+			char lastexposuretarttime[20];
+			uint32_t gainmin;
+			uint32_t gainmax;
+			uint32_t gain;
+			uint32_t offsetmin;
+			uint32_t offsetmax;
+			uint32_t offset;
+			char *readoutmodes_names[INDIGO_MAX_ITEMS];
+			char *readoutmodes_labels[INDIGO_MAX_ITEMS];
+			int readoutmode;
+		} ccd;
+		struct {
 			uint32_t count;
 			int32_t position;
 			uint32_t focusoffsets[ALPACA_MAX_FILTERS];
 			char *names[ALPACA_MAX_FILTERS];
-		} filterwheel;
+		} wheel;
 		struct {
 			bool absolute;
 			bool ismoving;
@@ -141,7 +179,7 @@ extern long indigo_alpaca_append_error(char *buffer, long buffer_length, indigo_
 extern long indigo_alpaca_append_value_bool(char *buffer, long buffer_length, bool value, indigo_alpaca_error result);
 extern long indigo_alpaca_append_value_int(char *buffer, long buffer_length, int value, indigo_alpaca_error result);
 extern long indigo_alpaca_append_value_double(char *buffer, long buffer_length, double value, indigo_alpaca_error result);
-
+extern long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *value, indigo_alpaca_error result);
 extern bool indigo_alpaca_wait_for_bool(bool *reference, bool value, int timeout);
 extern bool indigo_alpaca_wait_for_int32(int32_t *reference, int32_t value, int timeout);
 extern bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
@@ -153,6 +191,7 @@ extern long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int v
 extern void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 extern long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
+extern void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id);
 
 extern void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);

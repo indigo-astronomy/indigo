@@ -79,7 +79,7 @@ static struct resource {
 	unsigned length;
 	const char *file_name;
 	char *content_type;
-	void (*handler)(int client_socket, char *method, char *path, char *params);
+	bool (*handler)(int client_socket, char *method, char *path, char *params);
 	struct resource *next;
 } *resources = NULL;
 
@@ -257,7 +257,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
 							keep_alive = false;
 						} else if (resource->handler) {
-							resource->handler(socket, "GET", path, params);
+							keep_alive = resource->handler(socket, "GET", path, params);
 						} else if (resource->data) {
 							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
@@ -325,7 +325,7 @@ static void start_worker_thread(int *client_socket) {
 						INDIGO_LOG(indigo_log("%s -> Failed", request));
 						keep_alive = false;
 					} else if (resource->handler) {
-						resource->handler(socket, "PUT", path, NULL);
+						keep_alive = resource->handler(socket, "PUT", path, NULL);
 					}
 				}
 				if (!keep_alive) {
@@ -376,7 +376,7 @@ void indigo_server_add_file_resource(const char *path, const char *file_name, co
 	INDIGO_LOG(indigo_log("Resource %s (%s, %s) added", path, file_name, content_type));
 }
 
-void indigo_server_add_handler(const char *path, void (*handler)(int client_socket, char *method, char *path, char *params)) {
+void indigo_server_add_handler(const char *path, bool (*handler)(int client_socket, char *method, char *path, char *params)) {
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	resource->path = path;
 	resource->file_name = NULL;

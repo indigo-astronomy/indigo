@@ -997,6 +997,5 @@ long indigo_alpaca_mount_set_command(indigo_alpaca_device *alpaca_device, int ve
 			result = indigo_alpaca_error_InvalidValue;
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
-	//--------------- unfinished
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
