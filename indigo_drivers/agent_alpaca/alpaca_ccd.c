@@ -1287,8 +1287,12 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 	if (!strcmp(command, "startexposure")) {
 		double duration;
 		indigo_alpaca_error result;
-		if (sscanf(param_1, "Duration=%lf", &duration) == 1) {
-			bool light = !strcmp(param_2, "Light=true");
+		char light_str[INDIGO_VALUE_SIZE] = {0};
+		if (
+			(sscanf(param_1, "Duration=%lf", &duration) == 1) &&
+			(sscanf(param_2, "Light=%s", light_str) == 1)
+		) {
+			bool light = !strcmp(light_str, "True") || !strcmp(light_str, "true");
 			result = alpaca_startexposure(alpaca_device, version, duration, light);
 		} else {
 			result = indigo_alpaca_error_InvalidValue;
