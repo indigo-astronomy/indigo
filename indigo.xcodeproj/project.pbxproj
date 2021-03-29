@@ -2574,6 +2574,7 @@
 		59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_simulator.h; sourceTree = "<group>"; };
 		59D8BBC4260E624600B904EE /* alpaca_dome.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_dome.c; sourceTree = "<group>"; };
 		59D8BBD5260E628B00B904EE /* alpaca_ccd.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = alpaca_ccd.c; sourceTree = "<group>"; };
+		59D8BBE526126C8900B904EE /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59D967EC21A2AE660069A64C /* Makefile.drv */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drv; sourceTree = "<group>"; };
 		59D967ED21A2AF770069A64C /* Makefile.drvs */ = {isa = PBXFileReference; lastKnownFileType = text; path = Makefile.drvs; sourceTree = "<group>"; };
 		59D967EE21A2EA930069A64C /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
@@ -5389,6 +5390,7 @@
 		597BD149260137E500239274 /* agent_alpaca */ = {
 			isa = PBXGroup;
 			children = (
+				59D8BBE526126C8900B904EE /* Makefile.inc */,
 				597BD14C2601381F00239274 /* README.md */,
 				597BD14A2601381F00239274 /* indigo_agent_alpaca.h */,
 				597BD14B2601381F00239274 /* indigo_agent_alpaca.c */,
