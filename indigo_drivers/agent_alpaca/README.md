@@ -31,7 +31,13 @@ All web configuration requests are redirected to INDIGO Server root.
 
 ### CCD
 
-ICameraV3 implemented, no DSLR support, ASCOM binning is always 1x1, INDIGO camera mode is mapped to ASCOM readout mode. No image compression yet.
+ICameraV3 implemented.
+
+* no DSLR support
+* ASCOM binning is always 1x1, INDIGO binning is masked by readout mode
+* INDIGO RGB is mapped to Colour, other modes to Mono sensor type (no bayer offsets etc)
+* INDIGO camera mode is mapped to ASCOM readout mode
+* None and gzip image compression supported (no deflate)
 
 ### Wheel
 
