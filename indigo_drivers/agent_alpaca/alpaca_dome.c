@@ -44,10 +44,78 @@ static indigo_alpaca_error alpaca_get_ismoving(indigo_alpaca_device *device, int
 }
 
 void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property) {
+	if (!strcmp(property->name, DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME)) {
+				alpaca_device->dome.cansetazimuth = true;
+			} else if (!strcmp(item->name, DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME)) {
+				alpaca_device->dome.cansyncazimuth = true;
+			}
+		}
+	} else if (!strcmp(property->name, DOME_PARK_PROPERTY_NAME)) {
+		alpaca_device->dome.canpark = true;
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_PARK_PARKED_ITEM_NAME)) {
+					alpaca_device->dome.atpark = item->sw.value;
+					alpaca_device->dome.canpark = true;
+				} else if (!strcmp(item->name, DOME_PARK_UNPARKED_ITEM_NAME)) {
+					alpaca_device->dome.canpark = true;
+				}
+			}
+		}
+	} else if (!strcmp(property->name, DOME_PARK_POSITION_PROPERTY_NAME)) {
+		alpaca_device->dome.cansetpark = true;
 
+	} else if (!strcmp(property->name, DOME_HOME_PROPERTY_NAME)) {
+		alpaca_device->dome.canfindhome = true;
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_HOME_ITEM_NAME)) {
+					alpaca_device->dome.athome = item->sw.value;
+				}
+			}
+		} else {
+			alpaca_device->dome.athome = false;
+		}
+	} else if (!strcmp(property->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME)) {
+					alpaca_device->dome.altitude = item->number.value;
+					if (property->perm == INDIGO_RW_PERM) {
+						alpaca_device->dome.cansetaltitude = true;
+					}
+				} else if (!strcmp(item->name, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME)) {
+					alpaca_device->dome.azimuth = item->number.value;
+					if (property->perm == INDIGO_RW_PERM) {
+						alpaca_device->dome.cansetazimuth = true;
+					}
+				}
+			}
+		}
+	} else if (!strcmp(property->name, DOME_SLAVING_PROPERTY_NAME)) {
+		alpaca_device->dome.canslave = true;
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_SLAVING_ENABLE_ITEM_NAME)) {
+					alpaca_device->dome.slaved = item->sw.value;
+					alpaca_device->dome.canslave = true;
+				} else if (!strcmp(item->name, DOME_SLAVING_DISABLE_ITEM_NAME)) {
+					alpaca_device->dome.canslave = true;
+				}
+			}
+		}
+	}
 }
 
 long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
+
 
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
