@@ -158,6 +158,23 @@ typedef struct indigo_alpaca_device_struct {
 			int sideofpier;
 		} mount;
 		struct {
+			bool cansetaltitude;
+			double altitude;
+			bool cansetazimuth;
+			bool cansyncazimuth;
+			double azimuth;
+			bool canfindhome;
+			bool athome;
+			bool atpark;
+			bool canpark;
+			bool cansetpark;
+			bool cansetshutter;
+			bool canslave;
+			uint32_t shutterstatus;
+			bool slaved;
+			bool slewing;
+		} dome;
+		struct {
 			bool canpulseguide;
 			bool cansetguiderates;
 			bool ispulseguiding;
