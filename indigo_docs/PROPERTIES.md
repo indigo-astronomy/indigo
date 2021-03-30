@@ -295,10 +295,8 @@ Properties are implemented by GPS driver base class in [indigo_gps_driver.c](htt
 | DOME_PARK  | switch | no | no  | PARKED  | yes  |  |
 |  |  |  |  | UNPARKED | yes  |  |
 | DOME_PARK_POSITION  | number | no | no  | AZ  | yes |  |
-|                     |        |    |     | ALT | no  |  |
+|  |  |  |  | ALT | no  |  |
 | DOME_HOME  | switch | no | no | HOME  | yes |  |
-
-
 | DOME_DIMENSION | number | no | no  | RADIUS  | yes  |  |
 |  |  |  |  | SHUTTER_WIDTH | yes  |  |
 |  |  |  |  | MOUNT_PIVOT_OFFSET_NS | yes  |  |
