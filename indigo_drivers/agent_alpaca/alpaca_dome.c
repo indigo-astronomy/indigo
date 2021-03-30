@@ -46,7 +46,8 @@ static indigo_alpaca_error alpaca_get_slewing(indigo_alpaca_device *device, int 
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	*value = device->dome.isshuttermoving || device->dome.isrotating || device->dome.isflapmoving;
+	*value = device->dome.isshuttermoving || device->dome.isrotating; // || device->dome.isflapmoving;
+	//indigo_error("value = %d, isshuttermoving = %d , isrotating = %d, isflapmoving = %d", *value, device->dome.isshuttermoving, device->dome.isrotating, device->dome.isflapmoving);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -347,6 +348,250 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 	}
 }
 
+static indigo_alpaca_error alpaca_set_slaved(indigo_alpaca_device *device, int version, bool value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.canslave) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_SLAVING_PROPERTY_NAME,
+		value ? DOME_SLAVING_ENABLE_ITEM_NAME : DOME_SLAVING_DISABLE_ITEM_NAME,
+		true
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_wait_for_bool(&device->dome.slaved, value, 30);
+}
+
+static indigo_alpaca_error alpaca_abortslew(indigo_alpaca_device *device, int version) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_ABORT_MOTION_PROPERTY_NAME,
+		DOME_ABORT_MOTION_ITEM_NAME,
+		true
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_openshutter(indigo_alpaca_device *device, int version, bool open) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansetshutter) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_SHUTTER_PROPERTY_NAME,
+		open ? DOME_SHUTTER_OPENED_ITEM_NAME : DOME_SHUTTER_CLOSED_ITEM_NAME,
+		true
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_findhome(indigo_alpaca_device *device, int version) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.canfindhome) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_HOME_PROPERTY_NAME,
+		DOME_HOME_ITEM_NAME,
+		true
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_park(indigo_alpaca_device *device, int version) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.canpark) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_PARK_PROPERTY_NAME,
+		DOME_PARK_PARKED_ITEM_NAME,
+		true
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_setpark(indigo_alpaca_device *device, int version) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansetpark) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	if (device->dome.cansetaltitude) {
+		indigo_change_number_property_1(
+			indigo_agent_alpaca_client,
+			device->indigo_device,
+			DOME_PARK_POSITION_PROPERTY_NAME,
+			DOME_PARK_POSITION_ALT_ITEM_NAME,
+			device->dome.altitude
+		);
+	}
+	if (device->dome.cansetazimuth) {
+		indigo_change_number_property_1(
+			indigo_agent_alpaca_client,
+			device->indigo_device,
+			DOME_PARK_POSITION_PROPERTY_NAME,
+			DOME_PARK_POSITION_AZ_ITEM_NAME,
+			device->dome.azimuth
+		);
+	}
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_slewtoaltitude(indigo_alpaca_device *device, int version, double altitude) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansetaltitude) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	if (altitude > 90 || altitude < 0) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidValue;
+	}
+	if (device->dome.atpark) {
+		indigo_change_switch_property_1(
+			indigo_agent_alpaca_client,
+			device->indigo_device,
+			DOME_PARK_PROPERTY_NAME,
+			DOME_PARK_UNPARKED_ITEM_NAME,
+			true
+		);
+	}
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME,
+		true
+	);
+	indigo_change_number_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME,
+		DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME,
+		altitude
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_slewtoazimuth(indigo_alpaca_device *device, int version, double azimuth) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansetazimuth) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	if (azimuth >= 360 || azimuth < 0) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_InvalidValue;
+	}
+	if (device->dome.atpark) {
+		indigo_change_switch_property_1(
+			indigo_agent_alpaca_client,
+			device->indigo_device,
+			DOME_PARK_PROPERTY_NAME,
+			DOME_PARK_UNPARKED_ITEM_NAME,
+			true
+		);
+	}
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_HORIZONTAL_COORDINATES_SET_GOTO_ITEM_NAME,
+		true
+	);
+	indigo_change_number_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME,
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME,
+		azimuth
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_synctoazimuth(indigo_alpaca_device *device, int version, double azimuth) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansyncazimuth) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	indigo_change_switch_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_ON_HORIZONTAL_COORDINATES_SET_PROPERTY_NAME,
+		DOME_ON_HORIZONTAL_COORDINATES_SET_SYNC_ITEM_NAME,
+		true
+	);
+	indigo_change_number_property_1(
+		indigo_agent_alpaca_client,
+		device->indigo_device,
+		DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME,
+		DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME,
+		azimuth
+	);
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
 long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
 	if (!strcmp(command, "supportedactions")) {
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
@@ -435,6 +680,58 @@ long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int ver
 }
 
 long indigo_alpaca_dome_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
-
+	if (!strcmp(command, "slaved")) {
+		bool value = !strcasecmp(param_1, "Slaved=true");
+		indigo_alpaca_error result = alpaca_set_slaved(alpaca_device, version, value);
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "abortslew")) {
+		indigo_alpaca_error result = alpaca_abortslew(alpaca_device, version);
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "park")) {
+		indigo_alpaca_error result = alpaca_park(alpaca_device, version);
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "openshutter")) {
+		indigo_alpaca_error result = alpaca_openshutter(alpaca_device, version, true);
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "closeshutter")) {
+		indigo_alpaca_error result = alpaca_openshutter(alpaca_device, version, false);
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "findhome")) {
+		indigo_alpaca_error result = alpaca_findhome(alpaca_device, version);
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "setpark")) {
+		indigo_alpaca_error result = alpaca_setpark(alpaca_device, version);
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "slewtoaltitude")) {
+		double altitude = 0;
+		indigo_alpaca_error result = indigo_alpaca_error_InvalidValue;
+		if (sscanf(param_1, "Altitude=%lf", &altitude) == 1) {
+			result = alpaca_slewtoaltitude(alpaca_device, version, altitude);
+		}
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "slewtoazimuth")) {
+		double azimuth = 0;
+		indigo_alpaca_error result = indigo_alpaca_error_InvalidValue;
+		if (sscanf(param_1, "Azimuth=%lf", &azimuth) == 1) {
+			result = alpaca_slewtoazimuth(alpaca_device, version, azimuth);
+		}
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
+	if (!strcmp(command, "synctoazimuth")) {
+		double azimuth = 0;
+		indigo_alpaca_error result = indigo_alpaca_error_InvalidValue;
+		if (sscanf(param_1, "Azimuth=%lf", &azimuth) == 1) {
+			result = alpaca_synctoazimuth(alpaca_device, version, azimuth);
+		}
+		return indigo_alpaca_append_error(buffer, buffer_length, result);
+	}
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
