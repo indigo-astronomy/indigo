@@ -106,7 +106,7 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 		indigo_alpaca_mount_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "GUIDER_", 7)) {
 		indigo_alpaca_guider_update_property(alpaca_device, property);
-	} else if (!strncmp(property->name, "DOME_", 7)) {
+	} else if (!strncmp(property->name, "DOME_", 5)) {
 		indigo_alpaca_dome_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "AUX_", 4)) {
 		indigo_alpaca_lightbox_update_property(alpaca_device, property);

@@ -260,7 +260,7 @@ long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "interfaceversion")) {
 		uint32_t value;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "absolute")) {
 		bool value = false;
@@ -275,22 +275,22 @@ long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "maxincrement")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_maxincrement(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxstep")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_maxstep(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "position")) {
 		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_position(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "stepsize")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_stepsize(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "tempcomp")) {
 		bool value = false;
@@ -305,7 +305,7 @@ long indigo_alpaca_focuser_get_command(indigo_alpaca_device *alpaca_device, int 
 	if (!strcmp(command, "temperature")) {
 		double value = 0;
 		indigo_alpaca_error result = alpaca_get_temperature(alpaca_device, version, &value);
-	return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
+		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
