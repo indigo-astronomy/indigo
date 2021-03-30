@@ -172,7 +172,9 @@ typedef struct indigo_alpaca_device_struct {
 			bool canslave;
 			uint32_t shutterstatus;
 			bool slaved;
-			bool slewing;
+			bool isrotating;
+			bool isshuttermoving;
+			bool isflapmoving;
 		} dome;
 		struct {
 			bool canpulseguide;
