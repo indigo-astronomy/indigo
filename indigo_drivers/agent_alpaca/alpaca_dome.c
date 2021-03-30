@@ -118,7 +118,7 @@ static indigo_alpaca_error alpaca_get_athome(indigo_alpaca_device *device, int v
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_atpartk(indigo_alpaca_device *device, int version, bool *value) {
+static indigo_alpaca_error alpaca_get_atpark(indigo_alpaca_device *device, int version, bool *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
@@ -348,8 +348,89 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 }
 
 long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
-
-
+	if (!strcmp(command, "supportedactions")) {
+		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
+	}
+	if (!strcmp(command, "interfaceversion")) {
+		uint32_t value;
+		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "altitude")) {
+		double value;
+		indigo_alpaca_error result = alpaca_get_altitide(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "azimuth")) {
+		double value;
+		indigo_alpaca_error result = alpaca_get_azimuth(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "athome")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_athome(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "atpark")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_atpark(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "canfindhome")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_canfindhome(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "canpark")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_canpark(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "cansetaltitude")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_cansetaltitude(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "cansetazimuth")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_cansetazimuth(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "cansetpark")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_cansetpark(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "cansetshutter")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_cansetshutter(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "canslave")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_canslave(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "cansyncazimuth")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_cansyncazimuth(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "slaved")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_slaved(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "shutterstatus")) {
+		uint32_t value;
+		indigo_alpaca_error result = alpaca_get_shutterstatus(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
+	}
+	if (!strcmp(command, "slewing")) {
+		bool value;
+		indigo_alpaca_error result = alpaca_get_slewing(alpaca_device, version, &value);
+		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
+	}
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
 
