@@ -27,18 +27,204 @@
 
 #include "alpaca_common.h"
 
+typedef enum {
+	SHUTTER_OPEN = 0,
+	SHUTTER_CLOSED = 1,
+	SHUTTER_OPENING = 2,
+	SHUTTER_CLOSING = 3,
+	SHUTTER_ERROR = 4
+} alpaca_dome_status;
+
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
 	*value = 1;
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_get_ismoving(indigo_alpaca_device *device, int version, bool *value) {
+static indigo_alpaca_error alpaca_get_slewing(indigo_alpaca_device *device, int version, bool *value) {
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	*value = device->rotator.ismoving;
+	*value = device->dome.isshuttermoving || device->dome.isrotating || device->dome.isflapmoving;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_altitide(indigo_alpaca_device *device, int version, double *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansetaltitude) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->dome.altitude;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_cansetaltitude(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.cansetaltitude;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_azimuth(indigo_alpaca_device *device, int version, double *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansetazimuth) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->dome.azimuth;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_cansetazimuth(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.cansetazimuth;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_athome(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.canfindhome) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->dome.athome;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_atpartk(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.canpark) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->dome.atpark;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_cansetpark(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.cansetpark;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_cansetshutter(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.cansetshutter;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_canslave(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.canslave;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_cansyncazimuth(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.cansyncazimuth;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_canfindhome(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.canfindhome;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_canpark(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	*value = device->dome.canpark;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_shutterstatus(indigo_alpaca_device *device, int version, uint32_t *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.cansetshutter) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->dome.shutterstatus;
+	pthread_mutex_unlock(&device->mutex);
+	return indigo_alpaca_error_OK;
+}
+
+static indigo_alpaca_error alpaca_get_slaved(indigo_alpaca_device *device, int version, bool *value) {
+	pthread_mutex_lock(&device->mutex);
+	if (!device->connected) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotConnected;
+	}
+	if (!device->dome.canslave) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_NotImplemented;
+	}
+	*value = device->dome.slaved;
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -82,21 +268,24 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 			alpaca_device->dome.athome = false;
 		}
 	} else if (!strcmp(property->name, DOME_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME)) {
-					alpaca_device->dome.altitude = item->number.value;
-					if (property->perm == INDIGO_RW_PERM) {
-						alpaca_device->dome.cansetaltitude = true;
-					}
-				} else if (!strcmp(item->name, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME)) {
-					alpaca_device->dome.azimuth = item->number.value;
-					if (property->perm == INDIGO_RW_PERM) {
-						alpaca_device->dome.cansetazimuth = true;
-					}
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, DOME_HORIZONTAL_COORDINATES_ALT_ITEM_NAME)) {
+				alpaca_device->dome.altitude = item->number.value;
+				if (property->perm == INDIGO_RW_PERM) {
+					alpaca_device->dome.cansetaltitude = true;
+				}
+			} else if (!strcmp(item->name, DOME_HORIZONTAL_COORDINATES_AZ_ITEM_NAME)) {
+				alpaca_device->dome.azimuth = item->number.value;
+				if (property->perm == INDIGO_RW_PERM) {
+					alpaca_device->dome.cansetazimuth = true;
 				}
 			}
+		}
+		if (property->state == INDIGO_BUSY_STATE) {
+			alpaca_device->dome.isrotating = true;
+		} else {
+			alpaca_device->dome.isrotating = false;
 		}
 	} else if (!strcmp(property->name, DOME_SLAVING_PROPERTY_NAME)) {
 		alpaca_device->dome.canslave = true;
@@ -110,6 +299,50 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 					alpaca_device->dome.canslave = true;
 				}
 			}
+		}
+	} else if (!strcmp(property->name, DOME_SHUTTER_PROPERTY_NAME)) {
+		alpaca_device->dome.cansetshutter = true;
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_SHUTTER_CLOSED_ITEM_NAME)) {
+					if (item->sw.value) {
+						if (property->state == INDIGO_BUSY_STATE) {
+							alpaca_device->dome.shutterstatus = SHUTTER_CLOSING;
+						} else {
+							alpaca_device->dome.shutterstatus = SHUTTER_CLOSED;
+						}
+					}
+				} else if (!strcmp(item->name, DOME_SHUTTER_OPENED_ITEM_NAME)) {
+					if (item->sw.value) {
+						if (property->state == INDIGO_BUSY_STATE) {
+							alpaca_device->dome.shutterstatus = SHUTTER_OPENING;
+						} else {
+							alpaca_device->dome.shutterstatus = SHUTTER_OPEN;
+						}
+					}
+				} else {
+					if (property->state == INDIGO_BUSY_STATE) {
+						alpaca_device->dome.shutterstatus = SHUTTER_OPENING;
+					} else {
+						alpaca_device->dome.shutterstatus = SHUTTER_OPEN;
+					}
+				}
+			}
+			if (property->state == INDIGO_ALERT_STATE) {
+				alpaca_device->dome.shutterstatus = SHUTTER_ERROR;
+			}
+			if (property->state == INDIGO_BUSY_STATE) {
+				alpaca_device->dome.isshuttermoving = true;
+			} else {
+				alpaca_device->dome.isshuttermoving = false;
+			}
+		}
+	} else if(!strcmp(property->name, DOME_FLAP_PROPERTY_NAME)) {
+		if (property->state == INDIGO_BUSY_STATE) {
+			alpaca_device->dome.isflapmoving = true;
+		} else {
+			alpaca_device->dome.isflapmoving = false;
 		}
 	}
 }
