@@ -52,12 +52,12 @@ This is the list of requirements taken into the consideration:
 23. ZWO USB-ST4 port
 24. Meade DSI Camera driver
 25. Takahashi Temma mount driver
-26. ICA (ImageCapture API) driver for DSLRs (Mac only)
+26. ICA (ImageCapture API) driver for DSLRs (Mac only, deprecated)
 27. GPS Simulator
 28. NMEA 0183 GPS driver
 29. Andor CCD driver (32/64-bit Intel Linux only)
 30. WeMacro Rail focuser driver (platform independent USB & Mac only bluetooth)
-31. EQMac guider driver (Mac only)
+31. EQMac guider driver (Mac only, deprecated)
 32. Apogee CCD driver
 33. Moravian Intruments CCD and filter wheel driver
 34. HID Joystick AUX driver
@@ -70,15 +70,15 @@ This is the list of requirements taken into the consideration:
 41. RigelSys nSTEP focuser driver
 42. RigelSys nFOCUS focuser driver (untested)
 43. iOptron mount driver
-44. MoonLite focuser driver (untested)
+44. MoonLite focuser driver
 45. MJKZZ rail focuser driver (untested, platform independent USB & Mac only bluetooth)
-46. GPhoto2 CCD driver
+46. GPhoto2 CCD driver (deprecated, excluded from build)
 47. Optec focuser driver (untested)
 48. ToupTek CCD driver
 49. AltairAstro CCD driver
 50. RTS-on-COM aux (shutter) driver (untested)
-51. DSUSB aux (shutter) driver (untested)
-52. GPUSB guider driver (untested)
+51. DSUSB aux (shutter) driver
+52. GPUSB guider driver
 53. LakesideAstro focuser (untested)
 54. SX AO driver
 55. SBIG AO driver (part of CCD driver)
@@ -116,9 +116,7 @@ This is the list of requirements taken into the consideration:
 87. Interactive Astronomy SkyRoof driver
 
 ## This is under development
-1. ASCOM driver for INDIGO mount
-2. ASCOM driver for INDIGO focuser
-3. a-Box Adaptive optics driver
+1. a-Box Adaptive optics driver
 
 ------------------------------------------------------------------------------------------------
 ## How to build INDIGO
@@ -126,7 +124,7 @@ This is the list of requirements taken into the consideration:
 ### Prerequisites
 #### Ubuntu / Debian / Raspbian
 
-`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev libcurl4-gnutls-dev libgphoto2-dev libz-dev git curl bsdmainutils`
+`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev libcurl4-gnutls-dev libz-dev git curl bsdmainutils`
 
 It is advised to remove libraw1394-dev
 
@@ -134,7 +132,7 @@ It is advised to remove libraw1394-dev
 
 #### Fedora
 
-`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel libgphoto2-devel git curl`
+`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel git curl`
 
 It is advised to remove libraw1394-devel
 
