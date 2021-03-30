@@ -606,3 +606,97 @@ Post-run Checks
 Conformance test complete
 
 No errors, warnings or issues found: your driver passes ASCOM validation!!
+
+------------------------------------------------------------------------------------
+
+ConformanceCheck ASCOM Device Conformance Checker Version 6.5.7500.22515, Build time: 7/14/2020 12:30:30 PM
+ConformanceCheck Running on: ASCOM Platform 6.5 SP1 6.5.1.3234
+
+ConformanceCheck Driver ProgID: ASCOM.AlpacaDynamic1.Dome
+
+Error handling
+Error number for "Not Implemented" is: 80040400
+Error number for "Invalid Value 1" is: 80040405
+Error number for "Value Not Set 1" is: 80040402
+Error number for "Value Not Set 2" is: 80040403
+Error messages will not be interpreted to infer state.
+
+16:10:55.159 Driver Access Checks              OK       
+16:10:56.100 AccessChecks                      OK       Successfully created driver using late binding
+16:10:56.832 AccessChecks                      OK       Successfully connected using late binding
+16:10:56.832 AccessChecks                      INFO     The driver is a COM object
+16:10:57.769 AccessChecks                      INFO     Device does not expose interface IDome
+16:10:58.457 AccessChecks                      INFO     Device exposes interface IDomeV2
+16:10:59.987 AccessChecks                      OK       Successfully created driver using driver access toolkit
+16:11:00.659 AccessChecks                      OK       Successfully connected using driver access toolkit
+
+Conform is using ASCOM.DriverAccess.Dome to get a Dome object
+16:11:02.191 ConformanceCheck                  OK       Driver instance created successfully
+16:11:02.988 ConformanceCheck                  OK       Connected OK
+
+Common Driver Methods
+16:11:03.112 InterfaceVersion                  OK       1
+16:11:03.194 Connected                         OK       True
+16:11:03.238 Description                       OK       Dome Simulator
+16:11:03.299 DriverInfo                        OK       ASCOM Dynamic Driver v6.5.1.3234 - REMOTE DEVICE: indigo_dome_simulator
+16:11:03.349 DriverVersion                     OK       2.0.0.5
+16:11:03.408 Name                              OK       Dome Simulator
+16:11:03.506 CommandString                     INFO     Conform cannot test the CommandString method
+16:11:03.518 CommandBlind                      INFO     Conform cannot test the CommandBlind method
+16:11:03.534 CommandBool                       INFO     Conform cannot test the CommandBool method
+16:11:03.565 Action                            INFO     Conform cannot test the Action method
+16:11:03.596 SupportedActions                  OK       Driver returned an empty action list
+
+Can Properties
+16:11:03.768 CanFindHome                       OK       False
+16:11:03.816 CanPark                           OK       True
+16:11:03.880 CanSetAltitude                    OK       False
+16:11:03.940 CanSetAzimuth                     OK       True
+16:11:04.003 CanSetPark                        OK       True
+16:11:04.050 CanSetShutter                     OK       True
+16:11:04.097 CanSlave                          OK       True
+16:11:04.144 CanSyncAzimuth                    OK       False
+
+Pre-run Checks
+16:11:04.644 DomeSafety                                 Attempting to open shutter as some tests may fail if it is closed...
+16:11:05.097 DomeSafety                        OK       Shutter status: shutterOpen
+
+Properties
+16:11:05.253 Altitude                          OK       Optional member threw a PropertyNotImplementedException exception.
+16:11:05.347 AtHome                            OK       Optional member threw a PropertyNotImplementedException exception.
+16:11:05.409 AtPark                            OK       True
+16:11:05.456 Azimuth                           OK       0
+16:11:05.534 ShutterStatus                     OK       shutterOpen
+16:11:05.581 Slaved Read                       OK       False
+16:11:05.675 Slaved Write                      OK       Slave state changed successfully
+16:11:05.753 Slewing                           OK       False
+
+Methods
+16:11:05.956 AbortSlew                         OK       AbortSlew command issued successfully
+16:11:06.037 SlewToAltitude                    OK       Optional member threw a MethodNotImplementedException exception.
+16:11:06.800 SlewToAzimuth 0                   OK       Asynchronous slew OK
+16:11:22.816 SlewToAzimuth 45                  OK       Asynchronous slew OK
+16:11:38.677 SlewToAzimuth 90                  OK       Asynchronous slew OK
+16:11:54.799 SlewToAzimuth 135                 OK       Asynchronous slew OK
+16:12:10.722 SlewToAzimuth 180                 OK       Asynchronous slew OK
+16:12:26.831 SlewToAzimuth 225                 OK       Asynchronous slew OK
+16:12:42.646 SlewToAzimuth 270                 OK       Asynchronous slew OK
+16:12:58.737 SlewToAzimuth 315                 OK       Asynchronous slew OK
+16:13:09.440 SlewToAzimuth                     OK       COM invalid value exception correctly raised for slew to -10 degrees
+16:13:09.503 SlewToAzimuth                     OK       COM invalid value exception correctly raised for slew to 370 degrees
+16:13:09.643 SyncToAzimuth                     OK       Optional member threw a MethodNotImplementedException exception.
+16:13:10.084 CloseShutter                      OK       Shutter closed successfully
+16:13:31.815 OpenShutter                       OK       Shutter opened successfully
+16:13:53.206 FindHome                          OK       Optional member threw a MethodNotImplementedException exception.
+16:13:58.550 Park                              OK       Dome parked successfully
+16:14:09.362 SetPark                           OK       SetPark issued OK
+
+Post-run Checks
+16:14:09.628 DomeSafety                        INFO     Attempting to close shutter...
+16:14:09.943 DomeSafety                        OK       Shutter successfully closed
+16:14:09.971 DomeSafety                        INFO     Attempting to park dome...
+16:14:10.706 DomeSafety                        OK       Dome successfully parked
+
+Conformance test complete
+
+No errors, warnings or issues found: your driver passes ASCOM validation!! 
