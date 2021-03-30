@@ -1903,6 +1903,28 @@
 #define DOME_PARK_UNPARKED_ITEM_NAME						"UNPARKED"
 
 //----------------------------------------------------------------------
+/** DOME_PARK_POSITION property name.
+ */
+#define DOME_PARK_POSITION_PROPERTY_NAME				"DOME_PARK_POSITION"
+
+/** DOME_PARK_POSITION.AZ property item name.
+ */
+#define DOME_PARK_POSITION_AZ_ITEM_NAME				"AZ"
+
+/** DOME_PARK_POSITION.ALT property item name.
+ */
+#define DOME_PARK_POSITION_ALT_ITEM_NAME				"ALT"
+
+//----------------------------------------------------------------------
+/** DOME_HOME property name.
+ */
+#define DOME_HOME_PROPERTY_NAME								"DOME_HOME"
+
+/** DOME_HOME.HOME property item name.
+ */
+#define DOME_HOME_ITEM_NAME							      "HOME"
+
+//----------------------------------------------------------------------
 /** DOME_DIMENSION property name
  */
 #define DOME_DIMENSION_PROPERTY_NAME					"DOME_DIMENSION"
