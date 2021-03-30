@@ -178,6 +178,27 @@ extern "C" {
  */
 #define DOME_PARK_UNPARKED_ITEM											(DOME_PARK_PROPERTY->items+1)
 
+
+/** DOME_PARK_POSITION property pointer, property is optional, property change request should be fully handled by device driver.
+ */
+#define DOME_PARK_POSITION_PROPERTY										(DOME_CONTEXT->dome_park_position_property)
+
+/** DOME_PARK_POSITION.AZ property item pointer.
+ */
+#define DOME_PARK_POSITION_AZ_ITEM									(DOME_PARK_POSITION_PROPERTY->items+0)
+
+/** DOME_PARK_POSITION.ALT property item pointer.
+ */
+#define DOME_PARK_POSITION_ALT_ITEM								(DOME_PARK_POSITION_PROPERTY->items+1)
+
+/** DOME_HOME property pointer, property is optional, property change request should be fully handled by device driver.
+ */
+#define DOME_HOME_PROPERTY												(DOME_CONTEXT->dome_home_property)
+
+/** DOME_HOME.HOME property item pointer.
+ */
+#define DOME_HOME_ITEM													(DOME_HOME_PROPERTY->items+0)
+
 //----------------------------------------------
 /** DOME_DIMENSION property pointer, property is optional
  */
@@ -274,6 +295,8 @@ typedef struct {
 	indigo_property *dome_shutter_property;									///< DOME_SHUTTER_PROPERTY pointer
 	indigo_property *dome_flap_property;									///< DOME_FLAP_PROPERTY pointer
 	indigo_property *dome_park_property;										///< DOME_PARK property pointer
+	indigo_property *dome_park_position_property;							///< DOME_PARK_POSITION property pointer
+	indigo_property *dome_home_property;							///< DOME_HOME property pointer
 	indigo_property *dome_dimension_property;								///< DOME_DIMENSION property pointer
 	indigo_property *dome_geographic_coordinates_property;	///< DOME_GEOGRAPHIC_COORDINATES property pointer
 	indigo_property *dome_utc_time_property;               	///< DOME_UTC_TIME property_pointer
