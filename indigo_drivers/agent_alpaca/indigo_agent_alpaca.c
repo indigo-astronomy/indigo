@@ -475,7 +475,6 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		strcpy(alpaca_device->indigo_device, property->device);
 		alpaca_device->device_number = -1;
 		strcpy(alpaca_device->device_uid, "xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx");
-		alpaca_device->ccd.ccdtemperature = NAN;
 		static char *hex = "0123456789ABCDEF";
 		int i = 0;
 		for (char *c = alpaca_device->device_uid; *c; c++) {
@@ -496,6 +495,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				alpaca_device->indigo_interface = atoll(item->text.value);
 				switch (alpaca_device->indigo_interface) {
 					case INDIGO_INTERFACE_CCD:
+						alpaca_device->ccd.ccdtemperature = NAN;
 						alpaca_device->device_type = "Camera";
 						break;
 					case INDIGO_INTERFACE_DOME:
