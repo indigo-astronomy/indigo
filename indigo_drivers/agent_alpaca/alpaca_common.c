@@ -297,47 +297,47 @@ long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *v
 
 long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
 	if (!strcmp(command, "name")) {
-		char value[INDIGO_NAME_SIZE];
+		char value[INDIGO_NAME_SIZE] = {0};
 		indigo_alpaca_error result = alpaca_get_name(alpaca_device, version, value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "description")) {
-		char value[INDIGO_NAME_SIZE];
+		char value[INDIGO_NAME_SIZE] = {0};
 		indigo_alpaca_error result = alpaca_get_description(alpaca_device, version, value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "driverinfo")) {
-		char value[INDIGO_VALUE_SIZE];
+		char value[INDIGO_VALUE_SIZE] = {0};
 		indigo_alpaca_error result = alpaca_get_driverinfo(alpaca_device, version, value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "driverversion")) {
-		char value[INDIGO_VALUE_SIZE];
+		char value[INDIGO_VALUE_SIZE] = {0};
 		indigo_alpaca_error result = alpaca_get_driverversion(alpaca_device, version, value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "connected")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_connected(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "utcdate")) {
-		char value[64];
+		char value[64] = {0};
 		indigo_alpaca_error result = alpaca_get_utcdate(alpaca_device, version, value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "sitelatitude")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result = alpaca_get_latitude(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "sitelongitude")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result = alpaca_get_longitude(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "siteelevation")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result = alpaca_get_elevation(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}

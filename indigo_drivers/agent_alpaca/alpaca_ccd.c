@@ -941,77 +941,77 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		return snprintf(buffer, buffer_length, "\"Value\": [ ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
 	}
 	if (!strcmp(command, "interfaceversion")) {
-		uint32_t value;
+		uint32_t value = 0;
 		indigo_alpaca_error result = alpaca_get_interfaceversion(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "canabortexposure")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_canabortexposure(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "cangetcoolerpower")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_cangetcoolerpower(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "cansetccdtemperature")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_cansetccdtemperature(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "binx")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_binx(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "biny")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_biny(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxbinx")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_maxbinx(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "maxbiny")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_maxbiny(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "camerastate")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_camerastate(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "cameraxsize")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_cameraxsize(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "cameraysize")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_cameraysize(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "startx")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_startx(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "starty")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_starty(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "numx")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_numx(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "numy")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_numy(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
@@ -1031,7 +1031,7 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "cooleron")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_cooleron(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
@@ -1051,17 +1051,17 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "hasshutter")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_hasshutter(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "imageready")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_imageready(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "ispulseguiding")) {
-		bool value;
+		bool value = false;
 		indigo_alpaca_error result = alpaca_get_ispulseguiding(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
@@ -1081,22 +1081,22 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_value_double(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "sensortype")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_sensortype(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "sensorname")) {
-		char *value;
+		char *value = NULL;
 		indigo_alpaca_error result = alpaca_get_sensorname(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "bayeroffsetx")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_bayeroffsetx(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "bayeroffsety")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result = alpaca_get_bayeroffsety(alpaca_device, version, &value);
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
@@ -1167,7 +1167,7 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_value_int(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "readoutmodes")) {
-		char **value;
+		char **value = NULL;
 		indigo_alpaca_error result = alpaca_get_readoutmodes(alpaca_device, version, &value);
 		if (result == indigo_alpaca_error_OK) {
 			long index = snprintf(buffer, buffer_length, "\"Value\": [ ");
@@ -1190,7 +1190,7 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 
 long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2) {
 	if (!strcmp(command, "binx")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "BinX=%d", &value) == 1)
 			result = alpaca_set_binx(alpaca_device, version, value);
@@ -1199,7 +1199,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "biny")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "BinY=%d", &value) == 1)
 			result = alpaca_set_biny(alpaca_device, version, value);
@@ -1208,7 +1208,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "setccdtemperature")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "SetCCDTemperature=%lf", &value) == 1)
 			result = alpaca_set_setccdtemperature(alpaca_device, version, value);
@@ -1222,7 +1222,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "startx")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "StartX=%lf", &value) == 1)
 			result = alpaca_set_startx(alpaca_device, version, value);
@@ -1231,7 +1231,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "starty")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "StartY=%lf", &value) == 1)
 			result = alpaca_set_starty(alpaca_device, version, value);
@@ -1240,7 +1240,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "numx")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "NumX=%lf", &value) == 1)
 			result = alpaca_set_numx(alpaca_device, version, value);
@@ -1249,7 +1249,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "numy")) {
-		double value;
+		double value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "NumY=%lf", &value) == 1)
 			result = alpaca_set_numy(alpaca_device, version, value);
@@ -1258,7 +1258,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "gain")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Gain=%d", &value) == 1)
 			result = alpaca_set_gain(alpaca_device, version, value);
@@ -1267,7 +1267,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "offset")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "Offset=%d", &value) == 1)
 			result = alpaca_set_offset(alpaca_device, version, value);
@@ -1276,7 +1276,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "readoutmode")) {
-		int value;
+		int value = 0;
 		indigo_alpaca_error result;
 		if (sscanf(param_1, "ReadoutMode=%d", &value) == 1)
 			result = alpaca_set_readoutmode(alpaca_device, version, value);
@@ -1285,7 +1285,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 		return indigo_alpaca_append_error(buffer, buffer_length, result);
 	}
 	if (!strcmp(command, "startexposure")) {
-		double duration;
+		double duration = 0;
 		indigo_alpaca_error result;
 		char light_str[INDIGO_VALUE_SIZE] = {0};
 		if (
