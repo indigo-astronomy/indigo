@@ -855,6 +855,8 @@ indigo_result indigo_mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_HORIZONTAL_COORDINATES_PROPERTY);
 	indigo_release_property(MOUNT_ABORT_MOTION_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_MODE_PROPERTY);
+	indigo_release_property(MOUNT_EPOCH_PROPERTY);
+	indigo_release_property(MOUNT_SIDE_OF_PIER_PROPERTY);
 	indigo_release_property(MOUNT_RAW_COORDINATES_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY);
