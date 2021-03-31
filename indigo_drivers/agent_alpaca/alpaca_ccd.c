@@ -862,16 +862,26 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 		}
 	} else if (!strcmp(property->name, CCD_INFO_PROPERTY_NAME)) {
 		if (property->state == INDIGO_OK_STATE) {
+			if (alpaca_device->ccd.binx == 0)
+				alpaca_device->ccd.binx = 1;
+			if (alpaca_device->ccd.biny == 0)
+				alpaca_device->ccd.biny = 1;
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_INFO_WIDTH_ITEM_NAME)) {
 					alpaca_device->ccd.cameraxsize = item->number.value;
+					if (alpaca_device->ccd.numx <= 0) {
+						alpaca_device->ccd.numx = item->number.value / alpaca_device->ccd.binx;
+					}
 				} else if (!strcmp(item->name, CCD_INFO_HEIGHT_ITEM_NAME)) {
 					alpaca_device->ccd.cameraysize = item->number.value;
+					if (alpaca_device->ccd.numy <= 0) {
+						alpaca_device->ccd.numy = item->number.value / alpaca_device->ccd.biny;
+					}
 				} else if (!strcmp(item->name, CCD_INFO_PIXEL_WIDTH_ITEM_NAME)) {
-					alpaca_device->ccd.pixelsizex = item->number.value;
+					alpaca_device->ccd.pixelsizex = (item->number.value > 0) ? item->number.value : 1;
 				} else if (!strcmp(item->name, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME)) {
-					alpaca_device->ccd.pixelsizey = item->number.value;
+					alpaca_device->ccd.pixelsizey = (item->number.value > 0) ? item->number.value : 1;
 				} else if (!strcmp(item->name, CCD_INFO_BITS_PER_PIXEL_ITEM_NAME)) {
 					alpaca_device->ccd.electronsperadu = 1;
 					alpaca_device->ccd.maxadu = (uint32_t)pow(2, item->number.value);
