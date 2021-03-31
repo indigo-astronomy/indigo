@@ -667,7 +667,7 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 			}
 			indigo_alpaca_device *alpaca_device = alpaca_devices;
 			while (alpaca_device) {
-				indigo_alpaca_device *tmp = alpaca_devices;
+				indigo_alpaca_device *tmp = alpaca_device;
 				alpaca_device = alpaca_device->next;
 				indigo_safe_free(tmp);
 			}
