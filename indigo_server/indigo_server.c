@@ -144,6 +144,7 @@
 #include "dome_skyroof/indigo_dome_skyroof.h"
 #include "aux_skyalert/indigo_aux_skyalert.h"
 #include "agent_alpaca/indigo_agent_alpaca.h"
+#include "dome_talon6ror/indigo_dome_talon6ror.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -227,6 +228,7 @@ driver_entry_point static_drivers[] = {
 	indigo_dome_nexdome3,
 	indigo_dome_simulator,
 	indigo_dome_skyroof,
+	indigo_dome_talon6ror,
 	indigo_focuser_asi,
 	indigo_focuser_efa,
 	indigo_focuser_dmfc,
