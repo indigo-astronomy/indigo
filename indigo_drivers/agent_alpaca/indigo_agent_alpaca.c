@@ -286,7 +286,7 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		return true;
 	}
 	*command++ = 0;
-	char *buffer = indigo_safe_malloc(BUFFER_SIZE);
+	char *buffer = NULL;
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	uint32_t number = (uint32_t)atol(device_number);
 	while (alpaca_device) {
@@ -309,6 +309,7 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"));
 			return false;
 		} else {
+			buffer = indigo_safe_malloc(BUFFER_SIZE);
 			long index = snprintf(buffer, BUFFER_SIZE, "{ ");
 			long length = indigo_alpaca_get_command(alpaca_device, 1, command, buffer + index, BUFFER_SIZE - index);
 			if (length > 0) {
@@ -322,6 +323,7 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		}
 	} else if (!strcmp(method, "PUT")) {
 		int content_length = 0;
+		buffer = indigo_safe_malloc(BUFFER_SIZE);
 		while (indigo_read_line(socket, buffer, BUFFER_SIZE) > 0) {
 			if (!strncasecmp(buffer, "Content-Length:", 15)) {
 				content_length = atoi(buffer + 15);
@@ -365,7 +367,8 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 	} else {
 		send_text_response(socket, path, 400, "Bad Request", "Invalid method");
 	}
-	free(buffer);
+	if (buffer)
+		free(buffer);
 	return true;
 }
 
@@ -661,6 +664,12 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 			if (private_data != NULL) {
 				free(private_data);
 				private_data = NULL;
+			}
+			indigo_alpaca_device *alpaca_device = alpaca_devices;
+			while (alpaca_device) {
+				indigo_alpaca_device *tmp = alpaca_devices;
+				alpaca_device = alpaca_device->next;
+				indigo_safe_free(tmp);
 			}
 			break;
 
