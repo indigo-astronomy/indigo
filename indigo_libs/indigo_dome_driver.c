@@ -133,6 +133,7 @@ indigo_result indigo_dome_attach(indigo_device *device, const char* driver_name,
 			DOME_PARK_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, DOME_PARK_POSITION_PROPERTY_NAME, DOME_MAIN_GROUP, "Park position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (DOME_PARK_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
+			DOME_PARK_POSITION_PROPERTY->hidden = true;
 			indigo_init_sexagesimal_number_item(DOME_PARK_POSITION_AZ_ITEM, DOME_PARK_POSITION_AZ_ITEM_NAME, "Azimuth (0 to 360°)", 0, 360, 0, 0);
 			indigo_init_sexagesimal_number_item(DOME_PARK_POSITION_ALT_ITEM, DOME_PARK_POSITION_ALT_ITEM_NAME, "Altitude (0 to 90°)", 0, 90, 0, 0);
 			DOME_PARK_POSITION_PROPERTY->count = 1;
