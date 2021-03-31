@@ -847,6 +847,7 @@ indigo_result indigo_mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_MOTION_DEC_PROPERTY);
 	indigo_release_property(MOUNT_MOTION_RA_PROPERTY);
 	indigo_release_property(MOUNT_TRACK_RATE_PROPERTY);
+	indigo_release_property(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY);
 	indigo_release_property(MOUNT_TRACKING_PROPERTY);
 	indigo_release_property(MOUNT_GUIDE_RATE_PROPERTY);
 	indigo_release_property(MOUNT_ON_COORDINATES_SET_PROPERTY);
