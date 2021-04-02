@@ -245,6 +245,20 @@ static void request_settings(indigo_device *device) {
 
 // =============================================================================
 
+static void dome_rotator_status_request(indigo_device *device) {
+	if (IS_CONNECTED) {
+		nexdome_command(device, "SRR");
+	}
+}
+
+
+static void dome_shutter_status_request(indigo_device *device) {
+	if (IS_CONNECTED) {
+		nexdome_command(device, "SRS");
+	}
+}
+
+
 static void handle_rotator_position(indigo_device *device, char *message) {
 	int position;
 	if (sscanf(message, ":PRR%d#", &position) != 1) {
@@ -930,8 +944,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		char command[NEXDOME_CMD_LEN];
 		sprintf(command, "GAR,%.0f", target_position);
 		nexdome_command(device, command);
-		nexdome_command(device, "PRR");
+		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		PROPERTY_UNLOCK();
+		indigo_set_timer(device, 3, dome_rotator_status_request, NULL);
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
@@ -961,9 +976,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 			nexdome_command(device, command);
 		}
-		nexdome_command(device, "PRR");
-
+		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		PROPERTY_UNLOCK();
+		indigo_set_timer(device, 3, dome_rotator_status_request, NULL);
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1029,7 +1044,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		} else {
 			nexdome_command(device, "CLS");
 		}
+		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		PROPERTY_UNLOCK();
+		indigo_set_timer(device, 3, dome_shutter_status_request, NULL);
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
