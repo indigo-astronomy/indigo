@@ -281,6 +281,13 @@ static indigo_alpaca_error alpaca_openshutter(indigo_alpaca_device *device, int 
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
+	if (
+		(open && (device->dome.shutterstatus == SHUTTER_OPEN)) ||
+		(!open && (device->dome.shutterstatus == SHUTTER_CLOSED))
+	) {
+		pthread_mutex_unlock(&device->mutex);
+		return indigo_alpaca_error_OK;
+	}
 	indigo_change_switch_property_1(
 		indigo_agent_alpaca_client,
 		device->indigo_device,
@@ -289,6 +296,7 @@ static indigo_alpaca_error alpaca_openshutter(indigo_alpaca_device *device, int 
 		true
 	);
 	pthread_mutex_unlock(&device->mutex);
+	device->dome.shutterstatus = open ? SHUTTER_OPENING : SHUTTER_CLOSING;
 	return indigo_alpaca_error_OK;
 }
 

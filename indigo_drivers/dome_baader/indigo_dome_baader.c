@@ -23,7 +23,7 @@
  \file indigo_dome_baader.c
  */
 
-#define DRIVER_VERSION 0x00003
+#define DRIVER_VERSION 0x00004
 #define DRIVER_NAME	"indigo_dome_baader"
 
 #include <stdlib.h>
@@ -409,7 +409,7 @@ static void dome_timer_callback(indigo_device *device) {
 	if ((rc = baader_get_shutter_position(device, &PRIVATE_DATA->shutter_position)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_shutter_position(): returned error %d", rc);
 	}
-	if (PRIVATE_DATA->shutter_position != prev_shutter_position) {
+	if (PRIVATE_DATA->shutter_position != prev_shutter_position || DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (PRIVATE_DATA->shutter_position == 100) {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
@@ -424,14 +424,13 @@ static void dome_timer_callback(indigo_device *device) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		}
 		prev_shutter_position = PRIVATE_DATA->shutter_position;
-
 	}
 
 	/* Handle dome flap */
 	if ((rc = baader_get_flap_state(device, (int *)&PRIVATE_DATA->flap_state)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "baader_get_flap_state(): returned error %d", rc);
 	}
-	if (PRIVATE_DATA->flap_state != prev_flap_state) {
+	if (PRIVATE_DATA->flap_state != prev_flap_state || DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (PRIVATE_DATA->flap_state == FLAP_OPEN) {
 			indigo_set_switch(DOME_FLAP_PROPERTY, DOME_FLAP_OPENED_ITEM, true);
 			DOME_FLAP_PROPERTY->state = INDIGO_OK_STATE;
