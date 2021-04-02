@@ -33,8 +33,6 @@
 extern "C" {
 #endif
 
-#define DOME_SIMULATOR_NAME		"Talon6"
-
 /** Create Talon6 device instance
  */
 
