@@ -621,7 +621,7 @@ static void dome_timer_callback(indigo_device *device) {
 	if(!nexdome_shutter_state(device, &PRIVATE_DATA->shutter_state, &raining)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "nexdome_shutter_state(): returned error");
 	}
-	if (PRIVATE_DATA->shutter_state != prev_shutter_state) {
+	if (PRIVATE_DATA->shutter_state != prev_shutter_state || DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 		switch(PRIVATE_DATA->shutter_state) {
 		case SHUTTER_STATE_NOT_CONNECTED:
 			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
