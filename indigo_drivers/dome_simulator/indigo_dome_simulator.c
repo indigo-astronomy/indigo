@@ -23,7 +23,7 @@
  \file indigo_dome_simulator.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_dome_simulator"
 
 #include <stdlib.h>
@@ -115,7 +115,12 @@ static void dome_connect_callback(indigo_device *device) {
 	indigo_dome_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
-
+static void shutter_timer_callback(indigo_device *device) {
+	if(IS_CONNECTED) {
+		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+	}
+}
 
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -228,7 +233,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_set_timer(device, 6, shutter_timer_callback, NULL);
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
