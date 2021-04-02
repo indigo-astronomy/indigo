@@ -382,7 +382,7 @@ static indigo_device *dome = NULL;
 
 indigo_result indigo_dome_skyroof(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
-		DOME_SIMULATOR_NAME,
+		"SkyRoof",
 		dome_attach,
 		dome_enumerate_properties,
 		dome_change_property,

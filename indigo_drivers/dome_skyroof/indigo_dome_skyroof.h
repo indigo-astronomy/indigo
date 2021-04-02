@@ -33,8 +33,6 @@
 extern "C" {
 #endif
 
-#define DOME_SIMULATOR_NAME		"SkyRoof"
-
 /** Create Interactive Astronomy SkyRoof device instance
  */
 
