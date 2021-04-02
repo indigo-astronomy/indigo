@@ -59,9 +59,9 @@ void loop() {
     direction = STOPPED;
   if (Serial.available()) {
     String command = Serial.readStringUntil('#');
-    if (command.equals("&V")) {
-      Serial.print("&V1.00b00#");
-    } else if (command.equals("&G")) {
+    if (command.equals("&V%")) {
+      Serial.print("&V1.00000#");
+    } else if (command.equals("&G%")) {
       Serial.print("&G"); // 0
       if (direction == STOPPED) { // 1
         if (position == CLOSED)
@@ -88,23 +88,23 @@ void loop() {
       Serial.write(0x80); // 14,15
       Serial.write(0x80 | (position == CLOSED ? 1 << 4 : 0) | (position == OPENED ? 1 << 3 : 0));
       Serial.print("00#");
-    } else if (command.equals("&O")) {
+    } else if (command.equals("&O%")) {
       direction = OPEN;
       last_action = 1;
       Serial.print("&#");
-    } else if (command.equals("&C")) {
+    } else if (command.equals("&C%")) {
       direction = CLOSE;
       last_action = 2;
       Serial.print("&#");
-    } else if (command.equals("&P")) {
+    } else if (command.equals("&P%")) {
       direction = CLOSE;
       last_action = 2;
       Serial.print("&#");
-    } else if (command.equals("&S")) {
+    } else if (command.equals("&S%")) {
       direction = STOPPED;
       last_action = 13;
       Serial.print("&#");
-    } else if (command.equals("&p")) {
+    } else if (command.equals("&p%")) {
       Serial.print("&p");
       Serial.write(configuration, sizeof(configuration));
       Serial.print("#");      
