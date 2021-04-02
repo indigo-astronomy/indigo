@@ -39,6 +39,8 @@ Driver is developed and tested with:
 * Nikon D750
 * Sony 7RII
 
-## NOTE: If you have trouble connecting to your camera with Linux please make sure the following programs are not running:
+### NOTE: If you have trouble connecting to your camera with Linux please make sure the following programs are not running:
 * gvfs-gphoto2-volume-monitor
 * gvfsd-gphoto2
+
+### NOTE: If you have trouble getting a frame, please make sure you have a memory card inserted into the camera. This driver will not work with cameras without a memory card.
