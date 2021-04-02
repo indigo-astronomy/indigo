@@ -204,7 +204,7 @@ static char *dump_hex(uint8_t *data) {
 
 static bool talon6ror_command(indigo_device *device, const char *command, uint8_t *response) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	int result = indigo_printf(PRIVATE_DATA->handle, "&%s#", command);
+	int result = indigo_printf(PRIVATE_DATA->handle, "&%s%%#", command);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- \"%s\" (%s)", PRIVATE_DATA->handle, dump_hex(command), result ? "OK" : strerror(errno));
 	if (result) {
 		uint8_t c, *pnt = response;
