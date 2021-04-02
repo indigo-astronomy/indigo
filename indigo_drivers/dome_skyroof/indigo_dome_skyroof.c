@@ -23,7 +23,7 @@
  \file indigo_dome_skyroof.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_dome_skyroof"
 
 #include <stdlib.h>
@@ -331,7 +331,8 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 			indigo_set_timer(device, 0, dome_abort_handler, NULL);
 		} else {
-			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			DOME_ABORT_MOTION_ITEM->sw.value = false;
 			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
