@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -1197,7 +1197,7 @@ static void mount_park_callback(indigo_device *device) {
 static void mount_home_callback(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (!strncmp(PRIVATE_DATA->product, "CEM60", 5) || !strncmp(PRIVATE_DATA->product, "CEM40", 5)) {
+	if (!strncmp(PRIVATE_DATA->product, "CEM60", 5) || !strncmp(PRIVATE_DATA->product, "CEM40", 5) || PRIVATE_DATA->protocol == 0x0300) {
 		ieq_command(device, ":MSH#", response, 1);
 	} else {
 		ieq_command(device, ":MH#", response, 1);
