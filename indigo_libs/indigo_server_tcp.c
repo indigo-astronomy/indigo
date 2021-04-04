@@ -73,6 +73,8 @@ int indigo_server_tcp_port = 7624;
 bool indigo_is_ephemeral_port = false;
 bool indigo_use_blob_buffering = false;
 
+static pthread_mutex_t resource_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static struct resource {
 	const char *path;
 	unsigned char *data;
@@ -243,12 +245,14 @@ static void start_worker_thread(int *client_socket) {
 							keep_alive = false;
 						}
 					} else {
+						pthread_mutex_lock(&resource_list_mutex);
 						struct resource *resource = resources;
 						while (resource) {
 							if (!strncmp(resource->path, path, strlen(resource->path)))
 								break;
 							resource = resource->next;
 						}
+						pthread_mutex_unlock(&resource_list_mutex);
 						if (resource == NULL) {
 							INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
 							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
@@ -311,12 +315,14 @@ static void start_worker_thread(int *client_socket) {
 					char *space = strchr(path, ' ');
 					if (space)
 						*space = 0;
+					pthread_mutex_lock(&resource_list_mutex);
 					struct resource *resource = resources;
 					while (resource) {
 						if (!strncmp(resource->path, path, strlen(resource->path)))
 							break;
 						resource = resource->next;
 					}
+					pthread_mutex_unlock(&resource_list_mutex);
 					if (resource == NULL) {
 						INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
 						INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
@@ -354,6 +360,7 @@ void indigo_server_shutdown() {
 }
 
 void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type) {
+	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	resource->path = path;
 	resource->data = data;
@@ -362,10 +369,12 @@ void indigo_server_add_resource(const char *path, unsigned char *data, unsigned 
 	resource->handler = NULL;
 	resource->next = resources;
 	resources = resource;
+	pthread_mutex_unlock(&resource_list_mutex);
 	INDIGO_LOG(indigo_log("Resource %s (%d, %s) added", path, length, content_type));
 }
 
 void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type) {
+	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	resource->path = path;
 	resource->file_name = file_name;
@@ -373,10 +382,12 @@ void indigo_server_add_file_resource(const char *path, const char *file_name, co
 	resource->handler = NULL;
 	resource->next = resources;
 	resources = resource;
+	pthread_mutex_unlock(&resource_list_mutex);
 	INDIGO_LOG(indigo_log("Resource %s (%s, %s) added", path, file_name, content_type));
 }
 
 void indigo_server_add_handler(const char *path, bool (*handler)(int client_socket, char *method, char *path, char *params)) {
+	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	resource->path = path;
 	resource->file_name = NULL;
@@ -384,28 +395,33 @@ void indigo_server_add_handler(const char *path, bool (*handler)(int client_sock
 	resource->handler = handler;
 	resource->next = resources;
 	resources = resource;
+	pthread_mutex_unlock(&resource_list_mutex);
 	INDIGO_LOG(indigo_log("Resource %s handler added", path));
 }
 
 void indigo_server_remove_resource(const char *path) {
+	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = resources;
 	struct resource *prev = NULL;
 	while (resource) {
 		if (!strcmp(resource->path, path)) {
-				if (prev == NULL)
-					resources = resource->next;
-				else
-					prev->next = resource->next;
+			if (prev == NULL)
+				resources = resource->next;
+			else
+				prev->next = resource->next;
 			free(resource);
+			pthread_mutex_unlock(&resource_list_mutex);
 			INDIGO_LOG(indigo_log("Resource %s removed", path));
 			return;
 		}
 		prev = resource;
 		resource = resource->next;
 	}
+	pthread_mutex_unlock(&resource_list_mutex);
 }
 
 void indigo_server_remove_resources() {
+	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = resources;
 	while (resource) {
 		struct resource *tmp = resource;
@@ -414,6 +430,7 @@ void indigo_server_remove_resources() {
 		free(tmp);
 	}
 	resources = NULL;
+	pthread_mutex_unlock(&resource_list_mutex);
 }
 
 indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
