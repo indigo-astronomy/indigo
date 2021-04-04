@@ -60,6 +60,7 @@
 typedef struct {
 	indigo_property *discovery_property;
 	indigo_property *devices_property;
+	indigo_timer *discovery_server_timer;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
@@ -395,7 +396,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_DEVICES_PROPERTY->count = 0;
 		// --------------------------------------------------------------------------------
 		srand((unsigned)time(0));
-		indigo_set_timer(device, 0, start_discovery_server, NULL);
+		indigo_set_timer(device, 0, start_discovery_server, &private_data->discovery_server_timer);
 		indigo_server_add_handler("/setup", &alpaca_setup_handler);
 		indigo_server_add_handler("/management/apiversions", &alpaca_apiversions_handler);
 		indigo_server_add_handler("/management/v1/description", &alpaca_v1_description_handler);
@@ -430,7 +431,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_DISCOVERY_PROPERTY, property, false);
 		shutdown_discovery_server();
-		indigo_set_timer(device, 0, start_discovery_server, NULL);
+		indigo_set_timer(device, 0, start_discovery_server, &private_data->discovery_server_timer);
 		AGENT_DISCOVERY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_DEVICES_PROPERTY, property)) {
@@ -454,6 +455,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	shutdown_discovery_server();
 	indigo_server_remove_resource("/setup");
+	indigo_cancel_timer_sync(device, &private_data->discovery_server_timer);
 	indigo_release_property(AGENT_DISCOVERY_PROPERTY);
 	indigo_release_property(AGENT_DEVICES_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
