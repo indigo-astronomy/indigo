@@ -455,6 +455,10 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	shutdown_discovery_server();
 	indigo_server_remove_resource("/setup");
+	indigo_server_remove_resource("/management/apiversions");
+	indigo_server_remove_resource("/management/v1/description");
+	indigo_server_remove_resource("/management/v1/configureddevices");
+	indigo_server_remove_resource("/api/v1");
 	indigo_cancel_timer_sync(device, &private_data->discovery_server_timer);
 	indigo_release_property(AGENT_DISCOVERY_PROPERTY);
 	indigo_release_property(AGENT_DEVICES_PROPERTY);
