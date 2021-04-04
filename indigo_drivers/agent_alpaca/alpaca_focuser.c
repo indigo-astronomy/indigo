@@ -171,10 +171,14 @@ static indigo_alpaca_error alpaca_move(indigo_alpaca_device *device, int version
 		if (value > device->focuser.maxstep) {
 			value = device->focuser.maxstep;
 		}
-		indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true);
-		indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, value + device->focuser.offset);
+		if (value != device->focuser.position) {
+			device->focuser.ismoving = true;
+			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_ON_POSITION_SET_GOTO_ITEM_NAME, true);
+			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_POSITION_PROPERTY_NAME, FOCUSER_POSITION_ITEM_NAME, value + device->focuser.offset);
+		}
 	} else {
 		if (value > 0) {
+			device->focuser.ismoving = true;
 			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, value);
 		} else if (value < 0) {
@@ -182,6 +186,7 @@ static indigo_alpaca_error alpaca_move(indigo_alpaca_device *device, int version
 				pthread_mutex_unlock(&device->mutex);
 				return indigo_alpaca_error_InvalidValue;
 			}
+			device->focuser.ismoving = true;
 			indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
 			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, -value);
 		}

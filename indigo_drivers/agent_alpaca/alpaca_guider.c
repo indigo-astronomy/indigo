@@ -140,24 +140,29 @@ static indigo_alpaca_error alpaca_pulseguide(indigo_alpaca_device *device, int v
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
-	switch (direction) {
-		case 0:
-			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, duration);
-			break;
-		case 1:
-			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, duration);
-			break;
-		case 2:
-			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, duration);
-			break;
-		case 3:
-			indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, duration);
-			break;
-		default:
-			pthread_mutex_unlock(&device->mutex);
-			return indigo_alpaca_error_InvalidValue;
+	if (duration > 0) {
+		switch (direction) {
+			case 0:
+				device->guider.ispulseguiding = true;
+				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_NORTH_ITEM_NAME, duration);
+				break;
+			case 1:
+				device->guider.ispulseguiding = true;
+				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_RA_PROPERTY_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME, duration);
+				break;
+			case 2:
+				device->guider.ispulseguiding = true;
+				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_EAST_ITEM_NAME, duration);
+				break;
+			case 3:
+				device->guider.ispulseguiding = true;
+				indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_GUIDE_DEC_PROPERTY_NAME, GUIDER_GUIDE_WEST_ITEM_NAME, duration);
+				break;
+			default:
+				pthread_mutex_unlock(&device->mutex);
+				return indigo_alpaca_error_InvalidValue;
+		}
 	}
-	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GUIDER_RATE_PROPERTY_NAME, GUIDER_RATE_ITEM_NAME, duration);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
