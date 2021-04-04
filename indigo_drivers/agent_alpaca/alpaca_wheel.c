@@ -53,7 +53,10 @@ static indigo_alpaca_error alpaca_set_position(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
-	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, value + 1);
+	if (device->wheel.position != value) {
+		device->wheel.position = -1;
+		indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, WHEEL_SLOT_PROPERTY_NAME, WHEEL_SLOT_ITEM_NAME, value + 1);
+	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
