@@ -34,13 +34,12 @@ long position = CLOSED;
 int direction = STOPPED;
 int last_action = 0;
 
-uint8_t configuration[51] = { 
-  0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-  0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-  0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-  0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-  0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80,
-  0x80
+uint8_t configuration[55] = { 
+  0x80, 0x81, 0xB4, 0x80, 0x81, 0x8C, 0x80, 0x80, 0x82, 0x80, 0x80, 0xC6, 0x80, 0x80, 0x8A, 0x80, 0x80, 0x8A, 0x80, 0x80, 0x81, 0x80, 0x80, 0xF8, 0x80, 0x80, 0xBC, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0xCE, 0x90, 0x80, 0x80, 0x94, 0x80, 0x80, 0x8A, 0x84, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0xA9
+};
+
+uint8_t status[21] = {
+  0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80
 };
 
 void setup() {
@@ -62,32 +61,42 @@ void loop() {
     if (command.equals("&V%")) {
       Serial.print("&V1.00000#");
     } else if (command.equals("&G%")) {
-      Serial.print("&G"); // 0
-      if (direction == STOPPED) { // 1
+      if (direction == STOPPED) {
         if (position == CLOSED)
-          Serial.write(0x80 | (1 << 4) | last_action);
+          status[0] = (0x80 | (1 << 4) | last_action);
         else
-          Serial.write(0x80 | (0 << 4) | last_action);
+          status[0] = (0x80 | (0 << 4) | last_action);
       } else if (direction == OPEN) {
-          Serial.write(0x80 | (2 << 4) | last_action);
+          status[0] = (0x80 | (2 << 4) | last_action);
       } else if (direction == CLOSE) {
-          Serial.write(0x80 | (3 << 4) | last_action);
+          status[0] = (0x80 | (3 << 4) | last_action);
       }
-      Serial.write((char)(0x80 | ((position >> 14) & 0x7F))); // 2,3,4
-      Serial.write((char)(0x80 | ((position >> 7) & 0x7F)));
-      Serial.write((char)(0x80 | (position & 0x7F)));
-      Serial.write(0x86); // 836/15 = 12.25V // 5,6
-      Serial.write(0xC4);
-      Serial.write(0x80); // 7,8,9
-      Serial.write(0x80); 
-      Serial.write(0x80); 
-      Serial.write(0x80); // 10,11
-      Serial.write(0x80);
-      Serial.write(0x80); // 12,13
-      Serial.write(0x80);
-      Serial.write(0x80); // 14,15
-      Serial.write(0x80 | (position == CLOSED ? 1 << 4 : 0) | (position == OPENED ? 1 << 3 : 0));
-      Serial.print("00#");
+      status[1] = (0x80 | ((position >> 14) & 0x7F));
+      status[2] = (0x80 | ((position >> 7) & 0x7F));
+      status[3] = (0x80 | (position & 0x7F));
+      status[4] = 0x86;
+      status[5] = 0xC4;
+      status[6] = 0x80;
+      status[7] = 0x80;
+      status[8] = 0x80;
+      status[9] = 0x80;
+      status[10] = 0x80;
+      status[11] = 0x80;
+      status[12] = 0x80;
+      status[13] = 0x80;
+      status[14] = (0x80 | (position == CLOSED ? 1 << 4 : 0) | (position == OPENED ? 1 << 3 : 0));
+      status[15] = 0x80;
+      status[16] = 0x80;
+      status[17] = 0x84;
+      status[18] = 0x80;
+      status[19] = 0x80;
+      int sum = 0;
+      for (int i = 0; i < 20; i++)
+        sum += status[i];
+      status[20] = -(sum % 128);
+      Serial.print("&G");
+      Serial.write(configuration, 21);
+      Serial.print("#");
     } else if (command.equals("&O%")) {
       direction = OPEN;
       last_action = 1;
@@ -109,7 +118,7 @@ void loop() {
       Serial.write(configuration, sizeof(configuration));
       Serial.print("#");      
     } else if (command.startsWith("&a")) {
-      for (int i = 0; i < 51; i++) {
+      for (int i = 0; i < 55; i++) {
         configuration[i] = command.charAt(i + 2);
       }
       Serial.print("&#");

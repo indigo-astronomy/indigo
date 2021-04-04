@@ -193,7 +193,7 @@ static bool talon6ror_open(indigo_device *device) {
 	return true;
 }
 
-static char *dump_hex(uint8_t *data) {
+static char *dump_hex(const uint8_t *data) {
 	static char buffer[RESPONSE_LENGTH * 3];
 	buffer[0] = (char)data[0];
 	buffer[1] = 0;
@@ -205,14 +205,14 @@ static char *dump_hex(uint8_t *data) {
 static bool talon6ror_command(indigo_device *device, const char *command, uint8_t *response) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	int result = indigo_printf(PRIVATE_DATA->handle, "&%s%%#", command);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- \"%s\" (%s)", PRIVATE_DATA->handle, dump_hex(command), result ? "OK" : strerror(errno));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- \"%s\" (%s)", PRIVATE_DATA->handle, dump_hex((uint8_t *)command), result ? "OK" : strerror(errno));
 	if (result) {
 		uint8_t c, *pnt = response;
 		*pnt = 0;
 		result = false;
 		bool start = false;
 		while (pnt - response < RESPONSE_LENGTH) {
-			if (indigo_read(PRIVATE_DATA->handle, &c, 1) < 1) {
+			if (indigo_read(PRIVATE_DATA->handle,(char *) &c, 1) < 1) {
 				if (pnt)
 					*pnt = 0;
 				break;
@@ -371,6 +371,8 @@ static void dome_connect_handler(indigo_device *device) {
 				X_CLOSE_COND_POWER_ITEM->sw.value = (response[48] & (1 << 0)) != 0;
 				X_CLOSE_COND_WEATHER_ITEM->sw.value = (response[48] & (1 << 1)) != 0;
 				X_CLOSE_COND_TIMEOUT_ITEM->sw.value = (response[48] & (1 << 2)) != 0;
+				// DUMMY 49
+				// TWTIME 52
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
@@ -444,6 +446,10 @@ static void dome_abort_handler(indigo_device *device) {
 
 static void write_configuration_handler(indigo_device *device) {
 	uint8_t response[RESPONSE_LENGTH];
+	int checksum = 0;
+	for (int i = 1; i< 55; i++)
+		checksum += PRIVATE_DATA->configuration[i];
+	PRIVATE_DATA->configuration[55] = -(checksum % 128);
 	if (talon6ror_command(device, (char *)PRIVATE_DATA->configuration, response)) {
 		if (X_MOTOR_CONF_PROPERTY->state == INDIGO_BUSY_STATE) {
 			X_MOTOR_CONF_PROPERTY->state = INDIGO_OK_STATE;
@@ -647,7 +653,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			talon6ror_pack(PRIVATE_DATA->configuration + 37, X_MOTOR_CONF_FULL_ENC_ITEM->number.value);
 			talon6ror_pack(PRIVATE_DATA->configuration + 40, X_MOTOR_CONF_RAMP_ITEM->number.value);
 			PRIVATE_DATA->configuration[46] = 0x80 | (int)X_MOTOR_CONF_ENC_FACTOR_ITEM->number.value;
-			PRIVATE_DATA->configuration[47] = (PRIVATE_DATA->configuration[47] & 0xF0) | (((int)X_MOTOR_CONF_ENC_FACTOR_ITEM->number.value) & 0x0F);
+			PRIVATE_DATA->configuration[47] = (PRIVATE_DATA->configuration[47] & 0xF0) | (((int)X_MOTOR_CONF_REVERSE_ITEM->number.value) & 0x0F);
 			X_MOTOR_CONF_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, X_MOTOR_CONF_PROPERTY, NULL);
 			indigo_set_timer(device, 0, write_configuration_handler, NULL);
