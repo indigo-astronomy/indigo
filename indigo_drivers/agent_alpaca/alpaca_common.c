@@ -110,6 +110,7 @@ void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_p
 		indigo_alpaca_dome_update_property(alpaca_device, property);
 	} else if (!strncmp(property->name, "AUX_", 4)) {
 		indigo_alpaca_lightbox_update_property(alpaca_device, property);
+		indigo_alpaca_switch_update_property(alpaca_device, property);
 	} // TBD other device types
 }
 
@@ -374,6 +375,10 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_LIGHTBOX) &&
 		(result = indigo_alpaca_lightbox_get_command(alpaca_device, version, command, buffer, buffer_length))
 	) return result;
+	if (
+		(IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_POWERBOX) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_GPIO)) &&
+		(result = indigo_alpaca_switch_get_command(alpaca_device, version, command, buffer, buffer_length))
+	) return result;
 	// TBD other device types
 	return 0;
 }
@@ -443,6 +448,10 @@ long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version,
 	if (
 		IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_LIGHTBOX) &&
 		(result = indigo_alpaca_lightbox_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
+	) return result;
+	if (
+		(IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_POWERBOX) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_GPIO)) &&
+		(result = indigo_alpaca_switch_set_command(alpaca_device, version, command, buffer, buffer_length, param_1, param_2))
 	) return result;
 	return 0;
 }
