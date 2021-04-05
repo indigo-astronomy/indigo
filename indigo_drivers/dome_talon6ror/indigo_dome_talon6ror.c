@@ -414,7 +414,8 @@ static void dome_connect_handler(indigo_device *device) {
 					// TWTIME 52
 				} else {
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Checksum error - handshake failed");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Checksum error, handshake failed");
+					indigo_send_message(device, "Checksum error, handshake failed");
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
