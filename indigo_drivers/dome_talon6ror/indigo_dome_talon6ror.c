@@ -160,7 +160,7 @@ static char *last_action_string[] = {
 	"Go to requested by user",
 	"Calibrate requested by user",
 	"Close due to weather",
-	"Close due to power failure"
+	"Close due to power failure",
 	"Close due to lost communication",
 	"Close due to internet failure",
 	"Close due to timeout expired",
@@ -190,6 +190,31 @@ static bool talon6ror_open(indigo_device *device) {
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
+	char c;
+	struct timeval tv;
+		// flush
+	tv.tv_sec = 5;
+	tv.tv_usec = 0;
+	while (true) {
+		fd_set readout;
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+		if (result == 0)
+			break;
+		if (result < 0) {
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			return false;
+		}
+		result = read(PRIVATE_DATA->handle, &c, 1);
+		if (result < 1) {
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			return false;
+		}
+		tv.tv_sec = 0;
+		tv.tv_usec = 10000;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> flushed", PRIVATE_DATA->handle);
 	return true;
 }
 
@@ -250,81 +275,91 @@ static void talon6ror_close(indigo_device *device) {
 static void talon6ror_get_status(indigo_device *device) {
 	uint8_t response[RESPONSE_LENGTH];
 	if (talon6ror_command(device, "G", response) && (response[0] == 'G')) {
-		switch (response[1] & 0x70) {
-			case 0x00:
-				if (DOME_SHUTTER_PROPERTY->state != INDIGO_OK_STATE || !DOME_SHUTTER_OPENED_ITEM->sw.value) {
-					DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-					indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof opened");
-				}
-				break;
-			case 0x10:
-				if (DOME_SHUTTER_PROPERTY->state != INDIGO_OK_STATE || !DOME_SHUTTER_CLOSED_ITEM->sw.value) {
-					DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
-					indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof closed");
-				}
-				break;
-			case 0x20:
-				if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || !DOME_SHUTTER_OPENED_ITEM->sw.value) {
-					DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-					indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof opening");
-				}
-				break;
-			case 0x30:
-				if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || !DOME_SHUTTER_CLOSED_ITEM->sw.value) {
-					DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
-					indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof closing");
-				}
-				break;
-			default:
-				if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE) {
-					DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Error reported");
-				}
-				break;
-		}
-		char *last_action = last_action_string[response[1] & 0x0F];
-		if (PRIVATE_DATA->last_action != last_action) {
-			indigo_send_message(device, last_action);
-			PRIVATE_DATA->last_action = last_action;
-		}
-		PRIVATE_DATA->position = talon6ror_unpack(response + 2);
-		if (X_POSITION_ITEM->number.value != PRIVATE_DATA->position) {
-			X_POSITION_ITEM->number.value = PRIVATE_DATA->position;
-			X_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_POSITION_PROPERTY, NULL);
-		}
-		PRIVATE_DATA->voltage = round((((response[5] & 0x7F) << 7) | (response[6] & 0x7F)) * 150.0 / 1024) / 10.0;
-		if (X_STATUS_VOLTAGE_ITEM->number.value != PRIVATE_DATA->voltage) {
-			X_STATUS_VOLTAGE_ITEM->number.value = PRIVATE_DATA->voltage;
-			X_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_STATUS_PROPERTY, NULL);
-		}
-		PRIVATE_DATA->timeout_timer = talon6ror_unpack(response + 7);
-		PRIVATE_DATA->power_timer = ((response[10] & 0x7F) << 7) | (response[11] & 0x7F);
-		PRIVATE_DATA->weather_timer = ((response[12] & 0x7F) << 7) | (response[13] & 0x7F);
-		if (X_CLOSE_TIMER_TIMEOUT_ITEM->number.value != PRIVATE_DATA->timeout_timer || X_CLOSE_TIMER_POWER_ITEM->number.value != PRIVATE_DATA->power_timer || X_CLOSE_TIMER_WEATHER_ITEM->number.value != PRIVATE_DATA->weather_timer) {
-			X_CLOSE_TIMER_TIMEOUT_ITEM->number.value = PRIVATE_DATA->timeout_timer;
-			X_CLOSE_TIMER_POWER_ITEM->number.value = PRIVATE_DATA->power_timer;
-			X_CLOSE_TIMER_WEATHER_ITEM->number.value = PRIVATE_DATA->weather_timer;
-			X_CLOSE_TIMER_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_CLOSE_TIMER_PROPERTY, NULL);
-		}
-		uint16_t sensors = ((response[14] & 0x7F) << 8) | (response[15] & 0x7F);
-		X_SENSORS_POWER_CONDITION_ITEM->light.value = sensors & (1 << 0) ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
-		X_SENSORS_WEATHER_CONDITION_ITEM->light.value = sensors & (1 << 1) ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
-		X_SENSORS_PARKED_SENSOR_ITEM->light.value = sensors & (1 << 2) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-		X_SENSORS_OPEN_SENSOR_ITEM->light.value = sensors & (1 << 3) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-		X_SENSORS_CLOSE_SENSOR_ITEM->light.value = sensors & (1 << 4) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
-		X_SENSORS_OPEN_BUTTON_ITEM->light.value = sensors & (1 << 5) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-		X_SENSORS_STOP_BUTTON_ITEM->light.value = sensors & (1 << 6) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-		X_SENSORS_CLOSE_BUTTON_ITEM->light.value = sensors & (1 << 8) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
-		if (PRIVATE_DATA->sensors != sensors) {
-			indigo_update_property(device, X_SENSORS_PROPERTY, NULL);
-			PRIVATE_DATA->sensors = sensors;
+		int sum = 0;
+		for (int i = 1; i < 21; i++)
+			sum += response[i];
+		if (response[21] == (uint8_t)(0x80 | -(sum % 128))) {
+			switch (response[1] & 0x70) {
+				case 0x00:
+					if (DOME_SHUTTER_PROPERTY->state != INDIGO_OK_STATE || !DOME_SHUTTER_OPENED_ITEM->sw.value) {
+						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+						indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof opened");
+					}
+					break;
+				case 0x10:
+					if (DOME_SHUTTER_PROPERTY->state != INDIGO_OK_STATE || !DOME_SHUTTER_CLOSED_ITEM->sw.value) {
+						DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+						indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof closed");
+					}
+					break;
+				case 0x20:
+					if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || !DOME_SHUTTER_OPENED_ITEM->sw.value) {
+						DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+						indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof opening");
+					}
+					break;
+				case 0x30:
+					if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE || !DOME_SHUTTER_CLOSED_ITEM->sw.value) {
+						DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
+						indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof closing");
+					}
+					break;
+				default:
+					if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE) {
+						DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Error reported");
+					}
+					break;
+			}
+			char *last_action = last_action_string[response[1] & 0x0F];
+			if (PRIVATE_DATA->last_action != last_action) {
+				indigo_send_message(device, last_action);
+				PRIVATE_DATA->last_action = last_action;
+			}
+			PRIVATE_DATA->position = talon6ror_unpack(response + 2);
+			if (X_POSITION_ITEM->number.value != PRIVATE_DATA->position) {
+				X_POSITION_ITEM->number.value = PRIVATE_DATA->position;
+				X_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_POSITION_PROPERTY, NULL);
+			}
+			PRIVATE_DATA->voltage = round((((response[5] & 0x7F) << 7) | (response[6] & 0x7F)) * 150.0 / 1024) / 10.0;
+			if (X_STATUS_VOLTAGE_ITEM->number.value != PRIVATE_DATA->voltage) {
+				X_STATUS_VOLTAGE_ITEM->number.value = PRIVATE_DATA->voltage;
+				X_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_STATUS_PROPERTY, NULL);
+			}
+			PRIVATE_DATA->timeout_timer = talon6ror_unpack(response + 7);
+			PRIVATE_DATA->power_timer = ((response[10] & 0x7F) << 7) | (response[11] & 0x7F);
+			PRIVATE_DATA->weather_timer = ((response[12] & 0x7F) << 7) | (response[13] & 0x7F);
+			if (X_CLOSE_TIMER_TIMEOUT_ITEM->number.value != PRIVATE_DATA->timeout_timer || X_CLOSE_TIMER_POWER_ITEM->number.value != PRIVATE_DATA->power_timer || X_CLOSE_TIMER_WEATHER_ITEM->number.value != PRIVATE_DATA->weather_timer) {
+				X_CLOSE_TIMER_TIMEOUT_ITEM->number.value = PRIVATE_DATA->timeout_timer;
+				X_CLOSE_TIMER_POWER_ITEM->number.value = PRIVATE_DATA->power_timer;
+				X_CLOSE_TIMER_WEATHER_ITEM->number.value = PRIVATE_DATA->weather_timer;
+				X_CLOSE_TIMER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_CLOSE_TIMER_PROPERTY, NULL);
+			}
+			uint16_t sensors = ((response[14] & 0x7F) << 8) | (response[15] & 0x7F);
+			X_SENSORS_POWER_CONDITION_ITEM->light.value = sensors & (1 << 0) ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
+			X_SENSORS_WEATHER_CONDITION_ITEM->light.value = sensors & (1 << 1) ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
+			X_SENSORS_PARKED_SENSOR_ITEM->light.value = sensors & (1 << 2) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			X_SENSORS_OPEN_SENSOR_ITEM->light.value = sensors & (1 << 3) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			X_SENSORS_CLOSE_SENSOR_ITEM->light.value = sensors & (1 << 4) ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+			X_SENSORS_OPEN_BUTTON_ITEM->light.value = sensors & (1 << 5) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+			X_SENSORS_STOP_BUTTON_ITEM->light.value = sensors & (1 << 6) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+			X_SENSORS_CLOSE_BUTTON_ITEM->light.value = sensors & (1 << 8) ? INDIGO_BUSY_STATE : INDIGO_IDLE_STATE;
+			if (PRIVATE_DATA->sensors != sensors) {
+				indigo_update_property(device, X_SENSORS_PROPERTY, NULL);
+				PRIVATE_DATA->sensors = sensors;
+			}
+		} else {
+			if (DOME_SHUTTER_PROPERTY->state != INDIGO_ALERT_STATE) {
+				DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Checksum error");
+			}
 		}
 	}
 	indigo_reschedule_timer(device, 0.5, &PRIVATE_DATA->state_timer);
@@ -349,30 +384,39 @@ static void dome_connect_handler(indigo_device *device) {
 		}
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			if (talon6ror_command(device, "p", response) && response[0] == 'p') {
-				memcpy(PRIVATE_DATA->configuration, response, sizeof(PRIVATE_DATA->configuration));
-				PRIVATE_DATA->configuration[0] = 'a';
-				X_MOTOR_CONF_KP_ITEM->number.value = talon6ror_unpack(response + 1);
-				X_MOTOR_CONF_KI_ITEM->number.value = talon6ror_unpack(response + 4);
-				X_MOTOR_CONF_KD_ITEM->number.value = talon6ror_unpack(response + 7);
-				X_MOTOR_CONF_MAX_SPEED_ITEM->number.value = talon6ror_unpack(response + 10);
-				X_MOTOR_CONF_MIN_SPEED_ITEM->number.value = talon6ror_unpack(response + 13);
-				X_MOTOR_CONF_ACCELERATION_ITEM->number.value = talon6ror_unpack(response + 16);
-				X_DELAY_CONF_PARK_ITEM->number.value = talon6ror_unpack(response + 19);
-				X_DELAY_CONF_WEATHER_ITEM->number.value = talon6ror_unpack(response + 22);
-				X_DELAY_CONF_POWER_ITEM->number.value = talon6ror_unpack(response + 25);
-				// DEL_COM 28
-				// MAX_OPEN 31
-				// IPSWITCH 34
-				X_MOTOR_CONF_FULL_ENC_ITEM->number.value = talon6ror_unpack(response + 37);
-				X_MOTOR_CONF_RAMP_ITEM->number.value = talon6ror_unpack(response + 40);
-				X_DELAY_CONF_TIMEOUT_ITEM->number.value = talon6ror_unpack(response + 43);
-				X_MOTOR_CONF_ENC_FACTOR_ITEM->number.value = response[46] & 0x7F;
-				X_MOTOR_CONF_REVERSE_ITEM->number.value = response[47] & 0x0F;
-				X_CLOSE_COND_POWER_ITEM->sw.value = (response[48] & (1 << 0)) != 0;
-				X_CLOSE_COND_WEATHER_ITEM->sw.value = (response[48] & (1 << 1)) != 0;
-				X_CLOSE_COND_TIMEOUT_ITEM->sw.value = (response[48] & (1 << 2)) != 0;
-				// DUMMY 49
-				// TWTIME 52
+				int sum = 0;
+				for (int i = 1; i < 55; i++)
+					sum += response[i];
+				if (response[55] == (uint8_t)(0x80 | -(sum % 128))) {
+					memcpy(PRIVATE_DATA->configuration, response, sizeof(PRIVATE_DATA->configuration));
+					PRIVATE_DATA->configuration[0] = 'a';
+					X_MOTOR_CONF_KP_ITEM->number.value = talon6ror_unpack(response + 1);
+					X_MOTOR_CONF_KI_ITEM->number.value = talon6ror_unpack(response + 4);
+					X_MOTOR_CONF_KD_ITEM->number.value = talon6ror_unpack(response + 7);
+					X_MOTOR_CONF_MAX_SPEED_ITEM->number.value = talon6ror_unpack(response + 10);
+					X_MOTOR_CONF_MIN_SPEED_ITEM->number.value = talon6ror_unpack(response + 13);
+					X_MOTOR_CONF_ACCELERATION_ITEM->number.value = talon6ror_unpack(response + 16);
+					X_DELAY_CONF_PARK_ITEM->number.value = talon6ror_unpack(response + 19);
+					X_DELAY_CONF_WEATHER_ITEM->number.value = talon6ror_unpack(response + 22);
+					X_DELAY_CONF_POWER_ITEM->number.value = talon6ror_unpack(response + 25);
+					// DEL_COM 28
+					// MAX_OPEN 31
+					// IPSWITCH 34
+					X_MOTOR_CONF_FULL_ENC_ITEM->number.value = talon6ror_unpack(response + 37);
+					X_MOTOR_CONF_RAMP_ITEM->number.value = talon6ror_unpack(response + 40);
+					X_DELAY_CONF_TIMEOUT_ITEM->number.value = talon6ror_unpack(response + 43);
+					X_MOTOR_CONF_ENC_FACTOR_ITEM->number.value = response[46] & 0x7F;
+					X_MOTOR_CONF_REVERSE_ITEM->number.value = response[47] & 0x0F;
+					X_CLOSE_COND_POWER_ITEM->sw.value = (response[48] & (1 << 0)) != 0;
+					X_CLOSE_COND_WEATHER_ITEM->sw.value = (response[48] & (1 << 1)) != 0;
+					X_CLOSE_COND_TIMEOUT_ITEM->sw.value = (response[48] & (1 << 2)) != 0;
+					// DUMMY 49
+					// TWTIME 52
+				} else {
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Checksum error, handshake failed");
+					indigo_send_message(device, "Checksum error, handshake failed");
+				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");

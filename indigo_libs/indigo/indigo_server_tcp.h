@@ -48,6 +48,10 @@ extern bool indigo_is_ephemeral_port;
  */
 extern bool indigo_use_blob_buffering;
 
+/** Use BLOB compression (valid with indigo_use_blob_buffering only).
+ */
+extern bool indigo_use_blob_compression;
+
 /** Add static document.
  */
 extern void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type);

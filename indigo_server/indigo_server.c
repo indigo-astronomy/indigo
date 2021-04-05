@@ -360,6 +360,7 @@ static bool runLoop = true;
 #define SERVER_BLOB_BUFFERING_PROPERTY						blob_buffering_property
 #define SERVER_BLOB_BUFFERING_DISABLED_ITEM				(SERVER_BLOB_BUFFERING_PROPERTY->items + 0)
 #define SERVER_BLOB_BUFFERING_ENABLED_ITEM				(SERVER_BLOB_BUFFERING_PROPERTY->items + 1)
+#define SERVER_BLOB_COMPRESSION_ENABLED_ITEM			(SERVER_BLOB_BUFFERING_PROPERTY->items + 2)
 
 #define SERVER_BLOB_PROXY_PROPERTY								blob_proxy_property
 #define SERVER_BLOB_PROXY_DISABLED_ITEM						(SERVER_BLOB_PROXY_PROPERTY->items + 0)
@@ -822,9 +823,10 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(SERVER_LOG_LEVEL_INFO_ITEM, SERVER_LOG_LEVEL_INFO_ITEM_NAME, "Info", false);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_DEBUG_ITEM, SERVER_LOG_LEVEL_DEBUG_ITEM_NAME, "Debug", false);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_TRACE_ITEM, SERVER_LOG_LEVEL_TRACE_ITEM_NAME, "Trace", false);
-	SERVER_BLOB_BUFFERING_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_BLOB_BUFFERING_PROPERTY_NAME, MAIN_GROUP, "BLOB buffering", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	SERVER_BLOB_BUFFERING_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_BLOB_BUFFERING_PROPERTY_NAME, MAIN_GROUP, "BLOB buffering", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	indigo_init_switch_item(SERVER_BLOB_BUFFERING_DISABLED_ITEM, SERVER_BLOB_BUFFERING_DISABLED_ITEM_NAME, "Disabled", !indigo_use_blob_buffering);
-	indigo_init_switch_item(SERVER_BLOB_BUFFERING_ENABLED_ITEM, SERVER_BLOB_BUFFERING_ENABLED_ITEM_NAME, "Enabled", indigo_use_blob_buffering);
+	indigo_init_switch_item(SERVER_BLOB_BUFFERING_ENABLED_ITEM, SERVER_BLOB_BUFFERING_ENABLED_ITEM_NAME, "Enabled", indigo_use_blob_buffering && !indigo_use_blob_compression);
+	indigo_init_switch_item(SERVER_BLOB_COMPRESSION_ENABLED_ITEM, SERVER_BLOB_COMPRESSION_ENABLED_ITEM_NAME, "Enabled with compression", indigo_use_blob_buffering && indigo_use_blob_compression);
 	SERVER_BLOB_PROXY_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_BLOB_PROXY_PROPERTY_NAME, MAIN_GROUP, "BLOB proxy", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	indigo_init_switch_item(SERVER_BLOB_PROXY_DISABLED_ITEM, SERVER_BLOB_PROXY_DISABLED_ITEM_NAME, "Disabled", !indigo_proxy_blob);
 	indigo_init_switch_item(SERVER_BLOB_PROXY_ENABLED_ITEM, SERVER_BLOB_PROXY_ENABLED_ITEM_NAME, "Enabled", indigo_proxy_blob);
@@ -1112,7 +1114,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_BLOB_BUFFERING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SERVER_BLOB_BUFFERING
 		indigo_property_copy_values(SERVER_BLOB_BUFFERING_PROPERTY, property, false);
-		indigo_use_blob_buffering = SERVER_BLOB_BUFFERING_ENABLED_ITEM->sw.value;
+		indigo_use_blob_buffering = SERVER_BLOB_BUFFERING_ENABLED_ITEM->sw.value || SERVER_BLOB_COMPRESSION_ENABLED_ITEM->sw.value;
+		indigo_use_blob_compression = SERVER_BLOB_COMPRESSION_ENABLED_ITEM->sw.value;
 		SERVER_BLOB_BUFFERING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SERVER_BLOB_BUFFERING_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1333,6 +1336,10 @@ static void server_main() {
 			indigo_use_blob_urls = false;
 		} else if (!strcmp(server_argv[i], "-d") || !strcmp(server_argv[i], "--enable-blob-buffering")) {
 			indigo_use_blob_buffering = true;
+			indigo_use_blob_compression = false;
+		} else if (!strcmp(server_argv[i], "-dd") || !strcmp(server_argv[i], "--enable-blob-compression")) {
+			indigo_use_blob_buffering = true;
+			indigo_use_blob_compression = true;
 		} else if (!strcmp(server_argv[i], "-x") || !strcmp(server_argv[i], "--enable-blob-proxy")) {
 			indigo_proxy_blob = true;
 #ifdef RPI_MANAGEMENT
@@ -1607,6 +1614,7 @@ int main(int argc, const char * argv[]) {
 			       "       -b- | --disable-bonjour\n"
 			       "       -u- | --disable-blob-urls\n"
 			       "       -d  | --enable-blob-buffering\n"
+						 "       -dd | --enable-blob-compression\n"
 			       "       -w- | --disable-web-apps\n"
 			       "       -c- | --disable-control-panel\n"
 #ifdef RPI_MANAGEMENT
