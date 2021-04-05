@@ -22,6 +22,10 @@
 #ifndef indigo_guider_utils_h
 #define indigo_guider_utils_h
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define MAX_MULTISTAR_COUNT 12
 
 typedef struct {
@@ -63,11 +67,15 @@ extern indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *
 
 extern indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest);
 extern indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest, int converge_iterations);
-extern indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest);
+extern indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest);
 extern indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, indigo_frame_digest *digest);
 extern indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int border, indigo_frame_digest *digest);
-extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y);
+extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y);
 extern double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_guider_utils_h */

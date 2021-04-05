@@ -25,6 +25,10 @@
 #include <stdio.h>
 #include <tiffio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
 		unsigned char *data;
 		tsize_t size;
@@ -37,5 +41,9 @@ extern tsize_t indigo_tiff_write(thandle_t handle, tdata_t data, tsize_t size);
 extern toff_t indigo_tiff_seek(thandle_t handle, toff_t off, int whence);
 extern int indigo_tiff_close(thandle_t handle);
 extern toff_t indigo_tiff_size(thandle_t handle);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_tiff_h */

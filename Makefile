@@ -64,12 +64,14 @@ DEBUG_BUILD = -g
 
 ifeq ($(OS),Windows_NT)
 	OS_DETECTED = Windows
+	INDIGO_CUDA =
 else
 	OS_DETECTED = $(shell uname -s)
 	ARCH_DETECTED = $(shell uname -m)
 	ifeq ($(OS_DETECTED),Darwin)
 		CC = /usr/bin/clang
 		AR = /usr/bin/libtool
+		INDIGO_CUDA =
 		ifeq ($(findstring arm64e,$(shell file $(CC) | head -1)),arm64e)
 			MAC_ARCH = -arch x86_64 -arch arm64
 		else
@@ -112,14 +114,24 @@ else
 		endif
 		CC = gcc
 		AR = ar
-		ifeq ($(ARCH_DETECTED),arm)
-			CFLAGS = $(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT -D_FILE_OFFSET_BITS=64
-			CXXFLAGS = $(DEBUG_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+		INDIGO_CUDA = $(wildcard /usr/local/cuda)
+		ifeq ($(INDIGO_CUDA),)
+			CUDA_BUILD = ""
+			LDFLAGS = -lm -lrt -lusb-1.0 -pthread -L$(BUILD_LIB) -Wl,-rpath=\\\$$\$$ORIGIN/../lib,-rpath=\\\$$\$$ORIGIN/../drivers,-rpath=.
 		else
-			CFLAGS = $(DEBUG_BUILD) -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
-			CXXFLAGS = $(DEBUG_BUILD) -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+			NVCC = $(INDIGO_CUDA)/bin/nvcc
+			CUDA_LIBS = $(addprefix -L,$(wildcard $(INDIGO_CUDA)/lib*))
+			CUDA_BUILD = "-DINDIGO_CUDA"
+			NVCCFLAGS = $(DEBUG_BUILD) -Xcompiler -fPIC -O3 -isystem $(INDIGO_CUDA)/include -isystem $(INDIGO_ROOT)/indigo_libs -I $(INDIGO_ROOT)/indigo_drivers -I $(INDIGO_ROOT)/indigo_linux_drivers -I $(BUILD_INCLUDE) -std=c++11 -DINDIGO_LINUX
+			LDFLAGS = -lm -lrt -lusb-1.0 -pthread -lcudart $(CUDA_LIBS) -L$(BUILD_LIB) -Wl,-rpath=\\\$$\$$ORIGIN/../lib,-rpath=\\\$$\$$ORIGIN/../drivers,-rpath=.
 		endif
-		LDFLAGS = -lm -lrt -lusb-1.0 -pthread -L$(BUILD_LIB) -Wl,-rpath=\\\$$\$$ORIGIN/../lib,-rpath=\\\$$\$$ORIGIN/../drivers,-rpath=.
+		ifeq ($(ARCH_DETECTED),arm)
+			CFLAGS = $(DEBUG_BUILD) $(CUDA_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT -D_FILE_OFFSET_BITS=64
+			CXXFLAGS = $(DEBUG_BUILD) $(CUDA_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+		else
+			CFLAGS = $(DEBUG_BUILD) $(CUDA_BUILD) -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX
+			CXXFLAGS = $(DEBUG_BUILD) $(CUDA_BUILD) -fPIC -O3 -isystem$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
+		endif
 		ARFLAGS = -rv
 		SOEXT = so
 		LIBHIDAPI = $(BUILD_LIB)/libhidapi-hidraw.a
@@ -331,10 +343,13 @@ Makefile.inc: Makefile
 	@printf "OS_DETECTED = $(OS_DETECTED)\n" >> Makefile.inc
 	@printf "ARCH_DETECTED = $(ARCH_DETECTED)\n" >> Makefile.inc
 	@printf "DEBIAN_ARCH = $(DEBIAN_ARCH)\n\n" >> Makefile.inc
+	@printf "INDIGO_CUDA = $(INDIGO_CUDA)\n" >> Makefile.inc
 	@printf "CC = $(CC)\n" >> Makefile.inc
 	@printf "AR = $(AR)\n" >> Makefile.inc
+	@printf "NVCC = $(NVCC)\n" >> Makefile.inc
 	@printf "CFLAGS = $(CFLAGS)\n" >> Makefile.inc
 	@printf "CXXFLAGS = $(CXXFLAGS)\n" >> Makefile.inc
+	@printf "NVCCFLAGS = $(NVCCFLAGS)\n" >> Makefile.inc
 	@printf "MFLAGS = $(MFLAGS)\n" >> Makefile.inc
 	@printf "LDFLAGS = $(LDFLAGS)\n" >> Makefile.inc
 	@printf "ARFLAGS = $(ARFLAGS)\n" >> Makefile.inc

@@ -29,6 +29,10 @@
 #include <time.h>
 #include <stdio.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
 #define JD UT2JD(time(NULL))
 #define JD2000       2451545.0
@@ -41,5 +45,9 @@ extern void indigo_eq2hor(time_t *utc, double latitude, double longitude, double
 extern void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec);
 extern void indigo_topo_star(double latitude, double longitude, double elevation, double promora, double promodec, double parallax, double rv, double *ra, double *dec);
 extern void indigo_topo_planet(double latitude, double longitude, double elevation, int id, double *ra, double *dec);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_novas_h */

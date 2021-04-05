@@ -38,6 +38,15 @@ endif
 
 BIN_EXTERNALS = $(INDIGO_ROOT)/bin_externals
 
+ifeq ($(INDIGO_CUDA),)
+	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c)))
+else
+	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) $(addsuffix .o, $(basename $(wildcard *.cu)))
+endif
+
+%.o: %.cu
+	nvcc $(NVCCFLAGS) -c $< -o $@
+
 .PHONY: all clean
 
 all:	status libindigo
@@ -78,10 +87,10 @@ clean-all: status
 
 libindigo: version libusb libhidapi libjpeg libtiff libnovas libftd2xx $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
-$(BUILD_LIB)/libindigo.a: $(addsuffix .o, $(basename $(wildcard *.c)))
+$(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_LIB)/libindigo.$(SOEXT): $(addsuffix .o, $(basename $(wildcard *.c))) $(BUILD_LIB)/libnovas.a
+$(BUILD_LIB)/libindigo.$(SOEXT): $(LIBINDIGO_FILES) $(BUILD_LIB)/libnovas.a
 	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl -lusb-1.0 -lz
 
 #---------------------------------------------------------------------
