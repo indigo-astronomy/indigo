@@ -1149,7 +1149,7 @@ double indigo_rmse(double set[], const int count) {
 	return sqrt(sum / count);
 }
 
-indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new[], const int count, indigo_frame_digest *digest) {
+indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest) {
 	double drifts[MAX_MULTISTAR_COUNT] = {0};
 	double drifts_x[MAX_MULTISTAR_COUNT] = {0};
 	double drifts_y[MAX_MULTISTAR_COUNT] = {0};
@@ -1160,18 +1160,18 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 		count < 1 ||
 		avg_ref->algorithm != centroid ||
 		ref[0].algorithm != centroid ||
-		new[0].algorithm != centroid ||
+		new_digest[0].algorithm != centroid ||
 		digest == NULL
 	) return INDIGO_FAILED;
 
 	digest->algorithm = centroid;
-	digest->width = new[0].width;
-	digest->height = new[0].height;
+	digest->width = new_digest[0].width;
+	digest->height = new_digest[0].height;
 	digest->centroid_x = avg_ref->centroid_x;
 	digest->centroid_y = avg_ref->centroid_y;
 
 	for (int i = 0; i < count; i++) {
-		indigo_calculate_drift(&ref[i], &new[i], &drift_x, &drift_y);
+		indigo_calculate_drift(&ref[i], &new_digest[i], &drift_x, &drift_y);
 		drifts_x[i] = drift_x;
 		drifts_y[i] = drift_y;
 		drifts[i] = sqrt(drift_x * drift_x + drift_y * drift_y);
@@ -1216,14 +1216,14 @@ double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_ti
 	return response;
 }
 
-indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new, double *drift_x, double *drift_y) {
-	if (ref == NULL || new == NULL || drift_x == NULL || drift_y == NULL)
+indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y) {
+	if (ref == NULL || new_digest == NULL || drift_x == NULL || drift_y == NULL)
 		return INDIGO_FAILED;
-	if ((ref->width != new->width) || (ref->height != new->height))
+	if ((ref->width != new_digest->width) || (ref->height != new_digest->height))
 		return INDIGO_FAILED;
 	if (ref->algorithm == centroid) {
-		*drift_x = new->centroid_x - ref->centroid_x;
-		*drift_y = new->centroid_y - ref->centroid_y;
+		*drift_x = new_digest->centroid_x - ref->centroid_x;
+		*drift_y = new_digest->centroid_y - ref->centroid_y;
 		return INDIGO_OK;
 	}
 	if (ref->algorithm == donuts) {
@@ -1231,10 +1231,10 @@ indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indig
 		int max_dim = (ref->width > ref->height) ? ref->width : ref->height;
 		c_buf = indigo_safe_malloc(2 * max_dim * sizeof(double));
 		/* find X correction */
-		corellate_fft(ref->width, new->fft_x, ref->fft_x, c_buf);
+		corellate_fft(ref->width, new_digest->fft_x, ref->fft_x, c_buf);
 		*drift_x = find_distance(ref->width, c_buf);
 		/* find Y correction */
-		corellate_fft(ref->height, new->fft_y, ref->fft_y, c_buf);
+		corellate_fft(ref->height, new_digest->fft_y, ref->fft_y, c_buf);
 		*drift_y = find_distance(ref->height, c_buf);
 		free(c_buf);
 		return INDIGO_OK;

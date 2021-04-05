@@ -24,6 +24,10 @@
 
 #include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct {
 	int handle;
 	int count;
@@ -32,5 +36,9 @@ typedef struct {
 extern indigo_ser *indigo_ser_open(const char *filename, void *buffer, bool little_endian, bool byte_order_rgb);
 extern bool indigo_ser_add_frame(indigo_ser *ser, void *buffer, size_t len);
 extern bool indigo_ser_close(indigo_ser *ser);
-	
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* indigo_ser_h */
