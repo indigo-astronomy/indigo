@@ -72,6 +72,7 @@ static indigo_server_tcp_callback server_callback;
 int indigo_server_tcp_port = 7624;
 bool indigo_is_ephemeral_port = false;
 bool indigo_use_blob_buffering = false;
+bool indigo_use_blob_compression = false;
 
 static pthread_mutex_t resource_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -188,7 +189,7 @@ static void start_worker_thread(int *client_socket) {
 								strcpy(working_format, entry->format);
 								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 								if (indigo_use_blob_buffering) {
-									if (use_gzip && working_size > 1024 && strcmp(entry->format, ".jpeg")) {
+									if (use_gzip && indigo_use_blob_compression && strcmp(entry->format, ".jpeg")) {
 										unsigned compressed_size = (unsigned)working_size;
 										indigo_compress("image", entry->content, (unsigned)working_size, working_copy, &compressed_size);
 										INDIGO_PRINTF(socket, "Content-Encoding: gzip\r\n");
