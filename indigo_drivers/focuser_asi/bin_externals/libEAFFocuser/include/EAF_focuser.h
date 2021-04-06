@@ -36,6 +36,12 @@ typedef enum _EAF_ERROR_CODE{
 	EAF_ERROR_END = -1
 }EAF_ERROR_CODE;
 
+typedef struct _EAF_ID{
+	unsigned char id[8];
+}EAF_ID;
+
+typedef EAF_ID EAF_SN;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -104,9 +110,7 @@ EAF_INFO *pInfo:  pointer to structure containing the property of EAF
 
 Return: 
 EAF_ERROR_INVALID_ID: invalid ID value
-EAF_ERROR_MOVING: focuser is moving.
 EAF_SUCCESS: operation succeeds
-EAF_ERROR_REMOVED: focuser is removed
 
 ***************************************************************************/
 
@@ -390,6 +394,39 @@ EAF_SUCCESS: operation succeeds
 ***************************************************************************/
 EAF_API	EAF_ERROR_CODE EAFGetFirmwareVersion(int ID, unsigned char *major, unsigned char *minor, unsigned char *build);
 
+/***************************************************************************
+Descriptions:
+Get the serial number from a EAF
+
+Paras:
+int ID: the ID of focuser
+
+EAF_SN* pSN: pointer to SN
+
+Return: 
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EFW_ERROR_NOT_SUPPORTED: the firmware does not support serial number
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFGetSerialNumber(int ID, EAF_SN* pSN);
+
+/***************************************************************************
+Descriptions:
+Set the alias to a EAF
+
+Paras:
+int ID: the ID of focuser
+
+EAF_ID alias: the struct which contains the alias
+
+Return: 
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EFW_ERROR_NOT_SUPPORTED: the firmware does not support setting alias
+EAF_SUCCESS: operation succeeds
+***************************************************************************/
+EAF_API EAF_ERROR_CODE EAFSetID(int ID, EAF_ID alias);
 #ifdef __cplusplus
 }
 #endif
