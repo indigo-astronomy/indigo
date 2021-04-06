@@ -88,6 +88,7 @@
 typedef struct {
 	int handle;
 	uint32_t current_position, target_position, max_position;
+	bool positive_last_move;
 	int backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
@@ -267,6 +268,30 @@ static bool mfp_goto_position(indigo_device *device, uint32_t position) {
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
+static bool mfp_goto_position_bl(indigo_device *device, uint32_t position) {
+	uint32_t target_position = position;
+
+	int move = position - (int)PRIVATE_DATA->current_position;
+	if (move > 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving (+), last_move (+) = %d", PRIVATE_DATA->positive_last_move);
+		if (PRIVATE_DATA->positive_last_move) {
+			target_position = position;
+		} else {
+			target_position = position + (int)(FOCUSER_BACKLASH_ITEM->number.value);
+		}
+		PRIVATE_DATA->positive_last_move = true;
+	} else if (move < 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving (-), last_move (+) = %d", PRIVATE_DATA->positive_last_move);
+		if (PRIVATE_DATA->positive_last_move) {
+			target_position = position - (int)(FOCUSER_BACKLASH_ITEM->number.value);
+		} else {
+			target_position = position;
+		}
+		PRIVATE_DATA->positive_last_move = false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "target = %d, requested = %d, position = %d, backlash = %d", target_position, position, PRIVATE_DATA->current_position, (int)(FOCUSER_BACKLASH_ITEM->number.value));
+	return mfp_goto_position(device, target_position);
+}
 
 static bool mfp_get_step_mode(indigo_device *device, stepmode_t *mode) {
 	uint32_t _mode;
@@ -282,6 +307,15 @@ static bool mfp_set_step_mode(indigo_device *device, stepmode_t mode) {
 	return mfp_command(device, command, NULL, 0, 100);
 }
 
+static bool mfp_enable_backlash(indigo_device *device, bool enable) {
+	bool res = false;
+	if (enable) {
+		res = mfp_command(device, ":731#", NULL, 0, 100) && mfp_command(device, ":751#", NULL, 0, 100);
+	} else {
+		res = mfp_command(device, ":730#", NULL, 0, 100) && mfp_command(device, ":750#", NULL, 0, 100);
+	}
+	return res;
+}
 
 static bool mfp_get_max_position(indigo_device *device, uint32_t *position) {
 	return mfp_command_get_int_value(device, ":08#", 'M', position);
@@ -463,8 +497,8 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
-	if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+	if (!mfp_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -530,6 +564,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		X_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
@@ -679,6 +714,10 @@ static void focuser_connect_callback(indigo_device *device) {
 					mfp_get_position(device, &position);
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
 
+					if(!mfp_enable_backlash(device, false)) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_enable_backlash(%d) failed", PRIVATE_DATA->handle);
+					}
+
 					if (!mfp_get_max_position(device, &PRIVATE_DATA->max_position)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_get_max_position(%d) failed", PRIVATE_DATA->handle);
 					}
@@ -792,8 +831,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				if (!mfp_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -876,8 +915,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			if (!mfp_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+			if (!mfp_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -917,6 +956,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH_PROPERTY
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_STEP_MODE_PROPERTY, property)) {
