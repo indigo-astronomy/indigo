@@ -520,6 +520,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 						alpaca_device->device_type = "Rotator";
 						break;
 					case INDIGO_INTERFACE_AUX_POWERBOX:
+					case INDIGO_INTERFACE_AUX_GPIO:
 						alpaca_device->device_type = "Switch";
 						break;
 					case INDIGO_INTERFACE_AO:
