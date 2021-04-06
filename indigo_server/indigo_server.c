@@ -1103,7 +1103,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 			indigo_set_log_level(INDIGO_LOG_ERROR);
 		} else if (SERVER_LOG_LEVEL_INFO_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_INFO);
-		} else if (SERVER_LOG_LEVEL_ERROR_ITEM->sw.value) {
+		} else if (SERVER_LOG_LEVEL_DEBUG_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_DEBUG);
 		} else if (SERVER_LOG_LEVEL_TRACE_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_TRACE);
