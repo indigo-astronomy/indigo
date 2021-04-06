@@ -23,7 +23,7 @@
  \file indigo_focuser_dsd.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_focuser_dsd"
 
 #include <stdlib.h>
@@ -112,7 +112,7 @@ typedef struct {
 	int handle;
 	int focuser_version;
 	uint32_t current_position, target_position, max_position;
-	int backlash;
+	bool positive_last_move;
 	double prev_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
@@ -298,6 +298,16 @@ static bool dsd_goto_position(indigo_device *device, uint32_t position) {
 	return dsd_command(device, "[SMOV]", NULL, 0, 100);
 }
 
+
+static bool dsd_goto_position_bl(indigo_device *device, uint32_t position) {
+	uint32_t target_position = indigo_compensate_backlash(
+		position,
+		(int)PRIVATE_DATA->current_position,
+		(int)FOCUSER_BACKLASH_ITEM->number.value,
+		&PRIVATE_DATA->positive_last_move
+	);
+	return dsd_goto_position(device, target_position);
+}
 
 static bool dsd_get_step_mode(indigo_device *device, stepmode_t *mode) {
 	uint32_t _mode;
@@ -559,8 +569,8 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
-	if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+	if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
@@ -629,6 +639,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 
 		// -------------------------------------------------------------------------- DSD_MODEL_HINT_PROPERTY
 		DSD_MODEL_HINT_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_MODEL_HINT_PROPERTY_NAME, MAIN_GROUP, "Focuser model hint", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -991,8 +1002,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-				if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+				if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -1080,8 +1091,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			if (!dsd_goto_position(device, (uint32_t)PRIVATE_DATA->target_position)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
+			if (!dsd_goto_position_bl(device, (uint32_t)PRIVATE_DATA->target_position)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_goto_position_bl(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -1121,6 +1132,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH_PROPERTY
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DSD_STEP_MODE_PROPERTY, property)) {
