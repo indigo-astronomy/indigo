@@ -144,7 +144,8 @@ typedef struct {
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature;
-
+	int max_bin;
+	bool bins_ok[4];
 	/* Filter wheel specific */
 	indigo_timer *wheel_timer;
 	int fw_count;
@@ -714,7 +715,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
 				CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
 				CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
-
+				CCD_FRAME_LEFT_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.value = 0;
 				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
 				CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_INFO_BITS_PER_PIXEL_ITEM->number.min = PRIVATE_DATA->bpp;
@@ -754,39 +755,40 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 				// --------------------------------------------------------------------------------- BINNING
-				bool bins_ok[4] = {false};
-				int max_bin = 0;
+				PRIVATE_DATA->bins_ok[0] = PRIVATE_DATA->bins_ok[1] = PRIVATE_DATA->bins_ok[2] = PRIVATE_DATA->bins_ok[3] = false;
+				PRIVATE_DATA->max_bin = 0;
 				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN1X1MODE) == QHYCCD_SUCCESS) {
-					max_bin = 1;
-					bins_ok[0] = true;
+					PRIVATE_DATA->max_bin = 1;
+					PRIVATE_DATA->bins_ok[0] = true;
 				}
 				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN2X2MODE) == QHYCCD_SUCCESS) {
-					max_bin = 2;
-					bins_ok[1] = true;
+					PRIVATE_DATA->max_bin = 2;
+					PRIVATE_DATA->bins_ok[1] = true;
 				}
 				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN3X3MODE) == QHYCCD_SUCCESS) {
-					max_bin = 3;
-					bins_ok[2] = true;
+					PRIVATE_DATA->max_bin = 3;
+					PRIVATE_DATA->bins_ok[2] = true;
 				}
 				if (IsQHYCCDControlAvailable(PRIVATE_DATA->handle, CAM_BIN4X4MODE) == QHYCCD_SUCCESS) {
-					max_bin = 4;
-					bins_ok[3] = true;
+					PRIVATE_DATA->max_bin = 4;
+					PRIVATE_DATA->bins_ok[3] = true;
 				}
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.min = 1;
-				CCD_BIN_HORIZONTAL_ITEM->number.max = max_bin;
+				CCD_BIN_HORIZONTAL_ITEM->number.max = PRIVATE_DATA->max_bin;
 				CCD_BIN_VERTICAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.min = 1;
-				CCD_BIN_VERTICAL_ITEM->number.max = max_bin;
+				CCD_BIN_VERTICAL_ITEM->number.max = PRIVATE_DATA->max_bin;
 
-				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_bin;
-				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_bin;
+				CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = PRIVATE_DATA->max_bin;
+				CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = PRIVATE_DATA->max_bin;
 
 				// --------------------------------------------------------------------------------- MODE
 				int count = 0;
 				char name[32], label[64];
-				for (int bin = 1; bin <= max_bin; bin++) {
-					if (!bins_ok[bin-1]) continue;
+				for (int bin = 1; bin <= PRIVATE_DATA->max_bin; bin++) {
+					if (!PRIVATE_DATA->bins_ok[bin-1])
+						continue;
 					if (bpp_supported(device, 8)) {
 						snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
 						snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
@@ -1148,6 +1150,37 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
 					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
 					indigo_update_property(device, CCD_INFO_PROPERTY, NULL);
+					PRIVATE_DATA->frame_width = PRIVATE_DATA->frame_height = 0;
+					GetQHYCCDEffectiveArea(PRIVATE_DATA->handle, &PRIVATE_DATA->frame_offset_x, &PRIVATE_DATA->frame_offset_y, &PRIVATE_DATA->frame_width, &PRIVATE_DATA->frame_height);
+					if ((PRIVATE_DATA->frame_width == 0) || (PRIVATE_DATA->frame_height == 0)) {
+						PRIVATE_DATA->frame_width = PRIVATE_DATA->total_frame_width;
+						PRIVATE_DATA->frame_height = PRIVATE_DATA->total_frame_height;
+					}
+					CCD_FRAME_LEFT_ITEM->number.value = CCD_FRAME_TOP_ITEM->number.value = 0;
+					CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->frame_width;
+					CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->frame_height;
+					indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+					indigo_delete_property(device, CCD_MODE_PROPERTY, NULL);
+					int count = 0;
+					char name[32], label[64];
+					for (int bin = 1; bin <= PRIVATE_DATA->max_bin; bin++) {
+						if (!PRIVATE_DATA->bins_ok[bin-1])
+							continue;
+						if (bpp_supported(device, 8)) {
+							snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
+							snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1 && PIXEL_FORMAT_PROPERTY->items[0].sw.value);
+							count++;
+						}
+						if (bpp_supported(device, 16)) {
+							snprintf(name, 32, "%s %dx%d", RAW16_NAME, bin, bin);
+							snprintf(label, 64, "%s %dx%d", RAW16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+							indigo_init_switch_item(CCD_MODE_PROPERTY->items + count, name, label, bin == 1  && PIXEL_FORMAT_PROPERTY->items[1].sw.value);
+							count++;
+						}
+					}
+					CCD_MODE_PROPERTY->count = count;
+					indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
 					READ_MODE_PROPERTY->state = INDIGO_OK_STATE;
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
