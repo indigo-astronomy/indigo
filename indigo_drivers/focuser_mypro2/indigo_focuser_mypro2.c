@@ -269,27 +269,12 @@ static bool mfp_goto_position(indigo_device *device, uint32_t position) {
 }
 
 static bool mfp_goto_position_bl(indigo_device *device, uint32_t position) {
-	uint32_t target_position = position;
-
-	int move = position - (int)PRIVATE_DATA->current_position;
-	if (move > 0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving (+), last_move (+) = %d", PRIVATE_DATA->positive_last_move);
-		if (PRIVATE_DATA->positive_last_move) {
-			target_position = position;
-		} else {
-			target_position = position + (int)(FOCUSER_BACKLASH_ITEM->number.value);
-		}
-		PRIVATE_DATA->positive_last_move = true;
-	} else if (move < 0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving (-), last_move (+) = %d", PRIVATE_DATA->positive_last_move);
-		if (PRIVATE_DATA->positive_last_move) {
-			target_position = position - (int)(FOCUSER_BACKLASH_ITEM->number.value);
-		} else {
-			target_position = position;
-		}
-		PRIVATE_DATA->positive_last_move = false;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "target = %d, requested = %d, position = %d, backlash = %d", target_position, position, PRIVATE_DATA->current_position, (int)(FOCUSER_BACKLASH_ITEM->number.value));
+	uint32_t target_position = indigo_compensate_backlash(
+		position,
+		(int)PRIVATE_DATA->current_position,
+		(int)FOCUSER_BACKLASH_ITEM->number.value,
+		&PRIVATE_DATA->positive_last_move
+	);
 	return mfp_goto_position(device, target_position);
 }
 
