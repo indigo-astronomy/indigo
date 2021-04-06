@@ -349,6 +349,10 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
  */
 extern bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request);
 
+/** Calculate position corrected with a backlash
+*/
+extern int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive);
+
 #ifdef __cplusplus
 }
 #endif

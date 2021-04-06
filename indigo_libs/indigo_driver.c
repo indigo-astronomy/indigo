@@ -228,6 +228,36 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 #endif
 }
 
+int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive) {
+	uint32_t target_position = requested_position;
+	int move = requested_position - current_position;
+	if (move > 0) {
+		INDIGO_DEBUG(indigo_debug("Moving (+), last_move (+) = %d", *is_last_move_poitive));
+		if (*is_last_move_poitive) {
+			target_position = requested_position;
+		} else {
+			target_position = requested_position + backlash;
+		}
+		*is_last_move_poitive = true;
+	} else if (move < 0) {
+		INDIGO_DEBUG(indigo_debug("Moving (-), last_move (+) = %d", *is_last_move_poitive));
+		if (*is_last_move_poitive) {
+			target_position = requested_position - backlash;
+		} else {
+			target_position = requested_position;
+		}
+		*is_last_move_poitive = false;
+	}
+	INDIGO_DEBUG(indigo_debug(
+		"target = %d, requested = %d, position = %d, backlash = %d",
+		target_position,
+		requested_position,
+		current_position,
+		backlash
+	));
+	return target_position;
+}
+
 indigo_result indigo_device_attach(indigo_device *device, const char* driver_name, indigo_version version, int interface) {
 	assert(device != NULL);
 	assert(device != NULL);
