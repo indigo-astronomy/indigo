@@ -429,7 +429,7 @@ int indigo_read_line(int handle, char *buffer, int length) {
 				break;
 		} else {
 			errno = ECONNRESET;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → ERROR", handle));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → Connection reset", handle));
 			return -1;
 		}
 	}
