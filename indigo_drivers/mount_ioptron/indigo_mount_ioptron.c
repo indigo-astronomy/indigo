@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x001A
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -47,6 +47,9 @@
 #include "indigo_mount_ioptron.h"
 
 #define PRIVATE_DATA        ((ioptron_private_data *)device->private_data)
+
+#define MOUNT_HOME_SEARCH_ITEM				(MOUNT_HOME_PROPERTY->items+1)
+#define MOUNT_HOME_SEARCH_ITEM_NAME		"SEARCH"
 
 #define RA_MIN_DIF					0.1
 #define DEC_MIN_DIF					0.1
@@ -353,7 +356,7 @@ static void position_timer_callback(indigo_device *device) {
 						}
 						if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
 							MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-							indigo_update_property(device, MOUNT_HOME_PROPERTY, "At home");
+							indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 						}
 						if (PRIVATE_DATA->no_park && MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 							ieq_command(device, ":ST0#", response, 1); // stop tracking at home position instead
@@ -975,6 +978,8 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 1.5;
 				if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
 					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
+				if (!strncmp(PRIVATE_DATA->product, "CEM60", 5) || !strncmp(PRIVATE_DATA->product, "CEM40", 5))
+					MOUNT_HOME_PROPERTY->count = 2;
 				sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
 				if (ieq_command(device, command, response, 1) && *response == '1')
 					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1062,6 +1067,7 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 1.9;
 				if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
 					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
+				MOUNT_HOME_PROPERTY->count = 2;
 				sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
 				if (ieq_command(device, command, response, 1) && *response == '1')
 					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1197,14 +1203,18 @@ static void mount_park_callback(indigo_device *device) {
 static void mount_home_callback(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (!strncmp(PRIVATE_DATA->product, "CEM60", 5) || !strncmp(PRIVATE_DATA->product, "CEM40", 5) || PRIVATE_DATA->protocol == 0x0300) {
-		ieq_command(device, ":MSH#", response, 1);
-	} else {
+	if (MOUNT_HOME_ITEM->sw.value) {
 		ieq_command(device, ":MH#", response, 1);
+		MOUNT_HOME_ITEM->sw.value = false;
+		MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
 	}
-	MOUNT_HOME_ITEM->sw.value = false;
-	MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
+	if (MOUNT_HOME_SEARCH_ITEM->sw.value) {
+		ieq_command(device, ":MSH#", response, 1);
+		MOUNT_HOME_SEARCH_ITEM->sw.value = false;
+		MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Searching home");
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -1834,6 +1844,12 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_TRACK_RATE_PROPERTY->count = 5;
+		// -------------------------------------------------------------------------------- MOUNT_HOME
+		MOUNT_HOME_PROPERTY = indigo_resize_property(MOUNT_HOME_PROPERTY, 2);
+		if (MOUNT_HOME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(MOUNT_HOME_SEARCH_ITEM, MOUNT_HOME_SEARCH_ITEM_NAME, "Search mechanical zero position", false);
+		MOUNT_HOME_PROPERTY->count = 1;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -1879,7 +1895,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(MOUNT_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_HOME
 		indigo_property_copy_values(MOUNT_HOME_PROPERTY, property, false);
-		if (MOUNT_HOME_ITEM->sw.value) {
+		if (MOUNT_HOME_ITEM->sw.value || MOUNT_HOME_SEARCH_ITEM->sw.value) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 			indigo_set_timer(device, 0, mount_home_callback, NULL);
