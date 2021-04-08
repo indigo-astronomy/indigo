@@ -32,6 +32,7 @@
 
 #define ALPACA_INTERFACE_VERSION	1
 #define ALPACA_MAX_FILTERS				32
+#define ALPACA_MAX_SWITCHES				8
 
 typedef enum {
 	indigo_alpaca_error_OK = 0x000,
@@ -177,15 +178,19 @@ typedef struct indigo_alpaca_device_struct {
 			bool isflapmoving;
 		} dome;
 		struct {
-			uint32_t maxswitch;
-			bool canwrite;
-			bool switchstate[32];
-			char switchdescription[32][INDIGO_VALUE_SIZE];
-			char switchname[32][INDIGO_VALUE_SIZE];
-			double switchvalue[32];
-			double minswitchvalue[32];
-			double maxswitchvalue[32];
-			double switchstep[32];
+			uint32_t maxswitch_power_outlet;
+			uint32_t maxswitch_heater_outlet;
+			uint32_t maxswitch_usb_port;
+			uint32_t maxswitch_gpio_outlet;
+			uint32_t maxswitch_gpio_sensor;
+			bool canwrite[5 * ALPACA_MAX_SWITCHES];
+			char switchname[5 * ALPACA_MAX_SWITCHES][INDIGO_VALUE_SIZE];
+			double switchvalue[5 * ALPACA_MAX_SWITCHES];
+			double minswitchvalue[5 * ALPACA_MAX_SWITCHES];
+			double maxswitchvalue[5 * ALPACA_MAX_SWITCHES];
+			double switchstep[5 * ALPACA_MAX_SWITCHES];
+			bool valueset[5];
+			bool nameset[5];
 		} sw;
 		struct {
 			bool canpulseguide;
@@ -215,7 +220,7 @@ extern bool indigo_alpaca_wait_for_int32(int32_t *reference, int32_t value, int 
 extern bool indigo_alpaca_wait_for_double(double *reference, double value, int timeout);
 
 extern void indigo_alpaca_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length);
 extern long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
@@ -252,7 +257,7 @@ extern long indigo_alpaca_dome_get_command(indigo_alpaca_device *alpaca_device, 
 extern long indigo_alpaca_dome_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern void indigo_alpaca_switch_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
-extern long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
+extern long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length);
 extern long indigo_alpaca_switch_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
 
 extern indigo_device *indigo_agent_alpaca_device;

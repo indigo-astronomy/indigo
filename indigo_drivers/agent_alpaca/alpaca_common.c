@@ -296,7 +296,7 @@ long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *v
 	return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
 }
 
-long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length) {
+long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length) {
 	if (!strcmp(command, "name")) {
 		char value[INDIGO_NAME_SIZE] = {0};
 		indigo_alpaca_error result = alpaca_get_name(alpaca_device, version, value);
@@ -377,7 +377,7 @@ long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version,
 	) return result;
 	if (
 		(IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_POWERBOX) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_GPIO)) &&
-		(result = indigo_alpaca_switch_get_command(alpaca_device, version, command, buffer, buffer_length))
+		(result = indigo_alpaca_switch_get_command(alpaca_device, version, command, id, buffer, buffer_length))
 	) return result;
 	// TBD other device types
 	return 0;

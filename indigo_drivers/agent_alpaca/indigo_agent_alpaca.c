@@ -152,20 +152,24 @@ static void shutdown_discovery_server() {
 	}
 }
 
-static void parse_url_params(char *params, uint32_t *client_id, uint32_t *client_transaction_id) {
+static void parse_url_params(char *params, uint32_t *client_id, uint32_t *client_transaction_id, int *id) {
 	if (params == NULL)
 		return;
 	while (true) {
 		char *token = strtok_r(params, "&", &params);
 		if (token == NULL)
 			break;
-		if (!strncmp(token, "ClientID", 8)) {
+		if (!strncasecmp(token, "ClientID", 8)) {
 			if ((token = strchr(token, '='))) {
 				*client_id = (uint32_t)atol(token + 1);
 			}
-		} else if (!strncmp(token, "ClientTransactionID", 19)) {
+		} else if (!strncasecmp(token, "ClientTransactionID", 19)) {
 			if ((token = strchr(token, '='))) {
 				*client_transaction_id = (uint32_t)atol(token + 1);
+			}
+		} else if (id && !strncasecmp(token, "ID", 2)) {
+			if ((token = strchr(token, '='))) {
+				*id = (int)atol(token + 1);
 			}
 		}
 	}
@@ -222,7 +226,7 @@ static bool alpaca_setup_handler(int socket, char *method, char *path, char *par
 static bool alpaca_apiversions_handler(int socket, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char buffer[128];
-	parse_url_params(params, &client_id, &client_transaction_id);
+	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
 	send_json_response(socket, path, 200, "OK", buffer);
 	return true;
@@ -231,7 +235,7 @@ static bool alpaca_apiversions_handler(int socket, char *method, char *path, cha
 static bool alpaca_v1_description_handler(int socket, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char buffer[512];
-	parse_url_params(params, &client_id, &client_transaction_id);
+	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"ServerVersion\": \"%d.%d-%s\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerURL\": \"https://www.indigo-astronomy.org\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, client_transaction_id, server_transaction_id++);
 	send_json_response(socket, path, 200, "OK", buffer);
 	return true;
@@ -242,7 +246,7 @@ static bool alpaca_v1_description_handler(int socket, char *method, char *path, 
 static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char *buffer = indigo_safe_malloc(BUFFER_SIZE);
-	parse_url_params(params, &client_id, &client_transaction_id);
+	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	long index = snprintf(buffer, BUFFER_SIZE, "{ \"Value\": [ ");
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	while (alpaca_device) {
@@ -269,6 +273,7 @@ int string_cmp(const void * a, const void * b) {
 static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *params) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s %s %s", method, path, params);
 	uint32_t client_id = 0, client_transaction_id = 0;
+	int id = 0;
 	char *device_type = strstr(path, "/api/v1/");
 	if (device_type == NULL) {
 		send_text_response(socket, path, 400, "Bad Request", "Wrong API prefix");
@@ -305,14 +310,14 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		return true;
 	}
 	if (!strncmp(method, "GET", 3)) {
-		parse_url_params(params, &client_id, &client_transaction_id);
+		parse_url_params(params, &client_id, &client_transaction_id, &id);
 		if (!strncmp(command, "imagearray", 10)) {
 			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"));
 			return false;
 		} else {
 			buffer = indigo_safe_malloc(BUFFER_SIZE);
 			long index = snprintf(buffer, BUFFER_SIZE, "{ ");
-			long length = indigo_alpaca_get_command(alpaca_device, 1, command, buffer + index, BUFFER_SIZE - index);
+			long length = indigo_alpaca_get_command(alpaca_device, 1, command, id, buffer + index, BUFFER_SIZE - index);
 			if (length > 0) {
 				index += length;
 				snprintf(buffer + index, BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
@@ -502,37 +507,25 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, INFO_DEVICE_INTERFACE_ITEM_NAME)) {
 				alpaca_device->indigo_interface = atoll(item->text.value);
-				switch (alpaca_device->indigo_interface) {
-					case INDIGO_INTERFACE_CCD:
-						alpaca_device->ccd.ccdtemperature = NAN;
-						alpaca_device->device_type = "Camera";
-						break;
-					case INDIGO_INTERFACE_DOME:
-						alpaca_device->device_type = "Dome";
-						break;
-					case INDIGO_INTERFACE_WHEEL:
-						alpaca_device->device_type = "FilterWheel";
-						break;
-					case INDIGO_INTERFACE_FOCUSER:
-						alpaca_device->device_type = "Focuser";
-						break;
-					case INDIGO_INTERFACE_ROTATOR:
-						alpaca_device->device_type = "Rotator";
-						break;
-					case INDIGO_INTERFACE_AUX_POWERBOX:
-					case INDIGO_INTERFACE_AUX_GPIO:
-						alpaca_device->device_type = "Switch";
-						break;
-					case INDIGO_INTERFACE_AO:
-					case INDIGO_INTERFACE_MOUNT:
-					case INDIGO_INTERFACE_GUIDER:
-						alpaca_device->device_type = "Telescope";
-						break;
-					case INDIGO_INTERFACE_AUX_LIGHTBOX:
-						alpaca_device->device_type = "CoverCalibrator";
-						break;
-					default:
-						alpaca_device->device_type = NULL;
+				if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {
+					alpaca_device->ccd.ccdtemperature = NAN;
+					alpaca_device->device_type = "Camera";
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_DOME)) {
+					alpaca_device->device_type = "Dome";
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_WHEEL)) {
+					alpaca_device->device_type = "FilterWheel";
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_FOCUSER)) {
+					alpaca_device->device_type = "Focuser";
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_ROTATOR)) {
+					alpaca_device->device_type = "Rotator";
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_POWERBOX) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_GPIO)) {
+					alpaca_device->device_type = "Switch";
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AO) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_MOUNT) || IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_GUIDER)) {
+					alpaca_device->device_type = "Telescope";
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AUX_LIGHTBOX)) {
+					alpaca_device->device_type = "CoverCalibrator";
+				} else {
+					alpaca_device->device_type = NULL;
 				}
 				if (alpaca_device->device_type) {
 					int device_number;
