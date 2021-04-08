@@ -132,7 +132,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		// -------------------------------------------------------------------------------- OUTLET_NAMES
-		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, "X_AUX_OUTLET_NAMES", AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		AUX_OUTLET_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_OUTLET_NAMES_PROPERTY_NAME, AUX_GROUP, "Outlet names", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AUX_OUTLET_NAMES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AUX_HEATER_OUTLET_NAME_1_ITEM, AUX_HEATER_OUTLET_NAME_1_ITEM_NAME, "Heater #1", "Heater #1");
