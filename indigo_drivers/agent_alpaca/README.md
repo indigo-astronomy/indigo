@@ -1,6 +1,9 @@
 # ASCOM ALPACA bridge agent
 
+This driver provides ASCOM Alpaca interface to INDIGO devices. This enables ASCOM applications to operate with INDIGO devices.
+
 https://github.com/ASCOMInitiative/ASCOMRemote/blob/master/Documentation/ASCOM%20Alpaca%20API%20Reference.pdf
+
 https://ascom-standards.org/api
 
 ## Supported devices
@@ -19,9 +22,27 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_alpaca ...
 
-## Status: Under development
+## INDIGO - Alpaca Device mapping
 
-## Notes
+|           | Camera | CoverCalibrator | Dome | FilterWheel | Focuser | ObservingConditions | Rotator | SafetyMonitor | Switch | Telescope |
+|-----------|:------:|:---------------:|:----:|:-----------:|:-------:|:-------------------:|:-------:|:-------------:|:------:|:---------:|
+| CCD       | OK*    |                 |      |             |         |                     |         |               |        |           |
+| Lightbox  |        | OK              |      |             |         |                     |         |               |        |           |
+| Dustcap   |        | ?? Not Ready    |      |             |         |                     |         |               |        |           |
+| Dome      |        |                 |  OK  |             |         |                     |         |               |        |           |
+| Fileter   |        |                 |      |     OK      |         |                     |         |               |        |           |
+| Focuser   |        |                 |      |             |    OK   |                     |         |               |        |           |
+| Weather   |        |                 |      |             |         |       Not Ready     |         |               |        |           |
+| SQM       |        |                 |      |             |         |       Not Ready     |         |               |        |           |
+| Rotator   |        |                 |      |             |         |                     |   OK    |               |        |           |
+| Powerbox  |        |                 |      |             |         |                     |         |               |   OK   |           |
+| GPIO      |        |                 |      |             |         |                     |         |               |   OK   |           |
+| Mount     |        |                 |      |             |         |                     |         |               |        |    OK     |
+| Guider    |        |                 |      |             |         |                     |         |               |        |    OK*    |
+| AO        |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
+| GPS       |        |                 |      |             |         |                     |         |               |        |           |
+| Joystick  |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
+| Shutter   |        |                 |      |             |         |                     |         |               | Not Ready |        |
 
 ### General
 
@@ -55,7 +76,7 @@ ITelescopeV3 implemented with exception of MoveAxis method group (not compatible
 
 Sufficient subset of ITelescopeV3 implemented, no limitations
 
-### Lightbox
+### Aux Lightbox
 
 ICoverCalibratorV1 implemented, HaltCover is dummy method (no counterpart in INDIGO)
 
@@ -67,8 +88,14 @@ IRotatorV3 implemented, no limitations
 
 IDomeV2 implemented, no limitations
 
-### Aux PowerBox & Aux GPIO
+### Aux Powerbox & Aux GPIO
 ISwitchV2 implemented, no limitations
 
 ### Aux Weather
 Not implemented yet.
+
+## Status: Under development
+
+## Notes
+
+See [Driver ASCOM Conformance Test Results](ASCOM_COMFORMANCE.md)
