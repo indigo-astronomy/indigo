@@ -303,20 +303,18 @@ static indigo_alpaca_error alpaca_get_switchname(indigo_alpaca_device *device, i
 }
 
 static indigo_alpaca_error alpaca_set_setswitch(indigo_alpaca_device *device, int version, int id, bool value) {
-    bool canwrite = false;
-    int max_devices = 0;
-    alpaca_get_canwrite(device, version, id, &canwrite);
-    alpaca_get_maxswitch(device, version, &max_devices);
-    if (!canwrite && id >= 0 && id < max_devices) {
-		return indigo_alpaca_error_NotImplemented;
-    }
+	bool canwrite = false;
+	alpaca_get_canwrite(device, version, id, &canwrite);
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-
-	if (id < 0 || id >= get_switch_number(device)) {
+	int switch_number = get_switch_number(device);
+	if (!canwrite && id >= 0 && id < switch_number {
+		return indigo_alpaca_error_NotImplemented;
+	}
+	if (id < 0 || id >= switch_number) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -353,19 +351,18 @@ static indigo_alpaca_error alpaca_set_setswitch(indigo_alpaca_device *device, in
 }
 
 static indigo_alpaca_error alpaca_set_setswitchvalue(indigo_alpaca_device *device, int version, int id, double value) {
-    bool canwrite = false;
-    int max_devices = 0;
-    alpaca_get_canwrite(device, version, id, &canwrite);
-    alpaca_get_maxswitch(device, version, &max_devices);
-    if (!canwrite && id >= 0 && id < max_devices) {
-		return indigo_alpaca_error_NotImplemented;
-    }
+	bool canwrite = false;
+	alpaca_get_canwrite(device, version, id, &canwrite);
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= get_switch_number(device)) {
+	int switch_number = get_switch_number(device);
+	if (!canwrite && id >= 0 && id < switch_number {
+		return indigo_alpaca_error_NotImplemented;
+	}
+	if (id < 0 || id >= switch_number) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
