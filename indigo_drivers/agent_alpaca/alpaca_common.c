@@ -293,7 +293,11 @@ long indigo_alpaca_append_value_double(char *buffer, long buffer_length, double 
 }
 
 long indigo_alpaca_append_value_string(char *buffer, long buffer_length, char *value, indigo_alpaca_error result) {
-	return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	if (value) {
+		return snprintf(buffer, buffer_length, "\"Value\": \"%s\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", value, result, indigo_alpaca_error_string(result));
+	} else {
+		return snprintf(buffer, buffer_length, "\"Value\": \"\", \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", result, indigo_alpaca_error_string(result));
+	}
 }
 
 long indigo_alpaca_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, int id, char *buffer, long buffer_length) {
