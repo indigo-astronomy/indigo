@@ -46,7 +46,9 @@ Driver is developed and tested with:
 * Output 5 -> GPIO 16
 * Output 6 -> GPIO 05
 * Output 7 -> GPIO 06
-* Output 8 -> GPIO 19
+* Output 8 -> GPIO 21
 
 NOTE: As of version 2.0.0.3 pins GPIO 02 and GPIO 03 are not used by the driver, as they are the default I2C pins.
 GPIO 19 and GPIO 20 are used instead.
+
+NOTE: As of version 2.0.0.4 pin GPIO 19 is not used. Replaced with 21 for AsiAir compatibility.
