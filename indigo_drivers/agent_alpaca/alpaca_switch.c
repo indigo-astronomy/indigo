@@ -27,6 +27,10 @@
 
 #include "alpaca_common.h"
 
+static int get_switch_number(indigo_alpaca_device *device) {
+	return device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor;
+}
+
 static indigo_alpaca_error alpaca_get_interfaceversion(indigo_alpaca_device *device, int version, uint32_t *value) {
 	*value = 2;
 	return indigo_alpaca_error_OK;
@@ -38,7 +42,7 @@ static indigo_alpaca_error alpaca_get_maxswitch(indigo_alpaca_device *device, in
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	*value = device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor;
+	*value = get_switch_number(device);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -49,7 +53,7 @@ static indigo_alpaca_error alpaca_get_canwrite(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -88,7 +92,7 @@ static indigo_alpaca_error alpaca_get_minswitchvalue(indigo_alpaca_device *devic
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -127,7 +131,7 @@ static indigo_alpaca_error alpaca_get_maxswitchvalue(indigo_alpaca_device *devic
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -166,7 +170,7 @@ static indigo_alpaca_error alpaca_get_switchstep(indigo_alpaca_device *device, i
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -205,7 +209,7 @@ static indigo_alpaca_error alpaca_get_switchvalue(indigo_alpaca_device *device, 
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -244,7 +248,7 @@ static indigo_alpaca_error alpaca_get_switch(indigo_alpaca_device *device, int v
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -283,7 +287,7 @@ static indigo_alpaca_error alpaca_get_switchname(indigo_alpaca_device *device, i
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -299,12 +303,20 @@ static indigo_alpaca_error alpaca_get_switchname(indigo_alpaca_device *device, i
 }
 
 static indigo_alpaca_error alpaca_set_setswitch(indigo_alpaca_device *device, int version, int id, bool value) {
+    bool canwrite = false;
+    int max_devices = 0;
+    alpaca_get_canwrite(device, version, id, &canwrite);
+    alpaca_get_maxswitch(device, version, &max_devices);
+    if (!canwrite && id >= 0 && id < max_devices) {
+		return indigo_alpaca_error_NotImplemented;
+    }
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet) {
+
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -341,12 +353,19 @@ static indigo_alpaca_error alpaca_set_setswitch(indigo_alpaca_device *device, in
 }
 
 static indigo_alpaca_error alpaca_set_setswitchvalue(indigo_alpaca_device *device, int version, int id, double value) {
+    bool canwrite = false;
+    int max_devices = 0;
+    alpaca_get_canwrite(device, version, id, &canwrite);
+    alpaca_get_maxswitch(device, version, &max_devices);
+    if (!canwrite && id >= 0 && id < max_devices) {
+		return indigo_alpaca_error_NotImplemented;
+    }
 	pthread_mutex_lock(&device->mutex);
 	if (!device->connected) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -387,7 +406,7 @@ static indigo_alpaca_error alpaca_set_setswitchvalue(indigo_alpaca_device *devic
 		return indigo_alpaca_wait_for_bool(&device->sw.valueset[2], true, 30);
 	}
 	id -= device->sw.maxswitch_usb_port;
-	if (value < device->sw.minswitchvalue[id] || value > device->sw.maxswitchvalue[id]) {
+	if (value < device->sw.minswitchvalue[3 * ALPACA_MAX_SWITCHES + id] || value > device->sw.maxswitchvalue[3 * ALPACA_MAX_SWITCHES + id]) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -404,7 +423,7 @@ static indigo_alpaca_error alpaca_set_setswitchname(indigo_alpaca_device *device
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (id < 0 || id >= device->sw.maxswitch_power_outlet + device->sw.maxswitch_heater_outlet + device->sw.maxswitch_usb_port + device->sw.maxswitch_gpio_outlet + device->sw.maxswitch_gpio_sensor) {
+	if (id < 0 || id >= get_switch_number(device)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -571,7 +590,7 @@ long indigo_alpaca_switch_get_command(indigo_alpaca_device *alpaca_device, int v
 		return indigo_alpaca_append_value_bool(buffer, buffer_length, value, result);
 	}
 	if (!strcmp(command, "getswitchname") || !strcmp(command, "getswitchdescription")) {
-		char *value;
+		char *value = NULL;
 		indigo_alpaca_error result = alpaca_get_switchname(alpaca_device, version, id, &value);
 		return indigo_alpaca_append_value_string(buffer, buffer_length, value, result);
 	}
