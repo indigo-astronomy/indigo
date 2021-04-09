@@ -645,12 +645,10 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_LST_TIME_ITEM_NAME)) {
-					alpaca_device->mount.siderealtime = item->number.value;
-				}
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_LST_TIME_ITEM_NAME)) {
+				alpaca_device->mount.siderealtime = item->number.value;
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_EPOCH_PROPERTY_NAME)) {
@@ -698,25 +696,21 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 		}
 	} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		alpaca_device->mount.slewing = property->state == INDIGO_BUSY_STATE;
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
-					alpaca_device->mount.rightascension = item->number.value;
-				} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
-					alpaca_device->mount.declination = item->number.value;
-				}
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
+				alpaca_device->mount.rightascension = item->number.value;
+			} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
+				alpaca_device->mount.declination = item->number.value;
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_HORIZONTAL_COORDINATES_PROPERTY_NAME)) {
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME)) {
-					alpaca_device->mount.altitude = item->number.value;
-				} else if (!strcmp(item->name, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME)) {
-					alpaca_device->mount.azimuth = item->number.value;
-				}
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM_NAME)) {
+				alpaca_device->mount.altitude = item->number.value;
+			} else if (!strcmp(item->name, MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM_NAME)) {
+				alpaca_device->mount.azimuth = item->number.value;
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_TRACK_RATE_PROPERTY_NAME)) {
