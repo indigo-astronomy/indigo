@@ -28,7 +28,7 @@ indigo_server indigo_agent_alpaca ...
 |-----------|:------:|:---------------:|:----:|:-----------:|:-------:|:-------------------:|:-------:|:-------------:|:------:|:---------:|
 | **CCD**       | OK*    |                 |      |             |         |                     |         |               |        |           |
 | **Lightbox**  |        | OK              |      |             |         |                     |         |               |        |           |
-| **Dustcap**   |        | ?? Not Ready    |      |             |         |                     |         |               |        |           |
+| **Dustcap**   |        | OK              |      |             |         |                     |         |               |        |           |
 | **Dome**      |        |                 |  OK  |             |         |                     |         |               |        |           |
 | **Fileter**   |        |                 |      |     OK      |         |                     |         |               |        |           |
 | **Focuser**   |        |                 |      |             |    OK   |                     |         |               |        |           |
@@ -39,9 +39,9 @@ indigo_server indigo_agent_alpaca ...
 | **GPIO**      |        |                 |      |             |         |                     |         |               |   OK   |           |
 | **Mount**     |        |                 |      |             |         |                     |         |               |        |    OK     |
 | **Guider**    |        |                 |      |             |         |                     |         |               |        |    OK*    |
-| **AO**        |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
+| **AO**        |        |                 |      |             |         |                     |         |               |     |  Not Ready |
 | **GPS**       |        |                 |      |             |         |                     |         |               |        |           |
-| **Joystick**  |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
+| **Joystick**  |        |                 |      |             |         |                     |         |               |     |  Not Ready |
 | **Shutter**   |        |                 |      |             |         |                     |         |               | Not Ready |        |
 
 *See the device notes below
