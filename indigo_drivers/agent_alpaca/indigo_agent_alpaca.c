@@ -608,6 +608,11 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 	return INDIGO_OK;
 }
 
+static indigo_result agent_attach(indigo_client *client) {
+	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
+	return INDIGO_OK;
+}
+
 // -------------------------------------------------------------------------------- Initialization
 
 indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_info *info) {
@@ -622,7 +627,7 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 
 	static indigo_client agent_client_template = {
 		ALPACA_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
-		NULL,
+		agent_attach,
 		agent_define_property,
 		agent_update_property,
 		agent_delete_property,
