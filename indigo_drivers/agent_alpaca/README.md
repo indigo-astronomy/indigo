@@ -101,4 +101,4 @@ Under development
 
 ## Notes
 
-See [Driver ASCOM Conformance Test Results](ASCOM_CONFORMANCE.md)
+See [Driver ASCOM Conformance Test Results](ASCOM_CONFORMANCE.txt)
