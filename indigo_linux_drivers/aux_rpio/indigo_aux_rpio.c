@@ -136,7 +136,7 @@ static void create_device();
 static void delete_device();
 
 
-static int input_pins[]  = { 4, 17, 27, 22, 23, 24, 25, 20};
+static int input_pins[]  = {19, 17, 27, 22, 23, 24, 25, 20};
 static int output_pins[] = {18, 12, 13, 26, 16,  5,  6, 21};
 
 
