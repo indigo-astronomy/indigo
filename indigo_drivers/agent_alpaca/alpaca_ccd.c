@@ -809,27 +809,24 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 	} else if (!strcmp(property->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME)) {
 		alpaca_device->ccd.canabortexposure = true;
 	} else if (!strcmp(property->name, CCD_COOLER_PROPERTY_NAME)) {
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, CCD_COOLER_ON_ITEM_NAME)) {
-					alpaca_device->ccd.cooleron = item->sw.value;
-				}
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_COOLER_ON_ITEM_NAME)) {
+				alpaca_device->ccd.cooleron = item->sw.value;
 			}
 		}
 	} else if (!strcmp(property->name, CCD_COOLER_POWER_PROPERTY_NAME)) {
 		alpaca_device->ccd.cangetcoolerpower = true;
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, CCD_COOLER_POWER_ITEM_NAME)) {
-					alpaca_device->ccd.coolerpower = item->number.value;
-				}
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_COOLER_POWER_ITEM_NAME)) {
+				alpaca_device->ccd.coolerpower = item->number.value;
 			}
 		}
+
 	} else if (!strcmp(property->name, CCD_TEMPERATURE_PROPERTY_NAME)) {
 		alpaca_device->ccd.cansetccdtemperature = property->perm == INDIGO_RW_PERM;
-		if (property->state == INDIGO_OK_STATE) {
+		if (property->state != INDIGO_ALERT_STATE) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, CCD_TEMPERATURE_ITEM_NAME)) {
@@ -902,13 +899,11 @@ void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indi
 		}
 	} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		alpaca_device->ccd.camerastate = property->state == INDIGO_BUSY_STATE ? 2 : 0;
-		if (property->state == INDIGO_OK_STATE) {
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				if (!strcmp(item->name, CCD_EXPOSURE_ITEM_NAME)) {
-					alpaca_device->ccd.exposuremin = item->number.min;
-					alpaca_device->ccd.exposuremax = item->number.max;
-				}
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_EXPOSURE_ITEM_NAME)) {
+				alpaca_device->ccd.exposuremin = item->number.min;
+				alpaca_device->ccd.exposuremax = item->number.max;
 			}
 		}
 	} else if (!strcmp(property->name, CCD_GAIN_PROPERTY_NAME)) {
