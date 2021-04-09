@@ -311,7 +311,7 @@ static indigo_alpaca_error alpaca_set_setswitch(indigo_alpaca_device *device, in
 		return indigo_alpaca_error_NotConnected;
 	}
 	int switch_number = get_switch_number(device);
-	if (!canwrite && id >= 0 && id < switch_number {
+	if (!canwrite && id >= 0 && id < switch_number) {
 		return indigo_alpaca_error_NotImplemented;
 	}
 	if (id < 0 || id >= switch_number) {
@@ -359,7 +359,7 @@ static indigo_alpaca_error alpaca_set_setswitchvalue(indigo_alpaca_device *devic
 		return indigo_alpaca_error_NotConnected;
 	}
 	int switch_number = get_switch_number(device);
-	if (!canwrite && id >= 0 && id < switch_number {
+	if (!canwrite && id >= 0 && id < switch_number) {
 		return indigo_alpaca_error_NotImplemented;
 	}
 	if (id < 0 || id >= switch_number) {

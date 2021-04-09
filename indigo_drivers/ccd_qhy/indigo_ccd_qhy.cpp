@@ -1144,8 +1144,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				if (SetQHYCCDReadMode(PRIVATE_DATA->handle, i) == QHYCCD_SUCCESS) {
 					double chipw, chiph;
 					GetQHYCCDChipInfo(PRIVATE_DATA->handle, &chipw, &chiph, &PRIVATE_DATA->total_frame_width, &PRIVATE_DATA->total_frame_height, &PRIVATE_DATA->pixel_width, &PRIVATE_DATA->pixel_height, &PRIVATE_DATA->bpp);
-					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->frame_width;
-					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->frame_height;
+					CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->total_frame_width;
+					CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->total_frame_height;
 					CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA-> pixel_width;
 					CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->pixel_width;
 					CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->pixel_height;
