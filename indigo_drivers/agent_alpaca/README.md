@@ -22,27 +22,29 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_alpaca ...
 
-## INDIGO - Alpaca Device mapping
+## INDIGO - Alpaca Device Mapping
 
-|           | Camera | CoverCalibrator | Dome | FilterWheel | Focuser | ObservingConditions | Rotator | SafetyMonitor | Switch | Telescope |
+|               | Camera | CoverCalibrator | Dome | FilterWheel | Focuser | ObservingConditions | Rotator | SafetyMonitor | Switch | Telescope |
 |-----------|:------:|:---------------:|:----:|:-----------:|:-------:|:-------------------:|:-------:|:-------------:|:------:|:---------:|
-| CCD       | OK*    |                 |      |             |         |                     |         |               |        |           |
-| Lightbox  |        | OK              |      |             |         |                     |         |               |        |           |
-| Dustcap   |        | ?? Not Ready    |      |             |         |                     |         |               |        |           |
-| Dome      |        |                 |  OK  |             |         |                     |         |               |        |           |
-| Fileter   |        |                 |      |     OK      |         |                     |         |               |        |           |
-| Focuser   |        |                 |      |             |    OK   |                     |         |               |        |           |
-| Weather   |        |                 |      |             |         |       Not Ready     |         |               |        |           |
-| SQM       |        |                 |      |             |         |       Not Ready     |         |               |        |           |
-| Rotator   |        |                 |      |             |         |                     |   OK    |               |        |           |
-| Powerbox  |        |                 |      |             |         |                     |         |               |   OK   |           |
-| GPIO      |        |                 |      |             |         |                     |         |               |   OK   |           |
-| Mount     |        |                 |      |             |         |                     |         |               |        |    OK     |
-| Guider    |        |                 |      |             |         |                     |         |               |        |    OK*    |
-| AO        |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
-| GPS       |        |                 |      |             |         |                     |         |               |        |           |
-| Joystick  |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
-| Shutter   |        |                 |      |             |         |                     |         |               | Not Ready |        |
+| **CCD**       | OK*    |                 |      |             |         |                     |         |               |        |           |
+| **Lightbox**  |        | OK              |      |             |         |                     |         |               |        |           |
+| **Dustcap**   |        | ?? Not Ready    |      |             |         |                     |         |               |        |           |
+| **Dome**      |        |                 |  OK  |             |         |                     |         |               |        |           |
+| **Fileter**   |        |                 |      |     OK      |         |                     |         |               |        |           |
+| **Focuser**   |        |                 |      |             |    OK   |                     |         |               |        |           |
+| **Weather**   |        |                 |      |             |         |       Not Ready     |         |               |        |           |
+| **SQM**       |        |                 |      |             |         |       Not Ready     |         |               |        |           |
+| **Rotator**   |        |                 |      |             |         |                     |   OK    |               |        |           |
+| **Powerbox**  |        |                 |      |             |         |                     |         |               |   OK   |           |
+| **GPIO**      |        |                 |      |             |         |                     |         |               |   OK   |           |
+| **Mount**     |        |                 |      |             |         |                     |         |               |        |    OK     |
+| **Guider**    |        |                 |      |             |         |                     |         |               |        |    OK*    |
+| **AO**        |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
+| **GPS**       |        |                 |      |             |         |                     |         |               |        |           |
+| **Joystick**  |        |                 |      |             |         |                     |         |               |     | ?? Not Ready |
+| **Shutter**   |        |                 |      |             |         |                     |         |               | Not Ready |        |
+
+*See the device notes below
 
 ### General
 
@@ -94,8 +96,9 @@ ISwitchV2 implemented, no limitations
 ### Aux Weather
 Not implemented yet.
 
-## Status: Under development
+## Status:
+Under development
 
 ## Notes
 
-See [Driver ASCOM Conformance Test Results](ASCOM_COMFORMANCE.md)
+See [Driver ASCOM Conformance Test Results](ASCOM_CONFORMANCE.md)
