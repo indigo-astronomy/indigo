@@ -1344,6 +1344,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_IMAGER_FOCUS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_PROPERTY, property, false);
+		char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
+		if (*focuser_name) {
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value);
+		}
 		AGENT_IMAGER_FOCUS_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
@@ -1584,6 +1588,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (!strcmp(property->device, device->name)) {
+		if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
+			AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
+			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
+		}
 	}
 	return indigo_filter_change_property(device, client, property);
 }
@@ -1664,24 +1673,32 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				}
 			}
 		}
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
-		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
-		agent_wheel_filter_property->count = property->count;
-		for (int i = 0; i < property->count; i++)
-			strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
-		agent_wheel_filter_property->hidden = false;
-		indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
-		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
-		int value = property->items->number.value;
-		if (value)
-			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
-		else
-			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
-		agent_wheel_filter_property->state = property->state;
-		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX])) {
+		if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+			agent_wheel_filter_property->count = property->count;
+			for (int i = 0; i < property->count; i++)
+				strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
+			agent_wheel_filter_property->hidden = false;
+			indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+		} else if (!strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
+			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+			int value = property->items->number.value;
+			if (value)
+				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
+			else
+				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
+			agent_wheel_filter_property->state = property->state;
+			indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+		}
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX])) {
+		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+			CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+		} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
+			indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+			AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
+			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
+		}
 	} else {
 		snoop_guider_stats(client, property);
 	}
@@ -1732,25 +1749,33 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			}
 			indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_selection_property, NULL);
 		}
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
-		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
-		agent_wheel_filter_property->count = property->count;
-		for (int i = 0; i < property->count; i++)
-			strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
-		agent_wheel_filter_property->hidden = false;
-		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
-		indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX]) && !strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
-		indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
-		int value = property->items->number.value;
-		if (value)
-			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
-		else
-			indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
-		agent_wheel_filter_property->state = property->state;
-		indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) && !strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX])) {
+		if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+			agent_wheel_filter_property->count = property->count;
+			for (int i = 0; i < property->count; i++)
+				strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
+			agent_wheel_filter_property->hidden = false;
+			indigo_delete_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+			indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+		} else if (!strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
+			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+			int value = property->items->number.value;
+			if (value)
+				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
+			else
+				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
+			agent_wheel_filter_property->state = property->state;
+			indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+		}
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX])) {
+		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+			CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+		} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
+			indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+			AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
+			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
+		}
 	} else {
 		snoop_guider_stats(client, property);
 	}
