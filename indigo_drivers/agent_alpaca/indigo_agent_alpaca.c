@@ -452,6 +452,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_DEVICES_PROPERTY, NULL);
 		save_config(device);
+		return INDIGO_OK;
 	}
 	return indigo_device_change_property(device, client, property);
 }
@@ -474,6 +475,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (device == indigo_agent_alpaca_device)
+		return INDIGO_OK;
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	while (alpaca_device) {
 		if (!strcmp(property->device, alpaca_device->indigo_device))
@@ -609,7 +612,9 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_attach(indigo_client *client) {
-	indigo_enumerate_properties(client, &INDIGO_ALL_PROPERTIES);
+	indigo_property all_properties;
+	memset(&all_properties, 0, sizeof(all_properties));
+	indigo_enumerate_properties(client, &all_properties);
 	return INDIGO_OK;
 }
 
@@ -676,6 +681,7 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 				alpaca_device = alpaca_device->next;
 				indigo_safe_free(tmp);
 			}
+			alpaca_devices = NULL;
 			break;
 
 		case INDIGO_DRIVER_INFO:
