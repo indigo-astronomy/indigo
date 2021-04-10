@@ -472,6 +472,7 @@ bool indigo_printf(int handle, const char *format, ...) {
 		free(buffer);
 		return result;
 	} else {
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, format));
 		return indigo_write(handle, format, strlen(format));
 	}
 }
