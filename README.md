@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/indigo-astronomy/indigo.svg?branch=master)](https://travis-ci.org/indigo-astronomy/indigo)
+[![Build Status](https://travis-ci.org/indigo-astronomy/indigo.svg?branch=master)](https://travis-ci.org/indigo-astronomy/indigo)
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/indigo-astronomy/indigo)
 [![License](http://img.shields.io/badge/INDIGO-license-red.svg)](https://github.com/indigo-astronomy/indigo/blob/master/LICENSE.md)
 ![Website](https://img.shields.io/website?up_message=online&url=https%3A%2F%2Findigo-astronomy.org)
