@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.com/indigo-astronomy/indigo.svg?branch=master)](https://travis-ci.org/indigo-astronomy/indigo)
-[![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/indigo-astronomy/indigo)]
+![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/indigo-astronomy/indigo)
 [![License](http://img.shields.io/badge/INDIGO-license-red.svg)](https://github.com/indigo-astronomy/indigo/blob/master/LICENSE.md)
 
 # INDIGO is the next generation of INDI, based on layered architecture and software bus.
