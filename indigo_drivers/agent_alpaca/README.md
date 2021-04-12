@@ -24,27 +24,34 @@ indigo_server indigo_agent_alpaca ...
 
 ## INDIGO - Alpaca Device Mapping
 
-|               | Camera | CoverCalibrator | Dome | FilterWheel | Focuser | ObservingConditions | Rotator | SafetyMonitor | Switch | Telescope |
-|-----------|:------:|:---------------:|:----:|:-----------:|:-------:|:-------------------:|:-------:|:-------------:|:------:|:---------:|
-| **CCD**       | OK*    |                 |      |             |         |                     |         |               |        |           |
-| **Lightbox**  |        | OK              |      |             |         |                     |         |               |        |           |
-| **Dustcap**   |        | OK              |      |             |         |                     |         |               |        |           |
-| **Dome**      |        |                 |  OK  |             |         |                     |         |               |        |           |
-| **Fileter**   |        |                 |      |     OK      |         |                     |         |               |        |           |
-| **Focuser**   |        |                 |      |             |    OK   |                     |         |               |        |           |
-| **Weather**   |        |                 |      |             |         |       Not Ready     |         |               |        |           |
-| **SQM**       |        |                 |      |             |         |       Not Ready     |         |               |        |           |
-| **Rotator**   |        |                 |      |             |         |                     |   OK    |               |        |           |
-| **Powerbox**  |        |                 |      |             |         |                     |         |               |   OK   |           |
-| **GPIO**      |        |                 |      |             |         |                     |         |               |   OK   |           |
-| **Mount**     |        |                 |      |             |         |                     |         |               |        |    OK     |
-| **Guider**    |        |                 |      |             |         |                     |         |               |        |    OK*    |
-| **AO**        |        |                 |      |             |         |                     |         |               |     |  Not Ready |
-| **GPS**       |        |                 |      |             |         |                     |         |               |        |           |
-| **Joystick**  |        |                 |      |             |         |                     |         |               |     |  Not Ready |
-| **Shutter**   |        |                 |      |             |         |                     |         |               | Not Ready |        |
+|               | Camera | CoverCalibrator | Dome | FilterWheel | Focuser | ObservingConditions | Rotator | SafetyMonitor [3] | Switch | Telescope |
+|---------------|:------:|:---------------:|:----:|:-----------:|:-------:|:-------------------:|:-------:|:-----------------:|:------:|:---------:|
+| **CCD**       | OK [1] |                 |      |             |         |                     |         |                   |        |           |
+| **Lightbox**  |        | OK [1]          |      |             |         |                     |         |                   |        |           |
+| **Dustcap**   |        | OK              |      |             |         |                     |         |                   |        |           |
+| **Dome**      |        |                 |  OK  |             |         |                     |         |                   |        |           |
+| **Fileter**   |        |                 |      |     OK      |         |                     |         |                   |        |           |
+| **Focuser**   |        |                 |      |             |    OK   |                     |         |                   |        |           |
+| **Weather**   |        |                 |      |             |         |       Not Ready     |         |                   |        |           |
+| **SQM**       |        |                 |      |             |         |       Not Ready     |         |                   |        |           |
+| **Rotator**   |        |                 |      |             |         |                     |   OK    |                   |        |           |
+| **Powerbox**  |        |                 |      |             |         |                     |         |                   |   OK   |           |
+| **GPIO**      |        |                 |      |             |         |                     |         |                   |   OK   |           |
+| **Mount**     |        |                 |      |             |         |                     |         |                   |        |    OK     |
+| **Guider**    |        |                 |      |             |         |                     |         |                   |        |   OK [4]  |
+| **AO**        |        |                 |      |             |         |                     |         |                   |        | Not Ready |
+| **Joystick**  |        |                 |      |             |         |                     |         |                   |        | Not Ready |
+| **GPS** [2]   |        |                 |      |             |         |                     |         |                   |        |           |
+| **Shutter** [2]  |     |                 |      |             |         |                     |         |                   |        |           |
 
-*See the device notes below
+[1] Some device API can not be mapped 1:1, but ASCOM conformance passes. See Notes below.
+
+[2] INDIGO device has no equivalent in Alpaca/ASCOM and can not be mapped.
+
+[3] Alpaca/ASCOM Device has no equivalent in INDIGO and can not be mapped.
+
+[4] INDIGO device has no equivalent in Alpaca/ASCOM but can be mapped to a subset of another device. See Notes below.
+
 
 ### General
 
