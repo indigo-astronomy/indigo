@@ -2,7 +2,7 @@
 ![GitHub tag (latest by date)](https://img.shields.io/github/v/tag/indigo-astronomy/indigo)
 [![License](http://img.shields.io/badge/license-INDIGO-red.svg)](https://github.com/indigo-astronomy/indigo/blob/master/LICENSE.md)
 ![Platform](http://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-green.svg)
-![Website](https://img.shields.io/website?up_message=online&url=https%3A%2F%2Findigo-astronomy.org)
+[![Website](https://img.shields.io/website?up_message=online&url=https%3A%2F%2Findigo-astronomy.org)](https://indigo-astronomy.org)
 
 # INDIGO is the next generation of INDI, based on layered architecture and software bus.
 
