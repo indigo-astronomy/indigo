@@ -24,6 +24,4 @@ or
 
 indigo_server -s
 
-## Status: Untested
-
-
+## Status: Stable

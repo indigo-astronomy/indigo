@@ -104,7 +104,7 @@ ISwitchV2 implemented, no limitations
 Not implemented yet.
 
 ## Status:
-Under development
+Needs more testing
 
 ## Notes
 
