@@ -100,7 +100,7 @@ else
 			ARCH_DETECTED = arm64
 			DEBIAN_ARCH = arm64
 			DRPI_MANAGEMENT = -DRPI_MANAGEMENT
-			EXCLUDED_DRIVERS += ccd_sbig
+			#EXCLUDED_DRIVERS += ccd_sbig
 		endif
 		ifeq ($(ARCH_DETECTED),i686)
 			ARCH_DETECTED = x86
@@ -241,7 +241,7 @@ package: reconfigure init all
 	@$(MAKE)	-C indigo_server install
 	@$(MAKE)	-C indigo_tools install
 	@$(MAKE)	-C tools/fxload -f Makefile
-ifeq ($(ARCH_DETECTED),arm)
+ifeq ($(ARCH_DETECTED),$(filter $(ARCH_DETECTED),arm arm64))
 	install -d $(INSTALL_ROOT)/usr/bin
 	install -m 0755 tools/rpi_ctrl.sh $(INSTALL_ROOT)/usr/bin
 endif
@@ -278,7 +278,7 @@ endif
 	echo "# Configure INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl enable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl start indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
-ifeq ($(ARCH_DETECTED),arm)
+ifeq ($(ARCH_DETECTED),$(filter $(ARCH_DETECTED),arm arm64))
 	tail -n +2 tools/rpi_ctrl_fix.sh >> $(INSTALL_ROOT)/DEBIAN/postinst
 endif
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/postinst
