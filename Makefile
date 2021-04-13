@@ -100,7 +100,7 @@ else
 			ARCH_DETECTED = arm64
 			DEBIAN_ARCH = arm64
 			DRPI_MANAGEMENT = -DRPI_MANAGEMENT
-			#EXCLUDED_DRIVERS += ccd_sbig
+			EXCLUDED_DRIVERS += ccd_sbig
 		endif
 		ifeq ($(ARCH_DETECTED),i686)
 			ARCH_DETECTED = x86
