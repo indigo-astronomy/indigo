@@ -125,7 +125,7 @@ else
 			NVCCFLAGS = $(DEBUG_BUILD) -Xcompiler -fPIC -O3 -isystem $(INDIGO_CUDA)/include -isystem $(INDIGO_ROOT)/indigo_libs -I $(INDIGO_ROOT)/indigo_drivers -I $(INDIGO_ROOT)/indigo_linux_drivers -I $(BUILD_INCLUDE) -std=c++11 -DINDIGO_LINUX
 			LDFLAGS = -lm -lrt -lusb-1.0 -pthread -lcudart $(CUDA_LIBS) -L$(BUILD_LIB) -Wl,-rpath=\\\$$\$$ORIGIN/../lib,-rpath=\\\$$\$$ORIGIN/../drivers,-rpath=.
 		endif
-		ifeq ($(ARCH_DETECTED),arm)
+		ifeq ($(ARCH_DETECTED),$(filter $(ARCH_DETECTED),arm arm64))
 			CFLAGS = $(DEBUG_BUILD) $(CUDA_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu11 -pthread -DINDIGO_LINUX -DRPI_MANAGEMENT -D_FILE_OFFSET_BITS=64
 			CXXFLAGS = $(DEBUG_BUILD) $(CUDA_BUILD) -fPIC -O3 -march=armv6 -mfpu=vfp -mfloat-abi=hard -marm -mthumb-interwork -I$(INDIGO_ROOT)/indigo_libs -I$(INDIGO_ROOT)/indigo_drivers -I$(INDIGO_ROOT)/indigo_linux_drivers -I$(BUILD_INCLUDE) -std=gnu++11 -pthread -DINDIGO_LINUX
 		else
