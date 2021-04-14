@@ -2,6 +2,136 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-146] - xxx Apr xx 2021
+### Overall:
+- compression added to HTTP BLOB transfer - image transfer can be about 2x faster
+- introduce DOME_HOME and DOME_PARK_POSITION properties
+- prepare the build for arm64 version of INDIGOSky (SBIG driver is missing, DL does not provide arm64 SDK)
+- platesolver agents: dec limit fixed
+- fix indigo_dtos() showing negative degrees < 1 as positive
+- HTTP server: dynamic content handling support added
+- indigo_driver: save port and baud rate at property change
+- additional serial ports removed from macOS list
+- select() timeout fixed
+- fixed memory leaks in mount base class
+- DSLR JPEG->RAW conversion issue fixed
+- debug log level setting fixed
+- add indigo_compensate_backlash() call to be used in rotators and focusers
+
+### New Drivers:
+- indigo_agent_alpaca: Agent that exposes INDIGO devices to ASCOM/Alpaca clients.
+- dome_talon6ror: driver for Talon 6 dome controller
+
+### Driver Fixes:
+- indigo_agent_imager:
+	- focuser backlash and agent backlash properties synchronized
+
+- indigo_agent_mount:
+	- geographic coordinates propagation is limited by this threshold
+	- synchronization fixed
+
+- indigo_agent_astrometry:
+	- index names made consistent
+	- index management fixed
+	- remote mount agent snooping fixed
+	- solved message added
+
+- indigo_guider_agent:
+	- rename Integral stacking -> Integral stack size; docs updted
+
+- indigo_mount_ioptron:
+	- firmware 210105 detection added
+	- driver refactoring
+	- synchronization issues fixed
+	- MSH used instead of MH for protocol 3.0
+	- search for mechanical zero item added for 2.5 and 3.0 protocols
+
+- indigo_mount_nexstar:
+	- fix the busy state of the coordinate properties
+	- fix equatorial tracking start / stop
+	- fix tracking mode being stopped on connect
+
+- insigo_ccd_altair:
+	- SDK updated
+
+- indigo_focuser_efa:
+	- stack overrun fixed
+
+- indigo_focuser_asi:
+	- STEPS and POSITION states synchronized
+	- SDK updated
+
+- indigo_ccd_asi:
+	- SDK updated
+
+- indigo_wheel_asi:
+	- SDK updated
+
+- indigo_ccd_qhy:
+	- firmware updated
+	- READ_MODE change resets CCD_INFO, CCD_FRAME and CCD_MODE now
+	- resolution fixed
+
+- indigo_ccd_qhy2:
+	- SDK and firmware updated
+	- READ_MODE change resets CCD_INFO, CCD_FRAME and CCD_MODE now
+	- resolution fixed
+
+- indigo_wheel_qhy:
+	- fix move Busy state
+
+- indigo_focuser_dsd:
+	- STEPS and POSITION states synchronized
+	- software backlash compensation implemented
+
+- indigo_focuser_fli:
+	- STEPS and POSITION states synchronized
+
+- indigo_focuser_lunatico:
+	- STEPS and POSITION states synchronized
+
+- indigo_focuser_mypro2:
+	- STEPS and POSITION states synchronized
+	- software backlash compensation implemented
+	- load settings fixed
+
+- indigo_dome_baader:
+	- synchronized steps and horizontal coordinates states
+	- fixed stale busy state in some situations
+
+- indigo_dome_nexdome:
+	- abort handled gracefully
+	- fixed stale busy state in some situations
+
+- indigo_dome_nexdome3:
+	- abort handled gracefully
+	- fixed property states
+
+- indigo_aux_rpio:
+	- replace GPIO 19 with GPIO 21
+	- replace GPIO 04 with GPIO 19
+
+- indigo_aux_upb:
+	- outlet name items order fixed
+
+- indigo_aux_ppb:
+	- outlet names property name fixed
+
+- indigo_ccd_simulator:
+	- focuser absolute position setting enabled
+
+- indigo_dome_simulator:
+	- made shutter open and close timely operation
+
+- indigo_wheel_quantum:
+	- refactoring
+
+- indigo_wheel_xagyl:
+	- filter count fixed
+
+- indigo_dome_skyroof:
+	- fix abort state
+
 ## [2.0-144] - Sun Feb 28 2021
 ### Overall:
 - add conditional deb dependency to indigo-astrometry or astrometry.net
