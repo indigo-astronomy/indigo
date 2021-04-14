@@ -2,11 +2,11 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-146] - xxx Apr xx 2021
+## [2.0-146] - Wed Apr 14 2021
 ### Overall:
 - compression added to HTTP BLOB transfer - image transfer can be about 2x faster
 - introduce DOME_HOME and DOME_PARK_POSITION properties
-- prepare the build for arm64 version of INDIGOSky (SBIG driver is missing, DL does not provide arm64 SDK)
+- prepare the build for arm64 version of INDIGOSky
 - platesolver agents: dec limit fixed
 - fix indigo_dtos() showing negative degrees < 1 as positive
 - HTTP server: dynamic content handling support added
@@ -131,6 +131,9 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_dome_skyroof:
 	- fix abort state
+
+- indigo_ccd_sbig:
+	- driver now available for arm64 linux
 
 ## [2.0-144] - Sun Feb 28 2021
 ### Overall:
