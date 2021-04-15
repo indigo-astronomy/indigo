@@ -576,7 +576,7 @@ Vue.component('indigo-ctrl', {
 													<template v-else>
 														<button v-if="item.value && property.rule == 'OneOfMany'" disabled class="btn btn-sm btn-primary w-100 m-1">{{item.label}}</button>
 														<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-default'" @click.prevent="setSwitch(property, item.name, !item.value)">{{item.label}}</button>
-												</template>
+												  </template>
 												</div>
 											</div>
 										</template>
@@ -858,6 +858,27 @@ Vue.component('indigo-wifi-setup', {
 			<div class="d-flex w-100 mt-1 p-1">
 				<button type="submit" class="btn btn-sm btn-primary ml-auto mr-2" @click.prevent="set()">Submit</button>
 				<button class="btn btn-sm btn-default mr-0" @click.prevent="reset()">Reset</button>
+			</div>
+		</div>
+		`
+});
+
+Vue.component('indigo-internet-sharing', {
+	props: {
+		property: Object
+	},
+	methods: {
+		setSwitch: function(property, itemName, value) {
+			var values = {};
+			values[itemName] = value;
+			changeProperty(property.device, property.name, values);
+		}
+	},
+	template: `
+		<div class="w-100 d-flex flex-wrap p-1">
+			<div v-for="item in property.items" class="col-sm-6 p-0 m-0 pr-2" style="min-width: 15rem">
+				<button v-if="item.value" disabled class="btn btn-sm btn-primary w-100 m-1">Internet sharing {{item.label}}</button>
+				<button v-else class="btn btn-sm w-100 m-1" :class="item.value ? 'btn-primary' : 'btn-default'" @click.prevent="setSwitch(property, item.name, !item.value)">Internet sharing {{item.label}}</button>
 			</div>
 		</div>
 		`

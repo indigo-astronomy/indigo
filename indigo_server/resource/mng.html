@@ -70,9 +70,14 @@
 									<indigo-wifi-setup :ap_property="findProperty('Server', 'WIFI_AP')" :infra_property="findProperty('Server', 'WIFI_INFRASTRUCTURE')"></indigo-wifi-setup>
 								</div>
 							</div>
+							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'INTERNET_SHARING') != null">
+								<div class="card-block d-flex flex-wrap">
+									<indigo-internet-sharing :property="findProperty('Server', 'INTERNET_SHARING')"></indigo-internet-sharing>
+								</div>
+							</div>
 							<div class="card p-1 m-1 bg-light" v-if="findProperty('Server', 'SHUTDOWN') != null">
 								<div class="card-block d-flex flex-wrap">
-									<indigo-shutdown :property="findProperty('Server', 'SHUTDOWN')"></indigo-wifi-setup>
+									<indigo-shutdown :property="findProperty('Server', 'SHUTDOWN')"></indigo-shutdown>
 								</div>
 							</div>
 						</div>
