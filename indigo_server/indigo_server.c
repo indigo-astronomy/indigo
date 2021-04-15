@@ -315,6 +315,7 @@ static indigo_property *server_features_property;
 #ifdef RPI_MANAGEMENT
 static indigo_property *wifi_ap_property;
 static indigo_property *wifi_infrastructure_property;
+static indigo_property *wifi_channel_property;
 static indigo_property *internet_sharing_property;
 static indigo_property *host_time_property;
 static indigo_property *shutdown_property;
@@ -378,6 +379,9 @@ static bool runLoop = true;
 #define SERVER_WIFI_INFRASTRUCTURE_PROPERTY				wifi_infrastructure_property
 #define SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM			(SERVER_WIFI_INFRASTRUCTURE_PROPERTY->items + 0)
 #define SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM	(SERVER_WIFI_INFRASTRUCTURE_PROPERTY->items + 1)
+
+#define SERVER_WIFI_CHANNEL_PROPERTY							wifi_channel_property
+#define SERVER_WIFI_CHANNEL_ITEM									(SERVER_WIFI_CHANNEL_PROPERTY->items + 0)
 
 #define SERVER_INTERNET_SHARING_PROPERTY					internet_sharing_property
 #define SERVER_INTERNET_SHARING_DISABLED_ITEM			(SERVER_INTERNET_SHARING_PROPERTY->items + 0)
@@ -668,6 +672,7 @@ static void server_callback(int count) {
 }
 
 #ifdef RPI_MANAGEMENT
+
 static indigo_result execute_command(indigo_device *device, indigo_property *property, char *command, ...) {
 	char buffer[1024];
 	va_list args;
@@ -860,6 +865,13 @@ static indigo_result attach(indigo_device *device) {
 				indigo_copy_value(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token);
 			free(line);
 		}
+		SERVER_WIFI_CHANNEL_PROPERTY = indigo_init_number_property(NULL, server_device.name, SERVER_WIFI_CHANNEL_PROPERTY_NAME, MAIN_GROUP, "WiFi channel", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		indigo_init_number_item(SERVER_WIFI_CHANNEL_ITEM, SERVER_WIFI_CHANNEL_ITEM_NAME, "Channel (0 = auto)", 0, 13, 1, 0);
+		line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
+		if (line) {
+			SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = atoi(line);
+			free(line);
+		}
 		SERVER_INTERNET_SHARING_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_INTERNET_SHARING_PROPERTY_NAME, MAIN_GROUP, "Internet sharing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		indigo_init_switch_item(SERVER_INTERNET_SHARING_DISABLED_ITEM, SERVER_INTERNET_SHARING_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(SERVER_INTERNET_SHARING_ENABLED_ITEM, SERVER_INTERNET_SHARING_ENABLED_ITEM_NAME, "Enabled", false);
@@ -917,6 +929,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	if (use_rpi_management) {
 		indigo_define_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
 		indigo_define_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
+		indigo_define_property(device, SERVER_WIFI_CHANNEL_PROPERTY, NULL);
 		indigo_define_property(device, SERVER_INTERNET_SHARING_PROPERTY, NULL);
 		indigo_define_property(device, SERVER_HOST_TIME_PROPERTY, NULL);
 		indigo_define_property(device, SERVER_SHUTDOWN_PROPERTY, NULL);
@@ -1135,6 +1148,10 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property, false);
 		return execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value);
+	} else if (indigo_property_match(SERVER_WIFI_CHANNEL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- SERVER_WIFI_CHANNEL
+		indigo_property_copy_values(SERVER_WIFI_CHANNEL_PROPERTY, property, false);
+		return execute_command(device, SERVER_WIFI_CHANNEL_PROPERTY, "s_rpi_ctrl.sh --set-wifi-channel %d", SERVER_WIFI_CHANNEL_ITEM->number.value);
 	} else if (indigo_property_match(SERVER_INTERNET_SHARING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- INTERNET_SHARING
 		indigo_property_copy_values(SERVER_INTERNET_SHARING_PROPERTY, property, false);
@@ -1185,6 +1202,7 @@ static indigo_result detach(indigo_device *device) {
 	if (use_rpi_management) {
 		indigo_delete_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
+		indigo_delete_property(device, SERVER_WIFI_CHANNEL_PROPERTY, NULL);
 		indigo_delete_property(device, SERVER_INTERNET_SHARING_PROPERTY, NULL);
 		indigo_delete_property(device, SERVER_HOST_TIME_PROPERTY, NULL);
 		indigo_delete_property(device, SERVER_SHUTDOWN_PROPERTY, NULL);
@@ -1205,6 +1223,7 @@ static indigo_result detach(indigo_device *device) {
 #ifdef RPI_MANAGEMENT
 	indigo_release_property(SERVER_WIFI_AP_PROPERTY);
 	indigo_release_property(SERVER_WIFI_INFRASTRUCTURE_PROPERTY);
+	indigo_release_property(SERVER_WIFI_CHANNEL_PROPERTY);
 	indigo_release_property(SERVER_INTERNET_SHARING_PROPERTY);
 	indigo_release_property(SERVER_HOST_TIME_PROPERTY);
 	indigo_release_property(SERVER_SHUTDOWN_PROPERTY);
