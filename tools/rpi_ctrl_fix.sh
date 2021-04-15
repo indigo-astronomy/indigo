@@ -3,9 +3,9 @@
 RPI_CTRL="/usr/bin/rpi_ctrl.sh"
 DHCPCD_CONF="/etc/dhcpcd.conf"
 
-[ ! `hostname` = "indigosky" ] && { echo "no patch applied because no INDIGO Sky installation"; exit 0; }
-[ ! -f ${RPI_CTRL} ] && { echo "no patch applied because no INDIGO Sky installation"; exit 0; }
-[ ! -f ${DHCPCD_CONF} ] && { echo "cannot apply patch because ${DHCPCD_CONF} is missing"; exit 0; }
+[ ! `hostname` = "indigosky" ] && { echo "No patch is applied because this is not INDIGO Sky installation"; exit 0; }
+[ ! -f ${RPI_CTRL} ] && { echo "No patch is applied because this is not INDIGO Sky installation"; exit 0; }
+[ ! -f ${DHCPCD_CONF} ] && { echo "Can not apply patch because ${DHCPCD_CONF} is missing"; exit 0; }
 
 if ! grep -Eq "^interface wlan0|^static ip_address=192.168.235.1/24|^nohook wpa_supplicant" /etc/dhcpcd.conf; then
 

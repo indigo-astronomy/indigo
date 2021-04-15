@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2019 Thomas Stibor <thomas@stibor.net>
+# Copyright (c) 2019-2021 Thomas Stibor <thomas@stibor.net> & Rumen G.Bogdanovski <rumen@skyarchive.org>
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
@@ -46,13 +46,17 @@
 # static ip_address=192.168.235.1/24
 # nohook wpa_supplicant
 
-VERSION=0.22
+VERSION=0.23
 
 # Setup RPi as access point server.
 WIFI_AP_SSID=""
 WIFI_AP_PW=""
 OPT_WIFI_AP_SET=0
 OPT_WIFI_AP_GET=0
+
+WIFI_AP_CH=6
+OPT_WIFI_CH_SET=0
+OPT_WIFI_CH_GET=0
 
 # Connect RPi to access point server.
 WIFI_CN_SSID=""
@@ -125,6 +129,8 @@ __usage() {
     echo -e "usage: ${0}\n" \
 	 "\t--get-wifi-server\n" \
 	 "\t--set-wifi-server <ssid> <password>\n" \
+	 "\t--get-wifi-channel\n" \
+	 "\t--set-wifi-channel <channel> (0-13, 0 = auto, if supported)\n" \
 	 "\t--get-wifi-client\n" \
 	 "\t--set-wifi-client <ssid> <password>\n" \
 	 "\t--reset-wifi-server\n" \
@@ -200,8 +206,8 @@ __set() {
     local delim=${4-=}		# Default value '='
 
     if ${GREP_EXE} -q "${key}${delim}" ${conf_file}; then
-	${SED_EXE} -i "s/^${key}${delim}.*/${key}${delim}${value}/" ${conf_file}
-	return 0
+        ${SED_EXE} -i "s/^${key}${delim}.*/${key}${delim}${value}/" ${conf_file}
+        return 0
     fi
 
     return 1
@@ -246,10 +252,23 @@ __disable-forwarding() {
 __get-wifi-mode() {
     # RPi is in wifi-client mode.
     if ! ${GREP_EXE} -Eq "^interface wlan0|^static ip_address=192.168.235.1/24|^nohook wpa_supplicant" ${CONF_DHCPCD}; then
-	echo "wifi-client"
+        echo "wifi-client"
     else
-	echo "wifi-server"
+        echo "wifi-server"
     fi
+}
+
+
+###############################################
+# Read SSID PW and CHANNEL from hostapd.conf.
+###############################################
+__read-wifi-credentials() {
+    WIFI_AP_SSID=$(__get "ssid" ${CONF_HOSTAPD})
+    WIFI_AP_PW=$(__get "wpa_passphrase" ${CONF_HOSTAPD})
+}
+
+__read-wifi-channel() {
+    WIFI_AP_CH=$(__get "channel" ${CONF_HOSTAPD})
 }
 
 ###############################################
@@ -258,8 +277,12 @@ __get-wifi-mode() {
 __set-wifi-server() {
     [[ -z ${WIFI_AP_SSID} ]] && __ALERT "WIFI_AP_SSID not set"
     [[ -z ${WIFI_AP_PW} ]] && __ALERT "WIFI_AP_PW not set"
+    [[ -z ${WIFI_AP_CH} ]] && __ALERT "WIFI_AP_CH not set"
+
     [[ ${#WIFI_AP_PW} -lt 8 ]] && __ALERT "WIFI_AP_PW length < 8"
     [[ ${#WIFI_AP_PW} -gt 63 ]] && __ALERT "WIFI_AP_PW length > 63"
+    [[ ${WIFI_AP_CH} -gt 13 || ${WIFI_AP_CH} -lt 0 ]] && __ALERT "WIFI_AP_CH is out or range (0-13)"
+    [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "ACS is not available"
 
     ${CP_EXE} "${CONF_HOSTAPD}" "${CONF_HOSTAPD}.backup"
     [[ $? -ne 0 ]] && __ALERT "cannot copy ${CONF_HOSTAPD} to ${CONF_HOSTAPD}.backup"
@@ -272,7 +295,7 @@ interface=wlan0
 driver=nl80211
 ssid=${WIFI_AP_SSID}
 hw_mode=g
-channel=6
+channel=${WIFI_AP_CH}
 wmm_enabled=0
 macaddr_acl=0
 auth_algs=1
@@ -314,9 +337,30 @@ __get-wifi-server() {
     [[ -z ${WIFI_AP_PW} ]] && __ALERT "'wpa_passphrase' not found in ${CONF_HOSTAPD}"
 
     if [[ ${OPT_VERBOSE} -eq 1 ]]; then
-	{ echo -e "${WIFI_AP_SSID}\t${WIFI_AP_PW}"; exit 0; }
+        { echo -e "${WIFI_AP_SSID}\t${WIFI_AP_PW}"; exit 0; }
     elif [[ "${mode}" == "wifi-server" ]]; then
-	{ echo -e "${WIFI_AP_SSID}"; exit 0; }
+        { echo -e "${WIFI_AP_SSID}"; exit 0; }
+    fi
+
+    exit 1;
+}
+
+###############################################
+# Get CHANNEL from conf file hostapd.conf.
+###############################################
+__get-wifi-channel() {
+
+    local mode=$(__get-wifi-mode)
+
+    WIFI_AP_CH=$(__get "channel" ${CONF_HOSTAPD})
+    [[ -z ${WIFI_AP_CH} ]] && __ALERT "'channel' not found in ${CONF_HOSTAPD}"
+
+    if [[ "${mode}" == "wifi-server" ]]; then
+        if [[ "${WIFI_AP_CH}" == "acs_survey" ]]; then
+            { echo -e "0"; exit 0; }
+        else
+            { echo -e "${WIFI_AP_CH}"; exit 0; }
+        fi
     fi
 
     exit 1;
@@ -402,18 +446,18 @@ __reset-wifi-server() {
 
     # RPi is in wifi-client mode.
     if [[ "${mode}" == "wifi-client" ]]; then
-	# Network device wlan0 is not connected to infrastructure AP.
-	if ${IW_EXE} wlan0 link | ${GREP_EXE} -q "^Not"; then
-	    # Ethernet link has no carrier.
-	    if [[ $(cat /sys/class/net/eth0/carrier 2>/dev/null) -eq 0 ]]; then
-		# Copy back all orig files and restart in wifi-server mode.
-		${CP_EXE} "${CONF_HOSTAPD}.orig" "${CONF_HOSTAPD}"
-		${CP_EXE} "${CONF_WPA_SUPPLICANT}.orig" "${CONF_WPA_SUPPLICANT}"
-		${CP_EXE} "${CONF_DHCPCD}.orig" "${CONF_DHCPCD}"
+        # Network device wlan0 is not connected to infrastructure AP.
+        if ${IW_EXE} wlan0 link | ${GREP_EXE} -q "^Not"; then
+            # Ethernet link has no carrier.
+            if [[ $(cat /sys/class/net/eth0/carrier 2>/dev/null) -eq 0 ]]; then
+                # Copy back all orig files and restart in wifi-server mode.
+                ${CP_EXE} "${CONF_HOSTAPD}.orig" "${CONF_HOSTAPD}"
+                ${CP_EXE} "${CONF_WPA_SUPPLICANT}.orig" "${CONF_WPA_SUPPLICANT}"
+                ${CP_EXE} "${CONF_DHCPCD}.orig" "${CONF_DHCPCD}"
 
-		${REBOOT_EXE}
-	    fi
-	fi
+                ${REBOOT_EXE}
+            fi
+        fi
     fi
 }
 
@@ -482,6 +526,14 @@ do
 	    WIFI_AP_PW="${2}"
 	    shift
 	    OPT_WIFI_AP_SET=1
+	    ;;
+	--get-wifi-channel)
+	    OPT_WIFI_CH_GET=1
+	    ;;
+	--set-wifi-channel)
+	    WIFI_AP_CH="${2}"
+	    shift
+	    OPT_WIFI_CH_SET=1
 	    ;;
 	--get-wifi-client)
 	    OPT_WIFI_CN_GET=1
@@ -567,7 +619,9 @@ __create_reset_files
 [[ ${OPT_ENABLE_FORWARDING} -eq 1 ]] && { __enable-forwarding; }
 [[ ${OPT_DISABLE_FORWARDING} -eq 1 ]] && { __disable-forwarding; }
 [[ ${OPT_WIFI_AP_GET} -eq 1 ]] && { __get-wifi-server; }
-[[ ${OPT_WIFI_AP_SET} -eq 1 ]] && { __set-wifi-server ${WIFI_AP_SSID} ${WIFI_AP_PW}; }
+[[ ${OPT_WIFI_AP_SET} -eq 1 ]] && { __read-wifi-channel; __set-wifi-server ${WIFI_AP_SSID} ${WIFI_AP_PW}; }
+[[ ${OPT_WIFI_CH_GET} -eq 1 ]] && { __get-wifi-channel; }
+[[ ${OPT_WIFI_CH_SET} -eq 1 ]] && { __read-wifi-credentials; __set-wifi-server ${WIFI_AP_CN}; }
 [[ ${OPT_WIFI_CN_GET} -eq 1 ]] && { __get-wifi-client; }
 [[ ${OPT_WIFI_CN_SET} -eq 1 ]] && { __set-wifi-client ${WIFI_CN_SSID} ${WIFI_CN_PW}; }
 [[ ${OPT_WIFI_AP_RESET} -eq 1 ]] && { __reset-wifi-server; }
