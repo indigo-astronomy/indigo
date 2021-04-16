@@ -20,13 +20,14 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # This script is called in indigo_server and rpi_ctrl.sh
-# within the Raspbian GNU/Linux distribution to find the best 
+# within the Raspbian GNU/Linux distribution to find the best
 # WiFi channel for the access point.
 
 use warnings;
 use strict;
+use Getopt::Long;
 
-my $version = "0.1"; 
+my $version = "0.1";
 my $iwlist = '/usr/sbin/iwlist';
 my $interface = "wlan0";
 my $verbose;
@@ -45,7 +46,7 @@ sub find_best_channel($) {
 
 	my @signal = (0) x 15;
 	my $channel;
-	my $pid = open(CHLIST, "$iwlist $interface scan |") or return undef; 
+	my $pid = open(CHLIST, "$iwlist $interface scan |") or return undef;
 	while (my $line = <CHLIST>) {
 		chomp($line);
 		if ($line =~ /Channel:(\d+)/) {
@@ -80,7 +81,21 @@ sub find_best_channel($) {
 	return index_min(\@noise);
 }
 
+sub help() {
+	print "usage: $0 [options]\n";
+	print "\t--interface <interface> (default wlan0)\n";
+	print "\t--verbose\n";
+	print "\t--help\n";
+	print "version: $version, written by Rumen G.Bogdanovski <rumen\@skyarchive.org>\n";
+}
+
 sub main() {
+	GetOptions (
+		"interface=s" => \$interface,    # numeric
+		"verbose"  => \$verbose,
+		"help" => sub { help(); exit 1; }
+	) or die("Error in command line arguments\n");
+
 	my $best_channel = find_best_channel($interface);
 	if (!defined $best_channel) {
 		warn "Can not determine best channel\n";
