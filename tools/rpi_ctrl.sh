@@ -147,6 +147,7 @@ __usage() {
 	 "\t--reboot\n" \
 	 "\t--verbose"
     echo "version: ${VERSION}, written by Thomas Stibor <thomas@stibor.net>"
+    echo "and Rumen G.Bogdanovski <rumen@skyarchive.oer>"
     exit 1
 }
 
