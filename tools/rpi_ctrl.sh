@@ -282,7 +282,7 @@ __set-wifi-server() {
     [[ ${#WIFI_AP_PW} -lt 8 ]] && __ALERT "WIFI_AP_PW length < 8"
     [[ ${#WIFI_AP_PW} -gt 63 ]] && __ALERT "WIFI_AP_PW length > 63"
     [[ ${WIFI_AP_CH} -gt 13 || ${WIFI_AP_CH} -lt 0 ]] && __ALERT "WIFI_AP_CH is out or range (0-13)"
-    [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "ACS is not available"
+    [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "Auto Channel Selection is not available"
 
     ${CP_EXE} "${CONF_HOSTAPD}" "${CONF_HOSTAPD}.backup"
     [[ $? -ne 0 ]] && __ALERT "cannot copy ${CONF_HOSTAPD} to ${CONF_HOSTAPD}.backup"
@@ -364,6 +364,26 @@ __get-wifi-channel() {
     fi
 
     exit 1;
+}
+
+###############################################
+# set Wifi channel
+###############################################
+__set-wifi-channel() {
+    local mode=$(__get-wifi-mode)
+
+    [[ ${WIFI_AP_CH} -gt 13 || ${WIFI_AP_CH} -lt 0 ]] && __ALERT "WiFi channel is out or range (0-13)"
+    [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "Auto Channel Selection is not available"
+
+    __set "channel" ${WIFI_AP_CH} ${CONF_HOSTAPD} >/dev/null 2>&1
+    echo 1 2>/dev/null >${PROC_FORWARD}
+    [[ $? -ne 0 ]] && { __ALERT "cannot change wifi channel"; }
+
+    if [[ "${mode}" == "wifi-server" ]]; then
+	{ ${SYSTEMCTL_EXE} restart hostapd; sleep 1; __OK; }
+    fi
+
+    __ALERT "not in AP mode, change will take effect when switched to AP mode";
 }
 
 ###############################################
@@ -619,9 +639,9 @@ __create_reset_files
 [[ ${OPT_ENABLE_FORWARDING} -eq 1 ]] && { __enable-forwarding; }
 [[ ${OPT_DISABLE_FORWARDING} -eq 1 ]] && { __disable-forwarding; }
 [[ ${OPT_WIFI_AP_GET} -eq 1 ]] && { __get-wifi-server; }
-[[ ${OPT_WIFI_AP_SET} -eq 1 ]] && { __read-wifi-channel; __set-wifi-server ${WIFI_AP_SSID} ${WIFI_AP_PW}; }
+[[ ${OPT_WIFI_AP_SET} -eq 1 ]] && { __read-wifi-channel; __set-wifi-server; }
 [[ ${OPT_WIFI_CH_GET} -eq 1 ]] && { __get-wifi-channel; }
-[[ ${OPT_WIFI_CH_SET} -eq 1 ]] && { __read-wifi-credentials; __set-wifi-server ${WIFI_AP_CN}; }
+[[ ${OPT_WIFI_CH_SET} -eq 1 ]] && { __set-wifi-channel; }
 [[ ${OPT_WIFI_CN_GET} -eq 1 ]] && { __get-wifi-client; }
 [[ ${OPT_WIFI_CN_SET} -eq 1 ]] && { __set-wifi-client ${WIFI_CN_SSID} ${WIFI_CN_PW}; }
 [[ ${OPT_WIFI_AP_RESET} -eq 1 ]] && { __reset-wifi-server; }
