@@ -691,10 +691,12 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 				*nl = 0;
 			if (!strncmp(line, "ALERT", 5)) {
 				property->state = INDIGO_ALERT_STATE;
+				char *message = strchr(line, ':');
+				indigo_update_property(device, property, message);
 			} else {
 				property->state = INDIGO_OK_STATE;
+				indigo_update_property(device, property, NULL);
 			}
-			indigo_update_property(device, property, NULL);
 		} else {
 			property->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, property, "No reply from rpi_ctrl.sh");
