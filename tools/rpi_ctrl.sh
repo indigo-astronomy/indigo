@@ -121,6 +121,7 @@ APT_CACHE_EXE=$(which apt-cache)
 APT_GET_EXE=$(which apt-get)
 DATE_EXE=$(which date)
 IW_EXE=$(which iw)
+WIFI_CH_SELECT_EXE=$(which wifi_channel_selector.pl)
 
 ###############################################
 # Show usage and exit with code 1.
@@ -373,11 +374,15 @@ __set-wifi-channel() {
     local mode=$(__get-wifi-mode)
 
     [[ ${WIFI_AP_CH} -gt 13 || ${WIFI_AP_CH} -lt 0 ]] && __ALERT "WiFi channel is out or range (0-13)"
-    [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "Auto Channel Selection is not available"
+
+    if [[ ${WIFI_AP_CH} -eq 0 ]]; then
+        WIFI_AP_CH=$($WIFI_CH_SELECT_EXE);
+        [[ $? -ne 0 ]] && { __ALERT "cannot auto select WiFi channel"; }
+    fi
 
     __set "channel" ${WIFI_AP_CH} ${CONF_HOSTAPD} >/dev/null 2>&1
     echo 1 2>/dev/null >${PROC_FORWARD}
-    [[ $? -ne 0 ]] && { __ALERT "cannot change wifi channel"; }
+    [[ $? -ne 0 ]] && { __ALERT "cannot change WiFi channel"; }
 
     if [[ "${mode}" == "wifi-server" ]]; then
 	{ ${SYSTEMCTL_EXE} restart hostapd; sleep 1; __OK; }
