@@ -162,7 +162,7 @@ __OK() {
 # "ALERT: {reason} and exit with 1.
 ###############################################
 __ALERT() {
-    [[ ${OPT_VERBOSE} -eq 1 ]] && { echo "ALERT: $@"; exit 1; }
+    [[ ! -z "${1}" ]] && { echo "ALERT: $@"; exit 1; }
     { echo "ALERT"; exit 1; }
 }
 
