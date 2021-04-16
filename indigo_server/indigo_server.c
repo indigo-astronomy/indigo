@@ -692,6 +692,7 @@ static indigo_result execute_command(indigo_device *device, indigo_property *pro
 			if (!strncmp(line, "ALERT", 5)) {
 				property->state = INDIGO_ALERT_STATE;
 				char *message = strchr(line, ':');
+				if (message) message++; /* if found ':', skip it */
 				indigo_update_property(device, property, message);
 			} else {
 				property->state = INDIGO_OK_STATE;
