@@ -71,8 +71,8 @@ static indigo_server_tcp_callback server_callback;
 
 int indigo_server_tcp_port = 7624;
 bool indigo_is_ephemeral_port = false;
-bool indigo_use_blob_buffering = false;
-bool indigo_use_blob_compression = false;
+bool indigo_use_blob_buffering = true;
+bool indigo_use_blob_compression = true;
 
 static pthread_mutex_t resource_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 
