@@ -1154,7 +1154,16 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_WIFI_CHANNEL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SERVER_WIFI_CHANNEL
 		indigo_property_copy_values(SERVER_WIFI_CHANNEL_PROPERTY, property, false);
-		return execute_command(device, SERVER_WIFI_CHANNEL_PROPERTY, "s_rpi_ctrl.sh --set-wifi-channel %d", (int)SERVER_WIFI_CHANNEL_ITEM->number.value);
+		if (execute_command(device, SERVER_WIFI_CHANNEL_PROPERTY, "s_rpi_ctrl.sh --set-wifi-channel %d", (int)SERVER_WIFI_CHANNEL_ITEM->number.value) == INDIGO_OK) {
+			char *line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
+			if (line) {
+				SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = atoi(line);
+				free(line);
+				SERVER_WIFI_CHANNEL_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, SERVER_WIFI_CHANNEL_PROPERTY, NULL);
+			}
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_INTERNET_SHARING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- INTERNET_SHARING
 		indigo_property_copy_values(SERVER_INTERNET_SHARING_PROPERTY, property, false);
