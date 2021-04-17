@@ -1365,12 +1365,11 @@ static void server_main() {
 			use_web_apps = false;
 		} else if (!strcmp(server_argv[i], "-u-") || !strcmp(server_argv[i], "--disable-blob-urls")) {
 			indigo_use_blob_urls = false;
-		} else if (!strcmp(server_argv[i], "-d") || !strcmp(server_argv[i], "--enable-blob-buffering")) {
-			indigo_use_blob_buffering = true;
+		} else if (!strcmp(server_argv[i], "-d-") || !strcmp(server_argv[i], "--disable-blob-buffering")) {
+			indigo_use_blob_buffering = false;
 			indigo_use_blob_compression = false;
-		} else if (!strcmp(server_argv[i], "-dd") || !strcmp(server_argv[i], "--enable-blob-compression")) {
-			indigo_use_blob_buffering = true;
-			indigo_use_blob_compression = true;
+		} else if (!strcmp(server_argv[i], "-dd-") || !strcmp(server_argv[i], "--disable-blob-compression")) {
+			indigo_use_blob_compression = false;
 		} else if (!strcmp(server_argv[i], "-x") || !strcmp(server_argv[i], "--enable-blob-proxy")) {
 			indigo_proxy_blob = true;
 #ifdef RPI_MANAGEMENT
@@ -1644,8 +1643,8 @@ int main(int argc, const char * argv[]) {
 			       "       -a  | --acl-file file\n"
 			       "       -b- | --disable-bonjour\n"
 			       "       -u- | --disable-blob-urls\n"
-			       "       -d  | --enable-blob-buffering\n"
-						 "       -dd | --enable-blob-compression\n"
+			       "       -d- | --disable-blob-buffering\n"
+						 "       -dd-| --disable-blob-compression\n"
 			       "       -w- | --disable-web-apps\n"
 			       "       -c- | --disable-control-panel\n"
 #ifdef RPI_MANAGEMENT
