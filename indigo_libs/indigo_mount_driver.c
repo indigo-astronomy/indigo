@@ -1075,7 +1075,7 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 			// Transform coordinates
 			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
 			double cos_dec = cos(dec * DEG2RAD);
-			if (cos_dec != 0) {
+			if (fabs(cos_dec) > 0.001) {
 				*raw_ra = ra + (point->raw_ra - point->ra) * cos(point->dec * DEG2RAD) / cos_dec;
 			} else { /* if dec = 90 or -90 math fail so use another approximation -> ignore cos() tems,  anyway ra does not matter */
 				*raw_ra = ra + (point->raw_ra - point->ra);
@@ -1158,8 +1158,8 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 			// Transform coordinates
 			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
 			double cos_raw_dec = cos(raw_dec * DEG2RAD);
-			if (cos_raw_dec != 0) {
-				*ra = raw_ra + (point->ra - point->raw_ra) * cos(point->dec * DEG2RAD) / cos_raw_dec;
+			if (fabs(cos_raw_dec) > 0.001) {
+				*ra = raw_ra + (point->ra - point->raw_ra) * cos(point->raw_dec * DEG2RAD) / cos_raw_dec;
 			} else { /* if dec = 90 or -90 math fail so use another approximation -> ignore cos() tems, anyway ra does not matter */
 				*ra = raw_ra + (point->ra - point->raw_ra);
 			}
