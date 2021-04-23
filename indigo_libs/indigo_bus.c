@@ -1506,3 +1506,48 @@ char *indigo_dtoa(double value, char *str) {
 	indigo_fix_locale(str);
 	return str;
 }
+
+#define BUFFER_COUNT 16
+
+static pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void *large_buffers[BUFFER_COUNT];
+
+static void free_large_buffers() {
+	for (int i = 0; i < BUFFER_COUNT; i++) {
+		if (large_buffers[i])
+			free(large_buffers[i]);
+	}
+}
+
+void *indigo_alloc_large_buffer() {
+	pthread_mutex_lock(&buffer_mutex);
+	static bool register_atexit = true;
+	if (register_atexit) {
+		register_atexit = false;
+		atexit(free_large_buffers);
+	}
+	for (int i = 0; i < BUFFER_COUNT; i++) {
+		if (large_buffers[i]) {
+			void *large_buffer = large_buffers[i];
+			large_buffers[i] = NULL;
+			pthread_mutex_unlock(&buffer_mutex);
+			return large_buffer;
+		}
+	}
+	pthread_mutex_unlock(&buffer_mutex);
+	return indigo_safe_malloc(INDIGO_BUFFER_SIZE);
+}
+
+void indigo_free_large_buffer(void *large_buffer) {
+	pthread_mutex_lock(&buffer_mutex);
+	for (int i = 0; i < BUFFER_COUNT; i++) {
+		if (large_buffers[i] == NULL) {
+			large_buffers[i] = large_buffer;
+			pthread_mutex_unlock(&buffer_mutex);
+			return;
+		}
+	}
+	pthread_mutex_unlock(&buffer_mutex);
+	free(large_buffer);
+}

@@ -749,6 +749,11 @@ static inline void indigo_safe_free(void *pointer) {
 		free(pointer);
 }
 
+#define INDIGO_BUFFER_SIZE (128 * 1024)
+
+extern void *indigo_alloc_large_buffer();
+extern void indigo_free_large_buffer(void *large_buffer);
+
 #ifdef __cplusplus
 }
 #endif
