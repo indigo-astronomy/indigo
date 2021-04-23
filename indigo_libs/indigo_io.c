@@ -459,17 +459,61 @@ bool indigo_write(int handle, const char *buffer, long length) {
 }
 
 #define BUFFER_SIZE (128 * 1024)
+#define BUFFER_COUNT 16
+
+static pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void *large_buffers[BUFFER_COUNT];
+
+static void free_large_buffers() {
+	for (int i = 0; i < BUFFER_COUNT; i++) {
+		if (large_buffers[i])
+			free(large_buffers[i]);
+	}
+}
+
+void *indigo_alloc_large_buffer() {
+	pthread_mutex_lock(&buffer_mutex);
+	for (int i = 0; i < BUFFER_COUNT; i++) {
+		if (large_buffers[i]) {
+			void *large_buffer = large_buffers[i];
+			large_buffers[i] = NULL;
+			pthread_mutex_unlock(&buffer_mutex);
+			return large_buffer;
+		}
+	}
+	pthread_mutex_unlock(&buffer_mutex);
+	return indigo_safe_malloc(BUFFER_SIZE);
+}
+
+void indigo_free_large_buffer(void *large_buffer) {
+	pthread_mutex_lock(&buffer_mutex);
+	static bool register_atexit = true;
+	if (register_atexit) {
+		register_atexit = false;
+		atexit(free_large_buffers);
+	}
+	for (int i = 0; i < BUFFER_COUNT; i++) {
+		if (large_buffers[i] == NULL) {
+			large_buffers[i] = large_buffer;
+			pthread_mutex_unlock(&buffer_mutex);
+			return;
+		}
+	}
+	pthread_mutex_unlock(&buffer_mutex);
+	free(large_buffer);
+}
 
 bool indigo_printf(int handle, const char *format, ...) {
 	if (strchr(format, '%')) {
-		char *buffer = indigo_safe_malloc(BUFFER_SIZE);
+		char *buffer = indigo_alloc_large_buffer();
 		va_list args;
 		va_start(args, format);
 		int length = vsnprintf(buffer, BUFFER_SIZE, format, args);
 		va_end(args);
 		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
 		bool result = indigo_write(handle, buffer, length);
-		free(buffer);
+		indigo_free_large_buffer(buffer);
 		return result;
 	} else {
 		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, format));
@@ -478,16 +522,16 @@ bool indigo_printf(int handle, const char *format, ...) {
 }
 
 int indigo_scanf(int handle, const char *format, ...) {
-	char *buffer = indigo_safe_malloc(BUFFER_SIZE);
+	char *buffer = indigo_alloc_large_buffer();
 	if (indigo_read_line(handle, buffer, BUFFER_SIZE) <= 0) {
-		free(buffer);
+		indigo_free_large_buffer(buffer);
 		return 0;
 	}
 	va_list args;
 	va_start(args, format);
 	int count = vsscanf(buffer, format, args);
 	va_end(args);
-	free(buffer);
+	indigo_free_large_buffer(buffer);
 	return count;
 }
 
