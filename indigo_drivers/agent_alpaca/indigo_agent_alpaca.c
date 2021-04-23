@@ -241,17 +241,15 @@ static bool alpaca_v1_description_handler(int socket, char *method, char *path, 
 	return true;
 }
 
-#define BUFFER_SIZE (128 * 1024)
-
 static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
-	char *buffer = indigo_safe_malloc(BUFFER_SIZE);
+	char *buffer = indigo_alloc_large_buffer();
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
-	long index = snprintf(buffer, BUFFER_SIZE, "{ \"Value\": [ ");
+	long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ \"Value\": [ ");
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	while (alpaca_device) {
 		if (alpaca_device->device_type) {
-			index += snprintf(buffer + index, BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": \"%d\", \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
+			index += snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": \"%d\", \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
 			alpaca_device = alpaca_device->next;
 			if (alpaca_device)
 				buffer[index++] = ',';
@@ -260,9 +258,9 @@ static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *
 			alpaca_device = alpaca_device->next;
 		}
 	}
-	snprintf(buffer + index, BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+	snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
 	send_json_response(socket, path, 200, "OK", buffer);
-	free(buffer);
+	indigo_free_large_buffer(buffer);
 	return true;
 }
 
@@ -315,12 +313,12 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"));
 			return false;
 		} else {
-			buffer = indigo_safe_malloc(BUFFER_SIZE);
-			long index = snprintf(buffer, BUFFER_SIZE, "{ ");
-			long length = indigo_alpaca_get_command(alpaca_device, 1, command, id, buffer + index, BUFFER_SIZE - index);
+			buffer = indigo_alloc_large_buffer();
+			long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ ");
+			long length = indigo_alpaca_get_command(alpaca_device, 1, command, id, buffer + index, INDIGO_BUFFER_SIZE - index);
 			if (length > 0) {
 				index += length;
-				snprintf(buffer + index, BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+				snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 				send_json_response(socket, path, 200, "OK", buffer);
 			} else {
@@ -329,8 +327,8 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		}
 	} else if (!strcmp(method, "PUT")) {
 		int content_length = 0;
-		buffer = indigo_safe_malloc(BUFFER_SIZE);
-		while (indigo_read_line(socket, buffer, BUFFER_SIZE) > 0) {
+		buffer = indigo_alloc_large_buffer();
+		while (indigo_read_line(socket, buffer, INDIGO_BUFFER_SIZE) > 0) {
 			if (!strncasecmp(buffer, "Content-Length:", 15)) {
 				content_length = atoi(buffer + 15);
 			}
@@ -359,11 +357,11 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		}
 		if (count > 1)
 			qsort(args, count, 128, string_cmp);
-		long index = snprintf(buffer, BUFFER_SIZE, "{ ");
-		long length = indigo_alpaca_set_command(alpaca_device, 1, command, buffer + index, BUFFER_SIZE - index, args[0], args[1]);
+		long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ ");
+		long length = indigo_alpaca_set_command(alpaca_device, 1, command, buffer + index, INDIGO_BUFFER_SIZE - index, args[0], args[1]);
 		if (length > 0) {
 			index += length;
-			snprintf(buffer + index, BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
+			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
 			send_json_response(socket, path, 200, "OK", buffer);
 		} else {
@@ -374,7 +372,7 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		send_text_response(socket, path, 400, "Bad Request", "Invalid method");
 	}
 	if (buffer)
-		free(buffer);
+		indigo_free_large_buffer(buffer);
 	return true;
 }
 
