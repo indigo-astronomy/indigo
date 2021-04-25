@@ -856,7 +856,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			*b8++ = value;
 		}
 	} else if (bpp == 16 || bpp == 48) {
-		unsigned short *b16 = copy;
+		uint16_t *b16 = copy;
 		int count = size_in * (bpp == 16 ? 1 : 3);
 		if (little_endian) {
 			for (int i = 0; i < count; i++) {
@@ -1258,11 +1258,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
 			free(raw);
 		} else if (byte_per_pixel == 2 && naxis == 3) {
-			unsigned short *raw = indigo_safe_malloc(6 * size);
-			unsigned short *red = raw;
-			unsigned short *green = raw + size;
-			unsigned short *blue = raw + 2 * size;
-			unsigned short *tmp = (unsigned short *)(data + FITS_HEADER_SIZE);
+			uint16_t *raw = indigo_safe_malloc(6 * size);
+			uint16_t *red = raw;
+			uint16_t *green = raw + size;
+			uint16_t *blue = raw + 2 * size;
+			uint16_t *tmp = (uint16_t *)(data + FITS_HEADER_SIZE);
 			if (little_endian) {
 				if (byte_order_rgb) {
 					for (int i = 0; i < size; i++) {
