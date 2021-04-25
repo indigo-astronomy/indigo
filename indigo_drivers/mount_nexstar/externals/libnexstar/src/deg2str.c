@@ -17,7 +17,7 @@
 int a2dd(double *dd, const char *a) {
 	int i;
 	double 	deg,min,sec,sign=1;
-	char *buff,*b1,format[30], *pnt;
+	char *buff,*b1,*pnt;
 
 	buff=(char*)a;                     //clear the spaces
 	while (isspace(buff[0])) buff++;

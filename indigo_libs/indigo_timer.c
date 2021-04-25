@@ -219,7 +219,7 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 
 bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 	bool must_wait = false;
-	indigo_timer *timer_buffer;
+	indigo_timer *timer_buffer = NULL;
 	pthread_mutex_lock(&cancel_timer_mutex);
 	if (*timer != NULL) {
 		(*timer)->canceled = true;

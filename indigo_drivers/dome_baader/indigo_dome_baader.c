@@ -364,9 +364,9 @@ static baader_rc_t baader_goto_azimuth(indigo_device *device, float azimuth) {
 	return BD_NO_RESPONSE;
 }
 
-static bool baader_callibrate(indigo_device *device) {
-	return false;
-}
+//static bool baader_callibrate(indigo_device *device) {
+//	return false;
+//}
 
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
@@ -691,7 +691,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		if (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
-			return INDIGO_OK_STATE;
+			return INDIGO_OK;
 		}
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
@@ -738,7 +738,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is moving: request can not be completed");
-			return INDIGO_OK_STATE;
+			return INDIGO_OK;
 		}
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
@@ -822,7 +822,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is moving: request can not be completed");
-			return INDIGO_OK_STATE;
+			return INDIGO_OK;
 		 }
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
@@ -853,7 +853,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		// -------------------------------------------------------------------------------- DOME_FLAP
 		if (DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap is moving: request can not be completed");
-			return INDIGO_OK_STATE;
+			return INDIGO_OK;
 		}
 		bool is_opened = DOME_FLAP_OPENED_ITEM->sw.value;
 		bool is_closed = DOME_FLAP_CLOSED_ITEM->sw.value;

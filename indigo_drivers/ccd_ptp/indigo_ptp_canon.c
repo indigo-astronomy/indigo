@@ -564,7 +564,7 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 					strcpy(label, "CR2 + ");
 					break;
 				default:
-					sprintf(label, "Unknown (0x%lx) +", (code >> 32) & 0xFFFFFFFF);
+					sprintf(label, "Unknown (0x%llx) +", (code >> 32) & 0xFFFFFFFF);
 					break;
 			}
 			switch (code & 0xFFFFFFFF) {
@@ -1340,9 +1340,9 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 		if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
 			CANON_PRIVATE_DATA->image_format = value;
 		} else if (code == ptp_property_canon_ShutterSpeed) {
-			CANON_PRIVATE_DATA->shutter = value;
+			CANON_PRIVATE_DATA->shutter = (int)value;
 		} else if (code == ptp_property_canon_AutoExposureMode) {
-			CANON_PRIVATE_DATA->mode = value;
+			CANON_PRIVATE_DATA->mode = (int)value;
 		}
 	}
 	return result;

@@ -445,7 +445,6 @@
 		598A1C96259BA94A00C0B34C /* DDHidAppleMikey.h in Headers */ = {isa = PBXBuildFile; fileRef = 595F2904211E211100380EF4 /* DDHidAppleMikey.h */; };
 		598A1C97259BA94A00C0B34C /* indigo_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 593A357A219DB4BA00EDF481 /* indigo_filter.h */; };
 		598A1C98259BA94A00C0B34C /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 598C583221A75B1A001CA8C0 /* config.h */; };
-		598A1CAD259BA95500C0B34C /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 9DC7830621A7072B009859FD /* Makefile */; };
 		598A1CAE259BA95500C0B34C /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		598A1CAF259BA95500C0B34C /* indigo_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* indigo_server.c */; };
 		598A1CB0259BA95500C0B34C /* indigo_cat_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A0772A21FE1C2F00244521 /* indigo_cat_data.c */; };
@@ -693,7 +692,6 @@
 		9DC4968922BA7B810052AB3E /* indigo_agent_auxiliary.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4967F22BA7B810052AB3E /* indigo_agent_auxiliary.c */; };
 		9DC496A322C39A170052AB3E /* indigo_aux_sqm.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DC4969722C39A170052AB3E /* indigo_aux_sqm.h */; };
 		9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4969A22C39A170052AB3E /* indigo_aux_sqm.c */; };
-		9DC7830721A7072C009859FD /* Makefile in Sources */ = {isa = PBXBuildFile; fileRef = 9DC7830621A7072B009859FD /* Makefile */; };
 		9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
 		9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBAE171E2D2099004FE70F /* indigo_timer.c */; };
@@ -8280,8 +8278,8 @@
 			isa = PBXGroup;
 			children = (
 				59C565022464A13A00344C0C /* README.md */,
-				59C565012464A13A00344C0C /* indigo_aux_mgbox.c */,
 				59C565032464A13A00344C0C /* indigo_aux_mgbox.h */,
+				59C565012464A13A00344C0C /* indigo_aux_mgbox.c */,
 				59C565042464A13A00344C0C /* indigo_aux_mgbox_main.c */,
 				59C565052464A13A00344C0C /* doc */,
 			);
@@ -12635,7 +12633,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0800;
-				LastUpgradeCheck = 1120;
+				LastUpgradeCheck = 1240;
 				ORGANIZATIONNAME = "CloudMakers, s. r. o.";
 				TargetAttributes = {
 					598A1B51259BA94A00C0B34C = {
@@ -12971,7 +12969,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				598A1CAD259BA95500C0B34C /* Makefile in Sources */,
 				598A1CAE259BA95500C0B34C /* NSDictionary+DDHidExtras.m in Sources */,
 				598A1CAF259BA95500C0B34C /* indigo_server.c in Sources */,
 				598A1CB0259BA95500C0B34C /* indigo_cat_data.c in Sources */,
@@ -13187,7 +13184,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9DC7830721A7072C009859FD /* Makefile in Sources */,
 				59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */,
 				9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */,
 				590D21D621FE6A520057DC31 /* indigo_cat_data.c in Sources */,
@@ -13277,6 +13273,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
@@ -13309,7 +13306,7 @@
 				LIBRARY_SEARCH_PATHS = build/lib;
 				MACOSX_DEPLOYMENT_TARGET = 10.9;
 				MTL_ENABLE_DEBUG_INFO = YES;
-				ONLY_ACTIVE_ARCH = NO;
+				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-w";
 				SDKROOT = macosx;
 				SYSTEM_HEADER_SEARCH_PATHS = indigo_libs;
@@ -13343,6 +13340,7 @@
 				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
 				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
 				CLANG_WARN_STRICT_PROTOTYPES = YES;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;

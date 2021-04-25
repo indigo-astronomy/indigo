@@ -100,7 +100,7 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 					return false;
 				}
-				index = result;
+				index = (int)result;
 				break;
 			} else {
 				result = read(PRIVATE_DATA->handle, &c, 1);
@@ -124,7 +124,7 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
 	if(!board || !firmware) return false;
 
-	const char *operative[3] = { "", "Bootloader", "Error" };
+	//const char *operative[3] = { "", "Bootloader", "Error" };
 	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
 	int fwmaj, fwmin, model, oper, data;
 	char response[LUNATICO_CMD_LEN]={0};

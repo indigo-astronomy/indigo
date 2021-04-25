@@ -16,30 +16,30 @@
 #include "indigo_mount_synscan_mount.h"
 
 
-static void guider_delay_ms(int millis) {
-	//  Get current time
-	struct timeval now;
-	gettimeofday(&now, NULL);
-
-	//  Convert to milliseconds and compute stop time
-	uint64_t tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
-	uint64_t tend = tnow + millis;
-
-	//  Wait until current time reaches TEND
-	while (true) {
-		//  Get current time
-		gettimeofday(&now, NULL);
-		tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
-
-		//  This is not ideal as we are busy-waiting here and just consuming CPU cycles doing nothing,
-		//  but if we actually sleep, then the OS might not give control back for much longer than we
-		//  wanted to sleep for.
-		
-		//  Return if we've reached the end time
-		if (tnow >= tend)
-			return;
-	}
-}
+//static void guider_delay_ms(int millis) {
+//	//  Get current time
+//	struct timeval now;
+//	gettimeofday(&now, NULL);
+//
+//	//  Convert to milliseconds and compute stop time
+//	uint64_t tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+//	uint64_t tend = tnow + millis;
+//
+//	//  Wait until current time reaches TEND
+//	while (true) {
+//		//  Get current time
+//		gettimeofday(&now, NULL);
+//		tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
+//
+//		//  This is not ideal as we are busy-waiting here and just consuming CPU cycles doing nothing,
+//		//  but if we actually sleep, then the OS might not give control back for much longer than we
+//		//  wanted to sleep for.
+//		
+//		//  Return if we've reached the end time
+//		if (tnow >= tend)
+//			return;
+//	}
+//}
 
 void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->timer_count++;

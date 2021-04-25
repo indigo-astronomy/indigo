@@ -28,9 +28,6 @@
 
 #include <indigo/indigo_driver.h>
 
-#define DRIVER_NAME              "indigo_aux_skywatcher"
-#define DRIVER_INFO              "AAG CloudWatcher"
-
 #ifdef __cplusplus
 extern "C" {
 #endif

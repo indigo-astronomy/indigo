@@ -28,10 +28,6 @@
 
 #include <indigo/indigo_driver.h>
 
-#define DRIVER_NAME              "indigo_aux_dragonfly"
-#define CONFLICTING_DRIVER       "indigo_dome_dragonfly"
-#define DRIVER_INFO              "Lunatico Dragonfly Relay Controller"
-
 #ifdef __cplusplus
 extern "C" {
 #endif
