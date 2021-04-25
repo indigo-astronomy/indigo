@@ -1383,7 +1383,7 @@ static struct info {
             case PTPDataTypeCodeUInt16: {
               buffer = malloc(size = 12);
 							memset(buffer, 0, 12);
-              *(short *)(buffer + 8) = CFSwapInt16HostToLittle(value.intValue);
+              *(int16_t *)(buffer + 8) = CFSwapInt16HostToLittle(value.intValue);
               break;
             }
             case PTPDataTypeCodeSInt32:

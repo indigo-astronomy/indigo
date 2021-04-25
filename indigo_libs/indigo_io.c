@@ -254,7 +254,7 @@ static int open_socket(const char *host, int port, int type) {
 		handle = socket(AF_INET, type, 0);
 		if (handle == -1)
 			return handle;
-		*(short *)(address->ai_addr->sa_data) = htons(port);
+		*(uint16_t *)(address->ai_addr->sa_data) = htons(port);
 		if (connect(handle, address->ai_addr, address->ai_addrlen) == 0) {
 			struct timeval timeout;
 			timeout.tv_sec = 5;

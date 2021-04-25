@@ -114,7 +114,7 @@ typedef struct {
 
 // gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
 
-static void box_blur_h(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	double iarr = 1 / (r + r + 1);
 	for (int i = 0; i < h; i++) {
 		int ti = i * w, li = ti, ri = ti + r;
@@ -136,7 +136,7 @@ static void box_blur_h(unsigned short *scl, unsigned short *tcl, int w, int h, d
 	}
 }
 
-static void box_blur_t(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	double iarr = 1 / ( r + r + 1);
 	for (int i = 0; i < w; i++) {
 		int ti = i, li = ti, ri = ti + r * w;
@@ -165,7 +165,7 @@ static void box_blur_t(unsigned short *scl, unsigned short *tcl, int w, int h, d
 	}
 }
 
-static void box_blur(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+static void box_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	int length = w * h;
 	for (int i = 0; i < length; i++)
 		tcl[i] = scl[i];
@@ -173,7 +173,7 @@ static void box_blur(unsigned short *scl, unsigned short *tcl, int w, int h, dou
 	box_blur_t(scl, tcl, w, h, r);
 }
 
-static void gauss_blur(unsigned short *scl, unsigned short *tcl, int w, int h, double r) {
+static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	double ideal = sqrt((12 * r * r / 3) + 1);
 	int wl = floor(ideal);
 	if (wl % 2 == 0)
@@ -244,7 +244,7 @@ static void create_frame(indigo_device *device) {
 #endif
 		indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 	} else {
-		uint16_t *raw = (unsigned short *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
+		uint16_t *raw = (uint16_t *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
@@ -361,7 +361,7 @@ static void create_frame(indigo_device *device) {
 			raw[i] = (unsigned short)value;
 		}
 		if (private_data->current_position != 0) {
-			unsigned short *tmp = indigo_safe_malloc(2 * size);
+			uint16_t *tmp = indigo_safe_malloc(2 * size);
 			gauss_blur(raw, tmp, frame_width, frame_height, private_data->current_position);
 			memcpy(raw, tmp, 2 * size);
 			free(tmp);
