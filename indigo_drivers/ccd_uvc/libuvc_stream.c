@@ -1191,16 +1191,16 @@ uvc_error_t uvc_stream_start(
 
     /* Set up the transfers */
     for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; ++transfer_id) {
-      transfer = libusb_alloc_transfer(packets_per_transfer);
+      transfer = libusb_alloc_transfer((int)packets_per_transfer);
       strmh->transfers[transfer_id] = transfer;
       strmh->transfer_bufs[transfer_id] = malloc(total_transfer_size);
 
       libusb_fill_iso_transfer(
         transfer, strmh->devh->usb_devh, format_desc->parent->bEndpointAddress,
         strmh->transfer_bufs[transfer_id],
-        total_transfer_size, packets_per_transfer, _uvc_stream_callback, (void*) strmh, 5000);
+                               (int)total_transfer_size, (int)packets_per_transfer, _uvc_stream_callback, (void*) strmh, 5000);
 
-      libusb_set_iso_packet_lengths(transfer, endpoint_bytes_per_packet);
+      libusb_set_iso_packet_lengths(transfer, (int)endpoint_bytes_per_packet);
     }
   } else {
     for (transfer_id = 0; transfer_id < LIBUVC_NUM_TRANSFER_BUFS;
