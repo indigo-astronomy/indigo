@@ -836,7 +836,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_mem_dest(&cinfo, &mem, &mem_size);
 	cinfo.image_width = frame_width;
 	cinfo.image_height = frame_height;
-	unsigned long histo[4096] = { 0 };
+	unsigned long *histo = indigo_safe_malloc(4096 * sizeof(unsigned long));
 	if (bpp == 8 || bpp == 24) {
 		unsigned char *b8 = copy;
 		int count = size_in * (bpp == 8 ? 1 : 3);
@@ -855,8 +855,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 				value = 255;
 			*b8++ = value;
 		}
-	}
-	if (bpp == 16 || bpp == 48) {
+	} else if (bpp == 16 || bpp == 48) {
 		unsigned short *b16 = copy;
 		int count = size_in * (bpp == 16 ? 1 : 3);
 		if (little_endian) {
@@ -888,8 +887,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	if (bpp == 8 || bpp == 16) {
 		cinfo.input_components = 1;
 		cinfo.in_color_space = JCS_GRAYSCALE;
-	}
-	if (bpp == 24 || bpp == 48) {
+	} else if (bpp == 24 || bpp == 48) {
 		if (!byte_order_rgb) {
 			unsigned char *b8 = copy;
 			for (int i = 0; i < size_in; i++) {
@@ -922,7 +920,8 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		for (int i = 0; i < 256; i++) {
 			int base = i * 16;
 			unsigned long val = 0;
-			for (int j = 0; j < 16; j++) val += histo[base+j];
+			for (int j = 0; j < 16; j++)
+				val += histo[base + j];
 			unsigned long mask = 0x80000000;
 			uint8_t pixel = 0;
 			for (unsigned long j = 0; j < 32; j++) {
@@ -953,6 +952,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		*histogram_data = mem;
 		*histogram_size = mem_size;
 	}
+	free(histo);
 	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 }
 
