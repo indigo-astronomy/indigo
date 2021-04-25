@@ -167,18 +167,18 @@ static indigo_alpaca_error alpaca_move_relative(indigo_alpaca_device *device, in
 	return indigo_alpaca_error_OK;
 }
 
-static indigo_alpaca_error alpaca_sync(indigo_alpaca_device *device, int version, double value) {
-	pthread_mutex_lock(&device->mutex);
-	if (!device->connected) {
-		pthread_mutex_unlock(&device->mutex);
-		return indigo_alpaca_error_NotConnected;
-	}
-
-	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true);
-	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, value);
-	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
-}
+//static indigo_alpaca_error alpaca_sync(indigo_alpaca_device *device, int version, double value) {
+//	pthread_mutex_lock(&device->mutex);
+//	if (!device->connected) {
+//		pthread_mutex_unlock(&device->mutex);
+//		return indigo_alpaca_error_NotConnected;
+//	}
+//
+//	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, ROTATOR_ON_POSITION_SET_SYNC_ITEM_NAME, true);
+//	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, value);
+//	pthread_mutex_unlock(&device->mutex);
+//	return indigo_alpaca_error_OK;
+//}
 
 static indigo_alpaca_error alpaca_halt(indigo_alpaca_device *device, int version) {
 	pthread_mutex_lock(&device->mutex);

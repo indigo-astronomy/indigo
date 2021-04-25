@@ -1165,7 +1165,7 @@ static indigo_result agent_client_detach(indigo_client *client) {
 
 indigo_result indigo_agent_scripting(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(
-		ALIGNMENT_AGENT_NAME,
+		SCRIPTING_AGENT_NAME,
 		agent_device_attach,
 		agent_enumerate_properties,
 		agent_change_property,
@@ -1174,7 +1174,7 @@ indigo_result indigo_agent_scripting(indigo_driver_action action, indigo_driver_
 	);
 
 	static indigo_client agent_client_template = {
-		ALIGNMENT_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
+		SCRIPTING_AGENT_NAME, false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		agent_client_attach,
 		agent_define_property,
 		agent_update_property,
@@ -1185,7 +1185,7 @@ indigo_result indigo_agent_scripting(indigo_driver_action action, indigo_driver_
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, ALIGNMENT_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, SCRIPTING_AGENT_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

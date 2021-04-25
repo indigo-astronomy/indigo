@@ -28,6 +28,9 @@
 #define DRIVER_VERSION         0x0006
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
+#define DRIVER_NAME              "indigo_aux_skywatcher"
+#define DRIVER_INFO              "AAG CloudWatcher"
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -400,7 +403,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 					return false;
 				}
-				index = result;
+				index = (int)result;
 				break;
 			} else {
 				result = read(PRIVATE_DATA->handle, &c, 1);
@@ -457,13 +460,11 @@ static bool aag_is_cloudwatcher(indigo_device *device, char *name) {
 	return is_cw;
 }
 
-
-static bool aag_reset_buffers(indigo_device *device) {
-	bool r = aag_command(device, "z!", NULL, 0, 0);
-	if (!r) return false;
-	return true;
-}
-
+//static bool aag_reset_buffers(indigo_device *device) {
+//	bool r = aag_command(device, "z!", NULL, 0, 0);
+//	if (!r) return false;
+//	return true;
+//}
 
 static bool aag_get_firmware_version(indigo_device *device, char *version) {
 	if (version == NULL) return false;
@@ -1959,8 +1960,6 @@ static indigo_result aux_detach(indigo_device *device) {
 }
 
 // --------------------------------------------------------------------------------
-
-static int device_number = 0;
 
 static void create_port_device(int device_index) {
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(

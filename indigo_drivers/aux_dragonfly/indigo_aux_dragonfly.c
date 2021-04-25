@@ -28,6 +28,11 @@
 #define DRIVER_VERSION         0x0004
 #define AUX_DRAGONFLY_NAME     "Dragonfly Controller"
 
+#define DRIVER_NAME              "indigo_aux_dragonfly"
+#define CONFLICTING_DRIVER       "indigo_dome_dragonfly"
+#define DRIVER_INFO              "Lunatico Dragonfly Relay Controller"
+
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>

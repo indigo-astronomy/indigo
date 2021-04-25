@@ -1245,7 +1245,7 @@ static indigo_device *dome = NULL;
 
 indigo_result indigo_dome_nexdome3(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device dome_template = INDIGO_DEVICE_INITIALIZER(
-		DOME_NEXDOME_NAME,
+		DOME_NEXDOME3_NAME,
 		dome_attach,
 		nexdome_enumerate_properties,
 		dome_change_property,
@@ -1255,7 +1255,7 @@ indigo_result indigo_dome_nexdome3(indigo_driver_action action, indigo_driver_in
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
-	SET_DRIVER_INFO(info, DOME_NEXDOME_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, DOME_NEXDOME3_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
