@@ -45,7 +45,7 @@ P0 00 P1
 P3 00 P4
 */
 static int clear_hot_pixel_16(uint16_t* image, int x, int y, int width, int height) {
-	int i, j, k, max, value;
+	int j, k, max, value;
 	k = 0;
 	int window[5];
 
@@ -989,7 +989,6 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	digest->fft_x = indigo_safe_malloc(2 * digest->width * sizeof(double));
 	digest->fft_y = indigo_safe_malloc(2 * digest->height * sizeof(double));
 
-	const int size = sub_width * sub_height;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			for (int j = ls; j < le; j++) {

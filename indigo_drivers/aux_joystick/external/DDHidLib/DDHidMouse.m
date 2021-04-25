@@ -119,7 +119,7 @@
 
 - (unsigned) numberOfButtons;
 {
-    return [mButtonElements count];
+    return (unsigned)[mButtonElements count];
 }
 
 - (void) addElementsToQueue: (DDHidQueue *) queue;

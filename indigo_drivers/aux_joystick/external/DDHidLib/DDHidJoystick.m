@@ -122,7 +122,7 @@
     mLogicalDeviceElements = [[NSMutableArray alloc] init];
 
     [self initLogicalDeviceElements];
-    int logicalDeviceCount = [mLogicalDeviceElements count];
+    int logicalDeviceCount = (int)[mLogicalDeviceElements count];
     if (logicalDeviceCount ==  0)
     {
         return nil;
@@ -153,7 +153,7 @@
 
 - (int) logicalDeviceCount;
 {
-    return [mLogicalDeviceElements count];
+    return (int)[mLogicalDeviceElements count];
 }
 
 #pragma mark -
@@ -169,15 +169,15 @@
 
 - (unsigned) numberOfButtons;
 {
-    return [mButtonElements count];
+    return (unsigned)[mButtonElements count];
 }
 
 #pragma mark -
 #pragma mark Sticks - indexed accessors
 
-- (unsigned int) countOfSticks 
+- (unsigned) countOfSticks
 {
-    return [mSticks count];
+    return (unsigned)[mSticks count];
 }
 
 - (DDHidJoystickStick *) objectInSticksAtIndex: (unsigned int)index 
@@ -351,10 +351,10 @@
             forElement: (DDHidElement *) element;
 {
     int normalizedUnits = DDHID_JOYSTICK_VALUE_MAX - DDHID_JOYSTICK_VALUE_MIN;
-    int elementUnits = [element maxValue] - [element minValue];
+    long elementUnits = (int)([element maxValue] - [element minValue]);
     
-    int normalizedValue = (((int64_t)(value - [element minValue]) * normalizedUnits) /
-                           elementUnits) + DDHID_JOYSTICK_VALUE_MIN;
+    int normalizedValue = (int)((((int64_t)(value - [element minValue]) * normalizedUnits) /
+                           elementUnits) + DDHID_JOYSTICK_VALUE_MIN);
     return normalizedValue;
 }
 
@@ -373,7 +373,7 @@
     
     // Do like DirectInput and express the hatswitch value in hundredths of a
 	// degree, clockwise from north.
-	return 36000 / (max - min + 1) * (value - min);
+	return (int)(36000 / (max - min + 1) * (value - min));
 }
 
 - (BOOL) findStick: (unsigned *) stick
@@ -613,9 +613,9 @@
 #pragma mark -
 #pragma mark mStickElements - indexed accessors
 
-- (unsigned int) countOfStickElements 
+- (unsigned) countOfStickElements
 {
-    return [mStickElements count];
+    return (unsigned)[mStickElements count];
 }
 
 - (DDHidElement *) objectInStickElementsAtIndex: (unsigned int)index 
@@ -626,9 +626,9 @@
 #pragma mark -
 #pragma mark PovElements - indexed accessors
 
-- (unsigned int) countOfPovElements;
+- (unsigned) countOfPovElements;
 {
-    return [mPovElements count];
+    return (unsigned)[mPovElements count];
 }
 
 - (DDHidElement *) objectInPovElementsAtIndex: (unsigned int)index;

@@ -312,7 +312,6 @@ static uint16_t FUJI_CHECK_PROPERTIES[] = {
 static void ptp_fuji_get_event(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size = 0;
-	uint16_t *properties = FUJI_CHECK_PROPERTIES;
 	for (int i = 0; FUJI_CHECK_PROPERTIES[i]; i++) {
 		uint16_t code = FUJI_CHECK_PROPERTIES[i];
 		ptp_property *prop = ptp_property_supported(device, FUJI_CHECK_PROPERTIES[i]);

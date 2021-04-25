@@ -21,7 +21,7 @@ int a2dd(double *dd, const char *a) {
 
 	buff=(char*)a;                     //clear the spaces
 	while (isspace(buff[0])) buff++;
-	i=strlen(buff)-1;
+	i=(int)strlen(buff)-1;
 	while (isspace(buff[i])) i--;
 	buff[i+1]='\0';
 
@@ -108,7 +108,7 @@ int a2dh(double *dh, const char *a) {
 
 	buff=(char*)a;                     //clear the spaces
 	while (isspace(buff[0])) buff++;
-	i=strlen(buff)-1;
+	i=(int)strlen(buff)-1;
 	while (isspace(buff[i])) i--;
 	buff[i+1]='\0';
 

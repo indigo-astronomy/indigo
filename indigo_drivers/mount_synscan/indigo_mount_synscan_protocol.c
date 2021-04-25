@@ -456,7 +456,7 @@ bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration
 	//------  GUIDE PULSE STOPS NOW  -----------------------
 
 	//  Determine how long the pulse took
-	uint64_t pulse_length = current_time_millis() - tnow;
+	//uint64_t pulse_length = current_time_millis() - tnow;
 
 	//  Read response from last command
 	ok = ok && synscan_read_response(device, response);		//  Stop/Rate command

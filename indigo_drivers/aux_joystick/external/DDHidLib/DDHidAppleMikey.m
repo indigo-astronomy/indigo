@@ -89,7 +89,7 @@
 
 - (unsigned) numberOfKeys;
 {
-    return [mPressElements count];
+    return (unsigned int)[mPressElements count];
 }
 
 - (void) addElementsToQueue: (DDHidQueue *) queue;

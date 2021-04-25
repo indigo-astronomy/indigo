@@ -97,7 +97,7 @@
 
 - (unsigned) numberOfKeys;
 {
-    return [mKeyElements count];
+    return (unsigned)[mKeyElements count];
 }
 
 - (void) addElementsToQueue: (DDHidQueue *) queue;

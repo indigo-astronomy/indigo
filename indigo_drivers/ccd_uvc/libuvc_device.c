@@ -655,7 +655,7 @@ uvc_error_t uvc_get_device_list(
 
   UVC_ENTER();
 
-  num_usb_devices = libusb_get_device_list(ctx->usb_ctx, &usb_dev_list);
+  num_usb_devices = (int)libusb_get_device_list(ctx->usb_ctx, &usb_dev_list);
 
   if (num_usb_devices < 0) {
     UVC_EXIT(UVC_ERROR_IO);

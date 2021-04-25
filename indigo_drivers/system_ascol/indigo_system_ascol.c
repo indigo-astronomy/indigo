@@ -1005,7 +1005,6 @@ static void mount_handle_flap_coude(indigo_device *device) {
 
 
 static void mount_handle_park(indigo_device *device) {
-	int dev_id = PRIVATE_DATA->dev_id;
 	bool error_flag = false;
 
 	/* UNPARK */

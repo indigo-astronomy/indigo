@@ -744,7 +744,7 @@ static int dsicmd_usb_command(dsi_camera_t *dsi, unsigned char *ibuf, int ibuf_l
 	if (retcode < 0)
 		return retcode;
 
-	retcode = (int)libusb_bulk_transfer(dsi->handle, 0x81, (unsigned char *)obuf, obuf_size, &actual_length, dsi->read_command_timeout);
+	retcode = (int)libusb_bulk_transfer(dsi->handle, 0x81, (unsigned char *)obuf, (int)obuf_size, &actual_length, dsi->read_command_timeout);
 	if (retcode < 0)
 		return retcode;
 
