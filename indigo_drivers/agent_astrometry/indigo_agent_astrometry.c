@@ -331,8 +331,8 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				// mono
 				if (byte_per_pixel == 2) {
 					// 16 bit RAW - swap endian
-					short *in = image;
-					short *out = (short *)p;
+					uint16_t *in = image;
+					uint16_t *out = (uint16_t *)p;
 					for (int i = 0; i < pixel_count; i++) {
 						int value = *in++ - 32768;
 						*out++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
@@ -345,8 +345,8 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				// RGB
 				if (byte_per_pixel == 2) {
 					// 16 bit RGB - average and swap endian
-					short *in = image;
-					short *out = (short *)p;
+					uint16_t *in = image;
+					uint16_t *out = (uint16_t *)p;
 					for (int i = 0; i < pixel_count; i++) {
 						int value = (in[0] + in[1] + in[2]) / 3 - 32768;
 						in += 3;

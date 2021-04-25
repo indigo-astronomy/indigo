@@ -501,14 +501,14 @@ static bool sx_read_pixels(indigo_device *device) {
 					rc = sx_download_pixels(device, PRIVATE_DATA->odd, size);
 					if (rc >= 0) {
 						unsigned long long odd_sum = 0, even_sum = 0;
-						unsigned short *pnt = (unsigned short *)odd;
+						uint16_t *pnt = (uint16_t *)odd;
 						for (int i = 0; i < size / 2; i += 32)
 							odd_sum += *pnt++;
-						pnt = (unsigned short *)even;
+						pnt = (uint16_t *)even;
 						for (int i = 0; i < size / 2; i += 32)
 							even_sum += *pnt++;
 						double ratio = (double)odd_sum/(double)even_sum;
-						pnt = (unsigned short *)even;
+						pnt = (uint16_t *)even;
 						for (int i = 0; i < size / 2; i ++) {
 							 unsigned short value = (unsigned short)(*pnt * ratio);
 							*pnt++ = value;

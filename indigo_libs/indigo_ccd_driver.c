@@ -1223,7 +1223,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		t = sprintf(header += 80, "END");
 		header[t] = ' ';
 		if (byte_per_pixel == 2 && naxis == 2) {
-			short *raw = (short *)(data + FITS_HEADER_SIZE);
+			uint16_t *raw = (uint16_t *)(data + FITS_HEADER_SIZE);
 			if (little_endian) {
 				for (int i = 0; i < size; i++) {
 					int value = *raw - 32768;
@@ -1436,7 +1436,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data) - 16;
 		if (naxis == 2 && byte_per_pixel == 2) {
 			if (!little_endian) {
-				short *b16 = (short *)(data + FITS_HEADER_SIZE);
+				uint16_t *b16 = (uint16_t *)(data + FITS_HEADER_SIZE);
 				for (int i = 0; i < size; i++) {
 					int value = *b16;
 					*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
@@ -1495,7 +1495,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		else if (naxis == 2 && byte_per_pixel == 2) {
 			header->signature = INDIGO_RAW_MONO16;
 			if (!little_endian) {
-				short *b16 = (short *)(data + FITS_HEADER_SIZE);
+				uint16_t *b16 = (uint16_t *)(data + FITS_HEADER_SIZE);
 				for (int i = 0; i < size; i++) {
 					int value = *b16;
 					*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
