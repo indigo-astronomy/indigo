@@ -158,9 +158,9 @@ static void wheel_goto_handler(indigo_device *device) {
 	char command[2] = { '0' + WHEEL_SLOT_ITEM->number.target - 1, 0 };
 	char reply[2];
 	if (qhy_command(device, command, reply, 1, 15)) {
-		if (X_MODEL_1_ITEM) {
+		if (X_MODEL_1_ITEM->sw.value) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == '-';
-		} else if (X_MODEL_2_ITEM || X_MODEL_3_ITEM) {
+		} else if (X_MODEL_2_ITEM->sw.value || X_MODEL_3_ITEM->sw.value) {
 			WHEEL_SLOT_PROPERTY->state = reply[0] == command[0];
 		}
 		if (X_MODEL_1_ITEM->sw.value) {
