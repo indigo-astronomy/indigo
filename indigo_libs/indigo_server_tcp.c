@@ -94,7 +94,9 @@ static void start_worker_thread(int *client_socket) {
 	server_callback(++client_count);
 	int res = 0;
 	char c;
-	void *working_copy = NULL;
+	void *free_on_exit = NULL;
+	pthread_mutex_t *unlock_at_exit = NULL;
+	
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
 			INDIGO_LOG(indigo_log("Protocol switched to XML"));
@@ -170,7 +172,7 @@ static void start_worker_thread(int *client_socket) {
 						indigo_item *item;
 						indigo_blob_entry *entry;
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
-							pthread_mutex_lock(&entry->mutext);
+							pthread_mutex_lock(unlock_at_exit = &entry->mutext);
 							long working_size = entry->size;
 							if (working_size == 0) {
 								assert(entry->content == NULL);
@@ -184,7 +186,7 @@ static void start_worker_thread(int *client_socket) {
 									INDIGO_ERROR(indigo_error("Failed to populate BLOB"));
 								}
 							}
-							working_copy = indigo_use_blob_buffering ? malloc(working_size) : entry->content;
+							void *working_copy = indigo_use_blob_buffering ? (free_on_exit = malloc(working_size)) : entry->content;
 							if (working_copy) {
 								char working_format[INDIGO_NAME_SIZE];
 								strcpy(working_format, entry->format);
@@ -200,6 +202,7 @@ static void start_worker_thread(int *client_socket) {
 										memcpy(working_copy, entry->content, working_size);
 									}
 									pthread_mutex_unlock(&entry->mutext);
+									unlock_at_exit = NULL;
 								}
 								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								if (!strcmp(entry->format, ".jpeg")) {
@@ -220,12 +223,14 @@ static void start_worker_thread(int *client_socket) {
 								}
 								if (indigo_use_blob_buffering) {
 									free(working_copy);
-									working_copy = NULL;
+									free_on_exit = NULL;
 								} else {
 									pthread_mutex_unlock(&entry->mutext);
+									unlock_at_exit = NULL;
 								}
 							} else {
 								pthread_mutex_unlock(&entry->mutext);
+								unlock_at_exit = NULL;
 								INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
 								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(socket, "\r\n");
@@ -351,8 +356,10 @@ failure:
 	close(socket);
 	server_callback(--client_count);
 	free(client_socket);
-	if (working_copy)
-		free(working_copy);
+	if (free_on_exit)
+		free(free_on_exit);
+	if (unlock_at_exit)
+		pthread_mutex_lock(unlock_at_exit);
 	INDIGO_LOG(indigo_log("Worker thread finished"));
 }
 
