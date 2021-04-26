@@ -220,6 +220,7 @@ static void start_worker_thread(int *client_socket) {
 								}
 								if (indigo_use_blob_buffering) {
 									free(working_copy);
+									working_copy = NULL;
 								} else {
 									pthread_mutex_unlock(&entry->mutext);
 								}
