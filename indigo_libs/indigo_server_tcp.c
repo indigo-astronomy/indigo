@@ -94,6 +94,7 @@ static void start_worker_thread(int *client_socket) {
 	server_callback(++client_count);
 	int res = 0;
 	char c;
+	void *working_copy = NULL;
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
 			INDIGO_LOG(indigo_log("Protocol switched to XML"));
@@ -183,7 +184,7 @@ static void start_worker_thread(int *client_socket) {
 									INDIGO_ERROR(indigo_error("Failed to populate BLOB"));
 								}
 							}
-							void *working_copy = indigo_use_blob_buffering ? malloc(working_size) : entry->content;
+							working_copy = indigo_use_blob_buffering ? malloc(working_size) : entry->content;
 							if (working_copy) {
 								char working_format[INDIGO_NAME_SIZE];
 								strcpy(working_format, entry->format);
@@ -349,6 +350,8 @@ failure:
 	close(socket);
 	server_callback(--client_count);
 	free(client_socket);
+	if (working_copy)
+		free(working_copy);
 	INDIGO_LOG(indigo_log("Worker thread finished"));
 }
 
