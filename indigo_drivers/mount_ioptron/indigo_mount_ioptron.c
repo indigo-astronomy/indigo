@@ -661,7 +661,16 @@ static void mount_connect_callback(indigo_device *device) {
 				} else if (!strcmp(PRIVATE_DATA->product, "0025")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM25");
 				} else if (!strcmp(PRIVATE_DATA->product, "0026")) {
+					// NOTE:
+					// v2.5 : CEM25-EC
+					// v3.10 : CEM26
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM25-EC");
+				} else if (!strcmp(PRIVATE_DATA->product, "0027")) {
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM26-EC");
+				} else if (!strcmp(PRIVATE_DATA->product, "0028")) {
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM28");
+				} else if (!strcmp(PRIVATE_DATA->product, "0029")) {
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM28-EC");
 				} else if (!strcmp(PRIVATE_DATA->product, "0030")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ30 Pro");
 				} else if (!strcmp(PRIVATE_DATA->product, "0040")) {
@@ -671,7 +680,7 @@ static void mount_connect_callback(indigo_device *device) {
 				} else if (!strcmp(PRIVATE_DATA->product, "0043")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45");
 				} else if (!strcmp(PRIVATE_DATA->product, "0044")) {
-					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45EC");
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "GEM45-EC");
 				} else if (!strcmp(PRIVATE_DATA->product, "0045")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "iEQ45 Pro EQ");
 				} else if (!strcmp(PRIVATE_DATA->product, "0046")) {
@@ -682,6 +691,8 @@ static void mount_connect_callback(indigo_device *device) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM60-EC");
 				} else if (!strcmp(PRIVATE_DATA->product, "0070")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM70");
+				} else if (!strcmp(PRIVATE_DATA->product, "0071")) {
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM70-EC");
 				} else if (!strcmp(PRIVATE_DATA->product, "0120")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM120");
 				} else if (!strcmp(PRIVATE_DATA->product, "0121")) {
@@ -748,6 +759,10 @@ static void mount_connect_callback(indigo_device *device) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
+					if (strncmp("201030", response, 6) <= 0 && (product == 26 || product == 28 || product == 70 || product == 120)) {
+						PRIVATE_DATA->protocol = 0x0300;
+						PRIVATE_DATA->no_park = false;
+					}
 					if (strncmp("210105", response, 6) <= 0 && (product == 43  || product == 44)) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
@@ -757,6 +772,10 @@ static void mount_connect_callback(indigo_device *device) {
 						response[6] = 0;
 						strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, "/");
 						strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+					}
+					if ( PRIVATE_DATA->protocol == 0x0300 && product == 26 ) {
+						// "0026" has been reassigned in v3.10
+						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM26");
 					}
 				}
 			}
@@ -861,7 +880,7 @@ static void mount_connect_callback(indigo_device *device) {
 				sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
 				if (ieq_command(device, ":GAS#", response, sizeof(response))) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);					
+					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 					switch (response[1]) {
 						case '1':
 						case '5':
