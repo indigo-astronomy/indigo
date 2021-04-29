@@ -24,7 +24,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -101,6 +101,7 @@ typedef struct {
 	indigo_property *reboot_property;
 	int count;
 	bool is_advance; // PPB or PPBA?
+	bool is_micro; // PPBA or PPBM
 	pthread_mutex_t mutex;
 } ppb_private_data;
 
@@ -390,6 +391,7 @@ static void aux_connection_handler(indigo_device *device) {
 						if (!strcmp(response, "PPB_OK")) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPB %s", DEVICE_PORT_ITEM->text.value);
 							PRIVATE_DATA->is_advance = false;
+							PRIVATE_DATA->is_micro = false;
 							AUX_POWER_OUTLET_PROPERTY->count = 1;
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 							AUX_DSLR_POWER_PROPERTY->hidden = true;
@@ -397,6 +399,15 @@ static void aux_connection_handler(indigo_device *device) {
 						} else if (!strcmp(response, "PPBA_OK")) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPBA %s", DEVICE_PORT_ITEM->text.value);
 							PRIVATE_DATA->is_advance = true;
+							PRIVATE_DATA->is_micro = false;
+							AUX_POWER_OUTLET_PROPERTY->count = 2;
+							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
+							AUX_DSLR_POWER_PROPERTY->hidden = false;
+							break;
+						} else if (!strcmp(response, "PPBM_OK")) {
+							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPBM %s", DEVICE_PORT_ITEM->text.value);
+							PRIVATE_DATA->is_advance = true;
+							PRIVATE_DATA->is_micro = true;
 							AUX_POWER_OUTLET_PROPERTY->count = 2;
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 							AUX_DSLR_POWER_PROPERTY->hidden = false;
@@ -471,7 +482,7 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			if (ppb_command(device, "PV", response, sizeof(response)) ) {
-				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->is_advance ? "PPBA" : "PPB");
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->is_advance ? (PRIVATE_DATA->is_micro ? "PPBM" : "PPBA") : "PPB");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
