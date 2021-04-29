@@ -2,6 +2,17 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-148] - Thu Apr 29 2021
+### Overall:
+- better memory management - allocated buffers reuse
+- fixed some memory leaks
+- fixed telescope alignment
+- wifi channel can be selected for indigo sky in Access Point mode
+
+### Driver fixes
+- indigo_mount_ioptron: add firmware version 3.1
+- indigo_wheel_qhy: fix typo
+
 ## [2.0-146] - Wed Apr 14 2021
 ### Overall:
 - compression added to HTTP BLOB transfer - image transfer can be about 2x faster
