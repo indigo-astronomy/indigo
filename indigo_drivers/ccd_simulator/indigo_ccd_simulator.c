@@ -56,6 +56,7 @@
 #define DSLR_SHUTTER_PROPERTY				PRIVATE_DATA->dslr_shutter_property
 #define DSLR_COMPRESSION_PROPERTY		PRIVATE_DATA->dslr_compression_property
 #define DSLR_ISO_PROPERTY						PRIVATE_DATA->dslr_iso_property
+#define DSLR_BATTERY_LEVEL_PROPERTY	PRIVATE_DATA->dslr_battery_level_property
 
 #define GUIDER_MODE_PROPERTY				PRIVATE_DATA->guider_mode_property
 #define GUIDER_MODE_STARS_ITEM			(GUIDER_MODE_PROPERTY->items + 0)
@@ -91,6 +92,7 @@ typedef struct {
 	indigo_property *dslr_shutter_property;
 	indigo_property *dslr_compression_property;
 	indigo_property *dslr_iso_property;
+	indigo_property *dslr_battery_level_property;
 	indigo_property *guider_mode_property;
 	indigo_property *guider_settings_property;
 	indigo_property *file_name_property;
@@ -536,6 +538,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 0, "100", "100", true);
 			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 1, "200", "200", false);
 			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 2, "400", "400", false);
+			DSLR_BATTERY_LEVEL_PROPERTY = indigo_init_number_property(NULL, device->name, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "DSRL", "Battery level", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+			indigo_init_number_item(DSLR_BATTERY_LEVEL_PROPERTY->items + 0, "VALUE", "Value", 0, 100, 0, 50);
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
 			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 1;
@@ -663,6 +667,8 @@ indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *cli
 					indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				if (indigo_property_match(DSLR_ISO_PROPERTY, property))
 					indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
+				if (indigo_property_match(DSLR_BATTERY_LEVEL_PROPERTY, property))
+					indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			}
 		}
 		if (device == PRIVATE_DATA->file) {
@@ -697,6 +703,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
+				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			} else if (device == PRIVATE_DATA->file) {
 				int fd = open(FILE_NAME_ITEM->text.value, O_RDONLY, 0);
 				if (fd == -1)
@@ -759,6 +766,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
 				indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
+				indigo_delete_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			} else if (device == PRIVATE_DATA->file) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->file_exposure_timer);
 			}
@@ -944,6 +952,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(DSLR_SHUTTER_PROPERTY);
 		indigo_release_property(DSLR_COMPRESSION_PROPERTY);
 		indigo_release_property(DSLR_ISO_PROPERTY);
+		indigo_release_property(DSLR_BATTERY_LEVEL_PROPERTY);
 	} else if (device == PRIVATE_DATA->file) {
 		indigo_release_property(FILE_NAME_PROPERTY);
 	} else if (device == PRIVATE_DATA->guider) {
