@@ -1092,8 +1092,8 @@ static void ptp_canon_get_event(indigo_device *device) {
 					if (count >= PTP_MAX_ELEMENTS) {
 						break;
 					}
-					property->count = count;
-					if (property->count > 0) {
+					if (count > 0) {
+						property->count = count;
 						if (code == ptp_property_canon_ImageFormat || code == ptp_property_canon_ImageFormatCF || code == ptp_property_canon_ImageFormatSD || code == ptp_property_canon_ImageFormatExtHD) {
 							for (int i = 0; i < count; i++)
 								source = ptp_copy_image_format(source, (uint64_t *)&property->value.sw.values[i]);
@@ -1112,8 +1112,10 @@ static void ptp_canon_get_event(indigo_device *device) {
 								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unsupported type %04x", type);
 							}
 						}
-					} else {
+					} else if (property->count > 0) {
 						property->count = -1;
+					} else {
+						property->count = count;
 					}
 					*next_updated++ = property;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "count = %d", property->count);
