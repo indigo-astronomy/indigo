@@ -522,8 +522,10 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			int rc = libusb_get_device_descriptor(dev, &descriptor);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "searching for %04x:%04x", descriptor.idVendor, descriptor.idProduct);
 			for (int i = 0; CAMERA[i].vendor; i++) {
 				if (CAMERA[i].vendor == descriptor.idVendor && (CAMERA[i].product == descriptor.idProduct || CAMERA[i].product == 0xFFFF)) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "found %s", CAMERA[i].name);
 					ptp_private_data *private_data = indigo_safe_malloc(sizeof(ptp_private_data));
 					private_data->dev = dev;
 					private_data->model = CAMERA[i];
