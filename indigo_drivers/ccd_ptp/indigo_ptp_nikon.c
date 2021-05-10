@@ -650,10 +650,14 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 		case ptp_property_nikon_ExposureDelayMode: {
 			ptp_property *prop = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
 			if (prop) {
-				if (prop->value.number.max == 1) {
-					switch (code) { case 0: return "Off"; case 1: return "On"; }
-				} else {
+				if (prop->form == ptp_enum_form && prop->count == 6) {
+					switch (code) { case 0: return "Off"; case 2: return "0.2s"; case 5: return "0.5s"; case 10: return "1s"; case 20: return "2s"; case 30: return "3s"; }
+				} else if (prop->form == ptp_range_form && prop->value.number.max == 3) {
 					switch (code) { case 0: return "3s"; case 1: return "2s"; case 2: return "1s"; case 3: return "Off";  }
+				} else if (prop->form == ptp_range_form && prop->value.number.max == 5) {
+					switch (code) { case 0: return "Off"; case 1: return "3s"; case 2: return "2s"; case 3: return "1s"; case 4: return "0.5s"; case 5: return "0.2s";  }
+				} else {
+					switch (code) { case 0: return "Off"; case 1: return "On"; }
 				}
 			}
 			break;
@@ -1048,7 +1052,18 @@ bool ptp_nikon_exposure(indigo_device *device) {
 	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
 	bool result = true;
 	if (property) {
-		uint8_t value = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 1 : (property->value.number.max == 1 ? 0 : 3);
+		uint8_t value;
+		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
+			if (property->form == ptp_enum_form && property->count == 6)
+				value = 10;
+			else
+				value = 1;
+		} else {
+			if (property->form == ptp_range_form && property->value.number.max == 3)
+				value = 3;
+			else
+				value = 0;
+		}
 		result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_ExposureDelayMode, &value, sizeof(uint8_t));
 	}
 	if (ptp_operation_supported(device, ptp_operation_nikon_InitiateCaptureRecInMedia)) {
