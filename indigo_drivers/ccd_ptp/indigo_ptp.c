@@ -1262,9 +1262,42 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 		}
 	}
 	if (property->type == ptp_str_type)
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = str -> %s (%s)", PRIVATE_DATA->property_code_label(property->code), property->code, property->property ? property->property->name : "NONE", property->value.text.value);
-	else
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = str -> %s ('%s')", PRIVATE_DATA->property_code_label(property->code), property->code, property->property ? property->property->name : "NONE", property->value.text.value);
+	else if (property->form == ptp_none_form)
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld)", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.number.value);
+	else if (property->form == ptp_range_form)
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld<%lld<%lld)", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.number.min, property->value.number.value, property->value.number.max);
+	else if (property->form == ptp_enum_form) {
+		switch (property->count) {
+			case -1:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [/])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value);
+				break;
+			case 0:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value);
+				break;
+			case 1:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0]);
+				break;
+			case 2:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1]);
+				break;
+			case 3:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2]);
+				break;
+			case 4:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[3]);
+				break;
+			case 5:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, %lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[3], property->value.sw.values[4]);
+				break;
+			case 6:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, %lld, %lld, %lld])", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[3], property->value.sw.values[4], property->value.sw.values[4]);
+				break;
+			default:
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x), type = %s -> %s (%lld: [%lld, %lld, %lld, ..., %lld, %lld, %lld]<%d>)", PRIVATE_DATA->property_code_label(property->code), property->code, ptp_type_code_label(property->type), property->property ? property->property->name : "NONE", property->value.sw.value, property->value.sw.values[0], property->value.sw.values[1], property->value.sw.values[2], property->value.sw.values[property->count - 3], property->value.sw.values[property->count - 2], property->value.sw.values[property->count - 1], property->count);
+				break;
+		}
+	}
 	if (IS_CONNECTED) {
 		if (define) {
 			if (delete)
