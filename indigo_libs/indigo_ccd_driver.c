@@ -43,10 +43,22 @@
 #include <indigo/indigo_avi.h>
 #include <indigo/indigo_ser.h>
 
-static jmp_buf jpeg_error;
-static void jpeg_error_callback(j_common_ptr cinfo) {
-	(void)cinfo;
-	longjmp(jpeg_error, 1);
+struct indigo_jpeg_compress_struct {
+	struct jpeg_compress_struct pub;
+	jmp_buf jpeg_error;
+};
+
+static void jpeg_compress_error_callback(j_common_ptr cinfo) {
+	longjmp(((struct indigo_jpeg_compress_struct *)cinfo)->jpeg_error, 1);
+}
+
+struct indigo_jpeg_decompress_struct {
+	struct jpeg_decompress_struct pub;
+	jmp_buf jpeg_error;
+};
+
+static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
+	longjmp(((struct indigo_jpeg_decompress_struct *)cinfo)->jpeg_error, 1);
 }
 
 static void countdown_timer_callback(indigo_device *device) {
@@ -837,23 +849,23 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	unsigned long *histo = indigo_safe_malloc(4096 * sizeof(unsigned long));
 	unsigned char *mem = NULL;
 	unsigned long mem_size = 0;
-	struct jpeg_compress_struct cinfo;
+	struct indigo_jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
-	cinfo.err = jpeg_std_error(&jerr);
+	cinfo.pub.err = jpeg_std_error(&jerr);
 	/* override default exit() and return 2 lines below */
-	jerr.error_exit = jpeg_error_callback;
+	jerr.error_exit = jpeg_compress_error_callback;
 	/* Jump here in case of a decmpression error */
-	if (setjmp(jpeg_error)) {
-		jpeg_destroy_compress(&cinfo);
+	if (setjmp(cinfo.jpeg_error)) {
+		jpeg_destroy_compress(&cinfo.pub);
 		free(copy);
 		free(histo);
 		INDIGO_ERROR(indigo_error("JPEG compression failed"));
 		return;
 	}
-	jpeg_create_compress(&cinfo);
-	jpeg_mem_dest(&cinfo, &mem, &mem_size);
-	cinfo.image_width = frame_width;
-	cinfo.image_height = frame_height;
+	jpeg_create_compress(&cinfo.pub);
+	jpeg_mem_dest(&cinfo.pub, &mem, &mem_size);
+	cinfo.pub.image_width = frame_width;
+	cinfo.pub.image_height = frame_height;
 	if (bpp == 8 || bpp == 24) {
 		unsigned char *b8 = copy;
 		int count = size_in * (bpp == 8 ? 1 : 3);
@@ -902,8 +914,8 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		}
 	}
 	if (bpp == 8 || bpp == 16) {
-		cinfo.input_components = 1;
-		cinfo.in_color_space = JCS_GRAYSCALE;
+		cinfo.pub.input_components = 1;
+		cinfo.pub.in_color_space = JCS_GRAYSCALE;
 	} else if (bpp == 24 || bpp == 48) {
 		if (!byte_order_rgb) {
 			unsigned char *b8 = copy;
@@ -915,19 +927,19 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 				b8 += 3;
 			}
 		}
-		cinfo.input_components = 3;
-		cinfo.in_color_space = JCS_RGB;
+		cinfo.pub.input_components = 3;
+		cinfo.pub.in_color_space = JCS_RGB;
 	}
-	jpeg_set_defaults(&cinfo);
-	jpeg_set_quality(&cinfo, CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target, true);
+	jpeg_set_defaults(&cinfo.pub);
+	jpeg_set_quality(&cinfo.pub, CCD_JPEG_SETTINGS_QUALITY_ITEM->number.target, true);
 	JSAMPROW row_pointer[1];
-	jpeg_start_compress(&cinfo, TRUE);
-	while (cinfo.next_scanline < cinfo.image_height) {
-		row_pointer[0] = &((JSAMPROW)copy)[cinfo.next_scanline * cinfo.image_width *  cinfo.input_components];
-		jpeg_write_scanlines(&cinfo, row_pointer, 1);
+	jpeg_start_compress(&cinfo.pub, TRUE);
+	while (cinfo.pub.next_scanline < cinfo.pub.image_height) {
+		row_pointer[0] = &((JSAMPROW)copy)[cinfo.pub.next_scanline * cinfo.pub.image_width *  cinfo.pub.input_components];
+		jpeg_write_scanlines(&cinfo.pub, row_pointer, 1);
 	}
-	jpeg_finish_compress(&cinfo);
-	jpeg_destroy_compress(&cinfo);
+	jpeg_finish_compress(&cinfo.pub);
+	jpeg_destroy_compress(&cinfo.pub);
 	*data_out = mem;
 	*size_out = mem_size;
 	free(copy);
@@ -951,21 +963,21 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		}
 		mem = NULL;
 		mem_size = 0;
-		jpeg_create_compress(&cinfo);
-		jpeg_mem_dest(&cinfo, &mem, &mem_size);
-		cinfo.image_width = 256;
-		cinfo.image_height = 32;
-		cinfo.input_components = 1;
-		cinfo.in_color_space = JCS_GRAYSCALE;
-		jpeg_set_defaults(&cinfo);
+		jpeg_create_compress(&cinfo.pub);
+		jpeg_mem_dest(&cinfo.pub, &mem, &mem_size);
+		cinfo.pub.image_width = 256;
+		cinfo.pub.image_height = 32;
+		cinfo.pub.input_components = 1;
+		cinfo.pub.in_color_space = JCS_GRAYSCALE;
+		jpeg_set_defaults(&cinfo.pub);
 		JSAMPROW row_pointer[1];
-		jpeg_start_compress(&cinfo, TRUE);
-		while (cinfo.next_scanline < cinfo.image_height) {
-			row_pointer[0] = ((JSAMPROW)((uint8_t *)raw + cinfo.next_scanline * 256));
-			jpeg_write_scanlines(&cinfo, row_pointer, 1);
+		jpeg_start_compress(&cinfo.pub, TRUE);
+		while (cinfo.pub.next_scanline < cinfo.pub.image_height) {
+			row_pointer[0] = ((JSAMPROW)((uint8_t *)raw + cinfo.pub.next_scanline * 256));
+			jpeg_write_scanlines(&cinfo.pub, row_pointer, 1);
 		}
-		jpeg_finish_compress(&cinfo);
-		jpeg_destroy_compress(&cinfo);
+		jpeg_finish_compress(&cinfo.pub);
+		jpeg_destroy_compress(&cinfo.pub);
 		*histogram_data = mem;
 		*histogram_size = mem_size;
 	}
@@ -1728,40 +1740,40 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		strcpy(standard_suffix, ".jpeg");
 	if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value && !strcmp(standard_suffix, ".jpeg")) {
 		void *image = NULL;
-		struct jpeg_decompress_struct cinfo;
+		struct indigo_jpeg_decompress_struct cinfo;
 		struct jpeg_error_mgr jerr;
-		cinfo.err = jpeg_std_error(&jerr);
+		cinfo.pub.err = jpeg_std_error(&jerr);
 		/* override default exit() and return 2 lines below */
-		jerr.error_exit = jpeg_error_callback;
+		jerr.error_exit = jpeg_decompress_error_callback;
 		/* Jump here in case of a decmpression error */
-		if (setjmp(jpeg_error)) {
+		if (setjmp(cinfo.jpeg_error)) {
 			if (image) {
 				free(image);
 				image = NULL;
 			}
-			jpeg_destroy_decompress(&cinfo);
+			jpeg_destroy_decompress(&cinfo.pub);
 			INDIGO_ERROR(indigo_error("JPEG decompression failed"));
 			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, "JPEG decompression failed");
 			return;
 		}
-		jpeg_create_decompress(&cinfo);
-		jpeg_mem_src(&cinfo, data, data_size);
-		if (jpeg_read_header(&cinfo, TRUE) == 1) {
-			jpeg_start_decompress(&cinfo);
-			int components = cinfo.output_components;
-			int frame_width = cinfo.output_width;
-			int frame_height = cinfo.output_height;
+		jpeg_create_decompress(&cinfo.pub);
+		jpeg_mem_src(&cinfo.pub, data, data_size);
+		if (jpeg_read_header(&cinfo.pub, TRUE) == 1) {
+			jpeg_start_decompress(&cinfo.pub);
+			int components = cinfo.pub.output_components;
+			int frame_width = cinfo.pub.output_width;
+			int frame_height = cinfo.pub.output_height;
 			int row_stride = frame_width * components;
 			int image_size = frame_height * row_stride;
 			image = indigo_safe_malloc(image_size + FITS_HEADER_SIZE);
-			while (cinfo.output_scanline < cinfo.output_height) {
+			while (cinfo.pub.output_scanline < cinfo.pub.output_height) {
 				unsigned char *buffer_array[1];
-				buffer_array[0] = image + FITS_HEADER_SIZE + (cinfo.output_scanline) * row_stride;
-				jpeg_read_scanlines(&cinfo, buffer_array, 1);
+				buffer_array[0] = image + FITS_HEADER_SIZE + (cinfo.pub.output_scanline) * row_stride;
+				jpeg_read_scanlines(&cinfo.pub, buffer_array, 1);
 			}
-			jpeg_finish_decompress(&cinfo);
-			jpeg_destroy_decompress(&cinfo);
+			jpeg_finish_decompress(&cinfo.pub);
+			jpeg_destroy_decompress(&cinfo.pub);
 			//indigo_process_image(device, intermediate_image, frame_width, frame_height, components * 8, true, true, NULL, streaming);
 			indigo_raw_header *header = (indigo_raw_header *)(image + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 			header->signature = INDIGO_RAW_RGB24;
@@ -1818,24 +1830,24 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 				indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 				if (use_avi) {
-					struct jpeg_decompress_struct cinfo;
+					struct indigo_jpeg_decompress_struct cinfo;
 					struct jpeg_error_mgr jerr;
-					cinfo.err = jpeg_std_error(&jerr);
+					cinfo.pub.err = jpeg_std_error(&jerr);
 					/* override default exit() and return 2 lines below */
-					jerr.error_exit = jpeg_error_callback;
+					jerr.error_exit = jpeg_decompress_error_callback;
 					/* Jump here in case of a decmpression error */
-					if (setjmp(jpeg_error)) {
-						jpeg_destroy_decompress(&cinfo);
+					if (setjmp(cinfo.jpeg_error)) {
+						jpeg_destroy_decompress(&cinfo.pub);
 						INDIGO_ERROR(indigo_error("JPEG decompression failed"));
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, "JPEG decompression failed");
 						return;
 					}
-					jpeg_create_decompress(&cinfo);
-					jpeg_mem_src(&cinfo, data, data_size);
-					jpeg_read_header(&cinfo, TRUE);
-					jpeg_destroy_decompress(&cinfo);
-					CCD_CONTEXT->video_stream = gwavi_open(file_name, cinfo.image_width, cinfo.image_height, "MJPG", 5);
+					jpeg_create_decompress(&cinfo.pub);
+					jpeg_mem_src(&cinfo.pub, data, data_size);
+					jpeg_read_header(&cinfo.pub, TRUE);
+					jpeg_destroy_decompress(&cinfo.pub);
+					CCD_CONTEXT->video_stream = gwavi_open(file_name, cinfo.pub.image_width, cinfo.pub.image_height, "MJPG", 5);
 				} else {
 					handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 				}
