@@ -45,7 +45,7 @@
 
 static jmp_buf jpeg_error;
 static void jpeg_error_callback(j_common_ptr cinfo) {
-	cinfo;
+	(void)cinfo;
 	longjmp(jpeg_error, 1);
 }
 
@@ -834,6 +834,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	INDIGO_DEBUG(clock_t start = clock());
 	int size_in = frame_width * frame_height;
 	void *copy = indigo_safe_malloc_copy(size_in * bpp / 8, data_in + FITS_HEADER_SIZE);
+	unsigned long *histo = indigo_safe_malloc(4096 * sizeof(unsigned long));
 	unsigned char *mem = NULL;
 	unsigned long mem_size = 0;
 	struct jpeg_compress_struct cinfo;
@@ -844,6 +845,8 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	/* Jump here in case of a decmpression error */
 	if (setjmp(jpeg_error)) {
 		jpeg_destroy_compress(&cinfo);
+		free(copy);
+		free(histo);
 		INDIGO_ERROR(indigo_error("JPEG compression failed"));
 		return;
 	}
@@ -851,7 +854,6 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_mem_dest(&cinfo, &mem, &mem_size);
 	cinfo.image_width = frame_width;
 	cinfo.image_height = frame_height;
-	unsigned long *histo = indigo_safe_malloc(4096 * sizeof(unsigned long));
 	if (bpp == 8 || bpp == 24) {
 		unsigned char *b8 = copy;
 		int count = size_in * (bpp == 8 ? 1 : 3);
