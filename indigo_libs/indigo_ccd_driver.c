@@ -1741,8 +1741,8 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			}
 			jpeg_destroy_decompress(&cinfo);
 			INDIGO_ERROR(indigo_error("JPEG decompression failed"));
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, "JPEG decompression failed");
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, "JPEG decompression failed");
 			return;
 		}
 		jpeg_create_decompress(&cinfo);
