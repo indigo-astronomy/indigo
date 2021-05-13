@@ -25,10 +25,11 @@ include ../Makefile.inc
 SIMULATOR_LIBS=$(wildcard $(BUILD_DRIVERS)/indigo_*_simulator.a)
 DRIVER_LIBS=$(wildcard $(BUILD_DRIVERS)/indigo_*.a)
 
-all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_drivers
+all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_drivers
 
 install: all
 	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
+	cp $(BUILD_BIN)/indigo_raw_to_fits $(INSTALL_BIN)
 
 uninstall:
 	rm -f $(INSTALL_BIN)/indigo_prop_tool
@@ -45,6 +46,8 @@ clean-all: status
 $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
 	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) -lindigo
 
+$(BUILD_BIN)/indigo_raw_to_fits: indigo_raw_to_fits.o
+	$(CC) $(CFLAGS)  -o $@ indigo_raw_to_fits.o $(LDFLAGS) -lindigo
+
 $(BUILD_BIN)/indigo_drivers: indigo_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_drivers.o $(LDFLAGS) -lindigo
-
