@@ -151,11 +151,19 @@ int indigo_raw_to_fists(char *image, char **fits, int *size) {
 }
 
 int save_file(char *file_name, char *data, int size) {
-	int handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+#if defined(INDIGO_WINDOWS)
+	int handle = open(file_name, O_CREAT | O_WRONLY | O_BINARY, 0);
+#else
+	int handle = open(file_name, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR);
+#endif
 	if (handle < 0) {
 		return -1;
 	}
-	indigo_write(handle, data, size);
+	int res = write(handle, data, size);
+	if (res < size) {
+		close(handle);
+		return -1;
+	}
 	close(handle);
 	return 0;
 }
