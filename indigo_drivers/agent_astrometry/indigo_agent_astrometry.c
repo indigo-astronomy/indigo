@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -40,6 +40,7 @@
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <netinet/in.h>
+#include <setjmp.h>
 #include <jpeglib.h>
 
 #include <indigo/indigo_driver_xml.h>
@@ -218,6 +219,15 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	return false;
 }
 
+struct indigo_jpeg_decompress_struct {
+	struct jpeg_decompress_struct pub;
+	jmp_buf jpeg_error;
+};
+
+static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
+	longjmp(((struct indigo_jpeg_decompress_struct *)cinfo)->jpeg_error, 1);
+}
+
 #define astrometry_save_config indigo_platesolver_save_config
 
 static void *astrometry_solve(indigo_platesolver_task *task) {
@@ -274,31 +284,39 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				image = image + sizeof(indigo_raw_header);
 			} else if (!strncmp("JFIF", (const char *)(image + 6), 4)) {
 				// JPEG
-				struct jpeg_decompress_struct cinfo;
+				struct indigo_jpeg_decompress_struct cinfo;
 				struct jpeg_error_mgr jerr;
-				cinfo.err = jpeg_std_error(&jerr);
-				jpeg_create_decompress(&cinfo);
-				jpeg_mem_src(&cinfo, image, image_size);
-				int rc = jpeg_read_header(&cinfo, TRUE);
-				if (rc < 0) {
+				cinfo.pub.err = jpeg_std_error(&jerr);
+				jerr.error_exit = jpeg_decompress_error_callback;
+				if (setjmp(cinfo.jpeg_error)) {
+					jpeg_destroy_decompress(&cinfo.pub);
 					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Broken JPEG file");
 					goto cleanup;
 				}
-				jpeg_start_decompress(&cinfo);
+				jpeg_create_decompress(&cinfo.pub);
+				jpeg_mem_src(&cinfo.pub, image, image_size);
+				int rc = jpeg_read_header(&cinfo.pub, TRUE);
+				if (rc < 0) {
+					jpeg_destroy_decompress(&cinfo.pub);
+					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Broken JPEG file");
+					goto cleanup;
+				}
+				jpeg_start_decompress(&cinfo.pub);
 				byte_per_pixel = 1;
-				components = cinfo.output_components;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = cinfo.output_width;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = cinfo.output_height;
+				components = cinfo.pub.output_components;
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = cinfo.pub.output_width;
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = cinfo.pub.output_height;
 				int row_stride = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * components;
 				image = intermediate_image = indigo_safe_malloc(image_size = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height * row_stride);
-				while (cinfo.output_scanline < cinfo.output_height) {
+				while (cinfo.pub.output_scanline < cinfo.pub.output_height) {
 					unsigned char *buffer_array[1];
-					buffer_array[0] = intermediate_image + (cinfo.output_scanline) * row_stride;
-					jpeg_read_scanlines(&cinfo, buffer_array, 1);
+					buffer_array[0] = intermediate_image + (cinfo.pub.output_scanline) * row_stride;
+					jpeg_read_scanlines(&cinfo.pub, buffer_array, 1);
 				}
-				jpeg_finish_decompress(&cinfo);
-				jpeg_destroy_decompress(&cinfo);
+				jpeg_finish_decompress(&cinfo.pub);
+				jpeg_destroy_decompress(&cinfo.pub);
 			} else {
 				image = NULL;
 			}
