@@ -86,9 +86,9 @@ int indigo_raw_to_fists(char *image, char **fits, int *size) {
 	int t = sprintf(p, "SIMPLE  = %20c", 'T'); p[t] = ' ';
 	t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
 	if (components > 1) {
-		t = sprintf(p += 80, "NAXIS   = %20d", 3); p[t] = ' ';
+		t = sprintf(p += 80, "NAXIS   = %20d / RGB Image", 3); p[t] = ' ';
 	} else {
-		t = sprintf(p += 80, "NAXIS   = %20d", 2); p[t] = ' ';
+		t = sprintf(p += 80, "NAXIS   = %20d / Monochrome or Bayer mosaic color image", 2); p[t] = ' ';
 	}
 	t = sprintf(p += 80, "NAXIS1  = %20d", frame_width); p[t] = ' ';
 	t = sprintf(p += 80, "NAXIS2  = %20d", frame_height); p[t] = ' ';
@@ -101,6 +101,9 @@ int indigo_raw_to_fists(char *image, char **fits, int *size) {
 		t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
 	}
 	t = sprintf(p += 80, "ROWORDER= %20s / Image row order", "'TOP-DOWN'"); p[t] = ' ';
+	t = sprintf(p += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); p[t] = ' ';
+	t = sprintf(p += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); p[t] = ' ';
+	t = sprintf(p += 80, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org"); p[t] = ' ';
 	t = sprintf(p += 80, "END"); p[t] = ' ';
 	p = buffer + FITS_HEADER_SIZE;
 	if (components == 1) {
