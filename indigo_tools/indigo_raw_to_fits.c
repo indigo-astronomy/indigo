@@ -26,6 +26,7 @@
 #include <math.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <glob.h>
 #include <sys/stat.h>
 #include <limits.h>
 #include <indigo/indigo_bus.h>
@@ -80,8 +81,8 @@ static void print_help(const char *name) {
 	printf("usage: %s [options] file1.raw [file2.raw ...]\n", name);
 	printf("output files will have '.fits' suffix.\n");
 	printf("options:\n"
-	       "       -h  | --help\n"
-		   "       -q  | --quiet\n"
+	       "       -h  | --help   : print this help\n"
+	       "       -q  | --quiet  : print errors and statistics\n"
 	);
 }
 
@@ -97,50 +98,80 @@ int main(int argc, char *argv[]) {
 		if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			print_help(argv[0]);
 			return 0;
-		} else if (!strcmp(argv[i], "-q") || !strcmp(argv[i], "-quiet"))
+		} else if (!strcmp(argv[i], "-q") || !strcmp(argv[i], "--quiet")) {
 			not_quiet = false;
+		} else if (argv[i] != "-") {
+			break;
+		}
+		arg_base++;
 	}
 
-
+	int succeeded = 0;
+	int failed = 0;
 	for (int i = arg_base; i < argc; i++) {
-		char *in_data = NULL;
-		char *out_data = NULL;
-		int size = 0;
-		char infile_name[PATH_MAX];
-
-		strncpy(infile_name, argv[i], PATH_MAX);
-		int res = open_file(argv[i], &in_data, &size);
-		if (res != 0) {
-			not_quiet && fprintf(stderr, "Can not open '%s' : %s\n", infile_name, strerror(errno));
-			if (in_data) free(in_data);
-			return 1;
+		glob_t globlist;
+		if (glob(argv[i], GLOB_PERIOD, NULL, &globlist) == GLOB_NOSPACE || glob(argv[i], GLOB_PERIOD, NULL, &globlist) == GLOB_NOMATCH) {
+			fprintf(stderr,"Pattern '%s' did not match any files\n", argv[i]);
+			continue;
 		}
-		res = indigo_raw_to_fists(in_data, &out_data, &size);
-		if (res != INDIGO_OK) {
-			not_quiet && fprintf(stderr, "Can not convert '%s' to FITS: %s\n", infile_name, strerror(errno));
+		if (glob(argv[i], GLOB_PERIOD, NULL, &globlist) == GLOB_ABORTED) {
+			continue;
+		}
+
+		int k = 0;
+		while (globlist.gl_pathv[k]) {
+			char *in_data = NULL;
+			char *out_data = NULL;
+			int size = 0;
+			char infile_name[PATH_MAX];
+
+			strncpy(infile_name, globlist.gl_pathv[k], PATH_MAX);
+			int res = open_file(globlist.gl_pathv[k], &in_data, &size);
+			if (res != 0) {
+				fprintf(stderr, "Can not open '%s' : %s\n", infile_name, strerror(errno));
+				if (in_data) free(in_data);
+				failed++;
+				k++;
+				continue;
+			}
+			res = indigo_raw_to_fists(in_data, &out_data, &size);
+			if (res != INDIGO_OK) {
+				fprintf(stderr, "Can not convert '%s' to FITS: %s\n", infile_name, strerror(errno));
+				if (in_data) free(in_data);
+				if (out_data) free(out_data);
+				failed++;
+				k++;
+				continue;
+			}
+
+			char outfile_name[PATH_MAX];
+			strncpy(outfile_name, infile_name, PATH_MAX);
+			/* relace replace suffix with .fits */
+			char *dot = strrchr(outfile_name, '.');
+			if (dot) {
+				strcpy(dot, ".fits");
+			} else {
+				snprintf(outfile_name, PATH_MAX, "%s.fits", infile_name);
+			}
+
+			res = save_file(outfile_name, out_data, size);
+			if (res != 0) {
+				fprintf(stderr, "Can not save '%s': %s\n", outfile_name, strerror(errno));
+				failed++;
+			} else {
+				not_quiet && printf("Converted '%s' -> '%s'\n", infile_name, outfile_name);
+				succeeded++;
+			}
 			if (in_data) free(in_data);
 			if (out_data) free(out_data);
-			return 1;
+			k++;
 		}
-
-		char outfile_name[PATH_MAX];
-		strncpy(outfile_name, infile_name, PATH_MAX);
-		/* relace replace suffix with .fits */
-		char *dot = strrchr(outfile_name, '.');
-		if (dot) {
-			strcpy(dot, ".fits");
-		} else {
-			snprintf(outfile_name, PATH_MAX, "%s.fits", infile_name);
-		}
-
-		res = save_file(outfile_name, out_data, size);
-		if (res != 0) {
-			not_quiet && fprintf(stderr, "Can not save '%s': %s\n", outfile_name, strerror(errno));
-		} else {
-			not_quiet && fprintf(stderr, "Converted '%s' -> '%s'\n", infile_name, outfile_name);
-		}
-		if (in_data) free(in_data);
-		if (out_data) free(out_data);
+		globfree(&globlist);
+	}
+	fprintf(stderr, "%3d raw files sucessfully converted\n", succeeded);
+	if (failed) {
+		fprintf(stderr, "%3d files failed.\n", failed);
+		return 1;
 	}
 	return 0;
 }
