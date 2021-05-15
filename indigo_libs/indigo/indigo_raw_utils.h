@@ -26,6 +26,10 @@
 extern "C" {
 #endif
 
+#ifndef FITS_HEADER_SIZE
+#define FITS_HEADER_SIZE 2880
+#endif
+
 #define MAX_MULTISTAR_COUNT 12
 
 typedef struct {
@@ -73,6 +77,8 @@ extern indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const 
 extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indigo_frame_digest *new_digest, double *drift_x, double *drift_y);
 extern double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
+
+extern indigo_result indigo_raw_to_fists(char *image, char **fits, int *size);
 
 #ifdef __cplusplus
 }
