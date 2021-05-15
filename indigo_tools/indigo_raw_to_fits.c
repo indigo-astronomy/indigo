@@ -19,8 +19,6 @@
 // version history
 // 2.0 by Rumen Bogdanovski <rumen@skyarchive.org>
 
-#include <indigo/indigo_bus.h>
-#include <indigo/indigo_io.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -30,128 +28,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 #include <limits.h>
-#define FITS_HEADER_SIZE 2880
-
-int indigo_raw_to_fists(char *image, char **fits, int *size) {
-	int byte_per_pixel = 0, components = 0;
-	int frame_width = 0, frame_height = 0;
-	if (!strncmp("RAW1", (const char *)(image), 4)) {
-		// 8 bit RAW
-		byte_per_pixel = 1;
-		components = 1;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
-	} else if (!strncmp("RAW2", (const char *)(image), 4)) {
-		// 16 bit RAW
-		byte_per_pixel = 2;
-		components = 1;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
-	} else if (!strncmp("RAW3", (const char *)(image), 4)) {
-		// 8 bit RGB
-		byte_per_pixel = 1;
-		components = 3;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
-	} else if (!strncmp("RAW6", (const char *)(image), 4)) {
-		// 16 bit RGB
-		byte_per_pixel = 2;
-		components = 3;
-		frame_width = ((indigo_raw_header *)image)->width;
-		frame_height = ((indigo_raw_header *)image)->height;
-		image = image + sizeof(indigo_raw_header);
-	} else {
-		errno = EINVAL;
-		return -1;
-	}
-
-	int pixel_count = frame_width * frame_height;
-	int image_size = pixel_count * byte_per_pixel * components + FITS_HEADER_SIZE;
-	if (image_size % FITS_HEADER_SIZE) {
-		image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
-	}
-
-	*fits = realloc(*fits, image_size);
-	char *buffer = *fits;
-	if (buffer == NULL) {
-		return -1;
-	}
-
-	char *p = buffer;
-	memset(buffer, ' ', image_size);
-
-	int t = sprintf(p, "SIMPLE  = %20c", 'T'); p[t] = ' ';
-	t = sprintf(p += 80, "BITPIX  = %20d", byte_per_pixel * 8); p[t] = ' ';
-	if (components > 1) {
-		t = sprintf(p += 80, "NAXIS   = %20d / RGB Image", 3); p[t] = ' ';
-	} else {
-		t = sprintf(p += 80, "NAXIS   = %20d / Monochrome or Bayer mosaic color image", 2); p[t] = ' ';
-	}
-	t = sprintf(p += 80, "NAXIS1  = %20d", frame_width); p[t] = ' ';
-	t = sprintf(p += 80, "NAXIS2  = %20d", frame_height); p[t] = ' ';
-	if (components > 1) {
-		t = sprintf(p += 80, "NAXIS3  = %20d", components); p[t] = ' ';
-	}
-	t = sprintf(p += 80, "EXTEND  = %20c", 'T'); p[t] = ' ';
-	if (byte_per_pixel == 2) {
-		t = sprintf(p += 80, "BZERO   = %20d", 32768); p[t] = ' ';
-		t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
-	}
-	t = sprintf(p += 80, "ROWORDER= %20s / Image row order", "'TOP-DOWN'"); p[t] = ' ';
-	t = sprintf(p += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); p[t] = ' ';
-	t = sprintf(p += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); p[t] = ' ';
-	t = sprintf(p += 80, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org"); p[t] = ' ';
-	t = sprintf(p += 80, "END"); p[t] = ' ';
-	p = buffer + FITS_HEADER_SIZE;
-	if (components == 1) {
-		// mono
-		if (byte_per_pixel == 2) {
-			// 16 bit RAW - swap endianness
-			uint16_t *in = (uint16_t *)image;
-			uint16_t *out = (uint16_t *)p;
-			for (int i = 0; i < pixel_count; i++) {
-				int value = *in++ - 32768;
-				*out++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-			}
-		} else {
-			// 8 bit RAW
-			memcpy(p, image, pixel_count);
-		}
-	} else {
-		// RGB
-		if (byte_per_pixel == 2) {
-			uint16_t *out_ch0 = (uint16_t *)p;
-			uint16_t *out_ch1 = (uint16_t *)p + pixel_count;
-			uint16_t *out_ch2 = (uint16_t *)p + 2 * pixel_count;
-			// 16 bit RGB - average and swap endianness
-			uint16_t *in = (uint16_t *)image;
-			for (int i = 0; i < pixel_count * 3; i++) {
-				int value =  *in++ - 32768;
-				*out_ch0++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				value =  *in++ - 32768;
-				*out_ch1++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				value =  *in++ - 32768;
-				*out_ch2++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-			}
-		} else {
-			uint8_t *out_ch0 = (uint8_t *)p;
-			uint8_t *out_ch1 = (uint8_t *)p + pixel_count;
-			uint8_t *out_ch2 = (uint8_t *)p + 2 * pixel_count;
-			uint8_t *in = image;
-			for (int i = 0; i < pixel_count; i++) {
-				*out_ch0++ = *in++;
-				*out_ch1++ = *in++;
-				*out_ch2++ = *in++;
-			}
-		}
-	}
-	*fits = buffer;
-	*size = image_size;
-	return 0;
-}
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_raw_utils.h>
 
 int save_file(char *file_name, char *data, int size) {
 #if defined(INDIGO_WINDOWS)
@@ -238,7 +116,7 @@ int main(int argc, char *argv[]) {
 			return 1;
 		}
 		res = indigo_raw_to_fists(in_data, &out_data, &size);
-		if (res != 0) {
+		if (res != INDIGO_OK) {
 			not_quiet && fprintf(stderr, "Can not convert '%s' to FITS: %s\n", infile_name, strerror(errno));
 			if (in_data) free(in_data);
 			if (out_data) free(out_data);
