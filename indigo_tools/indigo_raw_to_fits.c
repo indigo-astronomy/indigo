@@ -110,11 +110,11 @@ int main(int argc, char *argv[]) {
 	int failed = 0;
 	for (int i = arg_base; i < argc; i++) {
 		glob_t globlist;
-		if (glob(argv[i], GLOB_PERIOD, NULL, &globlist) == GLOB_NOSPACE || glob(argv[i], GLOB_PERIOD, NULL, &globlist) == GLOB_NOMATCH) {
+		if (glob(argv[i], 0, NULL, &globlist) == GLOB_NOSPACE || glob(argv[i], 0, NULL, &globlist) == GLOB_NOMATCH) {
 			fprintf(stderr,"Pattern '%s' did not match any files\n", argv[i]);
 			continue;
 		}
-		if (glob(argv[i], GLOB_PERIOD, NULL, &globlist) == GLOB_ABORTED) {
+		if (glob(argv[i], 0, NULL, &globlist) == GLOB_ABORTED) {
 			continue;
 		}
 
