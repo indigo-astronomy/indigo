@@ -1072,7 +1072,7 @@ bool ptp_nikon_exposure(indigo_device *device) {
 		result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
 	}
 	property = ptp_property_supported(device, ptp_property_ExposureTime);
-	if (property->value.sw.value == 0xffffffff) {
+	if (property && property->value.sw.value == 0xffffffff) {
 		CCD_EXPOSURE_ITEM->number.value += DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0;
 		ptp_blob_exposure_timer(device);
 		result = result && ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
