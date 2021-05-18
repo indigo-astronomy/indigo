@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -469,7 +469,9 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 }
 
 static void sync_installed_indexes(indigo_device *device, char *dir, indigo_property *property) {
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 	char path[INDIGO_VALUE_SIZE];
+	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *item = property->items + i;
 		bool add = false;
@@ -486,6 +488,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", path, dir, file_name)) {
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
+						pthread_mutex_unlock(&mutex);
 						return;
 					}
 					indigo_send_message(device, "Done", file_name);
@@ -496,6 +499,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						if (unlink(path)) {
 							property->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, property, strerror(errno));
+							pthread_mutex_unlock(&mutex);
 							return;
 						}
 						remove = true;
@@ -525,6 +529,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 	astrometry_save_config(device);
 	property->state = INDIGO_OK_STATE;
 	indigo_update_property(device, property, NULL);
+	pthread_mutex_unlock(&mutex);
 }
 
 static void index_41xx_handler(indigo_device *device) {

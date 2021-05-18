@@ -75,6 +75,12 @@
 #define AGENT_LOCAL_TIME_LIMIT_ITEM										(AGENT_LIMITS_PROPERTY->items+1)
 #define AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM			(AGENT_LIMITS_PROPERTY->items+2)
 
+#define AGENT_MOUNT_FOV_PROPERTY											(DEVICE_PRIVATE_DATA->agent_fov_property)
+#define AGENT_MOUNT_FOV_ANGLE_ITEM										(AGENT_MOUNT_FOV_PROPERTY->items+0)
+#define AGENT_MOUNT_FOV_WIDTH_ITEM										(AGENT_MOUNT_FOV_PROPERTY->items+1)
+#define AGENT_MOUNT_FOV_HEIGHT_ITEM										(AGENT_MOUNT_FOV_PROPERTY->items+2)
+
+
 typedef struct {
 	indigo_property *agent_geographic_property;
 	indigo_property *agent_site_data_source_property;
@@ -82,6 +88,7 @@ typedef struct {
 	indigo_property *agent_lx200_server_property;
 	indigo_property *agent_lx200_configuration_property;
 	indigo_property *agent_limits_property;
+	indigo_property *agent_fov_property;
 	double mount_latitude, mount_longitude, mount_elevation;
 	double dome_latitude, dome_longitude, dome_elevation;
 	double gps_latitude, gps_longitude, gps_elevation;
@@ -99,6 +106,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_MOUNT_FOV_PROPERTY);
 		double tmp_ha_tracking_limit = AGENT_HA_TRACKING_LIMIT_ITEM->number.value;
 		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
 		double tmp_local_time_limit = AGENT_LOCAL_TIME_LIMIT_ITEM->number.value;
@@ -267,6 +275,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_HA_TRACKING_LIMIT_ITEM, AGENT_HA_TRACKING_LIMIT_ITEM_NAME, "HA tracking limit (0 to 24)", 0, 24, 0, 24);
 		indigo_init_sexagesimal_number_item(AGENT_LOCAL_TIME_LIMIT_ITEM, AGENT_LOCAL_TIME_LIMIT_ITEM_NAME, "Time limit (0 to 24)", 0, 24, 0, 12);
 		indigo_init_sexagesimal_number_item(AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM, AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM_NAME, "Change threshold (°)", 0, 360, 0, 5.0/3600.0);
+		// -------------------------------------------------------------------------------- AGENT_MOUNT_FOV
+		AGENT_MOUNT_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_FOV_PROPERTY_NAME, "Agent", "FOV", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		if (AGENT_MOUNT_FOV_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_ANGLE_ITEM, AGENT_MOUNT_FOV_ANGLE_ITEM_NAME, "Angle (°)", -360, 360, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_WIDTH_ITEM, AGENT_MOUNT_FOV_WIDTH_ITEM_NAME, "Width (°)", 0, 360, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_HEIGHT_ITEM, AGENT_MOUNT_FOV_HEIGHT_ITEM_NAME, "Height (°)", 0, 360, 0, 0);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
@@ -292,6 +307,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_LIMITS_PROPERTY, property))
 		indigo_define_property(device, AGENT_LIMITS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_MOUNT_FOV_PROPERTY, property))
+		indigo_define_property(device, AGENT_MOUNT_FOV_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -605,6 +622,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_MOUNT_FOV_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_MOUNT_FOV
+		indigo_property_copy_values(AGENT_MOUNT_FOV_PROPERTY, property, false);
+		AGENT_MOUNT_FOV_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_MOUNT_FOV_PROPERTY, NULL);
+		return INDIGO_OK;
 	}
 	return indigo_filter_change_property(device, client, property);
 }
@@ -618,6 +642,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_LX200_SERVER_PROPERTY);
 	indigo_release_property(AGENT_LX200_CONFIGURATION_PROPERTY);
 	indigo_release_property(AGENT_LIMITS_PROPERTY);
+	indigo_release_property(AGENT_MOUNT_FOV_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
 }
