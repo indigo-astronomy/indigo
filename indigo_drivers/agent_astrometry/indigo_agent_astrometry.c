@@ -470,8 +470,6 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 
 static void sync_installed_indexes(indigo_device *device, char *dir, indigo_property *property) {
 	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-	static int instances = 0;
-	instances++;
 	char path[INDIGO_VALUE_SIZE];
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < property->count; i++) {
@@ -490,7 +488,6 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", path, dir, file_name)) {
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
-						instances--;
 						pthread_mutex_unlock(&mutex);
 						return;
 					}
@@ -502,7 +499,6 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						if (unlink(path)) {
 							property->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, property, strerror(errno));
-							instances--;
 							pthread_mutex_unlock(&mutex);
 							return;
 						}
@@ -528,20 +524,30 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 	}
 	indigo_delete_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
 	indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
-	AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = --instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
 	astrometry_save_config(device);
-	property->state = INDIGO_OK_STATE;
-	indigo_update_property(device, property, NULL);
 	pthread_mutex_unlock(&mutex);
 }
 
 static void index_41xx_handler(indigo_device *device) {
+	static int instances = 0;
+	instances++;
 	sync_installed_indexes(device, "4100", AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
+	instances--;
+	if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state == INDIGO_BUSY_STATE)
+		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state = instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
 }
 
 static void index_42xx_handler(indigo_device *device) {
+	static int instances = 0;
+	instances++;
 	sync_installed_indexes(device, "4200", AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
+	instances--;
+	if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state == INDIGO_BUSY_STATE)
+		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 }
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
