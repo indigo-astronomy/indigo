@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -52,6 +52,8 @@
 #endif
 
 #include "ASICamera2.h"
+
+#define ASI_DEFAULT_BANDWIDTH      90
 
 #define ASI_MAX_FORMATS            4
 
@@ -903,8 +905,15 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	int offset = ASI_ADVANCED_PROPERTY->count;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = ASIGetControlValue(id, ctrl_caps.ControlType, &value, &unused);
+	int res2 = 0;
+	if (ctrl_caps.ControlType == ASI_BANDWIDTHOVERLOAD && value == 100) {
+		value = ASI_DEFAULT_BANDWIDTH;
+		res2 = ASISetControlValue(id, ctrl_caps.ControlType, value, false);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Default USB Bandwidth is 100, reducing to %d", value);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
+	if (res2) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res2);
 
 	ASI_ADVANCED_PROPERTY = indigo_resize_property(ASI_ADVANCED_PROPERTY, offset + 1);
 	indigo_init_number_item(ASI_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, value);
