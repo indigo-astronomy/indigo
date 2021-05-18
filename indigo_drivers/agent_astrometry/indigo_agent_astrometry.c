@@ -470,6 +470,8 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 
 static void sync_installed_indexes(indigo_device *device, char *dir, indigo_property *property) {
 	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	static int instances = 0;
+	instances++;
 	char path[INDIGO_VALUE_SIZE];
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < property->count; i++) {
@@ -478,7 +480,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 		bool remove = false;
 		for (int j = 0; index_files[j]; j++) {
 			char *file_name = index_files[j];
-			if (!strncmp(file_name, item->name, 10)) {
+			if (!strncmp(file_name, item->name, 4)) {
 				snprintf(path, sizeof((path)), "%s/index-%s.fits", base_dir, file_name);
 				if (item->sw.value) {
 					if (access(path, F_OK) == 0) {
@@ -488,6 +490,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", path, dir, file_name)) {
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
+						instances--;
 						pthread_mutex_unlock(&mutex);
 						return;
 					}
@@ -499,6 +502,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						if (unlink(path)) {
 							property->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, property, strerror(errno));
+							instances--;
 							pthread_mutex_unlock(&mutex);
 							return;
 						}
@@ -524,7 +528,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 	}
 	indigo_delete_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
 	indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
-	AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = INDIGO_OK_STATE;
+	AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = --instances ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 	indigo_define_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
 	astrometry_save_config(device);
 	property->state = INDIGO_OK_STATE;
