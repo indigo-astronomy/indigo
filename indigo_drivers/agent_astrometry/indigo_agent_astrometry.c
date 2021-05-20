@@ -589,7 +589,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		for (int i = 19; i >=7; i--) {
 			sprintf(name, "41%02d", i);
 			if (index_diameters[i][0] > 60)
-				sprintf(label, "Index 41%02d (%.0f-%.0fº, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][0]);
+				sprintf(label, "Index 41%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][0]);
 			else
 				sprintf(label, "Index 41%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][0]);
 			present = true;
@@ -613,7 +613,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		for (int i = 19; i >=0; i--) {
 			sprintf(name, "42%02d", i);
 			if (index_diameters[i][0] > 60)
-				sprintf(label, "Index 42%02d (%.0f-%.0fº, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][1]);
+				sprintf(label, "Index 42%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][1]);
 			else
 				sprintf(label, "Index 42%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][1]);
 			present = true;
@@ -671,7 +671,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 		indigo_set_timer(device, 0, index_42xx_handler, NULL);
 		return INDIGO_OK;
-	} 
+	}
 	return indigo_platesolver_change_property(device, client, property);
 }
 
