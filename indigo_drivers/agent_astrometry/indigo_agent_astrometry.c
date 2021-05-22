@@ -192,11 +192,15 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	va_start(args, command);
 	vsnprintf(buffer, sizeof(buffer), command, args);
 	va_end(args);
+
+	char command_buf[8 * 1024];
+	sprintf(command_buf, "%s 2>&1", buffer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
-	FILE *output = popen(buffer, "r");
+	FILE *output = popen(command_buf, "r");
 	if (output) {
 		char *line = NULL;
 		size_t size = 0;
+		int res = 0;
 		while (getline(&line, &size, output) >= 0) {
 			char *nl = strchr(line, '\n');
 			if (nl)
@@ -225,9 +229,12 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			} else if (strstr(line, "Total CPU time limit reached")) {
 				indigo_send_message(device, "CPU time limit reached");
 			} else if (strstr(line, "Did not solve")) {
-				indigo_send_message(device, "Did not solve");
+				indigo_send_message(device, "No solution found");
 			} else if (strstr(line, "You must list at least one index")) {
 				indigo_send_message(device, "You must select at least one index");
+			} else if (strstr(line, ": not found")) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", line);
+				res = -1;
 			}
 			if (line) {
 				free(line);
@@ -235,7 +242,11 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			}
 		}
 		pclose(output);
-		return true;
+		if (res != 0) {
+			return false;
+		} else {
+			return true;
+		}
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute %s (%s)", command, strerror(errno));
 	}
@@ -444,6 +455,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		}
 		close(handle);
 		char hints[512] = "";
+		char message[256] = "";
 		int hints_index = 0;
 		if (ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width == 0 || ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height == 0) {
 			hints_index += sprintf(hints + hints_index, " -v");
@@ -453,7 +465,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		}
 		if (!execute_command(device, "image2xy -O%s -o \"%s.xy\" \"%s\"", hints, base, base)) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "image2xy failed");
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Execution of image2xy failed");
 			goto cleanup;
 		}
 		*hints = 0;
@@ -471,15 +483,23 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value);
 		}
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
-		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config \"%s/astrometry.cfg\" --axy \"%s.axy\" \"%s.xy\"", hints, base_dir, base, base))
+		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config \"%s/astrometry.cfg\" --axy \"%s.axy\" \"%s.xy\"", hints, base_dir, base, base)) {
+			strcpy(message, "Execution of solve-field failed");
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed)
+		}
+		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed) {
+			//strcpy(message, "No solution found");
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE)
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_OK_STATE)
 			indigo_platesolver_sync(device);
-		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+		if (message[0] == '\0') {
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+		} else {
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, message);
+		}
 	cleanup:
 		execute_command(device, "rm -rf \"%s\" \"%s.xy\" \"%s.axy\" \"%s.wcs\" \"%s.corr\" \"%s.match\" \"%s.rdls\" \"%s.solved\" \"%s-indx.xyls\"", base, base, base, base, base, base, base, base, base);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
