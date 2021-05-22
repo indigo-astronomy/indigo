@@ -477,9 +477,9 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE)
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_OK_STATE)
 			indigo_platesolver_sync(device);
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 	cleanup:
 		execute_command(device, "rm -rf \"%s\" \"%s.xy\" \"%s.axy\" \"%s.wcs\" \"%s.corr\" \"%s.match\" \"%s.rdls\" \"%s.solved\" \"%s-indx.xyls\"", base, base, base, base, base, base, base, base, base);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
