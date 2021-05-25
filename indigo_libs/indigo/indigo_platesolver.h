@@ -79,6 +79,8 @@ typedef struct {
 	indigo_property *hints_property;
 	indigo_property *wcs_property;
 	indigo_property *sync_mode_property;
+	indigo_property_state eq_coordinates_state;
+	time_t eq_coordinates_timestamp;
 	void (*save_config)(indigo_device *);
 	void *((*solve)(indigo_platesolver_task *));
 	pthread_mutex_t mutex;
