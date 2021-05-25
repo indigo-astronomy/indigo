@@ -491,10 +491,30 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			//strcpy(message, "No solution found");
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE)
-			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
-		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_OK_STATE)
+		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_platesolver_sync(device);
+			if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
+				for (int i = 0; i < 300; i++) { // wait 3 s to become BUSY
+					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state == INDIGO_BUSY_STATE) {
+						break;
+					}
+					indigo_usleep(10000);
+				}
+				for (int i = 0; i < 300; i++) { // wait 30s to become not BUSY
+					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_BUSY_STATE) {
+						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state;
+						break;
+					}
+					if (time(NULL) - INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_timestamp > 5) {
+						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
+					indigo_usleep(100000);
+				}
+			} else if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
 		if (message[0] == '\0') {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		} else {

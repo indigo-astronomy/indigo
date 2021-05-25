@@ -142,6 +142,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		PROFILE_PROPERTY->hidden = true;
 		CONNECTION_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state = INDIGO_IDLE_STATE;
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_timestamp = 0;
+
 		pthread_mutex_init(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex, NULL);
 		return INDIGO_OK;
 	}
@@ -204,10 +207,9 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (property->state == INDIGO_OK_STATE) {
-		char *device_name = property->device;
+	{ char *device_name = property->device;
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-		if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			indigo_property *related_agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 			for (int j = 0; j < related_agents->count; j++) {
 				indigo_item *item = related_agents->items + j;
@@ -230,19 +232,21 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 				indigo_item *item = agents->items + j;
 				if (item->sw.value && !strcmp(item->name, device_name)) {
 					bool update = false;
+					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates_state = property->state;
+					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates_timestamp = time(NULL);
 					for (int i = 0; i < property->count; i++) {
 						indigo_item *item = property->items + i;
 						if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
 							double value = item->number.value;
 							if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value != value) {
 								AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.target = value;
-								update = true;
+								update = property->state == INDIGO_OK_STATE;
 							}
 						} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
 							double value = item->number.value;
 							if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value != value) {
 								AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.target = value;
-								update = true;
+								update = property->state == INDIGO_OK_STATE;
 							}
 						}
 					}
