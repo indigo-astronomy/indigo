@@ -296,8 +296,6 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
-		// -------------------------------------------------------------------------------- MOUNT_EPOCH
-		MOUNT_EPOCH_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
 		MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 		MOUNT_GUIDE_RATE_PROPERTY->count = 2;
