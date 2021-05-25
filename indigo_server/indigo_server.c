@@ -456,7 +456,9 @@ static void *indigo_add_star_json_resource(int max_mag) {
 				name = "";
 			}
 		}
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_star_data[i].hip, name, desig, indigo_star_data[i].mag, h2deg(indigo_star_data[i].ra = ra), indigo_star_data[i].dec = dec);
+		// TODO: map is generated from J2K instead of JNow
+		//size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_star_data[i].hip, name, desig, indigo_star_data[i].mag, h2deg(indigo_star_data[i].ra = ra), indigo_star_data[i].dec = dec);
+		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_star_data[i].hip, name, desig, indigo_star_data[i].mag, h2deg(indigo_star_data[i].ra), indigo_star_data[i].dec);
 		if (buffer_size - size < 1024) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
