@@ -494,6 +494,8 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_platesolver_sync(device);
 			if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
+				/* comtinue to be busy but show the solution */
+				indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 				for (int i = 0; i < 300; i++) { // wait 3 s to become BUSY
 					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state == INDIGO_BUSY_STATE) {
 						break;
