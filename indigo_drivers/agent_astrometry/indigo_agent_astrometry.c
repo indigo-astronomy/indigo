@@ -218,7 +218,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			} else if (sscanf(line, "Field size: %lg x %lg", &d1, &d2) == 2) {
 				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1;
 				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2;
-				AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2;
+				AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = ((d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2) / AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
 			} else if (sscanf(line, "Field rotation angle: up is %lg", &d1) == 1) {
 				AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d1;
 			} else if (sscanf(line, "Field 1: solved with index index-%lg", &d1) == 1) {
@@ -501,12 +501,12 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 					indigo_usleep(10000);
 				}
 				for (int i = 0; i < 300; i++) { // wait 30s to become not BUSY
-					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_BUSY_STATE) {
-						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state;
-						break;
-					}
 					if (time(NULL) - INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_timestamp > 5) {
 						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
+					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_BUSY_STATE) {
+						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state;
 						break;
 					}
 					indigo_usleep(100000);
