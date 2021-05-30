@@ -114,6 +114,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM, AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM_NAME, "Downsample", 1, 16, 1, 2);
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_DEPTH_ITEM, AGENT_PLATESOLVER_HINTS_DEPTH_ITEM_NAME, "Depth", 0, 1000, 5, 30);
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM, AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM_NAME, "CPU Limit (seconds)", 0, 600, 10, 180);
+		strcpy(AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_HINTS_RA_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- WCS property
@@ -130,6 +131,10 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_number_item(AGENT_PLATESOLVER_WCS_INDEX_ITEM, AGENT_PLATESOLVER_WCS_INDEX_ITEM_NAME, "Used index file", 0, 10000, 0, 0);
 		strcpy(AGENT_PLATESOLVER_WCS_RA_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_DEC_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- WCS property
 		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL)
