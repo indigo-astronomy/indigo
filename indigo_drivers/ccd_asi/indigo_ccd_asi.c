@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -53,7 +53,7 @@
 
 #include "ASICamera2.h"
 
-#define ASI_DEFAULT_BANDWIDTH      90
+#define ASI_DEFAULT_BANDWIDTH      45
 
 #define ASI_MAX_FORMATS            4
 
