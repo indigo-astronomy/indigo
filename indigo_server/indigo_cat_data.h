@@ -36,6 +36,7 @@ typedef struct {
 
 typedef struct {
 	char *id;
+	char *type;
 	double ra, dec;
 	float mag, r1, r2, angle;
 	char *name;
