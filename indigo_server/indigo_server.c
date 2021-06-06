@@ -482,10 +482,10 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 	for (int i = 0; indigo_dso_data[i].id; i++) {
 		/* Filter by magnitude, but remove objects without name or mesier designation*/
 		if (
-			indigo_dso_data[i].mag > max_mag ||
-			indigo_dso_data[i].name[0] == '\0' ||
-			(indigo_dso_data[i].name[0] == 'I' && indigo_dso_data[i].name[1] == 'C')
-			// || (indigo_dso_data[i].name[0] == 'N' && indigo_dso_data[i].name[1] == 'G' && indigo_dso_data[i].name[2] == 'C')
+			indigo_dso_data[i].mag > max_mag
+			|| indigo_dso_data[i].name[0] == '\0'
+			|| (indigo_dso_data[i].name[0] == 'I' && indigo_dso_data[i].name[1] == 'C')
+			//|| (indigo_dso_data[i].name[0] == 'N' && indigo_dso_data[i].name[1] == 'G' && indigo_dso_data[i].name[2] == 'C')
 		) continue;
 		double ra = indigo_dso_data[i].ra;
 		double dec = indigo_dso_data[i].dec;

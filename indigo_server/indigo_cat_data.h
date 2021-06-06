@@ -27,6 +27,24 @@
 #ifndef star_data_h
 #define star_data_h
 
+typedef enum {
+	GALAXY,
+	GALAXY_PAIR,
+	GALAXY_TRIPLET,
+	OPEN_CLUSTER,
+	GLOBULAR_CLUSTER,
+	NEBULA,
+	PLANETARY_NEBULA,
+	REFLECTION_NEBULA,
+	EMISSION_NEBULA,
+	SUPERNOVA_REMNANT,
+	HII_REGION,
+	ASSOCIATION_OF_STARS,
+	STAR_CLUSTER_NEBULA,
+	GROUP_OF_GALAXIES,
+	NOVA_STAR
+} indigo_dso_type;
+
 typedef struct {
 	int hip;
 	double ra, dec;
@@ -36,7 +54,7 @@ typedef struct {
 
 typedef struct {
 	char *id;
-	char *type;
+	char type;
 	double ra, dec;
 	float mag, r1, r2, angle;
 	char *name;
@@ -44,5 +62,6 @@ typedef struct {
 
 extern indigo_star_entry indigo_star_data[];
 extern indigo_dso_entry indigo_dso_data[];
+extern char *indigo_dso_type_description[];
 
 #endif /* star_data_h */
