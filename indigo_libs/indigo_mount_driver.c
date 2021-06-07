@@ -1074,14 +1074,7 @@ indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double ls
 		  point = indigo_find_nearest_alignment_point(device, lst, ra, dec, false);
 		if (point) {
 			// Transform coordinates
-			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
-			double cos_dec = cos(dec * DEG2RAD);
-			if (fabs(cos_dec) > 0.0001) {
-				*raw_ra = ra + (point->raw_ra - point->ra) * cos(point->dec * DEG2RAD) / cos_dec;
-			} else { /* if dec = 90 or -90 math fail so use another approximation -> ignore cos() tems,  anyway ra does not matter */
-				*raw_ra = ra + (point->raw_ra - point->ra);
-			}
-
+			*raw_ra = ra + (point->raw_ra - point->ra);
 			*raw_dec = dec + (point->raw_dec - point->dec);
 
 			//**  Re-normalize coordinates to ensure they are in range
@@ -1156,13 +1149,7 @@ indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double ls
 			point = indigo_find_nearest_alignment_point(device, lst, raw_ra, raw_dec, true);
 		if (point) {
 			// Transform coordinates
-			// This should be a good approximation for small abs(point->raw_dec - point->dec) as this is true for a plain.
-			double cos_raw_dec = cos(raw_dec * DEG2RAD);
-			if (fabs(cos_raw_dec) > 0.0001) {
-				*ra = raw_ra + (point->ra - point->raw_ra) * cos(point->raw_dec * DEG2RAD) / cos_raw_dec;
-			} else { /* if dec = 90 or -90 math fail so use another approximation -> ignore cos() tems, anyway ra does not matter */
-				*ra = raw_ra + (point->ra - point->raw_ra);
-			}
+			*ra = raw_ra + (point->ra - point->raw_ra);
 			*dec = raw_dec + (point->dec - point->raw_dec);
 
 			//**  Re-normalize coordinates to ensure they are in range
