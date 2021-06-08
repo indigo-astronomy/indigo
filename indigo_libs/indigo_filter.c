@@ -673,7 +673,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 static void remove_from_list(indigo_device *device, indigo_property *device_list, indigo_property *property, char *device_name) {
 	for (int i = 1; i < device_list->count; i++) {
 		if (!strcmp(property->device, device_list->items[i].name)) {
-			if (device_list->items[i].sw.value) {
+			if (device_list->items[i].sw.value && device_name) {
 				device_list->items[0].sw.value = true;
 				if (device_name)
 					*device_name = 0;
