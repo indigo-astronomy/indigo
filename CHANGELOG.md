@@ -2,6 +2,44 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-150] - Wed Jun 09 2021
+### Overall:
+- do not exit on libjpeg errors
+- libjpeg error handling race fixed
+- added indigo_raw_to_fits() call
+- new tool added "indigo_raw_to_fits"
+- indigo_platesolver: add step to some items and use degree sign in the labels
+- MOUNT_EPOCH uses J2000 istead of JNOW
+- added full NGC/IC catalog
+- fix random behavior while removing related agent
+
+### Driver fixes
+- indigo_aux_ppb: PPB Micro support added
+- indigo_ccd_simulator: battery level property added
+
+- indigo_ccd_asi:
+	- revert SDK to v.1.16.3 for arm (because of regressions)
+	- update SDK to v.1.18 for Intel Linux and macOS
+	- default bandwidth set to 45 to allow 2 cameras to work at the same time
+
+- indigo_agent_astrometry:
+	- FOV property added
+	- index download synchronized
+	- index sizes shown in labels
+	- fix missing sync before center
+	- pix potential race
+	- better error handling
+	- make AGENT_PLATESOLVER_WCS property busy while mount is slewing
+	- update AGENT_PLATESOLVER_WCS when ready but remain busy while slewing
+	- pixel scale fixed
+
+- indigo_ccd_ptp:
+	- Nikon Z6II support
+	- Nikon Z7II support
+	- Canon M50mk2 support
+	- ExposureDelayMode fixed for D780
+	- NULL pointer exception handled
+
 ## [2.0-148] - Thu Apr 29 2021
 ### Overall:
 - better memory management - allocated buffers reuse
