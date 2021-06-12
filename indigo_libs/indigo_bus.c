@@ -986,7 +986,13 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	INDIGO_DEBUG(indigo_debug("%s(): http_result = %d, response = \"%s\"", __FUNCTION__, http_result, http_response));
 
 	bool use_gzip = false;
-	
+
+	/* On Raspberry Pi blob compression may take longer. Make sure we do not timeout prematurely */
+	struct timeval timeout;
+	timeout.tv_sec = 15;
+	timeout.tv_usec = 0;
+	setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+
 	do {
 		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
 		if (res < 0) {
