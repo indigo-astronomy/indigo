@@ -218,7 +218,7 @@ static void start_worker_thread(int *client_socket) {
 								if (indigo_write(socket, working_copy, working_size)) {
 									INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, working_size));
 								} else {
-									INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
+									INDIGO_ERROR(indigo_error("%s -> Failed (%s)", request, strerror(errno)));
 									keep_alive = false;
 								}
 								if (indigo_use_blob_buffering) {
