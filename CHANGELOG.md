@@ -2,6 +2,15 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+
+## [2.0-152] - Sun Jun 13 2021
+### Overall:
+- indigo_client: fix http timeout for blob transfer - RPi is slow at compressing large images
+- fix typo leading to server self lock.
+
+### Driver fixes
+- indigo_ccd_altair: macOS library architecture fixed
+
 ## [2.0-150] - Wed Jun 09 2021
 ### Overall:
 - do not exit on libjpeg errors
