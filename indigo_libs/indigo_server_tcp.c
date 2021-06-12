@@ -96,7 +96,7 @@ static void start_worker_thread(int *client_socket) {
 	char c;
 	void *free_on_exit = NULL;
 	pthread_mutex_t *unlock_at_exit = NULL;
-	
+
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
 			INDIGO_LOG(indigo_log("Protocol switched to XML"));
@@ -359,7 +359,7 @@ failure:
 	if (free_on_exit)
 		free(free_on_exit);
 	if (unlock_at_exit)
-		pthread_mutex_lock(unlock_at_exit);
+		pthread_mutex_unlock(unlock_at_exit);
 	INDIGO_LOG(indigo_log("Worker thread finished"));
 }
 
