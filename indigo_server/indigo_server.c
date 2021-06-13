@@ -1375,13 +1375,8 @@ static void server_main() {
 		} else if (!strcmp(server_argv[i], "-d-") || !strcmp(server_argv[i], "--disable-blob-buffering")) {
 			indigo_use_blob_buffering = false;
 			indigo_use_blob_compression = false;
-#ifdef RPI_MANAGEMENT
-		} else if (!strcmp(server_argv[i], "-dd") || !strcmp(server_argv[i], "--enable-blob-compression")) {
+		} else if (!strcmp(server_argv[i], "-C") || !strcmp(server_argv[i], "--enable-blob-compression")) {
 			indigo_use_blob_compression = true;
-#else
-		} else if (!strcmp(server_argv[i], "-dd-") || !strcmp(server_argv[i], "--disable-blob-compression")) {
-			indigo_use_blob_compression = false;
-#endif /* RPI_MANAGEMENT */
 		} else if (!strcmp(server_argv[i], "-x") || !strcmp(server_argv[i], "--enable-blob-proxy")) {
 			indigo_proxy_blob = true;
 #ifdef RPI_MANAGEMENT
@@ -1637,10 +1632,7 @@ int main(int argc, const char * argv[]) {
 	server_argv[0] = argv[0];
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-#ifdef RPI_MANAGEMENT
-	/* compression takes forever on RPi for large images */
-	indigo_use_blob_compression = false;
-#endif /* RPI_MANAGEMENT */
+
 	for (int i = 1; i < argc; i++) {
 		if (!strcmp(argv[i], "--") || !strcmp(argv[i], "--do-not-fork")) {
 			do_fork = false;
@@ -1660,11 +1652,7 @@ int main(int argc, const char * argv[]) {
 			       "       -b- | --disable-bonjour\n"
 			       "       -u- | --disable-blob-urls\n"
 			       "       -d- | --disable-blob-buffering\n"
-#ifdef RPI_MANAGEMENT
-			       "       -dd | --enable-blob-compression\n"
-#else
-			       "       -dd-| --disable-blob-compression\n"
-#endif /* RPI_MANAGEMENT */
+			       "       -C  | --enable-blob-compression\n"
 			       "       -w- | --disable-web-apps\n"
 			       "       -c- | --disable-control-panel\n"
 #ifdef RPI_MANAGEMENT
