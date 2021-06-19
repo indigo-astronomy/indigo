@@ -358,16 +358,18 @@ static void beaver_close(indigo_device *device) {
 
 
 static beaver_rc_t beaver_abort(indigo_device *device) {
-	return BD_NO_RESPONSE;
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome abort all#", &res)) return BD_NO_RESPONSE;
+	if (res != 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
 }
 
 
 static beaver_rc_t beaver_get_azimuth(indigo_device *device, float *azimuth) {
-	char command[LUNATICO_CMD_LEN]={0};
 	bool res;
 
-	sprintf(command, "!dome getaz#");
-	res = beaver_command_get_result_f(device, command, azimuth);
+	res = beaver_command_get_result_f(device, "!dome getaz#", azimuth);
 	if ((res == false) || (*azimuth < 0)) return BD_NO_RESPONSE;
 	else return BD_SUCCESS;
 }
