@@ -208,6 +208,48 @@ static bool beaver_get_info(indigo_device *device, char *board, char *firmware) 
 	return false;
 }
 
+static bool beaver_command_get_result_i(indigo_device *device, const char *command, int32_t *result) {
+	if (!result) return false;
+
+	char response[LUNATICO_CMD_LEN]={0};
+	char response_prefix[LUNATICO_CMD_LEN];
+	char format[LUNATICO_CMD_LEN];
+
+	if (beaver_command(device, command, response, sizeof(response), 100)) {
+		strncpy(response_prefix, command, LUNATICO_CMD_LEN);
+		char *p = strrchr(response_prefix, '#');
+		if (p) *p = ':';
+		sprintf(format, "%s%%d#", response_prefix);
+		int parsed = sscanf(response, format, result);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %d", command, response, *result);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
+static bool beaver_command_get_result_f(indigo_device *device, const char *command, float *result) {
+	if (!result) return false;
+
+	char response[LUNATICO_CMD_LEN]={0};
+	char response_prefix[LUNATICO_CMD_LEN];
+	char format[LUNATICO_CMD_LEN];
+
+	if (beaver_command(device, command, response, sizeof(response), 100)) {
+		strncpy(response_prefix, command, LUNATICO_CMD_LEN);
+		char *p = strrchr(response_prefix, '#');
+		if (p) *p = ':';
+		sprintf(format, "%s%%f#", response_prefix);
+		int parsed = sscanf(response, format, result);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = %f", command, response, *result);
+		return true;
+	}
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "NO response");
+	return false;
+}
+
 static beaver_rc_t beaver_get_serial_number(indigo_device *device, char *serial_num) {
 	return BD_NO_RESPONSE;
 }
@@ -321,7 +363,24 @@ static beaver_rc_t beaver_abort(indigo_device *device) {
 
 
 static beaver_rc_t beaver_get_azimuth(indigo_device *device, float *azimuth) {
-	return BD_NO_RESPONSE;
+	char command[LUNATICO_CMD_LEN]={0};
+	bool res;
+
+	sprintf(command, "!dome getaz#");
+	res = beaver_command_get_result_f(device, command, azimuth);
+	if ((res == false) || (*azimuth < 0)) return BD_NO_RESPONSE;
+	else return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_goto_azimuth(indigo_device *device, float azimuth) {
+	char command[LUNATICO_CMD_LEN];
+	int res;
+
+	snprintf(command, LUNATICO_CMD_LEN, "!dome gotoaz %f#", azimuth);
+	if (!beaver_command_get_result_i(device, command, &res)) return BD_NO_RESPONSE;
+	if (res != 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
 }
 
 
@@ -345,9 +404,6 @@ static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain
 }
 
 
-static beaver_rc_t beaver_goto_azimuth(indigo_device *device, float azimuth) {
-	return BD_NO_RESPONSE;
-}
 
 //static bool beaver_callibrate(indigo_device *device) {
 //	return false;
