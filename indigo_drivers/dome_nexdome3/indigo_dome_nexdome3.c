@@ -23,7 +23,7 @@
  \file indigo_dome_nexdome3.c
  */
 
-#define DRIVER_VERSION 0x0000A
+#define DRIVER_VERSION 0x0000B
 #define DRIVER_NAME    "indigo_dome_nexdome3"
 
 #define FIRMWARE_VERSION_3_2 0x0302
@@ -153,7 +153,7 @@ typedef struct {
 #define NEXDOME_CMD_LEN 100
 
 
-#define IN_PARK_POSITION (fabs(PRIVATE_DATA->park_azimuth - DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) <= 1)
+#define IN_PARK_POSITION (indigo_azimuth_distance(PRIVATE_DATA->park_azimuth, DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value) <= 1)
 
 #define PROPERTY_LOCK()    pthread_mutex_lock(&PRIVATE_DATA->property_mutex)
 #define PROPERTY_UNLOCK()  pthread_mutex_unlock(&PRIVATE_DATA->property_mutex)
@@ -448,7 +448,7 @@ static void handle_home_poition(indigo_device *device, char *message) {
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %d", message, home_position);
 	PROPERTY_LOCK();
-	if (fabs(home_position - NEXDOME_HOME_POSITION_ITEM->number.value) >= 1)  {
+	if (indigo_azimuth_distance(home_position, NEXDOME_HOME_POSITION_ITEM->number.value) >= 1)  {
 		NEXDOME_HOME_POSITION_ITEM->number.value = home_position;
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
