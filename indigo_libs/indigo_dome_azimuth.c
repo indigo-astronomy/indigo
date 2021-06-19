@@ -45,7 +45,6 @@ double map24(double hour) {
 	}
 }
 
-
 static double map360(double angle) {
 	if (angle < 0.0) {
 		int n = (int)(angle / 360.0) - 1;
@@ -185,6 +184,13 @@ double indigo_dome_solve_azimuth(double ha, double dec, double site_latitude, do
 		zeta = telaz;
 	}
 	return zeta;
+}
+
+double indigo_azimuth_distance(double az1, double az2) {
+	double distance = fabs(az1 - az2);
+	distance = (distance > 180) ? fabs(distance - 360) : distance;
+	//INDIGO_DEBUG(indigo_debug("%s: az distance %f - %f = %f",__FUNCTION__, az1, az2, distance));
+	return distance;
 }
 
 #ifdef _TEST_
