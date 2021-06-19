@@ -23,7 +23,7 @@
  \file indigo_dome_baader.c
  */
 
-#define DRIVER_VERSION 0x00004
+#define DRIVER_VERSION 0x00005
 #define DRIVER_NAME	"indigo_dome_baader"
 
 #include <stdlib.h>
@@ -382,9 +382,9 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ||
 	    DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE ||
-	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1
+	    (indigo_azimuth_distance(PRIVATE_DATA->target_position, PRIVATE_DATA->current_position)*10) >= 1
 	) {
-		if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
+		if ((indigo_azimuth_distance(PRIVATE_DATA->target_position, PRIVATE_DATA->current_position)*10) >= 1) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -397,7 +397,7 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		}
-		if ((fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*10) < 1) && PRIVATE_DATA->park_requested) {
+		if ((indigo_azimuth_distance(PRIVATE_DATA->park_azimuth, PRIVATE_DATA->current_position)*10) < 1 && PRIVATE_DATA->park_requested) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
@@ -632,7 +632,7 @@ static void dome_connect_callback(indigo_device *device) {
 					DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 					PRIVATE_DATA->aborted = false;
 					PRIVATE_DATA->park_azimuth = 0;
-					if (fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*100) <= 1) {
+					if ((indigo_azimuth_distance(PRIVATE_DATA->park_azimuth, PRIVATE_DATA->current_position)*100) <= 1) {
 						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
 					} else {
 						indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_UNPARKED_ITEM, true);
