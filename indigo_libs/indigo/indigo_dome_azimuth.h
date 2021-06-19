@@ -45,6 +45,8 @@ extern double indigo_dome_solve_azimuth (
 	double mount_dec_offset_EW
 );
 
+extern double indigo_azimuth_distance(double az1, double az2);
+
 #ifdef __cplusplus
 }
 #endif

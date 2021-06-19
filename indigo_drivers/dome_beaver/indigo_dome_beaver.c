@@ -411,7 +411,6 @@ static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain
 
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
-
 static void dome_timer_callback(indigo_device *device) {
 	static int prev_shutter_position = -1;
 	beaver_rc_t rc;
@@ -420,11 +419,12 @@ static void dome_timer_callback(indigo_device *device) {
 	if ((rc = beaver_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_azimuth(): returned error %d", rc);
 	}
+
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ||
 	    DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE ||
-	    fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1
+	    (indigo_azimuth_distance(PRIVATE_DATA->target_position, PRIVATE_DATA->current_position) * 10) >= 1
 	) {
-		if (fabs((PRIVATE_DATA->target_position - PRIVATE_DATA->current_position)*10) >= 1) {
+		if ((indigo_azimuth_distance(PRIVATE_DATA->target_position, PRIVATE_DATA->current_position) * 10) >= 1) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -437,7 +437,7 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		}
-		if ((fabs((PRIVATE_DATA->park_azimuth - PRIVATE_DATA->current_position)*10) < 1) && PRIVATE_DATA->park_requested) {
+		if (((indigo_azimuth_distance(PRIVATE_DATA->park_azimuth, PRIVATE_DATA->current_position)*10) < 1) && PRIVATE_DATA->park_requested) {
 			DOME_PARK_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->park_requested = false;
 			indigo_set_switch(DOME_PARK_PROPERTY, DOME_PARK_PARKED_ITEM, true);
