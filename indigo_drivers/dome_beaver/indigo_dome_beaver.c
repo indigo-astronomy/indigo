@@ -403,6 +403,15 @@ static beaver_rc_t beaver_get_shutter_status(indigo_device *device, int *status)
 }
 
 
+static beaver_rc_t beaver_get_dome_status(indigo_device *device, int *status) {
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome status#", status)) return BD_NO_RESPONSE;
+	if (res < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
 static beaver_rc_t beaver_get_shutterisup(indigo_device *device, int *status) {
 	int res;
 
