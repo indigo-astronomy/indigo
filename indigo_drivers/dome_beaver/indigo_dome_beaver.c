@@ -70,17 +70,24 @@ typedef enum {
 	MODEL_PLATYPUS = 3,
 	MODEL_DRAGONFLY = 4,
 	MODEL_LIMPET = 5,
-	MODEL_XXX = 6,
+	MODEL_LYNX = 6,
 	MODEL_BEEVER_ROTATOR = 7,
 	MODEL_BEEVER_SHUTTER = 8
 } lunatico_model_t;
 
 typedef enum {
+	BD_SHUTTER_OPEN = 0,
+	BD_SHUTTER_CLOSED = 1,
+	BD_SHUTTER_OPENING = 2,
+	BD_SHUTTER_CLOSING = 3,
+	BD_SHUTTER_ERROR = 4
+} beaver_shutter_status_t;
+
+typedef enum {
 	BD_SUCCESS = 0,
 	BD_PARAM_ERROR = 1,
 	BD_COMMAND_ERROR = 2,
-	BD_NO_RESPONSE = 3,
-	BD_DOME_ERROR = 4
+	BD_NO_RESPONSE = 3
 } beaver_rc_t;
 
 typedef struct {
@@ -185,7 +192,7 @@ static bool beaver_command(indigo_device *device, const char *command, char *res
 static bool beaver_get_info(indigo_device *device, char *board, char *firmware) {
 	if(!board || !firmware) return false;
 
-	const char *models[9] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet", "No Idea", "Beaver (rotator)", "Beaver (shutter)" };
+	const char *models[9] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet", "Lynx", "Beaver (rotator)", "Beaver (shutter)" };
 	int fwmaj, fwmin, model, oper, data;
 	char response[LUNATICO_CMD_LEN]={0};
 	if (beaver_command(device, "!seletek version#", response, sizeof(response), 100)) {
@@ -360,7 +367,7 @@ static void beaver_close(indigo_device *device) {
 static beaver_rc_t beaver_abort(indigo_device *device) {
 	int res;
 
-	if (!beaver_command_get_result_i(device, "!dome abort all#", &res)) return BD_NO_RESPONSE;
+	if (!beaver_command_get_result_i(device, "!dome abort 1#", &res)) return BD_NO_RESPONSE;
 	if (res != 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
@@ -386,23 +393,57 @@ static beaver_rc_t beaver_goto_azimuth(indigo_device *device, float azimuth) {
 }
 
 
-static beaver_rc_t beaver_get_shutter_position(indigo_device *device, int *pos) {
-	return BD_NO_RESPONSE;
+static beaver_rc_t beaver_get_shutter_status(indigo_device *device, int *status) {
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome shutterstatus#", status)) return BD_NO_RESPONSE;
+	if (res < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_get_shutterisup(indigo_device *device, int *status) {
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome shutterisup#", status)) return BD_NO_RESPONSE;
+	if (res < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_shutter_enable(indigo_device *device, bool enable) {
+	int res;
+
+	if (enable) {
+		if (!beaver_command_get_result_i(device, "!dome setshutterenable 1#", &res)) return BD_NO_RESPONSE;
+	} else {
+		if (!beaver_command_get_result_i(device, "!dome setshutterenable 0#", &res)) return BD_NO_RESPONSE;
+	}
+	if (res != 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
 }
 
 
 static beaver_rc_t beaver_open_shutter(indigo_device *device) {
-	return BD_NO_RESPONSE;
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome openshutter#", &res)) return BD_NO_RESPONSE;
+	if (res != 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
 }
 
 
 static beaver_rc_t beaver_close_shutter(indigo_device *device) {
-	return BD_NO_RESPONSE;
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome closeshutter#", &res)) return BD_NO_RESPONSE;
+	if (res != 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
 }
 
 
 static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
-	return BD_NO_RESPONSE;
+	return BD_SUCCESS;
 }
 
 
@@ -448,21 +489,25 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 
 	/* Handle dome shutter */
-	if ((rc = beaver_get_shutter_position(device, &PRIVATE_DATA->shutter_position)) != BD_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_shutter_position(): returned error %d", rc);
+	if ((rc = beaver_get_shutter_status(device, &PRIVATE_DATA->shutter_position)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_shutter_status(): returned error %d", rc);
 	}
 	if (PRIVATE_DATA->shutter_position != prev_shutter_position || DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (PRIVATE_DATA->shutter_position == 100) {
+		if (PRIVATE_DATA->shutter_position == BD_SHUTTER_OPEN) {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter open");
-		} else if (PRIVATE_DATA->shutter_position == 0) {
+		} else if (PRIVATE_DATA->shutter_position == BD_SHUTTER_CLOSED) {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_CLOSED_ITEM, true);
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter closed");
+		} else if (PRIVATE_DATA->shutter_position == BD_SHUTTER_ERROR) {
+			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
+			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter error");
 		} else {
 			indigo_set_switch(DOME_SHUTTER_PROPERTY, DOME_SHUTTER_OPENED_ITEM, true);
-			//DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		}
 		prev_shutter_position = PRIVATE_DATA->shutter_position;
@@ -477,11 +522,7 @@ static void dome_timer_callback(indigo_device *device) {
 			if ((rc = beaver_goto_azimuth(device, PRIVATE_DATA->target_position)) != BD_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_goto_azimuth(%d): returned error %d", PRIVATE_DATA->handle, rc);
 				DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				if (rc == BD_DOME_ERROR) {
-					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome sync failed with DOME_ERROR. Please inspect the dome!");
-				} else {
-					indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-				}
+				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 				return;
 			}
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -596,6 +637,9 @@ static void dome_connect_callback(indigo_device *device) {
 				X_EMERGENCY_POWERCUT_ITEM->light.value = INDIGO_IDLE_STATE;
 				indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 
+				int isup;
+				beaver_get_shutterisup(device, &isup);
+
 				if ((rc = beaver_get_azimuth(device, &PRIVATE_DATA->current_position)) != BD_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_azimuth(): returned error %d", rc);
 				}
@@ -678,11 +722,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			if (rc == BD_DOME_ERROR) {
-				indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed with DOME_ERROR. Please inspect the dome!");
-			} else {
-				indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed");
-			}
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Goto azimuth failed");
 			return INDIGO_OK;
 		}
 
@@ -719,11 +759,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-			if (rc == BD_DOME_ERROR) {
-				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Goto azimuth failed with DOME_ERROR. Please inspect the dome!");
-			} else {
-				indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Goto azimuth failed");
-			}
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Goto azimuth failed");
 			return INDIGO_OK;
 		}
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -755,11 +791,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_abort(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			DOME_ABORT_MOTION_ITEM->sw.value = false;
-			if (rc == BD_DOME_ERROR) {
-				indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed with DOME_ERROR. Please inspect the dome!");
-			} else {
-				indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed");
-			}
+			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, "Abort failed");
 			return INDIGO_OK;
 		}
 
@@ -796,11 +828,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		if (rc != BD_SUCCESS) {
 			DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
-			if (rc == BD_DOME_ERROR) {
-				indigo_update_property(device, DOME_STEPS_PROPERTY, "Shutter open/close failed with DOME_ERROR. Please inspect the dome!");
-			} else {
-				indigo_update_property(device, DOME_STEPS_PROPERTY, "Shutter open/close failed");
-			}
+			indigo_update_property(device, DOME_STEPS_PROPERTY, "Shutter open/close failed");
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
