@@ -437,12 +437,12 @@ bool indigo_fix_dome_azimuth(indigo_device *device, double ra, double dec, doubl
 			DOME_MOUNT_PIVOT_OFFSET_NS_ITEM->number.value,
 			DOME_MOUNT_PIVOT_OFFSET_EW_ITEM->number.value
 		);
-		double diff = az_prev - *az;
-		if (fabs(diff) >= threshold) {
-			INDIGO_DRIVER_DEBUG("dome_driver", "Update dome Az diff = %.4f, threshold = %.4f", fabs(diff), threshold);
+		double diff = indigo_azimuth_distance(az_prev, *az);
+		if (diff >= threshold) {
+			INDIGO_DRIVER_DEBUG("dome_driver", "Update dome Az diff = %.4f, threshold = %.4f", diff, threshold);
 			update_needed = true;
 		} else {
-			INDIGO_DRIVER_DEBUG("dome_driver", "No dome Az update needed diff = %.4f, threshold = %.4f", fabs(diff), threshold);
+			INDIGO_DRIVER_DEBUG("dome_driver", "No dome Az update needed diff = %.4f, threshold = %.4f", diff, threshold);
 			update_needed = false;
 		}
 		*az = round(*az * 100) / 100;
