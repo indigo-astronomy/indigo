@@ -52,15 +52,15 @@
 
 #define X_MISC_GROUP                              "Misc"
 
-#define X_SHUTTER_CALLIBRATE_PROPERTY             (PRIVATE_DATA->shutter_cal_property)
-#define X_SHUTTER_CALLIBRATE_ITEM                 (X_SHUTTER_CALLIBRATE_PROPERTY->items+0)
-#define X_SHUTTER_CALLIBRATE_PROPERTY_NAME        "X_SHUTTER_CALLIBRATE"
-#define X_SHUTTER_CALLIBRATE_ITEM_NAME            "CALLIBRATE"
+#define X_SHUTTER_CALIBRATE_PROPERTY              (PRIVATE_DATA->shutter_cal_property)
+#define X_SHUTTER_CALIBRATE_ITEM                  (X_SHUTTER_CALIBRATE_PROPERTY->items+0)
+#define X_SHUTTER_CALIBRATE_PROPERTY_NAME         "X_SHUTTER_CALIBRATE"
+#define X_SHUTTER_CALIBRATE_ITEM_NAME             "CALIBRATE"
 
-#define X_ROTATOR_CALLIBRATE_PROPERTY             (PRIVATE_DATA->rotator_cal_property)
-#define X_ROTATOR_CALLIBRATE_ITEM                 (X_ROTATOR_CALLIBRATE_PROPERTY->items+0)
-#define X_ROTATOR_CALLIBRATE_PROPERTY_NAME        "X_ROTATOR_CALLIBRATE"
-#define X_ROTATOR_CALLIBRATE_ITEM_NAME            "CALLIBRATE"
+#define X_ROTATOR_CALIBRATE_PROPERTY              (PRIVATE_DATA->rotator_cal_property)
+#define X_ROTATOR_CALIBRATE_ITEM                  (X_ROTATOR_CALIBRATE_PROPERTY->items+0)
+#define X_ROTATOR_CALIBRATE_PROPERTY_NAME         "X_ROTATOR_CALIBRATE"
+#define X_ROTATOR_CALIBRATE_ITEM_NAME             "CALIBRATE"
 
 #define X_FAILURE_MESSAGE_PROPERTY                (PRIVATE_DATA->failure_msg_property)
 #define X_FAILURE_MESSAGE_ITEM                    (X_FAILURE_MESSAGE_PROPERTY->items+0)
@@ -68,9 +68,9 @@
 #define X_FAILURE_MESSAGE_ITEM_NAME               "MESSAGE"
 
 #define X_CLEAR_FAILURE_PROPERTY                  (PRIVATE_DATA->clear_failure_property)
-#define X_CLEAR_FAILURE_ITEM                       (X_CLEAR_FAILURE_PROPERTY->items+0)
+#define X_CLEAR_FAILURE_ITEM                      (X_CLEAR_FAILURE_PROPERTY->items+0)
 #define X_CLEAR_FAILURE_PROPERTY_NAME             "X_CLEAR_FAILURE"
-#define X_CLEAR_FAILURE_ITEM_NAME                  "CLEAR"
+#define X_CLEAR_FAILURE_ITEM_NAME                 "CLEAR"
 
 #define LUNATICO_CMD_LEN 100
 
@@ -122,7 +122,7 @@ typedef struct {
 	int failure_code;
 	//bool rain, wind, timeout, powercut;
 	bool park_requested;
-	bool home_requested;
+	//bool home_requested;
 	bool aborted;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
@@ -463,7 +463,7 @@ static beaver_rc_t beaver_get_shutter_status(indigo_device *device, int *status)
 }
 
 
-static beaver_rc_t beaver_get_failure_message(indigo_device *device, int *message) {
+static beaver_rc_t beaver_get_failure_message(indigo_device *device, char *message) {
 	if (!beaver_command_get_result_s(device, "!seletek getfailuremsg#", message)) return BD_NO_RESPONSE;
 	return BD_SUCCESS;
 }
@@ -523,7 +523,7 @@ static beaver_rc_t beaver_get_park(indigo_device *device, float *azimuth) {
 }
 
 
-static beaver_rc_t beaver_callibrate_rotator(indigo_device *device) {
+static beaver_rc_t beaver_calibrate_rotator(indigo_device *device) {
 	int res;
 	if (!beaver_command_get_result_i(device, "!dome autocalrot 2#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
@@ -531,13 +531,28 @@ static beaver_rc_t beaver_callibrate_rotator(indigo_device *device) {
 }
 
 
-static beaver_rc_t beaver_callibrate_shutter(indigo_device *device) {
+static beaver_rc_t beaver_calibrate_shutter(indigo_device *device) {
 	int res;
 	if (!beaver_command_get_result_i(device, "!dome autocalshutter#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
 
+
+/*
+static beaver_rc_t beaver_get_dome_calibration_status(indigo_device *device, int *status) {
+	if (!beaver_command_get_result_i(device, "!dome getcalibrationstatus#", status)) return BD_NO_RESPONSE;
+	if (status < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_get_shuttter_calibration_status(indigo_device *device, int *status) {
+	if (!beaver_command_get_result_i(device, "!dome sendtoshutter shutter getcalibrationstatus#", status)) return BD_NO_RESPONSE;
+	if (status < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+*/
 
 static beaver_rc_t beaver_goto_home(indigo_device *device) {
 	int res;
@@ -648,19 +663,36 @@ static void dome_timer_callback(indigo_device *device) {
 			}
 		}
 
-		int athome = 0;
-		if ((rc = beaver_is_athome(device, &athome)) != BD_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_is_athome(): returned error %d", rc);
-		}
-		if (athome && PRIVATE_DATA->home_requested) {
-			DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			PRIVATE_DATA->home_requested = false;
-			indigo_set_switch(DOME_HOME_PROPERTY, DOME_HOME_ITEM, true);
-			indigo_update_property(device, DOME_HOME_PROPERTY, "Dome is at home");
+		if (DOME_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+			int athome = 0;
+			if ((rc = beaver_is_athome(device, &athome)) != BD_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_is_athome(): returned error %d", rc);
+			}
+			if (athome) {
+				DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_switch(DOME_HOME_PROPERTY, DOME_HOME_ITEM, true);
+				indigo_update_property(device, DOME_HOME_PROPERTY, "Dome is at home");
+			} else if (!CHECK_BIT(PRIVATE_DATA->dome_status, BDB_ROTATOR_MOVING)) {
+				DOME_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(DOME_HOME_PROPERTY, DOME_HOME_ITEM, false);
+				indigo_update_property(device, DOME_HOME_PROPERTY, "Failed to find home.");
+			}
 		}
 
 		PRIVATE_DATA->prev_dome_status = PRIVATE_DATA->dome_status;
+	}
 
+	if (!CHECK_BIT(PRIVATE_DATA->dome_status, BDB_ROTATOR_MOVING)) {
+		if (X_ROTATOR_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			X_ROTATOR_CALIBRATE_ITEM->sw.value = false;
+			if (CHECK_BIT(PRIVATE_DATA->dome_status, BDB_ROTATOR_ERROR)) {
+				X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, "Rotator calibration failed");
+			} else {
+				X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, "Rotator calibration complete");
+			}
+		}
 	}
 
 	/* Handle dome shutter */
@@ -729,17 +761,6 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 
 	/* Handle failures */
-	if (X_CLEAR_FAILURE_ITEM->sw.value) {
-		X_CLEAR_FAILURE_ITEM->sw.value = false;
-		if ((rc = beaver_clear_failure(device)) != BD_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_clear_failure(): returned error %d", rc);
-			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		indigo_update_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
-	}
-
 	int failure_code;
 	if ((rc = beaver_get_failure_code(device, &failure_code)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_failure_code(): returned error %d", rc);
@@ -757,16 +778,28 @@ static void dome_timer_callback(indigo_device *device) {
 		}
 	}
 
+	if (X_CLEAR_FAILURE_ITEM->sw.value) {
+		X_CLEAR_FAILURE_ITEM->sw.value = false;
+		if ((rc = beaver_clear_failure(device)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_clear_failure(): returned error %d", rc);
+			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
+	}
+
+
 	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
 }
 
 
 static indigo_result beaver_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_SHUTTER_CALLIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_SHUTTER_CALLIBRATE_PROPERTY, NULL);
-		if (indigo_property_match(X_ROTATOR_CALLIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_ROTATOR_CALLIBRATE_PROPERTY, NULL);
+		if (indigo_property_match(X_SHUTTER_CALIBRATE_PROPERTY, property))
+			indigo_define_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
+		if (indigo_property_match(X_ROTATOR_CALIBRATE_PROPERTY, property))
+			indigo_define_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
 		if (indigo_property_match(X_FAILURE_MESSAGE_PROPERTY, property))
 			indigo_define_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 		if (indigo_property_match(X_CLEAR_FAILURE_PROPERTY, property))
@@ -804,16 +837,16 @@ static indigo_result dome_attach(indigo_device *device) {
 		DOME_HOME_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DOME_PARK_POSITION
 		DOME_PARK_POSITION_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- X_SHUTTER_CALLIBRATE_PROPERTY
-		X_SHUTTER_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SHUTTER_CALLIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Callibrate Shutter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (X_SHUTTER_CALLIBRATE_PROPERTY == NULL)
+		// -------------------------------------------------------------------------------- X_SHUTTER_CALIBRATE_PROPERTY
+		X_SHUTTER_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SHUTTER_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate Shutter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (X_SHUTTER_CALIBRATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(X_SHUTTER_CALLIBRATE_ITEM, X_SHUTTER_CALLIBRATE_ITEM_NAME, "Callibrate", false);
-		// -------------------------------------------------------------------------------- X_ROTATOR_CALLIBRATE_PROPERTY
-		X_ROTATOR_CALLIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ROTATOR_CALLIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Callibrate Rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
-		if (X_ROTATOR_CALLIBRATE_PROPERTY == NULL)
+		indigo_init_switch_item(X_SHUTTER_CALIBRATE_ITEM, X_SHUTTER_CALIBRATE_ITEM_NAME, "Calibrate", false);
+		// -------------------------------------------------------------------------------- X_ROTATOR_CALIBRATE_PROPERTY
+		X_ROTATOR_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ROTATOR_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate Rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (X_ROTATOR_CALIBRATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(X_ROTATOR_CALLIBRATE_ITEM, X_ROTATOR_CALLIBRATE_ITEM_NAME, "Callibrate", false);
+		indigo_init_switch_item(X_ROTATOR_CALIBRATE_ITEM, X_ROTATOR_CALIBRATE_ITEM_NAME, "Calibrate", false);
 		// -------------------------------------------------------------------------------- X_FAILURE_MESSAGE_PROPERTY
 		X_FAILURE_MESSAGE_PROPERTY = indigo_init_text_property(NULL, device->name, X_FAILURE_MESSAGE_PROPERTY_NAME, X_MISC_GROUP, "Last failure", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 		if (X_FAILURE_MESSAGE_PROPERTY == NULL)
@@ -838,8 +871,8 @@ static void dome_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (beaver_open(device)) { // Successfully connected
-				indigo_define_property(device, X_SHUTTER_CALLIBRATE_PROPERTY, NULL);
-				indigo_define_property(device, X_ROTATOR_CALLIBRATE_PROPERTY, NULL);
+				indigo_define_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
+				indigo_define_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
 				indigo_define_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 				indigo_define_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
 				int shutter_is_up;
@@ -864,7 +897,7 @@ static void dome_connect_callback(indigo_device *device) {
 				}
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 				PRIVATE_DATA->aborted = false;
-				PRIVATE_DATA->home_requested = true;
+				//PRIVATE_DATA->home_requested = true;
 
 				int atpark = false;
 				if ((rc = beaver_is_parked(device, &atpark)) != BD_SUCCESS) {
@@ -899,8 +932,8 @@ static void dome_connect_callback(indigo_device *device) {
 		if (device->is_connected) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->dome_timer);
 
-			indigo_delete_property(device, X_SHUTTER_CALLIBRATE_PROPERTY, NULL);
-			indigo_delete_property(device, X_ROTATOR_CALLIBRATE_PROPERTY, NULL);
+			indigo_delete_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
+			indigo_delete_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
 			indigo_delete_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 			indigo_delete_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
 
@@ -1145,7 +1178,6 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_goto_home(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			}
 
-			PRIVATE_DATA->home_requested = true;
 			DOME_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -1170,6 +1202,26 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
+	} else if (indigo_property_match(X_ROTATOR_CALIBRATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_ROTATOR_CALIBRATE
+		indigo_property_copy_values(X_ROTATOR_CALIBRATE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+
+		if (X_ROTATOR_CALIBRATE_ITEM->sw.value) {
+			X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			if ((rc = beaver_calibrate_rotator(device)) != BD_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_calibrate_rotator(%d): returned error %d", PRIVATE_DATA->handle, rc);
+				X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, "Rotator calibration falied");
+			} else {
+				indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, "Calibrating rotator...");
+			}
+		} else {
+			X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
 	}
 	return indigo_dome_change_property(device, client, property);
 }
@@ -1182,8 +1234,8 @@ static indigo_result dome_detach(indigo_device *device) {
 		dome_connect_callback(device);
 	}
 
-	indigo_release_property(X_SHUTTER_CALLIBRATE_PROPERTY);
-	indigo_release_property(X_ROTATOR_CALLIBRATE_PROPERTY);
+	indigo_release_property(X_SHUTTER_CALIBRATE_PROPERTY);
+	indigo_release_property(X_ROTATOR_CALIBRATE_PROPERTY);
 	indigo_release_property(X_FAILURE_MESSAGE_PROPERTY);
 	indigo_release_property(X_CLEAR_FAILURE_PROPERTY);
 
