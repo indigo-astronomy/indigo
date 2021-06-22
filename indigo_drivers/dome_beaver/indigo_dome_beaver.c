@@ -378,8 +378,15 @@ static void beaver_close(indigo_device *device) {
 
 static beaver_rc_t beaver_abort(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome abort 1#", &res)) return BD_NO_RESPONSE;
+	if (res != 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_save(indigo_device *device) {
+	int res;
+	if (!beaver_command_get_result_i(device, "!seletek savefs#", &res)) return BD_NO_RESPONSE;
 	if (res != 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
@@ -387,7 +394,6 @@ static beaver_rc_t beaver_abort(indigo_device *device) {
 
 static beaver_rc_t beaver_get_azimuth(indigo_device *device, float *azimuth) {
 	bool res;
-
 	res = beaver_command_get_result_f(device, "!dome getaz#", azimuth);
 	if ((res == false) || (*azimuth < 0)) return BD_NO_RESPONSE;
 	else return BD_SUCCESS;
@@ -397,7 +403,6 @@ static beaver_rc_t beaver_get_azimuth(indigo_device *device, float *azimuth) {
 static beaver_rc_t beaver_goto_azimuth(indigo_device *device, float azimuth) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
-
 	snprintf(command, LUNATICO_CMD_LEN, "!dome gotoaz %f#", azimuth);
 	if (!beaver_command_get_result_i(device, command, &res)) return BD_NO_RESPONSE;
 	if (res != 0) return BD_COMMAND_ERROR;
@@ -408,10 +413,10 @@ static beaver_rc_t beaver_goto_azimuth(indigo_device *device, float azimuth) {
 static beaver_rc_t beaver_set_azimuth(indigo_device *device, float azimuth) {
 	char command[LUNATICO_CMD_LEN];
 	int res;
-
 	snprintf(command, LUNATICO_CMD_LEN, "!dome setaz %f#", azimuth);
 	if (!beaver_command_get_result_i(device, command, &res)) return BD_NO_RESPONSE;
 	if (res != 0) return BD_COMMAND_ERROR;
+	beaver_save(device);
 	return BD_SUCCESS;
 }
 
@@ -439,7 +444,6 @@ static beaver_rc_t beaver_is_parked(indigo_device *device, int *parked) {
 
 static beaver_rc_t beaver_goto_park(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome gopark#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -448,15 +452,15 @@ static beaver_rc_t beaver_goto_park(indigo_device *device) {
 
 static beaver_rc_t beaver_set_park(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome setpark#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
+	beaver_save(device);
 	return BD_SUCCESS;
 }
 
+
 static beaver_rc_t beaver_get_park(indigo_device *device, float *azimuth) {
 	int res;
-
 	if (!beaver_command_get_result_f(device, "!domerot getpark#", azimuth)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -465,7 +469,6 @@ static beaver_rc_t beaver_get_park(indigo_device *device, float *azimuth) {
 
 static beaver_rc_t beaver_callibrate_rotator(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome autocalrot 2#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -474,7 +477,6 @@ static beaver_rc_t beaver_callibrate_rotator(indigo_device *device) {
 
 static beaver_rc_t beaver_callibrate_shutter(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome autocalshutter#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -483,7 +485,6 @@ static beaver_rc_t beaver_callibrate_shutter(indigo_device *device) {
 
 static beaver_rc_t beaver_goto_home(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome gohome#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -491,7 +492,6 @@ static beaver_rc_t beaver_goto_home(indigo_device *device) {
 
 static beaver_rc_t beaver_get_dome_status(indigo_device *device, int *status) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome status#", status)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -500,7 +500,6 @@ static beaver_rc_t beaver_get_dome_status(indigo_device *device, int *status) {
 
 static beaver_rc_t beaver_get_shutterisup(indigo_device *device, int *status) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome shutterisup#", status)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -509,20 +508,19 @@ static beaver_rc_t beaver_get_shutterisup(indigo_device *device, int *status) {
 
 static beaver_rc_t beaver_shutter_enable(indigo_device *device, bool enable) {
 	int res;
-
 	if (enable) {
 		if (!beaver_command_get_result_i(device, "!dome setshutterenable 1#", &res)) return BD_NO_RESPONSE;
 	} else {
 		if (!beaver_command_get_result_i(device, "!dome setshutterenable 0#", &res)) return BD_NO_RESPONSE;
 	}
 	if (res != 0) return BD_COMMAND_ERROR;
+	beaver_save(device);
 	return BD_SUCCESS;
 }
 
 
 static beaver_rc_t beaver_open_shutter(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome openshutter#", &res)) return BD_NO_RESPONSE;
 	if (res != 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -531,7 +529,6 @@ static beaver_rc_t beaver_open_shutter(indigo_device *device) {
 
 static beaver_rc_t beaver_close_shutter(indigo_device *device) {
 	int res;
-
 	if (!beaver_command_get_result_i(device, "!dome closeshutter#", &res)) return BD_NO_RESPONSE;
 	if (res != 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
@@ -541,13 +538,6 @@ static beaver_rc_t beaver_close_shutter(indigo_device *device) {
 static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
 	return BD_SUCCESS;
 }
-
-
-
-//static bool beaver_callibrate(indigo_device *device) {
-//	return false;
-//}
-
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 static void dome_timer_callback(indigo_device *device) {
@@ -781,9 +771,17 @@ static void dome_connect_callback(indigo_device *device) {
 				X_EMERGENCY_POWERCUT_ITEM->light.value = INDIGO_IDLE_STATE;
 				indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
 				*/
-				int isup;
-				if ((rc = beaver_get_shutterisup(device, &isup)) != BD_SUCCESS) {
+				int shutter_is_up;
+				if ((rc = beaver_get_shutterisup(device, &shutter_is_up)) != BD_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_shutterisup(): returned error %d", rc);
+				}
+
+				if (!shutter_is_up) {
+					indigo_send_message(device, "Shutter not detected");
+					DOME_SHUTTER_PROPERTY->hidden = true;
+					//indigo_delete_property(device, DOME_SHUTTER_PROPERTY, NULL);
+				} else {
+					DOME_SHUTTER_PROPERTY->hidden = false;
 				}
 				/* handle shutter up */
 
