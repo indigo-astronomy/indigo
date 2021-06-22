@@ -394,14 +394,71 @@ static beaver_rc_t beaver_goto_azimuth(indigo_device *device, float azimuth) {
 }
 
 
-static beaver_rc_t beaver_get_shutter_status(indigo_device *device, int *status) {
+static beaver_rc_t beaver_set_azimuth(indigo_device *device, float azimuth) {
+	char command[LUNATICO_CMD_LEN];
 	int res;
 
+	snprintf(command, LUNATICO_CMD_LEN, "!dome setaz %f#", azimuth);
+	if (!beaver_command_get_result_i(device, command, &res)) return BD_NO_RESPONSE;
+	if (res != 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_get_shutter_status(indigo_device *device, int *status) {
 	if (!beaver_command_get_result_i(device, "!dome shutterstatus#", status)) return BD_NO_RESPONSE;
+	if (status < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_is_athome(indigo_device *device, int *athome) {
+	if (!beaver_command_get_result_i(device, "!dome athome#", athome)) return BD_NO_RESPONSE;
+	if (*athome < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+static beaver_rc_t beaver_is_parked(indigo_device *device, int *parked) {
+	if (!beaver_command_get_result_i(device, "!dome atpark#", parked)) return BD_NO_RESPONSE;
+	if (*parked < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_goto_park(indigo_device *device) {
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome gopark#", &res)) return BD_NO_RESPONSE;
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
 
+
+static beaver_rc_t beaver_callibrate_rotator(indigo_device *device) {
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome autocalrot 2#", &res)) return BD_NO_RESPONSE;
+	if (res < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_callibrate_shutter(indigo_device *device) {
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome autocalshutter#", &res)) return BD_NO_RESPONSE;
+	if (res < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
+
+
+static beaver_rc_t beaver_goto_home(indigo_device *device) {
+	int res;
+
+	if (!beaver_command_get_result_i(device, "!dome gohome#", &res)) return BD_NO_RESPONSE;
+	if (res < 0) return BD_COMMAND_ERROR;
+	return BD_SUCCESS;
+}
 
 static beaver_rc_t beaver_get_dome_status(indigo_device *device, int *status) {
 	int res;
