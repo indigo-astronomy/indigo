@@ -80,7 +80,15 @@ typedef enum {
 	BDB_ROTATOR_ERROR      = 2,
 	BDB_SHUTTER_ERROR      = 3,
 	BDB_COMM_ERROR         = 4
-} beever_status_t;
+} beaver_status_bits_t;
+
+typedef enum {
+	BDS_NO_CALIBRATION     = 0,
+	BDS_CLIBRATING         = 1,
+	BDS_CALIBRATED         = 2,
+	BDS_CALIBRATION_ERROR  = 3
+} beaver_shutter_callibration_status_t;
+
 
 #define CHECK_BIT(bitmap, bit)  (((bitmap) >> (bit)) & 1UL)
 
@@ -539,20 +547,12 @@ static beaver_rc_t beaver_calibrate_shutter(indigo_device *device) {
 }
 
 
-/*
-static beaver_rc_t beaver_get_dome_calibration_status(indigo_device *device, int *status) {
-	if (!beaver_command_get_result_i(device, "!dome getcalibrationstatus#", status)) return BD_NO_RESPONSE;
+static beaver_rc_t beaver_get_shutter_calibration_status(indigo_device *device, int *status) {
+	if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"shutter getcalibrationstatus\"#", status)) return BD_NO_RESPONSE;
 	if (status < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
 
-
-static beaver_rc_t beaver_get_shuttter_calibration_status(indigo_device *device, int *status) {
-	if (!beaver_command_get_result_i(device, "!dome sendtoshutter shutter getcalibrationstatus#", status)) return BD_NO_RESPONSE;
-	if (status < 0) return BD_COMMAND_ERROR;
-	return BD_SUCCESS;
-}
-*/
 
 static beaver_rc_t beaver_goto_home(indigo_device *device) {
 	int res;
@@ -560,6 +560,7 @@ static beaver_rc_t beaver_goto_home(indigo_device *device) {
 	if (res < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
+
 
 static beaver_rc_t beaver_get_dome_status(indigo_device *device, int *status) {
 	int res;
@@ -634,7 +635,6 @@ static void dome_timer_callback(indigo_device *device) {
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-			//DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "NOT ROTATING = %d", PRIVATE_DATA->dome_status);
@@ -689,6 +689,7 @@ static void dome_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->prev_dome_status = PRIVATE_DATA->dome_status;
 	}
 
+	/* Handle dome rotator calibration */
 	if (!CHECK_BIT(PRIVATE_DATA->dome_status, BDB_ROTATOR_MOVING)) {
 		if (X_ROTATOR_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			X_ROTATOR_CALIBRATE_ITEM->sw.value = false;
@@ -734,6 +735,22 @@ static void dome_timer_callback(indigo_device *device) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Closing shutter...");
 		}
 		PRIVATE_DATA->prev_shutter_status = PRIVATE_DATA->shutter_status;
+	}
+
+	/* Handle dome shutter calibration */
+	if (X_SHUTTER_CALIBRATE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		X_SHUTTER_CALIBRATE_ITEM->sw.value = false;
+		int cal_status;
+		if ((rc = beaver_get_shutter_calibration_status(device, &cal_status)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_shutter_calibration_status(): returned error %d", rc);
+		}
+		if (cal_status == BDS_CALIBRATION_ERROR) {
+			X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_SHUTTER_CALIBRATE_PROPERTY, "Shutter calibration failed");
+		} else if (cal_status == BDS_CALIBRATED || cal_status == BDS_NO_CALIBRATION) {
+			X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, X_SHUTTER_CALIBRATE_PROPERTY, "Shutter calibration complete");
+		}
 	}
 
 	/* Abort */
@@ -1167,6 +1184,29 @@ static void dome_calibrate_rotator_callback(indigo_device *device) {
 }
 
 
+static void dome_calibrate_shutter_callback(indigo_device *device) {
+	beaver_rc_t rc;
+
+	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
+	if (X_SHUTTER_CALIBRATE_ITEM->sw.value) {
+		X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		if ((rc = beaver_calibrate_shutter(device)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_calibrate_shutter(%d): returned error %d", PRIVATE_DATA->handle, rc);
+			X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_SHUTTER_CALIBRATE_PROPERTY, "Shutter calibration falied");
+		} else {
+			indigo_update_property(device, X_SHUTTER_CALIBRATE_PROPERTY, "Calibrating shutter...");
+		}
+	} else {
+		X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
+	}
+
+	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
+}
+
+
 static indigo_result dome_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1312,6 +1352,13 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_calibrate_rotator_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(X_SHUTTER_CALIBRATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_SHUTTER_CALIBRATE
+		indigo_property_copy_values(X_SHUTTER_CALIBRATE_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+
+		indigo_set_timer(device, 0, dome_calibrate_shutter_callback, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
