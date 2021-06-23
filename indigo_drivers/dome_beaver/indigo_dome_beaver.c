@@ -665,11 +665,11 @@ static void dome_timer_callback(indigo_device *device) {
 			}
 		}
 
+		int athome = 0;
+		if ((rc = beaver_is_athome(device, &athome)) != BD_SUCCESS)  {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_is_athome(): returned error %d", rc);
+		}
 		if (DOME_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
-			int athome = 0;
-			if ((rc = beaver_is_athome(device, &athome)) != BD_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_is_athome(): returned error %d", rc);
-			}
 			if (athome) {
 				DOME_HOME_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_set_switch(DOME_HOME_PROPERTY, DOME_HOME_ITEM, true);
@@ -678,6 +678,11 @@ static void dome_timer_callback(indigo_device *device) {
 				DOME_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(DOME_HOME_PROPERTY, DOME_HOME_ITEM, false);
 				indigo_update_property(device, DOME_HOME_PROPERTY, "Failed to find home.");
+			}
+		} else {
+			if ((bool)athome != DOME_HOME_ITEM->sw.value) {
+				DOME_HOME_ITEM->sw.value = (bool)athome;
+				indigo_update_property(device, DOME_HOME_PROPERTY, NULL);
 			}
 		}
 
@@ -953,7 +958,7 @@ static void dome_steps_callback(indigo_device *device) {
 
 	if (DOME_PARK_PARKED_ITEM->sw.value) {
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked");
+		indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is parked, please unpark");
 		return;
 	}
 
@@ -1005,7 +1010,7 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 		DOME_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked");
+		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is parked, please unpark");
 		pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 		return;
 	}
@@ -1102,6 +1107,13 @@ static void dome_park_callback(indigo_device *device) {
 static void dome_gohome_callback(indigo_device *device) {
 	beaver_rc_t rc;
 
+	if (DOME_PARK_PARKED_ITEM->sw.value) {
+		DOME_HOME_ITEM->sw.value = false;
+		DOME_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome is parked, please unpark");
+		return;
+	}
+
 	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (DOME_HOME_ITEM->sw.value) {
 		indigo_set_switch(DOME_PARK_PROPERTY, DOME_HOME_ITEM, false);
@@ -1127,6 +1139,13 @@ static void dome_gohome_callback(indigo_device *device) {
 
 static void dome_calibrate_rotator_callback(indigo_device *device) {
 	beaver_rc_t rc;
+
+	if (DOME_PARK_PARKED_ITEM->sw.value) {
+		X_ROTATOR_CALIBRATE_ITEM->sw.value = false;
+		X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, "Dome is parked, please unpark");
+		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (X_ROTATOR_CALIBRATE_ITEM->sw.value) {
@@ -1192,7 +1211,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked");
+			indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, "Dome is parked, please unpark");
 			return INDIGO_OK;
 		}
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
