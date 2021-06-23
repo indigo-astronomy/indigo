@@ -122,7 +122,6 @@ typedef struct {
 	int failure_code;
 	//bool rain, wind, timeout, powercut;
 	bool park_requested;
-	//bool home_requested;
 	bool aborted;
 	pthread_mutex_t port_mutex;
 	indigo_timer *dome_timer;
@@ -761,6 +760,16 @@ static void dome_timer_callback(indigo_device *device) {
 	}
 
 	/* Handle failures */
+	if (X_CLEAR_FAILURE_ITEM->sw.value) {
+		X_CLEAR_FAILURE_ITEM->sw.value = false;
+		if ((rc = beaver_clear_failure(device)) != BD_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_clear_failure(): returned error %d", rc);
+			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
+	}
 	int failure_code;
 	if ((rc = beaver_get_failure_code(device, &failure_code)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_failure_code(): returned error %d", rc);
@@ -777,18 +786,6 @@ static void dome_timer_callback(indigo_device *device) {
 			PRIVATE_DATA->failure_code = failure_code;
 		}
 	}
-
-	if (X_CLEAR_FAILURE_ITEM->sw.value) {
-		X_CLEAR_FAILURE_ITEM->sw.value = false;
-		if ((rc = beaver_clear_failure(device)) != BD_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_clear_failure(): returned error %d", rc);
-			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_OK_STATE;
-		}
-		indigo_update_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
-	}
-
 
 	indigo_reschedule_timer(device, 1, &(PRIVATE_DATA->dome_timer));
 }
@@ -897,7 +894,6 @@ static void dome_connect_callback(indigo_device *device) {
 				}
 				DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = PRIVATE_DATA->target_position = PRIVATE_DATA->current_position;
 				PRIVATE_DATA->aborted = false;
-				//PRIVATE_DATA->home_requested = true;
 
 				int atpark = false;
 				if ((rc = beaver_is_parked(device, &atpark)) != BD_SUCCESS) {
