@@ -1140,11 +1140,11 @@ static void dome_gohome_callback(indigo_device *device) {
 		}
 
 		DOME_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome going home...");
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome going home...");
 	} else {
 		indigo_update_property(device, DOME_HOME_PROPERTY, NULL);
 	}
