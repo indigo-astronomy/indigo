@@ -1054,6 +1054,7 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 			return;
 		}
 	}
+	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
