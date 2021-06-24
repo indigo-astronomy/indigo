@@ -147,6 +147,7 @@
 #include "dome_talon6ror/indigo_dome_talon6ror.h"
 #include "dome_beaver/indigo_dome_beaver.h"
 #include "focuser_astromechanics/indigo_focuser_astromechanics.h"
+#include "aux_astromechanics/indigo_aux_astromechanics.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -185,6 +186,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_snoop,
 	indigo_ao_sx,
 	indigo_aux_arteskyflat,
+	indigo_aux_astromechanics,
 	indigo_aux_cloudwatcher,
 	indigo_aux_dragonfly,
 	indigo_aux_dsusb,
