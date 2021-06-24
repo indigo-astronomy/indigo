@@ -81,6 +81,8 @@
 		595567D624BA00DA00DF303D /* indigo_mount_pmc8.h in Headers */ = {isa = PBXBuildFile; fileRef = 595567D024BA00DA00DF303D /* indigo_mount_pmc8.h */; };
 		595567D824BA00DA00DF303D /* indigo_mount_pmc8_main.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D224BA00DA00DF303D /* indigo_mount_pmc8_main.c */; };
 		595567D924BA00DA00DF303D /* indigo_mount_pmc8.c in Sources */ = {isa = PBXBuildFile; fileRef = 595567D424BA00DA00DF303D /* indigo_mount_pmc8.c */; };
+		5955CB6A2684BC9C00685071 /* indigo_dome_beaver.c in Sources */ = {isa = PBXBuildFile; fileRef = 5955CB662684BC9C00685071 /* indigo_dome_beaver.c */; };
+		5955CB6C2684BC9C00685071 /* indigo_dome_beaver.h in Headers */ = {isa = PBXBuildFile; fileRef = 5955CB692684BC9C00685071 /* indigo_dome_beaver.h */; };
 		59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
 		59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */; };
 		59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAF211CC30C00E9FC27 /* indigo_aux_driver.h */; };
@@ -1089,6 +1091,10 @@
 		595567D324BA00DA00DF303D /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		595567D424BA00DA00DF303D /* indigo_mount_pmc8.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_pmc8.c; sourceTree = "<group>"; };
 		595567DB24BA017E00DF303D /* PMC_Eight_ProgrammersReferenceManual_Release2_2019_March_07.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = PMC_Eight_ProgrammersReferenceManual_Release2_2019_March_07.pdf; sourceTree = "<group>"; };
+		5955CB662684BC9C00685071 /* indigo_dome_beaver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_beaver.c; sourceTree = "<group>"; };
+		5955CB672684BC9C00685071 /* indigo_dome_beaver_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dome_beaver_main.c; sourceTree = "<group>"; };
+		5955CB682684BC9C00685071 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5955CB692684BC9C00685071 /* indigo_dome_beaver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_beaver.h; sourceTree = "<group>"; };
 		5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.01.pdf; sourceTree = "<group>"; };
 		5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.0.pdf; sourceTree = "<group>"; };
 		5956F662230BCE120016C7C2 /* Protocol_V2.5.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V2.5.pdf; sourceTree = "<group>"; };
@@ -5382,6 +5388,17 @@
 			path = mount_pmc8;
 			sourceTree = "<group>";
 		};
+		5955CB652684BC9C00685071 /* dome_beaver */ = {
+			isa = PBXGroup;
+			children = (
+				5955CB682684BC9C00685071 /* README.md */,
+				5955CB692684BC9C00685071 /* indigo_dome_beaver.h */,
+				5955CB662684BC9C00685071 /* indigo_dome_beaver.c */,
+				5955CB672684BC9C00685071 /* indigo_dome_beaver_main.c */,
+			);
+			path = dome_beaver;
+			sourceTree = "<group>";
+		};
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
 			isa = PBXGroup;
 			children = (
@@ -8520,6 +8537,7 @@
 				9D48B79B215E570600CF757E /* ccd_touptek */,
 				9D73E5F721FF36C4003CEC15 /* ccd_uvc */,
 				59EF8BBF24683B10009D75C5 /* dome_baader */,
+				5955CB652684BC9C00685071 /* dome_beaver */,
 				591F328224211EB000D1D64B /* dome_dragonfly */,
 				59B81EC82337AA2E00DFA81B /* dome_nexdome */,
 				9DB117902383F6FC002C1AB1 /* dome_nexdome3 */,
@@ -12669,6 +12687,7 @@
 				9DAD52472126BD99002FCC79 /* indigo_wheel_quantum.h in Headers */,
 				9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */,
 				595F292C211E211200380EF4 /* DDHidAppleRemote.h in Headers */,
+				5955CB6C2684BC9C00685071 /* indigo_dome_beaver.h in Headers */,
 				9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */,
 				59413562232404D100ED5FF4 /* indigo_focuser_efa.h in Headers */,
 				595F2931211E211200380EF4 /* NSXReturnThrowError.h in Headers */,
@@ -13264,6 +13283,7 @@
 				9D743A5B23FD57F80093319F /* indigo_rotator_driver.c in Sources */,
 				9D73E61621FF37F9003CEC15 /* libuvc_ctrl.c in Sources */,
 				59CC779D1F27BD07003AD2DB /* indigo_ica_ptp_sony.m in Sources */,
+				5955CB6A2684BC9C00685071 /* indigo_dome_beaver.c in Sources */,
 				9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */,
 				9DAD522221246C18002FCC79 /* indigo_mount_synscan.c in Sources */,
 				595F2929211E211200380EF4 /* NSDictionary+DDHidExtras.m in Sources */,
