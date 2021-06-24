@@ -63,9 +63,11 @@
 #define X_ROTATOR_CALIBRATE_ITEM_NAME             "CALIBRATE"
 
 #define X_FAILURE_MESSAGE_PROPERTY                (PRIVATE_DATA->failure_msg_property)
-#define X_FAILURE_MESSAGE_ITEM                    (X_FAILURE_MESSAGE_PROPERTY->items+0)
+#define X_FAILURE_MESSAGE_ROTATOR_ITEM            (X_FAILURE_MESSAGE_PROPERTY->items+0)
+#define X_FAILURE_MESSAGE_SHUTTER_ITEM            (X_FAILURE_MESSAGE_PROPERTY->items+1)
 #define X_FAILURE_MESSAGE_PROPERTY_NAME           "X_FAILURE_MESSAGE"
-#define X_FAILURE_MESSAGE_ITEM_NAME               "MESSAGE"
+#define X_FAILURE_MESSAGE_ROTATOR_ITEM_NAME       "ROTATOR"
+#define X_FAILURE_MESSAGE_SHUTTER_ITEM_NAME       "SHUTTER"
 
 #define X_CLEAR_FAILURE_PROPERTY                  (PRIVATE_DATA->clear_failure_property)
 #define X_CLEAR_FAILURE_ITEM                      (X_CLEAR_FAILURE_PROPERTY->items+0)
@@ -127,7 +129,7 @@ typedef struct {
 	int prev_shutter_status;
 	int dome_status;
 	int prev_dome_status;
-	int failure_code;
+	int rotator_failure_code, shutter_failure_code;
 	//bool rain, wind, timeout, powercut;
 	bool park_requested;
 	bool aborted;
@@ -466,28 +468,30 @@ static beaver_rc_t beaver_set_azimuth(indigo_device *device, float azimuth) {
 
 static beaver_rc_t beaver_get_shutter_status(indigo_device *device, int *status) {
 	if (!beaver_command_get_result_i(device, "!dome shutterstatus#", status)) return BD_NO_RESPONSE;
-	if (status < 0) return BD_COMMAND_ERROR;
+	if (*status < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
 
 
-static beaver_rc_t beaver_get_failure_message(indigo_device *device, char *message) {
-	if (!beaver_command_get_result_s(device, "!seletek getfailuremsg#", message)) return BD_NO_RESPONSE;
+static beaver_rc_t beaver_get_failure_messages(indigo_device *device, char *rotator_message, char *shutter_message) {
+	if (!beaver_command_get_result_s(device, "!seletek getfailuremsg#", rotator_message)) return BD_NO_RESPONSE;
+	if (!beaver_command_get_result_s(device, "!dome sendtoshutter \"seletek getfailuremsg\"#", shutter_message)) return BD_NO_RESPONSE;
 	return BD_SUCCESS;
 }
 
 
-static beaver_rc_t beaver_get_failure_code(indigo_device *device, int *code) {
-	if (!beaver_command_get_result_i(device, "!seletek getfailurecode#", code)) return BD_NO_RESPONSE;
-	if (code < 0) return BD_COMMAND_ERROR;
+static beaver_rc_t beaver_get_failure_codes(indigo_device *device, int *rotator_code, int *shutter_code) {
+	if (!beaver_command_get_result_i(device, "!seletek getfailurecode#", rotator_code)) return BD_NO_RESPONSE;
+	if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"seletek getfailurecode\"#", shutter_code)) return BD_NO_RESPONSE;
 	return BD_SUCCESS;
 }
 
 
 static beaver_rc_t beaver_clear_failure(indigo_device *device) {
-	int res;
-	if (!beaver_command_get_result_i(device, "!seletek clearfailure#", &res)) return BD_NO_RESPONSE;
-	if (res < 0) return BD_COMMAND_ERROR;
+	int res1, res2;
+	if (!beaver_command_get_result_i(device, "!seletek clearfailure#", &res1)) return BD_NO_RESPONSE;
+	if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"seletek clearfailure\"#", &res2)) return BD_NO_RESPONSE;
+	if (res1 < 0 || res2 < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
 
@@ -549,7 +553,7 @@ static beaver_rc_t beaver_calibrate_shutter(indigo_device *device) {
 
 static beaver_rc_t beaver_get_shutter_calibration_status(indigo_device *device, int *status) {
 	if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"shutter getcalibrationstatus\"#", status)) return BD_NO_RESPONSE;
-	if (status < 0) return BD_COMMAND_ERROR;
+	if (*status < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
 
@@ -631,13 +635,13 @@ static void dome_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->dome_status != PRIVATE_DATA->prev_dome_status
 	) {
 		if (CHECK_BIT(PRIVATE_DATA->dome_status, BDB_ROTATOR_MOVING)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ROTATING = %d", PRIVATE_DATA->dome_status);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Rotator stationary = %d", PRIVATE_DATA->dome_status);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "NOT ROTATING = %d", PRIVATE_DATA->dome_status);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Rotator moving = %d", PRIVATE_DATA->dome_status);
 			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
@@ -778,20 +782,21 @@ static void dome_timer_callback(indigo_device *device) {
 		}
 		indigo_update_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
 	}
-	int failure_code;
-	if ((rc = beaver_get_failure_code(device, &failure_code)) != BD_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_failure_code(): returned error %d", rc);
+	int rotator_code = 0, shutter_code = 0;
+	if ((rc = beaver_get_failure_codes(device, &rotator_code, &shutter_code)) != BD_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_failure_codes(): returned error %d", rc);
 	} else {
-		if (failure_code != PRIVATE_DATA->failure_code) {
-			beaver_get_failure_message(device, &X_FAILURE_MESSAGE_ITEM->text.value);
-			if (failure_code != 0) {
+		if (rotator_code != PRIVATE_DATA->rotator_failure_code || shutter_code != PRIVATE_DATA->shutter_failure_code) {
+			beaver_get_failure_messages(device, &X_FAILURE_MESSAGE_ROTATOR_ITEM->text.value, &X_FAILURE_MESSAGE_SHUTTER_ITEM->text.value);
+			if (rotator_code != 0 || shutter_code != 0) {
 				X_FAILURE_MESSAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, X_FAILURE_MESSAGE_PROPERTY, X_FAILURE_MESSAGE_ITEM->text.value);
+				indigo_update_property(device, X_FAILURE_MESSAGE_PROPERTY, "Rotator or Shutter failure detected, Check X_FAILURE_MESSAGE property");
 			} else {
 				X_FAILURE_MESSAGE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 			}
-			PRIVATE_DATA->failure_code = failure_code;
+			PRIVATE_DATA->rotator_failure_code = rotator_code;
+			PRIVATE_DATA->shutter_failure_code = shutter_code;
 		}
 	}
 
@@ -863,22 +868,23 @@ static indigo_result dome_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DOME_PARK_POSITION
 		DOME_PARK_POSITION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- X_SHUTTER_CALIBRATE_PROPERTY
-		X_SHUTTER_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SHUTTER_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate Shutter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		X_SHUTTER_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_SHUTTER_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate shutter", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (X_SHUTTER_CALIBRATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_SHUTTER_CALIBRATE_ITEM, X_SHUTTER_CALIBRATE_ITEM_NAME, "Calibrate", false);
 		// -------------------------------------------------------------------------------- X_ROTATOR_CALIBRATE_PROPERTY
-		X_ROTATOR_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ROTATOR_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate Rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		X_ROTATOR_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_ROTATOR_CALIBRATE_PROPERTY_NAME, X_MISC_GROUP, "Calibrate rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (X_ROTATOR_CALIBRATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_ROTATOR_CALIBRATE_ITEM, X_ROTATOR_CALIBRATE_ITEM_NAME, "Calibrate", false);
 		// -------------------------------------------------------------------------------- X_FAILURE_MESSAGE_PROPERTY
-		X_FAILURE_MESSAGE_PROPERTY = indigo_init_text_property(NULL, device->name, X_FAILURE_MESSAGE_PROPERTY_NAME, X_MISC_GROUP, "Last failure", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+		X_FAILURE_MESSAGE_PROPERTY = indigo_init_text_property(NULL, device->name, X_FAILURE_MESSAGE_PROPERTY_NAME, X_MISC_GROUP, "Last failure", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (X_FAILURE_MESSAGE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(X_FAILURE_MESSAGE_ITEM, X_FAILURE_MESSAGE_ITEM_NAME, "Message", "");
+		indigo_init_text_item(X_FAILURE_MESSAGE_ROTATOR_ITEM, X_FAILURE_MESSAGE_ROTATOR_ITEM_NAME, "Rotator message", "");
+		indigo_init_text_item(X_FAILURE_MESSAGE_SHUTTER_ITEM, X_FAILURE_MESSAGE_SHUTTER_ITEM_NAME, "Shutter message", "");
 		// -------------------------------------------------------------------------------- X_CLEAR_FAILURE_PROPERTY
-		X_CLEAR_FAILURE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CLEAR_FAILURE_PROPERTY_NAME, X_MISC_GROUP, "Clear last failure", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		X_CLEAR_FAILURE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CLEAR_FAILURE_PROPERTY_NAME, X_MISC_GROUP, "Clear last failures", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (X_CLEAR_FAILURE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_CLEAR_FAILURE_ITEM, X_CLEAR_FAILURE_ITEM_NAME, "Clear", false);
