@@ -140,6 +140,7 @@ typedef struct {
 	int dome_status;
 	int prev_dome_status;
 	int rotator_failure_code, shutter_failure_code;
+	bool shutter_is_up;
 	//bool rain, wind, timeout, powercut;
 	bool park_requested;
 	bool aborted;
@@ -486,14 +487,18 @@ static beaver_rc_t beaver_get_shutter_status(indigo_device *device, int *status)
 
 static beaver_rc_t beaver_get_failure_messages(indigo_device *device, char *rotator_message, char *shutter_message) {
 	if (!beaver_command_get_result_s(device, "!seletek getfailuremsg#", rotator_message)) return BD_NO_RESPONSE;
-	if (!beaver_command_get_result_s(device, "!dome sendtoshutter \"seletek getfailuremsg\"#", shutter_message)) return BD_NO_RESPONSE;
+	if (PRIVATE_DATA->shutter_is_up) {
+		if (!beaver_command_get_result_s(device, "!dome sendtoshutter \"seletek getfailuremsg\"#", shutter_message)) return BD_NO_RESPONSE;
+	}
 	return BD_SUCCESS;
 }
 
 
 static beaver_rc_t beaver_get_failure_codes(indigo_device *device, int *rotator_code, int *shutter_code) {
 	if (!beaver_command_get_result_i(device, "!seletek getfailurecode#", rotator_code)) return BD_NO_RESPONSE;
-	if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"seletek getfailurecode\"#", shutter_code)) return BD_NO_RESPONSE;
+	if (PRIVATE_DATA->shutter_is_up) {
+		if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"seletek getfailurecode\"#", shutter_code)) return BD_NO_RESPONSE;
+	}
 	return BD_SUCCESS;
 }
 
@@ -501,7 +506,9 @@ static beaver_rc_t beaver_get_failure_codes(indigo_device *device, int *rotator_
 static beaver_rc_t beaver_clear_failure(indigo_device *device) {
 	int res1, res2;
 	if (!beaver_command_get_result_i(device, "!seletek clearfailure#", &res1)) return BD_NO_RESPONSE;
-	if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"seletek clearfailure\"#", &res2)) return BD_NO_RESPONSE;
+	if (PRIVATE_DATA->shutter_is_up) {
+		if (!beaver_command_get_result_i(device, "!dome sendtoshutter \"seletek clearfailure\"#", &res2)) return BD_NO_RESPONSE;
+	}
 	if (res1 < 0 || res2 < 0) return BD_COMMAND_ERROR;
 	return BD_SUCCESS;
 }
@@ -935,24 +942,26 @@ static void dome_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (beaver_open(device)) { // Successfully connected
+				int shutter_is_up = 0;
+				if ((rc = beaver_get_shutterisup(device, &shutter_is_up)) != BD_SUCCESS) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_shutterisup(): returned error %d", rc);
+				}
+				PRIVATE_DATA->shutter_is_up = (bool)shutter_is_up;
+
+				if (!shutter_is_up) {
+					indigo_send_message(device, "Shutter not detected");
+					DOME_SHUTTER_PROPERTY->hidden = true;
+					X_SHUTTER_CALIBRATE_PROPERTY->hidden = true;
+				} else {
+					DOME_SHUTTER_PROPERTY->hidden = false;
+					X_SHUTTER_CALIBRATE_PROPERTY->hidden = false;
+				}
+
 				indigo_define_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
 				indigo_define_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
 				indigo_define_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 				indigo_define_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
 				indigo_define_property(device, X_CONDITIONS_SAFETY_PROPERTY, NULL);
-				int shutter_is_up;
-				if ((rc = beaver_get_shutterisup(device, &shutter_is_up)) != BD_SUCCESS) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_shutterisup(): returned error %d", rc);
-				}
-
-				if (!shutter_is_up) {
-					indigo_send_message(device, "Shutter not detected");
-					DOME_SHUTTER_PROPERTY->hidden = true;
-					//indigo_delete_property(device, DOME_SHUTTER_PROPERTY, NULL);
-				} else {
-					DOME_SHUTTER_PROPERTY->hidden = false;
-				}
-				/* handle shutter up */
 
 				PRIVATE_DATA->prev_shutter_status = -1;
 				PRIVATE_DATA->prev_dome_status = -1;
