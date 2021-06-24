@@ -124,9 +124,17 @@ static int get_unity_gain(indigo_device *device) {
 		/* ASI 120 is a special case so we tahe the published unity gain */
 		return 29;
 	}
+
+	int unity_gain = 0;
+
 	double e_per_adu = PRIVATE_DATA->info.ElecPerADU * pow(10.0, CCD_GAIN_ITEM->number.value/200.0);
-	if (e_per_adu != 0) return (int)(200 * log10(e_per_adu));
-	else return 0;
+	if (e_per_adu > 0) {
+		unity_gain = (int)round(200 * log10(e_per_adu));
+	}
+	if (unity_gain < 0) {
+		unity_gain = 0;
+	}
+	return unity_gain;
 }
 
 static void adjust_preset_switches(indigo_device *device) {
