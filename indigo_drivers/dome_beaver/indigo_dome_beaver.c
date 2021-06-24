@@ -65,14 +65,22 @@
 #define X_FAILURE_MESSAGE_PROPERTY                (PRIVATE_DATA->failure_msg_property)
 #define X_FAILURE_MESSAGE_ROTATOR_ITEM            (X_FAILURE_MESSAGE_PROPERTY->items+0)
 #define X_FAILURE_MESSAGE_SHUTTER_ITEM            (X_FAILURE_MESSAGE_PROPERTY->items+1)
-#define X_FAILURE_MESSAGE_PROPERTY_NAME           "X_FAILURE_MESSAGE"
+#define X_FAILURE_MESSAGE_PROPERTY_NAME           "X_FAILURE_MESSAGES"
 #define X_FAILURE_MESSAGE_ROTATOR_ITEM_NAME       "ROTATOR"
 #define X_FAILURE_MESSAGE_SHUTTER_ITEM_NAME       "SHUTTER"
 
 #define X_CLEAR_FAILURE_PROPERTY                  (PRIVATE_DATA->clear_failure_property)
 #define X_CLEAR_FAILURE_ITEM                      (X_CLEAR_FAILURE_PROPERTY->items+0)
-#define X_CLEAR_FAILURE_PROPERTY_NAME             "X_CLEAR_FAILURE"
+#define X_CLEAR_FAILURE_PROPERTY_NAME             "X_CLEAR_FAILURES"
 #define X_CLEAR_FAILURE_ITEM_NAME                 "CLEAR"
+
+#define X_CONDITIONS_SAFETY_PROPERTY             (PRIVATE_DATA->conditions_safety_property)
+#define X_SAFE_CW_ITEM                           (X_CONDITIONS_SAFETY_PROPERTY->items+0)
+#define X_SAFE_HYDREON_ITEM                      (X_CONDITIONS_SAFETY_PROPERTY->items+1)
+
+#define X_CONDITIONS_SAFETY_PROPERTY_NAME        "X_CONDITIONS_SAFETY"
+#define X_SAFE_CW_ITEM_NAME                      "CLOUD_WATCHER"
+#define X_SAFE_HYDREON_ITEM_NAME                 "HYDREON"
 
 #define LUNATICO_CMD_LEN 100
 
@@ -81,7 +89,9 @@ typedef enum {
 	BDB_SHUTTER_MOVING     = 1,
 	BDB_ROTATOR_ERROR      = 2,
 	BDB_SHUTTER_ERROR      = 3,
-	BDB_COMM_ERROR         = 4
+	BDB_COMM_ERROR         = 4,
+	BDB_UNSAFE_CW          = 5,
+	BDB_UNSAFE_HYDREON     = 6
 } beaver_status_bits_t;
 
 typedef enum {
@@ -140,6 +150,7 @@ typedef struct {
 	indigo_property *rotator_cal_property;
 	indigo_property *failure_msg_property;
 	indigo_property *clear_failure_property;
+	indigo_property *conditions_safety_property;
 } beaver_private_data;
 
 #define BEAVER_CMD_LEN 10
@@ -621,7 +632,6 @@ static void dome_timer_callback(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 
-	/* Handle dome rotation */
 	if ((rc = beaver_get_dome_status(device, &PRIVATE_DATA->dome_status)) != BD_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_dome_status(): returned error %d", rc);
 	}
@@ -630,6 +640,21 @@ static void dome_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_azimuth(): returned error %d", rc);
 	}
 
+	/* Handle observing conditions */
+	if (CHECK_BIT(PRIVATE_DATA->dome_status, BDB_UNSAFE_CW) != CHECK_BIT(PRIVATE_DATA->prev_dome_status, BDB_UNSAFE_CW) ||
+	    CHECK_BIT(PRIVATE_DATA->dome_status, BDB_UNSAFE_HYDREON) != CHECK_BIT(PRIVATE_DATA->prev_dome_status, BDB_UNSAFE_HYDREON)
+	) {
+		X_CONDITIONS_SAFETY_PROPERTY->state = INDIGO_OK_STATE;
+		X_SAFE_CW_ITEM->light.value = (CHECK_BIT(PRIVATE_DATA->dome_status, BDB_UNSAFE_CW)) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		X_SAFE_HYDREON_ITEM->light.value = (CHECK_BIT(PRIVATE_DATA->dome_status, BDB_UNSAFE_HYDREON)) ? INDIGO_ALERT_STATE : INDIGO_OK_STATE;
+		if (CHECK_BIT(PRIVATE_DATA->dome_status, BDB_UNSAFE_CW) || CHECK_BIT(PRIVATE_DATA->dome_status, BDB_UNSAFE_HYDREON)) {
+			indigo_update_property(device, X_CONDITIONS_SAFETY_PROPERTY, "Unsafe weather conditions reported, check X_CONDITIONS_SAFETY prperty");
+		} else {
+			indigo_update_property(device, X_CONDITIONS_SAFETY_PROPERTY, NULL);
+		}
+	}
+
+	/* Handle dome rotation */
 	if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ||
 	    DOME_PARK_PROPERTY->state == INDIGO_BUSY_STATE ||
 		PRIVATE_DATA->dome_status != PRIVATE_DATA->prev_dome_status
@@ -790,7 +815,7 @@ static void dome_timer_callback(indigo_device *device) {
 			beaver_get_failure_messages(device, &X_FAILURE_MESSAGE_ROTATOR_ITEM->text.value, &X_FAILURE_MESSAGE_SHUTTER_ITEM->text.value);
 			if (rotator_code != 0 || shutter_code != 0) {
 				X_FAILURE_MESSAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, X_FAILURE_MESSAGE_PROPERTY, "Rotator or Shutter failure detected, Check X_FAILURE_MESSAGE property");
+				indigo_update_property(device, X_FAILURE_MESSAGE_PROPERTY, "Rotator or Shutter failure detected, check X_FAILURE_MESSAGES property");
 			} else {
 				X_FAILURE_MESSAGE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
@@ -833,6 +858,8 @@ static indigo_result beaver_enumerate_properties(indigo_device *device, indigo_c
 			indigo_define_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 		if (indigo_property_match(X_CLEAR_FAILURE_PROPERTY, property))
 			indigo_define_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
+		if (indigo_property_match(X_CONDITIONS_SAFETY_PROPERTY, property))
+			indigo_define_property(device, X_CONDITIONS_SAFETY_PROPERTY, NULL);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -878,7 +905,7 @@ static indigo_result dome_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_ROTATOR_CALIBRATE_ITEM, X_ROTATOR_CALIBRATE_ITEM_NAME, "Calibrate", false);
 		// -------------------------------------------------------------------------------- X_FAILURE_MESSAGE_PROPERTY
-		X_FAILURE_MESSAGE_PROPERTY = indigo_init_text_property(NULL, device->name, X_FAILURE_MESSAGE_PROPERTY_NAME, X_MISC_GROUP, "Last failure", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		X_FAILURE_MESSAGE_PROPERTY = indigo_init_text_property(NULL, device->name, X_FAILURE_MESSAGE_PROPERTY_NAME, X_MISC_GROUP, "Last failures", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (X_FAILURE_MESSAGE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(X_FAILURE_MESSAGE_ROTATOR_ITEM, X_FAILURE_MESSAGE_ROTATOR_ITEM_NAME, "Rotator message", "");
@@ -888,6 +915,12 @@ static indigo_result dome_attach(indigo_device *device) {
 		if (X_CLEAR_FAILURE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_CLEAR_FAILURE_ITEM, X_CLEAR_FAILURE_ITEM_NAME, "Clear", false);
+		// -------------------------------------------------------------------------------- X_CONDITIONS_SAFETY_PROPERTY
+		X_CONDITIONS_SAFETY_PROPERTY = indigo_init_light_property(NULL, device->name, X_CONDITIONS_SAFETY_PROPERTY_NAME, X_MISC_GROUP, "Observing conditions safety", INDIGO_IDLE_STATE, 2);
+		if (X_CONDITIONS_SAFETY_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_light_item(X_SAFE_CW_ITEM, X_SAFE_CW_ITEM_NAME, "Safe by Cloud Wacher", INDIGO_IDLE_STATE);
+		indigo_init_light_item(X_SAFE_HYDREON_ITEM, X_SAFE_HYDREON_ITEM_NAME, "Safe by Hydreon RG-x", INDIGO_IDLE_STATE);
 		// --------------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -906,6 +939,7 @@ static void dome_connect_callback(indigo_device *device) {
 				indigo_define_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
 				indigo_define_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 				indigo_define_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
+				indigo_define_property(device, X_CONDITIONS_SAFETY_PROPERTY, NULL);
 				int shutter_is_up;
 				if ((rc = beaver_get_shutterisup(device, &shutter_is_up)) != BD_SUCCESS) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_shutterisup(): returned error %d", rc);
@@ -966,6 +1000,7 @@ static void dome_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
 			indigo_delete_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
 			indigo_delete_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
+			indigo_delete_property(device, X_CONDITIONS_SAFETY_PROPERTY, NULL);
 
 			beaver_close(device);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected = %d", PRIVATE_DATA->handle);
@@ -1384,6 +1419,7 @@ static indigo_result dome_detach(indigo_device *device) {
 	indigo_release_property(X_ROTATOR_CALIBRATE_PROPERTY);
 	indigo_release_property(X_FAILURE_MESSAGE_PROPERTY);
 	indigo_release_property(X_CLEAR_FAILURE_PROPERTY);
+	indigo_release_property(X_CONDITIONS_SAFETY_PROPERTY);
 
 	indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
