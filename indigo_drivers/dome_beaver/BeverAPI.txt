@@ -1,0 +1,426 @@
+﻿Protocol API
+
+
+Foreword: as of this version, all groups are initialized (dome init, etc) automatically by the firmware at boot. No need to call the “init” commands.
+
+
+Also note, if the connection is to the “rotation” board, the “shutter” group of commands ;won’t be available (except through the dome group). Conversely, if connected to a shutter board, the “dome” and “domerot” groups won’t be available.
+
+
+The "dome" group:
+
+
+dome init model - inits and loads defaults. Model ignored for now, but 0 is Nexdome's 2.2m
+
+
+Basic commands:
+
+
+dome gotoaz azimut [timeout_secs]
+dome getaz
+dome setaz azimut
+dome openshutter [timeout_secs]
+dome closeshutter [timeout_secs]
+dome gohome [timeout_secs]
+dome gopark [timeout_secs]
+dome athome: 0 no, 1 yes
+dome atpark: 0 no, 1 yes
+dome abort all rotation shutter -> all 3 params act as boolean 0 / 1
+
+
+dome setpark -> current position is set as parking position. 
+Status:
+
+
+
+
+dome shutterstatus: 0 open, 1 closed, 2 opening, 3 closing, 4 error (ASCOM style)
+dome status: this returns a bit field.
+
+
+* • bit 0: ok moving rot
+* • bit 1: ok moving shutter (3 ok moving both aka 2^0 + 2^1 = 3)
+* • bit 2: mech error rotation
+* • bit 3: mech error shutter
+* • bit 4: comms error shutter
+* * … and from version 1.1.0, to include all status information in one command:
+* • bit 5: unsafe by CW
+* • bit 6: unsafe by Hydreon RG-x
+* • bit 7: shutter open
+* • bit 8: shutter closed
+* • bit 9: shutter opening
+* • bit 10. shutter closing
+* • bit 11: Dome at home
+* • bit 12: Dome at park
+
+
+
+
+dome shutterisup
+dome getshutterbatvoltage
+
+
+Autocalibration:
+
+
+dome autocalrot [mode] [timeout_secs] -> please note: a successful calibration will save all current settings to the flash memory
+Modes are: 0 find home, 1 measure home, 2 measure all.
+dome autocalshutter [timeout_secs] -> please note: a successful calibration will save all current settings to the flash memory
+
+
+Configuration:
+
+
+dome setshutterenable 0|1 -> if not enabled, will report shutter open when asked.
+dome getshutterenable
+dome setshutterip ipv4_string
+dome setshutterport port
+dome getshutterport
+
+
+Please note shutter ip and port will be automatically assigned / detected if autopairing is active (as by default) and the wifi access point ssids have not been changed.
+
+
+Shutter configuration:
+
+
+dome setshuttermaxspeed steps/sec
+dome setshutterminspeed steps/sec
+dome setshutteracceleration steps/s^2
+dome setshuttertimeoutopenclose seconds
+dome setshuttersafevoltage volts
+dome getshuttermaxspeed
+dome getshutterminspeed
+dome getshutteracceleration
+dome getshuttertimeoutopenclose
+dome getshuttersafevoltage 
+
+
+dome sendtoshutter “raw msg to shutter device” : do not include the ! or #
+
+
+
+
+In general, a return of 0 means OK.
+
+
+As in:
+
+
+!dome init#  -> !dome init:0#
+
+
+A return value less than 0 means problems:
+
+
+!dome init# -> !dome init:-105# (that's the already init value)
+
+
+timeout_secs is always optional; if not specified, the system will set a default, safe timeout.
+
+
+dome status return is a bitwise status.
+dome abort gets 3 boolean params:
+
+
+!dome abort 0 1 0# -> aborts dome rotation
+!dome abort 0 0 0# is invalid and will abort all motion (same as dome abort 1)
+
+
+________________
+
+
+Some system “seletek” commands:
+
+
+Permanent storage:
+
+
+seletek savefs - will save to flash memory any permanent settings
+seletek applynetc - will apply the changed network settings, save to flash and reboot
+
+
+Note: both savefs and applynetc will stop the motor (abruptly) if it is turning, before commiting changes to the flash memory. This is necessary as the flash is accessed via SPI and quite slowly.
+ 
+A simple command to check if the communication is up:
+
+
+seletek echo [number] - will reply, including the optional numeric argument is specified.
+
+
+IPv4 management (use “applynetc” after any changes!):
+
+
+seletek setdhcp 1|0
+seletek getdhcp
+
+
+If dhcp is off, to set/get the static IPv4 address (please note the double “t” - with a single “t”, the command will return the internal, integer notation of the 4-byte address):
+
+
+seletek settip i.p.add.ress
+seletek settnm ne.t.mas.k
+seletek gettgw ga.te.wa.y
+seletek gettip
+seletek gettnm
+seletek gettgw
+
+
+seletek settdns d.ns.i.p
+seletek gettdns
+
+
+UDP listen port (it will always reply to the port where the message came from):
+
+
+seletek setudplis port
+seletek getudplis
+
+
+
+
+System error codes; the system can enter an “error” state in case of problems. If applicable, an LED will be lit. The error can be cleared.
+
+
+seletek getfailuremsg -> if a status window is used, it may check this message periodically to report any system condition to the user. The condition can be cleared after the user acknowledges.
+
+
+seletek getfailurecode
+seletek clearfailure
+DomeRot commands
+
+
+Even if for normal interfacing the “dome” API should be enough, the “domerot” group of commands offer added functionality that may be useful, and some settings not found elsewhere.
+
+
+domerot init
+domerot loaddefaults [model] -> for the future, when several dome models are available, to make setup easier.
+domerot goto degrees
+domerot getpos
+domerot getroterr -> true if there was a motor failure in the last motion attempt
+
+
+domerot calibrate [mode] [timeout_in_secs] -> please note: a successful calibration will save all current settings to the flash memory
+Modes are: 0 find home, 1 measure home, 2 measure all.
+domerot getcalibrationstatus
+* 0 - not calibrating
+* 1 - in course
+* 2 - calibration ok
+* 3 - calibration error
+
+
+domerot abortcalibration
+
+
+domerot sethomesenssizedeg home_sensor_size_in_degrees - useful for added safety, to alarm if it takes too much time to leave home once entered
+domerot gethomesenssizedeg
+domerot athome
+domerot atpark
+domerot abort -> aborts whatever operation is in course
+domerot setpos pos_in_degrees
+domerot test [iterations] -> not recommended if attached to an actual dome
+
+
+… configuration ones:
+
+
+domerot setstepsperdegree steps_per_degree
+domerot getstepsperdegree
+domerot setmaxspeed steps_per_second
+domerot getmaxspeed
+domerot setminspeed steps_per_second
+domerot getminspeed
+domerot setacceleration steps_per_second_per_second
+domerot getacceleration
+
+
+domerot setmaxfullrotsecs seconds -> watchdog, home most be reached in any motion longer than this.
+domerot getmaxfullrotsecs
+
+
+domerot sethome degrees
+domerot gethome
+domerot setpark degrees
+domerot getpark
+Shutter commands
+
+
+Similarly to the “DomeRot” case, the shutter group adds some commands to the set. Note, only available if connected to a shutter board (or, indirectly, via “dome sendtoshutter msg”)
+
+
+shutter init
+shutter loaddefaults [model] -> for the future, when several dome models are available, to make setup easier.
+shutter open
+shutter close
+shutter status
+shutter calibrate [timeout_in_secs] -> please note: a successful calibration will save all current settings to the flash memory
+
+
+Removed! 
+shutter settimeoutopenclosesecs timeout_in_secs - the timeout is now calculated depending on the speed and distance, plus a 30% margin
+
+
+shutter setsenssizesteps steps -> size of the limit switch from detection to stop.
+shutter getsenssizesteps
+shutter gettimeoutopenclosesecs
+shutter setslackopenclosesteps slack_in_steps
+shutter getslackopenclosesteps
+shutter getcalibrationstatus 
+* 0 - not calibrating
+* 1 - in course
+* 2 - calibration ok
+* 3 - calibration error
+
+
+shutter abortcalibration
+shutter abort -> aborts whatever operation is in course
+
+
+shutter setsafevoltage volts
+shutter getsafevoltage
+shutter setmaxspeed
+shutter setminspeed
+shutter setacceleration
+shutter getmaxspeed
+shutter getminspeed
+shutter getacceleration
+
+
+shutter getvoltage
+
+
+shutter test [iterations]  -> not recommended if attached to an actual dome
+
+
+
+
+________________
+
+
+Tmc2660 commands
+
+
+The tmc2660 is an advanced driver that requires calibration and tuning for each motor model.
+
+
+Additionally, the firmware is quite flexible, supporting both linear and circular motion, and also up to 4 speed ranges. If the motor is programmed to accelerate, the motor parameters will change as the speed enters the different ranges.
+
+
+Note: as of this version, only the drvctrl register is updated “live”, with the speed changes. This can be easily changed if needed, but sending parameters via SPI takes some time that may interfere with the pulse frequency.
+
+
+tmc2660 init
+tmc2660 loaddefaults [model] -> for the future, when several dome models are available, to make setup easier.
+tmc2660 getdrvfailure -> returns 1 if the driver has been shutdown because of excessive number of failures. Can return to normal state after a successful motor operation (goto, gopr, godr…)
+
+
+tmc2660 hsend hex_value -> send an hexadecimal value directly to the driver
+tmc2660 goto position
+tmc2660 getpos
+tmc2660 setpos position
+tmc2660 getposreq -> returns the current target position
+tmc2660 setspeedusfs usecs_per_full_step -> sets the speed in useconds per full step
+tmc2660 getspeedusfs
+tmc2660 setspeedrangeusfs min max time_to_max_milisecs -> sets the range of speed using the usec/full step system. Acceleration derived from the time to reach max speed.
+tmc2660 stop -> stops, decelerating as appropriate
+tmc2660 setspeedrange vmin vmax acceleration -> sets a range of speed in steps/second, acceleration in steps/second^2
+tmc2660 getspeed -> current speed in steps/second
+tmc2660 gopr offset -> goto relative to current position (destination = current position + offset)
+tmc2660 godr -> goto relative to current destination (destination = prev. destination + offset)
+tmc2660 estop -> emergency stop. Stops the motor - no deceleration.
+tmc2660 ismoving
+
+
+These functions define the speed configuration ranges:
+
+
+tmc2660 setmaxusfsinrange max_usfs range
+tmc2660 getmaxusfsinrange range
+tmc2660 setminusfsinrange min_usfs range
+tmc2660 getminusfsinrange range
+tmc2660 setustepsinrange usteps range
+tmc2660 getustepsinrange range
+
+
+The following are the tmc2660 register access api. If range is not specified, it defaults to 0. If the changed register belongs to the currently active range, it is also sent to the driver.
+
+
+tmc2660 getdrvctrl [range] 
+tmc2660 setdrvctrl hex_value [range]
+tmc2660 getchopconf [range] 
+tmc2660 setchopconf hex_value [range]
+tmc2660 getsmarten [range] 
+tmc2660 setsmarten hex_value [range]
+tmc2660 getsgcsconf [range] 
+tmc2660 setsgcsconf hex_value [range]
+tmc2660 getdrvconf [range] 
+tmc2660 setdrvconf hex_value [range]
+
+
+tmc2660 readresponse -> returns the latest received status register from the driver
+
+
+Miscellaneous functions:
+
+
+tmc2660 disable -> by modifying the chopconf register, TOFF forced to 0
+tmc2660 enable -> enables it again
+
+
+tmc2660 setmovepow percentage -> specifies the % of the maximum driver power (relative to both the sense resistors and the sgcsconf register) that will be available for the motor while moving
+tmc2660 setstoppow percentage -> same as above, while stopped. Recommended a low value, 0 in most cases.
+tmc2660 getmovepow
+tmc2660 getstoppow
+
+
+tmc2660 setcirccap range -> if the motor is attached to a circular device, such as a dome or rotator, limit the motion to this range (specified in steps). Also, goto operations will go the shortest path.
+tmc2660 getcirccap
+
+
+tmc2660 loaddefaults
+tmc2660 setmaxdrverrors max_errors -> driver errors before shutting down the driver
+tmc2660 getmaxdrverrors
+
+
+tmc2660 test -> outputs some diagnostics information to the debug interface.
+
+
+________________
+
+
+Wifi commands
+
+
+In wifi capable systems, there are some special commands for both the station (sta) and access point (ap) modes; both can be active at the same time:
+
+
+wifi setstaact 1|0
+wifi setstassid ssid
+wifi setstapass password
+
+
+For the access point, it will always have IP 192.168.4.1 and dhcp server active, allowing up to 2 stations.
+
+
+wifi setapact 1|0
+wifi setapssid ssid
+wifi setapautoshutdown 1|0 - if active, the access point will automatically shutdown if no station connects in the first 2 minutes.
+
+
+… and of course the 6 matching “get”.
+
+
+Note about the access point: as for now, the access point is capped at 2 simultaneous stations, and includes a dhcp server that will assign addresses in the 192.168.4.x range, with the AP being the 192.168.4.1.
+
+
+Scanning:
+
+
+wifi scan - will return the number of APs found. Can take a while to reply! If the station is currently trying to connect, will fail and return a negative number
+
+
+wifi getscannedapssid num
+wifi getscannedaprssi num
+
+
+… will return the SSID and RSSI for the given station (starting from 0)
