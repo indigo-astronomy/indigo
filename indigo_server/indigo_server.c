@@ -146,6 +146,7 @@
 #include "agent_alpaca/indigo_agent_alpaca.h"
 #include "dome_talon6ror/indigo_dome_talon6ror.h"
 #include "dome_beaver/indigo_dome_beaver.h"
+#include "focuser_astromechanics/indigo_focuser_astromechanics.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -232,6 +233,7 @@ driver_entry_point static_drivers[] = {
 	indigo_dome_skyroof,
 	indigo_dome_talon6ror,
 	indigo_focuser_asi,
+	indigo_focuser_astromechanics,
 	indigo_focuser_efa,
 	indigo_focuser_dmfc,
 	indigo_focuser_dsd,
