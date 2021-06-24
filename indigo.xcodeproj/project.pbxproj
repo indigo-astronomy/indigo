@@ -85,6 +85,8 @@
 		5955CB6C2684BC9C00685071 /* indigo_dome_beaver.h in Headers */ = {isa = PBXBuildFile; fileRef = 5955CB692684BC9C00685071 /* indigo_dome_beaver.h */; };
 		5955CB742684C0D700685071 /* indigo_focuser_astromechanics.c in Sources */ = {isa = PBXBuildFile; fileRef = 5955CB732684BEBF00685071 /* indigo_focuser_astromechanics.c */; };
 		5955CB752684C0D800685071 /* indigo_focuser_astromechanics.c in Sources */ = {isa = PBXBuildFile; fileRef = 5955CB732684BEBF00685071 /* indigo_focuser_astromechanics.c */; };
+		5955CB7D2684E93E00685071 /* indigo_aux_astromechanics.c in Sources */ = {isa = PBXBuildFile; fileRef = 5955CB7C2684E78200685071 /* indigo_aux_astromechanics.c */; };
+		5955CB7E2684E93F00685071 /* indigo_aux_astromechanics.c in Sources */ = {isa = PBXBuildFile; fileRef = 5955CB7C2684E78200685071 /* indigo_aux_astromechanics.c */; };
 		59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
 		59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */; };
 		59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAF211CC30C00E9FC27 /* indigo_aux_driver.h */; };
@@ -1103,6 +1105,11 @@
 		5955CB722684BEBF00685071 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5955CB732684BEBF00685071 /* indigo_focuser_astromechanics.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_astromechanics.c; sourceTree = "<group>"; };
 		5955CB762684DF3E00685071 /* User Manual PROTOCOL.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "User Manual PROTOCOL.pdf"; sourceTree = "<group>"; };
+		5955CB782684E78200685071 /* indigo_aux_astromechanics_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_astromechanics_main.c; sourceTree = "<group>"; };
+		5955CB792684E78200685071 /* indigo_aux_astromechanics.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_astromechanics.h; sourceTree = "<group>"; };
+		5955CB7A2684E78200685071 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		5955CB7B2684E78200685071 /* LPM_PRO User manual.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "LPM_PRO User manual.pdf"; sourceTree = "<group>"; };
+		5955CB7C2684E78200685071 /* indigo_aux_astromechanics.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_astromechanics.c; sourceTree = "<group>"; };
 		5956F660230BCBFC0016C7C2 /* Protocol_V3.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.01.pdf; sourceTree = "<group>"; };
 		5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V3.0.pdf; sourceTree = "<group>"; };
 		5956F662230BCE120016C7C2 /* Protocol_V2.5.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V2.5.pdf; sourceTree = "<group>"; };
@@ -5428,6 +5435,19 @@
 			path = astromechanics_simulator;
 			sourceTree = "<group>";
 		};
+		5955CB772684E78200685071 /* aux_astromechanics */ = {
+			isa = PBXGroup;
+			children = (
+				5955CB7A2684E78200685071 /* README.md */,
+				5955CB792684E78200685071 /* indigo_aux_astromechanics.h */,
+				5955CB7C2684E78200685071 /* indigo_aux_astromechanics.c */,
+				5955CB782684E78200685071 /* indigo_aux_astromechanics_main.c */,
+				5955CB7B2684E78200685071 /* LPM_PRO User manual.pdf */,
+			);
+			name = aux_astromechanics;
+			path = indigo_drivers/aux_astromechanics;
+			sourceTree = SOURCE_ROOT;
+		};
 		59588CA1211CBEB100E9FC27 /* aux_joystick */ = {
 			isa = PBXGroup;
 			children = (
@@ -8533,6 +8553,7 @@
 				595AA1C91FC5ED2900350E7B /* agent_snoop */,
 				590BF1AD21EBCF7500C24DBA /* ao_sx */,
 				59B81EBF23376A1A00DFA81B /* aux_arteskyflat */,
+				5955CB772684E78200685071 /* aux_astromechanics */,
 				59F7E5E52457616400EF273A /* aux_cloudwatcher */,
 				591F328824211EB000D1D64B /* aux_dragonfly */,
 				59FE34582187B23C004FB5D4 /* aux_dsusb */,
@@ -13175,6 +13196,7 @@
 				598A1BE1259BA94A00C0B34C /* libuvc_frame_mjpeg.c in Sources */,
 				598A1BE2259BA94A00C0B34C /* indigo_mount_lx200.c in Sources */,
 				598A1BE3259BA94A00C0B34C /* indigo_ica_ptp_nikon.m in Sources */,
+				5955CB7E2684E93F00685071 /* indigo_aux_astromechanics.c in Sources */,
 				598A1BE4259BA94A00C0B34C /* indigo_wheel_atik.c in Sources */,
 				598A1BE5259BA94A00C0B34C /* DDHidDevice.m in Sources */,
 				598A1BE6259BA94A00C0B34C /* indigo_guider_asi.c in Sources */,
@@ -13359,6 +13381,7 @@
 				595F2926211E211200380EF4 /* DDHidMouse.m in Sources */,
 				9D7244F421F1CFEC0028FDF4 /* indigo_agent_mount.c in Sources */,
 				59F7E5EA2457669D00EF273A /* indigo_aux_cloudwatcher.c in Sources */,
+				5955CB7D2684E93E00685071 /* indigo_aux_astromechanics.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				59D8BBC5260E624600B904EE /* alpaca_dome.c in Sources */,
 				9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */,

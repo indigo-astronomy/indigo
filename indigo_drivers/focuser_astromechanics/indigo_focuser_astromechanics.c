@@ -106,7 +106,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/astromechanics_focuser");
+		if (DEVICE_PORTS_PROPERTY->count > 1) {
+			/* 0 is refresh button */
+			indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[1].name);
+		} else {
+			strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
+		}
 #endif
 		// -------------------------------------------------------------------------------- INFO
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "ASTROMECHANICS Focuser");
