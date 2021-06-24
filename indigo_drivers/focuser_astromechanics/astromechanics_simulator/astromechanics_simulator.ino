@@ -40,6 +40,7 @@ void setup() {
 #endif
   Serial.begin(38400);
   Serial.setTimeout(1000);
+  randomSeed(analogRead(0));
   while (!Serial)
     ;
 }
@@ -54,12 +55,16 @@ void loop() {
   if (Serial.available()) {
     String command = Serial.readStringUntil('#');
     if (command.equals("P")) {
-      sprintf(buffer, "%04d#", position);
+      sprintf(buffer, "%04d#\n", position);
       Serial.print(buffer);
     } else if (command.startsWith("M")) {
       position = atol(command.c_str() + 1);
     } else if (command.startsWith("A")) {
       aperture = atol(command.c_str() + 1);
+    } else if (command.equals("V")) {
+      double value = 20.0 + random(100) / 100.0;
+      sprintf(buffer, "%4.2f#\n", value);
+      Serial.print(buffer);
     }
   }
 }
