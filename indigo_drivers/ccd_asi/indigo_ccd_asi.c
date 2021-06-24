@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -659,8 +659,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		PIXEL_FORMAT_PROPERTY->count = format_count;
 
-		INFO_PROPERTY->count = 5;
+		INFO_PROPERTY->count = 6;
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->info.Name);
+		char *sdk_version = ASIGetSDKVersion();
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
 
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
