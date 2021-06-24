@@ -117,6 +117,7 @@ This is the list of requirements taken into the consideration:
 87. Interactive Astronomy SkyRoof driver
 88. ASTROMECHANICS focuser driver
 89. Nexdome Beaver dome driver
+90. ASTROMECHANICS Light Pollution Meter PRO driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
