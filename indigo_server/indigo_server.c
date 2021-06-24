@@ -145,6 +145,7 @@
 #include "aux_skyalert/indigo_aux_skyalert.h"
 #include "agent_alpaca/indigo_agent_alpaca.h"
 #include "dome_talon6ror/indigo_dome_talon6ror.h"
+#include "dome_beaver/indigo_dome_beaver.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -223,6 +224,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
 	indigo_dome_baader,
+	indigo_dome_beaver,
 	indigo_dome_dragonfly,
 	indigo_dome_nexdome,
 	indigo_dome_nexdome3,
