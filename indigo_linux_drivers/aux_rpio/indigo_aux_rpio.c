@@ -140,7 +140,129 @@ static int input_pins[]  = {19, 17, 27, 22, 23, 24, 25, 20};
 static int output_pins[] = {18, 12, 13, 26, 16,  5,  6, 21};
 
 
-static bool rpio_export(int pin) {
+static bool rpio_pwm_export(int channel) {
+	char buffer[10];
+	ssize_t bytes_written;
+	int fd;
+
+	fd = open("/sys/class/pwm/pwmchip0/export", O_WRONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open export for writing!");
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EXPORT pwm Channel = %d", channel);
+	bytes_written = snprintf(buffer, 10, "%d", channel);
+	write(fd, buffer, bytes_written);
+	close(fd);
+	return true;
+}
+
+
+static bool rpio_pwm_unexport(int channel) {
+	char buffer[10];
+	ssize_t bytes;
+	int fd;
+
+	fd = open("/sys/class/pwm/pwmchip0/unexport", O_WRONLY);
+	if (fd == -1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open unexport for writing!");
+		return false;
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UNEXPORT PWM Channel = %d", channel);
+	bytes = snprintf(buffer, 10, "%d", channel);
+	write(fd, buffer, bytes);
+	close(fd);
+	return true;
+}
+
+
+static int rpio_pwm_get_enable(int channel, int *value) {
+	char path[255];
+	char value_str[3];
+	int fd;
+
+	if (value == NULL) return false;
+
+	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/enable", channel);
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d value for reading", channel);
+		return false;
+	}
+
+	if (read(fd, value_str, 3) < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read value!");
+		return false;
+	}
+	close(fd);
+	*value = atoi(value_str);
+	return true;
+}
+
+
+static bool rpio_pwm_set_enable(int channel, int value) {
+	char path[255];
+	int fd;
+
+	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/enable", channel);
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d value for writing", channel);
+		return false;
+	}
+
+	char val = value ? '1' : '0';
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Value = %d (%c) channel = %d", value, val, channel);
+	if (write(fd, &val, 1) != 1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write value!");
+		return false;
+	}
+
+	close(fd);
+	return true;
+}
+
+
+static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
+	char path[255];
+	char buf[100];
+	int fd;
+
+	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/period", channel);
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d period for writing", channel);
+		return false;
+	}
+
+	sprintf(buf, "%d", period);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Period = %d channel = %d", period, channel);
+	if (write(fd, &buf, strlen(buf)) != 1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM period!");
+		return false;
+	}
+
+	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/duty_cycle", channel);
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d duty_cycle for writing", channel);
+		return false;
+	}
+
+	sprintf(buf, "%d", duty_cycle);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Period = %d channel = %d", period, channel);
+	if (write(fd, &buf, strlen(buf)) != 1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle!");
+		return false;
+	}
+
+	close(fd);
+	return true;
+}
+
+
+static bool rpio_pin_export(int pin) {
 	char buffer[10];
 	ssize_t bytes_written;
 	int fd;
@@ -150,7 +272,7 @@ static bool rpio_export(int pin) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open export for writing!");
 		return false;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "EXPORT pin = %d", pin);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EXPORT pin = %d", pin);
 	bytes_written = snprintf(buffer, 10, "%d", pin);
 	write(fd, buffer, bytes_written);
 	close(fd);
@@ -158,7 +280,7 @@ static bool rpio_export(int pin) {
 }
 
 
-static bool rpio_unexport(int pin) {
+static bool rpio_pin_unexport(int pin) {
 	char buffer[10];
 	ssize_t bytes;
 	int fd;
@@ -169,7 +291,7 @@ static bool rpio_unexport(int pin) {
 		return false;
 	}
 
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UNEXPORT Pin = %d", pin);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UNEXPORT Pin = %d", pin);
 	bytes = snprintf(buffer, 10, "%d", pin);
 	write(fd, buffer, bytes);
 	close(fd);
@@ -219,7 +341,7 @@ static bool rpio_set_output(int pin) {
 }
 
 
-static int rpio_read(int pin, int *value) {
+static int rpio_pin_read(int pin, int *value) {
 	char path[255];
 	char value_str[3];
 	int fd;
@@ -234,7 +356,7 @@ static int rpio_read(int pin, int *value) {
 	}
 
 	if (read(fd, value_str, 3) < 0) {
-		fprintf(stderr, "Failed to read value!\n");
+		 INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read value!\n");
 		return false;
 	}
 	close(fd);
@@ -243,7 +365,7 @@ static int rpio_read(int pin, int *value) {
 }
 
 
-static bool rpio_write(int pin, int value) {
+static bool rpio_pin_write(int pin, int value) {
 	char path[255];
 	int fd;
 
@@ -255,7 +377,7 @@ static bool rpio_write(int pin, int value) {
 	}
 
 	char val = value ? '1' : '0';
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Value = %d (%c) pin = %d", value, val, pin);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Value = %d (%c) pin = %d", value, val, pin);
 	if (write(fd, &val, 1) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write value!");
 		return false;
@@ -267,24 +389,24 @@ static bool rpio_write(int pin, int value) {
 
 static bool rpio_set_output_line(uint16_t line, int value) {
 	if (line >= 8) return false;
-	return rpio_write(output_pins[line], value);
+	return rpio_pin_write(output_pins[line], value);
 }
 
 static bool rpio_read_input_line(uint16_t line, int *value) {
 	if (line >= 8) return false;
-	return rpio_read(input_pins[line], value);
+	return rpio_pin_read(input_pins[line], value);
 }
 
 static bool rpio_read_input_lines(int *values) {
 	for (int i = 0; i < 8; i++) {
-		if (!rpio_read(input_pins[i], &values[i])) return false;
+		if (!rpio_pin_read(input_pins[i], &values[i])) return false;
 	}
 	return true;
 }
 
 static bool rpio_read_output_lines(int *values) {
 	for (int i = 0; i < 8; i++) {
-		if (!rpio_read(output_pins[i], &values[i])) return false;
+		if (!rpio_pin_read(output_pins[i], &values[i])) return false;
 	}
 	return true;
 }
@@ -292,8 +414,8 @@ static bool rpio_read_output_lines(int *values) {
 
 bool rpio_export_all() {
 	for (int i = 0; i < 8; i++) {
-		if (!rpio_export(output_pins[i])) return false;
-		if (!rpio_export(input_pins[i])) return false;
+		if (!rpio_pin_export(output_pins[i])) return false;
+		if (!rpio_pin_export(input_pins[i])) return false;
 	}
 	indigo_usleep(1000000);
 	for (int i = 0; i < 8; i++) {
@@ -305,8 +427,8 @@ bool rpio_export_all() {
 
 bool rpio_unexport_all() {
 	for (int i = 0; i < 8; i++) {
-		if (!rpio_unexport(output_pins[i])) return false;
-		if (!rpio_unexport(input_pins[i])) return false;
+		if (!rpio_pin_unexport(output_pins[i])) return false;
+		if (!rpio_pin_unexport(input_pins[i])) return false;
 	}
 	return true;
 }
@@ -493,7 +615,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 	int relay_value[8];
 
 	if (!rpio_read_output_lines(relay_value)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_read(%d) failed", PRIVATE_DATA->handle);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_pin_read(%d) failed", PRIVATE_DATA->handle);
 		return false;
 	}
 
@@ -501,7 +623,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 		if ((AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value != relay_value[i]) {
 			if (((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value > 0) && (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i]) {
 				if (!rpio_set_output_line(i, (int)(AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_write(%d) failed, did you authorize?", PRIVATE_DATA->handle);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_pin_write(%d) failed, did you authorize?", PRIVATE_DATA->handle);
 					success = false;
 				} else {
 					PRIVATE_DATA->relay_active[i] = true;
@@ -509,7 +631,7 @@ static bool set_gpio_outlets(indigo_device *device) {
 				}
 			} else if ((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value == 0 || (!(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i])) {
 				if (!rpio_set_output_line(i, (int)(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value)) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_write(%d) failed, did you authorize?", PRIVATE_DATA->handle);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_pin_write(%d) failed, did you authorize?", PRIVATE_DATA->handle);
 					success = false;
 				}
 			}
@@ -561,7 +683,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			int relay_value[8];
 			if (!rpio_read_output_lines(relay_value)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_read(%d) failed", PRIVATE_DATA->handle);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_pin_read(%d) failed", PRIVATE_DATA->handle);
 				AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				for (int i = 0; i < 8; i++) {
