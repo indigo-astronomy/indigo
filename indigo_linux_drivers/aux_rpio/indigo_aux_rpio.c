@@ -81,6 +81,14 @@
 #define AUX_OUTLET_PULSE_LENGTHS_7_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 6)
 #define AUX_OUTLET_PULSE_LENGTHS_8_ITEM        (AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + 7)
 
+#define AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY         (PRIVATE_DATA->gpio_outlet_frequencies_property)
+#define AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM    (AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + 0)
+#define AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM    (AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->items + 1)
+
+#define AUX_GPIO_OUTLET_DUTY_PROPERTY          (PRIVATE_DATA->gpio_outlet_duty_property)
+#define AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM     (AUX_GPIO_OUTLET_DUTY_PROPERTY->items + 0)
+#define AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM     (AUX_GPIO_OUTLET_DUTY_PROPERTY->items + 1)
+
 #define AUX_SENSORS_GROUP	"Inputs"
 
 #define AUX_SENSOR_NAMES_PROPERTY      (PRIVATE_DATA->sensor_names_property)
@@ -122,7 +130,9 @@ typedef struct {
 	                *gpio_outlet_property,
 	                *gpio_outlet_pulse_property,
 	                *sensor_names_property,
-	                *sensors_property;
+	                *sensors_property,
+	                *gpio_outlet_frequencies_property,
+	                *gpio_outlet_duty_property;
 } rpio_private_data;
 
 typedef struct {
@@ -467,7 +477,7 @@ static int rpio_init_properties(indigo_device *device) {
 	indigo_init_switch_item(AUX_GPIO_OUTLET_7_ITEM, AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME, "Output #7", false);
 	indigo_init_switch_item(AUX_GPIO_OUTLET_8_ITEM, AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME, "Output #8", false);
 	// -------------------------------------------------------------------------------- GPIO PULSE OUTLETS
-	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, "AUX_OUTLET_PULSE_LENGTHS", AUX_RELAYS_GROUP, "Output pulse lengths (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
+	AUX_OUTLET_PULSE_LENGTHS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_OUTLET_PULSE_LENGTHS_PROPERTY_NAME, AUX_RELAYS_GROUP, "Output pulse lengths (ms)", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 	if (AUX_OUTLET_PULSE_LENGTHS_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Output #1", 0, 100000, 100, 0);
@@ -478,6 +488,18 @@ static int rpio_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_6_ITEM, AUX_GPIO_OUTLETS_OUTLET_6_ITEM_NAME, "Output #6", 0, 100000, 100, 0);
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_7_ITEM, AUX_GPIO_OUTLETS_OUTLET_7_ITEM_NAME, "Output #7", 0, 100000, 100, 0);
 	indigo_init_number_item(AUX_OUTLET_PULSE_LENGTHS_8_ITEM, AUX_GPIO_OUTLETS_OUTLET_8_ITEM_NAME, "Output #8", 0, 100000, 100, 0);
+	// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET_FREQUENCIES
+	AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME, AUX_RELAYS_GROUP, "PWM Frequencies (Hz)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Output #1", 0, 1000000, 100, 0);
+	indigo_init_number_item(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Output #2", 0, 1000000, 100, 0);
+	// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET_DUTY_CYCLES
+	AUX_GPIO_OUTLET_DUTY_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME, AUX_RELAYS_GROUP, "PWM Duty cycles (%)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	if (AUX_GPIO_OUTLET_DUTY_PROPERTY == NULL)
+		return INDIGO_FAILED;
+	indigo_init_number_item(AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Output #1", 0, 100, 1, 0);
+	indigo_init_number_item(AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Output #2", 0, 100, 1, 0);
 	// -------------------------------------------------------------------------------- SENSOR_NAMES
 	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Input names", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
@@ -647,6 +669,10 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+		if (indigo_property_match(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, property))
+			indigo_define_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+		if (indigo_property_match(AUX_GPIO_OUTLET_DUTY_PROPERTY, property))
+			indigo_define_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 	}
@@ -693,6 +719,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 			}
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+			indigo_define_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+			indigo_define_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 			indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -709,6 +737,8 @@ static void handle_aux_connect_property(indigo_device *device) {
 		rpio_unexport_all();
 		indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -734,6 +764,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (IS_CONNECTED) {
 			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 		}
 		snprintf(AUX_GPIO_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
 		snprintf(AUX_GPIO_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
@@ -753,10 +785,18 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		snprintf(AUX_OUTLET_PULSE_LENGTHS_7_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_7_ITEM->text.value);
 		snprintf(AUX_OUTLET_PULSE_LENGTHS_8_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_8_ITEM->text.value);
 
+		snprintf(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
+
+		snprintf(AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_2_ITEM->text.value);
+
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		if (IS_CONNECTED) {
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+			indigo_define_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+			indigo_define_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 		}
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -805,6 +845,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
 			indigo_save_property(device, NULL, AUX_SENSOR_NAMES_PROPERTY);
 			indigo_save_property(device, NULL, AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
+			indigo_save_property(device, NULL, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY);
+			indigo_save_property(device, NULL, AUX_GPIO_OUTLET_DUTY_PROPERTY);
 		}
 	}
 	// --------------------------------------------------------------------------------
@@ -821,6 +863,8 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_GPIO_OUTLET_PROPERTY);
 	indigo_release_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
 	indigo_release_property(AUX_GPIO_SENSORS_PROPERTY);
+	indigo_release_property(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY);
+	indigo_release_property(AUX_GPIO_OUTLET_DUTY_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_delete_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
