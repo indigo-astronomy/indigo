@@ -229,7 +229,6 @@ static bool rpio_pwm_set_enable(int channel, int value) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write value!");
 		return false;
 	}
-
 	close(fd);
 	return true;
 }
@@ -248,11 +247,12 @@ static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
 	}
 
 	sprintf(buf, "%d", period);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Period = %d channel = %d", period, channel);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set period = %d channel = %d", period, channel);
 	if (write(fd, &buf, strlen(buf)) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM period!");
 		return false;
 	}
+	close(fd);
 
 	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/duty_cycle", channel);
 	fd = open(path, O_WRONLY);
@@ -262,11 +262,48 @@ static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
 	}
 
 	sprintf(buf, "%d", duty_cycle);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Period = %d channel = %d", period, channel);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set duty_cycle = %d channel = %d", duty_cycle, channel);
 	if (write(fd, &buf, strlen(buf)) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle!");
 		return false;
 	}
+
+	close(fd);
+	return true;
+}
+
+static bool rpio_pwm_get(int channel, int *period, int *duty_cycle) {
+	char path[255];
+	char buf[100];
+	int fd;
+
+	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/period", channel);
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d period for reading", channel);
+		return false;
+	}
+	if (read(fd, &buf, sizeof(buf)) <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get PWM period!");
+		return false;
+	}
+	*period = atoi(buf);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Got period = %d channel = %d", *period, channel);
+	close(fd);
+
+	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/duty_cycle", channel);
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d duty_cycle for reading", channel);
+		return false;
+	}
+
+	if (read(fd, &buf, sizeof(buf)) <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get PWM duty_cycle!");
+		return false;
+	}
+	*period = atoi(buf);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Got duty_cycle = %d channel = %d", *duty_cycle, channel);
 
 	close(fd);
 	return true;
@@ -839,6 +876,49 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
 		if (!IS_CONNECTED) return INDIGO_OK;
 		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+		return INDIGO_OK;
+
+	} else if (indigo_property_match(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET_FREQUENCIES
+		indigo_property_copy_values(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+		int period = 0, duty_cycle = 0;
+		rpio_pwm_get(0, &period, &duty_cycle);
+		double freq = 1 / (period / 1e9);
+		if (AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target != freq) {
+			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target * 1e9);
+			rpio_pwm_set(0, period, duty_cycle);
+		}
+
+		rpio_pwm_get(0, &period, &duty_cycle);
+		freq = 1 / (period / 1e9);
+		if (AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target != freq) {
+			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target * 1e9);
+			rpio_pwm_set(0, period, duty_cycle);
+		}
+
+		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AUX_GPIO_OUTLET_DUTY_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET_DUTY_PROPERTY
+		indigo_property_copy_values(AUX_GPIO_OUTLET_DUTY_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
+		int period = 0, duty_cycle = 0;
+		rpio_pwm_get(0, &period, &duty_cycle);
+		double duty = (double)(duty_cycle) / period * 100;
+		if (AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target != duty) {
+			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target / 100.0);
+			rpio_pwm_set(0, period, duty_cycle);
+		}
+
+		rpio_pwm_get(0, &period, &duty_cycle);
+		duty = (double)(duty_cycle) / period * 100;
+		if (AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target != duty) {
+			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target / 100.0);
+			rpio_pwm_set(0, period, duty_cycle);
+		}
+
+		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
