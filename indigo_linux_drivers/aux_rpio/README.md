@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_rpio
 
-## Status: Under Development
+## Status: More testing needed
 
 Driver is developed and tested with:
 * Raspberry Pi 3 B
@@ -39,8 +39,8 @@ Driver is developed and tested with:
 * Input 8 -> GPIO 20
 
 ### Outputs
-* Output 1 -> GPIO 18
-* Output 2 -> GPIO 12
+* Output 1 -> GPIO 18 (PWM0*)
+* Output 2 -> GPIO 12 (PWM1*)
 * Output 3 -> GPIO 13
 * Output 4 -> GPIO 26
 * Output 5 -> GPIO 16
@@ -48,7 +48,11 @@ Driver is developed and tested with:
 * Output 7 -> GPIO 06
 * Output 8 -> GPIO 21
 
+*Since version 2.0.0.5 two-channel PWM is supported. To enable it add "dtoverlay=pwm-2chan" to the bottom of /boot/config.txt:
+```
+$ sudo echo "dtoverlay=pwm-2chan" >>/boot/config.txt
+```
 NOTE: As of version 2.0.0.3 pins GPIO 02 and GPIO 03 are not used by the driver, as they are the default I2C pins.
 GPIO 19 and GPIO 20 are used instead.
 
-NOTE: As of version 2.0.0.4 Output pin GPIO 19 is replaced with GPIO 21 for AsiAir compatibility. GPIO 04 is replaced with GPIO 19 as it was always "1". 
+NOTE: As of version 2.0.0.4 output pin GPIO 19 is replaced with GPIO 21 for AsiAir compatibility. GPIO 04 is replaced with GPIO 19 as it was always "1".
