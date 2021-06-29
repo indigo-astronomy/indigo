@@ -120,6 +120,7 @@ typedef struct {
 	int count_open;
 	bool udp;
 	pthread_mutex_t port_mutex;
+	bool use_pwm;
 
 	bool relay_active[8];
 	indigo_timer *relay_timers[8];
@@ -399,12 +400,20 @@ static bool rpio_pin_write(int pin, int value) {
 
 static bool rpio_set_output_line(uint16_t line, int value) {
 	if (line >= 8) return false;
-	return rpio_pin_write(output_pins[line], value);
+	if (line < 2) {
+		return rpio_pwm_set_enable(line, value);
+	} else {
+		return rpio_pin_write(output_pins[line], value);
+	}
 }
 
 static bool rpio_read_input_line(uint16_t line, int *value) {
 	if (line >= 8) return false;
-	return rpio_pin_read(input_pins[line], value);
+	if (line < 2) {
+		return rpio_pwm_get_enable(line, value);
+	} else {
+		return rpio_pin_read(input_pins[line], value);
+	}
 }
 
 static bool rpio_read_input_lines(int *values) {
@@ -415,7 +424,9 @@ static bool rpio_read_input_lines(int *values) {
 }
 
 static bool rpio_read_output_lines(int *values) {
-	for (int i = 0; i < 8; i++) {
+	if (!rpio_pwm_get_enable(0, &values[0])) return false;
+	if (!rpio_pwm_get_enable(1, &values[1])) return false;
+	for (int i = 2; i < 8; i++) {
 		if (!rpio_pin_read(output_pins[i], &values[i])) return false;
 	}
 	return true;
@@ -423,12 +434,18 @@ static bool rpio_read_output_lines(int *values) {
 
 
 bool rpio_export_all() {
-	for (int i = 0; i < 8; i++) {
+	if (!rpio_pwm_export(0)) return false;
+	if (!rpio_pwm_export(1)) return false;
+	if (!rpio_pin_export(input_pins[0])) return false;
+	if (!rpio_pin_export(input_pins[1])) return false;
+	for (int i = 2; i < 8; i++) {
 		if (!rpio_pin_export(output_pins[i])) return false;
 		if (!rpio_pin_export(input_pins[i])) return false;
 	}
 	indigo_usleep(1000000);
-	for (int i = 0; i < 8; i++) {
+	if (!rpio_set_input(input_pins[0])) return false;
+	if (!rpio_set_input(input_pins[1])) return false;
+	for (int i = 2; i < 8; i++) {
 		if (!rpio_set_output(output_pins[i])) return false;
 		if (!rpio_set_input(input_pins[i])) return false;
 	}
@@ -436,7 +453,11 @@ bool rpio_export_all() {
 }
 
 bool rpio_unexport_all() {
-	for (int i = 0; i < 8; i++) {
+	if (!rpio_pwm_unexport(0)) return false;
+	if (!rpio_pwm_unexport(1)) return false;
+	if (!rpio_pin_unexport(input_pins[0])) return false;
+	if (!rpio_pin_unexport(input_pins[1])) return false;
+	for (int i = 2; i < 8; i++) {
 		if (!rpio_pin_unexport(output_pins[i])) return false;
 		if (!rpio_pin_unexport(input_pins[i])) return false;
 	}
