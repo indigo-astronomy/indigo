@@ -204,6 +204,7 @@ static int rpio_pwm_get_enable(int channel, int *value) {
 
 	if (read(fd, value_str, 3) < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read value!");
+		close(fd);
 		return false;
 	}
 	close(fd);
@@ -227,6 +228,7 @@ static bool rpio_pwm_set_enable(int channel, int value) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Value = %d (%c) channel = %d", value, val, channel);
 	if (write(fd, &val, 1) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write value!");
+		close(fd);
 		return false;
 	}
 	close(fd);
@@ -239,6 +241,22 @@ static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
 	char buf[100];
 	int fd;
 
+	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/duty_cycle", channel);
+	fd = open(path, O_WRONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d duty_cycle for writing", channel);
+		return false;
+	}
+
+	sprintf(buf, "%d", 0);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Clear duty_cycle = %d channel = %d", duty_cycle, channel);
+	if (write(fd, buf, strlen(buf)) <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle for channel %d!", channel);
+		close(fd);
+		return false;
+	}
+	close(fd);
+
 	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/period", channel);
 	fd = open(path, O_WRONLY);
 	if (fd < 0) {
@@ -248,8 +266,9 @@ static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
 
 	sprintf(buf, "%d", period);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set period = %d channel = %d", period, channel);
-	if (write(fd, &buf, strlen(buf)) != 1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM period!");
+	if (write(fd, buf, strlen(buf)) <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM period for channel %d!", channel);
+		close(fd);
 		return false;
 	}
 	close(fd);
@@ -263,11 +282,11 @@ static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
 
 	sprintf(buf, "%d", duty_cycle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set duty_cycle = %d channel = %d", duty_cycle, channel);
-	if (write(fd, &buf, strlen(buf)) != 1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle!");
+	if (write(fd, buf, strlen(buf)) <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle for channel %d!", channel);
+		close(fd);
 		return false;
 	}
-
 	close(fd);
 	return true;
 }
@@ -283,8 +302,9 @@ static bool rpio_pwm_get(int channel, int *period, int *duty_cycle) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d period for reading", channel);
 		return false;
 	}
-	if (read(fd, &buf, sizeof(buf)) <= 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get PWM period!");
+	if (read(fd, buf, sizeof(buf)) <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get PWM period for channel %d!", channel);
+		close(fd);
 		return false;
 	}
 	*period = atoi(buf);
@@ -292,19 +312,19 @@ static bool rpio_pwm_get(int channel, int *period, int *duty_cycle) {
 	close(fd);
 
 	sprintf(path, "/sys/class/pwm/pwmchip0/pwm%d/duty_cycle", channel);
-	fd = open(path, O_WRONLY);
+	fd = open(path, O_RDONLY);
 	if (fd < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open PWM channel %d duty_cycle for reading", channel);
 		return false;
 	}
 
-	if (read(fd, &buf, sizeof(buf)) <= 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get PWM duty_cycle!");
+	if (read(fd, buf, sizeof(buf)) <= 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to get PWM duty_cycle for channel %d!", channel);
+		close(fd);
 		return false;
 	}
-	*period = atoi(buf);
+	*duty_cycle = atoi(buf);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Got duty_cycle = %d channel = %d", *duty_cycle, channel);
-
 	close(fd);
 	return true;
 }
@@ -360,6 +380,7 @@ static bool rpio_set_input(int pin) {
 
 	if (write(fd, "in", 2) < 0) {
 		fprintf(stderr, "Failed to set direction!\n");
+		close(fd);
 		return false;
 	}
 
@@ -381,6 +402,7 @@ static bool rpio_set_output(int pin) {
 
 	if (write(fd, "out", 3) < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set direction!");
+		close(fd);
 		return false;
 	}
 
@@ -404,7 +426,8 @@ static int rpio_pin_read(int pin, int *value) {
 	}
 
 	if (read(fd, value_str, 3) < 0) {
-		 INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read value!\n");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read value!\n");
+		close(fd);
 		return false;
 	}
 	close(fd);
@@ -428,6 +451,7 @@ static bool rpio_pin_write(int pin, int value) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Value = %d (%c) pin = %d", value, val, pin);
 	if (write(fd, &val, 1) != 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to write value!");
+		close(fd);
 		return false;
 	}
 
@@ -591,7 +615,6 @@ static void sensors_timer_callback(indigo_device *device) {
 	//int sensor_value;
 	//bool success;
 	int sensors[8];
-
 	if (!rpio_read_input_lines(sensors)) {
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -600,7 +623,26 @@ static void sensors_timer_callback(indigo_device *device) {
 		}
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
 	}
+
+	int period, duty_cycle;
+	if (!rpio_pwm_get(0, &period, &duty_cycle)) {
+		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
+		AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.value = AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target = (double)(duty_cycle) / period * 100;
+		AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.value = AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target = 1 / (period / 1e9);
+	}
+	if (!rpio_pwm_get(1, &period, &duty_cycle)) {
+		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
+		AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.value = AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target = (double)(duty_cycle) / period * 100;
+		AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.value = AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target = 1 / (period / 1e9);
+	}
+
 	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+	indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+	indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->sensors_timer);
 }
 
@@ -887,14 +929,16 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		double freq = 1 / (period / 1e9);
 		if (AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target != freq) {
 			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target * 1e9);
+			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target / 100.0);
 			rpio_pwm_set(0, period, duty_cycle);
 		}
 
-		rpio_pwm_get(0, &period, &duty_cycle);
+		rpio_pwm_get(1, &period, &duty_cycle);
 		freq = 1 / (period / 1e9);
 		if (AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target != freq) {
 			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target * 1e9);
-			rpio_pwm_set(0, period, duty_cycle);
+			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target / 100.0);
+			rpio_pwm_set(1, period, duty_cycle);
 		}
 
 		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
@@ -911,11 +955,11 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			rpio_pwm_set(0, period, duty_cycle);
 		}
 
-		rpio_pwm_get(0, &period, &duty_cycle);
+		rpio_pwm_get(1, &period, &duty_cycle);
 		duty = (double)(duty_cycle) / period * 100;
 		if (AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target != duty) {
 			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target / 100.0);
-			rpio_pwm_set(0, period, duty_cycle);
+			rpio_pwm_set(1, period, duty_cycle);
 		}
 
 		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
