@@ -263,7 +263,6 @@ static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
 	if (write(fd, buf, strlen(buf)) <= 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle for channel %d!", channel);
 		close(fd);
-		return false;
 	}
 	close(fd);
 
@@ -632,8 +631,6 @@ static int rpio_init_properties(indigo_device *device) {
 
 
 static void sensors_timer_callback(indigo_device *device) {
-	//int sensor_value;
-	//bool success;
 	int sensors[8];
 	if (!rpio_read_input_lines(sensors)) {
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -644,20 +641,22 @@ static void sensors_timer_callback(indigo_device *device) {
 		AUX_GPIO_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
 	}
 
-	int period, duty_cycle;
-	if (!rpio_pwm_get(0, &period, &duty_cycle)) {
-		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
-		AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.value = AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target = (double)(duty_cycle) / period * 100;
-		AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.value = AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target = 1 / (period / 1e9);
-	}
-	if (!rpio_pwm_get(1, &period, &duty_cycle)) {
-		AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
-		AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.value = AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target = (double)(duty_cycle) / period * 100;
-		AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.value = AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target = 1 / (period / 1e9);
+	if (PRIVATE_DATA->pwm_present) {
+		int period, duty_cycle;
+		if (!rpio_pwm_get(0, &period, &duty_cycle)) {
+			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
+			AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.value = AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target = (double)(duty_cycle) / period * 100;
+			AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.value = AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target = 1 / (period / 1e9);
+		}
+		if (!rpio_pwm_get(1, &period, &duty_cycle)) {
+			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->state = INDIGO_ALERT_STATE;
+			AUX_GPIO_OUTLET_DUTY_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.value = AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target = (double)(duty_cycle) / period * 100;
+			AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.value = AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target = 1 / (period / 1e9);
+		}
 	}
 
 	indigo_update_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
@@ -825,9 +824,11 @@ static void handle_aux_connect_property(indigo_device *device) {
 		if(PRIVATE_DATA->pwm_present) {
 			AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = false;
 			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = false;
+			indigo_send_message(device, "PWM on Outputs #1 and #2 is present");
 		} else {
 			AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = true;
 			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = true;
+			indigo_send_message(device, "No PWM channels found");
 		}
 		if (rpio_export_all(PRIVATE_DATA->pwm_present)) {
 			char board[INDIGO_VALUE_SIZE] = "N/A";
@@ -836,27 +837,29 @@ static void handle_aux_connect_property(indigo_device *device) {
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 
-			int period, duty_cycle;
-			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target * 1e9);
-			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target / 100.0);
-			rpio_pwm_set(0, period, duty_cycle);
-			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target * 1e9);
-			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target / 100.0);
-			rpio_pwm_set(1, period, duty_cycle);
-
 			int relay_value[8];
 			if (!rpio_read_output_lines(relay_value, PRIVATE_DATA->pwm_present)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_pin_read(%d) failed", PRIVATE_DATA->handle);
 				AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				/* Reset PWM lines if enabled */
-				if (relay_value[0] == 1) {
-					rpio_pwm_set_enable(0, false);
-					rpio_pwm_set_enable(0, true);
-				}
-				if (relay_value[1] == 1) {
-					rpio_pwm_set_enable(1, false);
-					rpio_pwm_set_enable(1, true);
+				if (PRIVATE_DATA->pwm_present) {
+					int period, duty_cycle;
+					period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target * 1e9);
+					duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target / 100.0);
+					rpio_pwm_set(0, period, duty_cycle);
+					period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target * 1e9);
+					duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target / 100.0);
+					rpio_pwm_set(1, period, duty_cycle);
+
+					/* Reset PWM lines if enabled */
+					if (relay_value[0] == 1) {
+						rpio_pwm_set_enable(0, false);
+						rpio_pwm_set_enable(0, true);
+					}
+					if (relay_value[1] == 1) {
+						rpio_pwm_set_enable(1, false);
+						rpio_pwm_set_enable(1, true);
+					}
 				}
 				for (int i = 0; i < 8; i++) {
 					(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
