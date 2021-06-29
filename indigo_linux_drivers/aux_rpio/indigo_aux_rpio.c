@@ -493,7 +493,6 @@ static bool rpio_read_output_lines(int *values) {
 	return true;
 }
 
-
 bool rpio_export_all() {
 	if (!rpio_pwm_export(0)) return false;
 	if (!rpio_pwm_export(1)) return false;
@@ -574,14 +573,14 @@ static int rpio_init_properties(indigo_device *device) {
 	AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY_NAME, AUX_RELAYS_GROUP, "PWM Frequencies (Hz)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 	if (AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Output #1", 0, 1000000, 100, 0);
-	indigo_init_number_item(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Output #2", 0, 1000000, 100, 0);
+	indigo_init_number_item(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Output #1", 0.5, 1000000, 100, 100);
+	indigo_init_number_item(AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Output #2", 0.5, 1000000, 100, 100);
 	// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET_DUTY_CYCLES
 	AUX_GPIO_OUTLET_DUTY_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_GPIO_OUTLET_DUTY_PROPERTY_NAME, AUX_RELAYS_GROUP, "PWM Duty cycles (%)", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 	if (AUX_GPIO_OUTLET_DUTY_PROPERTY == NULL)
 		return INDIGO_FAILED;
-	indigo_init_number_item(AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Output #1", 0, 100, 1, 0);
-	indigo_init_number_item(AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Output #2", 0, 100, 1, 0);
+	indigo_init_number_item(AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM, AUX_GPIO_OUTLETS_OUTLET_1_ITEM_NAME, "Output #1", 0, 100, 1, 100);
+	indigo_init_number_item(AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM, AUX_GPIO_OUTLETS_OUTLET_2_ITEM_NAME, "Output #2", 0, 100, 1, 100);
 	// -------------------------------------------------------------------------------- SENSOR_NAMES
 	AUX_SENSOR_NAMES_PROPERTY = indigo_init_text_property(NULL, device->name, AUX_SENSOR_NAMES_PROPERTY_NAME, AUX_SENSORS_GROUP, "Input names", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 	if (AUX_SENSOR_NAMES_PROPERTY == NULL)
@@ -807,6 +806,15 @@ static void handle_aux_connect_property(indigo_device *device) {
 			indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
+
+			int period, duty_cycle;
+			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_1_ITEM->number.target * 1e9);
+			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_1_ITEM->number.target / 100.0);
+			rpio_pwm_set(0, period, duty_cycle);
+			period = (int)(1 / AUX_GPIO_OUTLET_FREQUENCIES_OUTLET_2_ITEM->number.target * 1e9);
+			duty_cycle = (int)(period * AUX_GPIO_OUTLET_DUTY_OUTLET_2_ITEM->number.target / 100.0);
+			rpio_pwm_set(1, period, duty_cycle);
+
 			int relay_value[8];
 			if (!rpio_read_output_lines(relay_value)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_pin_read(%d) failed", PRIVATE_DATA->handle);
@@ -826,6 +834,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 					PRIVATE_DATA->relay_active[i] = false;
 				}
 			}
+
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 			indigo_define_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
