@@ -25,7 +25,7 @@
 
 #include "indigo_aux_rpio.h"
 
-#define DRIVER_VERSION         0x0004
+#define DRIVER_VERSION         0x0005
 #define AUX_DRAGONFLY_NAME     "Raspberry Pi GPIO"
 
 #include <stdlib.h>
@@ -812,6 +812,15 @@ static void handle_aux_connect_property(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "rpio_pin_read(%d) failed", PRIVATE_DATA->handle);
 				AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
+				/* Reset PWM lines if enabled */
+				if (relay_value[0] == 1) {
+					rpio_pwm_set_enable(0, false);
+					rpio_pwm_set_enable(0, true);
+				}
+				if (relay_value[1] == 1) {
+					rpio_pwm_set_enable(1, false);
+					rpio_pwm_set_enable(1, true);
+				}
 				for (int i = 0; i < 8; i++) {
 					(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
 					PRIVATE_DATA->relay_active[i] = false;
