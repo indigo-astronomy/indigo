@@ -787,7 +787,7 @@ int main(int argc, const char * argv[]) {
 		return 0;
 	}
 
-	int time_to_wait = 2;
+	double time_to_wait = 2;
 	int port = INDIGO_DEFAULT_PORT;
 	char hostname[255] = "localhost";
 	char const *prop_string = NULL;
@@ -859,7 +859,7 @@ int main(int argc, const char * argv[]) {
 		} else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--time-to-wait")) {
 			if (argc > i+1) {
 				i++;
-				time_to_wait = atoi(argv[i]);
+				time_to_wait = atof(argv[i]);
 			} else {
 				fprintf(stderr, "No time to wait specified\n");
 				return 1;
