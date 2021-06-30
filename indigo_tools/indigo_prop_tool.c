@@ -879,7 +879,7 @@ int main(int argc, const char * argv[]) {
 		return 1;
 	}
 
-	if (time_to_wait <= 0) {
+	if (time_to_wait < 0) {
 		fprintf(stderr, "Invalid time to wait specified\n");
 		return 1;
 	}
