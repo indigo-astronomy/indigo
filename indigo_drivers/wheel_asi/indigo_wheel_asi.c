@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -86,7 +86,13 @@ static void wheel_timer_callback(indigo_device *device) {
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
+
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		INFO_PROPERTY->count = 6;
+		char *sdk_version = EFWGetSDKVersion();
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
@@ -415,6 +421,10 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+
+		char *sdk_version = EFWGetSDKVersion();
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "EFW SDK v. %s", sdk_version);
+
 		for(int index = 0; index < EFW_ID_MAX; index++)
 			connected_ids[index] = false;
 		efw_id_count = EFWGetProductIDs(efw_products);
@@ -450,7 +460,7 @@ indigo_result indigo_wheel_asi(indigo_driver_action action, indigo_driver_info *
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "ZWO ASI Filter Wheel", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
