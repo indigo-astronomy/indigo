@@ -935,7 +935,21 @@ int main(int argc, const char * argv[]) {
 	indigo_attach_client(&client);
 	indigo_server_entry *server;
 	indigo_connect_server(hostname, hostname, port, &server);
-	indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
+	int wait_connection = 1000;
+	bool connected = false;
+	char error_message[INDIGO_VALUE_SIZE] = {0};
+	while (wait_connection--) {
+		if (connected = indigo_connection_status(server, error_message)) {
+			break;
+		} else {
+			indigo_usleep(10000);
+		}
+	}
+	if (connected) {
+		indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
+	} else {
+		fprintf(stderr, "Connection failed: %s\n", error_message);
+	}
 	indigo_stop();
 	indigo_disconnect_server(server);
 	return 0;
