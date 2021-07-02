@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-154] - XXX Jul XX 2021
+## [2.0-154] - Sat Jul 03 2021
 ### Overall:
 - indigo_server: by default blob compression is disabled
 
