@@ -2,6 +2,41 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-154] - XXX Jul XX 2021
+### Overall:
+- indigo_server: by default blob compression is disabled
+
+- indigo_framework:
+	- add indigo_azimuth_distance() and used in dome drivers
+	- define new PWM related properties
+
+- indigo_solver: fix Sync & Center for some mounts with lazy sync operation
+
+- indigo_prop_tool:
+	- accept timeout 0
+	- timeout countdown is started only if the connection is established
+
+### New Drivers
+- indigo_dome_beaver: Driver for NexDome domes with beaver controllers
+
+- indigo_aux_astromechanics: ASTROMECHANICS Light Pollution Meter driver - untested
+
+- indigo_focuser_astromechanics:  ASTROMECHANICS focuser driver - untested
+
+### Driver fixes
+- indigo_ccd_asi:
+	- updated to SDK v.1.19.1 - fixes multi camera issue
+	- fix unity gain calculation for cameras with full well < ADC resolution
+	- show firmware version in the device info property
+
+- indigo_focuser_asi:
+	- updated to SDK v.1.4 - fixes 5v EAF crashes.
+
+- indigo_whell_asi:
+	- updated to SDK v.1.7
+	- show firmware version in the device info property
+
+- indigo_aux_rpio: add PWM support (see driver README.md)
 
 ## [2.0-152] - Sun Jun 13 2021
 ### Overall:
@@ -22,7 +57,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - added full NGC/IC catalog
 - fix random behavior while removing related agent
 
-### Driver fixes
+### Driver Fixes
 - indigo_aux_ppb: PPB Micro support added
 - indigo_ccd_simulator: battery level property added
 
@@ -56,7 +91,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - fixed telescope alignment
 - wifi channel can be selected for indigo sky in Access Point mode
 
-### Driver fixes
+### Driver Fixes
 - indigo_mount_ioptron: add firmware version 3.1
 - indigo_wheel_qhy: fix typo
 
