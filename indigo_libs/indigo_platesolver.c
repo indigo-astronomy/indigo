@@ -144,6 +144,11 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_DISABLED_ITEM, AGENT_PLATESOLVER_SYNC_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_SYNC_ITEM, AGENT_PLATESOLVER_SYNC_SYNC_ITEM_NAME, "Sync only", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CENTER_ITEM, AGENT_PLATESOLVER_SYNC_CENTER_ITEM_NAME, "Sync and center", false);
+		// -------------------------------------------------------------------------------- WCS property
+		AGENT_PLATESOLVER_ABORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_PLATESOLVER_ABORT_ITEM, AGENT_PLATESOLVER_ABORT_ITEM_NAME, "Abort", false);
 		// --------------------------------------------------------------------------------
 		CONFIG_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
@@ -167,6 +172,8 @@ indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, ind
 		indigo_define_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_PLATESOLVER_SYNC_PROPERTY, property))
 		indigo_define_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property))
+		indigo_define_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -207,6 +214,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_HINTS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_WCS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_ABORT_PROPERTY);
 	pthread_mutex_destroy(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
 }
