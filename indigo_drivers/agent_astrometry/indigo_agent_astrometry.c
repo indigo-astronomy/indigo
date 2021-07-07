@@ -213,7 +213,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			return false;
 		}
 		case 0: {
-			setpgid(0, 0); 
+			setpgid(0, 0);
 			close(pipe_stdout[0]);
 			dup2(pipe_stdout[1], STDOUT_FILENO);
 			close(pipe_stdout[1]);
@@ -747,7 +747,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_PLATESOLVER_ABORT_ITEM && ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
-			kill(ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+			/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
+			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
 		}
 	}
 	return indigo_platesolver_change_property(device, client, property);
