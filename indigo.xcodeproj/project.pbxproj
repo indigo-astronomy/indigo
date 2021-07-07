@@ -521,6 +521,7 @@
 		59A242E322A2C6CE001C38F8 /* libascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F921A6FCC7009859FD /* libascol.c */; };
 		59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */; };
 		59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */; };
+		59A2F88D26961E17008BD0CA /* indigo_dome_beaver.c in Sources */ = {isa = PBXBuildFile; fileRef = 5955CB662684BC9C00685071 /* indigo_dome_beaver.c */; };
 		59A3217621D52C4700EC0F4A /* indigo_focuser_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A3217121D52C4600EC0F4A /* indigo_focuser_asi.h */; };
 		59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A3217C21D52C6100EC0F4A /* EAF_focuser.h */; };
 		59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
@@ -13240,6 +13241,7 @@
 				598A1CAE259BA95500C0B34C /* NSDictionary+DDHidExtras.m in Sources */,
 				598A1CAF259BA95500C0B34C /* indigo_server.c in Sources */,
 				598A1CB0259BA95500C0B34C /* indigo_cat_data.c in Sources */,
+				59A2F88D26961E17008BD0CA /* indigo_dome_beaver.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

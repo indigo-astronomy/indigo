@@ -23,13 +23,14 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
@@ -182,9 +183,12 @@ typedef struct {
 	indigo_property *index_42xx_property;
 	int frame_width;
 	int frame_height;
+	pid_t pid;
 } astrometry_private_data;
 
 // --------------------------------------------------------------------------------
+
+extern char **environ;
 
 static bool execute_command(indigo_device *device, char *command, ...) {
 	char buffer[8 * 1024];
@@ -196,63 +200,84 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	char command_buf[8 * 1024];
 	sprintf(command_buf, "%s 2>&1", buffer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
-	FILE *output = popen(command_buf, "r");
-	if (output) {
-		char *line = NULL;
-		size_t size = 0;
-		int res = 0;
-		while (getline(&line, &size, output) >= 0) {
-			char *nl = strchr(line, '\n');
-			if (nl)
-				*nl = 0;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
-			double d1, d2;
-			char s[16];
-			if (strstr(line, "message:")) {
-				indigo_send_message(device, line + 9);
-			} else if (sscanf(line, "simplexy: nx=%d, ny=%d", &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width, &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) == 2) {
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width *= AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
-				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height *= AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
-			} else if (sscanf(line, "Field center: (RA,Dec) = (%lg, %lg)", &d1, &d2) == 2) {
-				AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d1 / 15;
-				AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d2;
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
-			} else if (sscanf(line, "Field size: %lg x %lg", &d1, &d2) == 2) {
-				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1;
-				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2;
-				AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2;
-			} else if (sscanf(line, "Field rotation angle: up is %lg", &d1) == 1) {
-				AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d1;
-			} else if (sscanf(line, "Field 1: solved with index index-%lg", &d1) == 1) {
-				indigo_send_message(device, "Solved");
-				AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = d1;
-			} else if (sscanf(line, "Field parity: %3s", s) == 1) {
-				AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = !strcmp(s, "pos") ? 1 : -1;
-			} else if (strstr(line, "Total CPU time limit reached")) {
-				indigo_send_message(device, "CPU time limit reached");
-			} else if (strstr(line, "Did not solve")) {
-				indigo_send_message(device, "No solution found");
-			} else if (strstr(line, "You must list at least one index")) {
-				indigo_send_message(device, "You must select at least one index");
-			} else if (strstr(line, ": not found")) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", line);
-				res = -1;
-			}
-			if (line) {
-				free(line);
-				line = NULL;
-			}
-		}
-		pclose(output);
-		if (res != 0) {
-			return false;
-		} else {
-			return true;
-		}
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute %s (%s)", command, strerror(errno));
+//	FILE *output = popen(command_buf, "r");
+	int pipe_stdout[2];
+	if (pipe(pipe_stdout)) {
+		return false;
 	}
-	return false;
+	switch (ASTROMETRY_DEVICE_PRIVATE_DATA->pid = fork()) {
+		case -1: {
+			close(pipe_stdout[0]);
+			close(pipe_stdout[1]);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute %s (%s)", command, strerror(errno));
+			return false;
+		}
+		case 0: {
+			setpgid(0, 0); 
+			close(pipe_stdout[0]);
+			dup2(pipe_stdout[1], STDOUT_FILENO);
+			close(pipe_stdout[1]);
+			execl("/bin/sh", "sh", "-c", buffer, NULL, environ);
+			perror("execl");
+			_exit(127);
+		}
+	}
+	close(pipe_stdout[1]);
+	FILE *output = fdopen(pipe_stdout[0], "r");
+	char *line = NULL;
+	size_t size = 0;
+	bool res = true;
+	while (getline(&line, &size, output) >= 0) {
+		char *nl = strchr(line, '\n');
+		if (nl)
+			*nl = 0;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
+		double d1, d2;
+		char s[16];
+		if (strstr(line, "message:")) {
+			indigo_send_message(device, line + 9);
+		} else if (sscanf(line, "simplexy: nx=%d, ny=%d", &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width, &ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) == 2) {
+			ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width *= AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
+			ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height *= AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value;
+		} else if (sscanf(line, "Field center: (RA,Dec) = (%lg, %lg)", &d1, &d2) == 2) {
+			AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d1 / 15;
+			AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d2;
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
+		} else if (sscanf(line, "Field size: %lg x %lg", &d1, &d2) == 2) {
+			AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1;
+			AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2;
+			AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2;
+		} else if (sscanf(line, "Field rotation angle: up is %lg", &d1) == 1) {
+			AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d1;
+		} else if (sscanf(line, "Field 1: solved with index index-%lg", &d1) == 1) {
+			indigo_send_message(device, "Solved");
+			AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = d1;
+		} else if (sscanf(line, "Field parity: %3s", s) == 1) {
+			AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = !strcmp(s, "pos") ? 1 : -1;
+		} else if (strstr(line, "Total CPU time limit reached")) {
+			indigo_send_message(device, "CPU time limit reached");
+		} else if (strstr(line, "Did not solve")) {
+			indigo_send_message(device, "No solution found");
+		} else if (strstr(line, "You must list at least one index")) {
+			indigo_send_message(device, "You must select at least one index");
+		} else if (strstr(line, ": not found")) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", line);
+			res = false;
+		}
+		if (line) {
+			free(line);
+			line = NULL;
+		}
+	}
+	fclose(output);
+	ASTROMETRY_DEVICE_PRIVATE_DATA->pid = 0;
+	if (AGENT_PLATESOLVER_ABORT_PROPERTY->state == INDIGO_BUSY_STATE) {
+		res = false;
+		AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_ABORT_ITEM->sw.value = false;
+		indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
+	}
+	return res;
 }
 
 struct indigo_jpeg_decompress_struct {
@@ -553,6 +578,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					}
 					indigo_send_message(device, "Downloading %s...", file_name);
 					if (!execute_command(device, "curl -L -s -o \"%s\" http://data.astrometry.net/%s/index-%s.fits", path, dir, file_name)) {
+						item->sw.value = false;
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
 						pthread_mutex_unlock(&mutex);
@@ -715,6 +741,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 		indigo_set_timer(device, 0, index_42xx_handler, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT
+		indigo_property_copy_values(AGENT_PLATESOLVER_ABORT_PROPERTY, property, false);
+		if (AGENT_PLATESOLVER_ABORT_ITEM && ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
+			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
+			kill(ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+		}
 	}
 	return indigo_platesolver_change_property(device, client, property);
 }
