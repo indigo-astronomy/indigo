@@ -97,11 +97,12 @@ void indigo_topo_star(double latitude, double longitude, double elevation, doubl
 	}
 }
 
-void indigo_topo_planet(double latitude, double longitude, double elevation, int id, double *ra, double *dec) {
+void indigo_topo_planet(double latitude, double longitude, double elevation, int id, double *ra_j2k, double *dec_j2k, double *ra, double *dec) {
 	cat_entry DUMMY_STAR;
 	object solarSystem;
 	double distance;
 	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
+	double pos[3], j2k_pos[3];
 	on_surface position = { latitude, longitude, elevation, 0.0, 0.0 };
 	init();
 	make_object(0, id, "Dummy", &DUMMY_STAR, &solarSystem);
@@ -109,4 +110,10 @@ void indigo_topo_planet(double latitude, double longitude, double elevation, int
 	if (error != 0) {
 		indigo_error("topo_planet() -> %d", error);
 	}
+	radec2vector(*ra, *dec, distance, pos);
+	error = precession(ut1_now, pos, 2451545.0, j2k_pos);
+	if (error != 0) {
+		indigo_error("precession() -> %d", error);
+	}
+	vector2radec(j2k_pos, ra_j2k, dec_j2k);
 }
