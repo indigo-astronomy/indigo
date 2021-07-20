@@ -88,7 +88,7 @@
 #define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
 #define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
 #define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
-#define AGENT_GUIDER_SETTINGS_WINDOW_SIZE_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
+#define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
 
 #define MAX_STAR_COUNT												50
 #define AGENT_GUIDER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
@@ -103,7 +103,7 @@
 #define AGENT_GUIDER_SELECTION_Y_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+5)
 
 #define MAX_STACK															20
-#define MAX_DITHERING_RMSE_STACK											5
+
 #define AGENT_GUIDER_STATS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stats_property)
 #define AGENT_GUIDER_STATS_PHASE_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+0)
 #define AGENT_GUIDER_STATS_FRAME_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+1)
@@ -1134,7 +1134,7 @@ static void guide_process(indigo_device *device) {
 			} else {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum = 0;
 				DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
-				if (DEVICE_PRIVATE_DATA->rmse_count < MAX_DITHERING_RMSE_STACK)
+				if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value)
 					DEVICE_PRIVATE_DATA->rmse_count++;
 				for (int i = 0; i < DEVICE_PRIVATE_DATA->rmse_count; i++) {
 					double drift_ra_i =  DEVICE_PRIVATE_DATA->stack_x[i] * cos_angle + DEVICE_PRIVATE_DATA->stack_y[i] * sin_angle;
@@ -1149,14 +1149,14 @@ static void guide_process(indigo_device *device) {
 				bool dithering_finished = false;
 				if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
 					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0)
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
 					else
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK;
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
 				} else {
 					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0)
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
 					else
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count == MAX_DITHERING_RMSE_STACK;
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
 				}
 				if (dithering_finished) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
@@ -1279,7 +1279,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 21);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 120, 1, 1);
@@ -1303,6 +1303,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Integral stack size (frames)", 1, MAX_STACK, 1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_X_ITEM, AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, "Dithering offset X (px)", -15, 15, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME, "Dithering offset Y (px)", -15, 15, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering settling limit (frames)", 1, 50, 1, 5);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_GUIDER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);
 		if (AGENT_GUIDER_STARS_PROPERTY == NULL)
