@@ -1,7 +1,7 @@
 /*
  * The Moravian Instruments (MI) camera library.
  *
- * Copyright 2020, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
+ * Copyright 2021, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
  * All rights reserved.
  */
 
@@ -197,6 +197,7 @@ enum
     GBP_POWER_UTILIZATION,         /* true if camera can return power utilization in
                              gxccd_get_value() */
     GBP_GAIN,                      /* true if camera can return gain in gxccd_get_value() */
+    GBP_ELECTRONIC_SHUTTER,        /* true if camera has electronic shutter */
     GBP_CONFIGURED = 127,          /* true if camera is configured */
     GBP_RGB,                       /* true if camera has Bayer RGBG filters on the chip */
     GBP_CMY,                       /* true if camera has CMY filters on the chip */
