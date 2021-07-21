@@ -1026,6 +1026,13 @@ static void calibrate_and_guide_process(indigo_device *device) {
 }
 
 static void guide_process(indigo_device *device) {
+	if (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0) {
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+		indigo_send_message(device, "Guiding failed (not calibrated)");
+		FILTER_DEVICE_CONTEXT->running_process = false;
+		return;
+	}
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = IGNORE;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
