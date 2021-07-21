@@ -10,7 +10,7 @@ This driver supports hot-plug (multiple devices).
 
 ## Supported platforms
 
-This driver depends on 3rd party library and is supported on Linux (Intel 32/64 bit and ARM v7/8) and MacOS.
+This driver depends on 3rd party library and is supported on Linux (Intel 32/64 bit and ARM v7/8) and MacOS (Intel 64 bit and ARM64).
 
 ## License
 
@@ -29,3 +29,6 @@ Driver is developed and tested with:
 * MI C1-3000A
 * MI C2-12000
 * MI C1+12000A
+* MI C1×26000
+* MI C3-61000
+* MI C4-16000
