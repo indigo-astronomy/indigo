@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -40,8 +40,6 @@
 
 #include "indigo_ccd_mi.h"
 
-#if !(defined(__APPLE__) && defined(__arm64__))
-
 #if defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #else
@@ -50,13 +48,13 @@
 
 #include <gxccd.h>
 
-#define MI_VID				0x1347
-#define PRIVATE_DATA		((mi_private_data *)device->private_data)
+#define MI_VID							0x1347
+#define PRIVATE_DATA				((mi_private_data *)device->private_data)
 #define CCD_READ_MODE_ITEM	(CCD_READ_MODE_PROPERTY->items+0)
 
-#define TEMP_PERIOD			5
-#define TEMP_COOLER_OFF		100
-#define POWER_UTIL_PERIOD	10
+#define TEMP_PERIOD					5
+#define TEMP_COOLER_OFF			100
+#define POWER_UTIL_PERIOD		10
 
 typedef struct {
 	int eid;
@@ -817,22 +815,3 @@ indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *inf
 
 	return INDIGO_OK;
 }
-
-#else
-
-indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
-	SET_DRIVER_INFO(info, "Moravian Instruments Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
-	switch(action) {
-		case INDIGO_DRIVER_INIT:
-		case INDIGO_DRIVER_SHUTDOWN:
-			return INDIGO_UNSUPPORTED_ARCH;
-		case INDIGO_DRIVER_INFO:
-			break;
-	}
-	return INDIGO_OK;
-}
-
-#endif
