@@ -2,6 +2,25 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-156] - Sun Jul 26 2021
+### Overall:
+- j2k coordinates added to indigo_topo_planet()
+
+### Driver fixes
+- indigo_agent_astrometry: index download or solving can be aborted
+
+- indigo_agent_guider:
+	- settling limit made configurable (AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM)
+	- dec-only calibration fixed
+	- guiding will fail if RA speed = 0
+
+- indigo_ccd_mi:
+	- driver made multiplatform on macOS
+	- add support for Moravian C1×, C3 and C4 cameras
+
+- indigo_ccd_asi:
+	- update sdk to 1.19.2
+
 ## [2.0-154] - Sat Jul 03 2021
 ### Overall:
 - indigo_server: by default blob compression is disabled
