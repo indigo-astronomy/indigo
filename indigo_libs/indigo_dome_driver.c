@@ -372,6 +372,7 @@ indigo_result indigo_dome_change_property(indigo_device *device, indigo_client *
 			indigo_save_property(device, NULL, DOME_SLAVING_PROPERTY);
 			indigo_save_property(device, NULL, DOME_SLAVING_PARAMETERS_PROPERTY);
 			indigo_save_property(device, NULL, DOME_GEOGRAPHIC_COORDINATES_PROPERTY);
+			indigo_save_property(device, NULL, DOME_DIMENSION_PROPERTY);
 		}
 		// -------------------------------------------------------------------------------- SNOOP_DEVICES
 	} else if (indigo_property_match(DOME_SNOOP_DEVICES_PROPERTY, property)) {
