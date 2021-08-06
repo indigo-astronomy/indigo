@@ -78,12 +78,14 @@ In this case we take larger value of 2.5" as we can not resolve 1.8" with our sy
 
 ### Determining the CFZ and Final Step for Focusers Without a Ruler
 This method will give you a rough approximation which should be accurate enough for precise focus.
-1. Use Bachtinov mask to find the precise focus let it run for a while and record the average HFD value and focuser position. Let is say HFD = 4.50px and the focuser position is 8000.
-2. Then start moving the focuser in the same direction of the last move you made while focusing. Use a small step 1 or 2 focuser steps at a time, and let it run for several exposures, evaluating the average HFD after each step. Repeat this until you see the HFD increased by 15-20% (in our case ~5.2px) then record the focuser position let us say 8007.
-3. Subtract the two positions 8007 - 8000 = 7. This is a rough estimation of the CFZ/2 and our CFZ is around 14 steps.
+1. Use Bachtinov mask to find the precise focus let it run for a while and record the average HFD value and focuser position. Let is say HFD = 4.50px and the focuser position is **8000**.
+2. Then start moving the focuser in the same direction of the last move you made while focusing. Use a small step 1 or 2 focuser steps at a time, and let it run for several exposures, evaluating the average HFD after each step. Repeat this until you see the HFD increased by 15-20% (in our case ~5.2px) then record the focuser position let us say **8007**.
+3. Subtract the two positions:\
+ **8007 - 8000 = 7**\
+ This is a rough estimation of the **CFZ / 2** and our CFZ is around **14steps**.
 4. You can repeat the following procedure with several stars and use the average result.
 
-Now as we have an approximation of the CFZ we can set the **Final step** to CFZ/2 (7 steps in the example). If the focus is not accurate enough we can decrease this value a bit more.
+Now as we have an approximation of the CFZ we can set the **Final step** to **CFZ / 2** (**7steps** in the example). If the focus is not accurate enough we can decrease this value a bit more.
 
 **NOTE:** This method sensitive to the seeing conditions. With better seeing you will get a better result.
 
@@ -92,8 +94,12 @@ If your focuser has a ruler it is easier to determine the CFZ in steps.
 The procedure is as follows.
 1. Calculate the CFZ as described above. The calculated CFZ in the example was 68um.
 2. Measure how many steeps the focuser makes to move the focuser in or out with 1cm (10 000um). Let us assume it moved 1900 steps.
-3. Calculate step size using the formula: **StepSize = Distance / Steps**
-in our case 10000um / 1900steps = 5.3 um/step.
-4. Using this number we can calculate our CFZ in steps: 68um / 5.3 = 12.8steps. Now we can set our **Final step** value to 12 / 2 = 6 steps and then fine tune it, if needed.
+3. Calculate step size using the formula:\
+ **StepSize = Distance / Steps**.\
+ In our case:\
+ **10000um / 1900steps = 5.3um/step**.
+4. Using this number we can calculate our CFZ in steps:\
+ **68um / 5.3 = 12.8steps**\
+ Now we can set our **Final step** value to **12 / 2 = 6** steps and then fine tune it, if needed.
 
 Clear skies!  
