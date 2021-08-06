@@ -99,7 +99,8 @@ The procedure is as follows.
  In our case:\
  **10000um / 1900steps = 5.3um/step**.
 4. Using this number we can calculate our CFZ in steps:\
- **68um / 5.3 = 12.8steps**\
- Now we can set our **Final step** value to **12 / 2 = 6** steps and then fine tune it, if needed.
+ **68um / 5.3 = 12.8steps**
+
+Now we can set our **Final step** value to CFZ / 2 **12 / 2 = 6steps** and then fine tune it, if the results are not good.
 
 Clear skies!  
