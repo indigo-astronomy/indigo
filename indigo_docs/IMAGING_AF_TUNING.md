@@ -13,14 +13,14 @@ In INDIGO Imager Agent auto-focus starts with a large step to approximate the fo
 - **Backlash (total)** - this value is the backlash of the focuser. It assumes symmetrical IN and OUT backlash. Most of the system have symmetrical backlash.
 - **Backlash (in)** and **Backlash (out)** - in the rare cases of an asymmetrical backlash those values should be set. Most users can safely ignore them.
 - **Stacking** - this value is in frames. It means how many exposures to take and evaluate before making the next focuser move. This value could be 1-3 for steady atmosphere but > 3 for a visible scintillation.
-- **Selection Radius** - this is the box size in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial stellar diameter should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate.
+- **Selection Radius** - this is the box size (in pixels) in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial (unfocused) stellar image should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate. A good value for most of the cases is 8-10 pixels.
 
 ## Determining the Backlash
 If the backlash of your focuser is larger than 0.5 CFZ, it plays a critical role in the focus accuracy, so determining it is important.
 
 The procedure is simple but a bit fiddly.
 1. First you need to set the backlash value to 0.
-2. Start "Maual" focusing mode and go somewhere near the focus (point 1 on the picture below).
+2. Start "Manual" focusing mode and go somewhere near the focus (point 1 on the picture below).
 3. While looking at the HFD of the selected star, make small moves one at a time in one direction until you reach some point where the HFD is larger than the one of the focused star (point 2 on the picture). Try to move with 1 or 2 focuser steps.
 4. Record the focuser position at this point, let us say 8000 and let it settle for several exposures. The HFD should slightly oscillate around the same average value.
 5. Then move the focuser in the opposite direction with the same step and let it run for several exposures. If the average value of the HFD decreases your step is either too large or your backlash is negligible. If it does not change make another move in the same direction. Let it run a bit and if the average is still the same make one more step until HFD starts to decrease (point 3 on the picture). Then record this value again. Let us say 8016. Make several more steps to make sure HFD decreases steadily.
