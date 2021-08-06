@@ -59,7 +59,7 @@ What comes to the total seeing there are 2 main factors to be considered:
 1. Pixel size in arc seconds / pixel
 2. Astronomical seeing in arc seconds
 
-Obviously if the Astronomical seeing of an excellent night is 1.5" and the imaging system has 2"/px resolution there is no way to resolve the AStronomiclal seeing that is why we need to use:
+Obviously if the Astronomical seeing of good night is 1.5" and the imaging system has 2"/px resolution there is no way to resolve the Astronomiclal seeing, that is why we need to use:
 
 **&theta;<sub>FWHM</sub> = MAX(Astronomical seeing, Pixel size)**
 
@@ -72,7 +72,7 @@ For a typical clear night it is safe to assume the seeing will be worse than 1.5
 ### Example
 Given a Telescope with aperture 100mm F/5.6 fitted with a camera with 2.5"/px in a typical night with a seeing of 1.8" we need to calculate our Critical Focus.
 
-In this case we take larger value of 2.5" as we can not resolve 1.8" with our system.
+In this case we take the larger value of 2.5" as we can not resolve 1.8" with our system.
 
 **NCFZ = 0.00871 <sup>.</sup> 2.5 <sup>.</sup> 100 <sup>.</sup> 5.6<sup>2</sup> = 68um**
 
@@ -87,7 +87,7 @@ This method will give you a rough approximation which should be accurate enough 
 
 Now as we have an approximation of the CFZ we can set the **Final step** to **CFZ / 2** (**7steps** in the example). If the focus is not accurate enough we can decrease this value a bit more.
 
-**NOTE:** This method sensitive to the seeing conditions. With better seeing you will get a better result.
+**NOTE:** This method is sensitive to the seeing conditions. With better seeing you will get a better result.
 
 ### Determining the CFZ and Final Step for Focusers With Ruler
 If your focuser has a ruler it is easier to determine the CFZ in steps.
