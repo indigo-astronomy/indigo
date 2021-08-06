@@ -1,4 +1,4 @@
-# INDIGO Imager Agent - Autofocus tunning guide
+# INDIGO Imager Agent - Autofocus Tunning Guide
 
 Revision: 06.08.2021 (draft)
 
@@ -6,7 +6,7 @@ Author: **Rumen G.Bogdanovski**
 
 e-mail: *rumen@skyarchive.org*
 
-## Auto focus tuning parameters
+## Autofocus Tuning Parameters
 In INDIGO Imager Agent auto-focus starts with a large step to approximate the focus expressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy.
 - **Initial step** - This is a big step it can be as large as 10 - 15 times the final step. With this step the focusing difference should be clearly visible. This value is in focuser steps.
 - **Final Step** - The size of this step is critical for the focusing accuracy. It should be between 1 and 0.5 times the CFZ in focuser steps. Smaller than 0.5 may lead to hunting and failure to settle.
@@ -76,7 +76,7 @@ In this case we take larger value of 2.5" as we can not resolve 1.8" with our sy
 
 **NCFZ = 0.00871 <sup>.</sup> 2.5 <sup>.</sup> 100 <sup>.</sup> 5.6<sup>2</sup> = 68um**
 
-### CFZ and Final Step for Focusers Without a Ruler
+### Determining the CFZ and Final Step for Focusers Without a Ruler
 This method will give you a rough approximation which should be accurate enough for precise focus.
 1. Use Bachtinov mask to find the precise focus let it run for a while and record the average HFD value and focuser position. Let is say HFD = 4.50px and the focuser position is 8000.
 2. Then start moving the focuser in the same direction of the last move you made while focusing. Use a small step 1 or 2 focuser steps at a time, and let it run for several exposures, evaluating the average HFD after each step. Repeat this until you see the HFD increased by 15-20% (in our case ~5.2px) then record the focuser position let us say 8007.
@@ -87,7 +87,7 @@ Now as we have an approximation of the CFZ we can set the **Final step** to CFZ/
 
 **NOTE:** This method sensitive to the seeing conditions. With better seeing you will get a better result.
 
-### CFZ and Final Step for Focusers Without a Ruler
+### Determining the CFZ and Final Step for Focusers With Ruler
 If your focuser has a ruler it is easier to determine the CFZ in steps.
 The procedure is as follows.
 1. Calculate the CFZ as described above. The calculated CFZ in the example was 68um.
