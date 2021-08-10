@@ -1,6 +1,6 @@
 # INDIGO Imager Agent - Autofocus Tunning Guide
 
-Revision: 06.08.2021 (draft)
+Revision: 10.08.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -17,20 +17,36 @@ In INDIGO Imager Agent auto-focus starts with a large step to approximate the fo
 
 ## Determining the Backlash
 If the backlash of your focuser is larger than 0.5 CFZ, it plays a critical role in the focus accuracy, so determining it is important.
+For better precision it is advised to repeat the procedure several times in both directions.
 
-The procedure is simple but a bit fiddly.
+If the average values for IN and OUT directions differ significantly you should set **Backlash (in)** and **Backlash (out)** using the average values. Otherwise you can set **Backlash (total)** with the average of all runs.
+
+We provide two methods of determining the Backlash. You can use the one you prefer.
+
+### Determining the Backlash Using Bachtinov Mask
+This procedure is simpler to perform but it requires a Bachtinov mask.
+1. Set the backlash value to 0 and start from a visibly defocused state.
+2. Place the Bachtinov mask on the telescope and determine the direction in which the focus is improving.
+3. Start moving the focuser in this direction with small steps, one move at a time, until you reach the perfect focus, be careful to avoid overshooting.
+4. Once the focus is reached, command the focuser to make a relatively large move (larger than the expected backlash) in the same direction, something like 200 or 300 steps will be enough in most cases.
+5. Command the focuser to move in the opposite direction with the same amount of steps. Check the focus. If the focus is perfect the system has no backlash and you are set, but usually there will be some amount of defocus. In that case record the final position. Let us say **8000**.
+6. Start moving the focuser manually with small steps, one move at a time, in the direction of the last move, until you reach the perfect focus, and again be careful to avoid over shooting. Then record the final position. Let us say **8016**.
+7. Subtract the two recorded positions and this is your backlash. In our case it is **8016 - 8000 = 16 steps**.
+
+### Determining the Backlash (no additional accessories required)
+This procedure is simple but a bit fiddly.
 1. First you need to set the backlash value to 0.
 2. Start "Manual" focusing mode and go somewhere near the focus (point 1 on the picture below).
 3. While looking at the HFD of the selected star, make small moves one at a time in one direction until you reach some point where the HFD is larger than the one of the focused star (point 2 on the picture). Try to move with 1 or 2 focuser steps.
-4. Record the focuser position at this point, let us say 8000 and let it settle for several exposures. The HFD should slightly oscillate around the same average value.
-5. Then move the focuser in the opposite direction with the same step and let it run for several exposures. If the average value of the HFD decreases your step is either too large or your backlash is negligible. If it does not change make another move in the same direction. Let it run a bit and if the average is still the same make one more step until HFD starts to decrease (point 3 on the picture). Then record this value again. Let us say 8016. Make several more steps to make sure HFD decreases steadily.
-6. Subtract the the 2 values and you will get the backlash. In our case it is 8016 - 8000 = 16 steps. For better precision it is advised to repeat the procedure several times in both directions and use the average value.
+4. Record the focuser position at this point, let us say **8000** and let it settle for several exposures. The HFD should slightly oscillate around the same average value.
+5. Then move the focuser in the opposite direction with the same step and let it run for several exposures. If the average value of the HFD decreases your step is either too large or your backlash is negligible. If it does not change make another move in the same direction. Let it run a bit and if the average is still the same make one more step until HFD starts to decrease (point 3 on the picture). Then record this value again. Let us say **8016**. Make several more steps to make sure HFD decreases steadily.
+6. Subtract the the two recorded values and you will get the backlash. In our case it is **8016 - 8000 = 16 steps**.
 
 ![](IMAGING_AF_TUNING/backlash1.png)
 
 **NOTE:** Good seeing is essential for better results.
 
-## Determining the System Critical Focus and the Focuser Final Step.
+## Determining the System Critical Focus and the Focuser Final Step
 
 The zone of critical focus is considered the zone around the perfect focus that can not be distinguished from the perfect focus.
 
