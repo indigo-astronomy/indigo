@@ -8,12 +8,12 @@ e-mail: *rumen@skyarchive.org*
 
 ## Autofocus Tuning Parameters
 In INDIGO Imager Agent auto-focus starts with a large step to approximate the focus expressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy.
-- **Initial step** - This is a big step it can be as large as 10 - 15 times the final step. With this step the focusing difference should be clearly visible. This value is in focuser steps.
+- **Initial step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the final step but it can be as large as 10 - 15 times the final step.
 - **Final Step** - The size of this step is critical for the focusing accuracy. It should be between 1 and 0.5 times the CFZ in focuser steps. Smaller than 0.5 may lead to hunting and failure to settle.
 - **Backlash (total)** - this value is the backlash of the focuser. It assumes symmetrical IN and OUT backlash. Most of the system have symmetrical backlash.
 - **Backlash (in)** and **Backlash (out)** - in the rare cases of an asymmetrical backlash those values should be set. Most users can safely ignore them.
 - **Stacking** - this value is in frames. It means how many exposures to take and evaluate before making the next focuser move. This value could be 1-3 for steady atmosphere but > 3 for a visible scintillation.
-- **Selection Radius** - this is the box size (in pixels) in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial (unfocused) stellar image should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate. A good value for most of the cases is 8-10 pixels.
+- **Selection Radius** - this is the box size (in pixels) in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial (unfocused) stellar image should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate. A good value for most of the cases is 8 - 10 pixels.
 
 ## Determining the Backlash
 If the backlash of your focuser is larger than 0.5 CFZ, it plays a critical role in the focus accuracy, so determining it is important.
