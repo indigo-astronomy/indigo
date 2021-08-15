@@ -107,6 +107,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_SITE_DATA_SOURCE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_LX200_CONFIGURATION_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_MOUNT_FOV_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_SET_HOST_TIME_PROPERTY);
 		double tmp_ha_tracking_limit = AGENT_HA_TRACKING_LIMIT_ITEM->number.value;
 		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
 		double tmp_local_time_limit = AGENT_LOCAL_TIME_LIMIT_ITEM->number.value;
