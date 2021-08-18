@@ -23,7 +23,7 @@
  \file indigo_aux_geoptikflat.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_geoptikflat"
 
 #include <stdlib.h>
@@ -75,24 +75,24 @@ static bool goflat_command(int handle, char *command, char *response, int resp_l
 static bool goflat_ping(int handle) {
 	char response[15];
 	if (!goflat_command(handle, ">POOO", response, sizeof(response))) return false;
-	if (!strcmp(response, "PiiOOO")) return true;
+	if (!strncmp(response, "*P", 2)) return true;
 	return false;
 }
 
 static bool goflat_light(int handle, bool on) {
 	char response[15];
 	if (on) {
-		if (goflat_command(handle, ">LOOO", response, sizeof(response)) && !strcmp(response, "LiiOOO")) return true;
+		if (goflat_command(handle, ">LOOO", response, sizeof(response)) && !strncmp(response, "*L", 2)) return true;
 	} else {
-		if (goflat_command(handle, ">DOOO", response, sizeof(response)) && !strcmp(response, "DiiOOO")) return true;
+		if (goflat_command(handle, ">DOOO", response, sizeof(response)) && !strncmp(response, "*D", 2)) return true;
 	}
 	return false;
 }
 
 static bool goflat_firmware(int handle, char *firmware) {
 	char response[15];
-	if (goflat_command(handle, ">VOOO", response, sizeof(response))) {
-		int parsed = sscanf(response, "Vii%s", firmware);
+	if (goflat_command(handle, ">VOOO", response, sizeof(response)) && !strncmp(response, "*V", 2)) {
+		int parsed = sscanf(response + 4, "%s", firmware);
 		if (parsed != 1) return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ">VOOO -> %s = '%s'", response, firmware);
 		return true;
@@ -102,10 +102,21 @@ static bool goflat_firmware(int handle, char *firmware) {
 
 static bool goflat_get_intensity(int handle, int *intensity) {
 	char response[15];
-	if (goflat_command(handle, ">JOOO", response, sizeof(response))) {
-		int parsed = sscanf(response, "Jii%d", intensity);
+	if (goflat_command(handle, ">JOOO", response, sizeof(response)) && !strncmp(response, "*J", 2)) {
+		int parsed = sscanf(response + 4, "%d", intensity);
 		if (parsed != 1) return false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ">JOOO -> %s = '%d'", response, *intensity);
+		return true;
+	}
+	return false;
+}
+
+static bool goflat_get_tension(int handle, int *tension) {
+	char response[15];
+	if (goflat_command(handle, ">TOOO", response, sizeof(response)) && !strncmp(response, "*T", 2)) {
+		int parsed = sscanf(response + 4, "%d", tension);
+		if (parsed != 1) return false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ">JOOO -> %s = '%d'", response, *tension);
 		return true;
 	}
 	return false;
@@ -116,7 +127,7 @@ static bool goflat_set_intensity(int handle, int intensity) {
 	char command[15];
 	if (intensity > 255 || intensity < 0) return false;
 	sprintf(command, ">B%03d", intensity);
-	if (goflat_command(handle, command, response, sizeof(response)) && !strncmp(response, "Bii", 3)) {
+	if (goflat_command(handle, command, response, sizeof(response)) && !strncmp(response, "*B", 2)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> %s = '%d'", command, response, intensity);
 		return true;
 	}
