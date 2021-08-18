@@ -19,8 +19,9 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_geoptikflat
 
-## Comments
+## Status: Stable
 
-## Status: Under development
+* Developed and tested with Geoptik flat field generator
 
-* Developed with Geoptik flat field generator
+## Notes:
+Make sure that the ON/OFF potentiometer on the flat field generator is turned ON and is turned to its MAX position for maximum brightness.
