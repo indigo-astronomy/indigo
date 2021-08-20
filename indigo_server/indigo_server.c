@@ -148,6 +148,7 @@
 #include "dome_beaver/indigo_dome_beaver.h"
 #include "focuser_astromechanics/indigo_focuser_astromechanics.h"
 #include "aux_astromechanics/indigo_aux_astromechanics.h"
+#include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -193,6 +194,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_fbc,
 	indigo_aux_flatmaster,
 	indigo_aux_flipflat,
+	indigo_aux_geoptikflat,
 	indigo_aux_joystick,
 	indigo_aux_mgbox,
 	indigo_aux_ppb,
