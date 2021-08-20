@@ -1580,7 +1580,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header->width = frame_width;
 		header->height = frame_height;
 	} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value) {
-		if (jpeg_data && jpeg_size < blobsize) {
+		if (jpeg_data && jpeg_size < blobsize + FITS_HEADER_SIZE) {
 			memcpy(data, jpeg_data, jpeg_size);
 			blobsize = jpeg_size;
 		} else {
@@ -1591,7 +1591,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		unsigned long tiff_size = 0;
 		raw_to_tiff(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &tiff_data, &tiff_size);
 		if (tiff_data) {
-			if (tiff_size < blobsize) {
+			if (tiff_size < blobsize + FITS_HEADER_SIZE) {
 				memcpy(data, tiff_data, tiff_size);
 				blobsize = tiff_size;
 			} else {
