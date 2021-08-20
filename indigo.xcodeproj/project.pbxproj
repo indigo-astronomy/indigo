@@ -71,6 +71,10 @@
 		5949DCC1265BA65200F83B7E /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34701DCB26E500588DB9 /* Cocoa.framework */; };
 		5949DCC2265BA65900F83B7E /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DBC34721DCB26F200588DB9 /* IOKit.framework */; };
 		5951E149235CDC0400D2DEF1 /* indigo_aux_usbdp.c in Sources */ = {isa = PBXBuildFile; fileRef = 5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */; };
+		59540AD526D00CCF000C2A1B /* indigo_aux_geoptikflat.h in Headers */ = {isa = PBXBuildFile; fileRef = 59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */; };
+		59540AD626D00CCF000C2A1B /* indigo_aux_geoptikflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */; };
+		59540AD726D00D3C000C2A1B /* indigo_aux_geoptikflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */; };
+		59540AD826D00D3C000C2A1B /* indigo_aux_geoptikflat.h in Headers */ = {isa = PBXBuildFile; fileRef = 59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */; };
 		595567C524B882DD00DF303D /* qhyccderr.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC423EEE637007E0BF8 /* qhyccderr.h */; };
 		595567C624B882DD00DF303D /* config.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC523EEE637007E0BF8 /* config.h */; };
 		595567C724B882DD00DF303D /* qhyccdstruct.h in Headers */ = {isa = PBXBuildFile; fileRef = 597E4FC623EEE637007E0BF8 /* qhyccdstruct.h */; };
@@ -1093,6 +1097,10 @@
 		5951E146235CDBD900D2DEF1 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		5951E148235CDBD900D2DEF1 /* indigo_aux_usbdp.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_usbdp.c; sourceTree = "<group>"; };
 		595355EC1F6B140300478BEC /* libftd2xx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libftd2xx.a; path = build/lib/libftd2xx.a; sourceTree = "<group>"; };
+		59540AD026D00CCF000C2A1B /* indigo_aux_geoptikflat_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_geoptikflat_main.c; sourceTree = "<group>"; };
+		59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_geoptikflat.h; sourceTree = "<group>"; };
+		59540AD226D00CCF000C2A1B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_geoptikflat.c; sourceTree = "<group>"; };
 		59550A4822F33FFC00C719C4 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		595567CB24B886FA00DF303D /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
 		595567D024BA00DA00DF303D /* indigo_mount_pmc8.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_pmc8.h; sourceTree = "<group>"; };
@@ -5398,6 +5406,17 @@
 			path = usbdp_simulator;
 			sourceTree = "<group>";
 		};
+		59540ACF26D00CCF000C2A1B /* aux_geoptikflat */ = {
+			isa = PBXGroup;
+			children = (
+				59540AD226D00CCF000C2A1B /* README.md */,
+				59540AD126D00CCF000C2A1B /* indigo_aux_geoptikflat.h */,
+				59540AD326D00CCF000C2A1B /* indigo_aux_geoptikflat.c */,
+				59540AD026D00CCF000C2A1B /* indigo_aux_geoptikflat_main.c */,
+			);
+			path = aux_geoptikflat;
+			sourceTree = "<group>";
+		};
 		595567CF24BA00DA00DF303D /* mount_pmc8 */ = {
 			isa = PBXGroup;
 			children = (
@@ -8567,6 +8586,7 @@
 				9D9691D423687AD800E0CACE /* aux_fbc */,
 				9DFA59832361D92600326A74 /* aux_flatmaster */,
 				9DFC619E238530FF003977C7 /* aux_flipflat */,
+				59540ACF26D00CCF000C2A1B /* aux_geoptikflat */,
 				59588CA1211CBEB100E9FC27 /* aux_joystick */,
 				59C565002464A13A00344C0C /* aux_mgbox */,
 				5996615022CF3E0F00330652 /* aux_ppb */,
@@ -12517,6 +12537,7 @@
 				598A1C28259BA94A00C0B34C /* indigo_usb_utils.h in Headers */,
 				598A1C29259BA94A00C0B34C /* indigo_novas.h in Headers */,
 				598A1C2A259BA94A00C0B34C /* indigo_agent_snoop.h in Headers */,
+				59540AD826D00D3C000C2A1B /* indigo_aux_geoptikflat.h in Headers */,
 				598A1C2B259BA94A00C0B34C /* indigo_agent_auxiliary.h in Headers */,
 				598A1C2C259BA94A00C0B34C /* indigo_wheel_xagyl.h in Headers */,
 				598A1C2D259BA94A00C0B34C /* DDHidKeyboard.h in Headers */,
@@ -12733,6 +12754,7 @@
 				595567C924B882DD00DF303D /* qhyccd.h in Headers */,
 				59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */,
 				9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */,
+				59540AD526D00CCF000C2A1B /* indigo_aux_geoptikflat.h in Headers */,
 				9D73E60B21FF37DB003CEC15 /* libuvc_internal.h in Headers */,
 				5910D9C52580284E0015D915 /* duktape.h in Headers */,
 				59A3218B21D52C6100EC0F4A /* EAF_focuser.h in Headers */,
@@ -13160,6 +13182,7 @@
 				598A1BB6259BA94A00C0B34C /* DDHidQueue.m in Sources */,
 				598A1BB7259BA94A00C0B34C /* indigo_mount_rainbow.c in Sources */,
 				598A1BB8259BA94A00C0B34C /* indigo_ccd_simulator_data.c in Sources */,
+				59540AD726D00D3C000C2A1B /* indigo_aux_geoptikflat.c in Sources */,
 				598A1BB9259BA94A00C0B34C /* indigo_guider_cgusbst4.c in Sources */,
 				598A1BBA259BA94A00C0B34C /* indigo_timer.c in Sources */,
 				598A1BBB259BA94A00C0B34C /* indigo_dome_azimuth.c in Sources */,
@@ -13395,6 +13418,7 @@
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				59D8BBC5260E624600B904EE /* alpaca_dome.c in Sources */,
 				9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */,
+				59540AD626D00CCF000C2A1B /* indigo_aux_geoptikflat.c in Sources */,
 				59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */,
 				59C499E81EFADFE000E750AA /* indigo_ica_ptp.m in Sources */,
 				599A63A71DE8BD1700ABC827 /* indigo_json.c in Sources */,
