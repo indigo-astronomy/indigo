@@ -222,6 +222,7 @@ typedef enum {
 	ptp_property_nikon_MovWindNoiceReduction = 0xD0AA,
 	ptp_property_nikon_LiveViewScreenDisplaySetting = 0xD0B2,
 	ptp_property_nikon_MonitorOffDelay = 0xD0B3,
+	ptp_property_nikon_ExposureIndexHi = 0xD0B4,
 	ptp_property_nikon_ISOSensitivity = 0xD0B5,
 	ptp_property_nikon_Bracketing = 0xD0C0,
 	ptp_property_nikon_AutoExposureBracketStep = 0xD0C1,
