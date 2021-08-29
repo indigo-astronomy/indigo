@@ -2,6 +2,34 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-158] - Sun Aug 29 2021
+### Overall:
+- indigo_raw_to_fits(): user provideds keyword can be added
+- indigo_raw_to_fits: the tool can add BAYERPAT, CCD-TEMP and EXPTIME keywords
+- TIFF/JPEG buffer size fixed
+- dome drivers: DOME_DIMENSION property made persistent
+- indigo docs: IMAGING_AF_TUNING - guidelines for auto focus tuning
+
+### New Drivers
+- indigo_aux_geoptikflat: Geoptik flat field generator driver
+
+### Driver fixes
+- indigo_agent_imager:
+	- fix backlash application if it is handled by the driver
+	- fix CCD_UPLOAD_MODE_PROPERTY and CCD_IMAGE_FORMAT_PROPERTY restoration in preview process
+
+- indigo_agent_guider:
+	- multi-star guiding now works with less than required stars
+	- change some messages
+
+- indigo_agent_mount: AGENT_SET_HOST_TIME_PROPERTY made persistent
+
+- indigo_ccd_atik:
+	- window heater support added
+
+- indigo_ccd_asi:
+	- RREADME.md updated
+
 ## [2.0-156] - Sun Jul 26 2021
 ### Overall:
 - j2k coordinates added to indigo_topo_planet()
