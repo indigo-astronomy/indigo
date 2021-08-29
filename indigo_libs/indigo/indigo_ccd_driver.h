@@ -28,6 +28,7 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
+#include <indigo/indigo_fits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -499,19 +500,6 @@ extern indigo_result indigo_ccd_change_property(indigo_device *device, indigo_cl
 /** Detach callback function.
  */
 extern indigo_result indigo_ccd_detach(indigo_device *device);
-
-typedef enum { INDIGO_FITS_NUMBER = 1, INDIGO_FITS_STRING, INDIGO_FITS_LOGICAL } indigo_fits_keyword_type;
-
-typedef struct {
-	indigo_fits_keyword_type type;
-	const char *name;
-	union {
-		double number;
-		const char *string;
-		bool logical;
-	};
-	const char *comment;
-} indigo_fits_keyword;
 
 /** Convert RAW data to JPEG
  */

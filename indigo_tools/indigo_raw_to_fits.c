@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_raw_utils.h>
+#include <indigo/indigo_fits.h>
 
 int save_file(char *file_name, char *data, int size) {
 #if defined(INDIGO_WINDOWS)
@@ -81,12 +81,18 @@ static void print_help(const char *name) {
 	printf("usage: %s [options] file1.raw [file2.raw ...]\n", name);
 	printf("output files will have '.fits' suffix.\n");
 	printf("options:\n"
-	       "       -h  | --help   : print this help\n"
-	       "       -q  | --quiet  : print errors and statistics\n"
+	       "       -e  | --exposure-time seconds   : add EXPTIME keyword to the header\n"
+	       "       -t  | --ccd-temperature degrees : add CCD-TEMP keyword to the header\n"
+	       "       -h  | --help                    : print this help\n"
+	       "       -q  | --quiet                   : print errors and statistics\n"
 	);
 }
 
 int main(int argc, char *argv[]) {
+	indigo_fits_keyword extra_keywords[5] = {0};
+	int keywords_count = 0;
+	double exptime, ccdtemp;
+
 	bool not_quiet = true;
 	if (argc < 2) {
 		print_help(argv[0]);
@@ -100,6 +106,28 @@ int main(int argc, char *argv[]) {
 			return 0;
 		} else if (!strcmp(argv[i], "-q") || !strcmp(argv[i], "--quiet")) {
 			not_quiet = false;
+		} else if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--exposure-time")) {
+			if (argc > i+1) {
+				i++;
+				arg_base++;
+				exptime = atof(argv[i]);
+			} else {
+				fprintf(stderr, "No exposure time specified\n");
+				return 1;
+			}
+			indigo_fits_keyword kwd = {INDIGO_FITS_NUMBER, "EXPTIME", .number = exptime, "exposure time [s]"};
+			extra_keywords[keywords_count++] = kwd;
+		} else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--ccd-temperture")) {
+			if (argc > i+1) {
+				i++;
+				arg_base++;
+				ccdtemp = atof(argv[i]);
+			} else {
+				fprintf(stderr, "No CCD temperture specified\n");
+				return 1;
+			}
+			indigo_fits_keyword kwd = {INDIGO_FITS_NUMBER, "CCD-TEMP", .number = ccdtemp, "CCD temperature [C]"};
+			extra_keywords[keywords_count++] = kwd;
 		} else if (argv[i] != "-") {
 			break;
 		}
@@ -134,7 +162,7 @@ int main(int argc, char *argv[]) {
 				k++;
 				continue;
 			}
-			res = indigo_raw_to_fists(in_data, &out_data, &size);
+			res = indigo_raw_to_fits(in_data, &out_data, &size, extra_keywords);
 			if (res != INDIGO_OK) {
 				fprintf(stderr, "Can not convert '%s' to FITS: %s\n", infile_name, strerror(errno));
 				if (in_data) free(in_data);
