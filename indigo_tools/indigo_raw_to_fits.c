@@ -53,7 +53,7 @@ int save_file(char *file_name, char *data, int size) {
 int open_file(const char *file_name, char **data, int *size) {
 	char msg[PATH_MAX];
 	int image_size = 0;
-	if (file_name == "") {
+	if (file_name[0] == '\0') {
 		errno = ENOENT;
 		return -1;
 	}
