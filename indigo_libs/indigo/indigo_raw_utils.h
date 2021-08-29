@@ -78,8 +78,6 @@ extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, cons
 extern double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
-extern indigo_result indigo_raw_to_fists(char *image, char **fits, int *size);
-
 #ifdef __cplusplus
 }
 #endif
