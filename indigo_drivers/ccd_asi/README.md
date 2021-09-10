@@ -33,5 +33,7 @@ Driver is developed and tested with:
 * ASI174 Mini
 * ASI290 Mini
 
-## Notes on white balance of the color cameras:
+## Notes
+
+### Notes on white balance of the color cameras:
 For planetary photography and sort exposures use "neutral" color balance specific to your camera (for example for ASI2600MC and ASI1600MC, WB_R=52, WB_B=95). With long exposures these settings will produce colored background (for ASI2600MC and ASI1600MC the background will be blue). This leads to complications with the calibration of the long exposure frames. Therefore for easier calibration of the deepsky images use WB_R=50 and WB_B=50, this will result in neutral gray background but the color balance should be corrected in the post processing (for ASI2600MC and ASI1600MC the blue channel should be boosted).

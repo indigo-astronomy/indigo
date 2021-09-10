@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -71,6 +71,12 @@
 #define ATIK_PRESETS_MED_ITEM_NAME 		"MED"
 #define ATIK_PRESETS_HIGH_ITEM_NAME 	"HIGH"
 
+#define ATIK_WINDOW_HEATER_PROPERTY    (PRIVATE_DATA->heater_property)
+#define ATIK_WINDOW_HEATER_POWER_ITEM (ATIK_WINDOW_HEATER_PROPERTY->items+0)
+
+#define ATIK_WINDOW_HEATER_PROPERTY_NAME   "ATIK_WINDOW_HEATER"
+#define ATIK_WINDOW_HEATER_POWER_ITEM_NAME "POWER"
+
 typedef struct {
 	ArtemisHandle handle;
 	int index;
@@ -81,6 +87,7 @@ typedef struct {
 	unsigned char *buffer;
 	bool can_check_temperature;
 	indigo_property *presets_property;
+	indigo_property *heater_property;
 } atik_private_data;
 
 static bool do_log = true;
@@ -209,6 +216,15 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
 					CCD_COOLER_POWER_ITEM->number.value = round(100.0 * (level - min_level) / (max_level - min_level));
 				}
+				// Take the window heater into account, if any
+				if (properties.cameraflags & ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_WINDOW_HEATER) {
+					int heaterPower;
+					ATIK_WINDOW_HEATER_PROPERTY->hidden = false;
+					ATIK_WINDOW_HEATER_PROPERTY->perm = INDIGO_RW_PERM;
+					ATIK_WINDOW_HEATER_PROPERTY->state = ArtemisGetWindowHeaterPower(PRIVATE_DATA->handle, &heaterPower) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					ATIK_WINDOW_HEATER_POWER_ITEM->number.value = heaterPower;
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Window heater initialized state %d, value %d", ATIK_WINDOW_HEATER_PROPERTY->state, heaterPower);
+				}
 				if (ArtemisHasCameraSpecificOption(PRIVATE_DATA->handle, 1)) {
 					ATIK_PRESETS_PROPERTY->hidden = false;
 					short value = 0;
@@ -267,6 +283,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_set_timer(device, 5, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			}
 			indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
+			indigo_define_property(device, ATIK_WINDOW_HEATER_PROPERTY, NULL);
 		}
 	} else {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -280,6 +297,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		if (--PRIVATE_DATA->device_count == 0) {
 			indigo_delete_property(device, ATIK_PRESETS_PROPERTY, NULL);
+			indigo_delete_property(device, ATIK_WINDOW_HEATER_PROPERTY, NULL);
 			ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
 			ArtemisDisconnect(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = NULL;
@@ -318,6 +336,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(ATIK_PRESETS_HIGH_ITEM, ATIK_PRESETS_HIGH_ITEM_NAME, "High", false);
 		indigo_init_switch_item(ATIK_PRESETS_MED_ITEM, ATIK_PRESETS_MED_ITEM_NAME, "Medium", false);
 		indigo_init_switch_item(ATIK_PRESETS_LOW_ITEM, ATIK_PRESETS_LOW_ITEM_NAME, "Low", false);
+		// Take window heater into account
+		ATIK_WINDOW_HEATER_PROPERTY = indigo_init_number_property(NULL, device->name, ATIK_WINDOW_HEATER_PROPERTY_NAME, CCD_MAIN_GROUP, "Window heater", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (ATIK_WINDOW_HEATER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		ATIK_WINDOW_HEATER_PROPERTY->hidden = true;
+		indigo_init_number_item(ATIK_WINDOW_HEATER_POWER_ITEM, ATIK_WINDOW_HEATER_POWER_ITEM_NAME, "Power", 0.0, 255.0, 1.0, 0.0);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
@@ -330,7 +354,9 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
 		if (indigo_property_match(ATIK_PRESETS_PROPERTY, property))
-		indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
+			indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
+		if (indigo_property_match(ATIK_WINDOW_HEATER_PROPERTY, property))
+			indigo_define_property(device, ATIK_WINDOW_HEATER_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }
@@ -487,6 +513,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(ATIK_WINDOW_HEATER_PROPERTY, property)) {
+		// CCD Window heater
+		indigo_property_copy_values(ATIK_WINDOW_HEATER_PROPERTY, property, false);
+		int heaterPower = (int)(ATIK_WINDOW_HEATER_POWER_ITEM->number.target + 0.5);
+		ATIK_WINDOW_HEATER_PROPERTY->state = ArtemisSetWindowHeaterPower(PRIVATE_DATA->handle, heaterPower) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE ;
+		if (ATIK_WINDOW_HEATER_PROPERTY->state != INDIGO_OK_STATE)
+			ArtemisGetWindowHeaterPower(PRIVATE_DATA->handle, &heaterPower);
+		ATIK_WINDOW_HEATER_POWER_ITEM->number.value = heaterPower;
+		indigo_update_property(device, ATIK_WINDOW_HEATER_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_w(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		double temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -516,6 +552,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	indigo_release_property(ATIK_PRESETS_PROPERTY);
+	indigo_release_property(ATIK_WINDOW_HEATER_PROPERTY);
 	return indigo_ccd_detach(device);
 }
 
