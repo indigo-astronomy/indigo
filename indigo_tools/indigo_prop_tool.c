@@ -939,7 +939,7 @@ int main(int argc, const char * argv[]) {
 	bool connected = false;
 	char error_message[INDIGO_VALUE_SIZE] = {0};
 	while (wait_connection--) {
-		if (connected = indigo_connection_status(server, error_message)) {
+		if (true == (connected = indigo_connection_status(server, error_message))) {
 			break;
 		} else {
 			indigo_usleep(10000);

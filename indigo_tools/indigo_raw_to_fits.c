@@ -30,7 +30,9 @@
 #include <sys/stat.h>
 #include <limits.h>
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_raw_utils.h>
+#include <indigo/indigo_fits.h>
+
+#define MAX_EXTRA_KEYWORDS 3
 
 int save_file(char *file_name, char *data, int size) {
 #if defined(INDIGO_WINDOWS)
@@ -53,7 +55,7 @@ int save_file(char *file_name, char *data, int size) {
 int open_file(const char *file_name, char **data, int *size) {
 	char msg[PATH_MAX];
 	int image_size = 0;
-	if (file_name == "") {
+	if (file_name[0] == '\0') {
 		errno = ENOENT;
 		return -1;
 	}
@@ -81,12 +83,19 @@ static void print_help(const char *name) {
 	printf("usage: %s [options] file1.raw [file2.raw ...]\n", name);
 	printf("output files will have '.fits' suffix.\n");
 	printf("options:\n"
-	       "       -h  | --help   : print this help\n"
-	       "       -q  | --quiet  : print errors and statistics\n"
+	       "       -e  | --exposure-time seconds  : add EXPTIME keyword with the given value to the header\n"
+	       "       -t  | --ccd-temperature degC   : add CCD-TEMP keyword with the given value to the header\n"
+	       "       -b  | --bayer-pattern pattern  : add BAYERPAT keyword (pattern = BGGR | GBRG | GRBG | RGGB)\n"
+	       "       -h  | --help                   : print this help\n"
+	       "       -q  | --quiet                  : print errors and statistics\n"
 	);
 }
 
 int main(int argc, char *argv[]) {
+	indigo_fits_keyword extra_keywords[MAX_EXTRA_KEYWORDS + 1] = {0};
+	int extra_keywords_count = 0;
+	double exptime, ccdtemp;
+
 	bool not_quiet = true;
 	if (argc < 2) {
 		print_help(argv[0]);
@@ -100,10 +109,51 @@ int main(int argc, char *argv[]) {
 			return 0;
 		} else if (!strcmp(argv[i], "-q") || !strcmp(argv[i], "--quiet")) {
 			not_quiet = false;
+		} else if (!strcmp(argv[i], "-e") || !strcmp(argv[i], "--exposure-time")) {
+			if (argc > i+1) {
+				i++;
+				arg_base++;
+				indigo_fits_keyword keyword = {INDIGO_FITS_NUMBER, "EXPTIME", .number = atof(argv[i]), "exposure time [s]"};
+				extra_keywords[extra_keywords_count++] = keyword;
+			} else {
+				fprintf(stderr, "No exposure time specified\n");
+				return 1;
+			}
+		} else if (!strcmp(argv[i], "-b") || !strcmp(argv[i], "--bayer-pattern")) {
+			if (argc > i+1) {
+				i++;
+				arg_base++;
+				if (!strcmp(argv[i], "BGGR") || !strcmp(argv[i], "GBRG") || !strcmp(argv[i], "GRBG") || !strcmp(argv[i], "RGGB")) {
+					indigo_fits_keyword keyword = {INDIGO_FITS_STRING, "BAYERPAT", .string = argv[i], "Bayer color pattern" };
+					extra_keywords[extra_keywords_count++] = keyword;
+				} else {
+					fprintf(stderr, "No valid Bayer pattern specidied\n");
+					return 1;
+				}
+			} else {
+				fprintf(stderr, "No Bayer pattern specidied\n");
+				return 1;
+			}
+
+		} else if (!strcmp(argv[i], "-t") || !strcmp(argv[i], "--ccd-temperture")) {
+			if (argc > i+1) {
+				i++;
+				arg_base++;
+				indigo_fits_keyword keyword = {INDIGO_FITS_NUMBER, "CCD-TEMP", .number = atof(argv[i]), "CCD temperature [C]"};
+				extra_keywords[extra_keywords_count++] = keyword;
+			} else {
+				fprintf(stderr, "No CCD temperture specified\n");
+				return 1;
+			}
 		} else if (argv[i] != "-") {
 			break;
 		}
 		arg_base++;
+
+		if (extra_keywords_count > MAX_EXTRA_KEYWORDS) {
+			fprintf(stderr, "Too many extra keywords\n");
+			return 1;
+		}
 	}
 
 	int succeeded = 0;
@@ -134,7 +184,7 @@ int main(int argc, char *argv[]) {
 				k++;
 				continue;
 			}
-			res = indigo_raw_to_fists(in_data, &out_data, &size);
+			res = indigo_raw_to_fits(in_data, &out_data, &size, extra_keywords);
 			if (res != INDIGO_OK) {
 				fprintf(stderr, "Can not convert '%s' to FITS: %s\n", infile_name, strerror(errno));
 				if (in_data) free(in_data);
