@@ -206,6 +206,7 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_nikon_RawBitMode: return "ADV_RawBitMode";
 		case ptp_property_nikon_RawCompression: return "ADV_RawCompression";
 		case ptp_property_nikon_CameraInclination: return "ADV_CameraInclination";
+		case ptp_property_nikon_ExposureIndexHi: return "ADV_ExposureIndexHi";
 	}
 	return ptp_property_nikon_code_label(code);
 }
@@ -287,6 +288,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_MeterOff: return "MeterOff_Nikon";
 		case ptp_property_nikon_SelfTimer: return "SelfTimer_Nikon";
 		case ptp_property_nikon_MonitorOff: return "MonitorOff_Nikon";
+		case ptp_property_nikon_ExposureIndexHi: return "ExposureIndexHi_Nikon";
 		case ptp_property_nikon_ISOSensitivity: return "ISOSensitivity_Nikon";
 		case ptp_property_nikon_ImgConfTime: return "ImgConfTime_Nikon";
 		case ptp_property_nikon_AutoOffTimers: return "AutoOffTimers_Nikon";
@@ -504,11 +506,11 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			return label;
 		}
 		case ptp_property_StillCaptureMode: {
-			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; }
+			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; case 33024: return "Quick release-mode selection"; }
 			break;
 		}
 		case ptp_property_FocusMeteringMode: {
-			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39/51 points"; case 0x8015: return "Expansion"; case 0x8017: return "Pinpoint"; case 0x8018: return "Wide area (S)"; case 0x8019: return "Wide area (L)"; }
+			switch (code) { case 1: return "Center-spot"; case 2: return "Multi-spot"; case 32784: return "Single Area"; case 32785: return "Auto area"; case 32786: return "3D tracking"; case 32787: return "21 points"; case 32788: return "39/51 points"; case 0x8015: return "Expansion"; case 0x8017: return "Pinpoint"; case 0x8018: return "Wide area (S)"; case 0x8019: return "Wide area (L)"; case 0x801c: return "Group-area AF (C1)"; case 0x801d: return "Group-area AF (C2)"; }
 			break;
 		}
 		case ptp_property_FlashMode: {
@@ -662,6 +664,11 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			}
 			break;
 		}
+		case ptp_property_nikon_ExposureIndexHi: {
+			// same as ptp_property_ExposureIndex
+			sprintf(label, "%lld", code);
+			return label;
+		}
 	}
 	return ptp_property_value_code_label(device, property, code);
 }
@@ -805,6 +812,7 @@ bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 			property->value.sw.values[1] = 1;
 			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_nikon_ISOSensitivity));
 			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureIndex));
+			ptp_refresh_property(device, ptp_property_supported(device, ptp_property_nikon_ExposureIndexHi));
 			return true;
 		}
 		case ptp_property_nikon_ImageCommentEnable:
