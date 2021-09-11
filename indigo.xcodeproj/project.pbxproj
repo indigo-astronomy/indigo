@@ -624,9 +624,7 @@
 		59F6BB42261CA65800DA9BE1 /* alpaca_switch.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F6BB40261CA65800DA9BE1 /* alpaca_switch.c */; };
 		59F7E5EA2457669D00EF273A /* indigo_aux_cloudwatcher.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F7E5E62457616400EF273A /* indigo_aux_cloudwatcher.c */; };
 		59F7E5ED245878C700EF273A /* indigo_token.h in Headers */ = {isa = PBXBuildFile; fileRef = 59F7E5EC245878C700EF273A /* indigo_token.h */; };
-		59F871BC26A87161007DF91C /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
 		59F871BD26A87162007DF91C /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
-		59F871BE26A8719C007DF91C /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
 		59F871BF26A871B6007DF91C /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
 		59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */; };
 		59FA0B2022FCACC700A15D19 /* indigo_ptp_canon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FA0B1E22FCACC600A15D19 /* indigo_ptp_canon.c */; };
@@ -4523,7 +4521,6 @@
 			files = (
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
-				59F871BE26A8719C007DF91C /* libgxccd.a in Frameworks */,
 				59A3219721D534EE00EC0F4A /* libASICamera2.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
 				598786462540C69E00CE8B48 /* libtiff.a in Frameworks */,
@@ -13291,7 +13288,6 @@
 				59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */,
 				59C3BB12255077E9000720B4 /* indigo_ptp_fuji.c in Sources */,
 				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
-				59F871BC26A87161007DF91C /* indigo_ccd_mi.c in Sources */,
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
 				59958E2F25CC833C00BEFA1B /* indigo_aux_skyalert.c in Sources */,
