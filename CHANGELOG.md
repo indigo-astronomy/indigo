@@ -2,6 +2,19 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-160] - Wed Sep 15 2021
+### Driver fixes
+- indigo_ccd_asi:
+	- updated SDK to 1.20
+		- adds support for ASI482 and ASI485
+		- fixes the problem that ASI2600 sometimes fails to obtain data
+		- fixes the problem of image tearing after ASI2600 switching resolution
+		- the ASI183 ROI function is rolled back to obtain a higher frame rate
+		- fixes an occasional failures to open the camera
+
+- indigo_ccd_atik:
+	- update SDK to SDK_2021_09_06
+
 ## [2.0-158] - Sun Aug 29 2021
 ### Overall:
 - indigo_raw_to_fits(): user provideds keyword can be added
