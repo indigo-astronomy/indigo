@@ -23,7 +23,7 @@
  \file indigo_aux_flipflat.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_aux_flipflat"
 
 #include <stdlib.h>
@@ -111,7 +111,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		}
 #endif
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyusb0");
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 #endif
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
@@ -347,7 +347,7 @@ indigo_result indigo_aux_flipflat(indigo_driver_action action, indigo_driver_inf
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static flipflat_private_data *private_data = NULL;
 	static indigo_device *aux = NULL;
-	
+
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
 		"Flip-Flat",
 		aux_attach,
@@ -356,12 +356,12 @@ indigo_result indigo_aux_flipflat(indigo_driver_action action, indigo_driver_inf
 		NULL,
 		aux_detach
 		);
-	
+
 	SET_DRIVER_INFO(info, "Optec Flip-Flat", __FUNCTION__, DRIVER_VERSION, false, last_action);
-	
+
 	if (action == last_action)
 		return INDIGO_OK;
-	
+
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -370,7 +370,7 @@ indigo_result indigo_aux_flipflat(indigo_driver_action action, indigo_driver_inf
 			aux->private_data = private_data;
 			indigo_attach_device(aux);
 			break;
-			
+
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(aux);
 			last_action = action;
@@ -384,10 +384,10 @@ indigo_result indigo_aux_flipflat(indigo_driver_action action, indigo_driver_inf
 				private_data = NULL;
 			}
 			break;
-			
+
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-	
+
 	return INDIGO_OK;
 }
