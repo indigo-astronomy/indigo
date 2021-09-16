@@ -65,7 +65,7 @@ typedef struct {
 
 static bool flipflat_command(int handle, char *command, char *response) {
 	int result = indigo_write(handle, command, strlen(command));
-	result |= indigo_write(handle, "\n", 1);
+	result |= indigo_write(handle, "\r", 1);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s (%s)", handle, command, result ? "OK" : strerror(errno));
 	if (result) {
 		*response = 0;
@@ -111,7 +111,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		}
 #endif
 #ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyflipflatFLAT");
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyusb0");
 #endif
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
