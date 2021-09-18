@@ -807,7 +807,7 @@ static bool autofocus(indigo_device *device) {
 		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) > 10 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value) {
 			if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
 				if (DEVICE_PRIVATE_DATA->restore_initial_position) {
-					indigo_send_message(device, "Failed - restoring initial position");
+					indigo_send_message(device, "Failed to reach focus, restoring initial position");
 					if (current_offset > 0) {
 						if (moving_out) {
 							if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) {
