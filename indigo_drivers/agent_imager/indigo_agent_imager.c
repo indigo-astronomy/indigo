@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x001C
+#define DRIVER_VERSION 0x001D
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -744,6 +744,7 @@ static bool autofocus(indigo_device *device) {
 	double last_quality = 0;
 	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	double steps_todo;
+	int current_offset = 0;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
 	if (DEVICE_PRIVATE_DATA->focuser_has_backlash) { /* the focuser driver has a backlash, so it will take care of it */
 		steps_todo = steps;
@@ -786,22 +787,48 @@ static bool autofocus(indigo_device *device) {
 		}
 		quality /= frame_count;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality = %g", quality);
-		if (quality >= last_quality) {
-			if (moving_out)
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving out %d steps", (int)steps);
-			else
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving in %d steps", (int)steps);
-			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps);
-		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value) {
-			moving_out = !moving_out;
+		if (quality >= last_quality && abs(current_offset) < 10 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value) {
 			if (moving_out) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving out %d steps to final position", (int)steps_todo);
-				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving out %d steps", (int)steps);
+				current_offset += steps;
 			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving in %d steps to final position", (int)steps_todo);
-				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving in %d steps", (int)steps);
+				current_offset -= steps;
 			}
-			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps_todo);
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps);
+		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) > 10 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value) {
+			if (AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
+				indigo_send_message(device, "Failed - restoring initial position");
+				if (current_offset > 0) {
+					if (moving_out) {
+						if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) {
+							current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value;
+						}
+						indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
+					}
+					indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, current_offset);
+				} else if (current_offset < 0) {
+					if (!moving_out) {
+						if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) {
+							current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_IN_ITEM->number.value;
+						}
+						indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
+					}
+					indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, -current_offset);
+				}
+			} else {
+				moving_out = !moving_out;
+				if (moving_out) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving out %d steps to final position", (int)steps_todo);
+					current_offset += steps_todo;
+					indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving in %d steps to final position", (int)steps_todo);
+					current_offset -= steps_todo;
+					indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
+				}
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps_todo);
+			}
 			repeat = false;
 		} else {
 			moving_out = !moving_out;
@@ -818,9 +845,11 @@ static bool autofocus(indigo_device *device) {
 			first_move = false;
 			if (moving_out) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving out %d steps", (int)steps_todo);
+				current_offset += steps_todo;
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving in %d steps", (int)steps_todo);
+				current_offset -= steps_todo;
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
 			}
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps_todo);
@@ -1083,19 +1112,28 @@ static void sequence_process(indigo_device *device) {
 			double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = DEVICE_PRIVATE_DATA->focus_exposure;
 			DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
-			indigo_send_message(device, "Autofocus started");
-			if (autofocus(device)) {
-				indigo_send_message(device, "Autofocus finished");
-			} else {
-				indigo_send_message(device, "Autofocus failed");
-				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
+			while (true) {
+				indigo_send_message(device, "Autofocus started");
+				if (autofocus(device)) {
+					indigo_send_message(device, "Autofocus finished");
+					break;
+				} else {
+					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						indigo_send_message(device, "Autofocus aborted");
+						break;
+					}
+					indigo_send_message(device, "Autofocus failed - restarting");
+					continue;
+				}
 			}
 			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = exposure;
 			indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 			DEVICE_PRIVATE_DATA->focus_exposure = 0;
+		}
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			break;
 		}
 		if (exposure_batch(device)) {
 			indigo_send_message(device, "Batch %d finished", batch_index);
