@@ -1156,7 +1156,6 @@ static void sequence_process(indigo_device *device) {
 			DEVICE_PRIVATE_DATA->restore_initial_position = true;
 			if (autofocus_repeat(device)) {
 				indigo_send_message(device, "Autofocus finished");
-				break;
 			} else {
 				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_send_message(device, "Autofocus aborted");
