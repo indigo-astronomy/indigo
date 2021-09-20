@@ -821,7 +821,7 @@ static bool autofocus(indigo_device *device) {
 		}
 		quality /= frame_count;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality = %g", quality);
-		if (quality >= last_quality && abs(current_offset) < 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value) {
+		if (quality >= last_quality && abs(current_offset) < limit) {
 			if (moving_out) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving out %d steps", (int)steps);
 				current_offset += steps;
@@ -832,7 +832,7 @@ static bool autofocus(indigo_device *device) {
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps);
 		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) > limit) {
 			if ((AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) ||
-			   (abs(current_offset) > 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
+			   (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
 				if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 					indigo_send_message(device, "Failed to reach focus, restoring initial position");
 					if (current_offset > 0) {
