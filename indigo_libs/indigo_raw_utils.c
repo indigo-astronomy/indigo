@@ -1137,6 +1137,42 @@ double indigo_stddev(double set[], const int count) {
 	return sqrt(sum / count);
 }
 
+double indigo_stddev_8(uint8_t set[], const int count) {
+	double x = 0, d, m, sum = 0;
+
+	if (count < 1) return 0;
+
+	for (int i = 0; i < count; i++) {
+		x += set[i];
+	}
+	m = x / count;
+
+	for (int i = 0; i < count; i++) {
+		d = set[i] - m;
+		sum += d * d;
+	}
+
+	return sqrt(sum / count);
+}
+
+double indigo_stddev_16(uint16_t set[], const int count) {
+	double x = 0, d, m, sum = 0;
+
+	if (count < 1) return 0;
+
+	for (int i = 0; i < count; i++) {
+		x += set[i];
+	}
+	m = x / count;
+
+	for (int i = 0; i < count; i++) {
+		d = set[i] - m;
+		sum += d * d;
+	}
+
+	return sqrt(sum / count);
+}
+
 double indigo_rmse(double set[], const int count) {
 	double sum = 0;
 
@@ -1147,6 +1183,37 @@ double indigo_rmse(double set[], const int count) {
 	}
 
 	return sqrt(sum / count);
+}
+
+double indigo_contrast(indigo_raw_type raw_type, const void *data, const int width, const int height) {
+	if (width <= 0 || height <=0 || data == NULL) return INDIGO_FAILED;
+
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8: {
+			return indigo_stddev_8((uint8_t*)data, width * height);
+		}
+		case INDIGO_RAW_MONO16: {
+			return indigo_stddev_16((uint16_t*)data, width * height);
+		}
+		case INDIGO_RAW_RGB24: {
+			return indigo_stddev_8((uint8_t*)data, width * height * 3);
+		}
+		case INDIGO_RAW_RGBA32: {
+			// 8 * 4
+			return 0;
+			break;
+		}
+		case INDIGO_RAW_ABGR32: {
+			// 8 * 4
+			return 0;
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			return indigo_stddev_16((uint16_t*)data, width * height * 3);
+		}
+		default:
+			return 0;
+	}
 }
 
 indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest) {
