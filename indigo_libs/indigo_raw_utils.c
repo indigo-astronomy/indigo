@@ -1173,6 +1173,44 @@ double indigo_stddev_16(uint16_t set[], const int count) {
 	return sqrt(sum / count);
 }
 
+double indigo_stddev_rgba32(uint8_t set[], const int count) {
+	double x = 0, d, m, sum = 0;
+
+	if (count < 1) return 0;
+	int values = count * 4;
+
+	for (int i = 0; i < values; i += 4) {
+		x += set[i] + set[i+1] + set[i+2];
+	}
+	m = x / (count * 3);
+
+	for (int i = 0; i < values; i += 4) {
+		d = (set[i] + set[i+1] + set[i+2]) / 3.0 - m;
+		sum += d * d;
+	}
+
+	return sqrt(sum / count);
+}
+
+double indigo_stddev_abgr32(uint8_t set[], const int count) {
+	double x = 0, d, m, sum = 0;
+
+	if (count < 1) return 0;
+	int values = count * 4;
+
+	for (int i = 0; i < values; i += 4) {
+		x += set[i+1] + set[i+2] + set[i+3];
+	}
+	m = x / (count * 3);
+
+	for (int i = 0; i < values; i += 4) {
+		d = (set[i+1] + set[i+2] + set[i+3]) / 3.0 - m;
+		sum += d * d;
+	}
+
+	return sqrt(sum / count);
+}
+
 double indigo_rmse(double set[], const int count) {
 	double sum = 0;
 
@@ -1190,26 +1228,22 @@ double indigo_contrast(indigo_raw_type raw_type, const void *data, const int wid
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
-			return indigo_stddev_8((uint8_t*)data, width * height);
+			return indigo_stddev_8((uint8_t*)data, width * height) / 255.0;
 		}
 		case INDIGO_RAW_MONO16: {
-			return indigo_stddev_16((uint16_t*)data, width * height);
+			return indigo_stddev_16((uint16_t*)data, width * height) / 65535.0;
 		}
 		case INDIGO_RAW_RGB24: {
-			return indigo_stddev_8((uint8_t*)data, width * height * 3);
+			return indigo_stddev_8((uint8_t*)data, width * height * 3) / 255.0;
 		}
 		case INDIGO_RAW_RGBA32: {
-			// 8 * 4
-			return 0;
-			break;
+			indigo_stddev_rgba32((uint8_t*)data, width * height) / 255.0;
 		}
 		case INDIGO_RAW_ABGR32: {
-			// 8 * 4
-			return 0;
-			break;
+			indigo_stddev_abgr32((uint8_t*)data, width * height) / 255.0;
 		}
 		case INDIGO_RAW_RGB48: {
-			return indigo_stddev_16((uint16_t*)data, width * height * 3);
+			return indigo_stddev_16((uint16_t*)data, width * height * 3) / 65535.0;
 		}
 		default:
 			return 0;
