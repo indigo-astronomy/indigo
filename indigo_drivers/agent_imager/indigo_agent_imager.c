@@ -965,7 +965,7 @@ static void autofocus_process(indigo_device *device) {
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 	indigo_send_message(device, "Focusing started");
 	select_subframe(device);
-	DEVICE_PRIVATE_DATA->restore_initial_position = AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM->sw.value;
+	DEVICE_PRIVATE_DATA->restore_initial_position = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value ? false : AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM->sw.value;
 	if (autofocus_repeat(device)) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Focusing finished");
