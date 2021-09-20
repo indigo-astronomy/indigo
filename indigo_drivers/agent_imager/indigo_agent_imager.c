@@ -177,6 +177,8 @@ typedef struct {
 	bool find_stars;
 	bool focuser_has_backlash;
 	bool restore_initial_position;
+	bool use_hfd_estimator;
+	bool use_rms_estimator;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -390,11 +392,10 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			indigo_send_message(device, "No RAW image received");
 			return INDIGO_ALERT_STATE;
 		}
-		if (AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value) {
+		if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 			AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height);
 			indigo_error("frame contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
-		}
-		if (AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) {
+		} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 			if (DEVICE_PRIVATE_DATA->find_stars || (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count == 1)) {
 				int star_count;
 				indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
@@ -768,6 +769,9 @@ static bool autofocus(indigo_device *device) {
 	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	double steps_todo;
 	int current_offset = 0;
+	DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
+	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
+	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator  ? 10 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
 	if (DEVICE_PRIVATE_DATA->focuser_has_backlash) { /* the focuser driver has a backlash, so it will take care of it */
 		steps_todo = steps;
@@ -798,13 +802,12 @@ static bool autofocus(indigo_device *device) {
 			if (capture_raw_frame(device) != INDIGO_OK_STATE)
 				return false;
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-			if (AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value) {
+			if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RMS contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
 				if (AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value == 0)
 					continue;
 				quality += AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
-			}
-			if (AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) {
+			} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak = %g, HFD = %g,  FWHM = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value);
 				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0)
 					continue;
@@ -827,9 +830,9 @@ static bool autofocus(indigo_device *device) {
 				current_offset -= steps;
 			}
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, steps);
-		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) > 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value) {
-			if ((AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) ||
-			   (abs(current_offset) > 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value && AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value)) {
+		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) > limit) {
+			if ((AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) ||
+			   (abs(current_offset) > 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
 				if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 					indigo_send_message(device, "Failed to reach focus, restoring initial position");
 					if (current_offset > 0) {
@@ -925,8 +928,7 @@ static bool autofocus(indigo_device *device) {
 	capture_raw_frame(device);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 		return false;
-	if ((AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) ||
-	   (abs(current_offset) > 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value && AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value)) {
+	if ((AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) || (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
 		return false;
 	} else {
 		return true;
@@ -1312,7 +1314,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY_NAME, "Agent", "Autofocus estimator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM_NAME, "HFD + Peak", true);
+		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM_NAME, "HFD + FWHM + Peak", true);
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM_NAME, "RMS contrast", false);
 		// -------------------------------------------------------------------------------- Dithering properties
 		AGENT_IMAGER_DITHERING_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_DITHERING_PROPERTY_NAME, "Agent", "Dithering settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
@@ -1411,6 +1413,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			indigo_init_text_item(AGENT_IMAGER_SEQUENCE_PROPERTY->items + i, name, label, "");
 		}
 		// --------------------------------------------------------------------------------
+		DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
+		DEVICE_PRIVATE_DATA->use_hfd_estimator = false;
 		CONNECTION_PROPERTY->hidden = true;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);
