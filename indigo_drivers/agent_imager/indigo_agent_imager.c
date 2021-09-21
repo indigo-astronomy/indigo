@@ -395,7 +395,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 
 	if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height);
-		indigo_error("frame contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
+		// indigo_error("frame contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
 			if (DEVICE_PRIVATE_DATA->find_stars || (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count == 1)) {
@@ -819,7 +819,7 @@ static bool autofocus(indigo_device *device) {
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
 			if (capture_raw_frame(device) != INDIGO_OK_STATE)
-				return false;
+				continue;
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RMS contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
