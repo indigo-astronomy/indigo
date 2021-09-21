@@ -467,7 +467,16 @@ static void preview_process(indigo_device *device) {
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 	DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
 	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
-	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value =
+	AGENT_IMAGER_STATS_DELAY_ITEM->number.value =
+	AGENT_IMAGER_STATS_FRAMES_ITEM->number.value =
+	AGENT_IMAGER_STATS_FRAME_ITEM->number.value =
+	AGENT_IMAGER_STATS_FWHM_ITEM->number.value =
+	AGENT_IMAGER_STATS_HFD_ITEM->number.value =
+	AGENT_IMAGER_STATS_PEAK_ITEM->number.value =
+	AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value =
+	AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value =
+	AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	while (capture_raw_frame(device) == INDIGO_OK_STATE)
@@ -764,10 +773,16 @@ static bool autofocus(indigo_device *device) {
 	char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_upload_mode_property, *device_steps_property, *agent_steps_property, *device_direction_property;
-	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = 0;
-	AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
-	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
-	AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = 0;
+	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value =
+	AGENT_IMAGER_STATS_DELAY_ITEM->number.value =
+	AGENT_IMAGER_STATS_FRAMES_ITEM->number.value =
+	AGENT_IMAGER_STATS_FRAME_ITEM->number.value =
+	AGENT_IMAGER_STATS_FWHM_ITEM->number.value =
+	AGENT_IMAGER_STATS_HFD_ITEM->number.value =
+	AGENT_IMAGER_STATS_PEAK_ITEM->number.value =
+	AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value =
+	AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value =
+	AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	double last_quality = 0;
 	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
