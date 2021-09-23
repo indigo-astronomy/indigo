@@ -815,6 +815,11 @@ static bool autofocus(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->property_removed = false;
 	bool repeat = true;
 	while (repeat) {
+		// just a temporary hack to allow changing the method wile running
+		// we can use these to skip use_hfd_estimator and use_rms_estimator to detect estimator change
+		// and skip one move just determine the correct direction fir the next move
+		DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
+		DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 		double quality = 0;
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
