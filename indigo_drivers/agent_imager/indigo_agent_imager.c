@@ -823,8 +823,13 @@ static bool autofocus(indigo_device *device) {
 		double quality = 0;
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
-			if (capture_raw_frame(device) != INDIGO_OK_STATE)
-				continue;
+			if (capture_raw_frame(device) != INDIGO_OK_STATE) {
+				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					return false;
+				} else {
+					continue;
+				}
+			}
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RMS contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
