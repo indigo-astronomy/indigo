@@ -942,7 +942,8 @@ static bool autofocus(indigo_device *device) {
 			indigo_usleep(200000);
 		}
 		if (state != INDIGO_OK_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become OK");
+			if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE)
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become OK");
 			return false;
 		}
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
