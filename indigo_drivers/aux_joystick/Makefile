@@ -51,8 +51,8 @@ status:
 
 ifeq ($(OS_DETECTED),Darwin)
 
-indigo_aux_joystick.o: indigo_aux_joystick.m
-	$(CC) $(MFLAGS) -Wno-shadow-ivar -c -o $@ $< -Iexternal/DDHidLib
+indigo_aux_joystick.o: indigo_aux_joystick.m indigo_aux_joystick.c
+	$(CC) $(MFLAGS) -Wno-shadow-ivar -c -o $@ indigo_aux_joystick.m -Iexternal/DDHidLib
 
 $(DRIVER_A): indigo_aux_joystick.o $(addsuffix .o, $(basename $(wildcard external/DDHidLib/*.m)))
 	$(AR) $(ARFLAGS) $@ $^

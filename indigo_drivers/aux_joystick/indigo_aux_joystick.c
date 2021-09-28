@@ -23,7 +23,7 @@
  \file indigo_aux_joystick.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_joystick"
 
 #include <stdlib.h>
@@ -433,8 +433,6 @@ static void event_axis(indigo_device *device, int axis, int value) {
 			}
 		}
 		PRIVATE_DATA->ra_slew_rate = abs(value);
-		MOUNT_MOTION_EAST_ITEM->sw.value = false;
-		MOUNT_MOTION_WEST_ITEM->sw.value = false;
     if (value < 0) {
 			indigo_item *item = JOYSTICK_OPTIONS_SWAP_RA_ITEM->sw.value ? MOUNT_MOTION_EAST_ITEM : MOUNT_MOTION_WEST_ITEM;
       if (!item->sw.value) {
@@ -457,8 +455,6 @@ static void event_axis(indigo_device *device, int axis, int value) {
         indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
       }
     }
-		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 	}
 }
 
@@ -567,63 +563,80 @@ static NSMutableArray *wrappers = nil;
 @implementation DDHidJoystickWrapper {
 	indigo_device *device;
 	DDHidJoystick *joystick;
+	dispatch_queue_global_t queue;
 }
 
 +(void)rescan {
-	dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 0.5 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
-		if (wrappers == nil) {
-			wrappers = [NSMutableArray array];
-		}
-		NSMutableArray *tmp = [NSMutableArray array];
-		for (DDHidJoystick *joystick in DDHidJoystick.allJoysticks) {
-			bool found = false;
-			for (DDHidJoystickWrapper *wrapper in wrappers) {
-				if (joystick.locationId == wrapper->joystick.locationId) {
-					[tmp addObject:wrapper];
-					[wrappers removeObject:wrapper];
-					found = true;
-					break;
-				}
-			}
-			if (!found) {
-				DDHidJoystickWrapper *wrapper = [[DDHidJoystickWrapper alloc] init];
-				
-				int axis_count = 0;
-				int pov_count = 0;
-				if (joystick.countOfSticks > 0) {
-					DDHidJoystickStick *stick = [joystick objectInSticksAtIndex:0];
-					if (stick.xAxisElement)
-						axis_count++;
-					if (stick.yAxisElement)
-						axis_count++;
-					axis_count += stick.countOfStickElements;
-					pov_count = stick.countOfPovElements;
-				}
-				
-				wrapper->device = allocate_device([joystick.productName cStringUsingEncoding:NSASCIIStringEncoding], joystick.locationId, joystick.numberOfButtons, axis_count, pov_count);
-				wrapper->joystick = joystick;
-				[joystick setDelegate:wrapper];
-				[joystick startListening];
-				[tmp addObject:wrapper];
-			}
-		}
+  NSLog(@"******* %@", dispatch_get_current_queue());
+	if (wrappers == nil) {
+		wrappers = [NSMutableArray array];
+	}
+	NSMutableArray *tmp = [NSMutableArray array];
+  __block NSArray *allJoysticks;
+  if ([NSThread isMainThread]) {
+    allJoysticks = DDHidJoystick.allJoysticks;
+  } else {
+    dispatch_sync(dispatch_get_main_queue(), ^{
+      allJoysticks = DDHidJoystick.allJoysticks;
+    });
+  }
+	for (DDHidJoystick *joystick in allJoysticks) {
+		bool found = false;
 		for (DDHidJoystickWrapper *wrapper in wrappers) {
-			release_device(wrapper->device);
+			if (joystick.locationId == wrapper->joystick.locationId) {
+				[tmp addObject:wrapper];
+				[wrappers removeObject:wrapper];
+				found = true;
+				break;
+			}
 		}
-		wrappers = tmp;
-	});
+		if (!found) {
+			DDHidJoystickWrapper *wrapper = [[DDHidJoystickWrapper alloc] init];
+			
+			int axis_count = 0;
+			int pov_count = 0;
+			if (joystick.countOfSticks > 0) {
+				DDHidJoystickStick *stick = [joystick objectInSticksAtIndex:0];
+				if (stick.xAxisElement)
+					axis_count++;
+				if (stick.yAxisElement)
+					axis_count++;
+				axis_count += stick.countOfStickElements;
+				pov_count = stick.countOfPovElements;
+			}
+			
+			wrapper->device = allocate_device([joystick.productName cStringUsingEncoding:NSASCIIStringEncoding], joystick.locationId, joystick.numberOfButtons, axis_count, pov_count);
+			wrapper->joystick = joystick;
+			wrapper->queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+			[joystick setDelegate:wrapper];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [joystick startListening];
+      });
+			[tmp addObject:wrapper];
+		}
+	}
+	for (DDHidJoystickWrapper *wrapper in wrappers) {
+    dispatch_async(wrapper->queue, ^{
+      release_device(wrapper->device);
+    });
+	}
+	wrappers = tmp;
 }
 
 +(void)shutdown {
 	for (DDHidJoystickWrapper *wrapper in wrappers) {
-		release_device(wrapper->device);
+    dispatch_async(wrapper->queue, ^{
+      release_device(wrapper->device);
+    });
 	}
 }
 
 +(void)startDevice:(indigo_device *)device {
 	for (DDHidJoystickWrapper *wrapper in wrappers) {
 		if (wrapper->device == device) {
-			[wrapper->joystick startListening];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [wrapper->joystick startListening];
+      });
 		}
 	}
 }
@@ -631,7 +644,9 @@ static NSMutableArray *wrappers = nil;
 +(void)stopDevice:(indigo_device *)device {
 	for (DDHidJoystickWrapper *wrapper in wrappers) {
 		if (wrapper->device == device) {
-			[wrapper->joystick stopListening];
+      dispatch_async(dispatch_get_main_queue(), ^{
+        [wrapper->joystick stopListening];
+      });
 		}
 	}
 }
@@ -648,35 +663,47 @@ static NSMutableArray *wrappers = nil;
 -(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick xChanged: (int) value {
 	indigo_device *device = self->device;
 	if (IS_CONNECTED)
-		event_axis(device, 0, value);
+    dispatch_async(queue, ^{
+      event_axis(device, 0, value);
+    });
 }
 
 -(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick yChanged: (int) value {
 	indigo_device *device = self->device;
 	if (IS_CONNECTED)
-		event_axis(device, 1, value);
+    dispatch_async(queue, ^{
+      event_axis(device, 1, value);
+    });
 }
 
 -(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick otherAxis: (unsigned) otherAxis valueChanged: (int) value {
 	indigo_device *device = self->device;
 	if (IS_CONNECTED)
-		event_axis(device, otherAxis + 2, value);
+    dispatch_async(queue, ^{
+      event_axis(device, otherAxis + 2, value);
+    });
 }
 
 -(void)ddhidJoystick: (DDHidJoystick *) joystick stick: (unsigned) stick povNumber: (unsigned) povNumber valueChanged: (int) value {
 	indigo_device *device = self->device;
 	if (IS_CONNECTED)
-		event_pov(device, povNumber, value);
+    dispatch_async(queue, ^{
+      event_pov(device, povNumber, value);
+    });
 }
 -(void)ddhidJoystick: (DDHidJoystick *) joystick buttonDown: (unsigned) buttonNumber {
 	indigo_device *device = self->device;
 	if (IS_CONNECTED)
-		event_button(device, buttonNumber, 1);
+    dispatch_async(queue, ^{
+      event_button(device, buttonNumber, 1);
+    });
 }
 -(void)ddhidJoystick: (DDHidJoystick *) joystick buttonUp: (unsigned) buttonNumber {
 	indigo_device *device = self->device;
 	if (IS_CONNECTED)
-		event_button(device, buttonNumber, 0);
+    dispatch_async(queue, ^{
+      event_button(device, buttonNumber, 0);
+    });
 }
 
 @end
@@ -818,11 +845,11 @@ static void close_joystick(indigo_device *device) {
 #endif
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+	indigo_usleep(500000);
 #ifdef INDIGO_MACOS
-	[DDHidJoystickWrapper rescan];
+  [DDHidJoystickWrapper rescan];
 #endif
 #ifdef INDIGO_LINUX
-	indigo_usleep(500000);
 	rescan();
 #endif
 	return 0;
