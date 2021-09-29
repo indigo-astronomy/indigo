@@ -75,6 +75,8 @@ typedef struct {
 	uint64_t focus_mode;
 	uint64_t shutter_speed;
 	bool is_dual_compression;
+	bool did_capture;
+	bool did_liveview;
 } sony_private_data;
 
 
