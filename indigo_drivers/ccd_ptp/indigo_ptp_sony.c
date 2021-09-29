@@ -849,6 +849,17 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_sony_exposure(indigo_device *device) {
+	if (PRIVATE_DATA->model.product == 0x0ccc && !SONY_PRIVATE_DATA->did_capture) {
+		// A7R4 needs 3s delay before first capture
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
+		for (int i = 0; i < 30; i++) {
+			if (PRIVATE_DATA->abort_capture)
+				return false;
+			indigo_usleep(100000);
+		}
+		SONY_PRIVATE_DATA->did_capture = true;
+		SONY_PRIVATE_DATA->did_liveview = false;
+	}
 	int16_t value = 2;
 	SONY_PRIVATE_DATA->focus_state = 1;
 	if (ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t))) {
@@ -920,6 +931,17 @@ bool ptp_sony_liveview(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size;
 	int retry_count = 0;
+	if (PRIVATE_DATA->model.product == 0x0ccc && !SONY_PRIVATE_DATA->did_liveview) {
+		// A7R4 needs 3s delay before first capture
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
+		for (int i = 0; i < 30; i++) {
+			if (PRIVATE_DATA->abort_capture)
+				return false;
+			indigo_usleep(100000);
+		}
+		SONY_PRIVATE_DATA->did_liveview = true;
+		SONY_PRIVATE_DATA->did_capture = false;
+	}
 	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 		if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, 0xffffc002, &buffer, &size)) {
 			uint8_t *start = (uint8_t *)buffer;
