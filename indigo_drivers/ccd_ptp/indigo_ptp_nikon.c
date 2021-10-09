@@ -1074,16 +1074,18 @@ bool ptp_nikon_exposure(indigo_device *device) {
 		}
 		result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_ExposureDelayMode, &value, sizeof(uint8_t));
 	}
-	if (ptp_operation_supported(device, ptp_operation_nikon_InitiateCaptureRecInMedia)) {
-		result = result && ptp_transaction_2_0(device, ptp_operation_nikon_InitiateCaptureRecInMedia, -1, 0);
-	} else {
-		result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
-	}
 	property = ptp_property_supported(device, ptp_property_ExposureTime);
-	if (property && property->value.sw.value == 0xffffffff) {
-		CCD_EXPOSURE_ITEM->number.value += DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0;
-		ptp_blob_exposure_timer(device);
-		result = result && ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
+	if (property && (property->value.sw.value != 0xffffffff || CCD_EXPOSURE_ITEM->number.value > 0)) { // if shutter time is BULB and exposure time is 0, just wait for external shutter exposure
+		if (ptp_operation_supported(device, ptp_operation_nikon_InitiateCaptureRecInMedia)) {
+			result = result && ptp_transaction_2_0(device, ptp_operation_nikon_InitiateCaptureRecInMedia, -1, 0);
+		} else {
+			result = result && ptp_transaction_2_0(device, ptp_operation_InitiateCapture, 0, 0);
+		}
+		if (property->value.sw.value == 0xffffffff) {
+			CCD_EXPOSURE_ITEM->number.value += DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value ? 2 : 0;
+			ptp_blob_exposure_timer(device);
+			result = result && ptp_transaction_2_0(device, ptp_operation_nikon_TerminateCapture, 0, 0);
+		}
 	}
 	if (result) {
 		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_PREVIEW_ENABLED_ITEM->sw.value && ptp_nikon_check_dual_compression(device)) {

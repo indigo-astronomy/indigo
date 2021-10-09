@@ -306,15 +306,15 @@ static void handle_streaming(indigo_device *device) {
 static void handle_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->message_mutex);
 	PRIVATE_DATA->abort_capture = false;
-	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+	CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+	CCD_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
+	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value)
 		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-	}
-	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
+	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value)
 		CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-	}
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+	indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	if (PRIVATE_DATA->exposure(device))
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
