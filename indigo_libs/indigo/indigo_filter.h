@@ -176,6 +176,8 @@ typedef struct {
 	bool running_process;
 	bool property_removed;
 	bool (*validate_related_agent)(indigo_device *device, indigo_property *info_property, int mask);
+	bool (*validate_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
+	bool (*validate_related_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
 } indigo_filter_context;
 
 /** Device attach callback function.

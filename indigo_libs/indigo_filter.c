@@ -486,10 +486,10 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 				for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 					if ((mask & interface_mask[i]) == interface_mask[i]) {
 						tmp = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
-						if (!tmp->hidden && !device_in_list(tmp, property))
+						if (!tmp->hidden && !device_in_list(tmp, property) && (FILTER_CLIENT_CONTEXT->validate_device == NULL || FILTER_CLIENT_CONTEXT->validate_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
 							add_to_list(device, tmp, property);
 						tmp = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i];
-						if (!tmp->hidden && !device_in_list(tmp, property))
+						if (!tmp->hidden && !device_in_list(tmp, property) && (FILTER_CLIENT_CONTEXT->validate_related_device == NULL || FILTER_CLIENT_CONTEXT->validate_related_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
 							add_to_list(device, tmp, property);
 					}
 				}
