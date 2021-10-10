@@ -165,6 +165,7 @@ typedef struct {
 	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
 	int focuser_position;
+	int saved_backlash;
 	indigo_star_detection stars[MAX_STAR_COUNT];
 	indigo_frame_digest reference;
 	double drift_x, drift_y;
@@ -787,6 +788,13 @@ static void streaming_batch_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+
+#define SET_BACKLASH(backlash) { \
+	if ((DEVICE_PRIVATE_DATA->focuser_has_backlash) && (AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM->number.value > 1)) { \
+		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, backlash); \
+	} \
+}
+
 static bool autofocus(indigo_device *device) {
 	char *ccd_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX];
 	char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
@@ -807,6 +815,7 @@ static bool autofocus(indigo_device *device) {
 	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	double steps_todo;
 	int current_offset = 0;
+	DEVICE_PRIVATE_DATA->saved_backlash = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 	DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
 	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator  ? 10 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
@@ -831,6 +840,8 @@ static bool autofocus(indigo_device *device) {
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, ccd_name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
+	SET_BACKLASH(0);
+
 	FILTER_DEVICE_CONTEXT->property_removed = false;
 	bool repeat = true;
 	while (repeat) {
@@ -844,6 +855,7 @@ static bool autofocus(indigo_device *device) {
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
 			if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 					return false;
 				} else {
 					continue;
@@ -951,10 +963,13 @@ static bool autofocus(indigo_device *device) {
 				indigo_usleep(200000);
 			continue;
 		}
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
+		}
 		if (state != INDIGO_BUSY_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
+			SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
 		}
 		while (!FILTER_DEVICE_CONTEXT->property_removed && (state = agent_steps_property->state) == INDIGO_BUSY_STATE) {
@@ -963,6 +978,7 @@ static bool autofocus(indigo_device *device) {
 		if (state != INDIGO_OK_STATE) {
 			if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE)
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become OK");
+			SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
 		}
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -970,16 +986,22 @@ static bool autofocus(indigo_device *device) {
 				indigo_usleep(200000);
 			continue;
 		}
-		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
+		}
 		last_quality = quality;
 	}
 	capture_raw_frame(device);
-	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
+	}
 	if ((AGENT_IMAGER_STATS_FWHM_ITEM->number.value > 1.8 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) || (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
+		SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
 	} else {
+		SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 		return true;
 	}
 }
