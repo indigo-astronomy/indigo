@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x001A
+#define DRIVER_VERSION 0x001B
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -755,15 +755,19 @@ static void mount_connect_callback(indigo_device *device) {
 						PRIVATE_DATA->protocol = 0x0205;
 						PRIVATE_DATA->no_park = false;
 					}
-					if (strncmp("171001", response, 6) <= 0 && (product == 70 || product == 120 || product == 121 || product == 122 || product == 45)) {
+					if (strncmp("190221", response, 6) <= 0 && (product == 60  || product == 61)) {
+						PRIVATE_DATA->protocol = 0x0205;
+						PRIVATE_DATA->no_park = false;
+					}
+					if (strncmp("171001", response, 6) <= 0 && (product == 45 || product == 70 || product == 71 || product == 120 || product == 121 || product == 122)) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
-					if (strncmp("201030", response, 6) <= 0 && (product == 26 || product == 28 || product == 70 || product == 120)) {
+					if (strncmp("201030", response, 6) <= 0 && (product == 26 || product == 28)) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
-					if (strncmp("210105", response, 6) <= 0 && (product == 43  || product == 44)) {
+					if (strncmp("210101", response, 6) <= 0 && (product == 27 || product == 29 || product == 40  || product == 41 || product == 43  || product == 44)) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
