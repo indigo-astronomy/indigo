@@ -892,6 +892,7 @@ static bool autofocus_overshoot(indigo_device *device) {
 			   (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
 				if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 					indigo_send_message(device, "Failed to reach focus, restoring initial position");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
 					if (current_offset > 0) {
 						if (moving_out) {
 							current_offset += DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
@@ -908,10 +909,13 @@ static bool autofocus_overshoot(indigo_device *device) {
 							indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
 						}
 						indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, -current_offset);
+					} else {
+						break;
 					}
 					current_offset = 0;
 				} else {
 					indigo_send_message(device, "Failed to reach focus");
+					break;
 				}
 			} else {
 				moving_out = !moving_out;
@@ -986,7 +990,7 @@ static bool autofocus_overshoot(indigo_device *device) {
 			SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
 		}
-		if (backlash_overshoot > 1 && moving_out) {
+		if (DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot > 0 && moving_out) {
 			double steps_todo = DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Overshot by %d steps, compensating", (int)steps_todo);
 			current_offset += steps_todo;
@@ -1035,6 +1039,8 @@ static bool autofocus_overshoot(indigo_device *device) {
 				}
 			}
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
+		} else if (moving_out) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No overshoot, compensation skipped");
 		}
 		last_quality = quality;
 	}
@@ -1146,6 +1152,7 @@ static bool autofocus_backlash(indigo_device *device) {
 			   (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
 				if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 					indigo_send_message(device, "Failed to reach focus, restoring initial position");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
 					if (current_offset > 0) {
 						if (moving_out) {
 							if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) {
@@ -1162,10 +1169,13 @@ static bool autofocus_backlash(indigo_device *device) {
 							indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 						}
 						indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, -current_offset);
+					} else {
+						break;
 					}
 					current_offset = 0;
 				} else {
 					indigo_send_message(device, "Failed to reach focus");
+					break;
 				}
 			} else {
 				moving_out = !moving_out;
