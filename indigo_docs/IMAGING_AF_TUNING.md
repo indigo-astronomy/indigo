@@ -1,10 +1,16 @@
 # INDIGO Imager Agent - Autofocus Tunning Guide
 
-Revision: 10.08.2021 (draft)
+Revision: 13.10.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
 e-mail: *rumen@skyarchive.org*
+
+## Autofocus Quality Estimators
+INDIGO Imager Agent can use two focus quality metrics called Focus Quality Estimators. Each of them has its positives and drawbacks.
+
+- **Peak/HFD** - This estimator uses the Peak value and the Half Flux Diameter (HFD) of the selected star to find the best focus. This is the default estimator. It uses a selection with a given radius (see **Selection Radius**) for the estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail.
+- **RMS contrast** - This estimator uses Root Mean Square contrast of the whole image to determine the best focus. This method works fine with highly defocused images. It can find a perfect focus form virtually any focuser position as long as the image has some features on it. As a downside of this method should be mentioned that saturated stars will fool it and it will not find the perfect focus. This can be addressed with shorter exposure time, lower gain, or just avoiding bright stars in the focusing frame (see **Selection Subframe**).
 
 ## Autofocus Tuning Parameters
 In INDIGO Imager Agent auto-focus starts with a large step to approximate the focus expressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy.
@@ -12,8 +18,12 @@ In INDIGO Imager Agent auto-focus starts with a large step to approximate the fo
 - **Final Step** - The size of this step is critical for the focusing accuracy. It should be between 1 and 0.5 times the CFZ in focuser steps. Smaller than 0.5 may lead to hunting and failure to settle.
 - **Backlash (total)** - this value is the backlash of the focuser. It assumes symmetrical IN and OUT backlash. Most of the system have symmetrical backlash.
 - **Backlash (in)** and **Backlash (out)** - in the rare cases of an asymmetrical backlash those values should be set. Most users can safely ignore them.
+- **Backlash overshoot factor** - Backlash overshooting is an autofocus technique to compensate for the backlash by overshooting the target position by a large amount and then moving the focuser back to the initially requested position. This method is much more forgiving than absolute backlash compensation and is recommended for focusers with large backlash or when the backlash value is approximate. The default value is 1 which enables the absolute backlash compensation and the **Backlash (total)** should be an accurately measured value. If the **Backlash overshoot factor** is larger than 1 the overshoot compensation algorithm is enabled and **Backlash (total)** is multiplied by **Backlash overshoot factor**. The resulting value should be larger than the real backlash to achieve backlash overcompensation because the rule for the overshooting to work is: *System backlash < Backlash (total) * Backlash overshoot factor*. Overshoot technique can be useful for the SCT users because it will make mirror flop less likely and for the rack and pinion focusers as it will avoid the outward slip due to the clearance between the interlocking teeth of gears. Overshooting will not work if the system backlash is asymmetric, because of that **Backlash (in)** and **Backlash (out)** values are ignored when overshooting is enabled. The value of *Backlash overshoot factor* can be easily determined by trial and error. However if the backlash is approximately known a value of 1.5 should be fine.
+
 - **Stacking** - this value is in frames. It means how many exposures to take and evaluate before making the next focuser move. This value could be 1-3 for steady atmosphere but > 3 for a visible scintillation.
-- **Selection Radius** - this is the box size (in pixels) in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial (unfocused) stellar image should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate. A good value for most of the cases is 8 - 10 pixels.
+- **Selection Radius** - this is the box size (in pixels) in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial (unfocused) stellar image should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate. A good value for most of the cases is 8 - 10 pixels. This Value is irrelevant for **RMS contrast** focus quality estimator.
+
+- **Selection Subframe** - This defines a region of interest (ROI) around the selected star to be used for focusing. It is specified as times the **Selection Radius**. The default value for **Selection Subframe** is 0 which means that the whole image is used. Value of 5 means that the ROI will be a square around the selected star with size *5 * Selection Subframe*. Please note that the ROI may not be centered around the selection as many cameras do not allow ROIs starting at any pixel position. This can be used to make the focusing faster with CCDs with slow read frame out or to avoid oversaturated stars with the **RMS contrast** focus quality estimator.
 
 ## Determining the Backlash
 If the backlash of your focuser is larger than 0.5 CFZ, it plays a critical role in the focus accuracy, so determining it is important.
