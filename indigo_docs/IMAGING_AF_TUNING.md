@@ -9,13 +9,13 @@ e-mail: *rumen@skyarchive.org*
 ## Autofocus Quality Estimators
 INDIGO Imager Agent can use two focus quality metrics called Focus Quality Estimators. Each of them has its positives and drawbacks.
 
-- **Peak/HFD** - This estimator uses the Peak value and the Half Flux Diameter (HFD) of the selected star to find the best focus. This is the default estimator. It uses a selection with a given radius (see **Selection Radius**) for the estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail.
-- **RMS contrast** - This estimator uses Root Mean Square contrast of the whole image to determine the best focus. This method works fine with highly defocused images. It can find a perfect focus form virtually any focuser position as long as the image has some features on it. As a downside of this method should be mentioned that saturated stars will fool it and it will not find the perfect focus. This can be avoided with shorter exposure time, lower gain, or just by avoiding bright stars in the focusing frame (see **Selection Subframe**).
+- **Peak/HFD** - This estimator uses the peak value of the selected star and its Half Flux Diameter (HFD) to determine the best focus. This is the default estimator. It uses a selection with a given radius (see **Selection Radius**) for the estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail.
+- **RMS contrast** - This estimator uses Root Mean Square (RMS) contrast of the whole image to determine the best focus. This method works fine with highly defocused images. It can find a perfect focus form virtually any focuser position as long as the image has some features on it. As a downside of this method should be mentioned that saturated stars will fool it and it will not find the perfect focus. This can be avoided with shorter exposure time, lower gain, or just by avoiding bright stars in the focusing frame (see **Selection Subframe**).
 
 ## Autofocus Tuning Parameters
 In INDIGO Imager Agent auto-focus starts with a large step to approximate the focus and progressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy.
 
-- **Initial step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the final step but it can be as large as 10 - 15 times the final step.
+- **Initial step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the final step but it can be as large as 10 - 15 times the final step. **Initial step** is also used as a safety limit. The focusing will fail if the focus is not reached within *30 * Initial step* steps from the initial focuser position for **RMS contrast** estimator and *10 * Initial step* steps for **Peak/HFD** estimator.
 
 - **Final Step** - The size of this step is critical for the focusing accuracy. It should be smaller than CFZ a good value would be around CFZ/2 in focuser steps. Much smaller values than CFZ/3 may lead to hunting and failure to settle.
 
