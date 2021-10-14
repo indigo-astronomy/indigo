@@ -138,6 +138,8 @@
 #define SEQUENCE_SIZE			16
 
 #define BUSY_TIMEOUT 5
+#define AF_MOVE_LIMIT_HFD 20
+#define AF_MOVE_LIMIT_RMS 40
 
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
@@ -819,7 +821,7 @@ static bool autofocus_overshoot(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->saved_backlash = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 	DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
 	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
-	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator  ? 10 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
+	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator ? AF_MOVE_LIMIT_HFD * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : AF_MOVE_LIMIT_RMS * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
 
 	bool moving_out = true, first_move = true;
@@ -1080,7 +1082,7 @@ static bool autofocus_backlash(indigo_device *device) {
 	int current_offset = 0;
 	DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
 	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
-	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator  ? 10 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : 30 * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
+	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator ? AF_MOVE_LIMIT_HFD * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : AF_MOVE_LIMIT_RMS * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
 	if (DEVICE_PRIVATE_DATA->focuser_has_backlash) { /* the focuser driver has a backlash, so it will take care of it */
 		steps_todo = steps;

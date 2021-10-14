@@ -15,7 +15,7 @@ INDIGO Imager Agent can use two focus quality metrics called Focus Quality Estim
 ## Autofocus Tuning Parameters
 In INDIGO Imager Agent auto-focus starts with a large step to approximate the focus and progressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy.
 
-- **Initial step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the final step but it can be as large as 10 - 15 times the final step. **Initial step** is also used as a safety limit. The focusing will fail if the focus is not reached within *30 * Initial step* steps from the initial focuser position for **RMS contrast** estimator and *10 * Initial step* steps for **Peak/HFD** estimator.
+- **Initial step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the final step but it can be as large as 10 - 15 times the final step. **Initial step** is also used as a safety limit. The focusing will fail if the focus is not reached within *40 * Initial step* steps from the initial focuser position for **RMS contrast** estimator and *20 * Initial step* steps for **Peak/HFD** estimator.
 
 - **Final Step** - The size of this step is critical for the focusing accuracy. It should be smaller than CFZ a good value would be around CFZ/2 in focuser steps. Much smaller values than CFZ/3 may lead to hunting and failure to settle.
 
