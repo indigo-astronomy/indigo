@@ -63,10 +63,10 @@ typedef struct {
 
 
 extern double indigo_stddev(double set[], const int count);
-extern double indigo_stddev_8(uint8_t set[], const int count);
-extern double indigo_stddev_16(uint16_t set[], const int count);
-extern double indigo_stddev_rgba32(uint8_t set[], const int count);
-extern double indigo_stddev_abgr32(uint8_t set[], const int count);
+extern double indigo_stddev_8(uint8_t set[], const int count, bool *saturated);
+extern double indigo_stddev_16(uint16_t set[], const int count, bool *saturated);
+extern double indigo_stddev_rgba32(uint8_t set[], const int count, bool *saturated);
+extern double indigo_stddev_abgr32(uint8_t set[], const int count, bool *saturated);
 extern double indigo_rmse(double set[], const int count);
 
 extern indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found);
@@ -82,7 +82,7 @@ extern indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, cons
 extern double indigo_guider_reponse(double p_gain, double i_gain, double guide_cycle_time, double drift, double avg_drift);
 extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
-extern double indigo_contrast(indigo_raw_type raw_type, const void *data, const int width, const int height);
+extern double indigo_contrast(indigo_raw_type raw_type, const void *data, const int width, const int height, bool *saturated);
 
 #ifdef __cplusplus
 }

@@ -1137,17 +1137,26 @@ double indigo_stddev(double set[], const int count) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_8(uint8_t set[], const int count) {
+double indigo_stddev_8(uint8_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
+	if (saturated) *saturated = false;
 
 	for (int i = 0; i < count; i++) {
 		x += set[i];
 	}
 	m = x / count;
 
+	const double threshold = (247 - m) * 0.3 + m;
 	for (int i = 0; i < count; i++) {
+		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
+		if (i > 0 && set[i] > 247 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+			if (saturated) {
+				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
+				*saturated = true;
+			}
+		}
 		d = set[i] - m;
 		sum += d * d;
 	}
@@ -1155,17 +1164,26 @@ double indigo_stddev_8(uint8_t set[], const int count) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_16(uint16_t set[], const int count) {
+double indigo_stddev_16(uint16_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
+	if (saturated) *saturated = false;
 
 	for (int i = 0; i < count; i++) {
 		x += set[i];
 	}
 	m = x / count;
 
+	const double threshold = (65407 - m) * 0.3 + m;
 	for (int i = 0; i < count; i++) {
+		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
+		if (i > 0 && set[i] > 65407 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+			if (saturated) {
+				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
+				*saturated = true;
+			}
+		}
 		d = set[i] - m;
 		sum += d * d;
 	}
@@ -1173,10 +1191,11 @@ double indigo_stddev_16(uint16_t set[], const int count) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_rgba32(uint8_t set[], const int count) {
+double indigo_stddev_rgba32(uint8_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
+	if (saturated) *saturated = false;
 	int values = count * 4;
 
 	for (int i = 0; i < values; i += 4) {
@@ -1184,7 +1203,15 @@ double indigo_stddev_rgba32(uint8_t set[], const int count) {
 	}
 	m = x / (count * 3);
 
+	const double threshold = (247 - m) * 0.3 + m;
 	for (int i = 0; i < values; i += 4) {
+		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
+		if (i > 0 && set[i] > 247 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+			if (saturated) {
+				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
+				*saturated = true;
+			}
+		}
 		d = (set[i] + set[i+1] + set[i+2]) / 3.0 - m;
 		sum += d * d;
 	}
@@ -1192,10 +1219,11 @@ double indigo_stddev_rgba32(uint8_t set[], const int count) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_abgr32(uint8_t set[], const int count) {
+double indigo_stddev_abgr32(uint8_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
+	if (saturated) *saturated = false;
 	int values = count * 4;
 
 	for (int i = 0; i < values; i += 4) {
@@ -1203,7 +1231,15 @@ double indigo_stddev_abgr32(uint8_t set[], const int count) {
 	}
 	m = x / (count * 3);
 
+	const double threshold = (247 - m) * 0.3 + m;
 	for (int i = 0; i < values; i += 4) {
+		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
+		if (i > 0 && set[i + 1] > 247 && median(set[i], set[i + 1], set[i + 2]) > threshold) {
+			if (saturated) {
+				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
+				*saturated = true;
+			}
+		}
 		d = (set[i+1] + set[i+2] + set[i+3]) / 3.0 - m;
 		sum += d * d;
 	}
@@ -1223,27 +1259,27 @@ double indigo_rmse(double set[], const int count) {
 	return sqrt(sum / count);
 }
 
-double indigo_contrast(indigo_raw_type raw_type, const void *data, const int width, const int height) {
+double indigo_contrast(indigo_raw_type raw_type, const void *data, const int width, const int height, bool *saturated) {
 	if (width <= 0 || height <=0 || data == NULL) return INDIGO_FAILED;
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
-			return indigo_stddev_8((uint8_t*)data, width * height) / 255.0;
+			return indigo_stddev_8((uint8_t*)data, width * height, saturated) / 255.0;
 		}
 		case INDIGO_RAW_MONO16: {
-			return indigo_stddev_16((uint16_t*)data, width * height) / 65535.0;
+			return indigo_stddev_16((uint16_t*)data, width * height, saturated) / 65535.0;
 		}
 		case INDIGO_RAW_RGB24: {
-			return indigo_stddev_8((uint8_t*)data, width * height * 3) / 255.0;
+			return indigo_stddev_8((uint8_t*)data, width * height * 3, saturated) / 255.0;
 		}
 		case INDIGO_RAW_RGBA32: {
-			indigo_stddev_rgba32((uint8_t*)data, width * height) / 255.0;
+			indigo_stddev_rgba32((uint8_t*)data, width * height, saturated) / 255.0;
 		}
 		case INDIGO_RAW_ABGR32: {
-			indigo_stddev_abgr32((uint8_t*)data, width * height) / 255.0;
+			indigo_stddev_abgr32((uint8_t*)data, width * height, saturated) / 255.0;
 		}
 		case INDIGO_RAW_RGB48: {
-			return indigo_stddev_16((uint16_t*)data, width * height * 3) / 65535.0;
+			return indigo_stddev_16((uint16_t*)data, width * height * 3, saturated) / 65535.0;
 		}
 		default:
 			return 0;
