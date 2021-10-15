@@ -2,6 +2,46 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-162] - Fri Oct 15 2021
+### Overall
+- indigo_filter: device and related device validation callback added
+- indigo_docs: updated IMAGING_AF_TUNING.md
+- indigo_framework: add indigo_contrast() call to calculate Root Mean Square (RMS) contrast of the image
+
+### Driver fixes
+- indigo_agent_imager:
+	- add new backlash clearing strategy "Backlash overshoot"
+	- add new autofocus estimator "RMS contrast"
+	- remove FWHM from original focus quality estimator - tests show it does not work well.
+	- user can select autofocus estimator: "Peak/HFD" or "RMS contrast"
+	- sequencer doesn't fail if autofocus fails, autofocus restores initial position if it fails
+	- AGENT_IMAGER_FOCUS_FAILURE property added with the option to return to starting position (Peak/HFD estimator only)
+	- add possibility to retry focus on failure (user configurable)
+	- focusing statistics are cleared on focus start
+	- better autofocus error handling
+	- manual focusing fixed
+	- fix ABORT_PROCESS ending in endless loop with message 'Failed to evaluate quality'
+	- the error 'FOCUSER_STEPS_PROPERTY didn't become OK' is not shown if process is aborted or no move us performed.
+	- external shutter support added
+	- Changed AF max move limits to:
+		- 20 * Initial step for Peak/HFD estimator
+		- 40 * Initial step for RMS contrast estimator
+
+- indigo_aux_flipflat:
+	- command delimiters fixed
+	- fix default linux serial port name
+
+- indigo_aux_joystick:
+	- macOS deadlocks fixed
+
+- indigo_ccd_ptp:
+	- fix A7R4 capture issues
+	- external shutter support added for Nikon
+
+- indigo_mount_ioptron:
+	- some more protocol 3.1 firmware versions added
+	- more Fuji models added
+
 ## [2.0-160] - Wed Sep 15 2021
 ### Driver fixes
 - indigo_ccd_asi:
