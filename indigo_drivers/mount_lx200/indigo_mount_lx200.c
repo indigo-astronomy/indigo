@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -1077,7 +1077,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			// :SCMM/DD/YY# returns two delimiters response:
 			// "1Updating Planetary Data#                                #"
 			// readout progress part
-			if (!meade_command_progress(device, command, response, sizeof(response), 0) || *response != '1') {
+			bool result;
+			if (MOUNT_TYPE_ON_STEP_ITEM->sw.value)
+				result = meade_command(device, command, response, 1, 0);
+			else
+				result = meade_command_progress(device, command, response, sizeof(response), 0);
+			if (!result || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				if (PRIVATE_DATA->use_dst_commands) {
@@ -1117,7 +1122,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			// :SCMM/DD/YY# returns two delimiters response:
 			// "1Updating Planetary Data#                                #"
 			// readout progress part
-			if (!meade_command_progress(device, command, response, sizeof(response), 0) || *response != '1') {
+			bool result;
+			if (MOUNT_TYPE_ON_STEP_ITEM->sw.value)
+				result = meade_command(device, command, response, 1, 0);
+			else
+				result = meade_command_progress(device, command, response, sizeof(response), 0);
+			if (!result || *response != '1') {
 				MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
 				if (PRIVATE_DATA->use_dst_commands) {

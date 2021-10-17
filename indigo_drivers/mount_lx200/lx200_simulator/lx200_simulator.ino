@@ -70,7 +70,7 @@ bool is_meade = true;
 bool is_10micron = false;
 bool is_gemini = false;
 bool is_avalon = false;
-bool is_onestep = false;
+bool is_onstep = false;
 
 int date_day = 1;
 int date_month = 1;
@@ -197,7 +197,7 @@ void loop() {
           Serial.print("Losmandy Gemini#");
         else if (is_avalon)
 					Serial.print("Avalon#");
-				else if (is_onestep)
+				else if (is_onstep)
 					Serial.print("On-Step#");
       } else if (!strcmp(buffer, "GVF")) {
 				Serial.print("ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
@@ -211,7 +211,10 @@ void loop() {
 				date_day = atoi(buffer + 5);
 				date_month = atoi(buffer + 2);
 				date_year = 2000 + atoi(buffer + 8);
-				Serial.print("1Updating planetary data#                        #");
+        if (is_onstep)
+          Serial.print("1");
+        else
+  				Serial.print("1Updating planetary data#                        #");
       } else if (!strcmp(buffer, "GC")) {
         sprintf(buffer, "%02d/%02d/%02d#", date_month, date_day, date_year % 100);
         Serial.print(buffer);
