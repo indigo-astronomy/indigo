@@ -66,7 +66,7 @@ indigo_result indigo_focuser_attach(indigo_device *device, const char* driver_na
 			FOCUSER_STEPS_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Relative move", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (FOCUSER_STEPS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps/ms)", 0, 65535, 1, 0);
+			indigo_init_number_item(FOCUSER_STEPS_ITEM, FOCUSER_STEPS_ITEM_NAME, "Relative move (steps)", 0, 65535, 1, 0);
 			// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 			FOCUSER_ON_POSITION_SET_PROPERTY = indigo_init_switch_property(NULL, device->name,FOCUSER_ON_POSITION_SET_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "On position set", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (FOCUSER_ON_POSITION_SET_PROPERTY == NULL)
