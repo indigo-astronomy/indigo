@@ -25,6 +25,7 @@
 
 #define DRIVER_VERSION 0x0012
 #define DRIVER_NAME	"indigo_ccd_simulator"
+//#define ENABLE_BACKLASH_PROPERTY
 
 #include <stdlib.h>
 #include <string.h>
@@ -1337,7 +1338,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+#ifdef ENABLE_BACKLASH_PROPERTY
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+#endif
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return focuser_enumerate_properties(device, NULL, NULL);
