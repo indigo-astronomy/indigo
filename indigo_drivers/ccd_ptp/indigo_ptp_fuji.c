@@ -376,6 +376,8 @@ static void ptp_fuji_get_event(indigo_device *device) {
 					}
 				}
 			}
+		} else if (size == 8) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x %02x %02x %02x %02x %02x", ((char *)buffer)[0], ((char *)buffer)[1], ((char *)buffer)[2], ((char *)buffer)[3], ((char *)buffer)[4], ((char *)buffer)[5], ((char *)buffer)[6], ((char *)buffer)[7]);
 		}
 	}
 	if (buffer)
