@@ -1190,10 +1190,35 @@ static void mount_connect_callback(indigo_device *device) {
 }
 
 static void mount_park_set_callback(indigo_device *device) {
-	char response[128];
+	char command[128], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (ieq_command(device, ":SZP#", response, 1) && *response == '1') {
-		MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
+	if (PRIVATE_DATA->no_park) {
+		if (ieq_command(device, ":SZP#", response, 1) && *response == '1') {
+			MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else if (PRIVATE_DATA->protocol == 0x0205 || PRIVATE_DATA->protocol == 0x0300) {
+		if (ieq_command(device, ":GAC#", response, sizeof(response)) && *response == '+') {
+			char alt[9], az[10];
+			strncpy(alt, response + 1, 8);
+			alt[8] = 0;
+			strncpy(az, response + 9, 9);
+			az[9] = 0;
+			sprintf(command, "SPH%s#", alt);
+			if (ieq_command(device, command, response, 1) && *response == '1') {
+				sprintf(command, "SPA%s#", az);
+				if (ieq_command(device, command, response, 1) && *response == '1') {
+					MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+			} else {
+				MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else {
+			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	} else {
 		MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
