@@ -332,6 +332,8 @@ static void ptp_fuji_get_event(indigo_device *device) {
 	// check event?
 	if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, ptp_property_fuji_GetEvent, &buffer, &size)) {
 		if (size == 8 && (
+				// X-T2
+				memcmp(buffer, "\x01\x00\x0e\xd2\x12\x00\x00\x00", 8) == 0 ||
 		    // X-T3, X-T4
 		    memcmp(buffer, "\x01\x00\x0e\xd2\x1f\x00\x00\x00", 8) == 0 ||
 		    // GFX 50S
@@ -377,7 +379,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 				}
 			}
 		} else if (size == 8) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%02x %02x %02x %02x %02x %02x %02x %02x", ((char *)buffer)[0], ((char *)buffer)[1], ((char *)buffer)[2], ((char *)buffer)[3], ((char *)buffer)[4], ((char *)buffer)[5], ((char *)buffer)[6], ((char *)buffer)[7]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "unknown signature: %02x %02x %02x %02x %02x %02x %02x %02x", ((char *)buffer)[0], ((char *)buffer)[1], ((char *)buffer)[2], ((char *)buffer)[3], ((char *)buffer)[4], ((char *)buffer)[5], ((char *)buffer)[6], ((char *)buffer)[7]);
 		}
 	}
 	if (buffer)
