@@ -1199,6 +1199,7 @@ static void mount_park_set_callback(indigo_device *device) {
 			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (PRIVATE_DATA->protocol == 0x0205 || PRIVATE_DATA->protocol == 0x0300) {
+		ieq_command(device, ":GPC#", response, sizeof(response));
 		if (ieq_command(device, ":GAC#", response, sizeof(response)) && *response == '+') {
 			char alt[9], az[10];
 			strncpy(alt, response + 1, 8);
