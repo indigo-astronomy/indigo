@@ -1206,9 +1206,9 @@ static void mount_park_set_callback(indigo_device *device) {
 			alt[8] = 0;
 			strncpy(az, response + 9, 9);
 			az[9] = 0;
-			sprintf(command, "SPH%s#", alt);
+			sprintf(command, ":SPH%s#", alt);
 			if (ieq_command(device, command, response, 1) && *response == '1') {
-				sprintf(command, "SPA%s#", az);
+				sprintf(command, ":SPA%s#", az);
 				if (ieq_command(device, command, response, 1) && *response == '1') {
 					MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
