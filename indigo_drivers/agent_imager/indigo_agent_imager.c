@@ -323,7 +323,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_exposure_property, *agent_exposure_property, *device_aux_1_exposure_property, *agent_aux_1_exposure_property, *device_format_property;
 	DEVICE_PRIVATE_DATA->use_aux_1 = false;
-	DEVICE_PRIVATE_DATA->last_image = NULL;
+	//DEVICE_PRIVATE_DATA->last_image = NULL;
 	if (indigo_filter_cached_property(device, INDIGO_FILTER_AUX_1_INDEX, CCD_EXPOSURE_PROPERTY_NAME, &device_aux_1_exposure_property, &agent_aux_1_exposure_property)) {
 		DEVICE_PRIVATE_DATA->use_aux_1 = true;
 	}
