@@ -1454,7 +1454,12 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	else
 		snprintf(buf, 128, format, (int)d, (int)m, s);
 	if (value < 0) {
-		snprintf(string, 128, "-%s", buf);
+		if (buf[0] == '+') {
+			buf[0] = '-';
+			snprintf(string, 128, "%s", buf);
+		} else {
+			snprintf(string, 128, "-%s", buf);
+		}
 	} else {
 		snprintf(string, 128, "%s", buf);
 	}
