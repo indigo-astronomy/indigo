@@ -85,7 +85,7 @@ void indigo_platesolver_sync(indigo_device *device) {
 			}
 			if (AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 				/* Some mounts are slow to SYNC and ignore GOTO, this gives them some time to finish syncing */
-				indigo_usleep(ONE_SECOND_DELAY);
+				indigo_usleep(2 * ONE_SECOND_DELAY);
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
 				indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, eq_coordinates_names, slew_values);
 			}
