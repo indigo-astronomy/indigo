@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -802,6 +802,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_w(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -873,6 +874,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -913,6 +915,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+		if (!IS_CONNECTED) return INDIGO_OK;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
