@@ -414,7 +414,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 		bool saturated = false;
 		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &saturated);
-		indigo_debug("frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, saturated ? "(saturated)" : "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, saturated ? "(saturated)" : "");
 		if (saturated) {
 			indigo_send_message(device, "Frame saturation detected, focus may not be accurate");
 		}
@@ -1583,10 +1583,15 @@ static void find_stars_process(indigo_device *device) {
 }
 
 static void abort_process(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->use_aux_1)
+	if (DEVICE_PRIVATE_DATA->use_aux_1 && FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_AUX_1_INDEX][0] != '\0') {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_AUX_1_INDEX], CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
-	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
-	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX], FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true);
+	}
+	if (FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX][0] != '\0') {
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
+	}
+	if (FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX][0] != '\0') {
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX], FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true);
+	}
 }
 
 static void setup_download(indigo_device *device) {
