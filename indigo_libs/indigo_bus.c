@@ -1437,7 +1437,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
 
-	static char string_1[128], string_2[128], string_3[128], string_4[128], buf[128];
+	static char string_1[128], string_2[128], string_3[128], string_4[128];
 	static char *string = string_4;
 	if (string == string_1)
 		string = string_2;
@@ -1447,17 +1447,13 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 		string = string_4;
 	else if (string == string_4)
 		string = string_1;
+	int dd = value >= 0 ? (int)d : -(int)d;
 	if (format == NULL)
-		snprintf(buf, 128, "%d:%02d:%05.2f", (int)d, (int)m, (int)(s*100.0)/100.0);
+		snprintf(string, 128, "%d:%02d:%05.2f", dd, (int)m, (int)(s*100.0)/100.0);
 	else if (format[strlen(format) - 1] == 'd')
-		snprintf(buf, 128, format, (int)d, (int)m, (int)s);
+		snprintf(string, 128, format, dd, (int)m, (int)s);
 	else
-		snprintf(buf, 128, format, (int)d, (int)m, s);
-	if (value < 0) {
-		snprintf(string, 128, "-%s", buf);
-	} else {
-		snprintf(string, 128, "%s", buf);
-	}
+		snprintf(string, 128, format, dd, (int)m, s);
 	return string;
 }
 
