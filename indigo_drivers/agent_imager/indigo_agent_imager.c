@@ -940,10 +940,12 @@ static bool autofocus_overshoot(indigo_device *device) {
 			}
 			if (!move_focuser(device, focuser_name, moving_out, steps_todo))
 				break;
-		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) > limit) {
+		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) >= limit) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Current_offset %d steps", (int)current_offset);
-			if ((AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) ||
-			   (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
+			if (
+				(AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) ||
+				(abs(current_offset) >= limit && DEVICE_PRIVATE_DATA->use_rms_estimator)
+			) {
 				break;
 			} else {
 				moving_out = !moving_out;
@@ -1017,17 +1019,33 @@ static bool autofocus_overshoot(indigo_device *device) {
 		}
 	}
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	if ((AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) || abs(current_offset) > limit) {
+
+	bool focus_failed = false;
+	if (abs(current_offset) >= limit) {
+		indigo_send_message(device, "No focus reached within maximum travel limit per AF run");
+		focus_failed = true;
+	} else if (AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+		indigo_send_message(device, "No focus reached, did not converge");
+		focus_failed = true;
+	} else if (
+		(DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 15) || /* for HFD 15% deviation is ok - tested on realsky */
+		(DEVICE_PRIVATE_DATA->use_rms_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 25)    /* for RMS 25% deviation is ok - tested on realsky */
+	) {
+		indigo_send_message(device, "Focus does not meet the quality criteria");
+		focus_failed = true;
+	}
+
+	if (focus_failed) {
 		if (DEVICE_PRIVATE_DATA->restore_initial_position) {
-			indigo_send_message(device, "Failed to reach focus, restoring initial position");
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
+			indigo_send_message(device, "Focus failed, restoring initial position");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus failed, moving to initial position %d steps", (int)current_offset);
 			if (current_offset > 0) {
 				moving_out = false;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failed to reach focus, moving in to initial position %d steps", (int)current_offset);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus failed, moving in to initial position %d steps", (int)current_offset);
 				move_focuser(device, focuser_name, false, current_offset);
 			} else if (current_offset < 0) {
 				moving_out = true;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failed to reach focus, moving out to initial position %d + %d = steps", -(int)current_offset, (int)(DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot), -(int)current_offset + (int)(DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot));
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus failed, moving out to initial position %d + %d = steps", -(int)current_offset, (int)(DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot), -(int)current_offset + (int)(DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot));
 				current_offset = -current_offset + DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
 				move_focuser(device, focuser_name, true, current_offset);
 			}
@@ -1039,8 +1057,6 @@ static bool autofocus_overshoot(indigo_device *device) {
 			} else if (moving_out) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No overshoot, compensation skipped");
 			}
-		} else {
-			indigo_send_message(device, "Failed to reach focus");
 		}
 		SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
@@ -1141,9 +1157,12 @@ static bool autofocus_backlash(indigo_device *device) {
 			}
 			if (!move_focuser(device, focuser_name, moving_out, steps))
 				break;
-		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) > limit) {
+		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) >= limit) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Current_offset %d steps", (int)current_offset);
-			if ((AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) || (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
+			if (
+				(AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) ||
+				(abs(current_offset) >= limit && DEVICE_PRIVATE_DATA->use_rms_estimator)
+			) {
 				break;
 			} else {
 				moving_out = !moving_out;
@@ -1205,9 +1224,25 @@ static bool autofocus_backlash(indigo_device *device) {
 		}
 	}
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	if ((AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) || (abs(current_offset) > limit && DEVICE_PRIVATE_DATA->use_rms_estimator)) {
+
+	bool focus_failed = false;
+	if (abs(current_offset) >= limit) {
+		indigo_send_message(device, "No focus reached within maximum travel limit per AF run");
+		focus_failed = true;
+	} else if (AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+		indigo_send_message(device, "No focus reached, did not converge");
+		focus_failed = true;
+	} else if (
+		(DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 15) || /* for HFD 15% deviation is ok - tested on realsky */
+		(DEVICE_PRIVATE_DATA->use_rms_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 25)    /* for RMS 25% deviation is ok - tested on realsky */
+	) {
+		indigo_send_message(device, "Focus does not meet the quality criteria");
+		focus_failed = true;
+	}
+
+	if (focus_failed) {
 		if (DEVICE_PRIVATE_DATA->restore_initial_position) {
-			indigo_send_message(device, "Failed to reach focus, restoring initial position");
+			indigo_send_message(device, "Focus failed, restoring initial position");
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
 			if (current_offset > 0) {
 				if (moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
@@ -1222,8 +1257,6 @@ static bool autofocus_backlash(indigo_device *device) {
 				move_focuser(device, focuser_name, true, current_offset);
 			}
 			current_offset = 0;
-		} else {
-			indigo_send_message(device, "Failed to reach focus");
 		}
 		return false;
 	} else {
