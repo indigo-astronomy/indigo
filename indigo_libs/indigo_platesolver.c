@@ -70,6 +70,7 @@ void indigo_platesolver_save_config(indigo_device *device) {
 }
 
 void indigo_platesolver_sync(indigo_device *device) {
+	const int QUARTER_SECOND_DELAY = ONE_SECOND_DELAY / 4;
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
 		if (item->sw.value && !strncmp(item->name, "Mount Agent", 11)) {
@@ -81,12 +82,14 @@ void indigo_platesolver_sync(indigo_device *device) {
 			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_MOUNT_FOV_PROPERTY_NAME, 3, fov_names, fov_values);
 			if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true);
+				indigo_usleep(QUARTER_SECOND_DELAY);
 				indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, eq_coordinates_names, sync_values);
 			}
 			if (AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
 				/* Some mounts are slow to SYNC and ignore GOTO, this gives them some time to finish syncing */
-				indigo_usleep(2 * ONE_SECOND_DELAY);
+				indigo_usleep(1.5 * ONE_SECOND_DELAY);
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
+				indigo_usleep(QUARTER_SECOND_DELAY);
 				indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, eq_coordinates_names, slew_values);
 			}
 			break;
