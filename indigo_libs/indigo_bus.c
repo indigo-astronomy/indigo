@@ -1423,7 +1423,8 @@ double indigo_stod(char *string) {
 				value += indigo_atod(string)/60.0;
 		} else {
 			*separator++ = 0;
-			if (value < 0)
+			/* if negative including -0.0f */
+			if (signbit(value))
 				value -= indigo_atod(string)/60.0 + indigo_atod(separator)/3600.0;
 			else
 				value += indigo_atod(string)/60.0 + indigo_atod(separator)/3600.0;
