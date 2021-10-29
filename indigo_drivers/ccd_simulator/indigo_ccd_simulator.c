@@ -581,19 +581,19 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "GUIDER_IMAGE", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 13);
-				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "NOISE_FIX", "Noise offset", 0, 5000, 0, 500);
-				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "NOISE_VAR", "Noise range", 1, 1000, 0, 100);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 13);
+				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
+				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "IMAGE_NOISE_VAR", "Image noise range", 1, 1000, 0, 100);
 				indigo_init_number_item(GUIDER_IMAGE_PERR_SPD_ITEM, "PER_ERR_SPD", "Periodic error speed", 0, 1, 0, 0.5);
 				indigo_init_number_item(GUIDER_IMAGE_PERR_VAL_ITEM, "PER_ERR_VAL", "Periodic error value", 0, 10, 0, 5);
-				indigo_init_number_item(GUIDER_IMAGE_GRADIENT_ITEM, "GRADIENT", "Gradient intensity", 0, 0.5, 0, 0.2);
-				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "ANGLE", "Angle", 0, 360, 0, 36);
-				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle", 0, 360, 0, 74);
-				indigo_init_number_item(GUIDER_IMAGE_HOTPIXELS_ITEM, "HOTPIXELS", "Hot pixel count", 0, HOTPIXELS, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_HOTCOL_ITEM, "HOTCOL", "Hot column length", 0, HEIGHT, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_HOTROW_ITEM, "HOTROW", "Hot row length", 0, WIDTH, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_RA_OFFSET_ITEM, "RA_OFFSET", "RA offset", 0, HEIGHT, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "DEC_OFFSET", "DEC offset", 0, HEIGHT, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_GRADIENT_ITEM, "IMAGE_GRADIENT", "Image gradient intensity", 0, 0.5, 0, 0.2);
+				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "IMAGE_ROTATION_ANGLE", "Image rotation angle (°)", 0, 360, 0, 36);
+				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle (°)", 0, 360, 0, 74);
+				indigo_init_number_item(GUIDER_IMAGE_HOTPIXELS_ITEM, "IMAGE_HOTPIXELS", "Hot pixel count", 0, HOTPIXELS, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTCOL_ITEM, "IMAGE_HOTCOL", "Hot column length (px)", 0, HEIGHT, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTROW_ITEM, "IMAGE_HOTROW", "Hot row length (px)", 0, WIDTH, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_RA_OFFSET_ITEM, "IMAGE_RA_OFFSET", "RA offset (px)", 0, HEIGHT, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "IMAGE_DEC_OFFSET", "DEC offset (px)", 0, HEIGHT, 0, 0);
 				indigo_init_number_item(GUIDER_IMAGE_DECLINATION_ITEM, "GUIDER_DECLINATION", "Guider Declination (°)", -90, +90, 0, 0);
 			}
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
