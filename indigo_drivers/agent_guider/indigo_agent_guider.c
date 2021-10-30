@@ -897,7 +897,12 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 							AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = round(1000 * last_drift / (i * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
 							indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 							last_count = i;
-							DEVICE_PRIVATE_DATA->phase = MOVE_SOUTH;
+							if (AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value == 0) {
+								indigo_send_message(device, "DEC speed is 0 px/\"");
+								DEVICE_PRIVATE_DATA->phase = FAILED;
+							} else {
+								DEVICE_PRIVATE_DATA->phase = MOVE_SOUTH;
+							}
 							break;
 						}
 					}
@@ -947,7 +952,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 						break;
 					}
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-					/* even if we do not reach the do not reach AGENT_GUIDER_SETTINGS_CAL_DRIFT it is ok. We are close enough to te pole and tracking is less sensitive to RA errors */
+					/* even if we do not reach AGENT_GUIDER_SETTINGS_CAL_DRIFT it is ok. We are close enough to te pole and tracking is less sensitive to RA errors */
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM->number.value || i+1 >= AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value * 5) {
 						last_drift = DEVICE_PRIVATE_DATA->drift;
 						double ra_angle = atan2(-AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value);
@@ -966,12 +971,15 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 							AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = round(180 * atan2(sin(ra_angle), cos(ra_angle)) / PI);
 						}
 						AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = round(1000 * last_drift / (i * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
-						if (fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * 20 - AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value) < 0) {
-							indigo_send_message(device, "Seems like the telescope is pointing less than 2° from the pole. RA callibration may be off");
-						}
+
 						indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 						last_count = i;
-						DEVICE_PRIVATE_DATA->phase = MOVE_EAST;
+						if (fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value) < 0.1) {
+							indigo_send_message(device, "RA drift speed is too slow");
+							DEVICE_PRIVATE_DATA->phase = FAILED;
+						} else {
+							DEVICE_PRIVATE_DATA->phase = MOVE_EAST;
+						}
 						break;
 					}
 				}
@@ -1002,6 +1010,15 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 				break;
 			}
 			case DONE: {
+				double acos_dec = fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
+				if (acos_dec > 1) acos_dec = 1;
+				double pole_distnce = 90 - 180 / PI * acos(acos_dec);
+				/* Declination is > 85deg or < -85deg */
+				if (pole_distnce < 5) {
+					indigo_send_message(device, "Calculated pole distance %.1f°. RA calibration may be off", pole_distnce);
+				} else {
+					indigo_send_message(device, "Calculated pole distance %.1f°", pole_distnce);
+				}
 				indigo_send_message(device, "Calibration done");
 				save_config(device);
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
