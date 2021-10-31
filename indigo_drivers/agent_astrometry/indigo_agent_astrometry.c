@@ -243,17 +243,17 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 			AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d1 / 15;
 			AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d2;
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
-		} else if (sscanf(line, "Field size: %lg x %lg degrees", &d1, &d2) == 2) {
-			AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1;
-			AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2;
-			AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2;
-		} else if (sscanf(line, "Field size: %lg x %lg arcminutes", &d1, &d2) == 2) {
-			AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1 / 60.0;
-			AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2 / 60.0;
-			AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2;
-		} else if (sscanf(line, "Field size: %lg x %lg arcseconds", &d1, &d2) == 2) {
-			AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1 / 3600.0;
-			AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2 / 3600.0;
+		} else if (sscanf(line, "Field size: %lg x %lg %s", &d1, &d2, s) == 3) {
+			if (!strcmp(s, "degrees")) {
+				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1;
+				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2;
+			} else if (!strcmp(s, "arcminutes")) {
+				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1 / 60.0;
+				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2 / 60.0;
+			} else if (!strcmp(s, "arcseconds")) {
+				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1 / 3600.0;
+				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2 / 3600.0;
+			}
 			AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2;
 		} else if (sscanf(line, "Field rotation angle: up is %lg", &d1) == 1) {
 			AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d1;
