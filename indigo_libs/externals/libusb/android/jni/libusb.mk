@@ -24,9 +24,6 @@ LIBUSB_ROOT_ABS := $(LOCAL_PATH)/../..
 
 include $(CLEAR_VARS)
 
-LIBUSB_ROOT_REL := ../..
-LIBUSB_ROOT_ABS := $(LOCAL_PATH)/../..
-
 LOCAL_SRC_FILES := \
   $(LIBUSB_ROOT_REL)/libusb/core.c \
   $(LIBUSB_ROOT_REL)/libusb/descriptor.c \
@@ -35,7 +32,7 @@ LOCAL_SRC_FILES := \
   $(LIBUSB_ROOT_REL)/libusb/sync.c \
   $(LIBUSB_ROOT_REL)/libusb/strerror.c \
   $(LIBUSB_ROOT_REL)/libusb/os/linux_usbfs.c \
-  $(LIBUSB_ROOT_REL)/libusb/os/poll_posix.c \
+  $(LIBUSB_ROOT_REL)/libusb/os/events_posix.c \
   $(LIBUSB_ROOT_REL)/libusb/os/threads_posix.c \
   $(LIBUSB_ROOT_REL)/libusb/os/linux_netlink.c
 
@@ -51,6 +48,13 @@ LOCAL_CFLAGS := -fvisibility=hidden -pthread
 
 LOCAL_LDLIBS := -llog
 
-LOCAL_MODULE := libusb1.0
+ifeq ($(USE_PC_NAME),1)
+  LOCAL_MODULE := usb-1.0
+else
+  LOCAL_MODULE := libusb1.0
+  $(warning Building to legacy library name libusb1.0, which differs from pkg-config.)
+  $(warning Use ndk-build USE_PC_NAME=1 to change the module name to the compatible usb-1.0.)
+  $(warning USE_PC_NAME=1 may be the default in the future.)
+endif
 
 include $(BUILD_SHARED_LIBRARY)
