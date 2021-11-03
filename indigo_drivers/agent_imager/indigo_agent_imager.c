@@ -190,6 +190,7 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
 static indigo_property_state capture_raw_frame(indigo_device *device);
+static indigo_property_state _capture_raw_frame(indigo_device *device, bool is_restore_frame);
 
 static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
@@ -313,14 +314,14 @@ static void restore_subframe(indigo_device *device) {
 		indigo_usleep(0.5 * ONE_SECOND_DELAY);
 		/* TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
 			 but selection property should not be updated. */
-		capture_raw_frame(device);
+		_capture_raw_frame(device, true);
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
 		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
 	}
 }
 
-static indigo_property_state capture_raw_frame(indigo_device *device) {
+static indigo_property_state _capture_raw_frame(indigo_device *device, bool is_restore_frame) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_exposure_property, *agent_exposure_property, *device_aux_1_exposure_property, *agent_aux_1_exposure_property, *device_format_property;
 	DEVICE_PRIVATE_DATA->use_aux_1 = false;
@@ -411,7 +412,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		return INDIGO_ALERT_STATE;
 	}
 
-	if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
+	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
+	if (DEVICE_PRIVATE_DATA->use_rms_estimator && !is_restore_frame) {
 		bool saturated = false;
 		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &saturated);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, saturated ? "(saturated)" : "");
@@ -481,6 +483,10 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	return INDIGO_OK_STATE;
+}
+
+static indigo_property_state capture_raw_frame(indigo_device *device) {
+	return _capture_raw_frame(device, false);
 }
 
 static void preview_process(indigo_device *device) {
