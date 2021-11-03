@@ -587,6 +587,14 @@ uvc_error_t uvc_get_still_ctrl_format_size(
     return uvc_probe_still_ctrl(devh, still_ctrl);
 }
 
+static int _uvc_stream_params_negotiated(
+  uvc_stream_ctrl_t *required,
+  uvc_stream_ctrl_t *actual) {
+    return required->bFormatIndex == actual->bFormatIndex &&
+    required->bFrameIndex == actual->bFrameIndex &&
+    required->dwMaxPayloadTransferSize == actual->dwMaxPayloadTransferSize;
+}
+
 /** @internal
  * Negotiate streaming parameters with the device
  *
@@ -596,16 +604,16 @@ uvc_error_t uvc_get_still_ctrl_format_size(
 uvc_error_t uvc_probe_stream_ctrl(
     uvc_device_handle_t *devh,
     uvc_stream_ctrl_t *ctrl) {
- 
-  uvc_query_stream_ctrl(
-      devh, ctrl, 1, UVC_SET_CUR
-  );
+  uvc_stream_ctrl_t required_ctrl = *ctrl;
 
-  uvc_query_stream_ctrl(
-      devh, ctrl, 1, UVC_GET_CUR
-  );
+  uvc_query_stream_ctrl( devh, ctrl, 1, UVC_SET_CUR );
+  uvc_query_stream_ctrl( devh, ctrl, 1, UVC_GET_CUR );
 
-  /** @todo make sure that worked */
+  if(!_uvc_stream_params_negotiated(&required_ctrl, ctrl)) {
+    UVC_DEBUG("Unable to negotiate streaming format");
+    return UVC_ERROR_INVALID_MODE;
+  }
+
   return UVC_SUCCESS;
 }
 
@@ -1024,12 +1032,12 @@ uvc_error_t uvc_stream_open_ctrl(uvc_device_handle_t *devh, uvc_stream_handle_t 
 
   // Set up the streaming status and data space
   strmh->running = 0;
-  /** @todo take only what we need */
-  strmh->outbuf = malloc( LIBUVC_XFER_BUF_SIZE );
-  strmh->holdbuf = malloc( LIBUVC_XFER_BUF_SIZE );
 
-  strmh->meta_outbuf = malloc( LIBUVC_XFER_META_BUF_SIZE );
-  strmh->meta_holdbuf = malloc( LIBUVC_XFER_META_BUF_SIZE );
+  strmh->outbuf = malloc( ctrl->dwMaxVideoFrameSize );
+  strmh->holdbuf = malloc( ctrl->dwMaxVideoFrameSize );
+
+  strmh->meta_outbuf = malloc( ctrl->dwMaxVideoFrameSize );
+  strmh->meta_holdbuf = malloc( ctrl->dwMaxVideoFrameSize );
    
   pthread_mutex_init(&strmh->cb_mutex, NULL);
   pthread_cond_init(&strmh->cb_cond, NULL);
@@ -1069,7 +1077,7 @@ uvc_error_t uvc_stream_start(
   uvc_frame_desc_t *frame_desc;
   uvc_format_desc_t *format_desc;
   uvc_stream_ctrl_t *ctrl;
-  uvc_error_t ret;
+  uvc_error_t ret = UVC_SUCCESS;
   /* Total amount of data per transfer */
   size_t total_transfer_size = 0;
   struct libusb_transfer *transfer;
@@ -1236,7 +1244,7 @@ uvc_error_t uvc_stream_start(
     }
   }
 
-  if ( ret != UVC_SUCCESS && transfer_id > 0 ) {
+  if ( ret != UVC_SUCCESS && transfer_id >= 0 ) {
     for ( ; transfer_id < LIBUVC_NUM_TRANSFER_BUFS; transfer_id++) {
       free ( strmh->transfers[transfer_id]->buffer );
       libusb_free_transfer ( strmh->transfers[transfer_id]);
@@ -1381,7 +1389,6 @@ uvc_error_t uvc_stream_get_frame(uvc_stream_handle_t *strmh,
   time_t add_secs;
   time_t add_nsecs;
   struct timespec ts;
-  struct timeval tv;
 
   if (!strmh->running)
     return UVC_ERROR_INVALID_PARAM;
@@ -1407,6 +1414,7 @@ uvc_error_t uvc_stream_get_frame(uvc_stream_handle_t *strmh,
 #if _POSIX_TIMERS > 0
       clock_gettime(CLOCK_REALTIME, &ts);
 #else
+      struct timeval tv;
       gettimeofday(&tv, NULL);
       ts.tv_sec = tv.tv_sec;
       ts.tv_nsec = tv.tv_usec * 1000;
