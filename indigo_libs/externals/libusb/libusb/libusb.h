@@ -31,8 +31,11 @@
 #define inline __inline
 #endif
 /* ssize_t is also not available */
+#ifndef _SSIZE_T_DEFINED
+#define _SSIZE_T_DEFINED
 #include <basetsd.h>
 typedef SSIZE_T ssize_t;
+#endif /* _SSIZE_T_DEFINED */
 #endif /* _MSC_VER */
 
 #include <limits.h>
@@ -230,6 +233,9 @@ enum libusb_class_code {
 
 	/** Wireless class */
 	LIBUSB_CLASS_WIRELESS = 0xe0,
+
+	/** Miscellaneous class */
+	LIBUSB_CLASS_MISCELLANEOUS = 0xef,
 
 	/** Application class */
 	LIBUSB_CLASS_APPLICATION = 0xfe,
@@ -901,7 +907,7 @@ struct libusb_container_id_descriptor {
 
 /** \ingroup libusb_asyncio
  * Setup packet for control transfers. */
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__WATCOMC__)
 #pragma pack(push, 1)
 #endif
 struct libusb_control_setup {
@@ -929,7 +935,7 @@ struct libusb_control_setup {
 	/** Number of bytes to transfer */
 	uint16_t wLength;
 } LIBUSB_PACKED;
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) || defined(__WATCOMC__)
 #pragma pack(pop)
 #endif
 
@@ -976,8 +982,9 @@ struct libusb_version {
  * Sessions are created by libusb_init() and destroyed through libusb_exit().
  * If your application is guaranteed to only ever include a single libusb
  * user (i.e. you), you do not have to worry about contexts: pass NULL in
- * every function call where a context is required. The default context
- * will be used.
+ * every function call where a context is required, and the default context
+ * will be used. Note that libusb_set_option(NULL, ...) is special, and adds
+ * an option to a list of default options for new contexts.
  *
  * For more information, see \ref libusb_contexts.
  */
@@ -986,7 +993,7 @@ typedef struct libusb_context libusb_context;
 /** \ingroup libusb_dev
  * Structure representing a USB device detected on the system. This is an
  * opaque type for which you are only ever provided with a pointer, usually
- * originating from libusb_get_device_list().
+ * originating from libusb_get_device_list() or libusb_hotplug_register_callback().
  *
  * Certain operations can be performed on a device, but in order to do any
  * I/O you will have to first obtain a device handle using libusb_open().
@@ -1254,7 +1261,16 @@ struct libusb_transfer {
 	 * fails, or is cancelled. */
 	libusb_transfer_cb_fn callback;
 
-	/** User context data to pass to the callback function. */
+	/** User context data. Useful for associating specific data to a transfer
+	 * that can be accessed from within the callback function.
+	 *
+	 * This field may be set manually or is taken as the `user_data` parameter
+	 * of the following functions:
+	 * - libusb_fill_bulk_transfer()
+	 * - libusb_fill_bulk_stream_transfer()
+	 * - libusb_fill_control_transfer()
+	 * - libusb_fill_interrupt_transfer()
+	 * - libusb_fill_iso_transfer() */
 	void *user_data;
 
 	/** Data buffer */
@@ -1313,13 +1329,16 @@ enum libusb_log_level {
 
 /** \ingroup libusb_lib
  *  Log callback mode.
+ *
+ *  Since version 1.0.23, \ref LIBUSB_API_VERSION >= 0x01000107
+ *
  * \see libusb_set_log_cb()
  */
 enum libusb_log_cb_mode {
-	/** Callback function handling all log mesages. */
+	/** Callback function handling all log messages. */
 	LIBUSB_LOG_CB_GLOBAL = (1 << 0),
 
-	/** Callback function handling context related log mesages. */
+	/** Callback function handling context related log messages. */
 	LIBUSB_LOG_CB_CONTEXT = (1 << 1)
 };
 
@@ -1329,6 +1348,9 @@ enum libusb_log_cb_mode {
  * is a global log message
  * \param level the log level, see \ref libusb_log_level for a description
  * \param str the log message
+ *
+ * Since version 1.0.23, \ref LIBUSB_API_VERSION >= 0x01000107
+ *
  * \see libusb_set_log_cb()
  */
 typedef void (LIBUSB_CALL *libusb_log_cb)(libusb_context *ctx,
@@ -1365,7 +1387,7 @@ int LIBUSB_CALL libusb_get_config_descriptor_by_value(libusb_device *dev,
 void LIBUSB_CALL libusb_free_config_descriptor(
 	struct libusb_config_descriptor *config);
 int LIBUSB_CALL libusb_get_ss_endpoint_companion_descriptor(
-	struct libusb_context *ctx,
+	libusb_context *ctx,
 	const struct libusb_endpoint_descriptor *endpoint,
 	struct libusb_ss_endpoint_companion_descriptor **ep_comp);
 void LIBUSB_CALL libusb_free_ss_endpoint_companion_descriptor(
@@ -1374,18 +1396,18 @@ int LIBUSB_CALL libusb_get_bos_descriptor(libusb_device_handle *dev_handle,
 	struct libusb_bos_descriptor **bos);
 void LIBUSB_CALL libusb_free_bos_descriptor(struct libusb_bos_descriptor *bos);
 int LIBUSB_CALL libusb_get_usb_2_0_extension_descriptor(
-	struct libusb_context *ctx,
+	libusb_context *ctx,
 	struct libusb_bos_dev_capability_descriptor *dev_cap,
 	struct libusb_usb_2_0_extension_descriptor **usb_2_0_extension);
 void LIBUSB_CALL libusb_free_usb_2_0_extension_descriptor(
 	struct libusb_usb_2_0_extension_descriptor *usb_2_0_extension);
 int LIBUSB_CALL libusb_get_ss_usb_device_capability_descriptor(
-	struct libusb_context *ctx,
+	libusb_context *ctx,
 	struct libusb_bos_dev_capability_descriptor *dev_cap,
 	struct libusb_ss_usb_device_capability_descriptor **ss_usb_device_cap);
 void LIBUSB_CALL libusb_free_ss_usb_device_capability_descriptor(
 	struct libusb_ss_usb_device_capability_descriptor *ss_usb_device_cap);
-int LIBUSB_CALL libusb_get_container_id_descriptor(struct libusb_context *ctx,
+int LIBUSB_CALL libusb_get_container_id_descriptor(libusb_context *ctx,
 	struct libusb_bos_dev_capability_descriptor *dev_cap,
 	struct libusb_container_id_descriptor **container_id);
 void LIBUSB_CALL libusb_free_container_id_descriptor(
@@ -1478,7 +1500,7 @@ static inline unsigned char *libusb_control_transfer_get_data(
 static inline struct libusb_control_setup *libusb_control_transfer_get_setup(
 	struct libusb_transfer *transfer)
 {
-	return (struct libusb_control_setup *)(void *) transfer->buffer;
+	return (struct libusb_control_setup *)(void *)transfer->buffer;
 }
 
 /** \ingroup libusb_asyncio
@@ -1508,7 +1530,7 @@ static inline void libusb_fill_control_setup(unsigned char *buffer,
 	uint8_t bmRequestType, uint8_t bRequest, uint16_t wValue, uint16_t wIndex,
 	uint16_t wLength)
 {
-	struct libusb_control_setup *setup = (struct libusb_control_setup *)(void *) buffer;
+	struct libusb_control_setup *setup = (struct libusb_control_setup *)(void *)buffer;
 	setup->bmRequestType = bmRequestType;
 	setup->bRequest = bRequest;
 	setup->wValue = libusb_cpu_to_le16(wValue);
@@ -1558,7 +1580,7 @@ static inline void libusb_fill_control_transfer(
 	unsigned char *buffer, libusb_transfer_cb_fn callback, void *user_data,
 	unsigned int timeout)
 {
-	struct libusb_control_setup *setup = (struct libusb_control_setup *)(void *) buffer;
+	struct libusb_control_setup *setup = (struct libusb_control_setup *)(void *)buffer;
 	transfer->dev_handle = dev_handle;
 	transfer->endpoint = 0;
 	transfer->type = LIBUSB_TRANSFER_TYPE_CONTROL;
@@ -1912,7 +1934,7 @@ void LIBUSB_CALL libusb_set_pollfd_notifiers(libusb_context *ctx,
  * Callbacks handles are generated by libusb_hotplug_register_callback()
  * and can be used to deregister callbacks. Callback handles are unique
  * per libusb_context and it is safe to call libusb_hotplug_deregister_callback()
- * on an already deregisted callback.
+ * on an already deregistered callback.
  *
  * Since version 1.0.16, \ref LIBUSB_API_VERSION >= 0x01000102
  *
@@ -2041,7 +2063,7 @@ void LIBUSB_CALL libusb_hotplug_deregister_callback(libusb_context *ctx,
  * \param[in] ctx context this callback is registered with
  * \param[in] callback_handle the handle of the callback to get the user_data of
  */
-void * LIBUSB_CALL libusb_hotplug_get_user_data(struct libusb_context *ctx,
+void * LIBUSB_CALL libusb_hotplug_get_user_data(libusb_context *ctx,
 	libusb_hotplug_callback_handle callback_handle);
 
 /** \ingroup libusb_lib
@@ -2078,7 +2100,32 @@ enum libusb_option {
 	 *
 	 * Only valid on Windows.
 	 */
-	LIBUSB_OPTION_USE_USBDK = 1
+	LIBUSB_OPTION_USE_USBDK = 1,
+
+	/** Do not scan for devices
+	 *
+	 * With this option set, libusb will skip scanning devices in
+	 * libusb_init(). Must be set before calling libusb_init().
+	 *
+	 * Hotplug functionality will also be deactivated.
+	 *
+	 * The option is useful in combination with libusb_wrap_sys_device(),
+	 * which can access a device directly without prior device scanning.
+	 *
+	 * This is typically needed on Android, where access to USB devices
+	 * is limited.
+	 *
+	 * Only valid on Linux.
+	 */
+	LIBUSB_OPTION_NO_DEVICE_DISCOVERY = 2,
+
+	/** Flag that libusb has weak authority.
+	 *
+	 * (Deprecated) alias for LIBUSB_OPTION_NO_DEVICE_DISCOVERY
+	 */
+	LIBUSB_OPTION_WEAK_AUTHORITY = 3,
+
+	LIBUSB_OPTION_MAX = 4
 };
 
 int LIBUSB_CALL libusb_set_option(libusb_context *ctx, enum libusb_option option, ...);

@@ -30,11 +30,12 @@ USBRoster gUsbRoster;
 int32 gInitCount = 0;
 
 static int haiku_get_config_descriptor(struct libusb_device *, uint8_t,
-    unsigned char *, size_t, int *);
+    void *, size_t);
 
 static int
 haiku_init(struct libusb_context *ctx)
 {
+	UNUSED(ctx);
 	if (atomic_add(&gInitCount, 1) == 0)
 		return gUsbRoster.Start();
 	return LIBUSB_SUCCESS;
@@ -75,23 +76,14 @@ haiku_close(struct libusb_device_handle *dev_handle)
 }
 
 static int
-haiku_get_device_descriptor(struct libusb_device *device, unsigned char *buffer, int *host_endian)
+haiku_get_active_config_descriptor(struct libusb_device *device, void *buffer, size_t len)
 {
 	USBDevice *dev = *((USBDevice **)usbi_get_device_priv(device));
-	memcpy(buffer, dev->Descriptor(), DEVICE_DESC_LENGTH);
-	*host_endian = 0;
-	return LIBUSB_SUCCESS;
+	return haiku_get_config_descriptor(device, dev->ActiveConfigurationIndex(), buffer, len);
 }
 
 static int
-haiku_get_active_config_descriptor(struct libusb_device *device, unsigned char *buffer, size_t len, int *host_endian)
-{
-	USBDevice *dev = *((USBDevice **)usbi_get_device_priv(device));
-	return haiku_get_config_descriptor(device, dev->ActiveConfigurationIndex(), buffer, len, host_endian);
-}
-
-static int
-haiku_get_config_descriptor(struct libusb_device *device, uint8_t config_index, unsigned char *buffer, size_t len, int *host_endian)
+haiku_get_config_descriptor(struct libusb_device *device, uint8_t config_index, void *buffer, size_t len)
 {
 	USBDevice *dev = *((USBDevice **)usbi_get_device_priv(device));
 	const usb_configuration_descriptor *config = dev->ConfigurationDescriptor(config_index);
@@ -103,7 +95,6 @@ haiku_get_config_descriptor(struct libusb_device *device, uint8_t config_index, 
 		len = config->total_length;
 	}
 	memcpy(buffer, config, len);
-	*host_endian = 0;
 	return len;
 }
 
@@ -117,14 +108,14 @@ haiku_set_configuration(struct libusb_device_handle *dev_handle, int config)
 }
 
 static int
-haiku_claim_interface(struct libusb_device_handle *dev_handle, int interface_number)
+haiku_claim_interface(struct libusb_device_handle *dev_handle, uint8_t interface_number)
 {
 	USBDeviceHandle *handle = *((USBDeviceHandle **)usbi_get_device_handle_priv(dev_handle));
 	return handle->ClaimInterface(interface_number);
 }
 
 static int
-haiku_set_altsetting(struct libusb_device_handle *dev_handle, int interface_number, int altsetting)
+haiku_set_altsetting(struct libusb_device_handle *dev_handle, uint8_t interface_number, uint8_t altsetting)
 {
 	USBDeviceHandle *handle = *((USBDeviceHandle **)usbi_get_device_handle_priv(dev_handle));
 	return handle->SetAltSetting(interface_number, altsetting);
@@ -138,10 +129,10 @@ haiku_clear_halt(struct libusb_device_handle *dev_handle, unsigned char endpoint
 }
 
 static int
-haiku_release_interface(struct libusb_device_handle *dev_handle, int interface_number)
+haiku_release_interface(struct libusb_device_handle *dev_handle, uint8_t interface_number)
 {
 	USBDeviceHandle *handle = *((USBDeviceHandle **)usbi_get_device_handle_priv(dev_handle));
-	haiku_set_altsetting(dev_handle,interface_number, 0);
+	haiku_set_altsetting(dev_handle, interface_number, 0);
 	return handle->ReleaseInterface(interface_number);
 }
 
@@ -200,7 +191,6 @@ const struct usbi_os_backend usbi_backend = {
 	/*.open =*/ haiku_open,
 	/*.close =*/ haiku_close,
 
-	/*.get_device_descriptor =*/ haiku_get_device_descriptor,
 	/*.get_active_config_descriptor =*/ haiku_get_active_config_descriptor,
 	/*.get_config_descriptor =*/ haiku_get_config_descriptor,
 	/*.get_config_descriptor_by_value =*/ NULL,

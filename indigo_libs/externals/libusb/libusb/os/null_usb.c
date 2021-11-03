@@ -37,22 +37,15 @@ null_close(struct libusb_device_handle *handle)
 }
 
 static int
-null_get_device_descriptor(struct libusb_device *dev, unsigned char *buf,
-    int *host_endian)
-{
-	return LIBUSB_ERROR_NOT_SUPPORTED;
-}
-
-static int
 null_get_active_config_descriptor(struct libusb_device *dev,
-    unsigned char *buf, size_t len, int *host_endian)
+    void *buf, size_t len)
 {
 	return LIBUSB_ERROR_NOT_SUPPORTED;
 }
 
 static int
 null_get_config_descriptor(struct libusb_device *dev, uint8_t idx,
-    unsigned char *buf, size_t len, int *host_endian)
+    void *buf, size_t len)
 {
 	return LIBUSB_ERROR_NOT_SUPPORTED;
 }
@@ -64,20 +57,20 @@ null_set_configuration(struct libusb_device_handle *handle, int config)
 }
 
 static int
-null_claim_interface(struct libusb_device_handle *handle, int iface)
+null_claim_interface(struct libusb_device_handle *handle, uint8_t iface)
 {
 	return LIBUSB_ERROR_NOT_SUPPORTED;
 }
 
 static int
-null_release_interface(struct libusb_device_handle *handle, int iface)
+null_release_interface(struct libusb_device_handle *handle, uint8_t iface)
 {
 	return LIBUSB_ERROR_NOT_SUPPORTED;
 }
 
 static int
-null_set_interface_altsetting(struct libusb_device_handle *handle, int iface,
-    int altsetting)
+null_set_interface_altsetting(struct libusb_device_handle *handle, uint8_t iface,
+    uint8_t altsetting)
 {
 	return LIBUSB_ERROR_NOT_SUPPORTED;
 }
@@ -106,7 +99,6 @@ const struct usbi_os_backend usbi_backend = {
 	.get_device_list = null_get_device_list,
 	.open = null_open,
 	.close = null_close,
-	.get_device_descriptor = null_get_device_descriptor,
 	.get_active_config_descriptor = null_get_active_config_descriptor,
 	.get_config_descriptor = null_get_config_descriptor,
 	.set_configuration = null_set_configuration,
