@@ -440,6 +440,8 @@ uvc_error_t uvc_uyvy2bgr(uvc_frame_t *in, uvc_frame_t *out) {
  */
 uvc_error_t uvc_any2rgb(uvc_frame_t *in, uvc_frame_t *out) {
   switch (in->frame_format) {
+    case UVC_FRAME_FORMAT_MJPEG:
+      return uvc_mjpeg2rgb(in, out);
     case UVC_FRAME_FORMAT_YUYV:
       return uvc_yuyv2rgb(in, out);
     case UVC_FRAME_FORMAT_UYVY:

@@ -85,10 +85,18 @@
 
 #ifdef UVC_DEBUGGING
 #include <libgen.h>
+#ifdef __ANDROID__
+#include <android/log.h>
+#define UVC_DEBUG(format, ...) __android_log_print(ANDROID_LOG_DEBUG, "libuvc", "[%s:%d/%s] " format "\n", basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
+#define UVC_ENTER() __android_log_print(ANDROID_LOG_DEBUG, "libuvc", "[%s:%d] begin %s\n", basename(__FILE__), __LINE__, __FUNCTION__)
+#define UVC_EXIT(code) __android_log_print(ANDROID_LOG_DEBUG, "libuvc", "[%s:%d] end %s (%d)\n", basename(__FILE__), __LINE__, __FUNCTION__, code)
+#define UVC_EXIT_VOID() __android_log_print(ANDROID_LOG_DEBUG, "libuvc", "[%s:%d] end %s\n", basename(__FILE__), __LINE__, __FUNCTION__)
+#else
 #define UVC_DEBUG(format, ...) fprintf(stderr, "[%s:%d/%s] " format "\n", basename(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__)
 #define UVC_ENTER() fprintf(stderr, "[%s:%d] begin %s\n", basename(__FILE__), __LINE__, __FUNCTION__)
 #define UVC_EXIT(code) fprintf(stderr, "[%s:%d] end %s (%d)\n", basename(__FILE__), __LINE__, __FUNCTION__, code)
 #define UVC_EXIT_VOID() fprintf(stderr, "[%s:%d] end %s\n", basename(__FILE__), __LINE__, __FUNCTION__)
+#endif
 #else
 #define UVC_DEBUG(format, ...)
 #define UVC_ENTER()
@@ -247,13 +255,13 @@ typedef struct uvc_device_info {
   avoids problems with scheduling delays on slow boards causing missed
   transfers. A better approach may be to make the transfer thread FIFO
   scheduled (if we have root).
-  We could/should change this to allow reduce it to, say, 5 by default
-  and then allow the user to change the number of buffers as required.
+  Default number of transfer buffers can be overwritten by defining
+  this macro.
  */
+#ifndef LIBUVC_NUM_TRANSFER_BUFS
 #define LIBUVC_NUM_TRANSFER_BUFS 100
+#endif
 
-#define LIBUVC_XFER_BUF_SIZE	( 16 * 1024 * 1024 )
-#define LIBUVC_XFER_META_BUF_SIZE ( 4 * 1024 )
 
 struct uvc_stream_handle {
   struct uvc_device_handle *devh;

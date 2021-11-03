@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -81,7 +81,7 @@ static void exposure_callback(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_get_frame(...) -> %s", uvc_strerror(res));
 	if (res != UVC_SUCCESS || frame == NULL) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (frame->frame_format == UVC_FRAME_FORMAT_GRAY8 || frame->frame_format == UVC_FRAME_FORMAT_BY8) {
+	} else if (frame->frame_format == UVC_FRAME_FORMAT_GRAY8 || frame->frame_format == UVC_FRAME_FORMAT_BY8 || frame->frame_format == UVC_FRAME_FORMAT_BA81 || frame->frame_format == UVC_FRAME_FORMAT_SGRBG8 || frame->frame_format == UVC_FRAME_FORMAT_SGBRG8 || frame->frame_format == UVC_FRAME_FORMAT_SRGGB8 || frame->frame_format == UVC_FRAME_FORMAT_SBGGR8) {
 		memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, frame->data, frame->width * frame->height);
 		indigo_process_image(device, PRIVATE_DATA->buffer, frame->width, frame->height, 8, true, true, NULL, false);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -97,10 +97,10 @@ static void exposure_callback(indigo_device *device) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, rgb->data, 3 * frame->width * frame->height);
-			uvc_free_frame(rgb);
 			indigo_process_image(device, PRIVATE_DATA->buffer, frame->width, frame->height, 24, true, true, NULL, false);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		uvc_free_frame(rgb);
 	} else {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -120,7 +120,7 @@ static void streaming_callback(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_stream_get_frame(...) -> %s", uvc_strerror(res));
 		if (res != UVC_SUCCESS || frame == NULL) {
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (frame->frame_format == UVC_FRAME_FORMAT_GRAY8 || frame->frame_format == UVC_FRAME_FORMAT_BY8) {
+		} else if (frame->frame_format == UVC_FRAME_FORMAT_GRAY8 || frame->frame_format == UVC_FRAME_FORMAT_BY8 || frame->frame_format == UVC_FRAME_FORMAT_BA81 || frame->frame_format == UVC_FRAME_FORMAT_SGRBG8 || frame->frame_format == UVC_FRAME_FORMAT_SGBRG8 || frame->frame_format == UVC_FRAME_FORMAT_SRGGB8 || frame->frame_format == UVC_FRAME_FORMAT_SBGGR8) {
 			memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, frame->data, frame->width * frame->height);
 			indigo_process_image(device, PRIVATE_DATA->buffer, frame->width, frame->height, 8, true, true, NULL, false);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -185,14 +185,15 @@ static struct {
 } formats [] = {
 	{ UVC_FRAME_FORMAT_YUYV, "YUY2", "YUV %dx%d" },
 	{ UVC_FRAME_FORMAT_YUYV, "YUVY", "YUV %dx%d " },
+	{ UVC_FRAME_FORMAT_RGB, "YUVY", "RGB %dx%d " },
 	{ UVC_FRAME_FORMAT_GRAY8, "Y800", "MONO8  %dx%d" },
 	{ UVC_FRAME_FORMAT_GRAY16, "Y16 ", "MONO16  %dx%d" },
 	{ UVC_FRAME_FORMAT_BY8, "BY8 ", "RAW8  %dx%d" },
 	{ UVC_FRAME_FORMAT_BA81, "BY81", "RAW8  %dx%d" },
-	{ UVC_FRAME_FORMAT_SGRBG8, "GRBG", "RGB24  %dx%d" },
-	{ UVC_FRAME_FORMAT_SGBRG8, "GBRG", "RGB24  %dx%d" },
-	{ UVC_FRAME_FORMAT_SRGGB8, "RGGB", "RGB24  %dx%d" },
-	{ UVC_FRAME_FORMAT_SBGGR8, "BGGR", "RGB24  %dx%d" },
+	{ UVC_FRAME_FORMAT_SGRBG8, "GRBG", "RAW8  %dx%d" },
+	{ UVC_FRAME_FORMAT_SGBRG8, "GBRG", "RAW8  %dx%d" },
+	{ UVC_FRAME_FORMAT_SRGGB8, "RGGB", "RAW8  %dx%d" },
+	{ UVC_FRAME_FORMAT_SBGGR8, "BGGR", "RAW8  %dx%d" },
 	{ UVC_FRAME_FORMAT_ANY, "    ", "%dx%d" }
 };
 
@@ -204,7 +205,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			if (res != UVC_SUCCESS) {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				uvc_print_diag(PRIVATE_DATA->handle, stderr);
+				uvc_print_diag(PRIVATE_DATA->handle, NULL);
 				const uvc_format_desc_t *format = uvc_get_format_descs(PRIVATE_DATA->handle);
 				CCD_MODE_PROPERTY->count = 0;
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_INFO_HEIGHT_ITEM->number.value = 0;
