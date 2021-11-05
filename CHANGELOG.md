@@ -2,6 +2,55 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-164] - Fri Nov 05 2021
+### Overall
+- indigo_dtos(): call fixed formatting issues
+- indigo_stod(): fix for values [-1, 0] represented as positive
+- libusb: updated
+
+### Driver fixes
+- indigo_agent_solver:
+	- more reliable "Sync and center"
+	- FOV unit parsing fixed
+
+- indigo_agent_imager:
+	- Peak/HFD focus failed criteria fixed
+	- BEST_FOCUS_DEVIATION item added as a measure of the deviation of the final focus quality compared to the best of the run
+	- return to initial on failure fixed
+	- fix memory leak in capture_raw_frame()
+	- prevent abort_process() from aborting all devices on the bus when no focuser selected
+	- do not evaluate RMS contrast on frame restoration as contrast changes dramatically when frame is changed
+
+- indigo_agent_guider:
+	- fixed calibration near the poles
+
+- indigo_ccd_ptp:
+	- Fuji camera BULB exposure fixed
+	- Fuji X-T2 support
+
+- indigo_focuser_mypro2:
+	- fix proeprty handling
+
+- indigo_mount_lx200:
+	- OnStep compatibility issue fixed
+
+- indigo_mount_ioptron:
+	- search for mechanical zero position added for CEM45, CEM70 and CEM120
+	- MOUNT_PARK_SET implemented for 2.5 and 3.0 protocols
+
+- indigo_ccd_asi:
+	- lower the camera stress at exposure start
+	- fix ASI120 issues
+	- SDK updated v.1.20.2.1103
+
+- indigo_ccd_simulator:
+	- backlash simulation added
+	- add declination to the drift to simulate high declination guiding
+	- change GUIDER_IMAGE to SIMULATION_SETUP property
+
+- indigo_ccd_uvc:
+	- libuvc updated
+
 ## [2.0-162] - Fri Oct 15 2021
 ### Overall
 - indigo_filter: device and related device validation callback added
