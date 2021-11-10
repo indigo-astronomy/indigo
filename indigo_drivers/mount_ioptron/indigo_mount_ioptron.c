@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x001C
+#define DRIVER_VERSION 0x001D
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -763,11 +763,11 @@ static void mount_connect_callback(indigo_device *device) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
-					if (strncmp("201030", response, 6) <= 0 && (product == 26 || product == 28)) {
+					if (strncmp("201030", response, 6) <= 0 && (product == 26 || product == 27 || product == 28)) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
-					if (strncmp("210101", response, 6) <= 0 && (product == 27 || product == 29 || product == 40  || product == 41 || product == 43  || product == 44)) {
+					if (strncmp("210101", response, 6) <= 0 && (product == 29 || product == 40  || product == 41 || product == 43  || product == 44)) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
