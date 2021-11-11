@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -297,7 +297,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					if (res == UVC_SUCCESS)
 						CCD_GAMMA_ITEM->number.max = value_16;
 				}
-				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value * 3);
+				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(FITS_HEADER_SIZE + (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value * 6);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
