@@ -29,3 +29,4 @@ indigo_server/resource/data/*.data
 indigo.xcodeproj/xcshareddata/
 /indigo_windows/test/Debug
 /indigo_drivers/gps_gpsd/externals/libgps/libgps.a
+/tools/fxload/fxload
