@@ -22,6 +22,8 @@ depcomp
 install-sh
 ltmain.sh
 missing
+compile
+INSTALL
 
 get_rade1
 get_rade2
