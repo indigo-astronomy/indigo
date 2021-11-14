@@ -448,7 +448,7 @@ bool indigo_write(int handle, const char *buffer, long length) {
 		long bytes_written = write(handle, buffer, remains);
 #endif
 		if (bytes_written < 0) {
-			INDIGO_ERROR(indigo_error("%s(): %s", __FUNCTION__, strerror(errno)));
+			INDIGO_ERROR(indigo_error("%s(%d): %s", __FUNCTION__, handle, strerror(errno)));
 			return false;
 		}
 		if (bytes_written == remains)
