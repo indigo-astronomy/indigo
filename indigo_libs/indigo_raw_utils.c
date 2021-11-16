@@ -1122,7 +1122,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 indigo_result indigo_init_mask(const int width, const int height, uint8_t **mask) {
 	int size = width * height;
 	uint8_t *buf = indigo_safe_malloc(size * sizeof(uint8_t));
-	if (buf = NULL)
+	if (buf == NULL)
 		return INDIGO_FAILED;
 
 	memset(buf, 1, size);
@@ -1133,21 +1133,21 @@ indigo_result indigo_init_mask(const int width, const int height, uint8_t **mask
 indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void *data, const int width, const int height, uint8_t *mask) {
 	if (data == NULL || mask == NULL) return INDIGO_FAILED;
 
-	int  size = width * height;
+	int size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
-	int star_size = 100;
+	int star_size = 250;
 
 	uint16_t max_luminance;
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
-	uint32_t threshold = 0;
+	double sum = 0;
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			max_luminance = 247;
 			for (int i = 0; i < size; i++) {
-				threshold += data8[i];
+				sum += data8[i];
 				buf[i]=data8[i];
 				mask[i] = 1;
 			}
@@ -1156,7 +1156,7 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 		case INDIGO_RAW_MONO16: {
 			max_luminance = 65407;
 			for (int i = 0; i < size; i++) {
-				threshold += data16[i];
+				sum += data16[i];
 				buf[i] = data16[i];
 				mask[i] = 1;
 			}
@@ -1164,17 +1164,21 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 		}
 	}
 
-	threshold = 1.05 * threshold / size;
-	int threshold_hist = threshold;
+	double mean = sum / size;
+	const uint16_t threshold_hist = 1 * mean;
+	const double threshold = (max_luminance - mean) * 0.3 + mean;
+
+	indigo_error("TH = %d", threshold_hist);
 
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			int off = y * width + x;
 			if (
-			    buf[off] > max_luminance &&
+			    off > 0 &&
+			    // mask[off] &&
+			    data16[off] > max_luminance &&
 			    /* also check median of the neighbouring pixels to avoid hot pixels and lines */
-			    median(buf[off - 1], buf[off], buf[off + 1]) >= max_luminance &&
-			    median(buf[off - width], buf[off], buf[off + width]) >= max_luminance
+			    median(buf[off - 1], buf[off], buf[off + 1]) > threshold
 			) {
 				int min_i = MAX(0, x - star_size);
 				int max_i = MIN(width - 1, x + star_size);
