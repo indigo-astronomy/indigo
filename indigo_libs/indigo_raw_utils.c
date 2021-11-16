@@ -1135,7 +1135,8 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 
 	int size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
-	int star_size = 250;
+	/* mask ~3% of the frame around the saturated area */
+	int mask_size = height / 30;
 
 	uint16_t max_luminance;
 
@@ -1148,7 +1149,7 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			max_luminance = 247;
 			for (int i = 0; i < size; i++) {
 				sum += data8[i];
-				buf[i]=data8[i];
+				buf[i] = data8[i];
 				mask[i] = 1;
 			}
 			break;
@@ -1165,11 +1166,7 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 	}
 
 	double mean = sum / size;
-	const uint16_t threshold_hist = 1 * mean;
 	const double threshold = (max_luminance - mean) * 0.3 + mean;
-
-	indigo_error("TH = %d", threshold_hist);
-
 	for (int y = 0; y < height; y++) {
 		for (int x = 0; x < width; x++) {
 			int off = y * width + x;
@@ -1180,57 +1177,14 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			    /* also check median of the neighbouring pixels to avoid hot pixels and lines */
 			    median(buf[off - 1], buf[off], buf[off + 1]) > threshold
 			) {
-				int min_i = MAX(0, x - star_size);
-				int max_i = MIN(width - 1, x + star_size);
-				int min_j = MAX(0, y - star_size);
-				int max_j = MIN(height - 1, y + star_size);
+				int min_i = MAX(0, x - mask_size);
+				int max_i = MIN(width - 1, x + mask_size);
+				int min_j = MAX(0, y - mask_size);
+				int max_j = MIN(height - 1, y + mask_size);
 
-				// clear +X, +Y quadrant
-				for (int j = y; j <= max_j; j++) {
-					if (buf[j * width + x] < threshold_hist) break;
-					for (int i = x; i <= max_i; i++) {
-						int off = j * width + i;
-						if (buf[off] > threshold_hist) {
-							mask[off] = 0;
-						} else {
-							break;
-						}
-					}
-				}
-				// clear -X, +Y quadrant
-				for (int j = y; j <= max_j; j++) {
-					if (buf[j * width + x - 1] < threshold_hist) break;
-					for (int i = x - 1; i >= min_i; i--) {
-						int off = j * width + i;
-						if (buf[off] > threshold_hist) {
-							mask[off] = 0;
-						} else {
-							break;
-						}
-					}
-				}
-				// clear +X, -Y quadrant
-				for (int j = y - 1; j >= min_j; j--) {
-					if (buf[j * width + x] < threshold_hist) break;
-					for (int i = x; i <= max_i; i++) {
-						int off = j * width + i;
-						if (buf[off] > threshold_hist) {
-							mask[off] = 0;
-						} else {
-							break;
-						}
-					}
-				}
-				// clear -X, -Y quadrant
-				for (int j = y - 1; j >= min_j; j--) {
-					if (buf[j * width + x - 1] < threshold_hist) break;
-					for (int i = x - 1; i >= min_i; i--) {
-						int off = j * width + i;
-						if (buf[off] > threshold_hist) {
-							mask[off] = 0;
-						} else {
-							break;
-						}
+				for (int j = min_j; j <= max_j; j++) {
+					for (int i = min_i; i <= max_i; i++) {
+						mask[j * width + i] = 0;
 					}
 				}
 			}
