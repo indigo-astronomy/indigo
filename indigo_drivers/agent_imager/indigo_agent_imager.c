@@ -415,7 +415,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, bool is_r
 	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
 	if (DEVICE_PRIVATE_DATA->use_rms_estimator && !is_restore_frame) {
 		bool saturated = false;
-		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &saturated);
+		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), NULL, header->width, header->height, &saturated);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, saturated ? "(saturated)" : "");
 		if (saturated) {
 			indigo_send_message(device, "Frame saturation detected, focus may not be accurate");

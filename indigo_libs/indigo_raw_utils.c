@@ -1404,15 +1404,23 @@ double indigo_rmse(double set[], const int count) {
 	return sqrt(sum / count);
 }
 
-double indigo_contrast(indigo_raw_type raw_type, const void *data, const int width, const int height, bool *saturated) {
+double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated) {
 	if (width <= 0 || height <=0 || data == NULL) return INDIGO_FAILED;
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
-			return indigo_stddev_8((uint8_t*)data, width * height, saturated) / 255.0;
+			if (saturation_mask == NULL) {
+				return indigo_stddev_8((uint8_t*)data, width * height, saturated) / 255.0;
+			} else {
+				return indigo_stddev_masked_8((uint8_t*)data, saturation_mask, width * height, saturated) / 255.0;
+			}
 		}
 		case INDIGO_RAW_MONO16: {
-			return indigo_stddev_16((uint16_t*)data, width * height, saturated) / 65535.0;
+			if (saturation_mask == NULL) {
+				return indigo_stddev_16((uint16_t*)data, width * height, saturated) / 65535.0;
+			} else {
+				return indigo_stddev_masked_16((uint16_t*)data, saturation_mask, width * height, saturated) / 255.0;
+			}
 		}
 		case INDIGO_RAW_RGB24: {
 			return indigo_stddev_8((uint8_t*)data, width * height * 3, saturated) / 255.0;
