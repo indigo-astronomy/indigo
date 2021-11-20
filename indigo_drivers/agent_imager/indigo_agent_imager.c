@@ -167,6 +167,7 @@ typedef struct {
 	double saved_frame_left, saved_frame_top;
 	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
+	uint8_t *focus_saturation_mask;
 	int focuser_position;
 	int saved_backlash;
 	indigo_star_detection stars[MAX_STAR_COUNT];
@@ -415,10 +416,14 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, bool is_r
 	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
 	if (DEVICE_PRIVATE_DATA->use_rms_estimator && !is_restore_frame) {
 		bool saturated = false;
-		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), NULL, header->width, header->height, &saturated);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_saturation_mask = 0x%p", DEVICE_PRIVATE_DATA->focus_saturation_mask);
+		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), DEVICE_PRIVATE_DATA->focus_saturation_mask, header->width, header->height, &saturated);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, saturated ? "(saturated)" : "");
 		if (saturated) {
-			indigo_send_message(device, "Frame saturation detected, focus may not be accurate");
+			indigo_send_message(device, "Frame saturation detected, masking saturated areas.");
+			if (DEVICE_PRIVATE_DATA->focus_saturation_mask == NULL) indigo_init_mask(header->width, header->height, &DEVICE_PRIVATE_DATA->focus_saturation_mask);
+			indigo_update_saturation_mask(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, DEVICE_PRIVATE_DATA->focus_saturation_mask);
+			AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), DEVICE_PRIVATE_DATA->focus_saturation_mask, header->width, header->height, &saturated);
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
@@ -1303,6 +1308,7 @@ static bool autofocus_repeat(indigo_device *device) {
 static void autofocus_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
+	DEVICE_PRIVATE_DATA->focus_saturation_mask = NULL;
 	DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
@@ -1322,6 +1328,9 @@ static void autofocus_process(indigo_device *device) {
 		}
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "releasing focus_saturation_mask = 0x%p", DEVICE_PRIVATE_DATA->focus_saturation_mask);
+	indigo_safe_free(DEVICE_PRIVATE_DATA->focus_saturation_mask);
+	DEVICE_PRIVATE_DATA->focus_saturation_mask = NULL;
 	restore_subframe(device);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
