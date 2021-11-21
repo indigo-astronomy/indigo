@@ -420,11 +420,11 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, &DEVICE_PRIVATE_DATA->frame_saturated);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, DEVICE_PRIVATE_DATA->frame_saturated ? "(saturated)" : "");
 		if (DEVICE_PRIVATE_DATA->frame_saturated) {
-			indigo_send_message(device, "Frame saturation detected, masking saturated areas.");
+			indigo_send_message(device, "Frame saturation detected, masking out saturated areas and resetting statistics");
 			if (*saturation_mask == NULL) indigo_init_mask(header->width, header->height, saturation_mask);
 			indigo_update_saturation_mask(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, *saturation_mask);
 			AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, NULL);
-			AGENT_IMAGER_STATS_FRAME_ITEM->number.value = -1;
+			AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
@@ -486,7 +486,9 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 			indigo_selection_psf(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_IMAGER_SELECTION_X_ITEM->number.value, AGENT_IMAGER_SELECTION_Y_ITEM->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &AGENT_IMAGER_STATS_FWHM_ITEM->number.value, &AGENT_IMAGER_STATS_HFD_ITEM->number.value, &AGENT_IMAGER_STATS_PEAK_ITEM->number.value);
 		}
 	}
-	AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
+	if (!DEVICE_PRIVATE_DATA->frame_saturated) {
+		AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
+	}
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	return INDIGO_OK_STATE;
 }
