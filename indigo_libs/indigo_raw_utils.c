@@ -1419,7 +1419,7 @@ double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t
 			if (saturation_mask == NULL) {
 				return indigo_stddev_16((uint16_t*)data, width * height, saturated) / 65535.0;
 			} else {
-				return indigo_stddev_masked_16((uint16_t*)data, saturation_mask, width * height, saturated) / 255.0;
+				return indigo_stddev_masked_16((uint16_t*)data, saturation_mask, width * height, saturated) / 65535.0;
 			}
 		}
 		case INDIGO_RAW_RGB24: {
