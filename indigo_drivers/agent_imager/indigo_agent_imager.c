@@ -424,6 +424,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 			if (*saturation_mask == NULL) indigo_init_mask(header->width, header->height, saturation_mask);
 			indigo_update_saturation_mask(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, *saturation_mask);
 			AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, NULL);
+			AGENT_IMAGER_STATS_FRAME_ITEM->number.value = -1;
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
