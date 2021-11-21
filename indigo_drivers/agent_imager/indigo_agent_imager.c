@@ -179,6 +179,7 @@ typedef struct {
 	double focus_exposure;
 	bool dithering_started, dithering_finished;
 	bool allow_subframing;
+	bool frame_saturated;
 	bool find_stars;
 	bool focuser_has_backlash;
 	bool restore_initial_position;
@@ -325,6 +326,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_exposure_property, *agent_exposure_property, *device_aux_1_exposure_property, *agent_aux_1_exposure_property, *device_format_property;
 	DEVICE_PRIVATE_DATA->use_aux_1 = false;
+	DEVICE_PRIVATE_DATA->frame_saturated = false;
 	if (DEVICE_PRIVATE_DATA->last_image) {
 		free (DEVICE_PRIVATE_DATA->last_image);
 		DEVICE_PRIVATE_DATA->last_image = NULL;
@@ -414,15 +416,14 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 
 	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
 	if (saturation_mask && DEVICE_PRIVATE_DATA->use_rms_estimator && !is_restore_frame) {
-		bool saturated = false;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_saturation_mask = 0x%p", *saturation_mask);
-		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, &saturated);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, saturated ? "(saturated)" : "");
-		if (saturated) {
+		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, &DEVICE_PRIVATE_DATA->frame_saturated);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, DEVICE_PRIVATE_DATA->frame_saturated ? "(saturated)" : "");
+		if (DEVICE_PRIVATE_DATA->frame_saturated) {
 			indigo_send_message(device, "Frame saturation detected, masking saturated areas.");
 			if (*saturation_mask == NULL) indigo_init_mask(header->width, header->height, saturation_mask);
 			indigo_update_saturation_mask(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, *saturation_mask);
-			AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, &saturated);
+			AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, NULL);
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
@@ -932,13 +933,17 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 		quality /= frame_count;
 		if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 			min_est = (min_est > quality) ? quality : min_est;
-			max_est = (max_est < quality) ? quality : max_est;
+			if (DEVICE_PRIVATE_DATA->frame_saturated) {
+				max_est = quality;
+			} else {
+				max_est = (max_est < quality) ? quality : max_est;
+			}
 		}
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 			min_est = (min_est > AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : min_est;
 			max_est = (max_est < AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : max_est;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality = %g", quality);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus Quality = %g %s", quality, DEVICE_PRIVATE_DATA->frame_saturated ? "(saturated)" : "");
 		if (quality >= last_quality && abs(current_offset) < limit) {
 			if (moving_out) {
 				steps_todo = steps + DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
@@ -1151,13 +1156,17 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 		quality /= frame_count;
 		if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 			min_est = (min_est > quality) ? quality : min_est;
-			max_est = (max_est < quality) ? quality : max_est;
+			if (DEVICE_PRIVATE_DATA->frame_saturated) {
+				max_est = quality;
+			} else {
+				max_est = (max_est < quality) ? quality : max_est;
+			}
 		}
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 			min_est = (min_est > AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : min_est;
 			max_est = (max_est < AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : max_est;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality = %g", quality);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus Quality = %g %s", quality, DEVICE_PRIVATE_DATA->frame_saturated ? "(saturated)" : "");
 		if (quality >= last_quality && abs(current_offset) < limit) {
 			if (moving_out) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving out %d steps", (int)steps);
