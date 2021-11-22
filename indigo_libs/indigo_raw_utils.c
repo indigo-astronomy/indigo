@@ -1168,6 +1168,9 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			}
 			break;
 		}
+		default:
+			free(buf);
+			return INDIGO_FAILED;
 	}
 
 	double mean = sum / size;
@@ -1217,7 +1220,7 @@ double indigo_stddev(double set[], const int count) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int count, bool *saturated) {
+static double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
@@ -1252,7 +1255,7 @@ double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int count, bo
 	return sqrt(sum / real_count);
 }
 
-double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int count, bool *saturated) {
+static double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
@@ -1287,7 +1290,7 @@ double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int count, 
 	return sqrt(sum / real_count);
 }
 
-double indigo_stddev_8(uint8_t set[], const int count, bool *saturated) {
+static double indigo_stddev_8(uint8_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
@@ -1314,7 +1317,7 @@ double indigo_stddev_8(uint8_t set[], const int count, bool *saturated) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_16(uint16_t set[], const int count, bool *saturated) {
+static double indigo_stddev_16(uint16_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
@@ -1341,7 +1344,7 @@ double indigo_stddev_16(uint16_t set[], const int count, bool *saturated) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_rgba32(uint8_t set[], const int count, bool *saturated) {
+static double indigo_stddev_rgba32(uint8_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
@@ -1369,7 +1372,7 @@ double indigo_stddev_rgba32(uint8_t set[], const int count, bool *saturated) {
 	return sqrt(sum / count);
 }
 
-double indigo_stddev_abgr32(uint8_t set[], const int count, bool *saturated) {
+static double indigo_stddev_abgr32(uint8_t set[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
 	if (count < 1) return 0;
