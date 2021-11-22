@@ -420,11 +420,18 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, &DEVICE_PRIVATE_DATA->frame_saturated);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, DEVICE_PRIVATE_DATA->frame_saturated ? "(saturated)" : "");
 		if (DEVICE_PRIVATE_DATA->frame_saturated) {
-			indigo_send_message(device, "Frame saturation detected, masking out saturated areas and resetting statistics");
-			if (*saturation_mask == NULL) indigo_init_saturation_mask(header->width, header->height, saturation_mask);
-			indigo_update_saturation_mask(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, *saturation_mask);
-			AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, NULL);
-			AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+			if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16) {
+				indigo_send_message(device, "Frame saturation detected, masking out saturated areas and resetting statistics");
+				if (*saturation_mask == NULL) {
+					indigo_init_saturation_mask(header->width, header->height, saturation_mask);
+				}
+				indigo_update_saturation_mask(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, *saturation_mask);
+				AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, NULL);
+				AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+			} else {  // Colour image saturation masking is not supported yet.
+				indigo_send_message(device, "Frame saturation detected, final focus may not be accurate");
+				DEVICE_PRIVATE_DATA->frame_saturated = false;
+			}
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
