@@ -18,6 +18,11 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_raw_utils.h>
 
+// Above this value the pixel is considered saturated
+// Derived from different camera
+#define SATURATION_8 247
+#define SATURATION_16 65407
+
 #define RE (0)
 #define IM (1)
 #define PI_2 (6.2831853071795864769252867665590057683943L)
@@ -1119,7 +1124,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	return INDIGO_OK;
 }
 
-indigo_result indigo_init_mask(const int width, const int height, uint8_t **mask) {
+indigo_result indigo_init_saturation_mask(const int width, const int height, uint8_t **mask) {
 	int size = width * height;
 	uint8_t *buf = indigo_safe_malloc(size * sizeof(uint8_t));
 	if (buf == NULL)
@@ -1146,7 +1151,7 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
-			max_luminance = 247;
+			max_luminance = SATURATION_8;
 			for (int i = 0; i < size; i++) {
 				sum += data8[i];
 				buf[i] = data8[i];
@@ -1155,7 +1160,7 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			break;
 		}
 		case INDIGO_RAW_MONO16: {
-			max_luminance = 65407;
+			max_luminance = SATURATION_16;
 			for (int i = 0; i < size; i++) {
 				sum += data16[i];
 				buf[i] = data16[i];
@@ -1227,12 +1232,12 @@ double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int count, bo
 	}
 	m = x / real_count;
 
-	const double threshold = (247 - m) * 0.3 + m;
+	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	real_count = 0;
 	for (int i = 0; i < count; i++) {
 		if (mask[i]) {
 			/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-			if (i > 0 && set[i] > 247 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+			if (i > 0 && set[i] > SATURATION_8 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
 				if (saturated) {
 					if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
 					*saturated = true;
@@ -1262,12 +1267,12 @@ double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int count, 
 	}
 	m = x / real_count;
 
-	const double threshold = (65407 - m) * 0.3 + m;
+	const double threshold = (SATURATION_16 - m) * 0.3 + m;
 	real_count = 0;
 	for (int i = 0; i < count; i++) {
 		if (mask[i]) {
 			/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-			if (i > 0 && set[i] > 65407 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+			if (i > 0 && set[i] > SATURATION_16 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
 				if (saturated) {
 					if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
 					*saturated = true;
@@ -1293,10 +1298,10 @@ double indigo_stddev_8(uint8_t set[], const int count, bool *saturated) {
 	}
 	m = x / count;
 
-	const double threshold = (247 - m) * 0.3 + m;
+	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	for (int i = 0; i < count; i++) {
 		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-		if (i > 0 && set[i] > 247 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+		if (i > 0 && set[i] > SATURATION_8 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
 			if (saturated) {
 				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
 				*saturated = true;
@@ -1320,10 +1325,10 @@ double indigo_stddev_16(uint16_t set[], const int count, bool *saturated) {
 	}
 	m = x / count;
 
-	const double threshold = (65407 - m) * 0.3 + m;
+	const double threshold = (SATURATION_16 - m) * 0.3 + m;
 	for (int i = 0; i < count; i++) {
 		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-		if (i > 0 && set[i] > 65407 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+		if (i > 0 && set[i] > SATURATION_16 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
 			if (saturated) {
 				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
 				*saturated = true;
@@ -1348,10 +1353,10 @@ double indigo_stddev_rgba32(uint8_t set[], const int count, bool *saturated) {
 	}
 	m = x / (count * 3);
 
-	const double threshold = (247 - m) * 0.3 + m;
+	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	for (int i = 0; i < values; i += 4) {
 		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-		if (i > 0 && set[i] > 247 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
+		if (i > 0 && set[i] > SATURATION_8 && median(set[i - 1], set[i], set[i + 1]) > threshold) {
 			if (saturated) {
 				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
 				*saturated = true;
@@ -1376,10 +1381,10 @@ double indigo_stddev_abgr32(uint8_t set[], const int count, bool *saturated) {
 	}
 	m = x / (count * 3);
 
-	const double threshold = (247 - m) * 0.3 + m;
+	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	for (int i = 0; i < values; i += 4) {
 		/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
-		if (i > 0 && set[i + 1] > 247 && median(set[i], set[i + 1], set[i + 2]) > threshold) {
+		if (i > 0 && set[i + 1] > SATURATION_8 && median(set[i], set[i + 1], set[i + 2]) > threshold) {
 			if (saturated) {
 				if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, median = %d, mean = %.2f", threshold, median(set[i - 1], set[i], set[i + 1]), m));
 				*saturated = true;
