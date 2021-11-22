@@ -84,7 +84,7 @@ extern indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest);
 
 extern double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated);
 
-extern indigo_result indigo_init_mask(const int width, const int height, uint8_t **mask);
+extern indigo_result indigo_init_saturation_mask(const int width, const int height, uint8_t **mask);
 extern indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void *data, const int width, const int height, uint8_t *mask);
 extern double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int count, bool *saturated);
 extern double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int count, bool *saturated);
