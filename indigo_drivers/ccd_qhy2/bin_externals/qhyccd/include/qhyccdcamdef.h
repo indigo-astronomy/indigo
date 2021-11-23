@@ -375,6 +375,42 @@
 #define DEVICETYPE_QHY268M      	4090
 #define DEVICETYPE_QHY4040PRO_FN 	4091
 #define DEVICETYPE_QHY4040PRO_BN 	4092
+
+#define DEVICETYPE_QHY990        	4093
+
+
+/**
+ * Type define for QHY5III178C*/
+#define DEVICETYPE_QHY5III178C_Celestron      4094
+
+#define DEVICETYPE_QHY5LII_C_OrionAllInOne      4095
+#define DEVICETYPE_QHY5LII_M_Orion_StarShoot      4096
+
+#define DEVICETYPE_QHY550_PM        4097
+#define DEVICETYPE_QHY550_PC        4098
+#define DEVICETYPE_QHY550_M        4099
+#define DEVICETYPE_QHY550_C        4100
+
+#define DEVICETYPE_QHY5III482C        4101
+#define DEVICETYPE_QHY5III464         4102
+
+#define DEVICETYPE_QHY183A              4105
+#define DEVICETYPE_QHY183A_M            4106
+#define DEVICETYPE_QHY183A_C            4107
+
+#define DEVICETYPE_QHY5III334            4108
+#define DEVICETYPE_QHY5III334M           4109
+#define DEVICETYPE_QHY5III334C           4110
+
+#define DEVICETYPE_QHY991                4111
+#define DEVICETYPE_QHY1253               4112
+#define DEVICETYPE_QHY5III415            4113
+
+#define DEVICETYPE_QHY1920             4114
+#define DEVICETYPE_QHY1920M            4115
+#define DEVICETYPE_QHY1920C            4116
+
+#define DEVICETYPE_QHY9701             4117
 /**
  * Type define for QHY5IIIEND*/
 #define DEVICETYPE_QHY5IIIEND   	4999
@@ -539,6 +575,7 @@
 #define DEVICETYPE_QHY411ERISPCIE  		0X6618c414
 #define DEVICETYPE_QHY600PCIE      		0X6618c603
 #define DEVICETYPE_QHY268PCIE      		0X6618c269
+#define DEVICETYPE_QHY461PCIE      		0X6618c462
 
 
 
@@ -958,8 +995,8 @@
 
 /**
  * Type define for QHY-DevelopDev*/
-#define QHY5IIICOMMON_MAX_WIDTH        3864	//8432  	
-#define QHY5IIICOMMON_MAX_HEIGHT       2180    //5648	  
+#define QHY5IIICOMMON_MAX_WIDTH      4144//3864//5680//2712//3864// 2712// 1408    //8432  	
+#define QHY5IIICOMMON_MAX_HEIGHT     3064//2192//3710//1538//2180// 1538// 1052    //5648	  
 
 /**
  * Type define for QHY247*/
@@ -1024,6 +1061,12 @@
 
 #define QHY550_MAX_WIDTH        	2496
 #define QHY550_MAX_HEIGHT        	2080
+
+#define QHY990_MAX_WIDTH        	1408
+#define QHY990_MAX_HEIGHT        	1052
+
+#define QHY991_MAX_WIDTH        	768
+#define QHY991_MAX_HEIGHT        	540
 
 #define QHY42PRO_MAX_WIDTH        	4096
 #define QHY42PRO_MAX_HEIGHT        	2048
@@ -1256,7 +1299,7 @@
 #define REMAINING_MIN_EXPOSURETIMES	(3000)//ms
 
 #define		MAX_CAMERA_NUMBER		200
-#define		CAMERA_ID_LENGTH		64
+#define		CAMERA_ID_LENGTH		64   //(CAMERA_ID_LENGTH and ID_STR_LEN) more like a full ID length: QHY178-xxxxx(Mode included)
 #define   	MAXDEVICES 				10
 
 
@@ -1302,6 +1345,8 @@
 
 #define   SINGLE_MODE 								0
 #define   LIVE_MODE 								1
+
+#define   FLASH_CONFIG_PAGE_INDEX					1
 
 #define   FPGA_MODE_DEFAULT 						99
 #define   FPGA_MODE_12_47M 								12     //14bit rigister= 11M  12bit rigister = 47M
