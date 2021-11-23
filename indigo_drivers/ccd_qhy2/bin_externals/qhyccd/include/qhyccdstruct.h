@@ -181,13 +181,13 @@ enum CONTROL_ID
 /*17*/  CONTROL_CFWPORT,        //!< control camera color filter wheel port
 /*18*/  CONTROL_COOLER,         //!< check if camera has cooler
 /*19*/  CONTROL_ST4PORT,        //!< check if camera has st4port
-/*20*/  CAM_COLOR,
+/*20*/  CAM_COLOR,              /// FIXME!  CAM_IS_COLOR CAM_COLOR conflict
 /*21*/  CAM_BIN1X1MODE,         //!< check if camera has bin1x1 mode
 /*22*/  CAM_BIN2X2MODE,         //!< check if camera has bin2x2 mode
 /*23*/  CAM_BIN3X3MODE,         //!< check if camera has bin3x3 mode
 /*24*/  CAM_BIN4X4MODE,         //!< check if camera has bin4x4 mode
 /*25*/  CAM_MECHANICALSHUTTER,                   //!< mechanical shutter
-/*26*/  CAM_TRIGER_INTERFACE,                    //!< triger
+/*26*/  CAM_TRIGER_INTERFACE,                    //!< check if camera has triger interface
 /*27*/  CAM_TECOVERPROTECT_INTERFACE,            //!< tec overprotect
 /*28*/  CAM_SINGNALCLAMP_INTERFACE,              //!< singnal clamp
 /*29*/  CAM_FINETONE_INTERFACE,                  //!< fine tone
@@ -232,7 +232,14 @@ enum CONTROL_ID
 /*62*/  CAM_HUMIDITY,			//!<check if camera has	 humidity sensor  20191021 LYL Unified humidity function
 /*63*/  CAM_PRESSURE,             //check if camera has pressure sensor
 /*64*/  CONTROL_VACUUM_PUMP,        /// if camera has VACUUM PUMP
-/*65*/  CONTROL_SensorChamberCycle_PUMP,
+/*65*/  CONTROL_SensorChamberCycle_PUMP, ///air cycle pump for sensor drying
+/*66*/  CAM_32BITS,
+/*67*/  CAM_Sensor_ULVO_Status, /// Sensor working status [0:init  1:good  2:checkErr  3:monitorErr 8:good 9:powerChipErr]  410 461 411 600 268 [Eris board]
+/*68*/  CAM_SensorPhaseReTrain, /// 2020,4040/PRO，6060,42PRO
+/*69*/  CAM_InitConfigFromFlash, /// 2410 461 411 600 268 for now
+/*70*/  CAM_TRIGER_MODE, //check if camera has multiple triger mode
+/*71*/  CAM_TRIGER_OUT, //check if camera support triger out function
+/*72*/  CAM_BURST_MODE, //check if camera support burst mode
 
 
 /* Do not Put Item after  CONTROL_MAX_ID !! This should be the max index of the list */
