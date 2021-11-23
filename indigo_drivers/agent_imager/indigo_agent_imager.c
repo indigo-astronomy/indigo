@@ -420,7 +420,12 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 		AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, &DEVICE_PRIVATE_DATA->frame_saturated);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "frame contrast = %f %s", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value, DEVICE_PRIVATE_DATA->frame_saturated ? "(saturated)" : "");
 		if (DEVICE_PRIVATE_DATA->frame_saturated) {
-			if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16) {
+			if (
+				header->signature == INDIGO_RAW_MONO8 ||
+				header->signature == INDIGO_RAW_MONO16 ||
+				header->signature == INDIGO_RAW_RGB24 ||
+				header->signature == INDIGO_RAW_RGB48
+			) {
 				indigo_send_message(device, "Frame saturation detected, masking out saturated areas and resetting statistics");
 				if (*saturation_mask == NULL) {
 					indigo_init_saturation_mask(header->width, header->height, saturation_mask);

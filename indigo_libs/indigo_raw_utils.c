@@ -39,6 +39,17 @@ static int median(int a, int b, int c) {
 	}
 }
 
+double indigo_rmse(double set[], const int count) {
+	double sum = 0;
+
+	if (count < 1) return 0;
+
+	for (int i = 0; i < count; i++) {
+		sum += set[i] * set[i];
+	}
+
+	return sqrt(sum / count);
+}
 
 /*
 Corrects pixel P2 [x, y] if it is a hot pixel or part of a hot
@@ -1124,6 +1135,8 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	return INDIGO_OK;
 }
 
+/* Contrast routines */
+
 indigo_result indigo_init_saturation_mask(const int width, const int height, uint8_t **mask) {
 	int size = width * height;
 	uint8_t *buf = indigo_safe_malloc(size * sizeof(uint8_t));
@@ -1139,8 +1152,16 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 	if (data == NULL || mask == NULL) return INDIGO_FAILED;
 
 	int size = width * height;
-	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
+	switch (raw_type) {
+		case INDIGO_RAW_RGB24:
+		case INDIGO_RAW_RGB48:
+			size *= 3;
+			break;
+		default:
+			break;
+	}
 	/* mask ~3% of the frame around the saturated area */
+
 	int mask_size = height / 30;
 
 	uint16_t max_luminance;
@@ -1154,8 +1175,15 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			max_luminance = SATURATION_8;
 			for (int i = 0; i < size; i++) {
 				sum += data8[i];
-				buf[i] = data8[i];
 				mask[i] = 1;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			max_luminance = SATURATION_8;
+			for (int i = 0; i < size; i++) {
+				sum += data8[i];
+				mask[i/3] = 1;
 			}
 			break;
 		}
@@ -1163,42 +1191,137 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 			max_luminance = SATURATION_16;
 			for (int i = 0; i < size; i++) {
 				sum += data16[i];
-				buf[i] = data16[i];
 				mask[i] = 1;
 			}
 			break;
 		}
+		case INDIGO_RAW_RGB48: {
+			max_luminance = SATURATION_16;
+			for (int i = 0; i < size; i++) {
+				sum += data16[i];
+				mask[i/3] = 1;
+			}
+			break;
+		}
 		default:
-			free(buf);
 			return INDIGO_FAILED;
 	}
 
 	double mean = sum / size;
 	const double threshold = (max_luminance - mean) * 0.3 + mean;
-	for (int y = 0; y < height; y++) {
-		for (int x = 0; x < width; x++) {
-			int off = y * width + x;
-			if (
-			    off > 0 &&
-			    // mask[off] &&
-			    data16[off] > max_luminance &&
-			    /* also check median of the neighbouring pixels to avoid hot pixels and lines */
-			    median(buf[off - 1], buf[off], buf[off + 1]) > threshold
-			) {
-				int min_i = MAX(0, x - mask_size);
-				int max_i = MIN(width - 1, x + mask_size);
-				int min_j = MAX(0, y - mask_size);
-				int max_j = MIN(height - 1, y + mask_size);
 
-				for (int j = min_j; j <= max_j; j++) {
-					for (int i = min_i; i <= max_i; i++) {
-						mask[j * width + i] = 0;
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8: {
+			for (int y = 0; y < height; y++) {
+				for (int x = 0; x < width; x++) {
+					int off = y * width + x;
+					if (
+						off > 0 &&
+						data8[off] > max_luminance &&
+						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+						median(data8[off - 1], data8[off], data8[off + 1]) > threshold
+					) {
+						int min_i = MAX(0, x - mask_size);
+						int max_i = MIN(width - 1, x + mask_size);
+						int min_j = MAX(0, y - mask_size);
+						int max_j = MIN(height - 1, y + mask_size);
+
+						for (int j = min_j; j <= max_j; j++) {
+							for (int i = min_i; i <= max_i; i++) {
+								mask[j * width + i] = 0;
+							}
+						}
 					}
 				}
 			}
+			break;
 		}
+		case INDIGO_RAW_MONO16: {
+			for (int y = 0; y < height; y++) {
+				for (int x = 0; x < width; x++) {
+					int off = y * width + x;
+					if (
+						off > 0 &&
+						data16[off] > max_luminance &&
+						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+						median(data16[off - 1], data16[off], data16[off + 1]) > threshold
+					) {
+						int min_i = MAX(0, x - mask_size);
+						int max_i = MIN(width - 1, x + mask_size);
+						int min_j = MAX(0, y - mask_size);
+						int max_j = MIN(height - 1, y + mask_size);
+
+						for (int j = min_j; j <= max_j; j++) {
+							for (int i = min_i; i <= max_i; i++) {
+								mask[j * width + i] = 0;
+							}
+						}
+					}
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			for (int y = 0; y < height; y++) {
+				for (int x = 0; x < width; x++) {
+					int off = 3 * (y * width + x);
+					if (
+						off > 2 &&
+						data8[off] > max_luminance &&
+						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+						(
+							median(data8[off - 3], data8[off], data8[off + 3]) > threshold ||       /* Red Saturated? */
+							median(data8[off - 2], data8[off + 1], data8[off + 4]) > threshold ||   /* Green Saturated? */
+							median(data8[off - 1], data8[off + 2], data8[off + 5]) > threshold      /* Blue Saturated? */
+						)
+					) {
+						int min_i = MAX(0, x - mask_size);
+						int max_i = MIN(width - 1, x + mask_size);
+						int min_j = MAX(0, y - mask_size);
+						int max_j = MIN(height - 1, y + mask_size);
+
+						for (int j = min_j; j <= max_j; j++) {
+							for (int i = min_i; i <= max_i; i++) {
+								mask[j * width + i] = 0;
+							}
+						}
+					}
+				}
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			for (int y = 0; y < height; y++) {
+				for (int x = 0; x < width; x++) {
+					int off = 3 * (y * width + x);
+					if (
+						off > 2 &&
+						data16[off] > max_luminance &&
+						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+						(
+							median(data16[off - 3], data16[off], data16[off + 3]) > threshold ||       /* Red Saturated? */
+							median(data16[off - 2], data16[off + 1], data16[off + 4]) > threshold ||   /* Green Saturated? */
+							median(data16[off - 1], data16[off + 2], data16[off + 5]) > threshold      /* Blue Saturated? */
+						)
+					) {
+						int min_i = MAX(0, x - mask_size);
+						int max_i = MIN(width - 1, x + mask_size);
+						int min_j = MAX(0, y - mask_size);
+						int max_j = MIN(height - 1, y + mask_size);
+
+						for (int j = min_j; j <= max_j; j++) {
+							for (int i = min_i; i <= max_i; i++) {
+								mask[j * width + i] = 0;
+							}
+						}
+					}
+				}
+			}
+			break;
+		}
+		default:
+			return INDIGO_FAILED;
 	}
-	free(buf);
 	return INDIGO_OK;
 }
 
@@ -1255,6 +1378,60 @@ static double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int co
 	return sqrt(sum / real_count);
 }
 
+static double indigo_stddev_masked_rgb24(uint8_t set[], uint8_t mask[], const int count, bool *saturated) {
+	double x = 0, d, m, sum = 0;
+
+	if (count < 1) return 0;
+	if (saturated) *saturated = false;
+
+	int real_count = 0;
+	for (int i = 0; i < count; i++) {
+		if (mask[i]) {
+			x += set[i];
+			x += set[i + count];
+			x += set[i + count + count];
+			real_count++;
+		}
+	}
+	m = x / (real_count * 3);
+
+	const double threshold = (SATURATION_8 - m) * 0.3 + m;
+	real_count = 0;
+	for (int i = 0; i < count; i++) {
+		int index = i * 3;
+		if (mask[i]) {
+			/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
+			if (
+				i > 2 &&
+				(
+					set[index] > SATURATION_8 ||
+					set[index + 1] > SATURATION_8 ||
+					set[index + 2] > SATURATION_8
+				) && (
+					median(set[index - 3], set[index], set[index + 3]) > threshold ||
+					median(set[index - 2], set[index + 1], set[index + 4]) > threshold ||
+					median(set[index - 1], set[index + 2], set[index + 5]) > threshold
+				)
+			) {
+				if (saturated) {
+					if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, mean = %.2f", threshold, m));
+					*saturated = true;
+				}
+			}
+			d = set[i] - m;
+			sum += d * d;
+			d = set[i + 1] - m;
+			sum += d * d;
+			d = set[i + 2] - m;
+			sum += d * d;
+
+			real_count++;
+		}
+	}
+
+	return sqrt(sum / real_count);
+}
+
 static double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int count, bool *saturated) {
 	double x = 0, d, m, sum = 0;
 
@@ -1283,6 +1460,60 @@ static double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int 
 			}
 			d = set[i] - m;
 			sum += d * d;
+			real_count++;
+		}
+	}
+
+	return sqrt(sum / real_count);
+}
+
+static double indigo_stddev_masked_rgb48(uint16_t set[], uint8_t mask[], const int count, bool *saturated) {
+	double x = 0, d, m, sum = 0;
+
+	if (count < 1) return 0;
+	if (saturated) *saturated = false;
+
+	int real_count = 0;
+	for (int i = 0; i < count; i++) {
+		if (mask[i]) {
+			x += set[i];
+			x += set[i + count];
+			x += set[i + count + count];
+			real_count++;
+		}
+	}
+	m = x / (real_count * 3);
+
+	const double threshold = (SATURATION_16 - m) * 0.3 + m;
+	real_count = 0;
+	for (int i = 0; i < count; i++) {
+		int index = i * 3;
+		if (mask[i]) {
+			/* Check if saturated feature or hotpixel, hotpixels do not break the estimation */
+			if (
+				i > 2 &&
+				(
+					set[index] > SATURATION_16 ||
+					set[index + 1] > SATURATION_16 ||
+					set[index + 2] > SATURATION_16
+				) && (
+					median(set[index - 3], set[index], set[index + 3]) > threshold ||
+					median(set[index - 2], set[index + 1], set[index + 4]) > threshold ||
+					median(set[index - 1], set[index + 2], set[index + 5]) > threshold
+				)
+			) {
+				if (saturated) {
+					if (!(*saturated)) INDIGO_DEBUG(indigo_debug("Saturation detected: threshold = %.2f, mean = %.2f", threshold, m));
+					*saturated = true;
+				}
+			}
+			d = set[i] - m;
+			sum += d * d;
+			d = set[i + 1] - m;
+			sum += d * d;
+			d = set[i + 2] - m;
+			sum += d * d;
+
 			real_count++;
 		}
 	}
@@ -1400,18 +1631,6 @@ static double indigo_stddev_abgr32(uint8_t set[], const int count, bool *saturat
 	return sqrt(sum / count);
 }
 
-double indigo_rmse(double set[], const int count) {
-	double sum = 0;
-
-	if (count < 1) return 0;
-
-	for (int i = 0; i < count; i++) {
-		sum += set[i] * set[i];
-	}
-
-	return sqrt(sum / count);
-}
-
 double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated) {
 	if (width <= 0 || height <=0 || data == NULL) return INDIGO_FAILED;
 
@@ -1431,7 +1650,11 @@ double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t
 			}
 		}
 		case INDIGO_RAW_RGB24: {
-			return indigo_stddev_8((uint8_t*)data, width * height * 3, saturated) / 255.0;
+			if (saturation_mask == NULL) {
+				return indigo_stddev_8((uint8_t*)data, width * height * 3, saturated) / 255.0;
+			} else {
+				return indigo_stddev_masked_rgb24((uint8_t*)data, saturation_mask, width * height, saturated) / 255.0;
+			}
 		}
 		case INDIGO_RAW_RGBA32: {
 			indigo_stddev_rgba32((uint8_t*)data, width * height, saturated) / 255.0;
@@ -1446,6 +1669,8 @@ double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t
 			return 0;
 	}
 }
+
+/* multistar guide */
 
 indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest) {
 	double drifts[MAX_MULTISTAR_COUNT] = {0};
