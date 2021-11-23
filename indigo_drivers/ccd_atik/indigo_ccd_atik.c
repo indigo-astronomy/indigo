@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
