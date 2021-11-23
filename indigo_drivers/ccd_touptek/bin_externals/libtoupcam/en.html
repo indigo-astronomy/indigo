@@ -6,10 +6,8 @@
 </head>
 <body>
 <h1 align="center">Toupcam API Manual</h1>
-<hr/>
-<h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/>
-<ul><li>Version: 46.17309.2020.0616</li></ul>
+<hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
+<hr/><ul><li>Version: 50.19728.20211022</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -23,22 +21,20 @@
       </li>
 	  <li>WinRT: x86, x64, arm, arm64; Windows10 or above</li>
       <li>macOS: universal (x64 + x86); macOS 10.10 or above</li>
-      <li>Linux: kernel 2.6.27 or above
+      <li>Linux: kernel 2.6.27 or above; GLIBC 2.17 or above
 	    <ul>
-		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
-		  <li>x64: GLIBC 2.14 or above</li>
-		  <li>armel: GLIBC 2.17 or above; built by arm-linux-gnueabi (version 4.9.2)</li>
-		  <li>armhf: GLIBC 2.17 or above; built by arm-linux-gnueabihf (version 4.9.2)</li>
-		  <li>arm64: GLIBC 2.17 or above; built by aarch64-linux-gnu (version 4.9.2)</li>
+		  <li>x86: CPU supports SSE3 instruction set or above</li>
+		  <li>x64</li>
+		  <li>armel: built by arm-linux-gnueabi (version 5.4.0)</li>
+		  <li>armhf: built by arm-linux-gnueabihf (version 5.4.0)</li>
+		  <li>arm64: built by aarch64-linux-gnu (version 5.4.0)</li>
 		</ul>
 	  </li>
       <li>Android: arm, arm64, x86, x64; built by android-ndk-r18b; __ANDROID_API__ = 23</li>
     </ul>
   </li>
 </ul>
-<hr/>
-<h1><font color="#0000FF">2. Introduction</font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF">2. Introduction</font></h1><hr/>
 <p>Toupcam cameras support various kinds of APIs (Application Program Interface), namely
  Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/dd375454(v=vs.85).aspx">DirectShow</a>, <a href="http://twain.org/">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
@@ -83,30 +79,16 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		These dll files are compatible with Windows Runtime, and can be consumed from a Universal Windows Platform app.<br/>
 		If use C# to develop the UWP, toupcam.cs wrapper class can be used to P/Invoke into toupcam.dll.<br/>
 		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://msdn.microsoft.com/en-us/library/windows/hardware/dn303351(v=vs.85).aspx">How to add USB device capabilities to the app manifest</a>. (It seems that microsoft limits the number of Device items to 100)</blockquote>
-		demouwp.zip is a simple demo, before build and run this demo, please change the value of vidpid in file Package.appxmanifest<br/>
 		</blockquote>
 	</li>
      <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, it's no longer need to install driver in Windows8 and above versions</b>)
        <ol>
          <li>x86 folder contains the kernel mode drivers for x86, including toupcam.cat, toupcam.inf and toupcam.sys.</li>
          <li>x64 folder contains the kennel mode driver for x64, including toupcam.cat, toupcam.inf and toupcam.sys.</li>
-		 It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
-			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table>
+		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
        </ol>
      </li>
-     <li>samples
-       <ol>
-         <li>democpp, C++ sample. It demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></li>
-         <li>AutoTestTool, auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</li>
-         <li>demopush, C++ sample, this sample use Push Mode, StartPushModeV3</li>
-		 <li>demomfc, a simple C++ sample. It use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode.</li>
-         <li>demomono, a simple C++ sample. It demonstrates to use mono camera with 8 or 16 bits.</li>
-		 <li>demowinformcs1, C# winform sample. This sample use Pull Mode, StartPullModeWithWndMsg.</li>
-         <li>demowinformcs2, C# winform sample. This sample use Pull Mode, StartPullModeWithCallback.</li>
-         <li>demowinformcs3, C# winform sample. This sample use Push Mode, StartPushModeV3.</li>
-         <li>demowinformvb, VB.NET winform sample. This sample use Pull Mode.</li>
-       </ol>
-      </li>
    </ul>
 </li>
 </ul>
@@ -123,15 +105,9 @@ The SDK zip file contains all of the necessary resources and information:</p>
  	</li></ul>
  <ul><li>android: libtoupcam.so for Android on arm, arm64, x86 and x64</li></ul>
  <ul><li>mac: For macOS</li></ul> 
- <ul><li>python: toupcam.py and sample code (Console and pyQt)</li></ul>
- <ul><li>java: toupcam.java and sample code (Console and Swing)</li></ul>
+ <ul><li>python: toupcam.py and sample code</li></ul>
+ <ul><li>java: toupcam.java and sample code</li></ul>
  <ul><li>doc: User manuals in English and Simplified Chinese</li></ul>
- <ul><li>sample
-	<ul>
-	<li>demosimplest: a simplest sample, about 60 lines of code</li>
-	<li>demoraw: raw data and snap still image, about 120 lines of code</li>
-	</ul>
-	</li></ul>
  <ul>
      <li>extras
        <ul>
@@ -141,9 +117,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		 <li>matlab: MatLab demo</li>
        </ul>
      </li></ul>
- <hr/>
-<h1><font color="#0000FF">3. Concepts and terminology</font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF">3. Concepts and terminology</font></h1><hr/>
 <h2><font color="#0000FF">a. Modes for accessing image data: "Pull Mode" vs "Push Mode"</font></h2>
 <p>Toupcam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
 <ul>
@@ -161,8 +135,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <div align="center">
 <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
  <tr>
-   <td width="27%" valign="top">TOUPCAM_EVENT_EXPOSURE</td>
-   <td width="73%" valign="top">exposure time changed</td>
+   <td width="27%">TOUPCAM_EVENT_EXPOSURE</td>
+   <td width="73%">exposure time changed</td>
  </tr>
  <tr>
    <td>TOUPCAM_EVENT_TEMPTINT</td>
@@ -217,6 +191,22 @@ The SDK zip file contains all of the necessary resources and information:</p>
    <td>roi changed</td>
  </tr>
   <tr>
+   <td>TOUPCAM_EVENT_LEVELRANGE</td>
+   <td>level range changed</td>
+ </tr>
+ <tr>
+   <td><a id="hwevent">TOUPCAM_EVENT_EXPO_START</a></td>
+   <td>exposure start</td>
+ </tr>
+ <tr>
+   <td>TOUPCAM_EVENT_EXPO_STOP</td>
+   <td>exposure stop</td>
+ </tr>
+ <tr>
+   <td>TOUPCAM_EVENT_TRIGGER_ALLOW</td>
+   <td>next trigger allow</td>
+ </tr>
+  <tr>
    <td>TOUPCAM_EVENT_FACTORY</td>
    <td>restore factory settings. Please note that restoring factory settings may cause resolution changes.</td>
  </tr>
@@ -235,21 +225,21 @@ The SDK zip file contains all of the necessary resources and information:</p>
 <h2><font color="#0000FF"><a id="raw">c. Data format: RGB vs RAW</a></font></h2>
 <p>Toupcam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning TOUPCAM_OPTION_RAW parameter to 1 when calling Toupcam_put_Option function.</p>
 <ul><li>RGB format: The output of every pixel contains 3 componants which stand for R/G/B value respectively. This output is a processed output from the internal color processing engine.</li></ul>
-<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Toupcam_put_Hue or Toupcam_AwbOnePush function and so on.</li></ul>
+<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Toupcam_put_Hue or Toupcam_AwbOnce function and so on.</li></ul>
 <p>Users could switch these two format by calling Toupcam_put_Option function with different value setting to TOUPCAM_OPTION_RAW. You must call this function BEFORE the camera start function (Toupcam_StartPullModeWithWndMsg or Toupcam_StartPullModeWithCallback or Toupcam_StartPushMode).</p>
 <h2><font color="#0000FF"><a id="wb">d. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
 <p>1. Toupcam sdk supports two independent modes for white balance: a) Temp/Tint Mode; b) RGB Gain Mode</p>
 <blockquote>
-<p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Toupcam_get_TempTint function is used to acquire the temp and tint values and Toupcam_put_TempTint is used to set the temp and tint values. Function Toupcam_AwbOnePush is used to execute the auto white balance. When the white balance parameters change, TOUPCAM_EVENT_TEMPTINT event will be notified for external use.</p>
+<p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Toupcam_get_TempTint function is used to acquire the temp and tint values and Toupcam_put_TempTint is used to set the temp and tint values. Function Toupcam_AwbOnce is used to execute the auto white balance. When the white balance parameters change, TOUPCAM_EVENT_TEMPTINT event will be notified for external use.</p>
 <p>b) In RGB Gain mode, the while balace is controled by the gain values of the R,G,B channels. Toupcam_get_WhiteBalanceGain is used to acquire the parameters and Toupcam_put_WhiteBalanceGain is used to set the white balance parameters. Toupcam_AwbInit is used to execute the execute the auto white balance. When the white balance parameters change, TOUPCAM_EVENT_WBGAIN event will be notified for external use.</p>
 <p>The functions for these two modes cannot be misused:</p>
 	<blockquote>
-	a) In Temp/Tint mode, please use Toupcam_get_TempTint and Toupcam_put_TempTint and Toupcam_AwbOnePush. Toupcam_get_WhiteBalanceGain and Toupcam_put_WhiteBalanceGain and Toupcam_AwbInit cannot be used, they always return E_NOTIMPL.<br/>
-	b) In RGB Gain mode, please use Toupcam_get_WhiteBalanceGain and Toupcam_put_WhiteBalanceGain and Toupcam_AwbInit. Toupcam_get_TempTint and Toupcam_put_TempTint and Toupcam_AwbOnePush cannot be used, they always return E_NOTIMPL<br/>
+	a) In Temp/Tint mode, please use Toupcam_get_TempTint and Toupcam_put_TempTint and Toupcam_AwbOnce. Toupcam_get_WhiteBalanceGain and Toupcam_put_WhiteBalanceGain and Toupcam_AwbInit cannot be used, they always return E_NOTIMPL.<br/>
+	b) In RGB Gain mode, please use Toupcam_get_WhiteBalanceGain and Toupcam_put_WhiteBalanceGain and Toupcam_AwbInit. Toupcam_get_TempTint and Toupcam_put_TempTint and Toupcam_AwbOnce cannot be used, they always return E_NOTIMPL<br/>
 	</blockquote>
 <p>When calling Toupcam_Open function, whether to add a '@' character at the beginning of the id parameter will determine the white balance mode. Add a '@' character at the beginning of the id parameter means the RGB gain mode. If you want to use the RGB Gain mode, for example, if the id parameter is "abcdef", please call the Toupcam_Open function with the id parameter "@abcdef".</p>
 </blockquote>
-<p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "one push" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "one push" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Toupcam cameras support "one push" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
+<p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "once" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "once" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Toupcam cameras support "once" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
 <p>3. Monochromatic camera does not support white balance. The functions metioned above always return E_NOTIMPL.</p>
 <h2><font color="#0000FF">e. <a id="trigger">Trigger Mode</a></font></h2>
 <p>1. What is Trigger Mode</p>
@@ -284,7 +274,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 #define TOUPCAM_FLAG_TRIGGER_SINGLE     0x00200000  /* only support trigger single: one trigger, one image */</pre></td></tr></table></blockquote>
 		Function Toupcam_put_Option(HToupcam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign TOUPCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
 			<blockquote>
-<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define TOUPCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, 3 = external + software trigger, default value =  0 */</pre></td></tr></table>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define TOUPCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, 3 = external + software trigger, default value = 0 */</pre></td></tr></table>
 			</blockquote>
 		Function Toupcam_get_Option(HToupcam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
 	</blockquote>
@@ -302,9 +292,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	<blockquote>
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
-<hr/>
-<h1><font color="#0000FF">4. Functions</font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF">4. Functions</font></h1><hr/>
 <ul><li><h2><font color="#0000FF">HRESULT return value</font></h2>
 	<p>HRESULT is not uncommon on the Windows platform. It's borrowed to macOS and Linux, see the table:</p>
 	<p><strong>Please note that the return value >=0 means success (especially S_FALSE is also successful, indicating that the internal value and the value set by the user is equivalent, which means "no operation"). Therefore, the SUCCEEDED and FAILED macros should generally be used to determine whether the return value is successful or failed.<br/>
@@ -366,6 +354,11 @@ The SDK zip file contains all of the necessary resources and information:</p>
         <td>Device not functioning</td>
 		<td>0x8007001F</td>
 	  </tr>
+	  <tr>
+        <td>E_PENDING</td>
+        <td>The data necessary to complete this operation is not yet available</td>
+		<td>0x8000000a</td>
+	  </tr>
     </table>
   </div><br/>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
@@ -422,182 +415,194 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 <div align="center">
 <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
  <tr>
-   <td width="8%" valign="top">name</td>
-   <td colspan="2" valign="top">The name of this model</td>
+   <td width="8%">name</td>
+   <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="39" valign="top">flag</td>
-   <td colspan="2" valign="top">Bitwise flag</td>
+   <td width="8%" rowspan="42">flag</td>
+   <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
-   <td valign="top">TOUPCAM_FLAG_CMOS</td>
-   <td valign="top">cmos sensor</td>
+   <td>TOUPCAM_FLAG_CMOS</td>
+   <td>cmos sensor</td>
  </tr>
  <tr>
-   <td valign="top">TOUPCAM_FLAG_CCD_PROGRESSIVE</td>
-   <td valign="top">progressive ccd sensor</td>
+   <td>TOUPCAM_FLAG_CCD_PROGRESSIVE</td>
+   <td>progressive ccd sensor</td>
  </tr>
  <tr>
-   <td valign="top">TOUPCAM_FLAG_CCD_INTERLACED</td>
-   <td valign="top">interlaced ccd sensor</td>
+   <td>TOUPCAM_FLAG_CCD_INTERLACED</td>
+   <td>interlaced ccd sensor</td>
  </tr>
  <tr>
-   <td valign="top">TOUPCAM_FLAG_ROI_HARDWARE</td>
-   <td valign="top">support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
+   <td>TOUPCAM_FLAG_ROI_HARDWARE</td>
+   <td>support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_MONO</td>
-   <td width="63%" valign="top">monochromatic sensor</td>
+   <td width="29%">TOUPCAM_FLAG_MONO</td>
+   <td width="63%">monochromatic sensor</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_BINSKIP_SUPPORTED</td>
-   <td width="63%" valign="top">support bin/skip mode, see Toupcam_put_Mode and Toupcam_get_Mode</td>
+   <td width="29%">TOUPCAM_FLAG_BINSKIP_SUPPORTED</td>
+   <td width="63%">support bin/skip mode, see Toupcam_put_Mode and Toupcam_get_Mode</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_USB30</td>
-   <td width="63%" valign="top">usb3.0</td>
+   <td width="29%">TOUPCAM_FLAG_USB30</td>
+   <td width="63%">usb3.0</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_TEC</td>
-   <td width="63%" valign="top">Thermoelectric Cooler</td>
+   <td width="29%">TOUPCAM_FLAG_TEC</td>
+   <td width="63%">Thermoelectric Cooler</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_USB30_OVER_USB20</td>
-   <td width="63%" valign="top">usb3.0 camera connected to usb2.0 port</td>
+   <td width="29%">TOUPCAM_FLAG_USB30_OVER_USB20</td>
+   <td width="63%">usb3.0 camera connected to usb2.0 port</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_ST4</td>
-   <td width="63%" valign="top">ST4 port</td>
+   <td width="29%">TOUPCAM_FLAG_ST4</td>
+   <td width="63%">ST4 port</td>
  </tr>
  <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_GETTEMPERATURE</td>
-   <td width="63%" valign="top">support to get the temperature of the sensor, Toupcam_get_Temperature</td>
- </tr>
- <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_PUTTEMPERATURE</td>
-   <td width="63%" valign="top">support to put the target temperature of the sensor, Toupcam_put_Temperature</td>
- </tr> 
-  <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_RAW10</td>
-   <td width="63%" valign="top">Pixel format, RAW 10 bits</td>
+   <td width="29%">TOUPCAM_FLAG_GETTEMPERATURE</td>
+   <td width="63%">support to get the temperature of the sensor, Toupcam_get_Temperature</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_RAW12</td>
-   <td width="63%" valign="top">Pixel format, RAW 12 bits</td>
+   <td width="29%">TOUPCAM_FLAG_RAW10</td>
+   <td width="63%">Pixel format, RAW 10 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_RAW14</td>
-   <td width="63%" valign="top">Pixel format, RAW 14 bits</td>
+   <td width="29%">TOUPCAM_FLAG_RAW12</td>
+   <td width="63%">Pixel format, RAW 12 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_RAW16</td>
-   <td width="63%" valign="top">Pixel format, RAW 16 bits</td>
+   <td width="29%">TOUPCAM_FLAG_RAW14</td>
+   <td width="63%">Pixel format, RAW 14 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_FAN</td>
-   <td width="63%" valign="top">cooling fan</td>
+   <td width="29%">TOUPCAM_FLAG_RAW16</td>
+   <td width="63%">Pixel format, RAW 16 bits</td>
  </tr>
   <tr>
-   <td width="29%" valign="top">TOUPCAM_FLAG_TEC_ONOFF</td>
-   <td width="63%" valign="top">Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
+   <td width="29%">TOUPCAM_FLAG_FAN</td>
+   <td width="63%">cooling fan</td>
+ </tr>
+  <tr>
+   <td width="29%">TOUPCAM_FLAG_TEC_ONOFF</td>
+   <td width="63%">Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
 							TOUPCAM_OPTION_TEC<br/>
 							TOUPCAM_OPTION_TECTARGET</td>
  </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_ISP</td>
-    <td valign="top">ISP (Image Signal Processing) chip</td>
+    <td>TOUPCAM_FLAG_ISP</td>
+    <td>ISP (Image Signal Processing) chip</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_TRIGGER_SOFTWARE</td>
-    <td valign="top">support software trigger</td>
+    <td>TOUPCAM_FLAG_TRIGGER_SOFTWARE</td>
+    <td>support software trigger</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_TRIGGER_EXTERNAL</td>
-    <td valign="top">support external trigger</td>
+    <td>TOUPCAM_FLAG_TRIGGER_EXTERNAL</td>
+    <td>support external trigger</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_TRIGGER_SINGLE</td>
-    <td valign="top">only support trigger single, one trigger, one image</td>
+    <td>TOUPCAM_FLAG_TRIGGER_SINGLE</td>
+    <td>only support trigger single, one trigger, one image</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_BLACKLEVEL</td>
-    <td valign="top">support set and get the black level</td>
+    <td>TOUPCAM_FLAG_BLACKLEVEL</td>
+    <td>support set and get the black level</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_FOCUSMOTOR</td>
-    <td valign="top">support focus motor</td>
+    <td>TOUPCAM_FLAG_FOCUSMOTOR</td>
+    <td>support focus motor</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_AUTO_FOCUS</td>
-    <td valign="top">support auto focus</td>
+    <td>TOUPCAM_FLAG_AUTO_FOCUS</td>
+    <td>support auto focus</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_BUFFER</td>
-    <td valign="top">frame buffer</td>
+    <td>TOUPCAM_FLAG_BUFFER</td>
+    <td>frame buffer</td>
   </tr>
   <tr>
-    <td valign="top"><a id="ddr">TOUPCAM_FLAG_DDR</a></td>
-    <td valign="top">use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</td>
+    <td><a id="ddr">TOUPCAM_FLAG_DDR</a></td>
+    <td>use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_CG</td>
-    <td valign="top">Conversion Gain: LCG, HCG</td>
+    <td>TOUPCAM_FLAG_CG</td>
+    <td>Conversion Gain: LCG, HCG</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_CGHDR</td>
-    <td valign="top">Conversion Gain: LCG, HCG, HDR</td>
+    <td>TOUPCAM_FLAG_CGHDR</td>
+    <td>Conversion Gain: LCG, HCG, HDR</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_YUV411</td>
-    <td valign="top">pixel format, yuv411</td>
+    <td>TOUPCAM_FLAG_EVENT_HARDWARE</td>
+    <td>hardware event, such as exposure start &amp; stop</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_YUV422</td>
-    <td valign="top">pixel format, yuv422</td>
+    <td>TOUPCAM_FLAG_YUV411</td>
+    <td>pixel format, yuv411</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_YUV444</td>
-    <td valign="top">pixel format, yuv444</td>
+    <td>TOUPCAM_FLAG_YUV422</td>
+    <td>pixel format, yuv422</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_RGB888</td>
-    <td valign="top">pixel format, RGB888</td>
+    <td>TOUPCAM_FLAG_YUV444</td>
+    <td>pixel format, yuv444</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_RAW8</td>
-    <td valign="top">pixel format, RAW 8 bits</td>
+    <td>TOUPCAM_FLAG_RGB888</td>
+    <td>pixel format, RGB888</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_GMCY8</td>
-    <td valign="top">pixel format, GMCY, 8bits</td>
+    <td>TOUPCAM_FLAG_RAW8</td>
+    <td>pixel format, RAW 8 bits</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_GMCY12</td>
-    <td valign="top">pixel format, GMCY, 12 btis</td>
+    <td>TOUPCAM_FLAG_GMCY8</td>
+    <td>pixel format, GMCY, 8bits</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_GLOBALSHUTTER</td>
-    <td valign="top">global shutter</td>
+    <td>TOUPCAM_FLAG_GMCY12</td>
+    <td>pixel format, GMCY, 12 btis</td>
   </tr>
   <tr>
-    <td valign="top">TOUPCAM_FLAG_PRECISE_FRAMERATE</td>
-    <td valign="top">support precise framerate &amp; bandwidth, see TOUPCAM_OPTION_PRECISE_FRAMERATE &amp; TOUPCAM_OPTION_BANDWIDTH</td>
+    <td>TOUPCAM_FLAG_GLOBALSHUTTER</td>
+    <td>global shutter</td>
+  </tr>
+  <tr>
+    <td>TOUPCAM_FLAG_PRECISE_FRAMERATE</td>
+    <td>support precise framerate &amp; bandwidth, see TOUPCAM_OPTION_PRECISE_FRAMERATE &amp; TOUPCAM_OPTION_BANDWIDTH</td>
+  </tr>
+  <tr>
+    <td>TOUPCAM_FLAG_HEAT</td>
+    <td>support heat to prevent fogging up, see <a href="#heat">TOUPCAM_OPTION_HEAT</a> &amp; <a href="#heatmax">TOUPCAM_OPTION_HEAT_MAX</a></td>
+  </tr>
+  <tr>
+    <td>TOUPCAM_FLAG_LOW_NOISE</td>
+    <td>support low noise mode, see <a href="#lownoise">TOUPCAM_OPTION_LOW_NOISE</a></td>
+  </tr>
+  <tr>
+    <td><a id="hwlevelrange">TOUPCAM_FLAG_LEVELRANGE_HARDWARE</a></td>
+    <td>hardware level range</td>
   </tr>
  <tr>
-   <td width="8%" valign="top">maxspeed</td>
-   <td colspan="2" valign="top">Maximum speed level, same with Toupcam_get_MaxSpeed. The speed range is [0, maxspeed]. see Toupcam_put_Speed and Toupcam_get_Speed</td>
+   <td width="8%">maxspeed</td>
+   <td colspan="2">Maximum speed level, same with Toupcam_get_MaxSpeed. The speed range is [0, maxspeed]. see Toupcam_put_Speed and Toupcam_get_Speed</td>
    </tr>
  <tr>
-   <td width="8%" valign="top">preview</td>
-   <td colspan="2" valign="top">Number of preview resolution. Same with Toupcam_get_ResolutionNumber</td>
+   <td width="8%">preview</td>
+   <td colspan="2">Number of preview resolution. Same with Toupcam_get_ResolutionNumber</td>
    </tr>
  <tr>
-   <td width="8%" valign="top">still</td>
-   <td colspan="2" valign="top">Number of still resolution, zero means still capture is not supported. Same with Toupcam_get_StillResolutionNumber</td>
+   <td width="8%">still</td>
+   <td colspan="2">Number of still resolution, zero means still capture is not supported. Same with Toupcam_get_StillResolutionNumber</td>
    </tr>
   <tr>
-   <td width="8%" valign="top">res</td>
-   <td colspan="2" valign="top">Resolution, width and height</td>
+   <td width="8%">res</td>
+   <td colspan="2">Resolution, width and height</td>
    </tr>
 </table>
 </div>
@@ -631,6 +636,33 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   		<p>id: Toupcam camera instance, enumerated by Toupcam_EnumV2. <strong>If id is NULL, Toupcam_Open will open the first camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Toupcam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
   	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
+	<p><strong><a id="cfg">Camera Configuration</a>:</strong>No parameter is required after id parameter if automatic parameter saving or loading is not required.</p>
+	<p>Add the specific parameters after the id parameter when automatic parameter saving (when closing the camera) or loading (when starting the camera) is required, for example, Toupcam_Open(L"0-1010;registry=").</p>
+	<p>Please refer to the following description for details:</p>
+  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td width="20%">Registry (Windows only)</td>
+        <td width="20%">;registry=xxxx\yyyy</td>
+		<td width="60%">use the registry that the camera parameters are saved to or load from. Empty after “=” means that the default registry location will be used</td>
+      </tr>
+      <tr>
+        <td>ini file</td>
+        <td>;ini=x:\yyyy\zzzz.ini</td>
+		<td>indicates that x:\yyyy\zzzz.ini is the file where camera parameters are saved to or load from. Complete directory must be specified and empty is not allowed. Please Make sure that the target directory exists and is readable and writeable</td>
+      </tr>
+      <tr>
+        <td>json file</td>
+        <td>;json=x:\yyyy\zzzz.json</td>
+		<td>indicates that x:\yyyy\zzzz.json is the file where camera parameters are saved to or load from. Complete directory must be specified and empty is not allowed. Please Make sure that the target directory exists and is readable and writeable</td>
+      </tr>
+      <tr>
+        <td>EEPROM</td>
+        <td>;eeprom=xxxx</td>
+		<td>indicates that EEPROM is the device where the camera parameters are saved to or load from. xxxx is the starting address in EEPROM and empty means the starting address is 0</td>
+      </tr>
+    </table>
+  </div>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_Close</font></h2>
     <p><strong>Return value:</strong> void</p>
@@ -659,13 +691,13 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="infov2">Toupcam_PullImageV2, Toupcam_PullStillImageV2, Toupcam_PullImageWithRowPitchV2, Toupcam_PullStillImageWithRowPitchV2</a>,
 			Toupcam_PullImage, Toupcam_PullStillImage, <a id="rowpitch1">Toupcam_PullImageWithRowPitch</a>, <a id="rowpitch2">Toupcam_PullStillImageWithRowPitch</a></font></h2>
-      <p><strong>Return value:</strong> HRESULT type means "success/ failure". Return E_FAIL when there isn't image ready for pull.</p>
+      <p><strong>Return value:</strong> HRESULT type means "success/ failure". Return E_PENDING when there isn't image ready for pull.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
     <p>HToupcam h: instance handle opened by Toupcam_Open</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must >= rowPitch * nHeight.</p>
     <p>int bits: 24, 32, 48, 8, 16, means RGB24, RGB32, RGB48, 8 bits gray or 16 bits gray images. This parameter is ignored in RAW mode.</p>
-    <p>int rowPitch: the distance from one row to the next row. rowPitch = 0 means using the default row pitch.</p>
+    <p>int rowPitch: the distance from one row to the next row. rowPitch = 0 means using the default row pitch. rowPitch = -1 means zero padding</p>
     <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
 	<p>ToupcamFrameInfoV2* pInfo: out parameter, frame info. Some cameras support frame sequence and frame timestamp, for other unsigned cameras, sequence and timestamp are always 0</p>
 </blockquote>
@@ -674,34 +706,46 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <blockquote><div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td colspan="2" valign="top">Format</td>
-        <td width="63%" valign="top">Default Row Pitch</td>
+        <td colspan="2">Format</td>
+        <td>=0 means Default Row Pitch</td>
+        <td>=-1 means zero paddding</td>
       </tr>
       <tr>
-        <td width="10%" rowspan="4" valign="top">RGB</td>
-        <td width="27%" valign="top">RGB24</td>
-        <td width="63%" valign="top">TDIBWIDTHBYTES(24 * Width)</td>
+        <td width="10%" rowspan="5">RGB</td>
+        <td width="25%">RGB24</td>
+        <td width="35%">TDIBWIDTHBYTES(24 * Width)</td>
+        <td width="30%">Width * 3</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">RGB32</td>
-        <td width="63%" valign="top">Width * 4</td>
+        <td>RGB32</td>
+        <td>Width * 4</td>
+		<td>Width * 4</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">RGB48</td>
-        <td width="63%" valign="top">TDIBWIDTHBYTES(48 * Width)</td>
+        <td>RGB48</td>
+        <td>TDIBWIDTHBYTES(48 * Width)</td>
+        <td>Width * 6</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">RGB8 grey image</td>
-        <td width="63%" valign="top">TDIBWIDTHBYTES(8 * Width)</td>
+        <td>GREY8 grey image</td>
+        <td>TDIBWIDTHBYTES(8 * Width)</td>
+        <td>Width</td>
       </tr>
       <tr>
-        <td width="10%" rowspan="2" valign="top">RAW</td>
-        <td width="27%" valign="top">8bits Mode</td>
-        <td width="63%" valign="top">Width</td>
+        <td>GREY16 grey image</td>
+        <td>TDIBWIDTHBYTES(16 * Width)</td>
+        <td>Width * 2</td>
       </tr>
       <tr>
-        <td width="27%" valign="top">10bits, 12bits, 14bits, 16bits Mode</td>
-        <td width="63%" valign="top">Width * 2</td>
+        <td rowspan="2">RAW</td>
+        <td>8bits Mode</td>
+        <td>Width</td>
+        <td>Width</td>
+      </tr>
+      <tr>
+        <td>10bits, 12bits, 14bits, 16bits Mode</td>
+        <td>Width * 2</td>
+        <td>Width * 2</td>
       </tr>
     </table>
   </div><br/>
@@ -842,7 +886,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <blockquote>
     <p>HToupcam h: camera instance handle</p>
     <p>unsigned* nFourCC: raw format, see the table below</p>
-    <p>unsigned* bitdepth: Bit Depth, such as 8, 12, 14, 16</p>
+    <p>unsigned* bitdepth: bit depth, such as 8, 10, 12, 14, 16</p>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
   <tr>
    <td>#ifndef MAKEFOURCC<br/>
@@ -853,8 +897,8 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td width="40%" valign="top">MAKEFOURCC('G', 'B', 'R', 'G')</td>
-        <td width="60%" valign="top">GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>...<br/>see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm">here</a></td>
+        <td width="40%">MAKEFOURCC('G', 'B', 'R', 'G')</td>
+        <td width="60%">GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>...<br/>see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm">here</a></td>
       </tr>
       <tr>
         <td>MAKEFOURCC('R', 'G', 'G', 'B')</td>
@@ -991,6 +1035,13 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option after the camera is started)</td>
       </tr>
       <tr>
+      	<td><a id="blacklevel">TOUPCAM_OPTION_BLACKLEVEL</a></td>
+      	<td>Black Level<br/>
+      			Always return E_NOTIMPL for camera that don't support black level.</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
       	<td>TOUPCAM_OPTION_MULTITHREAD</td>
       	<td>multithread image processing</td>
       	<td>1</td>
@@ -1111,6 +1162,18 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>NA</td>
       </tr>
 	  <tr>
+      	<td>TOUPCAM_OPTION_POWER</td>
+      	<td>get power consumption, unit: milliwatt<br/>Only get</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+	  <tr>
+      	<td>TOUPCAM_OPTION_GLOBAL_RESET_MODE</td>
+      	<td>global reset mode</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+	  <tr>
       	<td>TOUPCAM_OPTION_DEVICE_RESET</td>
       	<td>reset usb device, simulate a replug<br/>Only put</td>
       	<td>NA</td>
@@ -1124,7 +1187,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
 	  <tr>
       	<td>TOUPCAM_OPTION_AFMODE</td>
-      	<td>auto focus mode:<br/>0: manul focus<br/>1: auto focus<br/>2: onepush focus<br/>3: conjugate calibration</td>
+      	<td>auto focus mode:<br/>0: manul focus<br/>1: auto focus<br/>2: once focus<br/>3: conjugate calibration</td>
       	<td>NA</td>
       	<td>Yes</td>
       </tr>
@@ -1203,8 +1266,14 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 		<td>No</td>
       </tr>
 	  <tr>
-        <td>TOUPCAM_OPTION_FRAME_DEQUE_LENGTH</td>
-        <td>frame deque length, range: [2, 1024]</td>
+        <td>TOUPCAM_OPTION_FRONTEND_DEQUE_LENGTH<br/>or<br/>TOUPCAM_OPTION_FRAME_DEQUE_LENGTH</td>
+        <td>frontend frame deque length, range: [2, 1024]</td>
+		<td>3</td>
+		<td>No</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_OPTION_BACKEND_DEQUE_LENGTH</td>
+        <td>backend frame deque length (Only available in pull mode), range: [2, 1024]</td>
 		<td>3</td>
 		<td>No</td>
       </tr>
@@ -1222,7 +1291,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       </tr>
 	  <tr>
         <td>TOUPCAM_OPTION_SEQUENCER_EXPOTIME</td>
-        <td>sequencer trigger: exposure time<br/>iOption = TOUPCAM_OPTION_SEQUENCER_EXPOTIME | index<br/>iValue = exposure time<br/><br/>
+        <td>sequencer trigger: exposure time<br/>iOption = TOUPCAM_OPTION_SEQUENCER_EXPOTIME | index<br/>iValue = exposure time (no 50/60 HZ constraint)<br/><br/>
 		For example, to set the exposure time of the third group to 50ms, call<br/>Toupcam_put_Option(TOUPCAM_OPTION_SEQUENCER_EXPOTIME | 3, 50000)</td>
 		<td>NA</td>
 		<td>Yes</td>
@@ -1238,20 +1307,41 @@ for (unsigned i = 0; i &lt; cnt; ++i)
         <td>Denoise<br/>
 		strength range: [0, 100], 0 means disable</td>
 		<td>0</td>
-		<td>是</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td><a id="heatmax">TOUPCAM_OPTION_HEAT_MAX</a></td>
+        <td>get maximum level: heat to prevent fogging up<br/>
+		[0, max], 0 means off</td>
+		<td>NA</td>
+		<td>NA</td>
+      </tr>
+      <tr>
+        <td><a id="heat">TOUPCAM_OPTION_HEAT</a></td>
+        <td>heat to prevent fogging up</td>
+		<td>max level</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td><a id="lownoise">TOUPCAM_OPTION_LOW_NOISE</a></td>
+        <td>low noise mode (Higher signal noise ratio, lower frame rate)</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_DEFECT_PIXEL</td>
+        <td>Defect Pixel Correction<br/>0 => disable, 1 => enable</td>
+		<td>enable (1)</td>
+		<td>Yes</td>
       </tr>
       <tr>
         <td>TOUPCAM_OPTION_THREAD_PRIORITY</td>
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
-          0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms686277(v=vs.85).aspx">SetThreadPriority</a><br/>This option is not available at Linux and macOS.</td>
-        <td>1</td>
-        <td>Yes</td>
-      </tr>
-      <tr>
-        <td>TOUPCAM_OPTION_PROCESSMODE</td>
-        <td>0 = better image quality, more cpu usage.<br/>
-          1 = lower image quality, less cpu usage.</td>
-        <td>0</td>
+          Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority">SetThreadPriority</a></blockquote>
+		  Linux &amp; macOS: <blockquote>The high 16 bits for the scheduling policy, and the low 16 bits for the priority.<br/>
+		  Please refer to <a href="https://linux.die.net/man/3/pthread_setschedparam">pthread_setschedparam</a>
+		  </blockquote></td>
+        <td>Win: 1<br/>Linux / macOS: NA</td>
         <td>Yes</td>
       </tr>
 	  <tr>
@@ -1287,9 +1377,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td width="28%"><a id="demosaic">TOUPCAM_OPTION_DEMOSAIC</a></td>
       	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
       			0 = BILINEAR<br/>
-      			1 = VNG(Variable Number of Gradients interpolation)(Temporarily unavailable)<br/>
-      			2 = PPG(Patterned Pixel Grouping interpolation)<br/>
-      			3 = AHD(Adaptive Homogeneity-Directed interpolation)<br/>
+      			1 = VNG(Variable Number of Gradients)<br/>
+      			2 = PPG(Patterned Pixel Grouping)<br/>
+      			3 = AHD(Adaptive Homogeneity Directed)<br/>
+				4 = EA(Edge Aware)<br/>
       			Always return E_NOTIMPL for monochromatic camera.</td>
       	<td>0</td>
       	<td>Yes</td>
@@ -1307,11 +1398,41 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Yes</td>
       </tr>
       <tr>
-      	<td><a id="blacklevel">TOUPCAM_OPTION_BLACKLEVEL</a></td>
-      	<td>Black Level<br/>
-      			Always return E_NOTIMPL for camera that don't support black level.</td>
-      	<td>0</td>
-      	<td>Yes</td>
+      	<td>TOUPCAM_OPTION_OPEN_USB_ERRORCODE</td>
+      	<td>open usb error code. get only</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_FLUSH</td>
+      	<td>1: hard flush, discard frames cached by camera DDR (if any)<br/>
+		2: soft flush, discard frames cached by toupcam.dll (if any)<br/>
+		3: both<br/>
+		Toupcam_Flush means 'both'</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_NUMBER_DROP_FRAME</td>
+      	<td>get the number of frames that have been grabbed from the USB but dropped by the software</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_DUMP_CFG</td>
+      	<td>explicitly dump configuration to ini, json, or EEPROM. when camera is closed, it will dump configuration automatically</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_LINUX_USB_ZEROCOPY</td>
+      	<td>global option for linux platform:<br/>
+		enable or disable usb zerocopy (helps to reduce memory copy and improve efficiency. Requires kernel version >= 4.6 and hardware platform support).<br/>
+		if the image is wrong, this indicates that the hardware platform does not support this feature, please disable it when the program starts:<br/>
+		&nbsp;&nbsp;Toupcam_put_Option((this is a global option, the camera handle parameter is not required, use nullptr), TOUPCAM_OPTION_LINUX_USB_ZEROCOPY, 0)</td>
+      	<td>disable(0): android or arm<br/>
+		enable(1):  others</td>
+      	<td>No<br/>(Must be set before open camera (Toupcam_Open))</td>
       </tr>
     </table>
   </div>
@@ -1418,7 +1539,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃).</p>
     </blockquote>
     <p><strong>Remarks:</strong> get the temperature of the sensor. see TOUPCAM_FLAG_GETTEMPERATURE.</p>
-	<blockquote><p>set the target temperature of the sensor.</p></blockquote>
+	<blockquote><p>set the target temperature of the sensor, equivalent to Toupcam_put_Option(, TOUPCAM_OPTION_TECTARGET, ).</p></blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_put_Mode, Toupcam_get_Mode</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1438,7 +1559,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Toupcam_AwbOnePush</font></h2>
+<ul><li><h2><font color="#0000FF">Toupcam_AwbOnce</font></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1465,7 +1586,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, TOUPCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
-<ul><li><h2><a id="black"><font color="#0000FF">Toupcam_AbbOnePush</font></a></h2>
+<ul><li><h2><a id="black"><font color="#0000FF">Toupcam_AbbOnce</font></a></h2>
     <p><strong>Return value:</strong> HRESULT type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1573,15 +1694,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HToupcam h: camera instance handle</p>
-    <p>unsigned index: IO port index</p>
+    <p>unsigned ioLineNumber:<br/>
+	<blockquote><blockquote>0-> Opto-isolated input<br/>
+    1-> Opto-isolated output<br/>
+    2-> GPIO0<br/>
+    3-> GPIO1</blockquote></blockquote></p>
     <p>unsigned nType: type of control</p>
     <p>int outVal: output control value</p>
 	<p>int* inVal: input control value</p>
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td width="28%" valign="top">TOUPCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
-        <td width="72%" valign="top">get the supported mode:<br/>0x01->&gt;Input<br/>0x02->&gt;Output<br/>(0x01 | 0x02)->&gt;support both Input and Output</td>
+        <td width="28%">TOUPCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
+        <td width="72%">get the supported mode:<br/>0x01->&gt;Input<br/>0x02->&gt;Output<br/>(0x01 | 0x02)->&gt;support both Input and Output</td>
       </tr>
       <tr>
         <td>TOUPCAM_IOCONTROLTYPE_GET_GPIODIR</td>
@@ -1766,14 +1891,14 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </blockquote>
   <p><strong>Remarks:</strong> If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Toupcam_FfcOnePush</font></h2>
+<ul><li><h2><font color="#0000FF">Toupcam_FfcOnce</font></h2>
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HToupcam h: camera instance handle</p>
   </blockquote>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Toupcam_DfcOnePush</font></h2>
+<ul><li><h2><font color="#0000FF">Toupcam_DfcOnce</font></h2>
   <p><strong>Return value:</strong> HRESULT type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
@@ -1796,6 +1921,47 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Gray. RGB is only available for color image, and gray is only available for gray image.</p>
     </blockquote>
     <p><strong>Remarks:</strong> level range related.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF"><a id="levelrangev2">Toupcam_put_LevelRangeV2, Toupcam_get_LevelRangeV2</a></font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HToupcam h: camera instance handle</p>
+	  <p>unsigned short mode:</p>
+	  <div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr>
+        <td width="50%">TOUPCAM_LEVELRANGE_MANUAL</td>
+        <td width="50%">Manual mode</td>
+      </tr>
+	  <tr>
+        <td>TOUPCAM_LEVELRANGE_ONCE</td>
+        <td>Once</td>
+	  </tr>
+	  <tr>
+        <td>TOUPCAM_LEVELRANGE_CONTINUE</td>
+        <td>Continue mode</td>
+	  </tr>
+	  <tr>
+        <td>TOUPCAM_LEVELRANGE_ROI</td>
+        <td>Update the ROI rectangle</td>
+	  </tr>
+    </table>
+  </div>
+	<p>RECT* pRoiRect: ROI rectangle</p>
+      <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Gray. RGB is only available for color image, and gray is only available for gray image.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> level range related.</p>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Toupcam_Update</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>camId: camera ID</p>
+      <p>filePath: ufw file full path</p>
+      <p>pFun, pCtx: progress percent callback</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> firmware update. Please do not unplug the camera or lost power during the upgrade process, this is very very important. Once an unplugging or power outage occurs during the upgrade process, the camera will no longer be available and can only be returned to the factory for repair.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_GetHistogram</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
@@ -1834,7 +2000,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td width="8%">6503</td>
     <td width="17%" rowspan="2">Toupcam_get_TempTint</td>
     <td width="17%" rowspan="2">Toupcam_put_TempTint</td>
-    <td width="14%" rowspan="2">Toupcam_AwbOnePush</td>
+    <td width="14%" rowspan="2">Toupcam_AwbOnce</td>
   </tr>
   <tr>
     <td width="10%">Tint</td>
@@ -1857,13 +2023,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td>Blue Gain</td>
     </tr>
   <tr>
-    <td colspan="3">LevelRange</td>
-    <td width="15%">0~255</td>
-    <td width="8%">Low = 0<br/>
+    <td colspan="2" rowspan="2">LevelRange</td>
+	<td width="10%">Software</td>
+    <td width="15%" rowspan="2">0~255</td>
+    <td width="8%" rowspan="2">Low = 0<br/>
       High = 255</td>
     <td width="17%">Toupcam_get_LevelRange</td>
     <td width="17%">Toupcam_put_LevelRange</td>
     <td width="14%">Toupcam_LevelRangeAuto</td>
+  </tr>
+  <tr>
+	<td width="10%">Hardware</td>
+    <td width="17%">Toupcam_get_LevelRangeV2</td>
+    <td colspan="2">Toupcam_put_LevelRangeV2</td>
   </tr>
   <tr>
     <td colspan="3">Contrast</td>
@@ -1946,13 +2118,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 	<td>&nbsp;</td>
 	<td>100</td>
     </tr>
+      <tr>
+        <td colspan="3">TEC Target</td>
+        <td width="15%">-300 ~ 300<br/>-30℃ ~ 30℃</td>
+        <td width="9%">0</td>
+        <td width="19%">TOUPCAM_OPTION_TECTARGET</td>
+        <td width="17%">TOUPCAM_OPTION_TECTARGET</td>
+        <td width="15%">&nbsp;</td>
+      </tr>
  </table>
 </div>
 </blockquote>
 </li></ul>
-<hr/>
-<h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1><hr/>
 <p>Toupcam does support .NET development environment (C# and VB.NET).</p>
 <p>toupcam.cs use P/Invoke to call into toupcam.dll. Copy toupcam.cs to your C# project, please reference demowinformcs1, demowinformcs2 and demowinformcs3 in the samples directory.</p>
 <p>Please pay attation to that <strong>the object of the C# class Toupcam. Toupcam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new Toupcam</strong> (The constructor is private on purpose).</p>
@@ -1968,24 +2146,159 @@ public bool Snap(uint nResolutionIndex)
     return (Toupcam_Snap(_handle, nResolutionIndex) &gt;= 0);
 }</pre></td></tr></table>
 <p>VB.NET is similar with C#, not otherwise specified.</p>
-<hr/>
-<h1><font color="#0000FF"><a id="python">6. Python</a></font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF"><a id="python">6. Python</a></font></h1><hr/>
 <p>Toupcam does support Python (version 3.0 or above), please import toupcam to use toupcam.py and reference the sample code simplest.py and qt.py.</p>
 <p>Please pay attation to that <strong>the object of the python class toupcam.Toupcam must be obtained by classmethod Open or OpenByIndex, it cannot be obtained by obj = toupcam.Toupcam()</strong></p>
 <p>Most methods of the Toupcam class use ctypes to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding python methods.</p>
 <p>Please reference __errcheck in toupcam.py, the original HRESULT return code is mapped to HRESULTException exception (in win32 it's inherited from OSError).</p>
 <p>Please make sure the toupcam dll/so/dylib library file is in the same directory with toupcam.py.</p>
-<h1><font color="#0000FF"><a id="java">7. Java</a></font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF"><a id="java">7. Java</a></font></h1><hr/>
 <p>Toupcam does support Java, toupcam.java use <a href="https://github.com/java-native-access/jna">JNA (https://github.com/java-native-access/jna)</a> to call into toupcam.dll/so/dylib. Copy toupcam.java to your java project, please reference the sample code simplest.java (Console), javafx.java, swing.java.</p>
 <p>Please pay attation to that <strong>the object of the java class toupcam must be obtained by static method Open or OpenByIndex, it cannot be obtained by obj = new toupcam()</strong>(The constructor is private on purpose).</p>
 <p>Most methods of the toupcam class use <a href="https://github.com/java-native-access/jna">JNA</a> to call into the corresponding Toupcam_xxxx functions of toupcam.dll/so/dylib. So, the descriptions of the Toupcam_xxxx function are also applicable for the corresponding java methods.</p>
 <p>Please reference errcheck in toupcam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
 <p>Remark: (1) Download jna-*.jar from github; (2) Make sure toupcam.dll/so/dylib is placed in the correct directory.</p>
-<hr/>
-<h1><font color="#0000FF">8. Changelog</font></h1>
-<hr/>
+<hr/><h1><font color="#0000ff">8. Samples</font></h1><hr/>
+<div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+	  <tr>
+        <td width="10%" colspan="2">Name</td>
+        <td width="10%">Platform</td>
+        <td width="10%">Language</td>
+        <td width="10%">Dependency</td>
+        <td width="10%">UI</td>
+        <td width="50%">Description</td>
+      </tr>
+	  <tr>
+		<td colspan="2">demosimplest</td>
+		<td rowspan="2">Win32, Linux, macOS, Android</td>
+		<td rowspan="9">C++</td>
+		<td rowspan="2">&nbsp;</td>
+		<td rowspan="2">console</td>
+		<td>simplest sample, about 60 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demoraw</td>
+		<td>raw data and snap still image, about 120 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demoqt</td>
+		<td>Win32, Linux, macOS</td>
+		<td>Qt</td>
+		<td rowspan="13">GUI</td>
+		<td>Qt sample</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">democpp</td>
+		<td rowspan="6">Win32</td>
+		<td rowspan="4">ATL/WTL</td>
+		<td>demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></td>
+	  </tr>
+	  <tr>
+		<td colspan="2">democallback</td>
+		<td>use Pull Mode, StartPullModeWithCallback</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demopush</td>
+		<td>use Push Mode, StartPushModeV3</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demomono</td>
+		<td>demonstrates to use mono camera with 8 or 16 bits</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demomfc</td>
+		<td rowspan="2">MFC</td>
+		<td>use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">AutoTestTool</td>
+		<td>auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformcs1</td>
+		<td rowspan="4">.NET</td>
+		<td rowspan="3">C#</td>
+		<td rowspan="6">&nbsp;</td>
+		<td>winform sample. This sample use Pull Mode, StartPullModeWithWndMsg</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformcs2</td>
+		<td>winform sample. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformcs3</td>
+		<td>winform sample. This sample use Push Mode, StartPushModeV3</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformvb</td>
+		<td>VB.NET</td>
+		<td>winform sample. This sample use Pull Mode</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demouwp</td>
+		<td>WinRT</td>
+		<td>C#</td>
+		<td>Universal Windows Platform simple demo, before build and run this demo, please change the value of vidpid in file Package.appxmanifest</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demoandroid</td>
+		<td>Android</td>
+		<td>C++, Java</td>
+		<td>Android sample</td>
+	  </tr>
+	  <tr>
+		<td rowspan="3">demojava</td>
+		<td>simplest</td>
+		<td rowspan="5">Win32, Linux, macOS</td>
+		<td rowspan="3">Java</td>
+		<td rowspan="3">jna</td>
+		<td>console</td>
+		<td>simplest java sample</td>
+	  </tr>
+	  <tr>
+		<td>javafx</td>
+		<td rowspan="2">GUI</td>
+		<td>javafx sample</td>
+	  </tr>
+	  <tr>
+		<td>swing</td>
+		<td>swing sample</td>
+	  </tr>
+	  <tr>
+		<td rowspan="2">demopython</td>
+		<td>simplest</td>
+		<td rowspan="2">Python</td>
+		<td>&nbsp;</td>
+		<td>console</td>
+		<td>simplest python sample</td>
+	  </tr>
+	  <tr>
+		<td>qt</td>
+		<td>PyQt</td>
+		<td rowspan="3">GUI</td>
+		<td>PyQt sample</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demodshow</td>
+		<td rowspan="2">Win32 DirectShow</td>
+		<td rowspan="2">C++</td>
+		<td>MFC</td>
+		<td>DirectShow sample</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">amcap</td>
+		<td>&nbsp;</td>
+		<td>copy from Microsoft DirectShow SDK</td>
+	  </tr>
+	</table>
+</div>
+<hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v50: SIMD optimize in Windows(x86/x64) and Linux(x64)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;frontend and backend deque length: TOUPCAM_OPTION_FRONTEND_DEQUE_LENGTH, TOUPCAM_OPTION_BACKEND_DEQUE_LENGTH</p>
+<p>v49: Add support to save &amp; load configuration. Please see <a href="#cfg">here</a></p>
+<p>v48: hardware event. Please see <a href="#hwevent">here</a></p>
+<p>v47: hardware level range. Please see <a href="#hwlevelrange">here</a> and <a href="#levelrangev2">here</a></p>
 <p>v46: Add support denose. Please see <a href="#denoise">here</a></p>
 <p>v45: Add sequencer trigger, UART, mix trigger (<a href="#mix">external and software trigger both are enabled</a>)</p>
 <p>v44: Extend the realtime mode, Please see <a href="#realtime">here</a><br/>
@@ -2009,7 +2322,7 @@ public bool Snap(uint nResolutionIndex)
 <p>v27: Add Toupcam_SnapN, support to snap multiple images, please see <a href="#snapn">here</a> and democpp</p>
 <p>v26: Add support to restore factory settings, TOUPCAM_OPTION_FACTORY</p>
 <p>v25: Add sharpening, TOUPCAM_OPTION_SHARPENING</p>
-<p>v24: Add support to Auto Exposure with the 50/60 HZ constraint</p>
+<p>v24: Add support to Exposure time with the 50/60 HZ constraint</p>
 <p>v23: Add support to Linux armhf, armel and arm64<br/>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add FFC and DFC, please see <a href="#ffc">here</a> and <a href="#dfc">here</a></p>
 <p>v22: Add TOUPCAM_OPTION_DDR_DEPTH, please see <a href="#ddrdepth">here</a></p>
@@ -2036,11 +2349,5 @@ public bool Snap(uint nResolutionIndex)
 <p>v3: more bit depth supported: 10bits, 12bits, 14bits, 16bits</p>
 <p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
 <p>v1: initial release</p>
-<hr/>
-<h1><font color="#0000FF">9. Contact</font></h1>
-<hr/>
-<p>If you have any problems in using this SDK, please use the following information to contact us.<br/>
- www: <a href="http://www.touptek.com">www.touptek.com</a><br/>
- email: support@touptek.com</p>
 </body>
 </html>
