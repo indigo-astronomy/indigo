@@ -1160,9 +1160,9 @@ indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, const void
 		default:
 			break;
 	}
-	/* mask ~3% of the frame around the saturated area */
 
-	int mask_size = height / 30;
+	/* mask ~4% of the frame around the saturated area */
+	int mask_size = height / 25;
 
 	uint16_t max_luminance;
 
