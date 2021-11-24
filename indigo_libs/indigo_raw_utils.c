@@ -1342,24 +1342,25 @@ double indigo_stddev(double set[], const int count) {
 }
 
 static double indigo_stddev_8(uint8_t set[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
 
 	if (saturated) *saturated = false;
 
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
-			x += set[y * width + x];
+			sum += set[y * width + x];
 			real_count++;
 		}
 	}
-	m = x / real_count;
+	m = sum / real_count;
 
 	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
 
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
@@ -1381,27 +1382,28 @@ static double indigo_stddev_8(uint8_t set[], const int width, const int height, 
 }
 
 static double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
 
 	if (saturated) *saturated = false;
 
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			int i = y * width + x;
 			if (mask[i]) {
-				x += set[i];
+				sum += set[i];
 				real_count++;
 			}
 		}
 	}
-	m = x / real_count;
+	m = sum / real_count;
 
 	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
 
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
@@ -1425,7 +1427,8 @@ static double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int wi
 }
 
 static double indigo_stddev_masked_rgb24(uint8_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
 	int index = 0, i = 0;
 
 	if (saturated) *saturated = false;
@@ -1433,24 +1436,24 @@ static double indigo_stddev_masked_rgb24(uint8_t set[], uint8_t mask[], const in
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
-
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			index = y * width + x;
 			i = index * 3;
 			if (mask[index]) {
-				x += set[i];
-				x += set[i + 1];
-				x += set[i + 2];
+				sum += set[i];
+				sum += set[i + 1];
+				sum += set[i + 2];
 				real_count++;
 			}
 		}
 	}
-	m = x / (real_count * 3);
+	m = sum / (real_count * 3);
 
 	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
+
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			index = y * width + x;
@@ -1489,29 +1492,30 @@ static double indigo_stddev_masked_rgb24(uint8_t set[], uint8_t mask[], const in
 }
 
 static double indigo_stddev_rgb24(uint8_t set[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
-	int index = 0, i = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
+	int i = 0;
 
 	if (saturated) *saturated = false;
 
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
-
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			i = (y * width + x) * 3;
-			x += set[i];
-			x += set[i + 1];
-			x += set[i + 2];
+			sum += set[i];
+			sum += set[i + 1];
+			sum += set[i + 2];
 			real_count++;
 		}
 	}
-	m = x / (real_count * 3);
+	m = sum / (real_count * 3);
 
 	const double threshold = (SATURATION_8 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
+
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			i = (y * width + x) * 3;
@@ -1547,24 +1551,25 @@ static double indigo_stddev_rgb24(uint8_t set[], const int width, const int heig
 }
 
 static double indigo_stddev_16(uint16_t set[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
 
 	if (saturated) *saturated = false;
 
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
-			x += set[y * width + x];
+			sum += set[y * width + x];
 			real_count++;
 		}
 	}
-	m = x / real_count;
+	m = sum / real_count;
 
 	const double threshold = (SATURATION_16 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
 
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
@@ -1586,27 +1591,28 @@ static double indigo_stddev_16(uint16_t set[], const int width, const int height
 }
 
 static double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
 
 	if (saturated) *saturated = false;
 
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			int i = y * width + x;
 			if (mask[i]) {
-				x += set[i];
+				sum += set[i];
 				real_count++;
 			}
 		}
 	}
-	m = x / real_count;
+	m = sum / real_count;
 
 	const double threshold = (SATURATION_16 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
 
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
@@ -1630,7 +1636,8 @@ static double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int 
 }
 
 static double indigo_stddev_masked_rgb48(uint16_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
 	int index = 0, i = 0;
 
 	if (saturated) *saturated = false;
@@ -1638,24 +1645,24 @@ static double indigo_stddev_masked_rgb48(uint16_t set[], uint8_t mask[], const i
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
-
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			index = y * width + x;
 			i = index * 3;
 			if (mask[index]) {
-				x += set[i];
-				x += set[i + 1];
-				x += set[i + 2];
+				sum += set[i];
+				sum += set[i + 1];
+				sum += set[i + 2];
 				real_count++;
 			}
 		}
 	}
-	m = x / (real_count * 3);
+	m = sum / (real_count * 3);
 
 	const double threshold = (SATURATION_16 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
+
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			index = y * width + x;
@@ -1694,7 +1701,8 @@ static double indigo_stddev_masked_rgb48(uint16_t set[], uint8_t mask[], const i
 }
 
 static double indigo_stddev_rgb48(uint16_t set[], const int width, const int height, bool *saturated) {
-	double x = 0, d, m, sum = 0;
+	double d, m, sum = 0;
+	int real_count = 0;
 	int i = 0;
 
 	if (saturated) *saturated = false;
@@ -1702,21 +1710,21 @@ static double indigo_stddev_rgb48(uint16_t set[], const int width, const int hei
 	const int end_x = width - 1;
 	const int end_y = height - 1;
 
-	int real_count = 0;
-
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			i = y * width + x;
-			x += set[i];
-			x += set[i + 1];
-			x += set[i + 2];
+			sum += set[i];
+			sum += set[i + 1];
+			sum += set[i + 2];
 			real_count++;
 		}
 	}
-	m = x / (real_count * 3);
+	m = sum / (real_count * 3);
 
 	const double threshold = (SATURATION_16 - m) * 0.3 + m;
 	real_count = 0;
+	sum = 0;
+
 	for (int y = 1; y < end_y; y++) {
 		for (int x = 1; x < end_x; x++) {
 			i = (y * width + x) * 3;
