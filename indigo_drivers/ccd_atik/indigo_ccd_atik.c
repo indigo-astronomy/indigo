@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -94,7 +94,7 @@ static bool do_log = true;
 
 static void debug_log(const char *message) {
 	if (do_log)
-		indigo_trace("%s: SDK - %s", DRIVER_NAME, message);
+		indigo_debug("%s: SDK - %s", DRIVER_NAME, message);
 }
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
