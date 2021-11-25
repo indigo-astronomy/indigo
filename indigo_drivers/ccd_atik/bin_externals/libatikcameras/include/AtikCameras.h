@@ -7,9 +7,6 @@
 #include <comdef.h>
 #else
 #include <stddef.h>
-#ifdef __cplusplus
-#include <stdbool.h>
-#endif
 /// Typedef for non windows builds
 typedef bool BOOL;
 /// Typedef for non windows builds
@@ -18,6 +15,8 @@ typedef void * HINSTANCE;
 
 #ifdef __cplusplus
 extern "C" {
+#else
+#include <stdbool.h>
 #endif
 
 	/// Main error enum for methods with "int" as return type.
@@ -233,15 +232,15 @@ extern "C" {
 		
 	/// @brief Get API version. This may be the same as the DLL version.
 	/// @return API version as an integer, such as: 20200904 
-	artfn int  ArtemisAPIVersion();
+	artfn int  ArtemisAPIVersion(void);
 
 	/// @brief Get DLL version. This may be the same as the API version.
 	/// @return API version as an integer, such as: 20200904 
-	artfn int  ArtemisDLLVersion();
+	artfn int  ArtemisDLLVersion(void);
 
 	/// @brief Gets whether the connection to the camera is local.
 	/// @return True if the connection is local (E.G. through an USB cable), false otherwise
-	artfn BOOL ArtemisIsLocalConnection();
+	artfn BOOL ArtemisIsLocalConnectivoidon();
 
 	/// @brief Allows debug output to be output to standard error.
 	/// @param value Whether to enable the output.
@@ -273,14 +272,14 @@ extern "C" {
 
 	/// @brief Deallocates all internal DLL structures.
 	/// The SDK functions may not be called after calling this function.
-	artfn void ArtemisShutdown();
+	artfn void ArtemisShutdown(void);
 
 	// -------------------  Device --------------------------
 	
 	/// @brief Returns the number of connected and recognised devices.
 	/// The count does not include misconfigured devices (E.G. if drivers are missing).
 	/// @return The number of connected and recognised devices.
-	artfn int			ArtemisDeviceCount();
+	artfn int			ArtemisDeviceCount(void);
 
 	/// @brief Duplicate of ArtemisDevicePresent().
 	/// @param iDevice the device index.
@@ -346,7 +345,7 @@ extern "C" {
 	/// @brief Updates the available device count.
 	/// @return 
 	/// @see ArtemisDeviceCount()
-	artfn int			ArtemisRefreshDevicesCount();
+	artfn int			ArtemisRefreshDevicesCount(void);
 
 #ifndef WIN32
 		int  			ArtemisDeviceGetLibUSBDevice(int iDevice, libusb_device ** device);
@@ -457,17 +456,19 @@ extern "C" {
 	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure
 	artfn int  ArtemisSetSubSample(						ArtemisHandle handle, bool bSub);
 
-	/// @brief Retrieves whether continuous exposing is supported by the device.
+	/// @brief Retrieves whether continuous exposing is supported by the device. Only relevant
+	/// for our Titan Camera.
 	/// @param handle the connected Atik device handle.
 	/// @return TRUE if supported, FALSE if not.
 	artfn BOOL ArtemisContinuousExposingModeSupported(	ArtemisHandle handle);
 
-	/// @brief Retrieves whether continuous exposing is enabled for the device.
+	/// @brief Retrieves whether continuous exposing is enabled for the device. Only relevant
+	/// for our Titan Camera.
 	/// @param handle the connected Atik device handle.
 	/// @return TRUE if continuous exposing mode is enabled, FALSE otherwise. 
 	artfn BOOL ArtemisGetContinuousExposingMode(		ArtemisHandle handle);
 
-	/// @brief Set whether continuous exposing mode is enabled.
+	/// @brief Set whether continuous exposing mode is enabled.Only relevant for our Titan Camera.
 	/// This only has an effect on supported devices.
 	/// @param handle the connected Atik device handle.
 	/// @param bEnable 
@@ -682,7 +683,6 @@ extern "C" {
 	/// @param callback a pointer to a function which will be invoked when fast mode is completed.
 	/// @return TRUE on success, FALSE on failure.
 	artfn BOOL ArtemisSetFastCallback(  ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer));
-
 	// ------------------- Amplifier -----------------------------------
 
 	/// @brief Enable/disable the device's amplifier.
@@ -842,7 +842,7 @@ extern "C" {
 	/// @param serialNumber a pointer to a char array of length 100, which will be set to the serial number of the filter wheel.
 	/// @see ARTEMISERROR, ARTEMISEFWTYPE, ArtemisEFWGetDetails()
 	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure
-	artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char * serialNumber);
+artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char * serialNumber);
 
 	/// @brief Connect to a filter wheel device at the specified index.
 	/// @param i The index of the filter wheel device to connect to.
@@ -996,20 +996,35 @@ extern "C" {
 	/// @see ArtemisAdvancedHotPixelRemoval()
 	/// @param handle the connected Atik device handle.
 	/// @param on turns the hot pixel removal off/on
-	artfn int ArtemisAutoHotPixelRemoval(ArtemisHandle handle, bool on);
+	artfn int ArtemisHotPixelAutoRemoval(ArtemisHandle handle, bool on);
 
-	/// @brief A software based hot pixel remover with several parameters. If dakFrame is true this function will block for 30 seconds.
+	/// @brief A software based hot pixel remover with several parameters.
 	/// @param handle the connected Atik device handle.
 	/// @param on turns the hot pixel removal off/on
-	/// @param darkFrame If true, a 30 second dark frame will be taken. This will create a hot pixel array internally
-	/// that will be used after exposure to remove hot pixels. This array will need to be regenerated on any dimension 
-	/// or binning change otherwise the hot pixel removal will not be applied. If this parameter is used hot pixels
-	/// will not be determined during exposure only those listed in the array will be fixed. If false the internal
-	/// hot pixel array will be regenarated for each exposure
-	/// @param checkForAdjacentHotPixels If true surrounding hot pixels will not be used to determine the value of the current hot pixel.
-	/// This option trades time against better quality results.
-	/// @param hps This determines what is seen as a hot pixel. HPS_HIGH will see the most hot pixels.
-	artfn int ArtemisAdvancedHotPixelRemoval(ArtemisHandle handle, bool on, bool darkFrame, bool checkForAdjacentHotPixels, enum HotPixelSensitivity hps);
+	/// @param darkFrame When true @ArtemisHotPixelAdvancedStartCalculateHotPixels will need to be 
+	/// called to create a hot pixel 'map' that will be used later to remove hot pixels. If false 
+	/// the internal hot pixel array will be regenarated for each exposure.
+	/// @param checkForAdjacentHotPixels If true any surrounding hot pixels will not be used to determine
+	/// the value of  the current hot pixel.
+	/// @param hps This determines what defines a hot pixel. HPS_HIGH will see the most hot pixels,
+	/// but may think that some normal pixels are hot.
+	artfn int ArtemisHotPixelAdvancedRemoval(ArtemisHandle handle, bool on, bool darkFrame, 
+																					 bool checkForAdjacentHotPixels, enum HotPixelSensitivity hps);
+
+	/// @brief Will begin the process of calculating the internal array of hot pixels determined using
+	/// the darkFrame option of @ArtemisHotPixelAdvancedRemoval this function needs to be called after any 
+	/// dimension, temperature or binning change.
+	/// @param handle the connected Atik camera.
+	/// @param exposureLength determines the length of the dark frame to take.
+	/// @return ARTEMIS_OK on success, ARTEMIS_INVALID_FUNCTION if the camera is a colour camera or
+	/// ARTEMIS_INVALID_PARAMETER if the camera handle is no longer valid.
+	artfn int ArtemisHotPixelAdvancedStartCalculateHotPixels(ArtemisHandle handle, float exposureLength);
+
+	/// @brief After calling @ArtemisHotPixelAdvancedRecalculateHotPixels we recommend that you poll this function
+	/// until calculationComplete returns true.
+	/// @return ARTEMIS_OK on success, ARTEMIS_INVALID_PARAMETER if the handle cannot be found or
+	/// ARTEMIS_OPERATION_FAILED if the camera never returns from taking the darkFrame.
+	artfn int ArtemisHotPixelAdvancedCalculationComplete(ArtemisHandle handle, bool* calculationComplete);
 
 	// ------------------- Lens -----------------------------------
 
@@ -1173,7 +1188,7 @@ extern "C" {
 	/// This method is only needed if the DLL is linked dynamically.
 	/// This method is part of the DLL example code.
 	/// @see ArtemisLoadDLL()
-	artfn void ArtemisUnLoadDLL();
+	artfn void ArtemisUnLoadDLL(void);
 
 	#undef artfn
 
