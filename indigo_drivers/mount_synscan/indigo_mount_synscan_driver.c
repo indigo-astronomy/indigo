@@ -132,12 +132,14 @@ bool synscan_configure(indigo_device* device) {
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "MF"); break;
 	case 0x82:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "114GT"); break;
+	case 0x83:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "StarSeek"); break;
 	case 0x90:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "DOB"); break;
 	case 0xA5:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZGTi"); break;
 	default:
-			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CUSTOM"); break;
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CUSTOM (%02x)", GET_MODEL(version)); break;
 	}
 
 	//  Query motor status
@@ -172,28 +174,28 @@ bool synscan_configure(indigo_device* device) {
 	if (!PRIVATE_DATA->mountConfigured) {
 		//  Query axis 360 degree rotation steps
 		if (!synscan_total_axis_steps(device, kAxisRA, &PRIVATE_DATA->raTotalSteps))
-			return false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch RA axis steps per rotation");
 		if (!synscan_total_axis_steps(device, kAxisDEC, &PRIVATE_DATA->decTotalSteps))
-			return false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch DEC axis steps per rotation");
 
 		//  Query axis worm rotation steps
 		if (!synscan_worm_rotation_steps(device, kAxisRA, &PRIVATE_DATA->raWormSteps))
-			return false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch RA axis worm steps");
 		if (!synscan_worm_rotation_steps(device, kAxisDEC, &PRIVATE_DATA->decWormSteps))
-			return false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch DEC axis worm steps");
 
 		//  Query axis step timer frequency
 		if (!synscan_step_timer_frequency(device, kAxisRA, &PRIVATE_DATA->raTimerFreq))
-			return false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch RA axis timer freq");
 		if (!synscan_step_timer_frequency(device, kAxisDEC, &PRIVATE_DATA->decTimerFreq))
-			return false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch DEC axis timer freq");
 
 		//  Query axis high speed ratio
 		if (!synscan_high_speed_ratio(device, kAxisRA, &PRIVATE_DATA->raHighSpeedFactor))
-			return false;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch RA axis speed ratio");
 		if (!synscan_high_speed_ratio(device, kAxisDEC, &PRIVATE_DATA->decHighSpeedFactor))
-			return false;
-		
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch DEC axis speed ratio");
+
 		if (!synscan_ext_inquiry(device, kAxisRA, kGetFeatures, &PRIVATE_DATA->raFeatures)) {
 			PRIVATE_DATA->raFeatures = 0;
 		}
