@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-166] - --- Dec -- 2021
+## [2.0-166] - Tue Nov 30 2021
 ### Overall
 - indigo_raw_utils: new API for RMS contrast estimator
 - IMAGING_AF_TUNING: updated to reflect the latest AF changes
@@ -14,23 +14,29 @@ All notable changes to INDIGO framework will be documented in this file.
 	- RMS AF supports RGB images
 	- RMS AF is not confused by saturated areas any more
 
-- indigo_ccd_touptek: SDK updated to 50.19728.20211022
+- indigo_ccd_touptek:
+	- SDK updated to 50.19728.20211022
 
-- indigo_ccd_atik: SDK updated to SDK_2021_11_02
+- indigo_ccd_atik:
+	- SDK updated to SDK_2021_11_02
 
-- indigo_ccd_asi: SDK updated to 1.20.3
+- indigo_ccd_asi:
+	- SDK updated to 1.20.3
 
-- indigo_ccd_qhy2: SDK updated to V2021.10.12 (x86 driver uses the old version - QHY dropped 32bit Linux support)
+- indigo_ccd_qhy2:
+	- SDK updated to V2021.10.12 (x86 driver uses the old version - QHY dropped 32bit Linux support)
 
-- indigo_ccd_qhy/indigo_ccd_qhy2: camera firmware update
+- indigo_ccd_qhy/indigo_ccd_qhy2:
+	- camera firmware update
 
-- indigo_ccd_uvc: image buffer overrun fixed
+- indigo_ccd_uvc:
+	- image buffer overrun fixed
 
-- indigo_ccd_mi: Update ibgxccd for MacOS to version 0.5.1 (fixes issue with Monterey when camera did not connect the first time after power on)
+- indigo_ccd_mi:
+	- Update ibgxccd for MacOS to version 0.5.1 (fixes issue with Monterey when camera did not connect the first time after power on)
 
-- indigo_mount_simulator: fix MOUNT_TRACKING property state transitions
-
-- indigo_mount_synscan: experimental support for Orion Starseek + Skywatcher WiFi
+- indigo_mount_simulator:
+	- fix MOUNT_TRACKING property state transitions
 
 ## [2.0-164] - Fri Nov 05 2021
 ### Overall
