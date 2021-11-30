@@ -38,7 +38,6 @@ enum MountType {
 	kMountTypeGT = 0x80,
 	kMountTypeMF = 0x81,
 	kMountType114GT = 0x82,
-	kMountTypeStarSeek = 0x83,
 	kMountTypeDOB = 0x90
 };
 
