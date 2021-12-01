@@ -132,12 +132,14 @@ bool synscan_configure(indigo_device* device) {
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "MF"); break;
 	case 0x82:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "114GT"); break;
+	case 0x83:
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "StarSeek"); break;
 	case 0x90:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "DOB"); break;
 	case 0xA5:
 			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "AZGTi"); break;
 	default:
-			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CUSTOM"); break;
+			snprintf(MOUNT_INFO_MODEL_ITEM->text.value, INDIGO_VALUE_SIZE, "CUSTOM (%02x)", GET_MODEL(version)); break;
 	}
 
 	//  Query motor status
@@ -177,11 +179,12 @@ bool synscan_configure(indigo_device* device) {
 			return false;
 
 		//  Query axis worm rotation steps
-		if (!synscan_worm_rotation_steps(device, kAxisRA, &PRIVATE_DATA->raWormSteps))
-			return false;
-		if (!synscan_worm_rotation_steps(device, kAxisDEC, &PRIVATE_DATA->decWormSteps))
-			return false;
-
+		if (!synscan_worm_rotation_steps(device, kAxisRA, &PRIVATE_DATA->raWormSteps)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch RA axis worm steps");
+		}
+		if (!synscan_worm_rotation_steps(device, kAxisDEC, &PRIVATE_DATA->decWormSteps)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unable to fetch DEC axis worm steps");
+		}
 		//  Query axis step timer frequency
 		if (!synscan_step_timer_frequency(device, kAxisRA, &PRIVATE_DATA->raTimerFreq))
 			return false;
