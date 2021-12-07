@@ -34,23 +34,39 @@ In case of successful handshake for version 2.0 the following extensions can be 
 
 1. BLOBs in BASE64 representation can use any line length instead of fixed 74 characters for much faster encoding/decoding.
 
-2. BLOBs can be referenced by URL instead of inline BASE64 encoding with url parameter in oneBLOB tag, e.g.
+2. Read-only BLOBs can be referenced by URL instead of inline BASE64 encoding with url parameter in oneBLOB tag, e.g.
 
 ```
 → <enableBLOB>URL</enableBLOB>
 ...
 ← <setBLOBVector device='CCD Simulator' name='CCD_IMAGE' state='Ok'>
-    <oneBLOB name='%s' url='http://localhost:7624/blob/0x10381d798.fits?1534933649001'/>
+    <oneBLOB name='IMAGE' url='http://localhost:7624/blob/0x10381d798.fits?1534933649001'/>
   </setBLOBVector>
 ```
 
    Data available on given URL are pure binary image in selected format. Data are available only while the property is in 'Ok' state.
 
-3. Number property items has 'target' attribute to distinguish between current and target item value for properties like CCD_EXPOSURE.
+3. Write-only BLOBS can be uploaded to URL, defined by url parameter in defBLOB tag, e.g.
 
-4. Every property and every item may have optional attribute 'hints' containing presentation hints in CSS declaration syntax (see below for the list of defined properties and values).
+```
+← <defBLOBVector device='Astrometry Agent' name='CCD_IMAGE' perm='wo' state='Ok'>
+    <defBLOB name='IMAGE' url='http://localhost:7624/blob/0x10381d798/>
+  </defBLOBVector>
+...
+upload the data to http://localhost:7624/blob/0x10381d798 with PUT method
+...
+→ <newBLOBVector device='Astrometry Agent' name='CCD_IMAGE'>
+    <oneBLOB name='IMAGE' format='.fits'/>
+  </newBLOBVector>
+```
 
-5. Every newXXXVector request may contain 'token' attribute containing client token used to allow write access to the protected or locked device. Please see: [INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
+INDI style BLOB uploads are not supported by INDIGO for performance reasons.
+
+4. Number property items has 'target' attribute to distinguish between current and target item value for properties like CCD_EXPOSURE.
+
+5. Every property and every item may have optional attribute 'hints' containing presentation hints in CSS declaration syntax (see below for the list of defined properties and values).
+
+6. Every newXXXVector request may contain 'token' attribute containing client token used to allow write access to the protected or locked device. Please see: [INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md)
 
 If protocol version 2.0 is used, INDIGO property and item names are used (more gramatically and semantically consistent),
 while if version 1.7 is used, names of  commonly used names are maped to their INDI counter parts.  Also "Idle" property state is mapped
