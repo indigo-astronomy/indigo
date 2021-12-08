@@ -142,6 +142,7 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 static void *new_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
 static void *new_number_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
 static void *new_switch_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
+static void *new_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
 static void *def_text_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
 static void *def_number_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
 static void *def_switch_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message);
@@ -374,6 +375,58 @@ static void *new_switch_vector_handler(parser_state state, parser_context *conte
 	return new_switch_vector_handler;
 }
 
+static void *new_one_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
+	indigo_property *property = (indigo_property *)context->property_buffer;
+	indigo_client *client = context->client;
+	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: new_one_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	if (state == ATTRIBUTE_VALUE) {
+		if (!strcmp(name, "name")) {
+			indigo_copy_item_name(client ? client->version : INDIGO_VERSION_CURRENT, property, property->items+property->count-1, value);
+		} else if (!strcmp(name, "format")) {
+			indigo_copy_name((property->items + property->count - 1)->blob.format, value);
+		}
+	} else if (state == END_TAG) {
+		return new_blob_vector_handler;
+	}
+	return new_one_blob_vector_handler;
+}
+
+static void *new_blob_vector_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
+	indigo_property *property = (indigo_property *)context->property_buffer;
+	indigo_client *client = context->client;
+	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: new_blob_vector_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	if (state == BEGIN_TAG) {
+		if (!strcmp(name, "oneBLOB")) {
+			if (property->count < INDIGO_MAX_ITEMS)
+				property->count++;
+			return new_one_blob_vector_handler;
+		}
+	} else if (state == ATTRIBUTE_VALUE) {
+		if (!strcmp(name, "device")) {
+			strncpy(property->device, value,INDIGO_NAME_SIZE);
+		} else if (!strcmp(name, "name")) {
+			indigo_copy_property_name(client ? client->version : INDIGO_VERSION_CURRENT, property, value);
+		} else if (!strcmp(name, "token")) {
+			property->access_token = strtol(value, NULL, 16);
+		}
+	} else if (state == END_TAG) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			indigo_blob_entry *entry = indigo_validate_blob(item);
+			if (entry)
+				item->blob.value = indigo_safe_malloc_copy(item->blob.size = entry->size, entry->content);
+		}
+		indigo_change_property(client, property);
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			indigo_safe_free(item->blob.value);
+		}
+		memset(property, 0, PROPERTY_SIZE);
+		return top_level_handler;
+	}
+	return new_blob_vector_handler;
+}
+
 static void *switch_protocol_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_device *device = context->device;
 	assert(device != NULL);
@@ -446,21 +499,23 @@ static void set_property(parser_context *context, indigo_property *other, char *
 							case INDIGO_BLOB_VECTOR:
 								indigo_copy_name(property_item->blob.format, other_item->blob.format);
 								indigo_copy_value(property_item->blob.url, other_item->blob.url);
-								property_item->blob.size = other_item->blob.size;
-								if (other_item->blob.value) {
-									if (property_item->blob.value != NULL)
-										property_item->blob.value = indigo_safe_realloc(property_item->blob.value, property_item->blob.size);
-									else
-										property_item->blob.value = indigo_safe_malloc(property_item->blob.size);
-									memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
-								} else {
-									if (property_item->blob.value != NULL) {
-										free(property_item->blob.value);
-										property_item->blob.value = NULL;
+								if (property->perm == INDIGO_RO_PERM) {
+									property_item->blob.size = other_item->blob.size;
+									if (other_item->blob.value) {
+										if (property_item->blob.value != NULL)
+											property_item->blob.value = indigo_safe_realloc(property_item->blob.value, property_item->blob.size);
+										else
+											property_item->blob.value = indigo_safe_malloc(property_item->blob.size);
+										memcpy(property_item->blob.value, other_item->blob.value, property_item->blob.size);
+									} else {
+										if (property_item->blob.value != NULL) {
+											free(property_item->blob.value);
+											property_item->blob.value = NULL;
+										}
+										char *ext = strrchr(property_item->blob.url, '.');
+										if (ext)
+											strcpy(property_item->blob.format, ext);
 									}
-									char *ext = strrchr(property_item->blob.url, '.');
-									if (ext)
-										strcpy(property_item->blob.format, ext);
 								}
 								break;
 						}
@@ -786,7 +841,7 @@ static void def_property(parser_context *context, indigo_property *other, char *
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
 				break;
 			case INDIGO_BLOB_VECTOR:
-				property = indigo_init_blob_property(property, other->device, other->name, other->group, other->label, other->state, other->count);
+				property = indigo_init_blob_property(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->count);
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
@@ -1204,6 +1259,10 @@ static void *top_level_handler(parser_state state, parser_context *context, char
 		if (!strcmp(name, "newSwitchVector")) {
 			property->type = INDIGO_SWITCH_VECTOR;
 			return new_switch_vector_handler;
+		}
+		if (!strcmp(name, "newBLOBVector")) {
+			property->type = INDIGO_BLOB_VECTOR;
+			return new_blob_vector_handler;
 		}
 		if (!strcmp(name, "switchProtocol"))
 			return switch_protocol_handler;
