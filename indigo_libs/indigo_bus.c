@@ -556,6 +556,38 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 			va_end(args);
 		}
+		if (indigo_use_blob_caching && property->type == INDIGO_BLOB_VECTOR && property->perm == INDIGO_WO_PERM) {
+			pthread_mutex_lock(&blob_mutex);
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				indigo_blob_entry *entry = NULL;
+				int free_index = -1;
+				for (int j = 0; j < MAX_BLOBS; j++) {
+					entry = blobs[j];
+					if (entry && entry->item == item) {
+						break;
+					}
+					if (entry == NULL && free_index == -1)
+						free_index = j;
+					entry = NULL;
+				}
+				if (entry == NULL && free_index >= 0) {
+					entry = indigo_safe_malloc(sizeof(indigo_blob_entry));
+					blobs[free_index] = entry;
+					memset(entry, 0, sizeof(indigo_blob_entry));
+					entry->item = item;
+					pthread_mutex_init(&entry->mutext, NULL);
+				}
+				if (entry == NULL) {
+					pthread_mutex_unlock(&blob_mutex);
+					if (indigo_use_strict_locking)
+						pthread_mutex_unlock(&client_mutex);
+					indigo_error("[%s:%d] Max BLOB count reached", __FUNCTION__, __LINE__);
+					return INDIGO_TOO_MANY_ELEMENTS;
+				}
+			}
+			pthread_mutex_unlock(&blob_mutex);
+		}
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->define_property != NULL)
@@ -584,7 +616,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 			vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 			va_end(args);
 		}
-		if (indigo_use_blob_caching && property->type == INDIGO_BLOB_VECTOR && property->state == INDIGO_OK_STATE) {
+		if (indigo_use_blob_caching && property->type == INDIGO_BLOB_VECTOR && property->perm == INDIGO_RO_PERM && property->state == INDIGO_OK_STATE) {
 			pthread_mutex_lock(&blob_mutex);
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -799,9 +831,10 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	return property;
 }
 
-indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count) {
+indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
+	assert(perm == INDIGO_RO_PERM || perm == INDIGO_WO_PERM);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
@@ -814,7 +847,7 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 	indigo_copy_name(property->group, group ? group : "");
 	indigo_copy_value(property->label, label ? label : "");
 	property->type = INDIGO_BLOB_VECTOR;
-	property->perm = INDIGO_RO_PERM;
+	property->perm = perm;
 	property->state = state;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
@@ -851,6 +884,9 @@ void indigo_release_property(indigo_property *property) {
 					indigo_safe_free(entry);
 					break;
 				}
+			}
+			if (property->perm == INDIGO_WO_PERM) {
+				indigo_safe_free(item->blob.value);
 			}
 		}
 		pthread_mutex_unlock(&blob_mutex);
@@ -959,9 +995,8 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
 	socket = indigo_open_tcp(host, port);
-	if (socket < 0) {
+	if (socket < 0)
 		goto clean_return;
-	}
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\r\nAccept-Encoding: gzip\r\n\r\n", file);
@@ -1063,6 +1098,81 @@ clean_return:
 	return res;
 }
 
+bool indigo_upload_http_blob_item(indigo_item *blob_item) {
+	char *host = indigo_safe_malloc(BUFFER_SIZE);
+	int port = 80;
+	char *file = indigo_safe_malloc(BUFFER_SIZE);
+	char *request = indigo_safe_malloc(BUFFER_SIZE);
+	char *http_line = indigo_safe_malloc(BUFFER_SIZE);
+	char *http_response = indigo_safe_malloc(BUFFER_SIZE);
+	int http_result = 0;
+	int socket = -1;
+	int res = false;
+
+	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
+		INDIGO_DEBUG(indigo_debug("%s(): url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME));
+		goto clean_return;
+	}
+
+	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
+	socket = indigo_open_tcp(host, port);
+	if (socket < 0)
+		goto clean_return;
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	unsigned char *out_buffer = indigo_safe_malloc(blob_item->blob.size);
+	unsigned int out_size;
+	if (out_buffer == NULL)
+		goto clean_return;
+	indigo_compress("image", blob_item->blob.value, (unsigned int)blob_item->blob.size, out_buffer, &out_size);
+	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nX-Uncompressed-Content-Length: %ld\r\n\r\n", file, out_size, blob_item->blob.size);
+	indigo_write(socket, (const char *)out_buffer, out_size);
+	indigo_safe_free(out_buffer);
+#else
+	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Length: %d\r\n\r\n", file, blob_item->blob.size);
+	indigo_write(socket, blob_item->blob.value, blob_item->blob.size)
+#endif
+
+	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
+	if (res < 0) {
+		res = false;
+		goto clean_return;
+	}
+
+	int count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
+	if ((count != 2) || (http_result != 200)) {
+		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
+		goto clean_return;
+	}
+	INDIGO_DEBUG(indigo_debug("%s(): http_result = %d, response = \"%s\"", __FUNCTION__, http_result, http_response));
+	do {
+		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
+		if (res < 0) {
+			res = false;
+			goto clean_return;
+		}
+		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
+	} while (http_line[0] != '\0');
+	
+clean_return:
+	INDIGO_DEBUG(indigo_debug("%s() -> %s", __FUNCTION__, res ? "OK" : "Failed"));
+	if (socket >= 0) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		shutdown(socket, SHUT_RDWR);
+		close(socket);
+#endif
+#if defined(INDIGO_WINDOWS)
+		shutdown(socket, SD_BOTH);
+		closesocket(socket);
+#endif
+	}
+	indigo_safe_free(host);
+	indigo_safe_free(file);
+	indigo_safe_free(request);
+	indigo_safe_free(http_line);
+	indigo_safe_free(http_response);
+	return res;
+}
 
 bool indigo_property_match(indigo_property *property, indigo_property *other) {
 	if (property == NULL)
@@ -1162,14 +1272,8 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 						case INDIGO_SWITCH_VECTOR:
 							property_item->sw.value = other_item->sw.value;
 							break;
-						case INDIGO_LIGHT_VECTOR:
-							property_item->light.value = other_item->light.value;
-							break;
 						case INDIGO_BLOB_VECTOR:
-							indigo_copy_name(property_item->blob.format, other_item->blob.format);
-							indigo_copy_name(property_item->blob.url, other_item->blob.url);
-							property_item->blob.size = other_item->blob.size;
-							property_item->blob.value = other_item->blob.value;
+							property_item->blob.value = indigo_safe_realloc_copy(property_item->blob.value, property_item->blob.size = other_item->blob.size, other_item->blob.value);
 							break;
 						}
 						break;
@@ -1525,14 +1629,14 @@ static pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void *large_buffers[BUFFER_COUNT];
 
-static void free_large_buffers() {
+static void free_large_buffers(void) {
 	for (int i = 0; i < BUFFER_COUNT; i++) {
 		if (large_buffers[i])
 			free(large_buffers[i]);
 	}
 }
 
-void *indigo_alloc_large_buffer() {
+void *indigo_alloc_large_buffer(void) {
 	pthread_mutex_lock(&buffer_mutex);
 	static bool register_atexit = true;
 	if (register_atexit) {

@@ -220,18 +220,18 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_switch_item(CCD_IMAGE_FORMAT_RAW_SER_ITEM, CCD_IMAGE_FORMAT_RAW_SER_ITEM_NAME, "RAW + SER format", false);
 			CCD_IMAGE_FORMAT_PROPERTY->count = 5;
 			// -------------------------------------------------------------------------------- CCD_IMAGE
-			CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image data", INDIGO_OK_STATE, 1);
+			CCD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Image data", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (CCD_IMAGE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_blob_item(CCD_IMAGE_ITEM, CCD_IMAGE_ITEM_NAME, "Image data");
 			// -------------------------------------------------------------------------------- CCD_PREVIEW_IMAGE
-			CCD_PREVIEW_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Preview image data", INDIGO_OK_STATE, 1);
+			CCD_PREVIEW_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_IMAGE_PROPERTY_NAME, CCD_IMAGE_GROUP, "Preview image data", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (CCD_PREVIEW_IMAGE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
 			indigo_init_blob_item(CCD_PREVIEW_IMAGE_ITEM, CCD_PREVIEW_IMAGE_ITEM_NAME, "Image data");
 			// -------------------------------------------------------------------------------- CCD_PREVIEW_HISTOGRAM
-			CCD_PREVIEW_HISTOGRAM_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_HISTOGRAM_PROPERTY_NAME, CCD_IMAGE_GROUP, "Preview image histogram", INDIGO_OK_STATE, 1);
+			CCD_PREVIEW_HISTOGRAM_PROPERTY = indigo_init_blob_property(NULL, device->name, CCD_PREVIEW_HISTOGRAM_PROPERTY_NAME, CCD_IMAGE_GROUP, "Preview image histogram", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (CCD_PREVIEW_HISTOGRAM_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_PREVIEW_HISTOGRAM_PROPERTY->hidden = true;
