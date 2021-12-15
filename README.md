@@ -157,3 +157,10 @@ Install XCode and download and build autoconf, automake and libtool (use tools/c
 `build/bin/indigo_server -v -s`
 
 and connect from any INDIGO/INDI client or web browser to localhost on port 7624...
+
+### No pthread_yield()
+New linux distributions come with the latest glibc that does not provide pthread_yield() However libqhy.a depends on it. We do not have control over this library and it is not officially supprted by QHY any more. So if you get complaints by the linker for missing *pthread_yield* call please execute the folowing command in *indigo_drivers/ccd_qhy/bin_externals/pthread_yield_compat/*:
+
+`make patchlib`
+
+and rerun the build
