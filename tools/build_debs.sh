@@ -26,7 +26,9 @@ RUN apt-get -y update && apt-get -y install wget unzip build-essential autoconf 
 COPY indigo-$3.tar.gz .
 RUN tar -zxf indigo-$3.tar.gz
 RUN rm indigo-$3.tar.gz
-WORKDIR indigo-$3
+WORKDIR indigo-$3/indigo_drivers/ccd_qhy/bin_externals/pthread_yield_compat
+RUN make patchlib
+WORKDIR ../../../../
 RUN make package
 EOF
 docker build -t indigo .
