@@ -28,6 +28,7 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
+#include <indigo/indigo_align.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -97,8 +98,13 @@ typedef struct {
 	indigo_property *abort_property;
 	indigo_property *polar_alignment_error_property;
 	indigo_property *polar_alignment_settings_property;
+	indigo_spherical_point_t eq_coordinates;
 	indigo_property_state eq_coordinates_state;
 	time_t eq_coordinates_timestamp;
+	indigo_spherical_point_t geo_coordinates;
+	indigo_property_state geo_coordinates_state;
+	time_t geo_coordinates_timestamp;
+	indigo_spherical_point_t pa_reference;
 	void (*save_config)(indigo_device *);
 	void *((*solve)(indigo_platesolver_task *));
 	pthread_mutex_t mutex;
