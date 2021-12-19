@@ -132,8 +132,8 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = &property->items[i];
 			if (property->perm == INDIGO_WO_PERM && client->version >= INDIGO_VERSION_2_0) {
-				if (item->blob.value || indigo_proxy_blob) {
-					INDIGO_PRINTF(handle, "<defBLOB name='%s' path='/blob/%p%s' label='%s'%s/>\n", indigo_item_name(client->version, property, item), item, indigo_xml_escape(item->label), hints_attribute(item->hints));
+				if (item->blob.url[0] == 0 || indigo_proxy_blob) {
+					INDIGO_PRINTF(handle, "<defBLOB name='%s' path='/blob/%p' label='%s'%s/>\n", indigo_item_name(client->version, property, item), item, indigo_xml_escape(item->label), hints_attribute(item->hints));
 				} else {
 					INDIGO_PRINTF(handle, "<defBLOB name='%s' url='%s' label='%s'%s/>\n", indigo_item_name(client->version, property, item), item->blob.url, indigo_xml_escape(item->label), hints_attribute(item->hints));
 				}

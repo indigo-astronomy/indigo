@@ -412,7 +412,7 @@ static void *new_blob_vector_handler(parser_state state, parser_context *context
 	} else if (state == END_TAG) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			indigo_blob_entry *entry = indigo_validate_blob(item);
+			indigo_blob_entry *entry = indigo_find_blob(property, item);
 			if (entry)
 				item->blob.value = indigo_safe_malloc_copy(item->blob.size = entry->size, entry->content);
 		}
@@ -847,7 +847,6 @@ static void def_property(parser_context *context, indigo_property *other, char *
 					indigo_item *item = property->items + i;
 					item->blob.value = NULL;
 					item->blob.size = 0;
-					*(item->blob.url) = 0;
 				}
 				break;
 		}
