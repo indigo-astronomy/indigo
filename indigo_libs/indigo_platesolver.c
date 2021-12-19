@@ -57,6 +57,7 @@ void indigo_platesolver_save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_USE_INDEX_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_HINTS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_SYNC_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			close(DEVICE_CONTEXT->property_save_file_handle);
@@ -141,14 +142,36 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.format, "%m");
-		// -------------------------------------------------------------------------------- WCS property
-		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		// -------------------------------------------------------------------------------- SYNC property
+		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_DISABLED_ITEM, AGENT_PLATESOLVER_SYNC_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_SYNC_ITEM, AGENT_PLATESOLVER_SYNC_SYNC_ITEM_NAME, "Sync only", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CENTER_ITEM, AGENT_PLATESOLVER_SYNC_CENTER_ITEM_NAME, "Sync and center", false);
-		// -------------------------------------------------------------------------------- WCS property
+		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM, AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM_NAME, "Set polar alignment reference and move", false);
+		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
+		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_SETTINGS property
+		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM_NAME, "Hour angle move (°)", -180, 180, 5, 30);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM_NAME, "Declination move (°)", -45, 45, 1, 0);
+		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.format, "%m");
+		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
+		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
+		if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM, AGENT_PLATESOLVER_PA_ERROR_HA_ITEM_NAME, "Hour angle error (°)", -45, 45, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM, AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM_NAME, "Declination error (°)", -45, 45, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM, AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM_NAME, "Altitude error (°)", -45, 45, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM, AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM_NAME, "Azimuth error (°)", -45, 45, 0, 0);
+		strcpy(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM->number.format, "%m");
+		// -------------------------------------------------------------------------------- ABORT property
 		AGENT_PLATESOLVER_ABORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -176,6 +199,10 @@ indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, ind
 		indigo_define_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_PLATESOLVER_SYNC_PROPERTY, property))
 		indigo_define_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property))
+		indigo_define_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PLATESOLVER_PA_ERROR_PROPERTY, property))
+		indigo_define_property(device, AGENT_PLATESOLVER_PA_ERROR_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property))
 		indigo_define_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
@@ -201,6 +228,13 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_PA_SETTINGS
+		indigo_property_copy_values(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property, false);
+		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, NULL);
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PLATESOLVER_SYNC_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_SYNC
 		indigo_property_copy_values(AGENT_PLATESOLVER_SYNC_PROPERTY, property, false);
@@ -218,6 +252,8 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_HINTS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_WCS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_PA_ERROR_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_ABORT_PROPERTY);
 	pthread_mutex_destroy(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
