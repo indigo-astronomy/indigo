@@ -1331,6 +1331,8 @@ static void server_main() {
 	indigo_start();
 	indigo_log("INDIGO server %d.%d-%s built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 
+	indigo_use_blob_caching = true;
+
 	/* Make sure master token and ACL are loaded before drivers */
 	for (int i = 1; i < server_argc; i++) {
 		if ((!strcmp(server_argv[i], "-T") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {

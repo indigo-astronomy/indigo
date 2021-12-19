@@ -328,9 +328,9 @@ static void start_worker_thread(int *client_socket) {
 								}
 							}
 							pthread_mutex_lock(unlock_at_exit = &entry->mutext);
-							void *buffer = indigo_safe_realloc(entry->content, entry->size = content_length);
-							if (buffer) {
-								if (!indigo_read(socket, buffer, content_length))
+							entry->content = indigo_safe_realloc(entry->content, entry->size = content_length);
+							if (entry->content) {
+								if (!indigo_read(socket, entry->content, content_length))
 									goto failure;
 								pthread_mutex_unlock(&entry->mutext);
 								unlock_at_exit = NULL;

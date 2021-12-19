@@ -576,6 +576,7 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 					blobs[free_index] = entry;
 					memset(entry, 0, sizeof(indigo_blob_entry));
 					entry->item = item;
+					entry->property = property;
 					pthread_mutex_init(&entry->mutext, NULL);
 				}
 				if (entry == NULL) {
@@ -636,6 +637,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 					blobs[free_index] = entry;
 					memset(entry, 0, sizeof(indigo_blob_entry));
 					entry->item = item;
+					entry->property = property;
 					pthread_mutex_init(&entry->mutext, NULL);
 				}
 				if (entry) {
@@ -906,6 +908,21 @@ indigo_blob_entry *indigo_validate_blob(indigo_item *item) {
 	return NULL;
 }
 
+indigo_blob_entry *indigo_find_blob(indigo_property *other_property, indigo_item *other_item) {
+	assert(other_property != NULL);
+	assert(other_item != NULL);
+	for (int j = 0; j < MAX_BLOBS; j++) {
+		indigo_blob_entry *entry = blobs[j];
+		if (entry) {
+			indigo_property *property = entry->property;
+			indigo_item *item = entry->item;
+			if (!strncmp(property->device, other_property->device, INDIGO_NAME_SIZE) && !strncmp(property->name, other_property->name, INDIGO_NAME_SIZE) && !strncmp(item->name, other_item->name, INDIGO_NAME_SIZE))
+				return entry;
+		}
+	}
+	return NULL;
+}
+
 void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...) {
 	assert(item != NULL);
 	assert(name != NULL);
@@ -1119,18 +1136,29 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	if (socket < 0)
 		goto clean_return;
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+//#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#if false
 	unsigned char *out_buffer = indigo_safe_malloc(blob_item->blob.size);
-	unsigned int out_size;
+	unsigned int out_size = blob_item->blob.size;
 	if (out_buffer == NULL)
 		goto clean_return;
 	indigo_compress("image", blob_item->blob.value, (unsigned int)blob_item->blob.size, out_buffer, &out_size);
 	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nX-Uncompressed-Content-Length: %ld\r\n\r\n", file, out_size, blob_item->blob.size);
-	indigo_write(socket, (const char *)out_buffer, out_size);
+  res = indigo_write(socket, request, strlen(request));
+  if (res == false)
+    goto clean_return;
+	res = indigo_write(socket, (const char *)out_buffer, out_size);
 	indigo_safe_free(out_buffer);
+  if (res == false)
+    goto clean_return;
 #else
-	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Length: %d\r\n\r\n", file, blob_item->blob.size);
-	indigo_write(socket, blob_item->blob.value, blob_item->blob.size)
+	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Length: %ld\r\n\r\n", file, blob_item->blob.size);
+  res = indigo_write(socket, request, strlen(request));
+  if (res == false)
+    goto clean_return;
+	res = indigo_write(socket, blob_item->blob.value, blob_item->blob.size);
+  if (res == false)
+    goto clean_return;
 #endif
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
@@ -1417,6 +1445,41 @@ indigo_result indigo_change_number_property_1_with_token(indigo_client *client, 
 
 indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value) {
 	return indigo_change_number_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, value);
+}
+
+indigo_result indigo_change_blob_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **urls) {
+	indigo_property *property = indigo_init_blob_property(NULL, device, name, NULL, NULL, 0, INDIGO_WO_PERM, count);
+	property->access_token = token;
+	for (int i = 0; i < count; i++) {
+		indigo_item *item = property->items + i;
+		indigo_init_blob_item(item, items[i], NULL);
+		item->blob.value = indigo_safe_malloc_copy(item->blob.size = sizes[i], values[i]);
+		indigo_copy_name(item->blob.format, formats[i]);
+		indigo_copy_value(item->blob.url, urls[i]);
+	}
+	indigo_result result = indigo_change_property(client, property);
+	indigo_release_property(property);
+	return result;
+}
+
+indigo_result indigo_change_blob_property(indigo_client *client, const char *device, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **urls) {
+	return indigo_change_blob_property_with_token(client, device, indigo_get_device_token(device), name, count, items, values, sizes, formats, urls);
+}
+
+indigo_result indigo_change_blob_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, void *value, const long size, const char *format, const char *url) {
+	indigo_property *property = indigo_init_blob_property(NULL, device, name, NULL, NULL, 0, INDIGO_WO_PERM, 1);
+	property->access_token = token;
+	indigo_init_blob_item(property->items, item, NULL);
+	property->items->blob.value = indigo_safe_malloc_copy(property->items->blob.size = size, value);
+	indigo_copy_name(property->items->blob.format, format);
+	indigo_copy_value(property->items->blob.url, url);
+	indigo_result result = indigo_change_property(client, property);
+	indigo_release_property(property);
+	return result;
+}
+
+indigo_result indigo_change_blob_property_1(indigo_client *client, const char *device, const char *name, const char *item, void *value, const long size, const char *format, const char *url) {
+	return indigo_change_blob_property_1_with_token(client, device, indigo_get_device_or_master_token(device), name, item, value, size, format, url);
 }
 
 indigo_result indigo_change_switch_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const bool *values) {
