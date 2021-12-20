@@ -344,27 +344,10 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
-indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+static void indigo_platesolver_handle_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	{ char *device_name = property->device;
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
-			indigo_property *related_agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
-			for (int j = 0; j < related_agents->count; j++) {
-				indigo_item *item = related_agents->items + j;
-				if (item->sw.value && !strcmp(item->name, device_name)) {
-					for (int i = 0; i < property->count; i++) {
-						indigo_item *item = property->items + i;
-						if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
-							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
-							task->device = FILTER_CLIENT_CONTEXT->device;
-							task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
-							indigo_async((void *(*)(void *))INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->solve, task);
-						}
-					}
-					break;
-				}
-			}
-		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
+		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 			indigo_property *agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 			for (int j = 0; j < agents->count; j++) {
 				indigo_item *item = agents->items + j;
@@ -401,7 +384,6 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 			indigo_property *agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 			for (int j = 0; j < agents->count; j++) {
 				indigo_item *item = agents->items + j;
-				indigo_log("#GEO_COORDS <%s> -> <%s> %d", item->name, device_name, item->sw.value);
 				if (item->sw.value && !strcmp(item->name, device_name)) {
 					double lat = 0, lon = 0;
 					bool update = false;
@@ -412,10 +394,8 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						indigo_item *item = property->items + i;
 						if (!strcmp(item->name, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
 							INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.d = DEG2RAD * item->number.value;
-							indigo_log("GEO_COORDS Lat = %f", item->number.value);
 						} else if (!strcmp(item->name, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
 							INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.a = DEG2RAD * item->number.value;
-							indigo_log("GEO_COORDS Lon = %f", item->number.value);
 						}
 					}
 					break;
@@ -423,5 +403,35 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 			}
 		}
 	}
+}
+
+indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	{ char *device_name = property->device;
+		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+			indigo_property *related_agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
+			for (int j = 0; j < related_agents->count; j++) {
+				indigo_item *item = related_agents->items + j;
+				if (item->sw.value && !strcmp(item->name, device_name)) {
+					for (int i = 0; i < property->count; i++) {
+						indigo_item *item = property->items + i;
+						if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
+							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
+							task->device = FILTER_CLIENT_CONTEXT->device;
+							task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
+							indigo_async((void *(*)(void *))INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->solve, task);
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+	indigo_platesolver_handle_property(client, device, property, message);
 	return indigo_filter_update_property(client, device, property, message);
+}
+
+indigo_result indigo_platesolver_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	indigo_platesolver_handle_property(client, device, property, message);
+	return indigo_filter_define_property(client, device, property, message);
 }
