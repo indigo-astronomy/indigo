@@ -29,7 +29,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION              0x0015
+#define DRIVER_VERSION              0x0016
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -439,6 +439,7 @@ extern bool ptp_open(indigo_device *device);
 extern bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_sizee);
 extern void ptp_close(indigo_device *device);
 extern bool ptp_update_property(indigo_device *device, ptp_property *property);
+extern bool ptp_refresh_property(indigo_device *device, ptp_property *property);
 
 extern bool ptp_initialise(indigo_device *device);
 extern bool ptp_get_event(indigo_device *device);

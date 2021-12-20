@@ -1222,6 +1222,8 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				if (property->property->count != property->count) {
 					if (property->count > property->property->count)
 						property->property = indigo_resize_property(property->property, property->count);
+					else
+						property->property->count = property->count;
 					define = true;
 				}
 				char str[INDIGO_NAME_SIZE];
@@ -1308,6 +1310,20 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 		}
 	}
 	return true;
+}
+
+bool ptp_refresh_property(indigo_device *device, ptp_property *property) {
+	bool result = false;
+	if (property) {
+		void *buffer = NULL;
+		uint32_t size = 0;
+		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, property->code, &buffer, &size)) {
+			result = ptp_decode_property(buffer, size, device, property);
+		}
+		if (buffer)
+			free(buffer);
+	}
+	return result;
 }
 
 bool ptp_get_event(indigo_device *device) {
