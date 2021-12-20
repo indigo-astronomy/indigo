@@ -28,6 +28,7 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
+#include <indigo/indigo_align.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -101,8 +102,13 @@ typedef struct {
 	indigo_property *image_property;
 	indigo_property *polar_alignment_error_property;
 	indigo_property *polar_alignment_settings_property;
+	indigo_spherical_point_t eq_coordinates;
 	indigo_property_state eq_coordinates_state;
 	time_t eq_coordinates_timestamp;
+	indigo_spherical_point_t geo_coordinates;
+	indigo_property_state geo_coordinates_state;
+	time_t geo_coordinates_timestamp;
+	indigo_spherical_point_t pa_reference;
 	void (*save_config)(indigo_device *);
 	void *((*solve)(indigo_platesolver_task *));
 	pthread_mutex_t mutex;
@@ -126,9 +132,12 @@ extern indigo_result indigo_platesolver_change_property(indigo_device *device, i
 extern indigo_result indigo_platesolver_device_detach(indigo_device *device);
 
 #define indigo_platesolver_client_attach indigo_filter_client_attach
-#define indigo_platesolver_define_property indigo_filter_define_property
 #define indigo_platesolver_delete_property indigo_filter_delete_property
 #define indigo_platesolver_client_detach indigo_filter_client_detach
+
+/** Client define property callback function.
+ */
+extern indigo_result indigo_platesolver_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 
 /** Client update property callback function.
  */
