@@ -56,6 +56,7 @@ char *ptp_property_fuji_code_name(uint16_t code) {
 	switch (code) {
 		case ptp_property_ImageSize: return CCD_MODE_PROPERTY_NAME;
 		case ptp_property_ExposureTime: return DSLR_SHUTTER_PROPERTY_NAME;
+		case ptp_property_FNumber: return DSLR_APERTURE_PROPERTY_NAME;
 		case ptp_property_ExposureProgramMode: return DSLR_PROGRAM_PROPERTY_NAME;
 		case ptp_property_ExposureIndex: return DSLR_ISO_PROPERTY_NAME;
 		case ptp_property_WhiteBalance: return DSLR_WHITE_BALANCE_PROPERTY_NAME;
@@ -95,6 +96,15 @@ char *ptp_property_fuji_code_label(uint16_t code) {
 
 char *ptp_property_fuji_value_code_label(indigo_device *device, uint16_t property, uint64_t code) {
 	switch (property) {
+		case ptp_property_ExposureProgramMode: {
+			switch (code) {
+				case 1: return "Manual";
+				case 3: return "Aperture priority";
+				case 4: return "Shutter priority";
+				case 6: return "Program";
+			}
+			break;
+		}
 		case ptp_property_ExposureTime: {
 			switch (code) {
 				case 0x0000007a: return "1/8000s";
@@ -138,6 +148,7 @@ char *ptp_property_fuji_value_code_label(indigo_device *device, uint16_t propert
 				case 0x000c1c64: return "1/1.3s";
 				case 0x000f4240: return "1s";
 				case 0x00133991: return "1.3s";
+				case 0x00159445: return "1.5s";
 				case 0x001838c9: return "1.5s";
 				case 0x001e8480: return "2s";
 				case 0x00267322: return "2.5s";
@@ -162,6 +173,8 @@ char *ptp_property_fuji_value_code_label(indigo_device *device, uint16_t propert
 				case 0x03d09096: return "30m";
 				case 0x03d090b4: return "60m";
 				case 0xffffffff: return "Bulb";
+				case 0xfffffffe: return "Time";
+				case 0xfffffff0: return "Auto";
 			}
 			break;
 		}
@@ -194,7 +207,8 @@ char *ptp_property_fuji_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		case ptp_property_FocusMeteringMode:
 			switch (code) {
-				case 0x8001: return "Single Point";
+				case 2: return "Multi Point";
+				case 0x8001: return "Area";
 				case 0x8002: return "Zone";
 				case 0x8003: return "Wide/Tracking";
 			}
@@ -323,6 +337,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 				continue;
 			}
 			ptp_decode_property_value(buffer, device, prop);
+			ptp_fuji_fix_property(device, prop);
 			ptp_update_property(device, prop);
 		}
 		if (buffer)
@@ -332,6 +347,8 @@ static void ptp_fuji_get_event(indigo_device *device) {
 	// check event?
 	if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, ptp_property_fuji_GetEvent, &buffer, &size)) {
 		if (size == 8 && (
+				// X-T1
+				memcmp(buffer, "\x01\x00\x0e\xd2\x10\x00\x00\x00", 8) == 0 ||
 				// X-T2
 				memcmp(buffer, "\x01\x00\x0e\xd2\x12\x00\x00\x00", 8) == 0 ||
 		    // X-T3, X-T4
@@ -379,7 +396,7 @@ static void ptp_fuji_get_event(indigo_device *device) {
 				}
 			}
 		} else if (size == 8) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "unknown signature: %02x %02x %02x %02x %02x %02x %02x %02x", ((char *)buffer)[0], ((char *)buffer)[1], ((char *)buffer)[2], ((char *)buffer)[3], ((char *)buffer)[4], ((char *)buffer)[5], ((char *)buffer)[6], ((char *)buffer)[7]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "unknown signature: %02x %02x %02x %02x %02x %02x %02x %02x", ((char *)buffer)[0] & 0xFF, ((char *)buffer)[1] & 0xFF, ((char *)buffer)[2] & 0xFF, ((char *)buffer)[3] & 0xFF, ((char *)buffer)[4] & 0xFF, ((char *)buffer)[5] & 0xFF, ((char *)buffer)[6] & 0xFF, ((char *)buffer)[7] & 0xFF);
 		}
 	}
 	if (buffer)
@@ -419,6 +436,23 @@ bool ptp_fuji_initialise(indigo_device *device) {
 		if (buffer)
 			free(buffer);
 	}
+	if (!ptp_property_supported(device, ptp_property_FNumber)) {
+		// Fujifilm ExposureTime special case
+		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, ptp_property_FNumber, &buffer, &size)) {
+			// ExposureTime is hidden property
+			// detect last
+			int last = -1;
+			for (last = 0; PRIVATE_DATA->info_properties_supported[last]; last++) {
+			}
+			// overwrite last
+			if (last != -1) {
+				PRIVATE_DATA->info_properties_supported[last] = ptp_property_FNumber;
+				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + last);
+			}
+		}
+		if (buffer)
+			free(buffer);
+	}
 	ptp_fuji_get_event(device);
 	indigo_set_timer(device, 0.5, ptp_fuji_check_event, &PRIVATE_DATA->event_checker);
 	return true;
@@ -428,6 +462,26 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 	switch (property->code) {
 		case ptp_property_fuji_CompressionSetting: {
 			FUJI_PRIVATE_DATA->is_dual_compression = property->value.sw.value == 4 || property->value.sw.value == 5 || property->value.sw.value == 7;
+			return true;
+		}
+		case ptp_property_ExposureTime: {
+			if (property->count == 0 || property->count == 1) { // A
+				property->count = 1;
+				property->value.sw.values[0] = property->value.sw.value;
+				property->writable = false;
+			} else {
+				property->writable = true;
+			}
+			return true;
+		}
+		case ptp_property_FNumber: {
+			if (property->count == 0 || property->count == 1) { // A
+				property->count = 1;
+				property->value.sw.values[0] = property->value.sw.value;
+				property->writable = false;
+			} else {
+				property->writable = true;
+			}
 			return true;
 		}
 	}
@@ -472,6 +526,10 @@ bool ptp_fuji_set_property(indigo_device *device, ptp_property *property) {
 	}
 	if (property->code == ptp_property_fuji_CompressionSetting) {
 		FUJI_PRIVATE_DATA->is_dual_compression = property->value.sw.value == 4 || property->value.sw.value == 5 || property->value.sw.value == 7;
+	}
+	if (property->code == ptp_property_ExposureProgramMode) {
+		ptp_refresh_property(device, ptp_property_supported(device, ptp_property_ExposureTime));
+		ptp_refresh_property(device, ptp_property_supported(device, ptp_property_FNumber));
 	}
 	return true;
 }
