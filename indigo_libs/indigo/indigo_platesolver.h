@@ -128,9 +128,12 @@ extern indigo_result indigo_platesolver_change_property(indigo_device *device, i
 extern indigo_result indigo_platesolver_device_detach(indigo_device *device);
 
 #define indigo_platesolver_client_attach indigo_filter_client_attach
-#define indigo_platesolver_define_property indigo_filter_define_property
 #define indigo_platesolver_delete_property indigo_filter_delete_property
 #define indigo_platesolver_client_detach indigo_filter_client_detach
+
+/** Client define property callback function.
+ */
+extern indigo_result indigo_platesolver_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 
 /** Client update property callback function.
  */
