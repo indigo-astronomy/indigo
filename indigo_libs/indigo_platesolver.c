@@ -128,7 +128,8 @@ void indigo_platesolver_sync(indigo_device *device) {
 					AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM->number.value =
 					AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.value =
 					AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.value =
-					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value = 0;
+					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value =
+					AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = 0;
 					message = "Initial position for polar error calculation is specified";
 				} else {
 					indigo_spherical_point_t equatorial_error = {0}, horizontal_error = {0};
@@ -148,6 +149,20 @@ void indigo_platesolver_sync(indigo_device *device) {
 						lst_now,
 						&position_observed
 					);
+
+					/* // inject test data
+					indigo_spherical_point_t star1 = { 3 * 15 * DEG2RAD, 48 * DEG2RAD, 1 };
+					indigo_spherical_point_t star2 = { 23 * 15 * DEG2RAD, 45 * DEG2RAD, 1 };
+					indigo_spherical_point_t star2_observed = {
+						star2.a + (-12 / 60.0 * DEG2RAD),
+						star2.d + (-21 / 60.0 * DEG2RAD),
+						1
+					};
+					position_observed = star2_observed;
+					position = star2;
+					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference = star1;
+					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d = (42.0 + 40 / 60.0) * DEG2RAD;
+					*/
 
 					indigo_log("%s(): Polar align: LST = %f, Telescope RA = %f, Dec = %f", __FUNCTION__, lst_now, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a * RAD2DEG / 15, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG);
 					indigo_log("%s(): Polar align: Solved HA = %f,  Dec = %f", __FUNCTION__, position.a * RAD2DEG / 15, position.d * RAD2DEG);
@@ -171,8 +186,10 @@ void indigo_platesolver_sync(indigo_device *device) {
 					AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.value = horizontal_error.d * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.value = equatorial_error.a * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value = equatorial_error.d * RAD2DEG;
+					AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = indigo_gc_distance_spherical(&position, &position_observed) * RAD2DEG;
 					indigo_log("%s(): Polar align: Error deltaHA = %f', deltaDec = %f'", __FUNCTION__, equatorial_error.a * RAD2DEG * 60, equatorial_error.d * RAD2DEG * 60);
 					indigo_log("%s(): Polar align: Error deltaAz = %f', deltaAlt = %f'", __FUNCTION__, horizontal_error.a * RAD2DEG * 60, horizontal_error.d * RAD2DEG * 60);
+					indigo_log("%s(): Polar align: Total Error = %f'", __FUNCTION__, AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value * 60);
 
 				}
 				indigo_update_property(device, AGENT_PLATESOLVER_PA_ERROR_PROPERTY, message);
@@ -243,17 +260,19 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
-		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
+		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
 		if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM, AGENT_PLATESOLVER_PA_ERROR_HA_ITEM_NAME, "Hour angle error (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM, AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM_NAME, "Declination error (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM, AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM_NAME, "Altitude error (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM, AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM_NAME, "Azimuth error (°)", -45, 45, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_ITEM, AGENT_PLATESOLVER_PA_ERROR_ITEM_NAME, "Total error (°)", -45, 45, 0, 0);
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_ERROR_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- ABORT property
 		AGENT_PLATESOLVER_ABORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL)
