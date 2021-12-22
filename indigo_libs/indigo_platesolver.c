@@ -130,6 +130,8 @@ void indigo_platesolver_sync(indigo_device *device) {
 					AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.value =
 					AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.value =
 					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value =
+					AGENT_PLATESOLVER_PA_ERROR_AZ_CORRECTION_CW_ITEM->number.value =
+					AGENT_PLATESOLVER_PA_ERROR_ALT_CORRECTION_UP_ITEM->number.value =
 					AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = 0;
 					message = "The initial position for polar error calculation is not specified";
 				} else {
@@ -187,6 +189,8 @@ void indigo_platesolver_sync(indigo_device *device) {
 					AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.value = horizontal_error.d * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.value = equatorial_error.a * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value = equatorial_error.d * RAD2DEG;
+					AGENT_PLATESOLVER_PA_ERROR_ALT_CORRECTION_UP_ITEM->number.value = (horizontal_error.d >= 0) ? 1 : 0;
+					AGENT_PLATESOLVER_PA_ERROR_AZ_CORRECTION_CW_ITEM->number.value = (horizontal_error.a >= 0) ? 1 : 0;
 					/* since the sperical error vectors are perpendicular and parrallel to Az and Alt the length can be simplified as follows */
 					AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = sqrt(horizontal_error.a * horizontal_error.a + horizontal_error.d * horizontal_error.d) * RAD2DEG;
 					double delta_az = horizontal_error.a * RAD2DEG * 60;
@@ -267,18 +271,22 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
-		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
 		if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM, AGENT_PLATESOLVER_PA_ERROR_HA_ITEM_NAME, "Hour angle error (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM, AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM_NAME, "Declination error (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM, AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM_NAME, "Altitude error (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM, AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM_NAME, "Azimuth error (°)", -45, 45, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_ALT_CORRECTION_UP_ITEM, AGENT_PLATESOLVER_PA_ERROR_ALT_CORRECTION_UP_ITEM_NAME, "Altitude correction (1=Up/0=Down)", 0, 1, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_AZ_CORRECTION_CW_ITEM, AGENT_PLATESOLVER_PA_ERROR_AZ_CORRECTION_CW_ITEM_NAME, "Azimuth correction (1=C.W./0=C.C.W.)", 0, 1, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_ITEM, AGENT_PLATESOLVER_PA_ERROR_ITEM_NAME, "Total error (°)", -45, 45, 0, 0);
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_ERROR_ALT_CORRECTION_UP_ITEM->number.format, "%.0f");
+		strcpy(AGENT_PLATESOLVER_PA_ERROR_AZ_CORRECTION_CW_ITEM->number.format, "%.0f");
 		strcpy(AGENT_PLATESOLVER_PA_ERROR_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- ABORT property
 		AGENT_PLATESOLVER_ABORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
