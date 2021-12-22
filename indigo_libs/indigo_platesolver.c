@@ -131,7 +131,7 @@ void indigo_platesolver_sync(indigo_device *device) {
 					AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.value =
 					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value =
 					AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = 0;
-					message = "Initial position for polar error calculation is specified";
+					message = "The initial position for polar error calculation is not specified";
 				} else {
 					indigo_spherical_point_t equatorial_error = {0}, horizontal_error = {0};
 					indigo_spherical_point_t position, position_observed;
