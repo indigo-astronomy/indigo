@@ -187,10 +187,15 @@ void indigo_platesolver_sync(indigo_device *device) {
 					AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.value = equatorial_error.a * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value = equatorial_error.d * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = indigo_gc_distance_spherical(&position, &position_observed) * RAD2DEG;
+					double delta_az = horizontal_error.a * RAD2DEG * 60;
+					double delta_alt = horizontal_error.d * RAD2DEG * 60;
+					double total_delta = AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value * 60;
 					indigo_log("%s(): Polar align: Error deltaHA = %f', deltaDec = %f'", __FUNCTION__, equatorial_error.a * RAD2DEG * 60, equatorial_error.d * RAD2DEG * 60);
-					indigo_log("%s(): Polar align: Error deltaAz = %f', deltaAlt = %f'", __FUNCTION__, horizontal_error.a * RAD2DEG * 60, horizontal_error.d * RAD2DEG * 60);
-					indigo_log("%s(): Polar align: Total Error = %f'", __FUNCTION__, AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value * 60);
-
+					indigo_log("%s(): Polar align: Error deltaAz = %f', deltaAlt = %f'", __FUNCTION__, delta_az, delta_alt);
+					indigo_log("%s(): Polar align: Total Error = %f'", __FUNCTION__, total_delta);
+					indigo_send_message(device, "Calculated polar error = %.2f'", total_delta);
+					indigo_send_message(device, "Altitude correction: %+.2f' %s, (use altitude adjustment knob)", delta_alt, (delta_alt > 0) ? "Up" : "Down");
+					indigo_send_message(device, "Azimuth correction: %+.2f' %s, (use azimuth adjustment knob)", delta_az, (delta_az > 0) ? "CW" : "CCW");
 				}
 				indigo_update_property(device, AGENT_PLATESOLVER_PA_ERROR_PROPERTY, message);
 			}
