@@ -254,7 +254,10 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = d1 / 3600.0;
 				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = d2 / 3600.0;
 			}
-			AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (d1 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width + d2 / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height) / 2;
+			AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (
+				AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width +
+				AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value / ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height
+			) / 2;
 		} else if (sscanf(line, "Field rotation angle: up is %lg", &d1) == 1) {
 			AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d1;
 		} else if (sscanf(line, "Field 1: solved with index index-%lg", &d1) == 1) {
