@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x001E
+#define DRIVER_VERSION 0x001F
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1809,7 +1809,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		}
 		// --------------------------------------------------------------------------------
 		DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
-		DEVICE_PRIVATE_DATA->use_hfd_estimator = false;
+		DEVICE_PRIVATE_DATA->use_rms_estimator = false;
 		CONNECTION_PROPERTY->hidden = true;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);

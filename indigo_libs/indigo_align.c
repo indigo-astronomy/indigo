@@ -66,21 +66,21 @@ void indigo_ra_dec_to_point(const double ra, const double dec, const double lst,
 
 /* great circle distances */
 double indigo_gc_distance_spherical(const indigo_spherical_point_t *sp1, const indigo_spherical_point_t *sp2) {
-	double sin_d1 = sin(sp1->d * DEG2RAD);
-	double cos_d1 = cos(sp1->d * DEG2RAD);
-	double sin_d2 = sin(sp2->d * DEG2RAD);
-	double cos_d2 = cos(sp2->d * DEG2RAD);
-	double delta_a = fabs(sp1->a - sp2->a) * DEG2RAD;
+	double sin_d1 = sin(sp1->d);
+	double cos_d1 = cos(sp1->d);
+	double sin_d2 = sin(sp2->d);
+	double cos_d2 = cos(sp2->d);
+	double delta_a = fabs(sp1->a - sp2->a);
 	double cos_delta_a = cos(delta_a);
 
-	return acos(sin_d1*sin_d2 + cos_d1*cos_d2*cos_delta_a) / DEG2RAD;
+	return acos(sin_d1*sin_d2 + cos_d1*cos_d2*cos_delta_a);
 }
 
 double indigo_gc_distance(double ra1, double dec1, double ra2, double dec2) {
 	indigo_spherical_point_t sp1 = {ra1 * DEG2RAD * 15.0, dec1 * DEG2RAD, 1};
 	indigo_spherical_point_t sp2 = {ra2 * DEG2RAD * 15.0, dec2 * DEG2RAD, 1};
 
-	return indigo_gc_distance_spherical(&sp1, &sp2) / DEG2RAD;
+	return indigo_gc_distance_spherical(&sp1, &sp2) * RAD2DEG;
 }
 
 double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const indigo_cartesian_point_t *cp2) {
@@ -89,7 +89,7 @@ double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const i
 	double delta_z = cp1->z - cp2->z;
 	double delta = sqrt(delta_x * delta_x + delta_y * delta_y + delta_z * delta_z);
 
-	return 2 * asin(delta / 2) / DEG2RAD;
+	return 2 * asin(delta / 2);
 }
 
 

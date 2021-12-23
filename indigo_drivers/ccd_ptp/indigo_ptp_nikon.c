@@ -673,20 +673,6 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 	return ptp_property_value_code_label(device, property, code);
 }
 
-static bool ptp_refresh_property(indigo_device *device, ptp_property *property) {
-	bool result = false;
-	if (property) {
-		void *buffer = NULL;
-		uint32_t size = 0;
-		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, property->code, &buffer, &size)) {
-			result = ptp_decode_property(buffer, size, device, property);
-		}
-		if (buffer)
-			free(buffer);
-	}
-	return result;
-}
-
 static void ptp_check_event(indigo_device *device) {
 	void *buffer = NULL;
 	if (ptp_operation_supported(device, ptp_operation_nikon_CheckEvent)) {
