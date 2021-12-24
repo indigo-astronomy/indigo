@@ -546,7 +546,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 0, "100", "100", true);
 			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 1, "200", "200", false);
 			indigo_init_switch_item(DSLR_ISO_PROPERTY->items + 2, "400", "400", false);
-			DSLR_BATTERY_LEVEL_PROPERTY = indigo_init_number_property(NULL, device->name, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "DSRL", "Battery level", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+			DSLR_BATTERY_LEVEL_PROPERTY = indigo_init_number_property(NULL, device->name, DSLR_BATTERY_LEVEL_PROPERTY_NAME, "DSLR", "Battery level", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			indigo_init_number_item(DSLR_BATTERY_LEVEL_PROPERTY->items + 0, "VALUE", "Value", 0, 100, 0, 50);
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = HEIGHT;
