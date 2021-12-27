@@ -70,7 +70,7 @@ extern void indigo_server_remove_resource(const char *path);
 	
 /** Remove all documents.
  */
-extern void indigo_server_remove_resources();
+extern void indigo_server_remove_resources(void);
 	
 /** Start network server (function will block until server is active).
  */

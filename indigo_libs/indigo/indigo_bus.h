@@ -362,6 +362,7 @@ typedef struct {
 /** BLOB entry type.
  */
 typedef struct {
+	indigo_property *property;					///<BLOB property
 	indigo_item *item;     							///< BLOB item
 	void *content;            					///< BLOB content
 	long size;              						///< BLOB size
@@ -482,7 +483,7 @@ extern indigo_property *indigo_init_switch_property(indigo_property *property, c
 extern indigo_property *indigo_init_light_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
 /** Initialize BLOB property.
  */
-extern indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
+extern indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
 /** Resize property.
  */
 extern indigo_property *indigo_resize_property(indigo_property *property, int count);
@@ -492,9 +493,14 @@ extern void *indigo_alloc_blob_buffer(long size);
 /** Resize property.
  */
 extern void indigo_release_property(indigo_property *property);
+
 /** Validate address of item of registered BLOB property.
  */
 extern indigo_blob_entry *indigo_validate_blob(indigo_item *item);
+
+/** Find BLOB entry.
+ */
+extern indigo_blob_entry *indigo_find_blob(indigo_property *other_property, indigo_item *other_item);
 
 /** Initialize text item.
  */
@@ -521,6 +527,10 @@ extern void indigo_init_blob_item(indigo_item *item, const char *name, const cha
 /** populate BLOB item if url is given.
  */
 extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
+
+/** upload BLOB item if url is given.
+ */
+extern bool indigo_upload_http_blob_item(indigo_item *blob_item);
 
 /** Test, if property matches other property.
  */
@@ -614,6 +624,22 @@ extern indigo_result indigo_change_switch_property_1(indigo_client *client, cons
 /** Request switch property change with access_token.
  */
 extern indigo_result indigo_change_switch_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const bool value);
+
+/** Request BLOB property change.
+ */
+extern indigo_result indigo_change_blob_property(indigo_client *client, const char *device, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **url);
+
+/** Request BLOB property change with access_token.
+ */
+extern indigo_result indigo_change_blob_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **urls);
+
+/** Request BLOB property change.
+ */
+extern indigo_result indigo_change_blob_property_1(indigo_client *client, const char *device, const char *name, const char *item, void *value, const long size, const char *format, const char *url);
+
+/** Request BLOB property change with access_token.
+ */
+extern indigo_result indigo_change_blob_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, void *value, const long size, const char *format, const char *url);
 
 /** Send connect message.
  */
@@ -744,6 +770,13 @@ static inline void *indigo_safe_realloc(void *pointer, size_t size) {
 	return pointer;
 }
 
+static inline void *indigo_safe_realloc_copy(void *pointer, size_t size, void *from) {
+	pointer = realloc(pointer, size);
+	assert(pointer != NULL);
+	memcpy(pointer, from, size);
+	return pointer;
+}
+
 static inline void indigo_safe_free(void *pointer) {
 	if (pointer)
 		free(pointer);
@@ -751,7 +784,7 @@ static inline void indigo_safe_free(void *pointer) {
 
 #define INDIGO_BUFFER_SIZE (128 * 1024)
 
-extern void *indigo_alloc_large_buffer();
+extern void *indigo_alloc_large_buffer(void);
 extern void indigo_free_large_buffer(void *large_buffer);
 
 #ifdef __cplusplus
