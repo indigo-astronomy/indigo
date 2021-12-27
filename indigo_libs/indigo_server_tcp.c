@@ -219,7 +219,7 @@ static void start_worker_thread(int *client_socket) {
 									INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, working_size));
 								} else {
 									INDIGO_ERROR(indigo_error("%s -> Failed (%s)", request, strerror(errno)));
-									keep_alive = false;
+									goto failure;
 								}
 								if (indigo_use_blob_buffering) {
 									free(working_copy);
@@ -235,22 +235,16 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(socket, "\r\n");
 								INDIGO_PRINTF(socket, "Out of buffer memory!\r\n");
-								shutdown(socket,SHUT_RDWR);
-								indigo_usleep(ONE_SECOND_DELAY);
-								close(socket);
 								INDIGO_LOG(indigo_log("%s -> Failed", request));
-								keep_alive = false;
+								goto failure;
 							}
 						} else {
 							INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
 							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_PRINTF(socket, "BLOB not found!\r\n");
-							shutdown(socket,SHUT_RDWR);
-							indigo_usleep(ONE_SECOND_DELAY);
-							close(socket);
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
-							keep_alive = false;
+							goto failure;
 						}
 					} else {
 						pthread_mutex_lock(&resource_list_mutex);
@@ -267,7 +261,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_PRINTF(socket, "%s not found!\r\n", path);
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
-							keep_alive = false;
+							goto failure;
 						} else if (resource->handler) {
 							keep_alive = resource->handler(socket, use_gzip ? "GET/GZIP" : "GET", path, params);
 						} else if (resource->data) {
@@ -290,7 +284,7 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(socket, "\r\n");
 								INDIGO_PRINTF(socket, "%s not found (%s)\r\n", file_name, strerror(errno));
 								INDIGO_LOG(indigo_log("%s -> Failed to stat/open file (%s, %s)", request, file_name, strerror(errno)));
-								keep_alive = false;
+								goto failure;
 							} else {
 								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
@@ -309,8 +303,7 @@ static void start_worker_thread(int *client_socket) {
 										INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, count));
 									} else {
 										INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
-										keep_alive = false;
-										break;
+										goto failure;
 									}
 									remaining -= count;
 								}
@@ -323,23 +316,63 @@ static void start_worker_thread(int *client_socket) {
 					char *space = strchr(path, ' ');
 					if (space)
 						*space = 0;
-					pthread_mutex_lock(&resource_list_mutex);
-					struct resource *resource = resources;
-					while (resource) {
-						if (!strncmp(resource->path, path, strlen(resource->path)))
-							break;
-						resource = resource->next;
-					}
-					pthread_mutex_unlock(&resource_list_mutex);
-					if (resource == NULL) {
-						INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
-						INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
-						INDIGO_PRINTF(socket, "\r\n");
-						INDIGO_PRINTF(socket, "%s not found!\r\n", path);
-						INDIGO_LOG(indigo_log("%s -> Failed", request));
-						keep_alive = false;
-					} else if (resource->handler) {
-						keep_alive = resource->handler(socket, "PUT", path, NULL);
+					if (!strncmp(path, "/blob/", 6)) {
+						indigo_item *item;
+						indigo_blob_entry *entry;
+						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
+							int content_length = 0;
+							char header[BUFFER_SIZE];
+							while (indigo_read_line(socket, header, INDIGO_BUFFER_SIZE) > 0) {
+								if (!strncasecmp(header, "Content-Length:", 15)) {
+									content_length = atoi(header + 15);
+								}
+							}
+							pthread_mutex_lock(unlock_at_exit = &entry->mutext);
+							entry->content = indigo_safe_realloc(entry->content, entry->size = content_length);
+							if (entry->content) {
+								if (!indigo_read(socket, entry->content, content_length))
+									goto failure;
+								pthread_mutex_unlock(&entry->mutext);
+								unlock_at_exit = NULL;
+								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
+								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								INDIGO_PRINTF(socket, "Content-Length: 0\r\n");
+								INDIGO_PRINTF(socket, "\r\n");
+							} else {
+								INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+								INDIGO_PRINTF(socket, "\r\n");
+								INDIGO_PRINTF(socket, "Out of buffer memory!\r\n");
+								INDIGO_LOG(indigo_log("%s -> Failed", request));
+								goto failure;
+							}
+						} else {
+							INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(socket, "\r\n");
+							INDIGO_PRINTF(socket, "BLOB not found!\r\n");
+							INDIGO_LOG(indigo_log("%s -> Failed", request));
+							goto failure;
+						}
+					} else {
+						pthread_mutex_lock(&resource_list_mutex);
+						struct resource *resource = resources;
+						while (resource) {
+							if (!strncmp(resource->path, path, strlen(resource->path)))
+								break;
+							resource = resource->next;
+						}
+						pthread_mutex_unlock(&resource_list_mutex);
+						if (resource == NULL) {
+							INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(socket, "\r\n");
+							INDIGO_PRINTF(socket, "%s not found!\r\n", path);
+							INDIGO_LOG(indigo_log("%s -> Failed", request));
+							goto failure;
+						} else if (resource->handler) {
+							keep_alive = resource->handler(socket, "PUT", path, NULL);
+						}
 					}
 				}
 				if (!keep_alive) {
@@ -352,7 +385,7 @@ static void start_worker_thread(int *client_socket) {
 	}
 failure:
 	shutdown(socket, SHUT_RDWR);
-	//indigo_usleep(ONE_SECOND_DELAY); // ???
+	indigo_usleep(ONE_SECOND_DELAY); // ???
 	close(socket);
 	server_callback(--client_count);
 	free(client_socket);
@@ -432,7 +465,7 @@ void indigo_server_remove_resource(const char *path) {
 	pthread_mutex_unlock(&resource_list_mutex);
 }
 
-void indigo_server_remove_resources() {
+void indigo_server_remove_resources(void) {
 	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = resources;
 	while (resource) {

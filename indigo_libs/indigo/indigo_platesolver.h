@@ -83,6 +83,9 @@ extern "C" {
 #define AGENT_PLATESOLVER_ABORT_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_property)
 #define AGENT_PLATESOLVER_ABORT_ITEM					(AGENT_PLATESOLVER_ABORT_PROPERTY->items+0)
 
+#define AGENT_PLATESOLVER_IMAGE_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->image_property)
+#define AGENT_PLATESOLVER_IMAGE_ITEM					(AGENT_PLATESOLVER_IMAGE_PROPERTY->items+0)
+
 /** Plate solver  structure.
  */
 typedef struct {
@@ -99,6 +102,7 @@ typedef struct {
 	indigo_property *wcs_property;
 	indigo_property *sync_mode_property;
 	indigo_property *abort_property;
+	indigo_property *image_property;
 	indigo_property *polar_alignment_error_property;
 	indigo_property *polar_alignment_settings_property;
 	indigo_spherical_point_t eq_coordinates;

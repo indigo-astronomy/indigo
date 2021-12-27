@@ -153,6 +153,18 @@ static indigo_result xml_client_parser_change_property(indigo_device *device, in
 		}
 		INDIGO_PRINTF(handle, "</newSwitchVector>\n");
 		break;
+	case INDIGO_BLOB_VECTOR:
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = &property->items[i];
+			indigo_upload_http_blob_item(item);
+		}
+		INDIGO_PRINTF(handle, "<newBLOBVector device='%s' name='%s'%s>\n", indigo_xml_escape(device_name), indigo_property_name(device->version, property), token);
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = &property->items[i];
+			INDIGO_PRINTF(handle, "<oneBLOB name='%s' format='%s'/>\n", indigo_item_name(device->version, property, item), item->blob.format);
+		}
+		INDIGO_PRINTF(handle, "</newBLOBVector>\n");
+		break;
 	default:
 		break;
 	}
