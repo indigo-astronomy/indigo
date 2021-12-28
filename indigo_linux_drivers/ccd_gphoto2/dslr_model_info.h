@@ -199,6 +199,7 @@ static struct dslr_model_info {
   { "FUJIFILM X-T3", 6240, 4160, 3.77 },
   { "FUJIFILM X-T2", 6000, 4000, 3.9 },
   { "FUJIFILM X-T1", 4896, 3264, 4.8 },
+  { "FUJIFILM X-S10", 6240, 4160, 3.77 },
   { "FUJIFILM X-PRO3", 6240, 4160, 3.77 },
   { "FUJIFILM X-PRO2", 6000, 4000, 3.9 },
   { "FUJIFILM GFX 50S", 8256, 6192, 5.3 },
