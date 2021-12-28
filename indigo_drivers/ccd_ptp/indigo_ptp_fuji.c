@@ -351,10 +351,12 @@ static void ptp_fuji_get_event(indigo_device *device) {
 				memcmp(buffer, "\x01\x00\x0e\xd2\x10\x00\x00\x00", 8) == 0 ||
 				// X-T2
 				memcmp(buffer, "\x01\x00\x0e\xd2\x12\x00\x00\x00", 8) == 0 ||
-		    // X-T3, X-T4
-		    memcmp(buffer, "\x01\x00\x0e\xd2\x1f\x00\x00\x00", 8) == 0 ||
-		    // GFX 50S
-		    memcmp(buffer, "\x01\x00\x0e\xd2\x05\x00\x00\x00", 8) == 0)) {
+				// X-T3, X-T4
+				memcmp(buffer, "\x01\x00\x0e\xd2\x1f\x00\x00\x00", 8) == 0 ||
+				// GFX 50S
+				memcmp(buffer, "\x01\x00\x0e\xd2\x05\x00\x00\x00", 8) == 0 ||
+				// X-S10
+				memcmp(buffer, "\x01\x00\x0e\xd2\x0f\x00\x00\x00", 8) == 0)) {
 			free(buffer);
 			buffer = NULL;
 			// capture ready
@@ -419,22 +421,43 @@ bool ptp_fuji_initialise(indigo_device *device) {
 	}
 	void *buffer = NULL;
 	uint32_t size = 0;
-	if (!ptp_property_supported(device, ptp_property_ExposureTime)) {
-		// Fujifilm ExposureTime special case
-		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, ptp_property_ExposureTime, &buffer, &size)) {
-			// ExposureTime is hidden property
-			// detect last
-			int last = -1;
-			for (last = 0; PRIVATE_DATA->info_properties_supported[last]; last++) {
+	const int hidden_properties[] = {
+		ptp_property_ImageSize,
+		ptp_property_WhiteBalance,
+		ptp_property_FNumber,
+		ptp_property_ExposureTime,
+		ptp_property_ExposureIndex,
+		ptp_property_ExposureBiasCompensation,
+		ptp_property_fuji_FilmSimulation,
+		ptp_property_fuji_DynamicRange,
+		ptp_property_fuji_ColorSpace,
+		ptp_property_fuji_CompressionSetting,
+		ptp_property_fuji_Zoom,
+		ptp_property_fuji_NoiseReduction,
+		ptp_property_fuji_LockSetting,
+		ptp_property_fuji_ControlPriority,
+		ptp_property_fuji_AutoFocus,
+		ptp_property_fuji_AutoFocusState,
+		ptp_property_fuji_CardSave,
+	};
+	for (int i = 0; i < sizeof(hidden_properties); ++i) {
+		if (!ptp_property_supported(device, hidden_properties[i])) {
+			// Fujifilm hidden property special case
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, hidden_properties[i], &buffer, &size)) {
+				// Not listed but property defined
+				// detect last
+				int last = -1;
+				for (last = 0; PRIVATE_DATA->info_properties_supported[last]; last++) {
+				}
+				// overwrite last
+				if (last != -1) {
+					PRIVATE_DATA->info_properties_supported[last] = hidden_properties[i];
+					ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + last);
+				}
 			}
-			// overwrite last
-			if (last != -1) {
-				PRIVATE_DATA->info_properties_supported[last] = ptp_property_ExposureTime;
-				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + last);
-			}
+			if (buffer)
+				free(buffer);
 		}
-		if (buffer)
-			free(buffer);
 	}
 	if (!ptp_property_supported(device, ptp_property_FNumber)) {
 		// Fujifilm ExposureTime special case
