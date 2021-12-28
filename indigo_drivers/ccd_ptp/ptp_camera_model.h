@@ -76,6 +76,7 @@ static ptp_camera_model CAMERA[] = {
   { FUJI_VID, 0x02dd, "Fujifilm X-T3", ptp_flag_lv, 6240, 4160, 3.77 },
   { FUJI_VID, 0x02e4, "Fujifilm X-Pro3", ptp_flag_lv, 6240, 4160, 3.77 },
   { FUJI_VID, 0x02e6, "Fujifilm X-T4", ptp_flag_lv, 6240, 4160, 3.77 },
+  { FUJI_VID, 0x02ea, "Fujifilm X-S10", ptp_flag_lv, 6240, 4160, 3.77 },
   { FUJI_VID, 0xFFFF, "Fujifilm Camera", ptp_flag_lv, 0, 0, 0 },
   { NIKON_VID, 0x0406, "Nikon D70", 0, 3008, 2000, 7.87 },
   { NIKON_VID, 0x0408, "Nikon D2X", 0, 4288, 2848, 5.52 },
