@@ -68,7 +68,7 @@ indigo_result indigo_wheel_attach(indigo_device *device, const char* driver_name
 				char label[16];
 				snprintf(name, 16, WHEEL_SLOT_OFFSET_ITEM_NAME, i + 1);
 				snprintf(label, 16, "Slot #%d", i + 1);
-				indigo_init_number_item(WHEEL_SLOT_OFFSET_1_ITEM + i, name, label, -9999, 9999, 1, 0);
+				indigo_init_number_item(WHEEL_SLOT_OFFSET_1_ITEM + i, name, label, -1000000, 1000000, 1, 0);
 			}
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
