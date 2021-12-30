@@ -93,8 +93,9 @@ double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const i
 }
 
 double indigo_calculate_refraction(const double z) {
-		double r = 1.02 / tan(DEG2RAD * (z * RAD2DEG + 10.3 / (z * RAD2DEG + 5.11))); // in arcmin
-		return r / 60.0 * DEG2RAD;
+		double r = (1.02 / tan(DEG2RAD * ((90 - z * RAD2DEG) + 10.3 / ((90 - z * RAD2DEG) + 5.11)))) / 60 * DEG2RAD; // in arcmin
+		indigo_debug("Refraction = %.3f', Z = %.4f deg\n", r * RAD2DEG * 60, z * RAD2DEG);
+		return r;
 }
 
 /* compensate atmospheric refraction */
@@ -124,8 +125,10 @@ bool indigo_compensate_refraction(
 	double cos_az = cos(az);
 
 	st_aparent->a = atan2(sin(az) * tan_azd, cos_lat - sin_lat * cos_az * tan_azd);
+	if (st_aparent->a < 0) st_aparent->a += 2 * M_PI;
 	st_aparent->d = asin(sin_lat * cos(azd) + cos_lat * sin(azd) * cos_az);
 	st_aparent->r = 1;
+	indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG);
 	return true;
 }
 
