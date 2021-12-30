@@ -56,7 +56,7 @@
 
 #define SVB_MAX_FORMATS            4
 
-#define SVB_VENDOR_ID              0x0bda
+#define SVB_VENDOR_ID              0xf266
 
 #define CCD_ADVANCED_GROUP         "Advanced"
 
@@ -1540,7 +1540,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
-			if (descriptor.idVendor == SVB_VENDOR_ID)
+			if (descriptor.idVendor == SVB_VENDOR_ID && descriptor.idProduct == 0x9a0a)
 				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			break;
 		}
