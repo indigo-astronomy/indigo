@@ -82,6 +82,17 @@ extern double indigo_gc_distance(double ra1, double dec1, double ra2, double dec
  */
 extern double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const indigo_cartesian_point_t *cp2);
 
+/** calculate refraction error
+ */
+extern double indigo_calculate_refraction(const double z);
+
+/** compensate atmospheric refraction
+ */
+extern bool indigo_compensate_refraction(
+	const indigo_spherical_point_t *st,
+	const double latitude,
+	indigo_spherical_point_t *st_corrected
+);
 
 /** calculate polar alignment error
  */
@@ -90,6 +101,7 @@ extern bool indigo_polar_alignment_error(
 	const indigo_spherical_point_t *st2,
 	const indigo_spherical_point_t *st2_observed,
 	const double latitude,
+	const bool compensate_refraction,
 	indigo_spherical_point_t *equatorial_error,
 	indigo_spherical_point_t *horizontal_error
 );

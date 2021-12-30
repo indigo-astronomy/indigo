@@ -92,9 +92,45 @@ double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const i
 	return 2 * asin(delta / 2);
 }
 
+double indigo_calculate_refraction(const double z) {
+		double r = 1.02 / tan(DEG2RAD * (z * RAD2DEG + 10.3 / (z * RAD2DEG + 5.11))); // in arcmin
+		return r / 60.0 * DEG2RAD;
+}
+
+/* compensate atmospheric refraction */
+bool indigo_compensate_refraction(
+	const indigo_spherical_point_t *st,
+	const double latitude,
+	indigo_spherical_point_t *st_aparent
+) {
+	double sin_lat = sin(latitude);
+	double cos_lat = cos(latitude);
+	double sin_d = sin(st->d);
+	double cos_d = cos(st->d);
+	double sin_h = sin(st->a);
+	double cos_h = cos(st->a);
+
+	if (cos_d == 0) return false;
+
+	double tan_d = sin_d / cos_d;
+
+	double z = acos(sin_lat * sin_d + cos_lat * cos_d * cos_h);
+	double az = atan2(sin_h, cos_lat * tan_d - sin_lat * cos_h);
+
+	double r = indigo_calculate_refraction(z);
+	double azd = z - r;
+
+	double tan_azd = tan(azd);
+	double cos_az = cos(az);
+
+	st_aparent->a = atan2(sin(az) * tan_azd, cos_lat - sin_lat * cos_az * tan_azd);
+	st_aparent->d = asin(sin_lat * cos(azd) + cos_lat * sin(azd) * cos_az);
+	st_aparent->r = 1;
+	return true;
+}
 
 /* calculate polar alignment error */
-bool indigo_polar_alignment_error(
+bool _indigo_polar_alignment_error(
 	const indigo_spherical_point_t *st1,
 	const indigo_spherical_point_t *st2,
 	const indigo_spherical_point_t *st2_observed,
@@ -132,4 +168,24 @@ bool indigo_polar_alignment_error(
 	horizontal_error->a = (equatorial_error->a * (cos_h1 - cos_h2) + equatorial_error->d * (tan_d2 * sin_h2 - tan_d1 * sin_h1)) / det;
 	horizontal_error->r = 1;
 	return true;
+}
+
+bool indigo_polar_alignment_error(
+	const indigo_spherical_point_t *st1,
+	const indigo_spherical_point_t *st2,
+	const indigo_spherical_point_t *st2_observed,
+	const double latitude,
+	const bool compensate_refraction,
+	indigo_spherical_point_t *equatorial_error,
+	indigo_spherical_point_t *horizontal_error
+) {
+	if (compensate_refraction) {
+		indigo_spherical_point_t st1_a, st2_a, st2_observed_a;
+		if (!indigo_compensate_refraction(st1, latitude, &st1_a)) return false;
+		if (!indigo_compensate_refraction(st2, latitude, &st2_a)) return false;
+		if (!indigo_compensate_refraction(st2_observed, latitude, &st2_observed_a)) return false;
+		return _indigo_polar_alignment_error(&st1_a, &st2_a, &st2_observed_a, latitude, equatorial_error, horizontal_error);
+	} else {
+		return _indigo_polar_alignment_error(st1, st2, st2_observed, latitude, equatorial_error, horizontal_error);
+	}
 }
