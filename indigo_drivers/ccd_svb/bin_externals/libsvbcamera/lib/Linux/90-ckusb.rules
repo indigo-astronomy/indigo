@@ -1,0 +1,2 @@
+KERNEL=="*", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ACTION=="add", ATTR{idVendor}=="f266", MODE="666", TAG="ckusb_dev",  A"
+KERNEL=="*", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ACTION=="remove", TAG=="ckusb_dev", R"

@@ -149,6 +149,7 @@
 #include "focuser_astromechanics/indigo_focuser_astromechanics.h"
 #include "aux_astromechanics/indigo_aux_astromechanics.h"
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
+#include "ccd_svb/indigo_ccd_svb.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -225,6 +226,7 @@ driver_entry_point static_drivers[] = {
 #endif
 	indigo_ccd_simulator,
 	indigo_ccd_ssag,
+	indigo_ccd_svb,
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
