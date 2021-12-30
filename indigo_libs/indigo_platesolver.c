@@ -176,6 +176,7 @@ void indigo_platesolver_sync(indigo_device *device) {
 						&position,
 						&position_observed,
 						INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
+						(bool)AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.value,
 						&equatorial_error,
 						&horizontal_error
 					);
@@ -263,13 +264,15 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM, AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM_NAME, "Set polar alignment reference and move", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_SETTINGS property
-		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM_NAME, "Hour angle move (°)", -180, 180, 5, 30);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM_NAME, "Declination move (°)", -45, 45, 1, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM_NAME, "Compensate refraction (1=On/0=Off)", 0, 1, 0, 0);
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
 		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
 		if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY == NULL)
