@@ -2516,15 +2516,15 @@
 		59A68E0A277DC3D0000439CC /* SVBCameraSDK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVBCameraSDK.h; sourceTree = "<group>"; };
 		59A68E0B277DC3D0000439CC /* VERSION */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = VERSION; sourceTree = "<group>"; };
 		59A68E0E277DC3D0000439CC /* libSVBCameraSDK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libSVBCameraSDK.dylib; sourceTree = "<group>"; };
-		59A68E11277DC3D0000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
 		59A68E12277DC3D0000439CC /* README.arm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.arm; sourceTree = "<group>"; };
 		59A68E13277DC3D0000439CC /* 90-ckusb.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "90-ckusb.rules"; sourceTree = "<group>"; };
-		59A68E15277DC3D0000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
-		59A68E17277DC3D0000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
-		59A68E19277DC3D0000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
 		59A68E1A277DC3D0000439CC /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59A68E1B277DC3D0000439CC /* indigo_ccd_svb_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_svb_main.c; sourceTree = "<group>"; };
 		59A68E37277DF2B0000439CC /* libSVBCameraSDK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libSVBCameraSDK.dylib; path = build/lib/libSVBCameraSDK.dylib; sourceTree = "<group>"; };
+		59A68E3C277DFF03000439CC /* libSVBCameraSDK.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libSVBCameraSDK.so; sourceTree = "<group>"; };
+		59A68E3D277DFF2B000439CC /* libSVBCameraSDK.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libSVBCameraSDK.so; sourceTree = "<group>"; };
+		59A68E3E277DFF40000439CC /* libSVBCameraSDK.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libSVBCameraSDK.so; sourceTree = "<group>"; };
+		59A68E3F277DFF4C000439CC /* libSVBCameraSDK.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libSVBCameraSDK.so; sourceTree = "<group>"; };
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AA603D25AB10E80065905E /* solver_test_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = solver_test_image.c; sourceTree = "<group>"; };
 		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
@@ -8343,7 +8343,7 @@
 		59A68E10277DC3D0000439CC /* x64 */ = {
 			isa = PBXGroup;
 			children = (
-				59A68E11277DC3D0000439CC /* libSVBCameraSDK.a */,
+				59A68E3F277DFF4C000439CC /* libSVBCameraSDK.so */,
 			);
 			path = x64;
 			sourceTree = "<group>";
@@ -8351,7 +8351,7 @@
 		59A68E14277DC3D0000439CC /* x86 */ = {
 			isa = PBXGroup;
 			children = (
-				59A68E15277DC3D0000439CC /* libSVBCameraSDK.a */,
+				59A68E3C277DFF03000439CC /* libSVBCameraSDK.so */,
 			);
 			path = x86;
 			sourceTree = "<group>";
@@ -8359,7 +8359,7 @@
 		59A68E16277DC3D0000439CC /* arm */ = {
 			isa = PBXGroup;
 			children = (
-				59A68E17277DC3D0000439CC /* libSVBCameraSDK.a */,
+				59A68E3D277DFF2B000439CC /* libSVBCameraSDK.so */,
 			);
 			path = arm;
 			sourceTree = "<group>";
@@ -8367,7 +8367,7 @@
 		59A68E18277DC3D0000439CC /* arm64 */ = {
 			isa = PBXGroup;
 			children = (
-				59A68E19277DC3D0000439CC /* libSVBCameraSDK.a */,
+				59A68E3E277DFF40000439CC /* libSVBCameraSDK.so */,
 			);
 			path = arm64;
 			sourceTree = "<group>";
