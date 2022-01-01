@@ -297,7 +297,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_PLATESOLVER_ABORT_ITEM, AGENT_PLATESOLVER_ABORT_ITEM_NAME, "Abort", false);
 		// -------------------------------------------------------------------------------- IMAGE property
-		AGENT_PLATESOLVER_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
+		AGENT_PLATESOLVER_IMAGE_PROPERTY = _indigo_init_blob_property(NULL, device->name, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
 		if (AGENT_PLATESOLVER_IMAGE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_blob_item(AGENT_PLATESOLVER_IMAGE_ITEM, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, "Image");
