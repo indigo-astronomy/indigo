@@ -834,10 +834,10 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 }
 
 indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count) {
-	return _indigo_init_blob_property(property, device, name, group, label, state, INDIGO_RO_PERM, count);
+	return indigo_init_blob_property_p(property, device, name, group, label, state, INDIGO_RO_PERM, count);
 }
 
-indigo_property *_indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
+indigo_property *indigo_init_blob_property_p(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
 	assert(perm == INDIGO_RO_PERM || perm == INDIGO_WO_PERM);
@@ -1452,7 +1452,7 @@ indigo_result indigo_change_number_property_1(indigo_client *client, const char 
 }
 
 indigo_result indigo_change_blob_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **urls) {
-	indigo_property *property = _indigo_init_blob_property(NULL, device, name, NULL, NULL, 0, INDIGO_WO_PERM, count);
+	indigo_property *property = indigo_init_blob_property_p(NULL, device, name, NULL, NULL, 0, INDIGO_WO_PERM, count);
 	property->access_token = token;
 	for (int i = 0; i < count; i++) {
 		indigo_item *item = property->items + i;
@@ -1471,7 +1471,7 @@ indigo_result indigo_change_blob_property(indigo_client *client, const char *dev
 }
 
 indigo_result indigo_change_blob_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, void *value, const long size, const char *format, const char *url) {
-	indigo_property *property = _indigo_init_blob_property(NULL, device, name, NULL, NULL, 0, INDIGO_WO_PERM, 1);
+	indigo_property *property = indigo_init_blob_property_p(NULL, device, name, NULL, NULL, 0, INDIGO_WO_PERM, 1);
 	property->access_token = token;
 	indigo_init_blob_item(property->items, item, NULL);
 	property->items->blob.value = indigo_safe_malloc_copy(property->items->blob.size = size, value);
