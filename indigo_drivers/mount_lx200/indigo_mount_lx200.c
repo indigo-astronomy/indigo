@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -1343,6 +1343,28 @@ static void guider_connect_callback(indigo_device *device) {
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void guider_guide_dec_callback(indigo_device *device) {
+	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
+	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
+	}
+	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+}
+
+static void guider_guide_ra_callback(indigo_device *device) {
+	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_WEST_ITEM->number.value);
+	} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_EAST_ITEM->number.value);
+	}
+	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+}
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1358,6 +1380,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		char command[128];
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 				sprintf(command, ":Mn%3d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
@@ -1375,14 +1399,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				meade_command(device, command, NULL, 0, 0);
 			}
 		}
-		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		indigo_set_timer(device, 0, guider_guide_dec_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		char command[128];
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 				sprintf(command, ":Mw%3d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
@@ -1400,9 +1424,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 				meade_command(device, command, NULL, 0, 0);
 			}
 		}
-		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		indigo_set_timer(device, 0, guider_guide_ra_callback, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
