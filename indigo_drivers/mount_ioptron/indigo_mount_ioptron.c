@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x001D
+#define DRIVER_VERSION 0x001E
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -1834,13 +1834,17 @@ static void guider_connect_callback(indigo_device *device) {
 static void guider_guide_dec_callback(indigo_device *device) {
 	char command[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	start_tracking(device->master_device);
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		sprintf(command, ":Mn%05d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 		ieq_command(device, command, NULL, 0);
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
 	} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
 		sprintf(command, ":Ms%05d#", (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 		ieq_command(device, command, NULL, 0);
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_SOUTH_ITEM->number.value);
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -1851,13 +1855,17 @@ static void guider_guide_dec_callback(indigo_device *device) {
 static void guider_guide_ra_callback(indigo_device *device) {
 	char command[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	start_tracking(device->master_device);
 	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 		sprintf(command, ":Mw%05d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 		ieq_command(device, command, NULL, 0);
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_WEST_ITEM->number.value);
 	} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 		sprintf(command, ":Me%05d#", (int)GUIDER_GUIDE_EAST_ITEM->number.value);
 		ieq_command(device, command, NULL, 0);
+		indigo_usleep(1000 * (int)GUIDER_GUIDE_EAST_ITEM->number.value);
 	}
 	GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
