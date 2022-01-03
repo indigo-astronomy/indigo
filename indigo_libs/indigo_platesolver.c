@@ -90,6 +90,8 @@ void indigo_platesolver_sync(indigo_device *device) {
 			const char * fov_names[] = { AGENT_MOUNT_FOV_ANGLE_ITEM_NAME, AGENT_MOUNT_FOV_WIDTH_ITEM_NAME, AGENT_MOUNT_FOV_HEIGHT_ITEM_NAME };
 			double fov_values[] = { AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value, AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value, AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value };
 			const char * eq_coordinates_names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+			const double requested_ra = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value;
+			const double requested_dec = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value;
 			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_MOUNT_FOV_PROPERTY_NAME, 3, fov_names, fov_values);
 			if (
 				AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value ||
@@ -107,7 +109,7 @@ void indigo_platesolver_sync(indigo_device *device) {
 				indigo_usleep(1.5 * ONE_SECOND_DELAY);
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
 				indigo_usleep(QUARTER_SECOND_DELAY);
-				double slew_values[] = { AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value, AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value };
+				double slew_values[] = { requested_ra, requested_dec };
 				indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, eq_coordinates_names, slew_values);
 			}
 			if (AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM->sw.value) {
