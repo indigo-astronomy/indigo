@@ -216,7 +216,7 @@ static bool pmc8_command(indigo_device *device, char *command, char *response, i
 		} else {
 			result = read(PRIVATE_DATA->handle, &c, 1);
 		}
-		if (result < 1) {
+		if (result < 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
 		}
@@ -236,7 +236,7 @@ static bool pmc8_command(indigo_device *device, char *command, char *response, i
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			tv.tv_sec = 0;
-			tv.tv_usec = 100000;
+			tv.tv_usec = 500000;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result == 0) {
 				if (repeat > 0) {
@@ -450,50 +450,50 @@ static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		int32_t raw_ha = 0, raw_dec = 0;
 		if (pmc8_get_position(device, &raw_ha, &raw_dec)) {
-			if (raw_ha == 0 && raw_dec == 0 && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
+			if (abs(raw_ha) < 0xFFF && abs(raw_dec) < 0xFFF && MOUNT_TRACKING_OFF_ITEM->sw.value && PRIVATE_DATA->park) {
 				PRIVATE_DATA->park = false;
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
 			}
-		}
-		indigo_item *side_of_pier;
-		uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
-		uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
-		double ha_angle = ((double)raw_ha / ra_count) * 24;
-		double dec_angle = ((double)raw_dec / dec_count) * 360;
-		double ha;
-		if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-			if (raw_dec >= 0) {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 - dec_angle;
-				ha = ha_angle - 6;
-				side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+			indigo_item *side_of_pier;
+			uint32_t ra_count = MODELS[PRIVATE_DATA->type].count[0];
+			uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
+			double ha_angle = ((double)raw_ha / ra_count) * 24;
+			double dec_angle = ((double)raw_dec / dec_count) * 360;
+			double ha;
+			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
+				if (raw_dec >= 0) {
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 - dec_angle;
+					ha = ha_angle - 6;
+					side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+				} else {
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 + dec_angle;
+					ha = ha_angle + 6;
+					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
+				}
 			} else {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 + dec_angle;
-				ha = ha_angle + 6;
-				side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
+				if (raw_dec >= 0) {
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 + dec_angle;
+					ha = -(ha_angle - 6);
+					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
+				} else {
+					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 - dec_angle;
+					ha = -(ha_angle + 6);
+					side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+				}
 			}
-		} else {
-			if (raw_dec >= 0) {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 + dec_angle;
-				ha = -(ha_angle - 6);
-				side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
-			} else {
-				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 - dec_angle;
-				ha = -(ha_angle + 6);
-				side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha;
+			if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value < 0)
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value += 24;
+			else if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value > 24)
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value -= 24;
+			if (!side_of_pier->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			}
+			indigo_update_coordinates(device, NULL);
+			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		}
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha;
-		if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value < 0)
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value += 24;
-		else if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value > 24)
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value -= 24;
-		if (!side_of_pier->sw.value) {
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		}
-		indigo_update_coordinates(device, NULL);
-		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, &PRIVATE_DATA->position_timer);
 	}
 }
@@ -569,9 +569,13 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		}
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value)
 			break;
+		raw_ha &= ~0xFFF;
+		raw_dec &= ~0xFFF;
 		while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			int32_t current_raw_ha = 0, current_raw_dec = 0;
 			if (pmc8_get_position(device, &current_raw_ha, &current_raw_dec)) {
+				current_raw_ha &= ~0xFFF;
+				current_raw_dec &= ~0xFFF;
 				if (current_raw_ha == raw_ha && current_raw_dec == raw_dec)
 					break;
 			} else {
