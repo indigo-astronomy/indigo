@@ -200,7 +200,6 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	char command_buf[8 * 1024];
 	sprintf(command_buf, "%s 2>&1", buffer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
-//	FILE *output = popen(command_buf, "r");
 	int pipe_stdout[2];
 	if (pipe(pipe_stdout)) {
 		return false;
@@ -811,6 +810,10 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
+			if (!indigo_platesolver_validate_executable("solve-field") || !indigo_platesolver_validate_executable("image2xy") || !indigo_platesolver_validate_executable("curl")) {
+				indigo_error("astrometry.net is not available");
+				return INDIGO_UNRESOLVED_DEPS;
+			}			
 			last_action = action;
 			char *env = getenv("INDIGO_CACHE_BASE");
 			if (env) {

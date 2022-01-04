@@ -49,6 +49,24 @@ static bool validate_related_agent(indigo_device *device, indigo_property *info_
 	return false;
 }
 
+bool indigo_platesolver_validate_executable(const char *executable) {
+	char command[128];
+	snprintf(command, sizeof(command), "command -v %s", executable);
+	FILE *output = NULL;
+	char *line = NULL;
+	size_t size = 0;
+	output = popen(command, "r");
+	ssize_t result = getline(&line, &size, output);
+	if (result > 1) {
+		INDIGO_DEBUG(indigo_debug("indigo_platesolver_validate_executable: %s", line));
+	} else {
+		indigo_error("indigo_platesolver_validate_executable: %s not found", executable);
+	}
+	pclose(output);
+	free(line);
+	return result > 1;
+}
+
 void indigo_platesolver_save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
@@ -456,8 +474,6 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 			for (int j = 0; j < agents->count; j++) {
 				indigo_item *item = agents->items + j;
 				if (item->sw.value && !strcmp(item->name, device_name)) {
-					double lat = 0, lon = 0;
-					bool update = false;
 					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates_state = property->state;
 					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates_timestamp = time(NULL);
 					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.r = 1;
@@ -478,7 +494,6 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 
 indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	{ char *device_name = property->device;
-		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			indigo_property *related_agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 			for (int j = 0; j < related_agents->count; j++) {
