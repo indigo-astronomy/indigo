@@ -999,11 +999,15 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 						SERVER_DRIVERS_PROPERTY->items[i].sw.value = driver->initialized = result == INDIGO_OK;
 						if (result == INDIGO_UNSUPPORTED_ARCH)
 							indigo_send_message(&server_device, "Driver '%s' is not supported on this architecture", driver->description);
+						if (result == INDIGO_UNRESOLVED_DEPS)
+							indigo_send_message(&server_device, "Driver '%s' has unresolved dependencies", driver->description);
 					} else if (driver->dl_handle != NULL && !driver->initialized) {
 						indigo_result result = driver->driver(INDIGO_DRIVER_INIT, NULL);
 						SERVER_DRIVERS_PROPERTY->items[i].sw.value = driver->initialized = result == INDIGO_OK;
 						if (result == INDIGO_UNSUPPORTED_ARCH)
 							indigo_send_message(&server_device, "Driver '%s' is not supported on this architecture", driver->description);
+						if (result == INDIGO_UNRESOLVED_DEPS)
+							indigo_send_message(&server_device, "Driver '%s' has unresolved dependencies", driver->description);
 						if (driver && !driver->initialized)
 							indigo_remove_driver(driver);
 					}

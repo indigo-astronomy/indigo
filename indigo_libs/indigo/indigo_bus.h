@@ -106,7 +106,8 @@ typedef enum {
 	INDIGO_DUPLICATED,					///< duplicated items etc.
 	INDIGO_BUSY,                ///< operation failed because the resourse is busy.
 	INDIGO_GUIDE_ERROR,         ///< Guide process error (srar lost, SNR too low etc..).
-	INDIGO_UNSUPPORTED_ARCH          	///< Unsupported architecture.
+	INDIGO_UNSUPPORTED_ARCH,    ///< Unsupported architecture.
+	INDIGO_UNRESOLVED_DEPS			///< Unresolved dependencies (missing library, executable, ...).
 } indigo_result;
 
 /** Property data type.

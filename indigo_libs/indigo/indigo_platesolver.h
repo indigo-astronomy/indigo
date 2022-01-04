@@ -119,6 +119,7 @@ typedef struct {
 	bool failed;
 } platesolver_private_data;
 
+extern bool indigo_platesolver_validate_executable(const char *executable);
 extern void indigo_platesolver_save_config(indigo_device *device);
 extern void indigo_platesolver_sync(indigo_device *device);
 
