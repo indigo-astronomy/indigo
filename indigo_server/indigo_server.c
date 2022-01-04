@@ -150,6 +150,7 @@
 #include "aux_astromechanics/indigo_aux_astromechanics.h"
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #include "ccd_svb/indigo_ccd_svb.h"
+#include "agent_astap/indigo_agent_astap.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -179,6 +180,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_alignment,
 	indigo_agent_alpaca,
 	indigo_agent_astrometry,
+	indigo_agent_astap,
 	indigo_agent_auxiliary,
 	indigo_agent_guider,
 	indigo_agent_imager,
