@@ -155,19 +155,30 @@ static void *astap_solve(indigo_platesolver_task *task) {
 		bool use_stdin = false;
 		if (!strncmp("SIMPLE", (const char *)image, 6)) {
 			ext = "fits";
+			const char *header = (const char *)image;
+			while (strncmp(header, "END", 3) && header < (const char *)image + image_size) {
+				if (sscanf(header, "NAXIS1  = %d", &ASTAP_DEVICE_PRIVATE_DATA->frame_width) == 0)
+					if (sscanf(header, "NAXIS2  = %d", &ASTAP_DEVICE_PRIVATE_DATA->frame_height) == 1)
+						break;
+				header += 80;
+			}
 		} else if (!strncmp("JFIF", (const char *)(image + 6), 4)) {
 			ext = "jpeg";
+			ASTAP_DEVICE_PRIVATE_DATA->frame_width = ASTAP_DEVICE_PRIVATE_DATA->frame_height = 0;
 		} else if (!strncmp("RAW", (const char *)(image), 3)) {
+			indigo_raw_header *header = (indigo_raw_header *)image;
+			ASTAP_DEVICE_PRIVATE_DATA->frame_width = header->width;
+			ASTAP_DEVICE_PRIVATE_DATA->frame_height = header->height;
 			use_stdin = true;
 		} else {
 			image = NULL;
 		}
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-		char base[512], file[512], result[512];
+		char base[512], file[512], wcs[512];
 		sprintf(base, "%s/%s_%lX", base_dir, "image", time(0));
 		sprintf(file, "%s.%s", base, ext);
-		sprintf(result, "%s.ini", base);
+		sprintf(wcs, "%s.wcs", base);
 #pragma clang diagnostic pop
 		int handle = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
@@ -177,7 +188,6 @@ static void *astap_solve(indigo_platesolver_task *task) {
 		}
 		indigo_write(handle, (const char *)image, image_size);
 		close(handle);
-		ASTAP_DEVICE_PRIVATE_DATA->frame_width = ASTAP_DEVICE_PRIVATE_DATA->frame_height = 0;
 		// execute astap plate solver
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
 		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
@@ -191,14 +201,21 @@ static void *astap_solve(indigo_platesolver_task *task) {
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		char params[512] = "";
 		int params_index = 0;
-		if (AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value > 1) {
-			params_index += sprintf(params + params_index, " -z %d", (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value);
-		}
+		params_index = sprintf(params, "-z %d", (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value);
 		if (AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value > 0) {
-			params_index += sprintf(params + params_index, " -ra %g -spd %g -r %g", AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value, AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value + 90, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value);
+			params_index += sprintf(params + params_index, " -r %g", AGENT_PLATESOLVER_HINTS_RADIUS_ITEM->number.value);
+		}
+		if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value > 0) {
+			params_index += sprintf(params + params_index, " -ra %g", AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value);
+		}
+		if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value > 0) {
+			params_index += sprintf(params + params_index, " -spd %g", AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value + 90);
 		}
 		if (AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value > 0) {
 			params_index += sprintf(params + params_index, " -s %d", (int)AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value);
+		}
+		if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0) {
+			params_index += sprintf(params + params_index, " -fov %.1f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
 		}
 		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; k++) {
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
@@ -211,16 +228,21 @@ static void *astap_solve(indigo_platesolver_task *task) {
 
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		if (use_stdin) {
-			if (!execute_command(device, "astap_cli %s -f stdin <%s", params, file))
+			if (!execute_command(device, "astap_cli %s -o %s -f stdin <%s", params, base, file))
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			if (!execute_command(device, "astap_cli %s -f %s", params, file))
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FILE *output = fopen(result, "r");
+			FILE *output = fopen(wcs, "r");
 			char *line = NULL;
 			size_t size = 0;
+			if (output == NULL) {
+				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "No solution found");
+				goto cleanup;
+			}
 			while (getline(&line, &size, output) >= 0) {
 				char *nl = strchr(line, '\n');
 				if (nl)
@@ -228,28 +250,29 @@ static void *astap_solve(indigo_platesolver_task *task) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
 				char c;
 				double d;
-				if (sscanf(line, "PLTSOLVD=%c", &c) == 1) {
+				char *s;
+				if (sscanf(line, "PLTSOLVD=                    %c", &c) == 1) {
 					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = c != 'T';
-				} else if (sscanf(line, "CRPIX1=%lg", &d) == 1) {
+				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
 					ASTAP_DEVICE_PRIVATE_DATA->frame_width = 2 * (int)d;
-				} else if (sscanf(line, "CRPIX2=%lg", &d) == 1) {
+				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
 					ASTAP_DEVICE_PRIVATE_DATA->frame_height = 2 * (int)d;
-				} else if (sscanf(line, "CRVAL1=%lg", &d) == 1) {
+				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d / 15.0;
-				} else if (sscanf(line, "CRVAL2=%lg", &d) == 1) {
+				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA1=%lg", &d) == 1) {
+				} else if (sscanf(line, "CROTA1 = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA2=%lg", &d) == 1) {
+				} else if (sscanf(line, "CROTA2 = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + d) / 2.0;
-				} else if (sscanf(line, "CD1_1=%lg", &d) == 1) {
+				} else if (sscanf(line, "CD1_1   = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
-				} else if (sscanf(line, "CD2_2=%lg", &d) == 1) {
+				} else if (sscanf(line, "CD2_2   = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value + d) / 2.0;
 					AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_width * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
 					AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
-				} else if (strstr(line, "WARNING=")) {
-					indigo_send_message(device, line + 8);
+				} else if ((s = strstr(line, "Solved")) && sscanf(s, "Solved in %lg", &d) == 1) {
+					indigo_send_message(device, "Solved in %gs", d);
 				}
 			}
 			if (line) {
@@ -298,7 +321,7 @@ static void *astap_solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Plate solver failed");
 		}
 	cleanup:
-		execute_command(device, "rm -rf \"%s\" \"%s\" \"%s.wcs\"", file, result, base);
+		execute_command(device, "rm -rf \"%s\" \"%s\" \"%s.ini\" \"%s.log\"", file, wcs, base, base);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
@@ -394,6 +417,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_platesolver_device_attach(device, DRIVER_NAME, DRIVER_VERSION, 0) == INDIGO_OK) {
 		AGENT_PLATESOLVER_USE_INDEX_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
+		AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.min = AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_HINTS_PARITY_ITEM->number.min = AGENT_PLATESOLVER_HINTS_PARITY_ITEM->number.max = 0;
+		AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.max = 0;
 		// -------------------------------------------------------------------------------- AGENT_ASTAP_INDEX_XXXX
 		char *name, label[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
 		bool present;
