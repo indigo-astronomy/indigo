@@ -78,6 +78,16 @@ static void set_pa_reference(indigo_device *device) {
 		lst_now,
 		&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference
 	);
+	AGENT_PLATESOLVER_PA_ERROR_PROPERTY->state = INDIGO_IDLE_STATE;
+	AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM->number.value =
+	AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.value =
+	AGENT_PLATESOLVER_PA_ERROR_HA_ITEM->number.value =
+	AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value =
+	AGENT_PLATESOLVER_PA_ERROR_AZ_CORRECTION_CW_ITEM->number.value =
+	AGENT_PLATESOLVER_PA_ERROR_ALT_CORRECTION_UP_ITEM->number.value =
+	AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = 0;
+	indigo_update_property(device, AGENT_PLATESOLVER_PA_ERROR_PROPERTY, NULL);
+
 	indigo_log("%s(): Polar align: Reference LST = %f, Lon = %f, Lat = %f", __FUNCTION__, lst_now,  INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.a * RAD2DEG, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d * RAD2DEG);
 	indigo_log("%s(): Polar align: Reference HA = %f, Dec = %f", __FUNCTION__, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference.a * RAD2DEG / 15, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference.d * RAD2DEG);
 }
@@ -276,7 +286,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
-		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
+		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 7);
 		if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM, AGENT_PLATESOLVER_PA_ERROR_HA_ITEM_NAME, "Hour angle error (°)", -45, 45, 0, 0);
