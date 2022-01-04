@@ -531,7 +531,12 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		}
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_platesolver_sync(device);
-			if (AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
+			if (
+				AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value ||
+				AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value ||
+				AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM->sw.value ||
+				AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value
+			) {
 				/* continue to be busy while mount is moving or syncing but show the solution */
 				indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 				for (int i = 0; i < 300; i++) { // wait 3 s to become BUSY
