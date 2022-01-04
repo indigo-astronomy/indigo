@@ -23,7 +23,7 @@
  \file indigo_agent_astap.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x0001
 #define DRIVER_NAME	"indigo_agent_astap"
 
 #include <stdio.h>
@@ -359,6 +359,13 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						item->sw.value = false;
 						property->state = INDIGO_ALERT_STATE;
 						indigo_update_property(device, property, strerror(errno));
+						pthread_mutex_unlock(&mutex);
+						return;
+					}
+					if (access(path, F_OK) != 0) {
+						item->sw.value = false;
+						property->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, property, "Failed to download index %s", astap_index[j].name);
 						pthread_mutex_unlock(&mutex);
 						return;
 					}
