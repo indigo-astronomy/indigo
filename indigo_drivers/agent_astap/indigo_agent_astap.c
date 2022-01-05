@@ -533,7 +533,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 							indigo_send_message(device, "Downloading %s...", astap_index[j].name);
 						}
 						snprintf(url, sizeof((path)), astap_index[j].path, INDEX_BASE_URL, files[k]);
-						if (!execute_command(device, "curl -L -s -o \"%s\" \"%s\"", path, url)) {
+						if (!execute_command(device, "curl -L -s --compressed -o \"%s\" \"%s\"", path, url)) {
 							item->sw.value = false;
 							property->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, property, strerror(errno));
