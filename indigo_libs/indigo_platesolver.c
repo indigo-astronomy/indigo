@@ -218,8 +218,8 @@ void indigo_platesolver_sync(indigo_device *device) {
 						indigo_log("%s(): Polar align: Solved Az = %f,  Alt = %f", __FUNCTION__, position_h.a * RAD2DEG, position_h.d * RAD2DEG);
 						indigo_log("%s(): Polar align: Telescope Az = %f, Alt = %f", __FUNCTION__, position_observed_h.a * RAD2DEG, position_observed_h.d * RAD2DEG);
 
-						horizontal_error.a = position_h.a - position_observed_h.a + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.a;
-						horizontal_error.d = position_h.d - position_observed_h.d + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.d;
+						horizontal_error.a = position_h.a - position_observed_h.a - INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.a;
+						horizontal_error.d = position_h.d - position_observed_h.d - INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.d;
 						horizontal_error.r= 1;
 					} else {
 						indigo_log("Initial Correction");
