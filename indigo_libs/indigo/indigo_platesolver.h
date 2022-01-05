@@ -114,6 +114,8 @@ typedef struct {
 	indigo_property_state geo_coordinates_state;
 	time_t geo_coordinates_timestamp;
 	indigo_spherical_point_t pa_reference;
+	double pa_ra_at_position;
+	double pa_dec_at_position;
 	indigo_spherical_point_t pa_error_at_position;
 	void (*save_config)(indigo_device *);
 	void *((*solve)(indigo_platesolver_task *));
