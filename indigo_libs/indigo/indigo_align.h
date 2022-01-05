@@ -54,6 +54,10 @@ typedef struct {
 	double r;   /* radius (1 for celestial coordinates) */
 } indigo_spherical_point_t;
 
+/** convert ha dec to az alt in radians
+ */
+extern void indigo_equatorial_to_hotizontal(const indigo_spherical_point_t *eq_point, const double latitude, indigo_spherical_point_t *h_point);
+
 /** convert spherical to cartesian coordinates
  */
 extern indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spherical_point_t *spoint);

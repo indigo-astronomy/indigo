@@ -54,6 +54,27 @@ void indigo_spherical_to_ra_dec(const indigo_spherical_point_t *spoint, const do
 	*dec = spoint->d / DEG2RAD;
 }
 
+/* convert ha dec to alt az in radians */
+void indigo_equatorial_to_hotizontal(const indigo_spherical_point_t *eq_point, const double latitude, indigo_spherical_point_t *h_point) {
+	double sin_ha = sin(eq_point->a);
+	double cos_ha = cos(eq_point->a);
+	double sin_dec = sin(eq_point->d);
+	double cos_dec = cos(eq_point->d);
+	double sin_lat = sin(latitude);
+	double cos_lat = cos(latitude);
+
+	double sin_alt = sin_dec * sin_lat + cos_dec * cos_lat * cos_ha;
+	double alt = asin(sin_alt);
+
+	double cos_az = (sin_dec - sin_alt * sin_lat) / (cos(alt) * cos_lat);
+	double az = acos(cos_az);
+
+	if (sin_ha > 0) az = 2 * M_PI - az;
+	h_point->a = az;
+	h_point->d = alt;
+	h_point->r = 1;
+}
+
 /* convert ha/ra dec in hours and degrees to spherical point in radians */
 void indigo_ra_dec_to_point(const double ra, const double dec, const double lst, indigo_spherical_point_t *spoint) {
 	double ha = lst - ra;
