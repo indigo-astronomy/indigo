@@ -429,15 +429,15 @@ static void *astap_solve(indigo_platesolver_task *task) {
 					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = c != 'T';
 				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
 					ASTAP_DEVICE_PRIVATE_DATA->frame_width = 2 * (int)d;
-				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
+				} else if (sscanf(line, "CRPIX2  = %lg", &d) == 1) {
 					ASTAP_DEVICE_PRIVATE_DATA->frame_height = 2 * (int)d;
-				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
+				} else if (sscanf(line, "CRVAL1  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d / 15.0;
-				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
+				} else if (sscanf(line, "CRVAL2  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA1 = %lg", &d) == 1) {
+				} else if (sscanf(line, "CROTA1  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA2 = %lg", &d) == 1) {
+				} else if (sscanf(line, "CROTA2  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + d) / 2.0;
 				} else if (sscanf(line, "CD1_1   = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
