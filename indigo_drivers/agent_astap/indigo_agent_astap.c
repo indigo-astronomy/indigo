@@ -52,7 +52,7 @@
 
 #include "indigo_agent_astap.h"
 
-#define INDEX_BASE_URL "https://github.com/indigo-astronomy/astap/star_databases/"
+#define INDEX_BASE_URL "https://indigo-astronomy.github.io/astap/star_databases"
 
 typedef struct _index_data {
 	char *name;
