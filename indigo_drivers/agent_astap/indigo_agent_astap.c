@@ -52,7 +52,7 @@
 
 #include "indigo_agent_astap.h"
 
-#define INDEX_BASE_URL "https://github.com/indigo-astronomy/astap/star_databases/"
+#define INDEX_BASE_URL "https://indigo-astronomy.github.io/astap/star_databases"
 
 typedef struct _index_data {
 	char *name;
@@ -279,7 +279,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		case -1: {
 			close(pipe_stdout[0]);
 			close(pipe_stdout[1]);
-			indigo_send_message(device, "Failed to execute %s (%s)", command, strerror(errno));
+			indigo_send_message(device, "Failed to execute %s (%s)", command_buf, strerror(errno));
 			return false;
 		}
 		case 0: {
@@ -394,7 +394,7 @@ static void *astap_solve(indigo_platesolver_task *task) {
 		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; k++) {
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
 			if (item->sw.value) {
-				params_index += sprintf(params + params_index, " -d %s/%s", base_dir, item->name);
+				params_index += sprintf(params + params_index, " -d \"%s/%s\"", base_dir, item->name);
 				AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = k;
 				break;
 			}
@@ -402,10 +402,10 @@ static void *astap_solve(indigo_platesolver_task *task) {
 
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		if (use_stdin) {
-			if (!execute_command(device, "astap_cli %s -o %s -f stdin <%s", params, base, file))
+			if (!execute_command(device, "astap_cli %s -o \"%s\" -f stdin <\"%s\"", params, base, file))
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			if (!execute_command(device, "astap_cli %s -f %s", params, file))
+			if (!execute_command(device, "astap_cli %s -f \"%s\"", params, file))
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -429,15 +429,15 @@ static void *astap_solve(indigo_platesolver_task *task) {
 					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = c != 'T';
 				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
 					ASTAP_DEVICE_PRIVATE_DATA->frame_width = 2 * (int)d;
-				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
+				} else if (sscanf(line, "CRPIX2  = %lg", &d) == 1) {
 					ASTAP_DEVICE_PRIVATE_DATA->frame_height = 2 * (int)d;
-				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
+				} else if (sscanf(line, "CRVAL1  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d / 15.0;
-				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
+				} else if (sscanf(line, "CRVAL2  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA1 = %lg", &d) == 1) {
+				} else if (sscanf(line, "CROTA1  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA2 = %lg", &d) == 1) {
+				} else if (sscanf(line, "CROTA2  = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + d) / 2.0;
 				} else if (sscanf(line, "CD1_1   = %lg", &d) == 1) {
 					AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
@@ -533,7 +533,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 							indigo_send_message(device, "Downloading %s...", astap_index[j].name);
 						}
 						snprintf(url, sizeof((path)), astap_index[j].path, INDEX_BASE_URL, files[k]);
-						if (!execute_command(device, "curl -L -s -o \"%s\" \"%s\"", path, url)) {
+						if (!execute_command(device, "curl -L -s --compressed -o \"%s\" \"%s\"", path, url)) {
 							item->sw.value = false;
 							property->state = INDIGO_ALERT_STATE;
 							indigo_update_property(device, property, strerror(errno));
@@ -563,7 +563,8 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 			}
 		}
 		if (add) {
-			indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, item->name, item->label, true);
+			indigo_item *added_item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++;
+			indigo_init_switch_item(added_item, item->name, item->label, false);
 		}
 		if (remove) {
 			for (int j = 0; j < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; j++) {
@@ -720,7 +721,7 @@ indigo_result indigo_agent_astap(indigo_driver_action action, indigo_driver_info
 			last_action = action;
 			char *env = getenv("INDIGO_CACHE_BASE");
 			if (env) {
-				strcpy(base_dir, env);
+				snprintf(base_dir, sizeof((base_dir)), "%s/astap", env);
 			} else {
 				snprintf(base_dir, sizeof((base_dir)), "%s/.indigo/astap", getenv("HOME"));
 			}

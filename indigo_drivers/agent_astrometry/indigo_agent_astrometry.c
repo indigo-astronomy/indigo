@@ -208,7 +208,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		case -1: {
 			close(pipe_stdout[0]);
 			close(pipe_stdout[1]);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute %s (%s)", command, strerror(errno));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to execute %s (%s)", command_buf, strerror(errno));
 			return false;
 		}
 		case 0: {
@@ -817,7 +817,7 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 			last_action = action;
 			char *env = getenv("INDIGO_CACHE_BASE");
 			if (env) {
-				strcpy(base_dir, env);
+				snprintf(base_dir, sizeof((base_dir)), "%s/astrometry", env);
 			} else {
 				snprintf(base_dir, sizeof((base_dir)), "%s/.indigo/astrometry", getenv("HOME"));
 			}
