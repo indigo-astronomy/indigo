@@ -18,7 +18,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_astap indigo_agent_imager indigo_agent_mount indigo_ccd_... indigo_mount_... 
 
-## Status: Under development
+## Status: Stable
 
 ## Notes on agent setup
 
