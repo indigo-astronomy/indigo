@@ -82,34 +82,40 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		case ptp_property_sony_PictureEffect: return DSLR_PICTURE_STYLE_PROPERTY_NAME;
 		case ptp_property_sony_BatteryLevel: return DSLR_BATTERY_LEVEL_PROPERTY_NAME;
 		case ptp_property_sony_PCRemoteSaveDest: return "ADV_PCRemoteSaveDest";
+		case ptp_property_sony_Zoom: return "Zoom_Sony";
 		case ptp_property_sony_ZoomState: return "ADV_ZoomState";
 		case ptp_property_sony_ZoomRatio: return "ADV_ZoomRatio";
+		case ptp_property_sony_ExposureCompensation: return "ADV_ExposureCompensation";
+		case ptp_property_sony_SensorCrop: return "ADV_SensorCrop";
 	}
 	return ptp_property_code_name(code);
 }
 
 char *ptp_property_sony_code_label(uint16_t code) {
 	switch (code) {
-		case ptp_property_sony_DPCCompensation: return "DPCCompensation_Sony";
-		case ptp_property_sony_DRangeOptimize: return "DRangeOptimize_Sony";
+		case ptp_property_sony_DPCCompensation: return "DPC Compensation";
+		case ptp_property_sony_DRangeOptimize: return "D Range Optimize";
 		case ptp_property_sony_ImageSize: return "Image size";
 		case ptp_property_sony_ShutterSpeed: return "Shutter speed";
-		case ptp_property_sony_ColorTemp: return "ColorTemp_Sony";
-		case ptp_property_sony_CCFilter: return "CCFilter_Sony";
+		case ptp_property_sony_ColorTemp: return "Color Temperature";
+		case ptp_property_sony_CCFilter: return "CC Filter";
 		case ptp_property_sony_AspectRatio: return "Aspect ratio";
-		case ptp_property_sony_FocusStatus: return "FocusStatus_Sony";
-		case ptp_property_sony_ExposeIndex: return "ExposeIndex_Sony";
-		case ptp_property_sony_BatteryLevel: return "BatteryLevel";
+		case ptp_property_sony_FocusStatus: return "Focus Status";
+		case ptp_property_sony_Zoom: return "Zoom";
+		case ptp_property_sony_ExposeIndex: return "Expose Index";
+		case ptp_property_sony_BatteryLevel: return "Battery Level";
+		case ptp_property_sony_SensorCrop: return "Sensor Crop";
 		case ptp_property_sony_PictureEffect: return "Picture effect";
-		case ptp_property_sony_ABFilter: return "ABFilter_Sony";
+		case ptp_property_sony_ABFilter: return "AB Filter";
 		case ptp_property_sony_ISO: return "ISO";
-		case ptp_property_sony_Autofocus: return "Autofocus_Sony";
-		case ptp_property_sony_Capture: return "Capture_Sony";
-		case ptp_property_sony_Movie: return "Movie_Sony";
-		case ptp_property_sony_StillImage: return "StillImage_Sony";
-		case ptp_property_sony_PCRemoteSaveDest: return "PCRemoteSaveDest_Sony";
-		case ptp_property_sony_ZoomState: return "ZoomState_Sony";
-		case ptp_property_sony_ZoomRatio: return "ZoomRatio_Sony";
+		case ptp_property_sony_Autofocus: return "Autofocus";
+		case ptp_property_sony_Capture: return "Capture";
+		case ptp_property_sony_Movie: return "Movie";
+		case ptp_property_sony_StillImage: return "Still Image";
+		case ptp_property_sony_PCRemoteSaveDest: return "PC Remote Save Destination";
+		case ptp_property_sony_ExposureCompensation: return "Exposure compensation";
+		case ptp_property_sony_ZoomState: return "Zoom State";
+		case ptp_property_sony_ZoomRatio: return "Zoom Ratio";
 	}
 	return ptp_property_code_label(code);
 }
@@ -257,11 +263,15 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 				case 32790: return "Handheld twilight";
 				case 32791: return "Night portrait";
 				case 32792: return "Anti motion blur";
-				case 32848: return "P - movie";
-				case 32849: return "A - movie";
-				case 32850: return "S - movie";
-				case 32851: return "M - movie";
+				case 32848: return "Movie P";
+				case 32849: return "Movie A";
+				case 32850: return "Movie S";
+				case 32851: return "Movie M";
 				case 32833: return "Sweep panorama";
+				case 32857: return "Q&S auto";
+				case 32858: return "Q&S A";
+				case 32859: return "Q&S S";
+				case 32860: return "Q&S M";
 			}
 			break;
 		}
@@ -646,7 +656,14 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			target->writable = true;
 			break;
 		case ptp_property_ExposureProgramMode:
-			SONY_PRIVATE_DATA->mode = target->value.sw.value;
+			if (target->count == 0 || target->count == 1) {
+				target->count = 1;
+				target->value.sw.values[0] = target->value.sw.value;
+			}
+			if (SONY_PRIVATE_DATA->mode != target->value.sw.value) {
+				SONY_PRIVATE_DATA->mode = target->value.sw.value;
+				ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_PropertyChanged, NULL);
+			}
 			break;
 		case ptp_property_sony_FocusStatus:
 			SONY_PRIVATE_DATA->focus_state = target->value.number.value;
