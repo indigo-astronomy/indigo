@@ -86,7 +86,7 @@ extern double indigo_gc_distance(double ra1, double dec1, double ra2, double dec
  */
 extern double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const indigo_cartesian_point_t *cp2);
 
-/** calculate refraction error
+/** calculate refraction error from altitude
  */
 extern double indigo_calculate_refraction(const double z);
 
