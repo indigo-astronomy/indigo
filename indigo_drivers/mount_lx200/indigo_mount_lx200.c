@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -115,6 +115,30 @@ static bool meade_open(indigo_device *device) {
 	}
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
+		// flush the garbage if any...
+		char c;
+		struct timeval tv;
+		tv.tv_sec = 1;
+		tv.tv_usec = 0;
+		while (true) {
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(PRIVATE_DATA->handle, &readout);
+			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
+			if (result == 0)
+				break;
+			if (result < 0) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
+			result = read(PRIVATE_DATA->handle, &c, 1);
+			if (result < 1) {
+				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+				return false;
+			}
+			tv.tv_sec = 0;
+			tv.tv_usec = 100000;
+		}
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
