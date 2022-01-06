@@ -66,11 +66,11 @@ static char __buffer__[32];
 #define DEC_PER_SEC 1440
 #define RA_PER_SEC 96
 
-bool is_meade = true;
+bool is_meade = false;
 bool is_10micron = false;
 bool is_gemini = false;
 bool is_avalon = false;
-bool is_onstep = false;
+bool is_onstep = true;
 
 int date_day = 1;
 int date_month = 1;
@@ -174,6 +174,33 @@ void setup() {
   DISPLAY_END();
 	Serial.begin(9600);
   Serial.setTimeout(1000);
+  if (is_onstep) {
+    Serial.print(
+      "MSG: OnStep 4.24j\n"
+      "MSG: MCU =\n"
+      "ESP32, Pinmap = ESP32 Essential v1\n"
+      "MSG: Init HAL\n"
+      "MSG: Init serial\n"
+      "MSG: Init pins\n"
+      "MSG: Init TLS\n"
+      "MSG: Start NV 4096 Bytes\n"
+      "MSG: Init NV Axis1 defaults\n"
+      "MSG: Init NV Axis2 defaults\n"
+      "MSG: Init NV Axis3 defaults\n"
+      "MSG: Init NV Axis4 defaults\n"
+      "MSG: Init NV Axis5 defaults\n"
+      "MSG: Read NV settings\n"
+      "MSG: Init startup settings\n"
+      "MSG: Init library/catalogs\n"
+      "MSG: Init guiding\n"
+      "MSG: Init weather\n"
+      "MSG: Init sidereal timer\n"
+      "MSG: Init motor timers\n"
+      "MSG: Axis1/2 stepper drivers enabled\n"
+      "MSG: Axis1/2 stepper drivers disabled\n"
+      "MSG: Serial buffer flush\n"
+      "MSG: OnStep is ready\n");
+  }  
   while (!Serial)
     ;
 }
