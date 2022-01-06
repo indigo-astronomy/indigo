@@ -225,7 +225,7 @@ void indigo_platesolver_sync(indigo_device *device) {
 							indigo_log("%s(): Polar align: Reference2 Az_r = %f, Alt_r = %f", __FUNCTION__, position_ref2_h.a * RAD2DEG, position_ref2_h.d * RAD2DEG);
 						}
 						horizontal_error.d = position_ref2_h.d + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.d - position_h.d;
-						horizontal_error.a = position_ref2_h.a + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.a - position_h.a + fabs(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.d - horizontal_error.d);
+						horizontal_error.a = position_ref2_h.a + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_position.a - position_h.a;
 						horizontal_error.r = 1;
 					} else {
 						indigo_spherical_point_t position_observed;
