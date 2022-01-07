@@ -263,31 +263,32 @@ typedef struct {
 extern char **environ;
 
 static void parse_line(indigo_device *device, char *line) {
-	char c;
 	double d;
 	char *s;
 	char *nl = strchr(line, '\n');
 	if (nl)
 		*nl = 0;
-	INDIGO_DRIVER_TRACE(DRIVER_NAME, "< %s", line);
-	if (sscanf(line, "PLTSOLVD=%c", &c) == 1) {
-		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = c != 'T';
-	} else if (sscanf(line, "CRPIX1=%lg", &d) == 1) {
-		ASTAP_DEVICE_PRIVATE_DATA->frame_width = 2 * (int)d;
-	} else if (sscanf(line, "CRPIX2=%lg", &d) == 1) {
-		ASTAP_DEVICE_PRIVATE_DATA->frame_height = 2 * (int)d;
-	} else if (sscanf(line, "CRVAL1=%lg", &d) == 1) {
-		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d / 15.0;
-	} else if (sscanf(line, "CRVAL2=%lg", &d) == 1) {
-		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d;
-	} else if (sscanf(line, "CROTA1=%lg", &d) == 1) {
-		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d;
-	} else if (sscanf(line, "CROTA2=%lg", &d) == 1) {
-		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + d) / 2.0;
-	} else if (sscanf(line, "CD1_1=%lg", &d) == 1) {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
+	if ((s = strstr(line, "PLTSOLVD="))) {
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = s[9] != 'T';
+	} else if ((s = strstr(line, "CRPIX1="))) {
+		ASTAP_DEVICE_PRIVATE_DATA->frame_width = 2 * (int)atof(s + 7);
+	} else if ((s = strstr(line, "CRPIX1="))) {
+		ASTAP_DEVICE_PRIVATE_DATA->frame_height = 2 * (int)atof(s + 7);
+	} else if ((s = strstr(line, "CRVAL1="))) {
+		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = atof(s + 7) / 15.0;
+	} else if ((s = strstr(line, "CRVAL2="))) {
+		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = atof(s + 7);
+	} else if ((s = strstr(line, "CROTA1="))) {
+		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = atof(s + 7);
+	} else if ((s = strstr(line, "CROTA2="))) {
+		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + atof(s + 7)) / 2.0;
+	} else if ((s = strstr(line, "CD1_1="))) {
+		double d = atof(s + 6);
 		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = d >= 0 ? 1 : -1;
-	} else if (sscanf(line, "CD2_2=%lg", &d) == 1) {
+	} else if ((s = strstr(line, "CD2_2="))) {
+		double d = atof(s + 6);
 		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value + d) / 2.0;
 		AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_width * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
 		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
