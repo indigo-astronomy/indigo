@@ -176,6 +176,7 @@ void indigo_platesolver_sync(indigo_device *device) {
 					message = "The initial position for polar error calculation is not specified";
 				} else {
 					indigo_spherical_point_t equatorial_error = {0}, horizontal_error = {0};
+					double solved_altitude = 0;
 					if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY->state == INDIGO_OK_STATE) {
 						indigo_spherical_point_t position;
 						indigo_spherical_point_t position_h;
@@ -251,13 +252,17 @@ void indigo_platesolver_sync(indigo_device *device) {
 						equatorial_error.a = position.a - position_ref2.a;
 						equatorial_error.d = position.d - position_ref2.d;
 						equatorial_error.r = 1;
+
 						horizontal_error.d = position_ref2_h.d + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2.d - position_h.d;
 						horizontal_error.a = position_ref2_h.a + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2.a - position_h.a;
 						horizontal_error.r = 1;
+
+						solved_altitude = position_h.d;
 					} else {
 						indigo_log("%s(): Polar align: Initial correction (Phase I). Refraction %s", __FUNCTION__, compensate_refraction ? "ENABLED" : "DISABLED");
 						double lst_now = indigo_lst(NULL, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.a * RAD2DEG);
 						indigo_spherical_point_t position;
+						indigo_spherical_point_t position_h;
 						indigo_spherical_point_t position_observed;
 						indigo_ra_dec_to_point(
 							AGENT_PLATESOLVER_WCS_RA_ITEM->number.value,
@@ -272,6 +277,13 @@ void indigo_platesolver_sync(indigo_device *device) {
 							lst_now,
 							&position_observed
 						);
+
+						indigo_equatorial_to_hotizontal(
+							&position,
+							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
+							&position_h
+						);
+						solved_altitude = position_h.d;
 
 						indigo_log("%s(): Polar align: LST = %f, Telescope RA = %f, Dec = %f", __FUNCTION__, lst_now, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a * RAD2DEG / 15, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG);
 						indigo_log("%s(): Polar align: Solved HA = %f, Dec = %f", __FUNCTION__, position.a * RAD2DEG / 15, position.d * RAD2DEG);
@@ -316,16 +328,21 @@ void indigo_platesolver_sync(indigo_device *device) {
 					AGENT_PLATESOLVER_PA_ERROR_DEC_ITEM->number.value = equatorial_error.d * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_ALT_CORRECTION_UP_ITEM->number.value = (horizontal_error.d >= 0) ? 1 : 0;
 					AGENT_PLATESOLVER_PA_ERROR_AZ_CORRECTION_CW_ITEM->number.value = (horizontal_error.a >= 0) ? 1 : 0;
-					/* since the sperical error vectors are perpendicular and parrallel to Az and Alt the length can be simplified as follows */
+					/* The great circle distance can be simplified as follows, because these are the errors at the given position !!! */
 					AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value = sqrt(horizontal_error.a * horizontal_error.a + horizontal_error.d * horizontal_error.d) * RAD2DEG;
 					double delta_az = horizontal_error.a * RAD2DEG * 60;
 					double delta_alt = horizontal_error.d * RAD2DEG * 60;
 					double total_delta = AGENT_PLATESOLVER_PA_ERROR_ITEM->number.value * 60;
 
+					indigo_log("%s(): Polar align: Altitude = %.2f", __FUNCTION__, solved_altitude * RAD2DEG);
 					indigo_log("%s(): Polar align: Correction deltaHA = %f', deltaDec = %f'", __FUNCTION__, equatorial_error.a * RAD2DEG * 60, equatorial_error.d * RAD2DEG * 60);
 					indigo_log("%s(): Polar align: Correction deltaAz = %f', deltaAlt = %f'", __FUNCTION__, delta_az, delta_alt);
 					indigo_log("%s(): Polar align: Total offset = %f'", __FUNCTION__, total_delta);
-					indigo_send_message(device, "Calculated offset: %.2f'", total_delta);
+					if (solved_altitude * RAD2DEG < 30) {
+						indigo_send_message(device, "Calculated offset: %.2f' (Polar alignment may not be accurate at %.2f° altitide)", total_delta, solved_altitude * RAD2DEG);
+					} else {
+						indigo_send_message(device, "Calculated offset: %.2f'", total_delta);
+					}
 					indigo_send_message(device, "Azimuth correction: %+.2f', move %s (use azimuth adjustment knob)" , delta_az, (delta_az > 0) ? "C.W." : "C.C.W.");
 					indigo_send_message(device, "Altitude correction: %+.2f', move %s (use altitude adjustment knob)", delta_alt, (delta_alt > 0) ? "Up" : "Down");
 				}
