@@ -263,11 +263,9 @@ typedef struct {
 extern char **environ;
 
 static void parse_line(indigo_device *device, char *line) {
-	double d;
-	char *s;
-	char *nl = strchr(line, '\n');
-	if (nl)
-		*nl = 0;
+	char *s = strchr(line, '\n');
+	if (s)
+		*s = 0;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
 	if ((s = strstr(line, "PLTSOLVD="))) {
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = s[9] != 'T';
@@ -286,7 +284,7 @@ static void parse_line(indigo_device *device, char *line) {
 	} else if ((s = strstr(line, "CD1_1="))) {
 		double d = atof(s + 6);
 		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
-		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = d >= 0 ? 1 : -1;
+		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = d >= 0 ? -1 : 1;
 	} else if ((s = strstr(line, "CD2_2="))) {
 		double d = atof(s + 6);
 		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value + d) / 2.0;
@@ -301,8 +299,9 @@ static void parse_line(indigo_device *device, char *line) {
 		indigo_error("ASTAP Warning: %s", s + 8);
 	} else if ((s = strstr(line, "COMMENT="))) {
 		indigo_log("ASTAP Comment: %s", s + 8);
-	} else if ((s = strstr(line, "Solved")) && sscanf(s, "Solved in %lg", &d) == 1) {
-		indigo_send_message(device, "Solved in %gs", d);
+	}
+	if ((s = strstr(line, "Solved in "))) {
+		indigo_send_message(device, "Solved in %gs", atof(s + 10));
 	}
 }
 
