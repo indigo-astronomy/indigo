@@ -252,6 +252,7 @@ static char base_dir[512];
 typedef struct {
 	platesolver_private_data platesolver;
 	indigo_property *index_property;
+	indigo_timer *time_limit;
 	int frame_width;
 	int frame_height;
 	pid_t pid;
@@ -260,6 +261,56 @@ typedef struct {
 // --------------------------------------------------------------------------------
 
 extern char **environ;
+
+static void parse_line(indigo_device *device, char *line) {
+	char c;
+	double d;
+	char *s;
+	char *nl = strchr(line, '\n');
+	if (nl)
+		*nl = 0;
+	INDIGO_DRIVER_TRACE(DRIVER_NAME, "< %s", line);
+	if (sscanf(line, "PLTSOLVD=%c", &c) == 1) {
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = c != 'T';
+	} else if (sscanf(line, "CRPIX1=%lg", &d) == 1) {
+		ASTAP_DEVICE_PRIVATE_DATA->frame_width = 2 * (int)d;
+	} else if (sscanf(line, "CRPIX2=%lg", &d) == 1) {
+		ASTAP_DEVICE_PRIVATE_DATA->frame_height = 2 * (int)d;
+	} else if (sscanf(line, "CRVAL1=%lg", &d) == 1) {
+		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d / 15.0;
+	} else if (sscanf(line, "CRVAL2=%lg", &d) == 1) {
+		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d;
+	} else if (sscanf(line, "CROTA1=%lg", &d) == 1) {
+		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d;
+	} else if (sscanf(line, "CROTA2=%lg", &d) == 1) {
+		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + d) / 2.0;
+	} else if (sscanf(line, "CD1_1=%lg", &d) == 1) {
+		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
+		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = d >= 0 ? 1 : -1;
+	} else if (sscanf(line, "CD2_2=%lg", &d) == 1) {
+		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value + d) / 2.0;
+		AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_width * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
+		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
+		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value * (d >= 0 ? 1 : -1);
+	} else if ((s = strstr(line, "ERROR="))) {
+		indigo_send_message(device, s + 6);
+		indigo_error("ASTAP Error: %s", s + 8);
+	} else if ((s = strstr(line, "WARNING="))) {
+		indigo_send_message(device, s + 8);
+		indigo_error("ASTAP Warning: %s", s + 8);
+	} else if ((s = strstr(line, "COMMENT="))) {
+		indigo_log("ASTAP Comment: %s", s + 8);
+	} else if ((s = strstr(line, "Solved")) && sscanf(s, "Solved in %lg", &d) == 1) {
+		indigo_send_message(device, "Solved in %gs", d);
+	}
+}
+
+static void time_limit_timer(indigo_device *device) {
+	kill(-ASTAP_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+	ASTAP_DEVICE_PRIVATE_DATA->pid = 0;
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
+	indigo_send_message(device, "Time limit reached!");
+}
 
 static bool execute_command(indigo_device *device, char *command, ...) {
 	char buffer[8 * 1024];
@@ -293,27 +344,28 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		}
 	}
 	close(pipe_stdout[1]);
+	if (!strncmp(command, "astap_cli", 9) && AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value > 0) {
+		indigo_set_timer(device, AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value, time_limit_timer, &ASTAP_DEVICE_PRIVATE_DATA->time_limit);
+	} else {
+		ASTAP_DEVICE_PRIVATE_DATA->time_limit = NULL;
+	}
 	FILE *output = fdopen(pipe_stdout[0], "r");
+	bool res = true;
 	char *line = NULL;
 	size_t size = 0;
-	bool res = true;
-	while (getline(&line, &size, output) >= 0) {
-		char *nl = strchr(line, '\n');
-		if (nl)
-			*nl = 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
-	}
-	if (line) {
+	while (getline(&line, &size, output) >= 0)
+		parse_line(device, line);
+	if (line)
 		free(line);
-		line = NULL;
-	}
 	fclose(output);
+	indigo_cancel_timer(device, &ASTAP_DEVICE_PRIVATE_DATA->time_limit);
 	ASTAP_DEVICE_PRIVATE_DATA->pid = 0;
 	if (AGENT_PLATESOLVER_ABORT_PROPERTY->state == INDIGO_BUSY_STATE) {
 		res = false;
 		AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_OK_STATE;
 		AGENT_PLATESOLVER_ABORT_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
+		indigo_send_message(device, "Aborted!");
 	}
 	return res;
 }
@@ -349,10 +401,10 @@ static void *astap_solve(indigo_platesolver_task *task) {
 		}
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-		char base[512], file[512], wcs[512];
+		char base[512], file[512], ini[512];
 		sprintf(base, "%s/%s_%lX", base_dir, "image", time(0));
 		sprintf(file, "%s.%s", base, ext);
-		sprintf(wcs, "%s.wcs", base);
+		sprintf(ini, "%s.ini", base);
 #pragma clang diagnostic pop
 		int handle = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
@@ -399,61 +451,28 @@ static void *astap_solve(indigo_platesolver_task *task) {
 				break;
 			}
 		}
-
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		if (use_stdin) {
 			if (!execute_command(device, "astap_cli %s -o \"%s\" -f stdin <\"%s\"", params, base, file))
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			if (!execute_command(device, "astap_cli %s -f \"%s\"", params, file))
-				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			FILE *output = fopen(wcs, "r");
-			char *line = NULL;
-			size_t size = 0;
-			if (output == NULL) {
-				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "No solution found");
-				goto cleanup;
-			}
-			while (getline(&line, &size, output) >= 0) {
-				char *nl = strchr(line, '\n');
-				if (nl)
-					*nl = 0;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", line);
-				char c;
-				double d;
-				char *s;
-				if (sscanf(line, "PLTSOLVD=                    %c", &c) == 1) {
-					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = c != 'T';
-				} else if (sscanf(line, "CRPIX1  = %lg", &d) == 1) {
-					ASTAP_DEVICE_PRIVATE_DATA->frame_width = 2 * (int)d;
-				} else if (sscanf(line, "CRPIX2  = %lg", &d) == 1) {
-					ASTAP_DEVICE_PRIVATE_DATA->frame_height = 2 * (int)d;
-				} else if (sscanf(line, "CRVAL1  = %lg", &d) == 1) {
-					AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d / 15.0;
-				} else if (sscanf(line, "CRVAL2  = %lg", &d) == 1) {
-					AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA1  = %lg", &d) == 1) {
-					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = d;
-				} else if (sscanf(line, "CROTA2  = %lg", &d) == 1) {
-					AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + d) / 2.0;
-				} else if (sscanf(line, "CD1_1   = %lg", &d) == 1) {
-					AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
-				} else if (sscanf(line, "CD2_2   = %lg", &d) == 1) {
-					AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value + d) / 2.0;
-					AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_width * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
-					AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
-				} else if ((s = strstr(line, "Solved")) && sscanf(s, "Solved in %lg", &d) == 1) {
-					indigo_send_message(device, "Solved in %gs", d);
+			if (execute_command(device, "astap_cli %s -f \"%s\"", params, file)) {
+				FILE *output = fopen(ini, "r");
+				if (output == NULL) {
+					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Plate solver failed");
+					goto cleanup;
 				}
+				char *line = NULL;
+				size_t size = 0;
+				while (getline(&line, &size, output) >= 0)
+					parse_line(device, line);
+				if (line)
+					free(line);
+				fclose(output);
+			} else {
+				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			if (line) {
-				free(line);
-				line = NULL;
-			}
-			fclose(output);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -495,7 +514,7 @@ static void *astap_solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Plate solver failed");
 		}
 	cleanup:
-		execute_command(device, "rm -rf \"%s\" \"%s\" \"%s.ini\" \"%s.log\"", file, wcs, base, base);
+		execute_command(device, "rm -rf \"%s.*\"", base);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
@@ -606,7 +625,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_PLATESOLVER_USE_INDEX_PROPERTY->rule = INDIGO_ONE_OF_MANY_RULE;
 		AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.min = AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_HINTS_PARITY_ITEM->number.min = AGENT_PLATESOLVER_HINTS_PARITY_ITEM->number.max = 0;
-		AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.max = 0;
 		// -------------------------------------------------------------------------------- AGENT_ASTAP_INDEX
 		char *name, label[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
 		bool present;
@@ -715,7 +733,7 @@ indigo_result indigo_agent_astap(indigo_driver_action action, indigo_driver_info
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			if (!indigo_platesolver_validate_executable("astap_cli")) {
-				indigo_error("ASTAP is not available");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASTAP is not available");
 				return INDIGO_UNRESOLVED_DEPS;
 			}			
 			last_action = action;
