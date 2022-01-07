@@ -154,6 +154,39 @@ bool indigo_compensate_refraction(
 	return true;
 }
 
+bool indigo_compensate_refraction2(
+	const indigo_spherical_point_t *st,
+	const double latitude,
+	const double refraction,
+	indigo_spherical_point_t *st_aparent
+) {
+	double sin_lat = sin(latitude);
+	double cos_lat = cos(latitude);
+	double sin_d = sin(st->d);
+	double cos_d = cos(st->d);
+	double sin_h = sin(st->a);
+	double cos_h = cos(st->a);
+
+	if (cos_d == 0) return false;
+
+	double tan_d = sin_d / cos_d;
+
+	double z = acos(sin_lat * sin_d + cos_lat * cos_d * cos_h);
+	double az = atan2(sin_h, cos_lat * tan_d - sin_lat * cos_h);
+
+	double azd = z - refraction;
+
+	double tan_azd = tan(azd);
+	double cos_az = cos(az);
+
+	st_aparent->a = atan2(sin(az) * tan_azd, cos_lat - sin_lat * cos_az * tan_azd);
+	if (st_aparent->a < 0) st_aparent->a += 2 * M_PI;
+	st_aparent->d = asin(sin_lat * cos(azd) + cos_lat * sin(azd) * cos_az);
+	st_aparent->r = 1;
+	INDIGO_DEBUG(indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG));
+	return true;
+}
+
 /* calculate polar alignment error */
 bool _indigo_polar_alignment_error(
 	const indigo_spherical_point_t *st1,

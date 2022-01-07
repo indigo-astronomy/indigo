@@ -98,6 +98,15 @@ extern bool indigo_compensate_refraction(
 	indigo_spherical_point_t *st_corrected
 );
 
+/** compensate atmospheric refraction
+ */
+extern bool indigo_compensate_refraction2(
+	const indigo_spherical_point_t *st,
+	const double latitude,
+	const double refraction,
+	indigo_spherical_point_t *st_corrected
+);
+
 /** calculate polar alignment error
  */
 extern bool indigo_polar_alignment_error(
