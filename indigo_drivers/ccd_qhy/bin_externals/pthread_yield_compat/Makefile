@@ -40,12 +40,15 @@ ifeq ($(OS_DETECTED),Linux)
 		DEBIAN_ARCH = i386
 	endif
 	ifeq ($(ARCH_DETECTED),x86_64)
-		ifeq ($(wildcard /lib/x86_64-linux-gnu/),)
-			ARCH_DETECTED = x86
-			DEBIAN_ARCH = i386
-		else
+		ifneq ($(wildcard /lib/x86_64-linux-gnu/),)
 			ARCH_DETECTED = x64
 			DEBIAN_ARCH = amd64
+		else ifneq ($(wildcard /lib64/),)
+			ARCH_DETECTED = x64
+			DEBIAN_ARCH = amd64
+		else
+			ARCH_DETECTED = x86
+			DEBIAN_ARCH = i386
 		endif
 	endif
 	CC = gcc
