@@ -104,7 +104,7 @@ This is the list of requirements taken into the consideration:
 74. Lunatico Astronomy Dragonfly Dome / Relay Controller GPIO driver
 75. Rotator Simulator Driver
 76. Lunatico AAG CloudWacher driver
-77. Baader Planetarium Classic (Rotating) dome driver 
+77. Baader Planetarium Classic (Rotating) dome driver
 78. MGBox driver
 79. Manual wheel driver
 80. PMC8 mount controller driver
@@ -136,7 +136,7 @@ It is advised to remove libraw1394-dev
 
 #### Fedora
 
-`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel git curl curl-devel`
+`dnf install automake autoconf cmake libtool gcc gcc-c++ libusb-devel avahi-compat-libdns_sd-devel libudev-devel git curl curl-devel zlib-devel`
 
 It is advised to remove libraw1394-devel
 
