@@ -606,6 +606,7 @@ static indigo_result client_attach(indigo_client *client) {
 static indigo_result client_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	indigo_item *item;
 	int i;
+	int r;
 	static bool called = false;
 
 	if (!called && print_verbose) {
@@ -691,7 +692,31 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 				printf("%s.%s.%s = %d\n", property->device, property->name, item->name, item->light.value);
 				break;
 			case INDIGO_BLOB_VECTOR:
-				printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+				if (property->perm == INDIGO_WO_PERM) {
+					for (r = 0; r < change_request.item_count; r++) {
+						for (i = 0; i < property->count; i++) {
+							item = &(property->items[i]);
+							if (strcmp(item->name, change_request.item_name[r])) continue;
+							int size = read_file(change_request.value_string[r], &item->blob.value);
+							if (size < 0) {
+								fprintf(stderr, "Can't read '%s' file: %s\n", change_request.value_string[r], strerror(errno));
+								exit(1);
+							} else {
+								item->blob.size = size;
+							}
+							if (INDIGO_OK == indigo_change_blob_property_1(client, property->device, property->name, item->name, item->blob.value, item->blob.size, "", item->blob.url)) {
+								printf("%s.%s.%s = <%s => %s>\n", property->device, property->name, item->name, change_request.value_string[r], item->blob.url);
+							} else {
+								fprintf(stderr, "Can't upload %s to %s\n", change_request.value_string[r], item->blob.url);
+								free(item->blob.value);
+								exit(1);
+							}
+							free(item->blob.value);
+						}
+					}
+				} else {
+					printf("%s.%s.%s = <BLOB NOT SHOWN>\n", property->device, property->name, item->name);
+				}
 				break;
 			}
 #ifdef DEBUG
@@ -755,11 +780,13 @@ static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
 	printf("usage: %s [options] device.property.item=value[;item=value;..]\n", name);
 	printf("       %s set [options] device.property.item=value[;item=value;..]\n", name);
-	printf("       %s set_script [options] agent.property.SCRIPT=filename[;NAME=name]\n", name);
+	printf("       %s set_script [options] agent.property.SCRIPT=filename[;NAME=filename]\n", name);
 	printf("       %s get [options] device.property.item[;item;..]\n", name);
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("       %s list_state [options] [device[.property]]\n", name);
+	printf("set write-only BLOBs:\n", name);
+	printf("       %s set [options] device.property.item=filename[;NAME=filename]\n", name);
 	printf("options:\n"
 	       "       -h  | --help\n"
 	       "       -b  | --save-blobs\n"
