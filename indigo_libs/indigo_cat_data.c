@@ -19,14 +19,14 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Mount control agent
+/** INDIGO HIP & DSO data
  \file indigo_cat_data.c
  */
 
 
 #include <stdio.h>
 
-#include "indigo_cat_data.h"
+#include <indigo/indigo_cat_data.h>
 
 indigo_star_entry indigo_star_data[] = {
 	{ 3, 0.0003, 38.8593, 5.24, -2.91, 2.81, 3e-06, 6.61, NULL },

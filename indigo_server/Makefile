@@ -42,14 +42,14 @@ clean: status
 clean-all: status
 	git clean -dfx
 
-$(BUILD_BIN)/indigo_server: ctrlpanel indigo_server.o indigo_cat_data.o $(SIMULATOR_LIBS)
+$(BUILD_BIN)/indigo_server: ctrlpanel indigo_server.o $(SIMULATOR_LIBS)
 ifeq ($(OS_DETECTED),Darwin)
-	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server.o indigo_cat_data.o $(SIMULATOR_LIBS) $(LDFLAGS) -lstdc++ -lindigo
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server.o $(SIMULATOR_LIBS) $(LDFLAGS) -lstdc++ -lindigo
 	install_name_tool -add_rpath @loader_path/../drivers $@
 	install_name_tool -change $(BUILD_LIB)/libindigo.dylib  @rpath/../lib/libindigo.dylib $@
 	install_name_tool -change $(INDIGO_ROOT)/$(BUILD_LIB)/libusb-1.0.dylib  @rpath/../lib/libusb-1.0.dylib $@
 else
-	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server.o indigo_cat_data.o $(SIMULATOR_LIBS) $(LDFLAGS) -lz -ldns_sd -lstdc++ -lindigo
+	$(CC) $(CFLAGS) $(AVAHI_CFLAGS) -o $@ indigo_server.o $(SIMULATOR_LIBS) $(LDFLAGS) -lz -ldns_sd -lstdc++ -lindigo
 endif
 
 #---------------------------------------------------------------------
