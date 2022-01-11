@@ -134,8 +134,10 @@ static void search_stars(indigo_device *device) {
 	if (PRIVATE_DATA->ra != indigo_sim_mount_ra || PRIVATE_DATA->dec != indigo_sim_mount_dec) {
 		double h2r = M_PI / 12;
 		double d2r = M_PI / 180;
-		double rar = indigo_sim_mount_ra * h2r;
-		double decr = indigo_sim_mount_dec * d2r;
+		double mount_ra = indigo_sim_mount_ra * h2r;
+		double mount_dec = indigo_sim_mount_dec * d2r;
+		double cos_mount_dec = cos(mount_dec);
+		double sin_mount_dec = sin(mount_dec);
 		double angle = M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0;
 		double pa = 10000 * cos(angle);
 		double pb = 10000 * sin(angle);
@@ -152,8 +154,12 @@ static void search_stars(indigo_device *device) {
 			indigo_app_star(indigo_star_data[i].promora, indigo_star_data[i].promodec, indigo_star_data[i].px, indigo_star_data[i].rv, &ra, &dec);
 			ra = ra * h2r;
 			dec = dec * d2r;
-			double sx = cos(dec) * sin(ra - rar) / (cos(decr) * cos(dec) * cos(ra - rar) + sin(decr) * sin(dec));
-			double sy = (sin(decr) * cos(dec) * cos(ra - rar) - cos(decr) * sin(dec)) / (cos(decr) * cos(dec) * cos(ra - rar) + sin(decr) * sin(dec));
+			double cos_dec = cos(dec);
+			double sin_dec = sin(dec);
+			double cos_ra_ra = cos(ra - mount_ra);
+			double ccc_ss = cos_mount_dec * cos_dec * cos_ra_ra + sin_mount_dec * sin_dec;
+			double sx = cos_dec * sin(ra - mount_ra) / ccc_ss;
+			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin(dec)) / ccc_ss;
 			double x = pa * sx + pb * sy + pc;
 			double y = pd * sx + pe * sy + pf;
 			if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
