@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	"idnigo_gps_nmea"
 
 #include <stdlib.h>
@@ -82,7 +82,7 @@ static void gps_close(indigo_device *device) {
 
 static char **parse(char *buffer) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
-	if (strncmp("$GP", buffer, 3))
+	if (strncmp("$GP", buffer, 3) && strncmp("$GN", buffer, 3))
 		return NULL;
 	char *index = strchr(buffer, '*');
 	if (index) {
