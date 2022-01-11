@@ -50,8 +50,7 @@
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_novas.h>
-
-#include "indigo_cat_data.h"
+#include <indigo/indigo_cat_data.h>
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"

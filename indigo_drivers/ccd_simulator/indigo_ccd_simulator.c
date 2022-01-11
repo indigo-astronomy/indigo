@@ -37,13 +37,16 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_novas.h>
+#include <indigo/indigo_cat_data.h>
 
 #include "indigo_ccd_simulator.h"
 
 #define WIDTH               1600
 #define HEIGHT              1200
 #define TEMP_UPDATE         5.0
-#define STARS               30
+#define MAX_MAG							8
+#define STARS								100
 #define HOTPIXELS						1500
 #define ECLIPSE							360
 
@@ -90,6 +93,8 @@
 
 extern unsigned short indigo_ccd_simulator_raw_image[];
 extern unsigned char indigo_ccd_simulator_rgb_image[];
+extern struct _cat { float ra, dec; unsigned char mag; } indigo_ccd_simulator_cat[];
+extern int indigo_ccd_simulator_cat_size;
 
 typedef struct {
 	indigo_device *imager, *guider, *dslr, *file;
@@ -104,7 +109,8 @@ typedef struct {
 	indigo_property *guider_settings_property;
 	indigo_property *file_name_property;
 	indigo_property *focuser_settings_property;
-	int star_x[STARS], star_y[STARS], star_a[STARS], hotpixel_x[HOTPIXELS + 1], hotpixel_y[HOTPIXELS + 1];
+	double ra, dec;
+	int star_count, star_x[STARS], star_y[STARS], star_a[STARS], hotpixel_x[HOTPIXELS + 1], hotpixel_y[HOTPIXELS + 1];
 	char imager_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char guider_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
 	char dslr_image[FITS_HEADER_SIZE + 3 * WIDTH * HEIGHT + 2880];
@@ -121,6 +127,48 @@ typedef struct {
 } simulator_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
+
+static int mags[] = { 30000, 10000, 5000, 2500, 1500, 1000, 800, 400, 200 };
+
+static void search_stars(indigo_device *device) {
+	if (PRIVATE_DATA->ra != indigo_sim_mount_ra || PRIVATE_DATA->dec != indigo_sim_mount_dec) {
+		double h2r = M_PI / 12;
+		double d2r = M_PI / 180;
+		double rar = indigo_sim_mount_ra * h2r;
+		double decr = indigo_sim_mount_dec * d2r;
+		double angle = M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0;
+		double pa = 10000 * cos(angle);
+		double pb = 10000 * sin(angle);
+		double pd = 10000 * -sin(angle);
+		double pe = 10000 * cos(angle);
+		double pc = WIDTH / 2;
+		double pf = HEIGHT / 2;
+		PRIVATE_DATA->star_count = 0;
+		for (int i = 0; indigo_star_data[i].hip; i++) {
+			if (indigo_star_data[i].mag > MAX_MAG)
+				continue;
+			double ra = indigo_star_data[i].ra;
+			double dec = indigo_star_data[i].dec;
+			indigo_app_star(indigo_star_data[i].promora, indigo_star_data[i].promodec, indigo_star_data[i].px, indigo_star_data[i].rv, &ra, &dec);
+			ra = ra * h2r;
+			dec = dec * d2r;
+			double sx = cos(dec) * sin(ra - rar) / (cos(decr) * cos(dec) * cos(ra - rar) + sin(decr) * sin(dec));
+			double sy = (sin(decr) * cos(dec) * cos(ra - rar) - cos(decr) * sin(dec)) / (cos(decr) * cos(dec) * cos(ra - rar) + sin(decr) * sin(dec));
+			double x = pa * sx + pb * sy + pc;
+			double y = pd * sx + pe * sy + pf;
+			if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
+				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
+				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)indigo_star_data[i].mag];
+				if (PRIVATE_DATA->star_count++ == STARS)
+					break;
+			}
+		}
+		printf("count = %d", PRIVATE_DATA->star_count);
+		PRIVATE_DATA->ra = indigo_sim_mount_ra;
+		PRIVATE_DATA->dec = indigo_sim_mount_dec;
+	}
+}
 
 // gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
 
@@ -290,6 +338,7 @@ static void create_frame(indigo_device *device) {
 			static time_t start_time = 0;
 			if (start_time == 0)
 				start_time = time(NULL);
+			search_stars(device);
 			double ra_offset = GUIDER_IMAGE_PERR_VAL_ITEM->number.target * sin(GUIDER_IMAGE_PERR_SPD_ITEM->number.target * M_PI * ((time(NULL) - start_time) % 360) / 180) + GUIDER_IMAGE_RA_OFFSET_ITEM->number.value;
 			double guider_sin = sin(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
 			double guider_cos = cos(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
@@ -299,7 +348,7 @@ static void create_frame(indigo_device *device) {
 			double y_offset = ra_offset * guider_sin + GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value * guider_cos + PRIVATE_DATA->ao_ra_offset * ao_sin + PRIVATE_DATA->ao_dec_offset * ao_cos + rand() / (double)RAND_MAX/10 - 0.1;
 			bool y_flip = GUIDER_MODE_FLIP_STARS_ITEM->sw.value;
 			if (GUIDER_MODE_STARS_ITEM->sw.value || GUIDER_MODE_FLIP_STARS_ITEM->sw.value) {
-				for (int i = 0; i < STARS; i++) {
+				for (int i = 0; i < PRIVATE_DATA->star_count; i++) {
 					double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
 					if (center_x < 0)
 						center_x += WIDTH;
@@ -595,6 +644,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_RA_OFFSET_ITEM, "IMAGE_RA_OFFSET", "RA offset (px)", 0, HEIGHT, 0, 0);
 				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "IMAGE_DEC_OFFSET", "DEC offset (px)", 0, HEIGHT, 0, 0);
 				indigo_init_number_item(GUIDER_IMAGE_DECLINATION_ITEM, "GUIDER_DECLINATION", "Guider Declination (°)", -90, +90, 0, 0);
+				search_stars(device);
 			}
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
@@ -620,16 +670,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 			// -------------------------------------------------------------------------------- CCD_GAIN, CCD_OFFSET, CCD_GAMMA
 			CCD_GAIN_PROPERTY->hidden = CCD_OFFSET_PROPERTY->hidden = CCD_GAMMA_PROPERTY->hidden = false;
 			// -------------------------------------------------------------------------------- CCD_IMAGE
-			for (int i = 0; i < 5; i++) {
-				PRIVATE_DATA->star_x[i] = rand() % WIDTH;
-				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 100 * (rand() % 100);
-			}
-			for (int i = 5; i < STARS; i++) {
-				PRIVATE_DATA->star_x[i] = rand() % WIDTH;
-				PRIVATE_DATA->star_y[i] = rand() % HEIGHT;
-				PRIVATE_DATA->star_a[i] = 30 * (rand() % 100);
-			}
 			for (int i = 0; i <= HOTPIXELS; i++) {
 				PRIVATE_DATA->hotpixel_x[i] = rand() % (WIDTH - 200) + 100;
 				PRIVATE_DATA->hotpixel_y[i] = rand() % (HEIGHT - 200) + 100;

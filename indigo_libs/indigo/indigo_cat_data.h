@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Mount control agent
+/** INDIGO HIP & DSO data
  \file indigo_cat_data.h
  */
 

@@ -32,4 +32,3 @@ unsigned short indigo_ccd_simulator_raw_image[] = {
 unsigned char indigo_ccd_simulator_rgb_image[] = {
 #include "indigo_ccd_simulator_rgb.h"
 };
-
