@@ -742,7 +742,7 @@ static void mount_connect_callback(indigo_device *device) {
 					}
 					indigo_define_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 				}
-				if (meade_command(device, ":$QZ?", response, sizeof(response), 0))
+				if (meade_command(device, ":$QZ?#", response, sizeof(response), 0))
 					indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
 				meade_get_observatory(device);
 				meade_get_coords(device);
