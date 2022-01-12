@@ -120,15 +120,6 @@ bool indigo_proxy_blob = false;
 const char **indigo_main_argv = NULL;
 int indigo_main_argc = 0;
 
-// shared data for ccd and mount simulators
-
-double indigo_sim_mount_ra = 14.84511111;
-double indigo_sim_mount_dec = 74.1555;
-double indigo_sim_mount_alt_offset = 0;
-double indigo_sim_mount_az_offset = 0;
-double indigo_sim_mount_lat = 48.1356948;
-double indigo_sim_mount_long = 16.97549;
-
 #define LOG_MESSAGE_SIZE	(128 * 1024)
 
 char *indigo_last_message = NULL;

@@ -1208,8 +1208,4 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 		indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 	}
-	indigo_sim_mount_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
-	indigo_sim_mount_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
-	indigo_sim_mount_long = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-	indigo_sim_mount_lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
 }
