@@ -791,13 +791,6 @@ static inline void indigo_safe_free(void *pointer) {
 extern void *indigo_alloc_large_buffer(void);
 extern void indigo_free_large_buffer(void *large_buffer);
 
-extern double indigo_sim_mount_ra;
-extern double indigo_sim_mount_dec;
-extern double indigo_sim_mount_alt_offset;
-extern double indigo_sim_mount_az_offset;
-extern double indigo_sim_mount_lat;
-extern double indigo_sim_mount_long;
-
 #ifdef __cplusplus
 }
 #endif
