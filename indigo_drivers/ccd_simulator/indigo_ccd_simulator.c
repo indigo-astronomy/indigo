@@ -82,6 +82,8 @@
 #define GUIDER_IMAGE_DEC_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 11)
 #define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 12)
 #define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 13)
+#define GUIDER_IMAGE_ALT_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 14)
+#define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 15)
 
 #define FILE_NAME_PROPERTY					PRIVATE_DATA->file_name_property
 #define FILE_NAME_ITEM							(FILE_NAME_PROPERTY->items + 0)
@@ -154,8 +156,8 @@ static void search_stars(indigo_device *device) {
 			double cos_ra_ra = cos(ra - mount_ra);
 			double sin_ra_ra = sin(ra - mount_ra);
 			double ccc_ss = cos_mount_dec * cos_dec * cos_ra_ra + sin_mount_dec * sin_dec;
-			double sx = cos_dec * sin_ra_ra / ccc_ss;
-			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss;
+			double sx = cos_dec * sin_ra_ra / ccc_ss + GUIDER_IMAGE_AZ_ERROR_ITEM->number.value * d2r;
+			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss + GUIDER_IMAGE_ALT_ERROR_ITEM->number.value * d2r;
 			double x = ppr_cos * sx + ppr_sin * sy + WIDTH / 2;
 			double y = ppr_cos * sy - ppr_sin * sx + HEIGHT / 2;
 			if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
@@ -632,7 +634,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 14);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 16);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "IMAGE_NOISE_VAR", "Image noise range", 1, 1000, 0, 100);
 				indigo_init_number_item(GUIDER_IMAGE_PERR_SPD_ITEM, "PER_ERR_SPD", "Periodic error speed", 0, 1, 0, 0.5);
@@ -647,6 +649,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "IMAGE_DEC_OFFSET", "DEC offset (px)", 0, HEIGHT, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 14.84511111);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 74.1555);
+				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_ALT_ERROR_ITEM, "ALT_ERROR", "Alt error (°)", -30, +30, 0, 0);
+				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_AZ_ERROR_ITEM, "AZ_ERROR", "Az error (°)", -30, +30, 0, 0);
 				search_stars(device);
 			}
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
@@ -977,6 +981,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(GUIDER_SETTINGS_PROPERTY, property, false);
 		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
+		PRIVATE_DATA->ra = PRIVATE_DATA->dec = 0;
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
 	} else if (GUIDER_MODE_PROPERTY && indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property)) {
