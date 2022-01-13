@@ -177,6 +177,24 @@ void indigo_platesolver_sync(indigo_device *device) {
 				} else {
 					indigo_spherical_point_t equatorial_error = {0}, horizontal_error = {0};
 					double solved_altitude = 0;
+					if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY->state == INDIGO_OK_STATE) {
+						indigo_spherical_point_t position;
+						indigo_spherical_point_t position_h;
+						indigo_spherical_point_t position_ref2;
+						indigo_spherical_point_t position_ref2_h;
+
+						indigo_ra_dec_to_point(
+							AGENT_PLATESOLVER_WCS_RA_ITEM->number.value,
+							AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value,
+							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference2,
+							&position
+						);
+
+						position_ref2 = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2;
+
+						indigo_log("%s(): Polar align: Residual correction (Phase II). Refraction %s", __FUNCTION__, compensate_refraction ? "ENABLED" : "DISABLED");
+						indigo_log("%s(): Polar align: Use reference LST = %f", __FUNCTION__, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference2);
+						indigo_log("%s(): Polar align: Solved HA = %f, Dec = %f", __FUNCTION__, position.a * RAD2DEG / 15, position.d * RAD2DEG);
 
 						/* // inject test data
 						indigo_spherical_point_t star2 = { 23 * 15 * DEG2RAD, 45 * DEG2RAD, 1 };
@@ -204,15 +222,45 @@ void indigo_platesolver_sync(indigo_device *device) {
 						indigo_log("%s(): Polar align: Corrected Az = %f, Alt = %f", __FUNCTION__, position.a * RAD2DEG, position.d * RAD2DEG);
 						*/
 
-					{
-						double lst_now;
-						indigo_log("%s(): Polar align: Initial correction (Phase I). Refraction %s", __FUNCTION__, compensate_refraction ? "ENABLED" : "DISABLED");
-						if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY->state == INDIGO_OK_STATE) {
-							lst_now = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference2;
-						} else {
-							lst_now = indigo_lst(NULL, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.a * RAD2DEG);
-							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference2 = lst_now;
+						indigo_equatorial_to_hotizontal(
+							&position,
+							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
+							&position_h
+						);
+						indigo_equatorial_to_hotizontal(
+							&position_ref2,
+							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
+							&position_ref2_h
+						);
+
+						indigo_log("%s(): Polar align: Solved Az = %f, Alt = %f", __FUNCTION__, position_h.a * RAD2DEG, position_h.d * RAD2DEG);
+						indigo_log("%s(): Polar align: Reference2 HA = %f, Dec = %f", __FUNCTION__, position_ref2.a * RAD2DEG / 15, position_ref2.d * RAD2DEG);
+						indigo_log("%s(): Polar align: Reference2 Az = %f, Alt = %f", __FUNCTION__, position_ref2_h.a * RAD2DEG, position_ref2_h.d * RAD2DEG);
+
+						if (compensate_refraction) {
+							double refraction_ref2 = indigo_calculate_refraction(position_ref2_h.d);
+							double refraction_pos = indigo_calculate_refraction(position_h.d);
+
+							position_ref2_h.d -= refraction_ref2;
+							position_h.d -= refraction_pos;
+
+							indigo_log("%s(): Polar align: Refraction @Reference2 = %f', @Solved = %f', diffR = %f'", __FUNCTION__, refraction_ref2 * RAD2DEG * 60, refraction_pos * RAD2DEG * 60, (refraction_ref2 - refraction_pos) * RAD2DEG * 60);
+							indigo_log("%s(): Polar align: Solved Az_r = %f, Alt_r = %f", __FUNCTION__, position_h.a * RAD2DEG, position_h.d * RAD2DEG);
+							indigo_log("%s(): Polar align: Reference2 Az_r = %f, Alt_r = %f", __FUNCTION__, position_ref2_h.a * RAD2DEG, position_ref2_h.d * RAD2DEG);
 						}
+
+						equatorial_error.a = position.a - position_ref2.a;
+						equatorial_error.d = position.d - position_ref2.d;
+						equatorial_error.r = 1;
+
+						horizontal_error.d = position_ref2_h.d + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2.d - position_h.d;
+						horizontal_error.a = position_ref2_h.a + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2.a - position_h.a;
+						horizontal_error.r = 1;
+
+						solved_altitude = position_h.d;
+					} else {
+						indigo_log("%s(): Polar align: Initial correction (Phase I). Refraction %s", __FUNCTION__, compensate_refraction ? "ENABLED" : "DISABLED");
+						double lst_now = indigo_lst(NULL, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.a * RAD2DEG);
 						indigo_spherical_point_t position;
 						indigo_spherical_point_t position_h;
 						indigo_spherical_point_t position_observed;
@@ -270,6 +318,9 @@ void indigo_platesolver_sync(indigo_device *device) {
 							AGENT_PLATESOLVER_PA_ERROR_PROPERTY->state = INDIGO_ALERT_STATE;
 							message = "No solution for polar correction is found";
 						}
+						INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2 = horizontal_error;
+						INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference2 = lst_now;
+						INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2 = position;
 					}
 					AGENT_PLATESOLVER_PA_ERROR_AZ_ITEM->number.value = horizontal_error.a * RAD2DEG;
 					AGENT_PLATESOLVER_PA_ERROR_ALT_ITEM->number.value = horizontal_error.d * RAD2DEG;
