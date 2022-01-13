@@ -418,7 +418,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
-		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error (at current position)", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 7);
+		AGENT_PLATESOLVER_PA_ERROR_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_ERROR_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment error", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 7);
 		if (AGENT_PLATESOLVER_PA_ERROR_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_ERROR_HA_ITEM, AGENT_PLATESOLVER_PA_ERROR_HA_ITEM_NAME, "Hour angle error (°)", -45, 45, 0, 0);
