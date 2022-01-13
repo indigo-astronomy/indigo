@@ -254,7 +254,7 @@ void indigo_platesolver_sync(indigo_device *device) {
 						equatorial_error.r = 1;
 
 						horizontal_error.d = position_ref2_h.d + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2.d - position_h.d;
-						horizontal_error.a = position_ref2_h.a + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2.a - position_h.a + (position_h.d - position_ref2_h.d) * sin(position.a);
+						horizontal_error.a = position_ref2_h.a + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference2.a - position_h.a + (position_ref2_h.d - position_h.d) * 2*sin(position.a);
 						horizontal_error.r = 1;
 
 						solved_altitude = position_h.d;
