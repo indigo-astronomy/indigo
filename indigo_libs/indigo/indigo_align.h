@@ -66,6 +66,12 @@ extern indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spher
  */
 extern indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_point_t *cpoint);
 
+/** rotate cartesian coordinates around axes
+ */
+extern indigo_cartesian_point_t indigo_cartesian_rotate_x(const indigo_cartesian_point_t *point, double angle);
+extern indigo_cartesian_point_t indigo_cartesian_rotate_y(const indigo_cartesian_point_t *point, double angle);
+extern indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_t *point, double angle);
+
 /** convert spherical point in radians to ha/ra dec in hours and degrees
  */
 extern void indigo_spherical_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec);
