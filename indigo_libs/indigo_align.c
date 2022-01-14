@@ -45,6 +45,37 @@ indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_poi
 	return spoint;
 }
 
+/* rotate cartesian coordinates around axes */
+indigo_cartesian_point_t indigo_cartesian_rotate_x(const indigo_cartesian_point_t *point, double angle) {
+	indigo_cartesian_point_t rpoint = {0,0,0};
+	double sin_a = sin(angle);
+	double cos_a = cos(angle);
+	rpoint.x =  point->x;
+	rpoint.y =  point->y * cos_a + point->z * sin_a;
+	rpoint.x = -point->y * sin_a + point->z * cos_a;
+	return rpoint;
+}
+
+indigo_cartesian_point_t indigo_cartesian_rotate_y(const indigo_cartesian_point_t *point, double angle) {
+	indigo_cartesian_point_t rpoint = {0,0,0};
+	double sin_a = sin(angle);
+	double cos_a = cos(angle);
+	rpoint.x = point->x * cos_a - point->z * sin_a;
+	rpoint.y = point->y;
+	rpoint.z = point->x * sin_a + point->z * cos_a;
+	return rpoint;
+}
+
+indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_t *point, double angle) {
+	indigo_cartesian_point_t rpoint = {0,0,0};
+	double sin_a = sin(angle);
+	double cos_a = cos(angle);
+	rpoint.x =  point->x * cos_a + point->y * sin_a;
+	rpoint.y = -point->x * sin_a + point->y * cos_a;
+	rpoint.z =  point->z;
+	return rpoint;
+}
+
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
 void indigo_spherical_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
 	*ra  = lst + spoint->a / DEG2RAD / 15.0 ;
