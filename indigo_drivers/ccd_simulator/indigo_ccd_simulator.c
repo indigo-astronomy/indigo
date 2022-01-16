@@ -48,6 +48,7 @@
 #define STARS								100
 #define HOTPIXELS						1500
 #define ECLIPSE							360
+#define FOV									7
 
 // gp_bits is used as boolean
 #define is_connected                     gp_bits
@@ -130,7 +131,7 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
-static int mags[] = { 30000, 10000, 5000, 2500, 1500, 1000, 800, 400, 200 };
+static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 500 };
 
 static void search_stars(indigo_device *device) {
 	if (PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value) {
@@ -141,16 +142,21 @@ static void search_stars(indigo_device *device) {
 		double cos_mount_dec = cos(mount_dec);
 		double sin_mount_dec = sin(mount_dec);
 		double angle = M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0;
-		double ppr = 10000; // pixel/radian
+		double ppr = HEIGHT / FOV / d2r; // pixel/radian
+		double radius = FOV * d2r * 2;
 		double ppr_cos = ppr * cos(angle);
 		double ppr_sin = ppr * sin(angle);
 		PRIVATE_DATA->star_count = 0;
-		indigo_star_entry *star_data = indigo_get_star_data();
-		for (int i = 0; star_data[i].hip; i++) {
-			if (star_data[i].mag > MAX_MAG)
+		for (indigo_star_entry *star_data = indigo_get_star_data(); star_data->hip; star_data++) {
+			if (star_data->mag > MAX_MAG)
 				continue;
-			double ra = star_data[i].ra * h2r;
-			double dec = star_data[i].dec * d2r;
+			double ra = star_data->ra * h2r;
+			double dec = star_data->dec * d2r;
+			if (fabs(dec - mount_dec) > radius)
+				continue;
+			double dist = fabs(ra - mount_ra);
+			if (dist > radius && 2 * M_PI - dist > radius)
+				continue;
 			double cos_dec = cos(dec);
 			double sin_dec = sin(dec);
 			double cos_ra_ra = cos(ra - mount_ra);
@@ -161,11 +167,14 @@ static void search_stars(indigo_device *device) {
 			double x = ppr_cos * sx + ppr_sin * sy + WIDTH / 2;
 			double y = ppr_cos * sy - ppr_sin * sx + HEIGHT / 2;
 			if (x >= 0 && x < WIDTH && y >= 0 && y < HEIGHT) {
+				//printf("HIP%5d %6.4f %+7.4f %6.1f %6.1f\n", star_data->hip, star_data->ra, star_data->dec, x, y);
 				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
 				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
-				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)star_data[i].mag];
+				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)star_data->mag];
 				if (PRIVATE_DATA->star_count++ == STARS)
 					break;
+			} else {
+				continue;
 			}
 		}
 		PRIVATE_DATA->ra = GUIDER_IMAGE_RA_ITEM->number.value;
@@ -651,7 +660,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 74.1555);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_ALT_ERROR_ITEM, "ALT_ERROR", "Alt error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_AZ_ERROR_ITEM, "AZ_ERROR", "Az error (°)", -30, +30, 0, 0);
-				search_stars(device);
+				PRIVATE_DATA->ra = PRIVATE_DATA->dec = -1000;
 			}
 			// -------------------------------------------------------------------------------- CCD_INFO, CCD_BIN, CCD_MODE, CCD_FRAME
 			CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = WIDTH;
