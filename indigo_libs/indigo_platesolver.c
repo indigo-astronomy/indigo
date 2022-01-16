@@ -222,20 +222,20 @@ void indigo_platesolver_sync(indigo_device *device) {
 						indigo_log("%s(): Polar align: Corrected Az = %f, Alt = %f", __FUNCTION__, position.a * RAD2DEG, position.d * RAD2DEG);
 						*/
 
-						indigo_spherical_point_t position_ref2_0 = position_ref2;
-						position_ref2_0.a = 180.0001 * DEG2RAD;
-						position_ref2_0.d = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d;
-						indigo_spherical_point_t position_0 = position;
-						position_0.a = position_0.a - position_ref2.a + 180.0001 * DEG2RAD;
-						position_0.d = position_0.d - position_ref2.d + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d;
+						//indigo_spherical_point_t position_ref2_0 = position_ref2;
+						//position_ref2_0.a = 180.0001 * DEG2RAD;
+						//position_ref2_0.d = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d;
+						//indigo_spherical_point_t position_0 = position;
+						//position_0.a = position_0.a - position_ref2.a + 180.0001 * DEG2RAD;
+						//position_0.d = position_0.d - position_ref2.d + INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d;
 
 						indigo_equatorial_to_hotizontal(
-							&position_0,
+							&position,
 							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
 							&position_h
 						);
 						indigo_equatorial_to_hotizontal(
-							&position_ref2_0,
+							&position_ref2,
 							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
 							&position_ref2_h
 						);
