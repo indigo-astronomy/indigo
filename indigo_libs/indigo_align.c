@@ -26,7 +26,6 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_align.h>
 
-/* convert spherical to cartesian coordinates */
 indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spherical_point_t *spoint) {
 	indigo_cartesian_point_t cpoint = {0,0,0};
 	double cos_d = cos(spoint->d);
@@ -37,22 +36,23 @@ indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spherical_po
 }
 
 /* convert spherical (in radians) to cartesian coordinates */
-indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_point_t *cpoint) {
+indigo_spherical_point_t indigo_cartesian_to_spherical(const indigo_cartesian_point_t *cpoint) {
 	indigo_spherical_point_t spoint = {0,0,0};
 	spoint.r = sqrt(cpoint->x * cpoint->x + cpoint->y * cpoint->y + cpoint->z * cpoint->z);
-	spoint.a = atan(cpoint->y / cpoint->x);
-	spoint.d = acos(cpoint->z / spoint.r);
+	spoint.a = atan2(cpoint->y, cpoint->x);
+	if (spoint.a < 0) spoint.a += 2 * M_PI;
+	spoint.d = asin(cpoint->z / spoint.r);
 	return spoint;
 }
 
 /* rotate cartesian coordinates around axes */
 indigo_cartesian_point_t indigo_cartesian_rotate_x(const indigo_cartesian_point_t *point, double angle) {
 	indigo_cartesian_point_t rpoint = {0,0,0};
-	double sin_a = sin(angle);
-	double cos_a = cos(angle);
+	double sin_a = sin(-angle);
+	double cos_a = cos(-angle);
 	rpoint.x =  point->x;
 	rpoint.y =  point->y * cos_a + point->z * sin_a;
-	rpoint.x = -point->y * sin_a + point->z * cos_a;
+	rpoint.z =  -point->y * sin_a + point->z * cos_a;
 	return rpoint;
 }
 
@@ -68,8 +68,8 @@ indigo_cartesian_point_t indigo_cartesian_rotate_y(const indigo_cartesian_point_
 
 indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_t *point, double angle) {
 	indigo_cartesian_point_t rpoint = {0,0,0};
-	double sin_a = sin(angle);
-	double cos_a = cos(angle);
+	double sin_a = sin(-angle);
+	double cos_a = cos(-angle);
 	rpoint.x =  point->x * cos_a + point->y * sin_a;
 	rpoint.y = -point->x * sin_a + point->y * cos_a;
 	rpoint.z =  point->z;
@@ -277,4 +277,31 @@ bool indigo_polar_alignment_error(
 	} else {
 		return _indigo_polar_alignment_error(st1, st2, st2_observed, latitude, equatorial_error, horizontal_error);
 	}
+}
+
+/* calculate aparent polar alignment correction for a gven poition */
+bool indigo_polar_alignment_corrections_at_position(
+	const indigo_spherical_point_t *position,
+	const double latitude,
+	const indigo_spherical_point_t *horizontal_error,
+	indigo_spherical_point_t *target_position,
+	indigo_spherical_point_t *horizontal_correction
+) {
+	if (!horizontal_correction || !target_position) {
+		return false;
+	}
+	indigo_spherical_point_t position_h;
+	indigo_equatorial_to_hotizontal(position, latitude, &position_h);
+
+	indigo_cartesian_point_t position_hc = indigo_spherical_to_cartesian(&position_h);
+	indigo_cartesian_point_t position_hcr = indigo_cartesian_rotate_y(&position_hc, -horizontal_error->d);
+	indigo_spherical_point_t position_hr = indigo_cartesian_to_spherical(&position_hcr);
+	// rotation in azumuth is simply adding the angle
+	position_hr.a += horizontal_error->a;
+
+	horizontal_correction->a = position_hr.a - position_h.a;
+	horizontal_correction->d = position_hr.d - position_h.d;
+	horizontal_correction->r = 1;
+	*target_position =  position_hr;
+	return true;
 }
