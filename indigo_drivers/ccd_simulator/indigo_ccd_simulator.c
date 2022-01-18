@@ -360,7 +360,7 @@ static void create_frame(indigo_device *device) {
 			double x_offset = ra_offset * guider_cos - GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value * guider_sin + PRIVATE_DATA->ao_ra_offset * ao_cos - PRIVATE_DATA->ao_dec_offset * ao_sin + rand() / (double)RAND_MAX/10 - 0.1;
 			double y_offset = ra_offset * guider_sin + GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value * guider_cos + PRIVATE_DATA->ao_ra_offset * ao_sin + PRIVATE_DATA->ao_dec_offset * ao_cos + rand() / (double)RAND_MAX/10 - 0.1;
 			bool y_flip = GUIDER_MODE_FLIP_STARS_ITEM->sw.value;
-			if (GUIDER_MODE_STARS_ITEM->sw.value || GUIDER_MODE_FLIP_STARS_ITEM->sw.value) {
+			if (GUIDER_MODE_STARS_ITEM->sw.value || y_flip) {
 				for (int i = 0; i < PRIVATE_DATA->star_count; i++) {
 					double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
 					if (center_x < 0)
@@ -375,14 +375,14 @@ static void create_frame(indigo_device *device) {
 					center_x -= frame_left;
 					center_y -= frame_top;
 					int a = private_data->star_a[i];
-					int xMax = (int)round(center_x) + 4 / horizontal_bin;
-					int yMax = (int)round(center_y) + 4 / vertical_bin;
-					for (int y = yMax - 8 / vertical_bin; y <= yMax; y++) {
+					int xMax = (int)round(center_x) + 8 / horizontal_bin;
+					int yMax = (int)round(center_y) + 8 / vertical_bin;
+					for (int y = yMax - 16 / vertical_bin; y <= yMax; y++) {
 						if (y < 0 || y >= frame_height)
 							continue;
 						int yw = y * frame_width;
 						double yy = center_y - y;
-						for (int x = xMax - 8 / horizontal_bin; x <= xMax; x++) {
+						for (int x = xMax - 16 / horizontal_bin; x <= xMax; x++) {
 							if (x < 0 || x >= frame_width)
 								continue;
 							double xx = center_x - x;
