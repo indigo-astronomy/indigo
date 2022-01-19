@@ -64,7 +64,7 @@ extern indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spher
 
 /** convert spherical (in radians) to cartesian coordinates
  */
-extern indigo_spherical_point_t indigo_cartesian_to_spherical(const indigo_cartesian_point_t *cpoint);
+extern indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_point_t *cpoint);
 
 /** rotate cartesian coordinates around axes
  */
@@ -123,16 +123,6 @@ extern bool indigo_polar_alignment_error(
 	const bool compensate_refraction,
 	indigo_spherical_point_t *equatorial_error,
 	indigo_spherical_point_t *horizontal_error
-);
-
-/** calculate aparent polar alignment correction and tagget for a gven poition
- */
-bool indigo_polar_alignment_corrections_at_position(
-	const indigo_spherical_point_t *position,
-	const double latitude,
-	const indigo_spherical_point_t *horizontal_error,
-	indigo_spherical_point_t *target_position,
-	indigo_spherical_point_t *horizontal_correction
 );
 
 #ifdef __cplusplus
