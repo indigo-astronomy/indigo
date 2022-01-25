@@ -727,8 +727,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
     pthread_mutexattr_init(&Attr);
     pthread_mutexattr_settype(&Attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&PRIVATE_DATA->mutex, &Attr);
-		PRIVATE_DATA->ctx = duk_create_heap_default();
-		if (PRIVATE_DATA->ctx) {
+		if ((PRIVATE_DATA->ctx = duk_create_heap_default())) {
       pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			duk_push_c_function(PRIVATE_DATA->ctx, error_message, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_error");
