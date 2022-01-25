@@ -50,8 +50,7 @@
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_novas.h>
-
-#include "indigo_cat_data.h"
+#include <indigo/indigo_cat_data.h>
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
@@ -450,16 +449,14 @@ static void *indigo_add_star_json_resource(int max_mag) {
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
 	unsigned size = (unsigned)strlen(buffer);
 	char *sep = "";
-	for (int i = 0; indigo_star_data[i].hip; i++) {
-		if (indigo_star_data[i].mag > max_mag)
+	indigo_star_entry *star_data = indigo_get_star_data();
+	for (int i = 0; star_data[i].hip; i++) {
+		if (star_data[i].mag > max_mag)
 			continue;
-		double ra = indigo_star_data[i].ra;
-		double dec = indigo_star_data[i].dec;
-		indigo_app_star(indigo_star_data[i].promora, indigo_star_data[i].promodec, indigo_star_data[i].px, indigo_star_data[i].rv, &ra, &dec);
 		char desig[256] = "";
 		char *name = "";
-		if (indigo_star_data[i].name) {
-			strcpy(desig, indigo_star_data[i].name);
+		if (star_data[i].name) {
+			strcpy(desig, star_data[i].name);
 			name = strrchr(desig, ',');
 			if (name) {
 				*name = 0;
@@ -468,9 +465,7 @@ static void *indigo_add_star_json_resource(int max_mag) {
 				name = "";
 			}
 		}
-		// TODO: map is generated from J2K instead of JNow
-		//size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_star_data[i].hip, name, desig, indigo_star_data[i].mag, h2deg(indigo_star_data[i].ra = ra), indigo_star_data[i].dec = dec);
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_star_data[i].hip, name, desig, indigo_star_data[i].mag, h2deg(indigo_star_data[i].ra), indigo_star_data[i].dec);
+		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, star_data[i].hip, name, desig, star_data[i].mag, h2deg(star_data[i].ra), star_data[i].dec);
 		if (buffer_size - size < 1024) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
@@ -491,18 +486,16 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
 	unsigned size = (unsigned)strlen(buffer);
 	char *sep = "";
-	for (int i = 0; indigo_dso_data[i].id; i++) {
+	indigo_dso_entry *dso_data = indigo_get_dso_data();
+	for (int i = 0; dso_data[i].id; i++) {
 		/* Filter by magnitude, but remove objects without name or mesier designation*/
 		if (
-			indigo_dso_data[i].mag > max_mag
-			|| indigo_dso_data[i].name[0] == '\0'
-			|| (indigo_dso_data[i].name[0] == 'I' && indigo_dso_data[i].name[1] == 'C')
-			//|| (indigo_dso_data[i].name[0] == 'N' && indigo_dso_data[i].name[1] == 'G' && indigo_dso_data[i].name[2] == 'C')
+			dso_data[i].mag > max_mag
+			|| dso_data[i].name[0] == '\0'
+			|| (dso_data[i].name[0] == 'I' && dso_data[i].name[1] == 'C')
+			//|| (dso_data[i].name[0] == 'N' && dso_data[i].name[1] == 'G' && dso_data[i].name[2] == 'C')
 		) continue;
-		double ra = indigo_dso_data[i].ra;
-		double dec = indigo_dso_data[i].dec;
-		indigo_app_star(0, 0, 0, 0, &ra, &dec);
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"oc\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, indigo_dso_data[i].id, indigo_dso_data[i].id, indigo_dso_data[i].name, indigo_dso_data[i].mag, h2deg(indigo_dso_data[i].ra = ra), indigo_dso_data[i].dec = dec);
+		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":\"%s\",\"properties\":{\"name\": \"%s\",\"desig\": \"%s\",\"type\":\"oc\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, dso_data[i].id, dso_data[i].id, dso_data[i].name, dso_data[i].mag, h2deg(dso_data[i].ra), dso_data[i].dec);
 		if (buffer_size - size < 1024) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
@@ -522,13 +515,14 @@ static int add_multiline(char *buffer, ...) {
 	va_list ap;
 	va_start(ap, buffer);
 	char *sep = "";
+	indigo_star_entry *star_data = indigo_get_star_data();
 	static char *sep2 = "";
 	size += sprintf(buffer, "%s[", sep2);
 	sep2 = ",";
 	for (int hip = va_arg(ap, int); hip; hip = va_arg(ap, int)) {
-		for (int i = 0; indigo_star_data[i].hip; i++) {
-			if (indigo_star_data[i].hip == hip) {
-				size += sprintf(buffer + size, "%s[%.4f,%.4f]", sep, h2deg(indigo_star_data[i].ra), indigo_star_data[i].dec);
+		for (int i = 0; star_data[i].hip; i++) {
+			if (star_data[i].hip == hip) {
+				size += sprintf(buffer + size, "%s[%.4f,%.4f]", sep, h2deg(star_data[i].ra), star_data[i].dec);
 				sep = ",";
 				break;
 			}

@@ -514,7 +514,7 @@ static void *astap_solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Plate solver failed");
 		}
 	cleanup:
-		execute_command(device, "rm -rf \"%s.*\"", base);
+		execute_command(device, "rm -rf \"image_%s.*\"", base);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
