@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Mount control agent
+/** INDIGO HIP & DSO data
  \file indigo_cat_data.h
  */
 
@@ -50,6 +50,7 @@ typedef struct {
 	double ra, dec;
 	float promora, promodec, px, rv, mag;
 	char *name;
+	double ra_now, dec_now;
 } indigo_star_entry;
 
 typedef struct {
@@ -58,10 +59,12 @@ typedef struct {
 	double ra, dec;
 	float mag, r1, r2, angle;
 	char *name;
+	double ra_now, dec_now;
 } indigo_dso_entry;
 
-extern indigo_star_entry indigo_star_data[];
-extern indigo_dso_entry indigo_dso_data[];
 extern char *indigo_dso_type_description[];
+
+extern indigo_star_entry *indigo_get_star_data(void);
+extern indigo_dso_entry *indigo_get_dso_data(void);
 
 #endif /* star_data_h */

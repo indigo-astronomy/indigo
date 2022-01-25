@@ -565,7 +565,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, message);
 		}
 	cleanup:
-		execute_command(device, "rm -rf \"%s\" \"%s.xy\" \"%s.axy\" \"%s.wcs\" \"%s.corr\" \"%s.match\" \"%s.rdls\" \"%s.solved\" \"%s-indx.xyls\"", base, base, base, base, base, base, base, base, base);
+		execute_command(device, "rm -rf \"%s/image_*.*\"", base_dir);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");

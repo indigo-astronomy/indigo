@@ -19,16 +19,21 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Mount control agent
+/** INDIGO HIP & DSO data
  \file indigo_cat_data.c
  */
 
 
 #include <stdio.h>
+#include <stdbool.h>
 
-#include "indigo_cat_data.h"
+#include <indigo/indigo_novas.h>
+#include <indigo/indigo_cat_data.h>
 
-indigo_star_entry indigo_star_data[] = {
+static bool star_data_updated = false;
+static bool dso_data_updated = false;
+
+static indigo_star_entry indigo_star_data[] = {
 	{ 3, 0.0003, 38.8593, 5.24, -2.91, 2.81, 3e-06, 6.61, NULL },
 	{ 11, 0.0025, 46.94, 11.09, -2.02, 4.29, 6e-06, 7.34, NULL },
 	{ 14, 0.0032, -0.3604, 61.75, -11.67, 5.11, 0.000155, 7.25, NULL },
@@ -41303,7 +41308,7 @@ char *indigo_dso_type_description[] = {
 	"Nova star"
 };
 
-indigo_dso_entry indigo_dso_data[] = {
+static indigo_dso_entry indigo_dso_data[] = {
 	{ "Sh 2-276", EMISSION_NEBULA, 5.45, -3.96, 5.0, 600.0, 600.0, 0.0, "Barnard's Loop" },
 	{ "Cl Melotte 22", OPEN_CLUSTER, 3.79, 24.11, 1.6, 110, 110, 0, "M45,  Seven Sisters, The Pleiades" },
 	{ "C41", OPEN_CLUSTER, 4.45, 15.87, 0.5, 330, 330, 0, "Melotte 25, The Hyades" },
@@ -53392,3 +53397,31 @@ indigo_dso_entry indigo_dso_data[] = {
 	{ "NGC7840", GALAXY, 0.1191, 8.3835, 16.47, 0.68, 0.46, 127, "" },
 	{ NULL }
 };
+
+indigo_star_entry *indigo_get_star_data(void) {
+	if (!star_data_updated) {
+		for (int i = 0; indigo_star_data[i].hip; i++) {
+			double ra = indigo_star_data[i].ra;
+			double dec = indigo_star_data[i].dec;
+			indigo_app_star(indigo_star_data[i].promora, indigo_star_data[i].promodec, indigo_star_data[i].px, indigo_star_data[i].rv, &ra, &dec);
+			indigo_star_data[i].ra_now = ra;
+			indigo_star_data[i].dec_now = dec;
+		}
+		star_data_updated = true;
+	}
+	return indigo_star_data;
+}
+
+indigo_dso_entry *indigo_get_dso_data(void) {
+	if (!dso_data_updated) {
+		for (int i = 0; indigo_dso_data[i].id; i++) {
+			double ra = indigo_dso_data[i].ra;
+			double dec = indigo_dso_data[i].dec;
+			indigo_app_star(0, 0, 0, 0, &ra, &dec);
+			indigo_dso_data[i].ra_now = ra;
+			indigo_dso_data[i].dec_now = dec;
+		}
+		dso_data_updated = true;
+	}
+	return indigo_dso_data;
+}
