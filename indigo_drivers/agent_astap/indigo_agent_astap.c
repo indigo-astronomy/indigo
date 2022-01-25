@@ -372,13 +372,21 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 
 #define astap_save_config indigo_platesolver_save_config
 
-static void *astap_solve(indigo_platesolver_task *task) {
-	indigo_device *device = task->device;
-	void *image = task->image;
-	unsigned long image_size = task->size;
+static bool astap_solve(indigo_device *device, void *image, unsigned long image_size) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		char *ext = "raw";
 		bool use_stdin = false;
+		char *message = "";
+		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
+		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		if (!strncmp("SIMPLE", (const char *)image, 6)) {
 			ext = "fits";
 			const char *header = (const char *)image;
@@ -409,22 +417,12 @@ static void *astap_solve(indigo_platesolver_task *task) {
 		int handle = open(file, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Can't create temporary image file");
+			message = "Can't create temporary image file";
 			goto cleanup;
 		}
 		indigo_write(handle, (const char *)image, image_size);
 		close(handle);
 		// execute astap plate solver
-		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
-		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
-		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		char params[512] = "";
 		int params_index = 0;
 		params_index = sprintf(params, "-z %d", (int)AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM->number.value);
@@ -460,7 +458,7 @@ static void *astap_solve(indigo_platesolver_task *task) {
 				FILE *output = fopen(ini, "r");
 				if (output == NULL) {
 					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Plate solver failed");
+					message = "Plate solver failed";
 					goto cleanup;
 				}
 				char *line = NULL;
@@ -477,51 +475,17 @@ static void *astap_solve(indigo_platesolver_task *task) {
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_platesolver_sync(device);
-			if (
-				AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value ||
-				AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value ||
-				AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM->sw.value ||
-				AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value
-			) {
-				/* continue to be busy while mount is moving or syncing but show the solution */
-				indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-				for (int i = 0; i < 300; i++) { // wait 3 s to become BUSY
-					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state == INDIGO_BUSY_STATE) {
-						break;
-					}
-					indigo_usleep(10000);
-				}
-				for (int i = 0; i < 300; i++) { // wait 30s to become not BUSY
-					if (time(NULL) - INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_timestamp > 5) {
-						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-						break;
-					}
-					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_BUSY_STATE) {
-						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state;
-						break;
-					}
-					indigo_usleep(100000);
-				}
-			} else if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
-		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_OK_STATE) {
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		} else {
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Plate solver failed");
-		}
 	cleanup:
 		execute_command(device, "rm -rf \"image_%s.*\"", base);
+		if (message[0] == '\0')
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+		else
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, message);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
+		return !INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed;
 	}
-	free(task->image);
-	free(task);
-	return NULL;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
+	return false;
 }
 
 static void sync_installed_indexes(indigo_device *device, char *dir, indigo_property *property) {
