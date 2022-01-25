@@ -301,12 +301,19 @@ static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
 
 #define astrometry_save_config indigo_platesolver_save_config
 
-static void *astrometry_solve(indigo_platesolver_task *task) {
-	indigo_device *device = task->device;
-	void *image = task->image;
-	unsigned long image_size = task->size;
+static bool astrometry_solve(indigo_device *device, void *image, unsigned long image_size) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
-		void *intermediate_image = NULL;
+		char *message = "";
+		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
+		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
 		char base[512];
@@ -316,7 +323,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		int handle = open(base, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Can't create temporary image file");
+			message = "Can't create temporary image file";
 			goto cleanup;
 		}
 		if (!strncmp("SIMPLE", (const char *)image, 6)) {
@@ -324,6 +331,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			indigo_write(handle, (const char *)image, image_size);
 			ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = 0;
 		} else {
+			void *intermediate_image = NULL;
 			int byte_per_pixel = 0, components = 0;
 			if (!strncmp("RAW1", (const char *)(image), 4)) {
 				// 8 bit RAW
@@ -362,7 +370,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				if (setjmp(cinfo.jpeg_error)) {
 					jpeg_destroy_decompress(&cinfo.pub);
 					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Broken JPEG file");
+					message = "Broken JPEG file";
 					goto cleanup;
 				}
 				jpeg_create_decompress(&cinfo.pub);
@@ -371,7 +379,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 				if (rc < 0) {
 					jpeg_destroy_decompress(&cinfo.pub);
 					AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Broken JPEG file");
+					message = "Broken JPEG file";
 					goto cleanup;
 				}
 				jpeg_start_decompress(&cinfo.pub);
@@ -393,7 +401,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			}
 			if (image == NULL) {
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Unsupported image format");
+				message = "Unsupported image format";
 				close(handle);
 				goto cleanup;
 			}
@@ -458,22 +466,12 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		}
 		close(handle);
 		// execute astrometry.net plate solver
-		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
-		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
-		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		char path[INDIGO_VALUE_SIZE];
 		snprintf(path, sizeof((path)), "%s/astrometry.cfg", base_dir);
 		handle = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 		if (handle < 0) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Can't create astrometry.cfg");
+			message = "Can't create astrometry.cfg";
 			goto cleanup;
 		}
 		char config[INDIGO_VALUE_SIZE];
@@ -492,7 +490,6 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		}
 		close(handle);
 		char hints[512] = "";
-		char message[256] = "";
 		int hints_index = 0;
 		if (ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width == 0 || ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height == 0) {
 			hints_index += sprintf(hints + hints_index, " -v");
@@ -502,7 +499,7 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 		}
 		if (!execute_command(device, "image2xy -O%s -o \"%s.xy\" \"%s\"", hints, base, base)) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, "Execution of image2xy failed");
+			message = "Execution of image2xy failed";
 			goto cleanup;
 		}
 		*hints = 0;
@@ -525,54 +522,19 @@ static void *astrometry_solve(indigo_platesolver_task *task) {
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed) {
-			//strcpy(message, "No solution found");
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_platesolver_sync(device);
-			if (
-				AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value ||
-				AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value ||
-				AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM->sw.value ||
-				AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value
-			) {
-				/* continue to be busy while mount is moving or syncing but show the solution */
-				indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-				for (int i = 0; i < 300; i++) { // wait 3 s to become BUSY
-					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state == INDIGO_BUSY_STATE) {
-						break;
-					}
-					indigo_usleep(10000);
-				}
-				for (int i = 0; i < 300; i++) { // wait 30s to become not BUSY
-					if (time(NULL) - INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_timestamp > 5) {
-						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
-						break;
-					}
-					if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_BUSY_STATE) {
-						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state;
-						break;
-					}
-					indigo_usleep(100000);
-				}
-			} else if (AGENT_PLATESOLVER_WCS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
-			}
-		}
-		if (message[0] == '\0') {
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-		} else {
-			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, message);
 		}
 	cleanup:
 		execute_command(device, "rm -rf \"%s/image_*.*\"", base_dir);
+		if (message[0] == '\0')
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+		else
+			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, message);
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
+		return !INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed;
 	}
-	free(task->image);
-	free(task);
-	return NULL;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Solver is busy");
+	return false;
 }
 
 static void sync_installed_indexes(indigo_device *device, char *dir, indigo_property *property) {
