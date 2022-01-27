@@ -695,8 +695,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.PixelSize;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->info.BitDepth;
 
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
+		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = PRIVATE_DATA->info.MaxWidth;
+		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = PRIVATE_DATA->info.MaxHeight;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = get_pixel_depth(device);
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 24;
@@ -820,7 +820,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		res = ASIGetControlValue(id, ASI_EXPOSURE, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
-		CCD_EXPOSURE_ITEM->number.value = us2s(value);
+		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = us2s(value);
 		return INDIGO_OK;
 	}
 
@@ -837,7 +837,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		res = ASIGetControlValue(id, ASI_GAIN, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_GAIN) = %d", id, res);
-		CCD_GAIN_ITEM->number.value = value;
+		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
 		CCD_GAIN_ITEM->number.step = 1;
 		return INDIGO_OK;
 	}
@@ -855,7 +855,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		res = ASIGetControlValue(id, ASI_GAMMA, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_GAMMA) = %d", id, res);
-		CCD_GAMMA_ITEM->number.value = value;
+		CCD_GAMMA_ITEM->number.value = CCD_GAMMA_ITEM->number.target = value;
 		CCD_GAMMA_ITEM->number.step = 1;
 		return INDIGO_OK;
 	}
@@ -873,7 +873,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		res = ASIGetControlValue(id, ASI_BRIGHTNESS, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_BRIGHTNESS) = %d", id, res);
-		CCD_OFFSET_ITEM->number.value = value;
+		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
 		CCD_OFFSET_ITEM->number.step = 1;
 		return INDIGO_OK;
 	}
@@ -887,7 +887,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.MaxValue;
-		CCD_TEMPERATURE_ITEM->number.value = ctrl_caps.DefaultValue;
+		CCD_TEMPERATURE_ITEM->number.value = CCD_TEMPERATURE_ITEM->number.target = ctrl_caps.DefaultValue;
 		PRIVATE_DATA->target_temperature = ctrl_caps.DefaultValue;
 		PRIVATE_DATA->can_check_temperature = true;
 		return INDIGO_OK;
@@ -926,7 +926,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
-		CCD_COOLER_POWER_ITEM->number.value = value;
+		CCD_COOLER_POWER_ITEM->number.value = CCD_COOLER_POWER_ITEM->number.target = value;
 		return INDIGO_OK;
 	}
 
