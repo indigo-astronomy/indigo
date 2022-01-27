@@ -348,11 +348,14 @@ static void solve(indigo_platesolver_task *task) {
 	double recenter_dec = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value;
 
 	indigo_log("%s(): 1 state POLAR_ALIGN_IDLE -> POLAR_ALIGN_START", __FUNCTION__);
-	if (AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM->sw.value) {
-		indigo_log("%s(): 2 state POLAR_ALIGN_IDLE -> POLAR_ALIGN_START", __FUNCTION__);
-		if(AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE) {
+	if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE) {
+		if (AGENT_PLATESOLVER_SYNC_SET_PA_REFERENCE_AND_MOVE_ITEM->sw.value) {
 			indigo_log("%s(): state POLAR_ALIGN_IDLE -> POLAR_ALIGN_START", __FUNCTION__);
 			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_START;
+			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+		} else if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
+			indigo_log("%s(): state POLAR_ALIGN_IDLE -> POLAR_ALIGN_RECALCULATE", __FUNCTION__);
+			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_RECALCULATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 		}
 	}
@@ -432,6 +435,9 @@ static void solve(indigo_platesolver_task *task) {
 
 	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
 		calculate_pa_error(device);
+		indigo_log("%s(): state POLAR_ALIGN_RECALCULATE -> POLAR_ALIGN_IDLE", __FUNCTION__);
+		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 	}
 
 	AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
