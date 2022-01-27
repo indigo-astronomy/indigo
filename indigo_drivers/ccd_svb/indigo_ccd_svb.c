@@ -200,9 +200,9 @@ static bool svb_open(indigo_device *device) {
 		SVBStopVideoCapture(id);
 		if (PRIVATE_DATA->buffer == NULL) {
 			if (PRIVATE_DATA->property.IsColorCam)
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * 3 + FITS_HEADER_SIZE;
+				PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * 3 + FITS_HEADER_SIZE + 1024;
 			else
-				PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * 2 + FITS_HEADER_SIZE;
+				PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * 2 + FITS_HEADER_SIZE + 1024;
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
 	}
