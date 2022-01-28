@@ -395,7 +395,7 @@ static void solve(indigo_platesolver_task *task) {
 				AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value / 15,
 				AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value + AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.value
 			);
-			start_exposure(device, AGENT_PLATESOLVER_PA_EXPOSURE_ITEM->number.value);
+			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
 		} else if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_GOTO_CALCULATE) {
 			indigo_log("%s(): state POLAR_ALIGN_GOTO_CALCULATE -> POLAR_ALIGN_GOTO_MERIDIAN", __FUNCTION__);
 			if (!calculate_pa_error(device)) {
@@ -415,7 +415,7 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG
 			);
 			indigo_log("%s(): slew complete", __FUNCTION__);
-			start_exposure(device, AGENT_PLATESOLVER_PA_EXPOSURE_ITEM->number.value);
+			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
 		}  else if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_GOTO_MERIDIAN){
 			indigo_log("%s(): state POLAR_ALIGN_GOTO_MERIDIAN -> POLAR_ALIGN_IDLE", __FUNCTION__);
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -514,7 +514,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_PLATESOLVER_PA_EXPOSURE_ITEM, AGENT_PLATESOLVER_PA_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 60, 1, 1);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 60, 1, 1);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM_NAME, "Hour angle move (°)", -180, 180, 5, 30);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM_NAME, "Declination move (°)", -45, 45, 1, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM_NAME, "Compensate refraction (1=On/0=Off)", 0, 1, 0, 0);
