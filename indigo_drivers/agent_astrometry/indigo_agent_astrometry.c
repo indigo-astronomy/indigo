@@ -518,7 +518,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 		}
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config \"%s/astrometry.cfg\" --axy \"%s.axy\" \"%s.xy\"", hints, base_dir, base, base)) {
-			strcpy(message, "Execution of solve-field failed");
+			message = "Execution of solve-field failed";
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed) {
