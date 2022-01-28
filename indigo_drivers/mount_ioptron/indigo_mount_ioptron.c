@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x001E
+#define DRIVER_VERSION 0x001F
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -322,9 +322,13 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '2': // slewing
-					case '3': // guiding
-					case '4': // meridian flipping
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+						break;
+					case '3': // guiding
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						break;
+					case '4': // meridian flipping
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -449,9 +453,13 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '2': // slewing
-					case '3': // guiding
-					case '4': // meridian flipping
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+						break;
+					case '3': // guiding
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						break;
+					case '4': // meridian flipping
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
@@ -555,9 +563,13 @@ static void position_timer_callback(indigo_device *device) {
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '2': // slewing
-					case '3': // guiding
-					case '4': // meridian flipping
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+						break;
+					case '3': // guiding
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+						break;
+					case '4': // meridian flipping
+						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					case '1': // tracking with PEC disabled
 					case '5': // tracking with PEC enabled (only for non-encoder edition)
