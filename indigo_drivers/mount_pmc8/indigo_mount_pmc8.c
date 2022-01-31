@@ -23,7 +23,7 @@
  \file indigo_mount_pmc8.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_mount_pmc8"
 
 #include <stdlib.h>
@@ -53,12 +53,13 @@
 #define CONNECTION_UDP_ITEM  							(CONNECTION_MODE_PROPERTY->items+0)
 #define CONNECTION_TCP_ITEM  							(CONNECTION_MODE_PROPERTY->items+1)
 #define CONNECTION_SERIAL_ITEM  					(CONNECTION_MODE_PROPERTY->items+2)
+#define CONNECTION_SERIAL_DTR_ITEM  			(CONNECTION_MODE_PROPERTY->items+3)
 
 #define CONNECTION_MODE_PROPERTY_NAME   	"CONNECTION_MODE"
 #define CONNECTION_UDP_ITEM_NAME   				"UDP"
 #define CONNECTION_TCP_ITEM_NAME					"TCP"
 #define CONNECTION_SERIAL_ITEM_NAME				"SERIAL"
-
+#define CONNECTION_SERIAL_DTR_ITEM_NAME		"SERIAL_DTR"
 
 #define MOUNT_TYPE_PROPERTY     					(PRIVATE_DATA->mount_type_property)
 #define MOUNT_TYPE_G11  									(MOUNT_TYPE_PROPERTY->items+0)
@@ -117,6 +118,10 @@ static bool pmc8_open(indigo_device *device) {
 		if (!indigo_is_device_url(name, "pmc8")) {
 			PRIVATE_DATA->proto = -1;
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+			if (CONNECTION_SERIAL_DTR_ITEM->sw.value) {
+				int mode = TIOCM_DTR;
+				ioctl(PRIVATE_DATA->handle, TIOCMBIC, &mode);
+			}
 		} else {
 			PRIVATE_DATA->proto = INDIGO_PROTOCOL_UDP;
 			PRIVATE_DATA->handle = indigo_open_network_device(name, 54372, &PRIVATE_DATA->proto);
@@ -416,12 +421,13 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- CONNECTION_MODE
-		CONNECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CONNECTION_MODE_PROPERTY_NAME, MAIN_GROUP, "Connnection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		CONNECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CONNECTION_MODE_PROPERTY_NAME, MAIN_GROUP, "Connnection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (CONNECTION_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(CONNECTION_UDP_ITEM, CONNECTION_UDP_ITEM_NAME, "UDP", true);
 		indigo_init_switch_item(CONNECTION_TCP_ITEM, CONNECTION_TCP_ITEM_NAME, "TCP", false);
 		indigo_init_switch_item(CONNECTION_SERIAL_ITEM, CONNECTION_SERIAL_ITEM_NAME, "Serial", false);
+		indigo_init_switch_item(CONNECTION_SERIAL_DTR_ITEM, CONNECTION_SERIAL_DTR_ITEM_NAME, "Serial (clear DTR)", false);
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
 		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (CONNECTION_MODE_PROPERTY == NULL)
@@ -685,7 +691,7 @@ static void mount_switch_connection_handler(indigo_device *device) {
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_handler(device);
-    } else if (PRIVATE_DATA->is_udp && CONNECTION_SERIAL_ITEM->sw.value) {
+    } else if (PRIVATE_DATA->is_udp && (CONNECTION_SERIAL_ITEM->sw.value || CONNECTION_SERIAL_DTR_ITEM->sw.value)) {
 			indigo_send_message(device, "Can't switch from UDP to SERIAL directly, switch to TCP first!");
 			indigo_set_switch(CONNECTION_MODE_PROPERTY, CONNECTION_UDP_ITEM, true);
 			CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -695,7 +701,7 @@ static void mount_switch_connection_handler(indigo_device *device) {
 			}
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 			mount_connect_handler(device);
-    } else if (PRIVATE_DATA->is_tcp && CONNECTION_SERIAL_ITEM->sw.value) {
+    } else if (PRIVATE_DATA->is_tcp && (CONNECTION_SERIAL_ITEM->sw.value || CONNECTION_SERIAL_DTR_ITEM->sw.value)) {
 			if (!pmc8_command(device, "ESX!", response, sizeof(response), 0) || strcmp(response, "ESX0")) {
 				CONNECTION_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -830,7 +836,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- CONNECTION_MODE
 		PRIVATE_DATA->is_udp = CONNECTION_UDP_ITEM->sw.value;
 		PRIVATE_DATA->is_tcp = CONNECTION_TCP_ITEM->sw.value;
-		PRIVATE_DATA->is_serial = CONNECTION_SERIAL_ITEM->sw.value;
+		PRIVATE_DATA->is_serial = (CONNECTION_SERIAL_ITEM->sw.value || CONNECTION_SERIAL_DTR_ITEM->sw.value);
 		indigo_property_copy_values(CONNECTION_MODE_PROPERTY, property, false);
 		if (IS_CONNECTED) {
 			CONNECTION_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
