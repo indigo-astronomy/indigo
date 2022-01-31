@@ -716,7 +716,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 	int id = PRIVATE_DATA->dev_id;
 	long value;
 	SVB_ERROR_CODE res;
-	SVB_BOOL unused = false;
+	SVB_BOOL unused;
 
 	if (ctrl_caps.ControlType == SVB_EXPOSURE) {
 		CCD_EXPOSURE_PROPERTY->hidden = false;
@@ -728,6 +728,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = us2s(ctrl_caps.MinValue);
 		CCD_EXPOSURE_ITEM->number.max = CCD_STREAMING_EXPOSURE_ITEM->number.max = us2s(ctrl_caps.MaxValue);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		unused = false;
 		res = SVBGetControlValue(id, SVB_EXPOSURE, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE) = %d", id, res);
@@ -745,6 +746,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		CCD_OFFSET_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_OFFSET_ITEM->number.max = ctrl_caps.MaxValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		unused = false;
 		res = SVBGetControlValue(id, SVB_BLACK_LEVEL, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_BLACK_LEVEL) = %d", id, res);
@@ -763,6 +765,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		CCD_GAIN_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_GAIN_ITEM->number.max = ctrl_caps.MaxValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		unused = false;
 		res = SVBGetControlValue(id, SVB_GAIN, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN) = %d", id, res);
@@ -781,6 +784,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		CCD_GAMMA_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_GAMMA_ITEM->number.max = ctrl_caps.MaxValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		unused = false;
 		res = SVBGetControlValue(id, SVB_GAMMA, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAMMA) = %d", id, res);
@@ -844,6 +848,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 
 	int offset = SVB_ADVANCED_PROPERTY->count;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	unused = false;
 	res = SVBGetControlValue(id, ctrl_caps.ControlType, &value, &unused);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
