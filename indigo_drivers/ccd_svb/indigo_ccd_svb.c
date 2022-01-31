@@ -716,7 +716,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 	int id = PRIVATE_DATA->dev_id;
 	long value;
 	SVB_ERROR_CODE res;
-	SVB_BOOL unused;
+	SVB_BOOL unused = false;
 
 	if (ctrl_caps.ControlType == SVB_EXPOSURE) {
 		CCD_EXPOSURE_PROPERTY->hidden = false;
