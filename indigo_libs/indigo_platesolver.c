@@ -135,10 +135,10 @@ static bool set_fov(indigo_device *device, double angle, double width, double he
 	return false;
 }
 
-#define mount_sync(device, ra, dec) mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, ra, dec)
-#define mount_slew(device, ra, dec) mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra, dec)
+#define mount_sync(device, ra, dec, settle_time) mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, ra, dec, settle_time)
+#define mount_slew(device, ra, dec, settle_time) mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra, dec, settle_time)
 
-static bool mount_control(indigo_device *device, char *operation, double ra, double dec) {
+static bool mount_control(indigo_device *device, char *operation, double ra, double dec, double settle_time) {
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
 		if (item->sw.value && !strncmp(item->name, "Mount Agent", 11)) {
@@ -176,6 +176,7 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 				indigo_error("MOUNT_EQUATORIAL_COORDINATES didn't become OK in 60s");
 				return false;
 			}
+			indigo_usleep(ONE_SECOND_DELAY * settle_time);
 			return true;
 		}
 	}
@@ -376,12 +377,11 @@ static void solve(indigo_platesolver_task *task) {
 		)
 	) {
 		set_pa_reference(device);
-		mount_sync(device, AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value);
-		indigo_usleep(2 * ONE_SECOND_DELAY); // for sure for some lazy mounts
+		mount_sync(device, AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value, 2);
 	}
 
 	if (AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
-		mount_slew(device, recenter_ra, recenter_dec);
+		mount_slew(device, recenter_ra, recenter_dec, 3);
 	}
 
 	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
@@ -393,7 +393,8 @@ static void solve(indigo_platesolver_task *task) {
 			mount_slew(
 				device,
 				AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value / 15,
-				AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value + AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.value
+				AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value + AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.value,
+				3
 			);
 			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
 		} else if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_GOTO_CALCULATE) {
@@ -412,7 +413,8 @@ static void solve(indigo_platesolver_task *task) {
 			mount_slew(
 				device,
 				lst_now,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG,
+				3
 			);
 			indigo_log("%s(): slew complete", __FUNCTION__);
 			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
