@@ -1240,7 +1240,7 @@ static void *message_handler(parser_state state, parser_context *context, char *
 static void *top_level_handler(parser_state state, parser_context *context, char *name, char *value, char *message) {
 	indigo_property *property = (indigo_property *)context->property_buffer;
 	indigo_client *client = context->client;
-	property->version = client->version;
+  property->version = client ? client->version : INDIGO_VERSION_CURRENT;
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: top_level_handler %s '%s' '%s'", parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == BEGIN_TAG) {
 		*message = 0;
