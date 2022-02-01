@@ -152,16 +152,16 @@ static void search_stars(indigo_device *device) {
 				continue;
 			double ra = star_data->ra * h2r;
 			double dec = star_data->dec * d2r;
-			if (fabs(dec - mount_dec) > radius)
-				continue;
-			double dist = fabs(ra - mount_ra);
-			if (dist > radius && 2 * M_PI - dist > radius)
-				continue;
 			double cos_dec = cos(dec);
 			double sin_dec = sin(dec);
+			double sin_dec_dec = sin_mount_dec * sin_dec;
+			double cos_dec_dec = cos_mount_dec * cos_dec;
 			double cos_ra_ra = cos(ra - mount_ra);
+			double distance = acos(sin_dec_dec + cos_dec_dec * cos_ra_ra);
+			if (distance > radius)
+				continue;
 			double sin_ra_ra = sin(ra - mount_ra);
-			double ccc_ss = cos_mount_dec * cos_dec * cos_ra_ra + sin_mount_dec * sin_dec;
+			double ccc_ss = cos_dec_dec * cos_ra_ra + sin_dec_dec;
 			double sx = cos_dec * sin_ra_ra / ccc_ss + GUIDER_IMAGE_AZ_ERROR_ITEM->number.value * d2r;
 			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss + GUIDER_IMAGE_ALT_ERROR_ITEM->number.value * d2r;
 			double x = ppr_cos * sx + ppr_sin * sy + WIDTH / 2;
