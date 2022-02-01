@@ -45,7 +45,7 @@
 #define HEIGHT              1200
 #define TEMP_UPDATE         5.0
 #define MAX_MAG							8
-#define STARS								100
+#define STARS								400
 #define HOTPIXELS						1500
 #define ECLIPSE							360
 #define FOV									7
