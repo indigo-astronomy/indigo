@@ -280,14 +280,14 @@ static void parse_line(indigo_device *device, char *line) {
 	} else if ((s = strstr(line, "CROTA1="))) {
 		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = atof(s + 7);
 	} else if ((s = strstr(line, "CROTA2="))) {
-		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + atof(s + 7)) / 2.0;
+		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = -(AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value + atof(s + 7)) / 2.0;
 	} else if ((s = strstr(line, "CD1_1="))) {
 		double d = atof(s + 6);
 		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = d;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = d >= 0 ? -1 : 1;
 	} else if ((s = strstr(line, "CD2_2="))) {
 		double d = atof(s + 6);
-		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value + d) / 2.0;
+		AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value = (fabs(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value) + fabs(d)) / 2.0;
 		AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_width * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
 		AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value = ASTAP_DEVICE_PRIVATE_DATA->frame_height * AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.value;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value * (d >= 0 ? 1 : -1);
