@@ -26,6 +26,73 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_align.h>
 
+/*
+ Precesses c0 from eq0 to eq1
+
+ c0.a - Right Ascension (radians)
+ c0.d - Declination (radians)
+ eq0 -  Old Equinox (year+fraction)
+ eq1 -  New Equinox (year+fraction)
+*/
+indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1) {
+	double rot[3][3];
+	indigo_spherical_point_t c1 = {0, 0, 1};
+
+	double cosd = cos(c0->d);
+
+	double x0 = cosd * cos(c0->a);
+	double y0 = cosd * sin(c0->a);
+	double z0 = sin(c0->d);
+
+	double ST = (eq0 - 2000.0) * 0.001;
+	double T = (eq1 - eq0) * 0.001;
+
+	const double sec2rad = DEG2RAD/3600.0;
+	double A = sec2rad * T * (23062.181 + ST * (139.656 + 0.0139 * ST) + T * (30.188 - 0.344 * ST + 17.998 * T));
+	double B = sec2rad * T * T * (79.280 + 0.410 * ST + 0.205 * T) + A;
+	double C = sec2rad * T * (20043.109 - ST * (85.33 + 0.217 * ST) + T * (-42.665 - 0.217 * ST - 41.833 * T));
+
+	double sinA = sin(A);
+	double sinB = sin(B);
+	double sinC = sin(C);
+	double cosA = cos(A);
+	double cosB = cos(B);
+	double cosC = cos(C);
+
+	rot[0][0] = cosA * cosB * cosC - sinA * sinB;
+	rot[0][1] = (-1) * sinA * cosB * cosC - cosA * sinB;
+	rot[0][2] = (-1) * sinC * cosB;
+
+	rot[1][0] = cosA * cosC * sinB + sinA * cosB;
+	rot[1][1] = (-1) * sinA * cosC * sinB + cosA * cosB;
+	rot[1][2] = (-1) * sinB * sinC;
+
+	rot[2][0] = cosA * sinC;
+	rot[2][1] = (-1) * sinA * sinC;
+	rot[2][2] = cosC;
+
+	double x1 = rot[0][0] * x0 + rot[0][1] * y0 + rot[0][2] * z0;
+	double y1 = rot[1][0] * x0 + rot[1][1] * y0 + rot[1][2] * z0;
+	double z1 = rot[2][0] * x0 + rot[2][1] * y0 + rot[2][2] * z0;
+
+	if (x1 == 0) {
+		if (y1 > 0) {
+			c1.a = 90.0 * DEG2RAD;
+		} else {
+			c1.a = 270.0 * DEG2RAD;
+		}
+	} else {
+		c1.a = atan2(y1, x1);
+	}
+	if (c1.a < 0) {
+		c1.a += 360 * DEG2RAD;
+	}
+
+	c1.d = atan2( z1 , sqrt(1 - z1 * z1));
+
+	return c1;
+}
+
 /* convert spherical to cartesian coordinates */
 indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spherical_point_t *spoint) {
 	indigo_cartesian_point_t cpoint = {0,0,0};
