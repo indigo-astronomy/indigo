@@ -54,6 +54,17 @@ typedef struct {
 	double r;   /* radius (1 for celestial coordinates) */
 } indigo_spherical_point_t;
 
+
+/**
+ Precesses c0 from eq0 to eq1
+
+ c0.a - Right Ascension (radians)
+ c0.d - Declination (radians)
+ eq0 - Old Equinox (year+fraction)
+ eq1 - New Equinox (year+fraction)
+ */
+indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1);
+
 /** convert ha dec to az alt in radians
  */
 extern void indigo_equatorial_to_hotizontal(const indigo_spherical_point_t *eq_point, const double latitude, indigo_spherical_point_t *h_point);
