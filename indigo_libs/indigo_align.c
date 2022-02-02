@@ -345,3 +345,37 @@ bool indigo_polar_alignment_error(
 		return _indigo_polar_alignment_error(st1, st2, st2_observed, latitude, equatorial_error, horizontal_error);
 	}
 }
+
+
+bool indigo_polar_alignment_error_3p(
+	const indigo_spherical_point_t *p1,
+	const indigo_spherical_point_t *p2,
+	const indigo_spherical_point_t *p3,
+	double *drift_p2,
+	double *drift_p3,
+	indigo_spherical_point_t *horizontal_error
+) {
+	if (horizontal_error == NULL || drift_p2 == NULL || drift_p3 == NULL) {
+		return false;
+	}
+
+	*drift_p2 = p2->d - p1->d;
+	*drift_p3 = p3->d - p1->d;
+
+	double sin_a1 = sin(-p1->a);
+	double sin_a2 = sin(-p2->a);
+	double sin_a3 = sin(-p3->a);
+	double cos_a1 = cos(-p1->a);
+	double cos_a2 = cos(-p1->a);
+	double cos_a3 = cos(-p3->a);
+
+	double k1 = cos_a2 - cos_a1;
+	double k2 = sin_a2 - sin_a1;
+	double k3 = cos_a3 - cos_a1;
+	double k4 = sin_a3 - sin_a1;
+
+	double u = (k2 * k3 - k1 * k4) / (*drift_p3 * k3 - *drift_p2 * k4);
+	double v = (*drift_p2 - u * k1) / k2;
+
+	return true;
+}
