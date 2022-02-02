@@ -67,7 +67,13 @@ ICameraV3 implemented.
 * ASCOM binning is always 1x1, INDIGO binning is masked by readout mode
 * INDIGO RGB is mapped to Colour, other modes to Mono sensor type (no bayer offsets etc)
 * INDIGO camera mode is mapped to ASCOM readout mode
-* None and gzip image compression supported (no deflate)
+* None and GZip image compression supported (no deflate)
+
+#### Selecting "Image array transfer transfer method"
+Alpaca supports several methods for image transfer, but some of them are mostly useless especially for large images.
+We strongly recommend to select either "Base64HandOff" or "JSON" with "GZip" compression enabled as a transfer method.
+All other methods (including "BestAvailable") may result in "silent" timeout during the image transfer, as they are transferring
+the image as human readable text based ASCII arrays. For some reason (unknown to us) ASCOM Remote uses uncompressed JSON as the "BestAvailable".
 
 ### Wheel
 
