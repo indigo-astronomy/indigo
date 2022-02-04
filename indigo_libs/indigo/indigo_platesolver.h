@@ -40,7 +40,10 @@ typedef enum {
 	POLAR_ALIGN_INITIAL_GOTO,
 	POLAR_ALIGN_GOTO_CALCULATE,
 	POLAR_ALIGN_GOTO_MERIDIAN,
-	POLAR_ALIGN_RECALCULATE
+	POLAR_ALIGN_RECALCULATE,
+	POLAR_ALIGN_REFERENCE_1,
+	POLAR_ALIGN_REFERENCE_2,
+	POLAR_ALIGN_REFERENCE_3
 } platesolver_pa_state_t;
 
 #define PLATESOLVER_MAIN_GROUP		"Plate solver"
@@ -124,9 +127,12 @@ typedef struct {
 	indigo_property_state eq_coordinates_state;
 	indigo_spherical_point_t geo_coordinates;
 	indigo_property_state geo_coordinates_state;
-	indigo_spherical_point_t pa_reference;
+	indigo_spherical_point_t pa_reference1;
 	indigo_spherical_point_t pa_reference2;
+	indigo_spherical_point_t pa_reference3;
+	double pa_lst_at_reference1;
 	double pa_lst_at_reference2;
+	double pa_lst_at_reference3;
 	indigo_spherical_point_t pa_error_at_reference2;
 	void (*save_config)(indigo_device *);
 	bool (*solve)(indigo_device *, void *image, unsigned long size);

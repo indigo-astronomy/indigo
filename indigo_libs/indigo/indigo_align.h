@@ -136,6 +136,16 @@ extern bool indigo_polar_alignment_error(
 	indigo_spherical_point_t *horizontal_error
 );
 
+bool indigo_polar_alignment_error_3p(
+	const indigo_spherical_point_t *p1,
+	const indigo_spherical_point_t *p2,
+	const indigo_spherical_point_t *p3,
+	double *d2,
+	double *d3,
+	double *u,
+	double *v
+);
+
 #ifdef __cplusplus
 }
 #endif
