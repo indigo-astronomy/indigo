@@ -60,7 +60,7 @@ indigo_cartesian_point_t indigo_cartesian_rotate_x(const indigo_cartesian_point_
 	double cos_a = cos(-angle);
 	rpoint.x =  point->x;
 	rpoint.y =  point->y * cos_a + point->z * sin_a;
-	rpoint.z =  -point->y * sin_a + point->z * cos_a;
+	rpoint.z = -point->y * sin_a + point->z * cos_a;
 	return rpoint;
 }
 
@@ -84,7 +84,7 @@ indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_
 	return rpoint;
 }
 
-indigo_spherical_point_t apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
+indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, u);
 	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, v);
