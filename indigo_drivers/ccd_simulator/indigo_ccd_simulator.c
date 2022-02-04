@@ -158,7 +158,7 @@ static void search_stars(indigo_device *device) {
 		double mount_dec = GUIDER_IMAGE_DEC_ITEM->number.value;
 		indigo_spherical_point_t point;
 		indigo_ra_dec_to_point(mount_ra, mount_dec, lst, &point);
-		indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target, GUIDER_IMAGE_NS_ERROR_ITEM->number.target);
+		indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target * d2r, GUIDER_IMAGE_NS_ERROR_ITEM->number.target * d2r);
 		indigo_point_to_ra_dec(&point, lst, &mount_ra, &mount_dec);
 		mount_ra *= h2r;
 		mount_dec *= d2r;
@@ -1041,11 +1041,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					update = true;
 				}
 				if (sscanf(item->text.value, "SITELAT='%d %d %d'", &d, &m, &s) == 3) {
-					GUIDER_IMAGE_DEC_ITEM->number.value = GUIDER_IMAGE_LAT_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
+					GUIDER_IMAGE_LAT_ITEM->number.value = GUIDER_IMAGE_LAT_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
 					update = true;
 				}
 				if (sscanf(item->text.value, "SITELONG='%d %d %d'", &d, &m, &s) == 3) {
-					GUIDER_IMAGE_DEC_ITEM->number.value = GUIDER_IMAGE_LONG_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
+					GUIDER_IMAGE_LONG_ITEM->number.value = GUIDER_IMAGE_LONG_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
 					update = true;
 				}
 			}
