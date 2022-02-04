@@ -39,7 +39,7 @@
 #include <indigo/indigo_novas.h>
 #include <indigo/indigo_platesolver.h>
 
-#define HIDE_POLAR_ALIGN
+//#define HIDE_POLAR_ALIGN
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
