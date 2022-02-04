@@ -84,7 +84,7 @@ extern indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_
 
 /** convert spherical point in radians to ha/ra dec in hours and degrees
  */
-extern void indigo_spherical_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec);
+extern void indigo_point_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec);
 
 /** convert ha/ra dec in hours and degrees to spherical point in radians
  */

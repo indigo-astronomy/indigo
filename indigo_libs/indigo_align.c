@@ -112,8 +112,8 @@ indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_poi
 */
 
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
-void indigo_spherical_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
-	*ra  = lst + spoint->a / DEG2RAD / 15.0 ;
+void indigo_point_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
+	*ra  = lst - spoint->a / DEG2RAD / 15.0 ;
 	if (*ra > 24) {
 		*ra -= 24.0;
 	}
