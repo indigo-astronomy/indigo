@@ -151,14 +151,14 @@ static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 50
 
 static void search_stars(indigo_device *device) {
 	double lst = indigo_lst(NULL, GUIDER_IMAGE_LONG_ITEM->number.target);
-	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_EW_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_NS_ERROR_ITEM->number.value) {
+//	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_EW_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_NS_ERROR_ITEM->number.value) {
 		double h2r = M_PI / 12;
 		double d2r = M_PI / 180;
 		double mount_ra = GUIDER_IMAGE_RA_ITEM->number.value; // where mount thinks it is pointing
 		double mount_dec = GUIDER_IMAGE_DEC_ITEM->number.value;
 		indigo_spherical_point_t point;
 		indigo_ra_dec_to_point(mount_ra, mount_dec, lst, &point);
-		indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target, GUIDER_IMAGE_NS_ERROR_ITEM->number.target);
+		indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target * DEG2RAD, GUIDER_IMAGE_NS_ERROR_ITEM->number.target * DEG2RAD);
 		indigo_point_to_ra_dec(&point, lst, &mount_ra, &mount_dec);
 		mount_ra *= h2r;
 		mount_dec *= d2r;
@@ -208,7 +208,7 @@ static void search_stars(indigo_device *device) {
 		PRIVATE_DATA->ns_error = GUIDER_IMAGE_NS_ERROR_ITEM->number.target;
 		PRIVATE_DATA->lst = lst;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d stars, center at %g/%g, seen from %g/%g with polar error %g/%g", PRIVATE_DATA->star_count, PRIVATE_DATA->ra, PRIVATE_DATA->dec, PRIVATE_DATA->lat, PRIVATE_DATA->lon, GUIDER_IMAGE_EW_ERROR_ITEM->number.target, GUIDER_IMAGE_NS_ERROR_ITEM->number.target);
-	}
+//	}
 }
 
 // gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
