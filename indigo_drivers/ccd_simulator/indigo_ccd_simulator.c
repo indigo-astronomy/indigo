@@ -48,10 +48,10 @@
 #define IMAGER_HEIGHT       		1200
 #define DSLR_WIDTH        			1600
 #define DSLR_HEIGHT       			1200
+#define GUIDER_WIDTH        		16000
+#define GUIDER_HEIGHT       		12000
 
 // can be changed
-#define GUIDER_WIDTH        		3600
-#define GUIDER_HEIGHT       		2200
 #define GUIDER_MAX_MAG					8
 #define GUIDER_MAX_STARS				400
 #define GUIDER_FOV							7
@@ -79,25 +79,27 @@
 #define GUIDER_MODE_ECLIPSE_ITEM		(GUIDER_MODE_PROPERTY->items + 3)
 
 #define GUIDER_SETTINGS_PROPERTY		PRIVATE_DATA->guider_settings_property
-#define GUIDER_IMAGE_NOISE_FIX_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 0)
-#define GUIDER_IMAGE_NOISE_VAR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 1)
-#define GUIDER_IMAGE_PERR_SPD_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 2)
-#define GUIDER_IMAGE_PERR_VAL_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 3)
-#define GUIDER_IMAGE_GRADIENT_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 4)
-#define GUIDER_IMAGE_ANGLE_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 5)
-#define GUIDER_IMAGE_AO_ANGLE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 6)
-#define GUIDER_IMAGE_HOTPIXELS_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 7)
-#define GUIDER_IMAGE_HOTCOL_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 8)
-#define GUIDER_IMAGE_HOTROW_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 9)
-#define GUIDER_IMAGE_RA_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 10)
-#define GUIDER_IMAGE_DEC_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 11)
-#define GUIDER_IMAGE_LAT_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 12)
-#define GUIDER_IMAGE_LONG_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 13)
-#define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 14)
-#define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 15)
-#define GUIDER_IMAGE_EW_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 16)
-#define GUIDER_IMAGE_NS_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 17)
-#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 18)
+#define GUIDER_IMAGE_WIDTH_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 0)
+#define GUIDER_IMAGE_HEIGHT_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 1)
+#define GUIDER_IMAGE_NOISE_FIX_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 2)
+#define GUIDER_IMAGE_NOISE_VAR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 3)
+#define GUIDER_IMAGE_PERR_SPD_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 4)
+#define GUIDER_IMAGE_PERR_VAL_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 5)
+#define GUIDER_IMAGE_GRADIENT_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 6)
+#define GUIDER_IMAGE_ANGLE_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 7)
+#define GUIDER_IMAGE_AO_ANGLE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 8)
+#define GUIDER_IMAGE_HOTPIXELS_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 9)
+#define GUIDER_IMAGE_HOTCOL_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 10)
+#define GUIDER_IMAGE_HOTROW_ITEM		(GUIDER_SETTINGS_PROPERTY->items + 11)
+#define GUIDER_IMAGE_RA_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 12)
+#define GUIDER_IMAGE_DEC_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 13)
+#define GUIDER_IMAGE_LAT_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 14)
+#define GUIDER_IMAGE_LONG_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 15)
+#define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 16)
+#define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 17)
+#define GUIDER_IMAGE_EW_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 18)
+#define GUIDER_IMAGE_NS_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 19)
+#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
 
 #define FILE_NAME_PROPERTY					PRIVATE_DATA->file_name_property
 #define FILE_NAME_ITEM							(FILE_NAME_PROPERTY->items + 0)
@@ -151,7 +153,7 @@ static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 50
 
 static void search_stars(indigo_device *device) {
 	double lst = indigo_lst(NULL, GUIDER_IMAGE_LONG_ITEM->number.target);
-//	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_EW_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_NS_ERROR_ITEM->number.value) {
+	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_EW_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_NS_ERROR_ITEM->number.value) {
 		double h2r = M_PI / 12;
 		double d2r = M_PI / 180;
 		double mount_ra = GUIDER_IMAGE_RA_ITEM->number.value; // where mount thinks it is pointing
@@ -165,7 +167,7 @@ static void search_stars(indigo_device *device) {
 		double cos_mount_dec = cos(mount_dec);
 		double sin_mount_dec = sin(mount_dec);
 		double angle = M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0; // image rotation
-		double ppr = GUIDER_HEIGHT / GUIDER_FOV / d2r; // pixel/radian ratio
+		double ppr = GUIDER_IMAGE_HEIGHT_ITEM->number.target / GUIDER_FOV / d2r; // pixel/radian ratio
 		double radius = GUIDER_FOV * d2r * 2;
 		double ppr_cos = ppr * cos(angle);
 		double ppr_sin = ppr * sin(angle);
@@ -185,11 +187,11 @@ static void search_stars(indigo_device *device) {
 				continue;
 			double sin_ra_ra = sin(ra - mount_ra);
 			double ccc_ss = cos_dec_dec * cos_ra_ra + sin_dec_dec;
-			double sx = cos_dec * sin_ra_ra / ccc_ss + GUIDER_IMAGE_EW_ERROR_ITEM->number.value * d2r;
-			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss + GUIDER_IMAGE_NS_ERROR_ITEM->number.value * d2r;
-			double x = ppr_cos * sx + ppr_sin * sy + GUIDER_WIDTH / 2;
-			double y = ppr_cos * sy - ppr_sin * sx + GUIDER_HEIGHT / 2;
-			if (x >= 0 && x < GUIDER_WIDTH && y >= 0 && y < GUIDER_HEIGHT) {
+			double sx = cos_dec * sin_ra_ra / ccc_ss;
+			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss;
+			double x = ppr_cos * sx + ppr_sin * sy + GUIDER_IMAGE_WIDTH_ITEM->number.target / 2;
+			double y = ppr_cos * sy - ppr_sin * sx + GUIDER_IMAGE_HEIGHT_ITEM->number.target / 2;
+			if (x >= 0 && x < GUIDER_IMAGE_WIDTH_ITEM->number.target && y >= 0 && y < GUIDER_IMAGE_HEIGHT_ITEM->number.target) {
 				//printf("HIP%5d %6.4f %+7.4f %6.1f %6.1f\n", star_data->hip, star_data->ra, star_data->dec, x, y);
 				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
 				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
@@ -208,7 +210,7 @@ static void search_stars(indigo_device *device) {
 		PRIVATE_DATA->ns_error = GUIDER_IMAGE_NS_ERROR_ITEM->number.target;
 		PRIVATE_DATA->lst = lst;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d stars, center at %g/%g, seen from %g/%g with polar error %g/%g", PRIVATE_DATA->star_count, PRIVATE_DATA->ra, PRIVATE_DATA->dec, PRIVATE_DATA->lat, PRIVATE_DATA->lon, GUIDER_IMAGE_EW_ERROR_ITEM->number.target, GUIDER_IMAGE_NS_ERROR_ITEM->number.target);
-//	}
+	}
 }
 
 // gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
@@ -391,14 +393,14 @@ static void create_frame(indigo_device *device) {
 				for (int i = 0; i < PRIVATE_DATA->star_count; i++) {
 					double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
 					if (center_x < 0)
-						center_x += GUIDER_WIDTH;
-					if (center_x >= GUIDER_WIDTH)
-						center_x -= GUIDER_WIDTH;
+						center_x += GUIDER_IMAGE_WIDTH_ITEM->number.target;
+					if (center_x >= GUIDER_IMAGE_WIDTH_ITEM->number.target)
+						center_x -= GUIDER_IMAGE_WIDTH_ITEM->number.target;
 					double center_y = (private_data->star_y[i] + (y_flip ? -y_offset : y_offset)) / vertical_bin;
 					if (center_y < 0)
-						center_y += GUIDER_HEIGHT;
-					if (center_y >= GUIDER_HEIGHT)
-						center_y -= GUIDER_HEIGHT;
+						center_y += GUIDER_IMAGE_HEIGHT_ITEM->number.target;
+					if (center_y >= GUIDER_IMAGE_HEIGHT_ITEM->number.target)
+						center_y -= GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 					center_x -= frame_left;
 					center_y -= frame_top;
 					int a = private_data->star_a[i];
@@ -419,17 +421,17 @@ static void create_frame(indigo_device *device) {
 					}
 				}
 			} else {
-				double center_x = (GUIDER_WIDTH / 2 + x_offset) / horizontal_bin - frame_left;
-				double center_y = (GUIDER_HEIGHT / 2 + y_offset) / vertical_bin - frame_top;
-				double eclipse_x = (GUIDER_WIDTH / 2 + PRIVATE_DATA->eclipse + x_offset) / horizontal_bin - frame_left;
-				double eclipse_y = (GUIDER_HEIGHT / 2 + PRIVATE_DATA->eclipse + y_offset) / vertical_bin - frame_top;
-				for (int y = 0; y <= GUIDER_HEIGHT / vertical_bin; y++) {
+				double center_x = (GUIDER_IMAGE_WIDTH_ITEM->number.target / 2 + x_offset) / horizontal_bin - frame_left;
+				double center_y = (GUIDER_IMAGE_HEIGHT_ITEM->number.target / 2 + y_offset) / vertical_bin - frame_top;
+				double eclipse_x = (GUIDER_IMAGE_WIDTH_ITEM->number.target / 2 + PRIVATE_DATA->eclipse + x_offset) / horizontal_bin - frame_left;
+				double eclipse_y = (GUIDER_IMAGE_HEIGHT_ITEM->number.target / 2 + PRIVATE_DATA->eclipse + y_offset) / vertical_bin - frame_top;
+				for (int y = 0; y <= GUIDER_IMAGE_HEIGHT_ITEM->number.target / vertical_bin; y++) {
 					if (y < 0 || y >= frame_height)
 						continue;
 					int yw = y * frame_width;
 					double yy = (center_y - y) * vertical_bin;
 					double eclipse_yy = (eclipse_y - y) * vertical_bin;
-					for (int x = 0; x <= GUIDER_WIDTH / horizontal_bin; x++) {
+					for (int x = 0; x <= GUIDER_IMAGE_WIDTH_ITEM->number.target / horizontal_bin; x++) {
 						if (x < 0 || x >= frame_width)
 							continue;
 						double xx = (center_x - x) * horizontal_bin;
@@ -670,7 +672,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 19);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 21);
+				indigo_init_number_item(GUIDER_IMAGE_WIDTH_ITEM, "IMAGE_WIDTH", "Image width (px)", 400, 16000, 0, 1600);
+				indigo_init_number_item(GUIDER_IMAGE_HEIGHT_ITEM, "IMAGE_HEIGHT", "Image height (px)", 300, 12000, 0, 1200);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_VAR_ITEM, "IMAGE_NOISE_VAR", "Image noise range", 1, 1000, 0, 100);
 				indigo_init_number_item(GUIDER_IMAGE_PERR_SPD_ITEM, "PER_ERR_SPD", "Periodic error speed", 0, 1, 0, 0.5);
@@ -679,10 +683,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_ANGLE_ITEM, "IMAGE_ROTATION_ANGLE", "Image rotation angle (°)", 0, 360, 0, 36);
 				indigo_init_number_item(GUIDER_IMAGE_AO_ANGLE_ITEM, "AO_ANGLE", "AO angle (°)", 0, 360, 0, 74);
 				indigo_init_number_item(GUIDER_IMAGE_HOTPIXELS_ITEM, "IMAGE_HOTPIXELS", "Hot pixel count", 0, GUIDER_MAX_HOTPIXELS, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_HOTCOL_ITEM, "IMAGE_HOTCOL", "Hot column length (px)", 0, GUIDER_HEIGHT, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_HOTROW_ITEM, "IMAGE_HOTROW", "Hot row length (px)", 0, GUIDER_WIDTH, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_RA_OFFSET_ITEM, "IMAGE_RA_OFFSET", "RA offset (px)", 0, GUIDER_HEIGHT, 0, 0);
-				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "IMAGE_DEC_OFFSET", "DEC offset (px)", 0, GUIDER_HEIGHT, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTCOL_ITEM, "IMAGE_HOTCOL", "Hot column length (px)", 0, GUIDER_IMAGE_HEIGHT_ITEM->number.target, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_HOTROW_ITEM, "IMAGE_HOTROW", "Hot row length (px)", 0, GUIDER_IMAGE_WIDTH_ITEM->number.target, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_RA_OFFSET_ITEM, "IMAGE_RA_OFFSET", "RA offset (px)", 0, GUIDER_IMAGE_HEIGHT_ITEM->number.target, 0, 0);
+				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "IMAGE_DEC_OFFSET", "DEC offset (px)", 0, GUIDER_IMAGE_HEIGHT_ITEM->number.target, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_LAT_ITEM, "LAT", "Latitude (-90 to +90° +N)", -90, 90, 0, 48.1485965);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_LONG_ITEM, "LONG", "Longitude (0 to 360° +E)", -180, 360, 0, 17.1077478);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 14.84511111);
@@ -690,8 +694,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_EW_ERROR_ITEM, "EW_ROTATION_ERROR", "East-West axis rotation error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_NS_ERROR_ITEM, "NS_ROTATION_ERROR", "North-South axis rotation error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_IMAGE_AGE_ITEM, "IMAGE_AGE", "Max image age (s)", 0, 3600, 0, 1.0 / 60.0);
-				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = GUIDER_WIDTH;
-				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = GUIDER_HEIGHT;
+				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = GUIDER_IMAGE_WIDTH_ITEM->number.target;
+				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 				PRIVATE_DATA->ra = PRIVATE_DATA->dec = -1000;
 			} else {
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = IMAGER_WIDTH;
@@ -1019,11 +1023,17 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, GUIDER_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (GUIDER_MODE_PROPERTY && indigo_property_match(GUIDER_SETTINGS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- GUIDER_MODE
+		// -------------------------------------------------------------------------------- GUIDER_SETTINGS
 		indigo_property_copy_values(GUIDER_SETTINGS_PROPERTY, property, false);
 		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		PRIVATE_DATA->ra = PRIVATE_DATA->dec = 0;
+		GUIDER_IMAGE_HOTCOL_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
+		GUIDER_IMAGE_HOTROW_ITEM->number.max = GUIDER_IMAGE_WIDTH_ITEM->number.target;
+		GUIDER_IMAGE_RA_OFFSET_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
+		GUIDER_IMAGE_DEC_OFFSET_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
+		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = CCD_FRAME_WIDTH_ITEM->number.max = GUIDER_IMAGE_WIDTH_ITEM->number.target;
+		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = CCD_FRAME_HEIGHT_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
 	} else if (GUIDER_MODE_PROPERTY && indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property)) {
