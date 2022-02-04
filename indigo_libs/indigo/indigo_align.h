@@ -73,8 +73,8 @@ extern indigo_cartesian_point_t indigo_cartesian_rotate_y(const indigo_cartesian
 extern indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_t *point, double angle);
 
 /** rotate coordinates using polar errors
- * possition->a = RA in radians
- * possition->d = Dec in radians
+ * possition->a = Hour angle in radians
+ * possition->d = Declination in radians
  * possition->r = 1; (should be 1)
  * u = angle in radians, rotate around Y (East - West) axis. Eastward is poritive.
  * v = angle in radians, rotate around X (North - South) axis, Southward is positive.

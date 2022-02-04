@@ -91,8 +91,8 @@
 #define GUIDER_IMAGE_DEC_OFFSET_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 11)
 #define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 12)
 #define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 13)
-#define GUIDER_IMAGE_ALT_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 14)
-#define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 15)
+#define GUIDER_IMAGE_EW_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 14)
+#define GUIDER_IMAGE_NS_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 15)
 
 #define FILE_NAME_PROPERTY					PRIVATE_DATA->file_name_property
 #define FILE_NAME_ITEM							(FILE_NAME_PROPERTY->items + 0)
@@ -170,8 +170,8 @@ static void search_stars(indigo_device *device) {
 				continue;
 			double sin_ra_ra = sin(ra - mount_ra);
 			double ccc_ss = cos_dec_dec * cos_ra_ra + sin_dec_dec;
-			double sx = cos_dec * sin_ra_ra / ccc_ss + GUIDER_IMAGE_AZ_ERROR_ITEM->number.value * d2r;
-			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss + GUIDER_IMAGE_ALT_ERROR_ITEM->number.value * d2r;
+			double sx = cos_dec * sin_ra_ra / ccc_ss + GUIDER_IMAGE_EW_ERROR_ITEM->number.value * d2r;
+			double sy = (sin_mount_dec * cos_dec * cos_ra_ra - cos_mount_dec * sin_dec) / ccc_ss + GUIDER_IMAGE_NS_ERROR_ITEM->number.value * d2r;
 			double x = ppr_cos * sx + ppr_sin * sy + GUIDER_WIDTH / 2;
 			double y = ppr_cos * sy - ppr_sin * sx + GUIDER_HEIGHT / 2;
 			if (x >= 0 && x < GUIDER_WIDTH && y >= 0 && y < GUIDER_HEIGHT) {
@@ -665,8 +665,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_number_item(GUIDER_IMAGE_DEC_OFFSET_ITEM, "IMAGE_DEC_OFFSET", "DEC offset (px)", 0, GUIDER_HEIGHT, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 14.84511111);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 74.1555);
-				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_ALT_ERROR_ITEM, "ALT_ERROR", "Alt error (°)", -30, +30, 0, 0);
-				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_AZ_ERROR_ITEM, "AZ_ERROR", "Az error (°)", -30, +30, 0, 0);
+				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_EW_ERROR_ITEM, "EW_ROTATION_ERROR", "East-West axis rotation error (°)", -30, +30, 0, 0);
+				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_NS_ERROR_ITEM, "NS_ROTATION_ERROR", "North-South axis rotation error (°)", -30, +30, 0, 0);
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = GUIDER_WIDTH;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = GUIDER_HEIGHT;
 				PRIVATE_DATA->ra = PRIVATE_DATA->dec = -1000;
