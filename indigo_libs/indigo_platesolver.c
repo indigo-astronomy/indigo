@@ -380,7 +380,7 @@ static void solve(indigo_platesolver_task *task) {
 			//AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_START
 		//)
 	) {
-		set_pa_reference(device);
+		//set_pa_reference(device);
 		mount_sync(device, AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value, 2);
 	}
 
@@ -400,11 +400,12 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference1,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1
 			);
+			indigo_log("%s():  REFERECE 1: HA=%f, Dec=%f", __FUNCTION__, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1.a, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1.d);
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 			mount_slew(
 				device,
 				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a * RAD2DEG - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1.d * RAD2DEG,
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG,
 				3
 			);
 			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
@@ -419,11 +420,12 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference2,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2
 			);
+			indigo_log("%s():  REFERECE 2: HA=%f, Dec=%f", __FUNCTION__, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2.a, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2.d);
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 			mount_slew(
 				device,
 				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a * RAD2DEG - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1.d * RAD2DEG,
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG,
 				3
 			);
 			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
@@ -438,6 +440,7 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference3,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3
 			);
+			indigo_log("%s():  REFERECE 3: HA=%f, Dec=%f", __FUNCTION__, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3.a, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3.d);
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 
 			double d2, d3, u, v;
