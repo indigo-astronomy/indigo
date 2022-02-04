@@ -39,6 +39,8 @@
 #include <indigo/indigo_novas.h>
 #include <indigo/indigo_platesolver.h>
 
+#define HIDE_POLAR_ALIGN
+
 // -------------------------------------------------------------------------------- INDIGO agent device implementation
 
 static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
@@ -74,7 +76,9 @@ void indigo_platesolver_save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_USE_INDEX_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_HINTS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_SYNC_PROPERTY);
+#ifdef HIDE_POLAR_ALIGN
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
+#endif
 		if (DEVICE_CONTEXT->property_save_file_handle) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			close(DEVICE_CONTEXT->property_save_file_handle);
@@ -541,6 +545,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CENTER_ITEM, AGENT_PLATESOLVER_SYNC_CENTER_ITEM_NAME, "Sync and center", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM_NAME, "Calclulate polar alignment error", false);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM, AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM_NAME, "Recalclulate polar alignment error", false);
+#ifdef HIDE_POLAR_ALIGN
+		AGENT_PLATESOLVER_SYNC_PROPERTY->count = 3;
+#endif
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_SETTINGS property
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL)
@@ -552,6 +559,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
+#ifdef HIDE_POLAR_ALIGN
+		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->hidden = true;
+#endif
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
 		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 8);
 		if (AGENT_PLATESOLVER_PA_STATE_PROPERTY == NULL)
@@ -572,6 +582,9 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.format, "%.0f");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.format, "%.0f");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_TOTAL_ERROR_ITEM->number.format, "%m");
+#ifdef HIDE_POLAR_ALIGN
+		AGENT_PLATESOLVER_PA_STATE_PROPERTY->hidden = true;
+#endif
 		// -------------------------------------------------------------------------------- ABORT property
 		AGENT_PLATESOLVER_ABORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_ABORT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL)
