@@ -48,8 +48,8 @@
 #define DSLR_HEIGHT       			1200
 
 // can be changed
-#define GUIDER_WIDTH        		1600
-#define GUIDER_HEIGHT       		1200
+#define GUIDER_WIDTH        		3600
+#define GUIDER_HEIGHT       		2200
 #define GUIDER_MAX_MAG					8
 #define GUIDER_MAX_STARS				400
 #define GUIDER_FOV							7
