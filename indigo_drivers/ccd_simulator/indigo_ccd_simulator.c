@@ -154,8 +154,14 @@ static void search_stars(indigo_device *device) {
 	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_EW_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_NS_ERROR_ITEM->number.value) {
 		double h2r = M_PI / 12;
 		double d2r = M_PI / 180;
-		double mount_ra = GUIDER_IMAGE_RA_ITEM->number.value * h2r; // where mount thinks it is pointing
-		double mount_dec = GUIDER_IMAGE_DEC_ITEM->number.value * d2r;
+		double mount_ra = GUIDER_IMAGE_RA_ITEM->number.value; // where mount thinks it is pointing
+		double mount_dec = GUIDER_IMAGE_DEC_ITEM->number.value;
+		indigo_spherical_point_t point;
+		indigo_ra_dec_to_point(mount_ra, mount_dec, lst, &point);
+		indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target, GUIDER_IMAGE_NS_ERROR_ITEM->number.target);
+		indigo_point_to_ra_dec(&point, lst, &mount_ra, &mount_dec);
+		mount_ra *= h2r;
+		mount_dec *= d2r;
 		double cos_mount_dec = cos(mount_dec);
 		double sin_mount_dec = sin(mount_dec);
 		double angle = M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0; // image rotation
@@ -167,14 +173,8 @@ static void search_stars(indigo_device *device) {
 		for (indigo_star_entry *star_data = indigo_get_star_data(); star_data->hip; star_data++) {
 			if (star_data->mag > GUIDER_MAX_MAG)
 				continue;
-			double ra = star_data->ra; // J2K coordinates of the star
-			double dec = star_data->dec;
-			indigo_spherical_point_t point;
-			indigo_ra_dec_to_point(ra, dec, lst, &point);
-			indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target, GUIDER_IMAGE_NS_ERROR_ITEM->number.target);
-			indigo_point_to_ra_dec(&point, lst, &ra, &dec);
-			ra *= h2r;
-			dec *= d2r;
+			double ra = star_data->ra * h2r; // J2K coordinates of the star
+			double dec = star_data->dec * d2r;
 			double cos_dec = cos(dec);
 			double sin_dec = sin(dec);
 			double sin_dec_dec = sin_mount_dec * sin_dec;
