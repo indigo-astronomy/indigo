@@ -133,8 +133,8 @@ indigo_cartesian_point_t indigo_cartesian_rotate_x(const indigo_cartesian_point_
 
 indigo_cartesian_point_t indigo_cartesian_rotate_y(const indigo_cartesian_point_t *point, double angle) {
 	indigo_cartesian_point_t rpoint = {0,0,0};
-	double sin_a = sin(-angle);
-	double cos_a = cos(-angle);
+	double sin_a = sin(angle);
+	double cos_a = cos(angle);
 	rpoint.x = point->x * cos_a - point->z * sin_a;
 	rpoint.y = point->y;
 	rpoint.z = point->x * sin_a + point->z * cos_a;
