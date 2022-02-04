@@ -29,37 +29,45 @@
 /* convert spherical to cartesian coordinates */
 indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spherical_point_t *spoint) {
 	indigo_cartesian_point_t cpoint = {0,0,0};
-	double cos_d = cos(spoint->d);
-	cpoint.x = spoint->r * cos_d * cos(spoint->a);
-	cpoint.y = spoint->r * cos_d * sin(spoint->a);
-	cpoint.z = spoint->r * sin(spoint->d);
+	double theta = -spoint->a;
+	double phi = (M_PI / 2.0) - spoint->d;
+	double sin_phi = sin(phi);
+	cpoint.x = spoint->r * sin_phi * cos(theta);
+	cpoint.y = spoint->r * sin_phi * sin(theta);
+	cpoint.z = spoint->r * cos(phi);
 	return cpoint;
 }
 
 /* convert spherical (in radians) to cartesian coordinates */
-indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_point_t *cpoint) {
-	indigo_spherical_point_t spoint = {0,0,0};
-	spoint.r = sqrt(cpoint->x * cpoint->x + cpoint->y * cpoint->y + cpoint->z * cpoint->z);
-	spoint.a = atan(cpoint->y / cpoint->x);
-	spoint.d = acos(cpoint->z / spoint.r);
+indigo_spherical_point_t indigo_cartesian_to_spherical(const indigo_cartesian_point_t *cpoint) {
+	indigo_spherical_point_t spoint = {0, M_PI / 2.0 , 1};
+
+	if (cpoint->y == 0.0 && cpoint->x == 0.0) {
+		/* Zenith */
+		return spoint;
+	}
+
+	spoint.a = (cpoint->y == 0) ? 0.0 : -atan2(cpoint->y, cpoint->x);
+	if (spoint.a < 0) spoint.a += 2 * M_PI;
+	spoint.d = (M_PI / 2.0) - acos(cpoint->z);
 	return spoint;
 }
 
 /* rotate cartesian coordinates around axes */
 indigo_cartesian_point_t indigo_cartesian_rotate_x(const indigo_cartesian_point_t *point, double angle) {
 	indigo_cartesian_point_t rpoint = {0,0,0};
-	double sin_a = sin(angle);
-	double cos_a = cos(angle);
+	double sin_a = sin(-angle);
+	double cos_a = cos(-angle);
 	rpoint.x =  point->x;
 	rpoint.y =  point->y * cos_a + point->z * sin_a;
-	rpoint.x = -point->y * sin_a + point->z * cos_a;
+	rpoint.z =  -point->y * sin_a + point->z * cos_a;
 	return rpoint;
 }
 
 indigo_cartesian_point_t indigo_cartesian_rotate_y(const indigo_cartesian_point_t *point, double angle) {
 	indigo_cartesian_point_t rpoint = {0,0,0};
-	double sin_a = sin(angle);
-	double cos_a = cos(angle);
+	double sin_a = sin(-angle);
+	double cos_a = cos(-angle);
 	rpoint.x = point->x * cos_a - point->z * sin_a;
 	rpoint.y = point->y;
 	rpoint.z = point->x * sin_a + point->z * cos_a;
@@ -68,13 +76,40 @@ indigo_cartesian_point_t indigo_cartesian_rotate_y(const indigo_cartesian_point_
 
 indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_t *point, double angle) {
 	indigo_cartesian_point_t rpoint = {0,0,0};
-	double sin_a = sin(angle);
-	double cos_a = cos(angle);
+	double sin_a = sin(-angle);
+	double cos_a = cos(-angle);
 	rpoint.x =  point->x * cos_a + point->y * sin_a;
 	rpoint.y = -point->x * sin_a + point->y * cos_a;
 	rpoint.z =  point->z;
 	return rpoint;
 }
+
+indigo_spherical_point_t apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
+	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
+	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, u);
+	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, v);
+	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
+	return p;
+}
+
+/*
+indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spherical_point_t *spoint) {
+	indigo_cartesian_point_t cpoint = {0,0,0};
+	double cos_d = cos(spoint->d);
+	cpoint.x = spoint->r * cos_d * cos(spoint->a);
+	cpoint.y = spoint->r * cos_d * sin(spoint->a);
+	cpoint.z = spoint->r * sin(spoint->d);
+	return cpoint;
+}
+
+indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_point_t *cpoint) {
+	indigo_spherical_point_t spoint = {0,0,0};
+	spoint.r = sqrt(cpoint->x * cpoint->x + cpoint->y * cpoint->y + cpoint->z * cpoint->z);
+	spoint.a = atan(cpoint->y / cpoint->x);
+	spoint.d = acos(cpoint->z / spoint.r);
+	return spoint;
+}
+*/
 
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
 void indigo_spherical_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
