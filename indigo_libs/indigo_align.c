@@ -395,3 +395,105 @@ bool indigo_polar_alignment_error_3p(
 
 	return true;
 }
+
+bool indigo_polar_alignment_target_position(
+	const indigo_spherical_point_t *position,
+	const double latitude,
+	const double u,
+	const double v,
+	indigo_spherical_point_t *target_position,
+	indigo_spherical_point_t *horizontal_correction
+) {
+	if (!target_position || !horizontal_correction) {
+		return false;
+	}
+
+	*target_position = indigo_correct_polar_error(position, u, v);
+
+	indigo_spherical_point_t position_h;
+	indigo_equatorial_to_hotizontal(position, latitude, &position_h);
+
+	indigo_spherical_point_t target_position_h;
+	indigo_equatorial_to_hotizontal(target_position, latitude, &target_position_h);
+
+	horizontal_correction->a = target_position_h.a - position_h.a;
+	horizontal_correction->d = target_position_h.d - position_h.d;
+	horizontal_correction->r = 1;
+
+	return true;
+}
+
+static void _reestimate_polar_error(
+	const indigo_spherical_point_t *position,
+	const indigo_spherical_point_t *target_position,
+	const double latitude,
+	double min_az, double max_az, double az_inc,
+	double min_alt, double max_alt, double alt_inc,
+	double *u, double *v
+) {
+	double min_distance = 1e9;
+	for (double c_az = min_az; c_az < max_az; c_az += az_inc) {
+		for (double c_alt = min_alt; c_alt < max_alt; c_alt += alt_inc) {
+			indigo_spherical_point_t position_r;
+			indigo_spherical_point_t tp;
+			indigo_polar_alignment_target_position(position, latitude, c_alt, c_az, &tp,  &position_r);
+			double distance = indigo_gc_distance_spherical(&tp, target_position);
+			if (distance < min_distance) {
+				min_distance = distance;
+				*v = c_az;
+				*u = c_alt;
+			}
+		}
+	}
+}
+
+bool indigo_reestimate_polar_error(
+	const indigo_spherical_point_t *position,
+	const indigo_spherical_point_t *target_position,
+	const double latitude,
+	double *u, double *v
+) {
+	_reestimate_polar_error(
+		position,
+		target_position,
+		latitude,
+		-3.0 * DEG2RAD,
+		 3.0 * DEG2RAD,
+		 0.2 * DEG2RAD,
+		-3.0 * DEG2RAD,
+		 3.0 * DEG2RAD,
+		 0.2 * DEG2RAD,
+		 u,
+		 v
+	 );
+	_reestimate_polar_error(
+		position,
+		target_position,
+		latitude,
+		*v - .2 * DEG2RAD,
+		*v + .2 * DEG2RAD,
+		0.02 * DEG2RAD,
+		*u - .2 * DEG2RAD,
+		*u + .2 * DEG2RAD,
+		0.02 * DEG2RAD,
+		u,
+		v
+	);
+	_reestimate_polar_error(
+		position,
+		target_position,
+		latitude,
+		*v - .02 * DEG2RAD,
+		*v + .02 * DEG2RAD,
+		0.002 * DEG2RAD,
+		*u - .02 * DEG2RAD,
+		*u + .02 * DEG2RAD,
+		0.002 * DEG2RAD,
+		u,
+		v
+	);
+
+	// should do some cheks here
+
+	return true;
+}

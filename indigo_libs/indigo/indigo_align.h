@@ -146,7 +146,9 @@ extern bool indigo_polar_alignment_error(
 	indigo_spherical_point_t *horizontal_error
 );
 
-bool indigo_polar_alignment_error_3p(
+/** calculate polar alignment error and Declination drifts
+ */
+extern bool indigo_polar_alignment_error_3p(
 	const indigo_spherical_point_t *p1,
 	const indigo_spherical_point_t *p2,
 	const indigo_spherical_point_t *p3,
@@ -154,6 +156,28 @@ bool indigo_polar_alignment_error_3p(
 	double *d3,
 	double *u,
 	double *v
+);
+
+/** recalculates polar error for a given target position (if thelescope is aligned) and current position
+ */
+extern bool indigo_reestimate_polar_error(
+	const indigo_spherical_point_t *position,
+	const indigo_spherical_point_t *target_position,
+	const double latitude,
+	double *u,
+	double *v
+);
+
+/** calculates corrections in az and alt and the position where the telescope sould point if properly polar aligned
+ *  for the given position and polar errors
+ */
+bool indigo_polar_alignment_target_position(
+	const indigo_spherical_point_t *position,
+	const double latitude,
+	const double u,
+	const double v,
+	indigo_spherical_point_t *target_position,
+	indigo_spherical_point_t *horizontal_correction
 );
 
 #ifdef __cplusplus
