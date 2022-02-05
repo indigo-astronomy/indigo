@@ -129,9 +129,10 @@ typedef struct {
 	indigo_spherical_point_t pa_reference1;
 	indigo_spherical_point_t pa_reference2;
 	indigo_spherical_point_t pa_reference3;
-	double pa_lst_at_reference1;
-	double pa_lst_at_reference2;
 	double pa_lst_at_reference3;
+	double pa_ew_error;
+	double pa_ns_error;
+	indigo_spherical_point_t pa_target_at_reference3;
 	indigo_spherical_point_t pa_error_at_reference3;
 	void (*save_config)(indigo_device *);
 	bool (*solve)(indigo_device *, void *image, unsigned long size);
