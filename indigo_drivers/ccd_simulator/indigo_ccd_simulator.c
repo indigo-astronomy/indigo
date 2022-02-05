@@ -1025,15 +1025,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (GUIDER_MODE_PROPERTY && indigo_property_match(GUIDER_SETTINGS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_SETTINGS
 		indigo_property_copy_values(GUIDER_SETTINGS_PROPERTY, property, false);
-		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		PRIVATE_DATA->ra = PRIVATE_DATA->dec = 0;
 		GUIDER_IMAGE_HOTCOL_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 		GUIDER_IMAGE_HOTROW_ITEM->number.max = GUIDER_IMAGE_WIDTH_ITEM->number.target;
 		GUIDER_IMAGE_RA_OFFSET_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 		GUIDER_IMAGE_DEC_OFFSET_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
-		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = CCD_FRAME_WIDTH_ITEM->number.max = GUIDER_IMAGE_WIDTH_ITEM->number.target;
-		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = CCD_FRAME_HEIGHT_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
+		CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = CCD_FRAME_WIDTH_ITEM->number.max = GUIDER_IMAGE_WIDTH_ITEM->number.target;
+		CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = CCD_FRAME_HEIGHT_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
+		sprintf(CCD_MODE_ITEM[0].label, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value, (int)CCD_INFO_HEIGHT_ITEM->number.value);
+		sprintf(CCD_MODE_ITEM[1].label, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / 2, (int)CCD_INFO_HEIGHT_ITEM->number.value / 2);
+		sprintf(CCD_MODE_ITEM[2].label, "RAW %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / 4, (int)CCD_INFO_HEIGHT_ITEM->number.value / 4);
+		if (IS_CONNECTED) {
+			indigo_delete_property(device, CCD_INFO_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_FRAME_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_MODE_PROPERTY, NULL);
+			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
+			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
+			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
+		}
+		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
 	} else if (GUIDER_MODE_PROPERTY && indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property)) {
