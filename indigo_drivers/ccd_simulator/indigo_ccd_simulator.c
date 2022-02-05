@@ -159,11 +159,15 @@ static void search_stars(indigo_device *device) {
 		double mount_ra = GUIDER_IMAGE_RA_ITEM->number.value; // where mount thinks it is pointing
 		double mount_dec = GUIDER_IMAGE_DEC_ITEM->number.value;
 		indigo_spherical_point_t point;
+		indigo_log("1 mount coords %f %f",  mount_ra, mount_dec);
 		indigo_ra_dec_to_point(mount_ra, mount_dec, lst, &point);
-		indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target * DEG2RAD, GUIDER_IMAGE_NS_ERROR_ITEM->number.target * DEG2RAD);
-		indigo_point_to_ra_dec(&point, lst, &mount_ra, &mount_dec);
+		indigo_log("1.5 mount coords %f %f",  mount_ra, mount_dec);
+		indigo_spherical_point_t point_r = indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target * DEG2RAD, GUIDER_IMAGE_NS_ERROR_ITEM->number.target * DEG2RAD);
+		indigo_point_to_ra_dec(&point_r, lst, &mount_ra, &mount_dec);
+		indigo_log("2 mount coords %f %f",  mount_ra, mount_dec);
 		mount_ra *= h2r;
 		mount_dec *= d2r;
+		indigo_log("3 mount coords %f %f",  mount_ra, mount_dec);
 		double cos_mount_dec = cos(mount_dec);
 		double sin_mount_dec = sin(mount_dec);
 		double angle = M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0; // image rotation
