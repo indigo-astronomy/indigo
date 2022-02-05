@@ -161,25 +161,6 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 	return p;
 }
 
-/*
-indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spherical_point_t *spoint) {
-	indigo_cartesian_point_t cpoint = {0,0,0};
-	double cos_d = cos(spoint->d);
-	cpoint.x = spoint->r * cos_d * cos(spoint->a);
-	cpoint.y = spoint->r * cos_d * sin(spoint->a);
-	cpoint.z = spoint->r * sin(spoint->d);
-	return cpoint;
-}
-
-indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_point_t *cpoint) {
-	indigo_spherical_point_t spoint = {0,0,0};
-	spoint.r = sqrt(cpoint->x * cpoint->x + cpoint->y * cpoint->y + cpoint->z * cpoint->z);
-	spoint.a = atan(cpoint->y / cpoint->x);
-	spoint.d = acos(cpoint->z / spoint.r);
-	return spoint;
-}
-*/
-
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
 void indigo_point_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
 	*ra  = lst - spoint->a * RAD2DEG / 15.0 ;
