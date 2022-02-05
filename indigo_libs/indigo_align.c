@@ -152,12 +152,10 @@ indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_
 }
 
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
-	indigo_log("%s():  in: HA=%f, Dec=%f", __FUNCTION__, position->a, position->d);
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, u);
 	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, v);
 	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
-	indigo_log("%s(): out: HA=%f, Dec=%f", __FUNCTION__, p.a, p.d);
 	return p;
 }
 
