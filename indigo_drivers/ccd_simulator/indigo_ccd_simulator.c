@@ -97,9 +97,10 @@
 #define GUIDER_IMAGE_LONG_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 15)
 #define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 16)
 #define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 17)
-#define GUIDER_IMAGE_EW_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 18)
-#define GUIDER_IMAGE_NS_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 19)
-#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
+#define GUIDER_IMAGE_EPOCH_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 18)
+#define GUIDER_IMAGE_EW_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 19)
+#define GUIDER_IMAGE_NS_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
+#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 21)
 
 #define FILE_NAME_PROPERTY					PRIVATE_DATA->file_name_property
 #define FILE_NAME_ITEM							(FILE_NAME_PROPERTY->items + 0)
@@ -175,8 +176,8 @@ static void search_stars(indigo_device *device) {
 		for (indigo_star_entry *star_data = indigo_get_star_data(); star_data->hip; star_data++) {
 			if (star_data->mag > GUIDER_MAX_MAG)
 				continue;
-			double ra = star_data->ra * h2r; // J2K coordinates of the star
-			double dec = star_data->dec * d2r;
+			double ra = (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 ? star_data->ra : star_data->ra_now) * h2r;
+			double dec = (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 ? star_data->dec : star_data->dec_now) * d2r;
 			double cos_dec = cos(dec);
 			double sin_dec = sin(dec);
 			double sin_dec_dec = sin_mount_dec * sin_dec;
@@ -672,7 +673,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 21);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
 				indigo_init_number_item(GUIDER_IMAGE_WIDTH_ITEM, "IMAGE_WIDTH", "Image width (px)", 400, 16000, 0, 1600);
 				indigo_init_number_item(GUIDER_IMAGE_HEIGHT_ITEM, "IMAGE_HEIGHT", "Image height (px)", 300, 12000, 0, 1200);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
@@ -691,6 +692,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_LONG_ITEM, "LONG", "Longitude (0 to 360° +E)", -180, 360, 0, 17.1077478);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 14.84511111);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 74.1555);
+				indigo_init_number_item(GUIDER_IMAGE_EPOCH_ITEM, "EPOCH", "Epoch (0, 2000)", 0, 2000, 2000, 2000);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_EW_ERROR_ITEM, "EW_ROTATION_ERROR", "East-West axis rotation error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_NS_ERROR_ITEM, "NS_ROTATION_ERROR", "North-South axis rotation error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_IMAGE_AGE_ITEM, "IMAGE_AGE", "Max image age (s)", 0, 3600, 0, 1.0 / 60.0);
@@ -1025,6 +1027,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (GUIDER_MODE_PROPERTY && indigo_property_match(GUIDER_SETTINGS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_SETTINGS
 		indigo_property_copy_values(GUIDER_SETTINGS_PROPERTY, property, false);
+		if (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0)
+			GUIDER_IMAGE_EPOCH_ITEM->number.target = GUIDER_IMAGE_EPOCH_ITEM->number.value = 2000;
 		PRIVATE_DATA->ra = PRIVATE_DATA->dec = 0;
 		GUIDER_IMAGE_HOTCOL_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 		GUIDER_IMAGE_HOTROW_ITEM->number.max = GUIDER_IMAGE_WIDTH_ITEM->number.target;
@@ -1043,6 +1047,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
 			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
 		}
+		PRIVATE_DATA->lst = 0;
 		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
