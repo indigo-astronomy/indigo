@@ -463,7 +463,13 @@ static void solve(indigo_platesolver_task *task) {
 				AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value
 			);
 
-			AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3.a > 90 && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3.a > 270) {
+				// pointing South
+				AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
+			} else {
+				// pointing North
+				AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 0 : 1;
+			}
 			AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
 
 			indigo_log(
@@ -536,7 +542,14 @@ static void solve(indigo_platesolver_task *task) {
 			AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value
 		);
 
-		AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
+
+		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3.a > 90 && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3.a > 270) {
+			// pointing South
+			AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
+		} else {
+			// pointing North
+			AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 0 : 1;
+		}
 		AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
 
 		indigo_log(
