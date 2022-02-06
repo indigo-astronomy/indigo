@@ -48,6 +48,7 @@
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_novas.h>
 #include <indigo/indigo_platesolver.h>
 
 #include "indigo_agent_astrometry.h"
@@ -241,6 +242,12 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 		} else if (sscanf(line, "Field center: (RA,Dec) = (%lg, %lg)", &d1, &d2) == 2) {
 			AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = d1 / 15;
 			AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = d2;
+			if (AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target == 0) {
+				indigo_app_star(0, 0, 0, 0, &AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, &AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value);
+				AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 0;
+			} else {
+				AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 2000;
+			}
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = false;
 		} else if (sscanf(line, "Field size: %lg x %lg %s", &d1, &d2, s) == 3) {
 			if (!strcmp(s, "degrees")) {
