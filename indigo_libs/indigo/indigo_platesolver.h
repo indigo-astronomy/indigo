@@ -96,8 +96,7 @@ typedef enum {
 #define AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->polar_alignment_settings_property)
 #define AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM				(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+0)
 #define AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM		(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+1)
-#define AGENT_PLATESOLVER_PA_SETTINGS_DEC_MOVE_ITEM		(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+2)
-#define AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM		(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+3)
+#define AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM		(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+2)
 
 #define AGENT_PLATESOLVER_ABORT_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_property)
 #define AGENT_PLATESOLVER_ABORT_ITEM					(AGENT_PLATESOLVER_ABORT_PROPERTY->items+0)
@@ -136,7 +135,7 @@ typedef struct {
 	double pa_ew_error;
 	double pa_ns_error;
 	indigo_spherical_point_t pa_target_at_reference3;
-	indigo_spherical_point_t pa_error_at_reference3;
+	indigo_spherical_point_t pa_correction;
 	void (*save_config)(indigo_device *);
 	bool (*solve)(indigo_device *, void *image, unsigned long size);
 	pthread_mutex_t mutex;

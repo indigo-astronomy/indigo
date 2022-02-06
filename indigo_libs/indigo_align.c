@@ -404,22 +404,22 @@ bool indigo_polar_alignment_target_position(
 	indigo_spherical_point_t *target_position,
 	indigo_spherical_point_t *horizontal_correction
 ) {
-	if (!target_position || !horizontal_correction) {
-		return false;
+	indigo_spherical_point_t target = indigo_correct_polar_error(position, u, v);
+	if (target_position) {
+		*target_position = target;
 	}
 
-	*target_position = indigo_correct_polar_error(position, u, v);
+	if (horizontal_correction) {
+		indigo_spherical_point_t position_h;
+		indigo_equatorial_to_hotizontal(position, latitude, &position_h);
 
-	indigo_spherical_point_t position_h;
-	indigo_equatorial_to_hotizontal(position, latitude, &position_h);
+		indigo_spherical_point_t target_h;
+		indigo_equatorial_to_hotizontal(&target, latitude, &target_h);
 
-	indigo_spherical_point_t target_position_h;
-	indigo_equatorial_to_hotizontal(target_position, latitude, &target_position_h);
-
-	horizontal_correction->a = target_position_h.a - position_h.a;
-	horizontal_correction->d = target_position_h.d - position_h.d;
-	horizontal_correction->r = 1;
-
+		horizontal_correction->a = target_h.a - position_h.a;
+		horizontal_correction->d = target_h.d - position_h.d;
+		horizontal_correction->r = 1;
+	}
 	return true;
 }
 
