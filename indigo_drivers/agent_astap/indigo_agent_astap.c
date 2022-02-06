@@ -48,6 +48,7 @@
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_novas.h>
 #include <indigo/indigo_platesolver.h>
 
 #include "indigo_agent_astap.h"
@@ -277,6 +278,12 @@ static void parse_line(indigo_device *device, char *line) {
 		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = atof(s + 7) / 15.0;
 	} else if ((s = strstr(line, "CRVAL2="))) {
 		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = atof(s + 7);
+		if (AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target == 0) {
+			indigo_app_star(0, 0, 0, 0, &AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, &AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value);
+			AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 0;
+		} else {
+			AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 2000;
+		}
 	} else if ((s = strstr(line, "CROTA1="))) {
 		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = atof(s + 7);
 	} else if ((s = strstr(line, "CROTA2="))) {
