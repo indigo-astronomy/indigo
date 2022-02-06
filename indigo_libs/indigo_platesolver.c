@@ -459,9 +459,9 @@ static void solve(indigo_platesolver_task *task) {
 			AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_ns_error * RAD2DEG;
 			AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_ew_error * RAD2DEG;
 			AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value = sqrt(
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.a * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.a +
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.d * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.d
-			) * RAD2DEG;
+				AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.value +
+				AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value
+			);
 
 			AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
 			AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
@@ -532,9 +532,9 @@ static void solve(indigo_platesolver_task *task) {
 		AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_ns_error * RAD2DEG;
 		AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_ew_error * RAD2DEG;
 		AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value = sqrt(
-			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.a * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.a +
-			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.d * INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_error_at_reference3.d
-		) * RAD2DEG;
+			AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.value +
+			AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value
+		);
 
 		AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
 		AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
@@ -792,21 +792,21 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 					bool update = false;
 					double ra = NAN, dec = NAN;
 					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates_state = property->state;
-					if (property->state == INDIGO_OK_STATE) {
+					if (property->state == INDIGO_OK_STATE || property->state == INDIGO_BUSY_STATE) {
 						for (int i = 0; i < property->count; i++) {
 							indigo_item *item = property->items + i;
 							if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
 								ra = item->number.value;
+								INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.a = 15 * DEG2RAD * ra;
 								if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value != ra) {
 									AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.target = ra;
-									INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.a = 15 * DEG2RAD * ra;
 									update = true;
 								}
 							} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
 								dec = item->number.value;
+								INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.d = DEG2RAD * dec;
 								if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value != dec) {
 									AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.target = dec;
-									INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.d = DEG2RAD * dec;
 									update = true;
 								}
 							}
