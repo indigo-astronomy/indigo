@@ -169,7 +169,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 
 static void reset_pa_state(indigo_device * device, bool force) {
 	if (force || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS) {
-		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = POLAR_ALIGN_IDLE;
+		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_IDLE_STATE;
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
 		AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value =
