@@ -127,7 +127,7 @@ typedef struct {
 	indigo_spherical_point_t eq_coordinates;
 	indigo_property_state eq_coordinates_state;
 	indigo_spherical_point_t geo_coordinates;
-	indigo_property_state geo_coordinates_state;
+	//indigo_property_state geo_coordinates_state;
 	indigo_spherical_point_t pa_reference1;
 	indigo_spherical_point_t pa_reference2;
 	indigo_spherical_point_t pa_reference3;
