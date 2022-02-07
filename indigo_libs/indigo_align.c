@@ -417,6 +417,12 @@ bool indigo_polar_alignment_target_position(
 		indigo_equatorial_to_hotizontal(&target, latitude, &target_h);
 
 		horizontal_correction->a = target_h.a - position_h.a;
+		if (horizontal_correction->a > M_PI) {
+			horizontal_correction->a -= 2 * M_PI;
+		}
+		if (horizontal_correction->a < -M_PI) {
+			horizontal_correction->a += 2 * M_PI;
+		}
 		horizontal_correction->d = target_h.d - position_h.d;
 		horizontal_correction->r = 1;
 	}
