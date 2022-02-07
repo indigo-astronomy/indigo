@@ -1006,10 +1006,32 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 3);
 		TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, 8);
 		TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+		if (!byte_order_rgb) {
+			int size_in = frame_width * frame_height;
+			unsigned char *b8 = data_in + FITS_HEADER_SIZE;
+			for (int i = 0; i < size_in; i++) {
+				unsigned char b = *b8;
+				unsigned char r = *(b8 + 2);
+				*b8 = r;
+				*(b8 + 2) = b;
+				b8 += 3;
+			}
+		}
 	} else if (bpp == 48) {
 		TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 3);
 		TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, 16);
 		TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
+		if (!byte_order_rgb) {
+			int size_in = frame_width * frame_height;
+			uint16_t *b16 = (uint16_t *)(data_in + FITS_HEADER_SIZE);
+			for (int i = 0; i < size_in; i++) {
+				uint16_t b = *b16;
+				uint16_t r = *(b16 + 2);
+				*b16 = r;
+				*(b16 + 2) = b;
+				b16 += 3;
+			}
+		}
 	}
 	TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
 	TIFFSetField(tiff, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
