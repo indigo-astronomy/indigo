@@ -384,6 +384,7 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 		char *ext = "raw";
 		bool use_stdin = false;
 		char *message = "";
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
 		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = 0;
@@ -456,7 +457,6 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 				break;
 			}
 		}
-		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		if (use_stdin) {
 			if (!execute_command(device, "astap_cli %s -o \"%s\" -f stdin <\"%s\"", params, base, file))
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;

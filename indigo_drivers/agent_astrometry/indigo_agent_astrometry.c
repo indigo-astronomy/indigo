@@ -311,6 +311,7 @@ static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
 
 static bool astrometry_solve(indigo_device *device, void *image, unsigned long image_size) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		char *message = "";
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
 		AGENT_PLATESOLVER_WCS_RA_ITEM->number.value = 0;
@@ -524,7 +525,6 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 		if (AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value > 0) {
 			hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value);
 		}
-		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
 		if (!execute_command(device, "solve-field --overwrite --no-plots --no-remove-lines --no-verify-uniformize --sort-column FLUX --uniformize 0%s --config \"%s/astrometry.cfg\" --axy \"%s.axy\" \"%s.xy\"", hints, base_dir, base, base)) {
 			message = "Execution of solve-field failed";
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
