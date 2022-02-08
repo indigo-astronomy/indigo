@@ -157,7 +157,7 @@ static short V17_files[] = {
 	1416, 1501, 1502, 1503, 1504, 1505, 1506, 1507, 1508, 1509, 1510, 1511, 1512, 1601, 1602, 1603, 1604, 1605, 1606, 1607,
 	1608, 1701, 1702, 1703, 1704, 1801, 0
 };
-	
+
 static short H18_files[] = {
 	101, 201, 202, 203, 301, 302, 303, 304, 305, 306, 307, 308, 309, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411,
 	412, 413, 414, 415, 501, 502, 503, 504, 505, 506, 507, 508, 509, 510, 511, 512, 513, 514, 515, 516, 517, 518, 519, 520,
@@ -256,6 +256,7 @@ typedef struct {
 	indigo_timer *time_limit;
 	int frame_width;
 	int frame_height;
+	bool abort_requested;
 	pid_t pid;
 } astap_private_data;
 
@@ -326,6 +327,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	vsnprintf(buffer, sizeof(buffer), command, args);
 	va_end(args);
 
+	ASTAP_DEVICE_PRIVATE_DATA->abort_requested = false;
 	char command_buf[8 * 1024];
 	sprintf(command_buf, "%s 2>&1", buffer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
@@ -367,12 +369,10 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	fclose(output);
 	indigo_cancel_timer(device, &ASTAP_DEVICE_PRIVATE_DATA->time_limit);
 	ASTAP_DEVICE_PRIVATE_DATA->pid = 0;
-	if (AGENT_PLATESOLVER_ABORT_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (ASTAP_DEVICE_PRIVATE_DATA->abort_requested) {
 		res = false;
-		AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_OK_STATE;
-		AGENT_PLATESOLVER_ABORT_ITEM->sw.value = false;
-		indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
-		indigo_send_message(device, "Aborted!");
+		ASTAP_DEVICE_PRIVATE_DATA->abort_requested = false;
+		indigo_send_message(device, "Aborted");
 	}
 	return res;
 }
@@ -656,6 +656,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_PLATESOLVER_ABORT_ITEM && ASTAP_DEVICE_PRIVATE_DATA->pid) {
 			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
+			ASTAP_DEVICE_PRIVATE_DATA->abort_requested = true;
 			/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
 			kill(-ASTAP_DEVICE_PRIVATE_DATA->pid, SIGTERM);
 		}
@@ -706,7 +707,7 @@ indigo_result indigo_agent_astap(indigo_driver_action action, indigo_driver_info
 			if (!indigo_platesolver_validate_executable("astap_cli")) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASTAP is not available");
 				return INDIGO_UNRESOLVED_DEPS;
-			}			
+			}
 			last_action = action;
 			char *env = getenv("INDIGO_CACHE_BASE");
 			if (env) {
