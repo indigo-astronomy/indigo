@@ -173,6 +173,10 @@ static void reset_pa_state(indigo_device * device, bool force) {
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
 		AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value =
+		AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM->number.value =
+		AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM->number.value =
+		AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM->number.value =
+		AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value =
@@ -208,6 +212,20 @@ static void populate_pa_state(indigo_device * device) {
 
 	AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
 	AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = (AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_ITEM->number.value > 0) ? 1 : 0;
+
+	indigo_point_to_ra_dec(
+		&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference3,
+		&AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM->number.value,
+		&AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM->number.value
+	);
+
+	indigo_point_to_ra_dec(
+		&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_current_position,
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference3,
+		&AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM->number.value,
+		&AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM->number.value
+	);
 
 	indigo_log(
 		"POLAR_ALIGN: d2 = %.10f d3 = %.10f u = %.10f v = %.10f",
@@ -353,6 +371,7 @@ static void solve(indigo_platesolver_task *task) {
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
 				NULL
 			);
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_current_position = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3;
 
 			populate_pa_state(device);
 
@@ -372,6 +391,8 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_lst_at_reference3,
 				&position
 			);
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_current_position = position;
+
 			bool ok = indigo_reestimate_polar_error(
 				&position,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
@@ -470,12 +491,16 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->hidden = true;
 #endif
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
-		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 10);
+		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 14);
 		if (AGENT_PLATESOLVER_PA_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_ITEM, AGENT_PLATESOLVER_PA_STATE_ITEM_NAME, "Polar alignment state", 0, 10, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM, AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM_NAME, "Decliantion drift at point 2 (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM, AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM_NAME, "Decliantion drift at point 3 (°)", -45, 45, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM, AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM_NAME, "Target position RA (h)", 0, 24, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM, AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM_NAME, "Target position DEC (°)", -90, +90, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM, AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM_NAME, "Current position RA (h)", 0, 24, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM, AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM_NAME, "Current position DEC (°)", -90, +90, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM, AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM_NAME, "North-South offset (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM, AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM_NAME, "East-west offset (°)", -45, 45, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM, AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM_NAME, "Altitude correction (°)", -45, 45, 0, 0);
@@ -486,6 +511,10 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_STATE_ITEM->number.format, "%.0f");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM->number.format, "%m");
+		strcpy(AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_NS_OFFSET_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_EW_OFFSET_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_ITEM->number.format, "%.m");
