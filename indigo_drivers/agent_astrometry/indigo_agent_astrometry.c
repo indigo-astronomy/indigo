@@ -185,6 +185,7 @@ typedef struct {
 	int frame_width;
 	int frame_height;
 	pid_t pid;
+	bool abort_requested;
 } astrometry_private_data;
 
 // --------------------------------------------------------------------------------
@@ -198,6 +199,7 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	vsnprintf(buffer, sizeof(buffer), command, args);
 	va_end(args);
 
+	ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
 	char command_buf[8 * 1024];
 	sprintf(command_buf, "%s 2>&1", buffer);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
@@ -288,11 +290,10 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 	}
 	fclose(output);
 	ASTROMETRY_DEVICE_PRIVATE_DATA->pid = 0;
-	if (AGENT_PLATESOLVER_ABORT_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested) {
 		res = false;
-		AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_OK_STATE;
-		AGENT_PLATESOLVER_ABORT_ITEM->sw.value = false;
-		indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
+		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = false;
+		indigo_send_message(device, "Aborted");
 	}
 	return res;
 }
@@ -728,9 +729,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT
 		indigo_property_copy_values(AGENT_PLATESOLVER_ABORT_PROPERTY, property, false);
-		if (AGENT_PLATESOLVER_ABORT_ITEM && ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
+		if (AGENT_PLATESOLVER_ABORT_ITEM->sw.value && ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
 			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
+			ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
 			/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
 			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
 		}
@@ -782,7 +784,7 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 			if (!indigo_platesolver_validate_executable("solve-field") || !indigo_platesolver_validate_executable("image2xy") || !indigo_platesolver_validate_executable("curl")) {
 				indigo_error("astrometry.net is not available");
 				return INDIGO_UNRESOLVED_DEPS;
-			}			
+			}
 			last_action = action;
 			char *env = getenv("INDIGO_CACHE_BASE");
 			if (env) {

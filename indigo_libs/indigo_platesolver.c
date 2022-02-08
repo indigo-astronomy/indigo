@@ -617,6 +617,14 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		}
 		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT
+		indigo_property_copy_values(AGENT_PLATESOLVER_ABORT_PROPERTY, property, false);
+		if (AGENT_PLATESOLVER_ABORT_ITEM->sw.value) {
+			AGENT_PLATESOLVER_ABORT_ITEM->sw.value = false;
+			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
+		}
 	}
 	return indigo_filter_change_property(device, client, property);
 }
