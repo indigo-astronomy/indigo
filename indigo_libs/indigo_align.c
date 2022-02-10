@@ -459,7 +459,7 @@ bool indigo_reestimate_polar_error(
 	const double latitude,
 	double *u, double *v
 ) {
-	const double search_radius = 3.0;
+	const double search_radius = 5.0;
 	_reestimate_polar_error(
 		position,
 		target_position,
