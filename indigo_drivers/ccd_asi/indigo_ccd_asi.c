@@ -1759,7 +1759,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			for (int i = 0; i < asi_id_count; i++) {
 				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct)
 					continue;
-				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
+				indigo_set_timer(NULL, 2.0, process_plug_event, NULL);
 			}
 			break;
 		}
