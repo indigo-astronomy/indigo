@@ -401,6 +401,13 @@ static void solve(indigo_platesolver_task *task) {
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_ew_error
 			);
 
+			if (!ok) {
+				AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+				indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, "Polar error exceeds the maximal error, align better and restart");
+				goto end;
+			}
+
 			populate_pa_state(device);
 
 			indigo_log("%s(): state POLAR_ALIGN_RECALCULATE -> POLAR_ALIGN_IN_PROGRESS", __FUNCTION__);
@@ -414,9 +421,9 @@ static void solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, "Alignment process is not in progress");
 		}
 	}
-
-	AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+	end:
+		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 }
 
 indigo_result indigo_platesolver_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface) {
