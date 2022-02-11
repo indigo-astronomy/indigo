@@ -483,7 +483,8 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	cleanup:
-		execute_command(device, "rm -rf \"image_%s.*\"", base);
+		/* globs do not work in quotes */
+		execute_command(device, "rm -rf \"image_\"%s.*", base);
 		if (message[0] == '\0')
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		else

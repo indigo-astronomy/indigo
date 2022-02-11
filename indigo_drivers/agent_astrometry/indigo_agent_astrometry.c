@@ -533,7 +533,8 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 			AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	cleanup:
-		execute_command(device, "rm -rf \"%s/image_*.*\"", base_dir);
+		/* globs do not work in quotes */
+		execute_command(device, "rm -rf \"%s/image_\"*", base_dir);
 		if (message[0] == '\0')
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		else
