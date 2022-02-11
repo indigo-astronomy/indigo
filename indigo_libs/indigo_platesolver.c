@@ -277,14 +277,21 @@ static void solve(indigo_platesolver_task *task) {
 		} else {
 			indigo_log("%s(): can not transit to POLAR_ALIGN_RECALCULATE from the current state", __FUNCTION__);
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, "Alignment process is not in progress");
 			return;
 		}
 	}
 
 	// Solve with a particular plate solver
-	if (!INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size))
+	if (!INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size)) {
+		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != POLAR_ALIGN_IDLE;
+		indigo_log("%s(): can not transit to POLAR_ALIGN_RECALCULATE from the current state", __FUNCTION__);
+		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, "Solving Failed...");
 		return;
+	}
 
 	// Continue with a generic process
 	set_fov(device, AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value, AGENT_PLATESOLVER_WCS_WIDTH_ITEM->number.value, AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.value);
