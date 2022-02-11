@@ -500,7 +500,7 @@ bool indigo_reestimate_polar_error(
 		v
 	);
 
-	if (fabs(*u * RAD2DEG) > search_radius || fabs(*v * RAD2DEG) > search_radius) {
+	if (fabs(*u * RAD2DEG) > search_radius * 0.95 || fabs(*v * RAD2DEG) > search_radius * 0.95) {
 		return false;
 	}
 
