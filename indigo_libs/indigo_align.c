@@ -27,6 +27,16 @@
 #include <indigo/indigo_align.h>
 
 /*
+static void print_cartesian(char *caption, char *name, indigo_cartesian_point_t *cp) {
+	indigo_log("%s: %s->x = %.5f, %s->y = %.5f, %s->z = %.5f\n", caption, name, cp->x, name, cp->y, name, cp->z);
+}
+
+static void print_spherical(char *caption, char *name, indigo_spherical_point_t *sp) {
+	indigo_log("%s: %s->a = %.5f, %s->d = %.5f, %s->r = %.5f\n", caption, name, sp->a * RAD2DEG, name, sp->d * RAD2DEG, name, sp->r);
+}
+*/
+
+/*
  Precesses c0 from eq0 to eq1
 
  c0.a - Right Ascension (radians)
@@ -150,6 +160,25 @@ indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_
 	rpoint.z =  point->z;
 	return rpoint;
 }
+//#define ORIG
+#ifndef ORIG /* this code is for test - I am not sure which rotation comes first :( - need to figure out by tests */
+indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
+	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
+	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, -u);
+	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, -v);
+	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
+	return p;
+}
+
+indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
+	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
+	indigo_cartesian_point_t position_h_x = indigo_cartesian_rotate_x(&position_h, v);
+	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_y(&position_h_x, u);
+	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
+	return p;
+}
+
+#else /* This is the original code */
 
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
@@ -158,6 +187,16 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
 	return p;
 }
+
+indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
+	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
+	indigo_cartesian_point_t position_h_x = indigo_cartesian_rotate_x(&position_h, -v);
+	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_y(&position_h_x, -u);
+	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
+	return p;
+}
+
+#endif
 
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
 void indigo_point_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
@@ -301,67 +340,6 @@ bool indigo_compensate_refraction2(
 	return true;
 }
 
-/* calculate polar alignment error */
-bool _indigo_polar_alignment_error(
-	const indigo_spherical_point_t *st1,
-	const indigo_spherical_point_t *st2,
-	const indigo_spherical_point_t *st2_observed,
-	const double latitude,
-	indigo_spherical_point_t *equatorial_error,
-	indigo_spherical_point_t *horizontal_error
-) {
-	if (equatorial_error == NULL || horizontal_error == NULL) {
-		return false;
-	}
-
-	equatorial_error->a = st2_observed->a - st2->a;
-	equatorial_error->d = st2_observed->d - st2->d;
-	equatorial_error->r = 1;
-
-	double cos_lat = cos(latitude);
-	double tan_d1 = tan(st1->d);
-	double tan_d2 = tan(st2->d);
-	double sin_h1 = sin(st1->a);
-	double sin_h2 = sin(st2->a);
-	double cos_h1 = cos(st1->a);
-	double cos_h2 = cos(st2->a);
-
-	if (isnan(tan_d1) || isnan(tan_d2)) {
-		return false;
-	}
-
-	double det = cos_lat * (tan_d1 + tan_d2) * (1 - cos(st1->a - st2->a));
-
-	if (det == 0) {
-		return false;
-	}
-
-	horizontal_error->d = cos_lat * (equatorial_error->a * (sin_h2 - sin_h1) - equatorial_error->d * (tan_d1 * cos_h1 - tan_d2 * cos_h2)) / det;
-	horizontal_error->a = (equatorial_error->a * (cos_h1 - cos_h2) + equatorial_error->d * (tan_d2 * sin_h2 - tan_d1 * sin_h1)) / det;
-	horizontal_error->r = 1;
-	return true;
-}
-
-bool indigo_polar_alignment_error(
-	const indigo_spherical_point_t *st1,
-	const indigo_spherical_point_t *st2,
-	const indigo_spherical_point_t *st2_observed,
-	const double latitude,
-	const bool compensate_refraction,
-	indigo_spherical_point_t *equatorial_error,
-	indigo_spherical_point_t *horizontal_error
-) {
-	if (compensate_refraction) {
-		indigo_spherical_point_t st1_a, st2_a, st2_observed_a;
-		if (!indigo_compensate_refraction(st1, latitude, &st1_a)) return false;
-		if (!indigo_compensate_refraction(st2, latitude, &st2_a)) return false;
-		if (!indigo_compensate_refraction(st2_observed, latitude, &st2_observed_a)) return false;
-		return _indigo_polar_alignment_error(&st1_a, &st2_a, &st2_observed_a, latitude, equatorial_error, horizontal_error);
-	} else {
-		return _indigo_polar_alignment_error(st1, st2, st2_observed, latitude, equatorial_error, horizontal_error);
-	}
-}
-
 bool indigo_polar_alignment_error_3p(
 	const indigo_spherical_point_t *p1,
 	const indigo_spherical_point_t *p2,
@@ -499,7 +477,21 @@ bool indigo_reestimate_polar_error(
 		u,
 		v
 	);
-
+	/*
+	_reestimate_polar_error(
+		position,
+		target_position,
+		latitude,
+		*v - .002 * DEG2RAD,
+		*v + .002 * DEG2RAD,
+		0.0002 * DEG2RAD,
+		*u - .002 * DEG2RAD,
+		*u + .002 * DEG2RAD,
+		0.0002 * DEG2RAD,
+		u,
+		v
+	);
+	*/
 	if (fabs(*u * RAD2DEG) > search_radius * 0.95 || fabs(*v * RAD2DEG) > search_radius * 0.95) {
 		return false;
 	}

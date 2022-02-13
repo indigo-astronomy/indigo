@@ -91,7 +91,16 @@ extern indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian
  * v = angle in radians, rotate around X (North - South) axis, Southward is positive.
  */
 extern indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v);
-#define indigo_correct_polar_error(position, u, v) (indigo_apply_polar_error(position, -u, -v))
+
+/** derotate coordinates using polar errors
+ * possition->a = Hour angle in radians
+ * possition->d = Declination in radians
+ * possition->r = 1; (should be 1)
+ * u = angle in radians, rotate around Y (East - West) axis. Eastward is poritive.
+ * v = angle in radians, rotate around X (North - South) axis, Southward is positive.
+ */
+extern indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v);
+
 
 /** convert spherical point in radians to ha/ra dec in hours and degrees
  */
@@ -132,18 +141,6 @@ extern bool indigo_compensate_refraction2(
 	const double latitude,
 	const double refraction,
 	indigo_spherical_point_t *st_corrected
-);
-
-/** calculate polar alignment error
- */
-extern bool indigo_polar_alignment_error(
-	const indigo_spherical_point_t *st1,
-	const indigo_spherical_point_t *st2,
-	const indigo_spherical_point_t *st2_observed,
-	const double latitude,
-	const bool compensate_refraction,
-	indigo_spherical_point_t *equatorial_error,
-	indigo_spherical_point_t *horizontal_error
 );
 
 /** calculate polar alignment error and Declination drifts
