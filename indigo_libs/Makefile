@@ -31,7 +31,7 @@ endif
 
 ifeq ($(OS_DETECTED),Linux)
 	LIBUSB=
-	LIBHIDAPI=$(BUILD_LIB)/libhidapi-hidraw.a
+	LIBHIDAPI=$(BUILD_LIB)/libhidapi-libusb.a
 	FORCE_ALL_ON=-Wl,--whole-archive
 	FORCE_ALL_OFF=-Wl,--no-whole-archive
 endif
