@@ -2607,6 +2607,7 @@
 		59C565042464A13A00344C0C /* indigo_aux_mgbox_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_mgbox_main.c; sourceTree = "<group>"; };
 		59C565062464A13A00344C0C /* MGPBox Manual English 1.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "MGPBox Manual English 1.1.pdf"; sourceTree = "<group>"; };
 		59C5806922EB6C33005BE502 /* Ultimate_Powerbox_v2_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Ultimate_Powerbox_v2_Serial_Command_Table.pdf; sourceTree = "<group>"; };
+		59C5D2B327B9243B003B2815 /* fcusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = fcusb.rules; sourceTree = "<group>"; };
 		59C6F75321FE214D0043DC52 /* indigo_cat_data.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_cat_data.h; sourceTree = "<group>"; };
 		59C8AD3421A9ADDD00C3594F /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59C8E7EE1DBBD8EA00AA3F0A /* indigo_ccd_sx.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_sx.rules; sourceTree = "<group>"; };
@@ -6445,6 +6446,7 @@
 				9DAC59D71DC24E1400AE410D /* indigo_focuser_fcusb.h */,
 				9DAC59D61DC24E1400AE410D /* indigo_focuser_fcusb.c */,
 				9DAC59D51DC24E1400AE410D /* indigo_focuser_fcusb_main.c */,
+				59C5D2B327B9243B003B2815 /* fcusb.rules */,
 				5981C8DA1DC2918300C7705F /* bin_externals */,
 			);
 			path = focuser_fcusb;
