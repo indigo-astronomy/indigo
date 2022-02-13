@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -780,6 +780,9 @@ static void mount_connect_callback(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
+			MOUNT_TYPE_PROPERTY->perm = INDIGO_RO_PERM;
+			indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			PRIVATE_DATA->device_count--;
@@ -794,6 +797,9 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		indigo_delete_property(device, ALIGNMENT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, FORCE_FLIP_PROPERTY, NULL);
+		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
+		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
+		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -819,13 +825,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (!PRIVATE_DATA->parked && MOUNT_PARK_PARKED_ITEM->sw.value) {
-			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value)
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value)
 				meade_command(device, ":hP#", NULL, 0, 0);
 			else if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
 				meade_command(device, ":hC#", NULL, 0, 0);
 			else if (MOUNT_TYPE_AVALON_ITEM->sw.value)
 				meade_command(device, ":X362#", NULL, 0, 0);
-			else if (MOUNT_TYPE_AP_ITEM->sw.value)
+			else if (MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value)
 				meade_command(device, ":KA#", NULL, 0, 0);
 			PRIVATE_DATA->parked = true;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked");
@@ -835,12 +841,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				meade_command(device, ":hU#", NULL, 0, 0);
 			else if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
 				meade_command(device, ":hW#", NULL, 0, 0);
-			else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value)
+			else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value)
 				meade_command(device, ":PO#", NULL, 0, 0);
 			else if (MOUNT_TYPE_AVALON_ITEM->sw.value)
 				meade_command(device, ":X370#", NULL, 0, 0);
-			else if (MOUNT_TYPE_AP_ITEM->sw.value)
-				meade_command(device, ":PO#", NULL, 0, 0);
 			else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value)
 				meade_command(device, ":hR#", NULL, 0, 0);
 			PRIVATE_DATA->parked = false;

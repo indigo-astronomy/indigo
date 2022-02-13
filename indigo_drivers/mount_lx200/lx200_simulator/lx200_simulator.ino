@@ -67,10 +67,10 @@ static char __buffer__[32];
 #define RA_PER_SEC 96
 
 bool is_meade = false;
-bool is_10micron = false;
+bool is_10micron = true;
 bool is_gemini = false;
 bool is_avalon = false;
-bool is_onstep = true;
+bool is_onstep = false;
 
 int date_day = 1;
 int date_month = 1;
@@ -200,7 +200,11 @@ void setup() {
       "MSG: Axis1/2 stepper drivers disabled\n"
       "MSG: Serial buffer flush\n"
       "MSG: OnStep is ready\n");
-  }  
+  }
+  if (is_10micron) {
+    is_tracking = false;
+    is_parked = true;
+  }
   while (!Serial)
     ;
 }
@@ -394,7 +398,7 @@ void loop() {
           Serial.print("m11#");
         else
           Serial.print("m00#");
-      } else if (!strcmp(buffer, "hP") || !strcmp(buffer, "hC") || !strcmp(buffer, "X362") || !strcmp(buffer, "Ch")) {
+      } else if (!strcmp(buffer, "hP") || !strcmp(buffer, "hC") || !strcmp(buffer, "X362") || !strcmp(buffer, "Ch") || !strcmp(buffer, "KA")) {
         target_ra = 0;
         target_dec = 90L * 360000L;
         is_tracking = false;
