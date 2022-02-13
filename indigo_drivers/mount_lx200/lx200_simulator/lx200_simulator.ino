@@ -66,11 +66,12 @@ static char __buffer__[32];
 #define DEC_PER_SEC 1440
 #define RA_PER_SEC 96
 
-bool is_meade = false;
-bool is_10micron = true;
+bool is_meade = true;
+bool is_10micron = false;
 bool is_gemini = false;
 bool is_avalon = false;
 bool is_onstep = false;
+bool is_zwo = false;
 
 int date_day = 1;
 int date_month = 1;
@@ -100,7 +101,7 @@ char tracking_rate = 'Q';
 char slew_rate = 'M';
 
 bool is_slewing = false;
-bool is_tracking = true;
+bool is_tracking = false;
 bool is_parked = false;
 
 char ra_guiding_speed[3] = "50";
@@ -230,6 +231,15 @@ void loop() {
 					Serial.print("Avalon#");
 				else if (is_onstep)
 					Serial.print("On-Step#");
+				else if (is_zwo)
+					Serial.print("ZWO AM5#");
+			} else if (!strcmp(buffer, "GV")) {
+				Serial.print("1.0.0#");
+      } else if (!strcmp(buffer, "GU")) {
+        Serial.print("G");
+        Serial.print(is_tracking ? "" : "n");
+        Serial.print(is_slewing ? "" : "N");        
+        Serial.print("#");
       } else if (!strcmp(buffer, "GVF")) {
 				Serial.print("ETX Autostar|A|43Eg|Apr 03 2007@11:25:53#");
       } else if (!strcmp(buffer, "GVN")) {
@@ -242,7 +252,7 @@ void loop() {
 				date_day = atoi(buffer + 5);
 				date_month = atoi(buffer + 2);
 				date_year = 2000 + atoi(buffer + 8);
-        if (is_onstep)
+        if (is_onstep || is_zwo)
           Serial.print("1");
         else
   				Serial.print("1Updating planetary data#                        #");
