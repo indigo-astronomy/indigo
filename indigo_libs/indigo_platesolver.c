@@ -190,7 +190,8 @@ static void reset_pa_state(indigo_device * device, bool force) {
 
 static void populate_pa_state(indigo_device * device) {
 	/* This is the intersection of horizon and HA = 12h - the corrections here correspond to the real corrections user has to apply */
-	indigo_spherical_point_t magic_reference = {M_PI, M_PI / 2, 1};
+	//indigo_spherical_point_t magic_reference = {M_PI, M_PI / 2, 1};
+	indigo_spherical_point_t magic_reference = {M_PI, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d, 1};
 
 	indigo_polar_alignment_target_position(
 		&magic_reference,

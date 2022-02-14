@@ -183,7 +183,7 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 */
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
-	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, u);
+	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, -u);
 	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, v);
 	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
 	return p;
@@ -192,7 +192,7 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_x = indigo_cartesian_rotate_x(&position_h, -v);
-	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_y(&position_h_x, -u);
+	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_y(&position_h_x, u);
 	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
 	return p;
 }
