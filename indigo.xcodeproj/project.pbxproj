@@ -2583,6 +2583,21 @@
 		59BBED22278493E400BA9CD6 /* indigo_agent_astap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_astap.h; sourceTree = "<group>"; };
 		59BBED23278493E400BA9CD6 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59BBED24278493E400BA9CD6 /* indigo_agent_astap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_astap.c; sourceTree = "<group>"; };
+		59BCB63127BA53A800EAD0A2 /* readeph0.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = readeph0.c; path = externals/novas/readeph0.c; sourceTree = "<group>"; };
+		59BCB63227BA53A800EAD0A2 /* novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = novas.c; path = externals/novas/novas.c; sourceTree = "<group>"; };
+		59BCB63327BA53A800EAD0A2 /* nutation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = nutation.h; path = externals/novas/nutation.h; sourceTree = "<group>"; };
+		59BCB63427BA53A900EAD0A2 /* eph_manager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = eph_manager.h; path = externals/novas/eph_manager.h; sourceTree = "<group>"; };
+		59BCB63627BA53A900EAD0A2 /* solarsystem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = solarsystem.h; path = externals/novas/solarsystem.h; sourceTree = "<group>"; };
+		59BCB63727BA53A900EAD0A2 /* novascon.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = novascon.c; path = externals/novas/novascon.c; sourceTree = "<group>"; };
+		59BCB63827BA53A900EAD0A2 /* NOVAS_C3.1_Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = NOVAS_C3.1_Guide.pdf; path = externals/novas/NOVAS_C3.1_Guide.pdf; sourceTree = "<group>"; };
+		59BCB63927BA53A900EAD0A2 /* novascon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = novascon.h; path = externals/novas/novascon.h; sourceTree = "<group>"; };
+		59BCB63A27BA53A900EAD0A2 /* novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = novas.h; path = externals/novas/novas.h; sourceTree = "<group>"; };
+		59BCB63B27BA53A900EAD0A2 /* solsys1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = solsys1.c; path = externals/novas/solsys1.c; sourceTree = "<group>"; };
+		59BCB63C27BA53A900EAD0A2 /* nutation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = nutation.c; path = externals/novas/nutation.c; sourceTree = "<group>"; };
+		59BCB63D27BA53A900EAD0A2 /* eph_manager.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = eph_manager.c; path = externals/novas/eph_manager.c; sourceTree = "<group>"; };
+		59BCB63E27BA53D900EAD0A2 /* README.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = README.txt; path = externals/novas/README.txt; sourceTree = "<group>"; };
+		59BCB63F27BA5B1B00EAD0A2 /* solsys2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = solsys2.c; path = externals/novas/solsys2.c; sourceTree = "<group>"; };
+		59BCB64027BA5B1B00EAD0A2 /* solsys3.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = solsys3.c; path = externals/novas/solsys3.c; sourceTree = "<group>"; };
 		59C0C74F2564652D00916E8D /* indigo_aux_rpio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_rpio.h; sourceTree = "<group>"; };
 		59C0C7502564652D00916E8D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59C0C7512564652D00916E8D /* indigo_aux_rpio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_rpio.c; sourceTree = "<group>"; };
@@ -8562,6 +8577,28 @@
 			path = agent_astap;
 			sourceTree = "<group>";
 		};
+		59BCB62E27BA533900EAD0A2 /* libnovas */ = {
+			isa = PBXGroup;
+			children = (
+				59BCB63E27BA53D900EAD0A2 /* README.txt */,
+				59BCB63827BA53A900EAD0A2 /* NOVAS_C3.1_Guide.pdf */,
+				59BCB63427BA53A900EAD0A2 /* eph_manager.h */,
+				59BCB63D27BA53A900EAD0A2 /* eph_manager.c */,
+				59BCB63A27BA53A900EAD0A2 /* novas.h */,
+				59BCB63227BA53A800EAD0A2 /* novas.c */,
+				59BCB63727BA53A900EAD0A2 /* novascon.c */,
+				59BCB63927BA53A900EAD0A2 /* novascon.h */,
+				59BCB63C27BA53A900EAD0A2 /* nutation.c */,
+				59BCB63327BA53A800EAD0A2 /* nutation.h */,
+				59BCB63127BA53A800EAD0A2 /* readeph0.c */,
+				59BCB63627BA53A900EAD0A2 /* solarsystem.h */,
+				59BCB63B27BA53A900EAD0A2 /* solsys1.c */,
+				59BCB63F27BA5B1B00EAD0A2 /* solsys2.c */,
+				59BCB64027BA5B1B00EAD0A2 /* solsys3.c */,
+			);
+			name = libnovas;
+			sourceTree = "<group>";
+		};
 		59C0C74E2564652D00916E8D /* aux_rpio */ = {
 			isa = PBXGroup;
 			children = (
@@ -8659,6 +8696,7 @@
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
+				59BCB62E27BA533900EAD0A2 /* libnovas */,
 				9DCB034622E9B9DE00A7A2E5 /* indigo */,
 				59E2DA0D263837BB00D3D4B5 /* libjpeg */,
 				59D967EE21A2EA930069A64C /* Makefile */,

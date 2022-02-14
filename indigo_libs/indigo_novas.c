@@ -39,7 +39,10 @@ static void init() {
 	if (do_init) {
 		double jd_begin, jd_end;
 		short de_number;
-		ephem_open("JPLEPH.421", &jd_begin, &jd_end, &de_number);
+		int error = ephem_open("JPLEPH.421", &jd_begin, &jd_end, &de_number);
+		if (error != 0) {
+			indigo_error("ephem_open() -> %d", error);
+		}
 		do_init = 0;
 	}
 }
