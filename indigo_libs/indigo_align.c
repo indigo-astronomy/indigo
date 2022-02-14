@@ -160,8 +160,9 @@ indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_
 	rpoint.z =  point->z;
 	return rpoint;
 }
-//#define ORIG
-#ifndef ORIG /* this code is for test - I am not sure which rotation comes first :( - need to figure out by tests */
+/*
+#define ORIG
+#ifndef ORIG
 indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, -u);
@@ -178,8 +179,8 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 	return p;
 }
 
-#else /* This is the original code */
-
+#else
+*/
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, u);
@@ -196,7 +197,7 @@ indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point
 	return p;
 }
 
-#endif
+//#endif
 
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
 void indigo_point_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
