@@ -24,12 +24,15 @@ extern char binary_jpleph_end[];
 #if defined(INDIGO_LINUX)
 
 __asm__(".section \".rodata\", \"\"");
+__asm__(".global binary_jpleph_start");
 __asm__("binary_jpleph_start:");
 __asm__(".incbin \"JPLEPH.421\"");
+__asm__(".global binary_jpleph_end");
 __asm__("binary_jpleph_end:");
 __asm__(".previous");
 
 #define fopen(name, mode) fmemopen(binary_jpleph_start, binary_jpleph_end - binary_jpleph_start, mode)
+
 #endif
 
 #if defined(INDIGO_MACOS)
