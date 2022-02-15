@@ -85,7 +85,7 @@
 #define MOUNT_TYPE_AP_ITEM_NAME					"AP"
 #define MOUNT_TYPE_ON_STEP_ITEM_NAME		"ONSTEP"
 #define MOUNT_TYPE_AGOTINO_ITEM_NAME		"AGOTINO"
-#define MOUNT_TYPE_ZWO_ITEM_NAME				"ZWO"
+#define MOUNT_TYPE_ZWO_ITEM_NAME				"ZWO_AM"
 
 typedef struct {
 	bool parked;
@@ -510,7 +510,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_AP_ITEM, MOUNT_TYPE_AP_ITEM_NAME, "Astro-Physics GTO", false);
 		indigo_init_switch_item(MOUNT_TYPE_ON_STEP_ITEM, MOUNT_TYPE_ON_STEP_ITEM_NAME, "OnStep", false);
 		indigo_init_switch_item(MOUNT_TYPE_AGOTINO_ITEM, MOUNT_TYPE_AGOTINO_ITEM_NAME, "aGotino", false);
-		indigo_init_switch_item(MOUNT_TYPE_ZWO_ITEM, MOUNT_TYPE_ZWO_ITEM_NAME, "ZWO AM5", false);
+		indigo_init_switch_item(MOUNT_TYPE_ZWO_ITEM, MOUNT_TYPE_ZWO_ITEM_NAME, "ZWO AM", false);
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -556,7 +556,7 @@ static void mount_connect_callback(indigo_device *device) {
 					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AVALON_ITEM, true);
 				} else if (!strncmp(PRIVATE_DATA->product, "On-Step", 7)) {
 					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ON_STEP_ITEM, true);
-				} else if (strstr(PRIVATE_DATA->product, "AM5")) { // TBD
+				} else if (!strncmp(PRIVATE_DATA->product, "AM", 2) && !isdigit(PRIVATE_DATA->product[2])) {
 					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ZWO_ITEM, true);
 				}
 			}
