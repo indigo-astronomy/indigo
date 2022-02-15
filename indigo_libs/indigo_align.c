@@ -160,7 +160,7 @@ indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_
 	rpoint.z =  point->z;
 	return rpoint;
 }
-/*
+
 #define ORIG
 #ifndef ORIG
 indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
@@ -172,6 +172,7 @@ indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point
 }
 
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
+	indigo_log("%s(): !ORIG", __FUNCTION__);
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_x = indigo_cartesian_rotate_x(&position_h, v);
 	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_y(&position_h_x, u);
@@ -180,8 +181,8 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 }
 
 #else
-*/
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
+	indigo_log("%s(): ORIG", __FUNCTION__);
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, u);
 	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, v);
@@ -196,15 +197,18 @@ indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point
 	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
 	return p;
 }
-
-//#endif
+#endif
 
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
 void indigo_point_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
 	*ra  = lst - spoint->a * RAD2DEG / 15.0 ;
-	if (*ra > 24) {
+	if (*ra >= 24) {
 		*ra -= 24.0;
 	}
+	if (*ra < 0) {
+		*ra += 24.0;
+	}
+
 	*dec = spoint->d * RAD2DEG;
 }
 
@@ -234,6 +238,9 @@ void indigo_ra_dec_to_point(const double ra, const double dec, const double lst,
 	double ha = lst - ra;
 	if (ha < 0) {
 		ha += 24;
+	}
+	if (ha >= 24) {
+		ha -= 24;
 	}
 	spoint->a = ha * 15.0 * DEG2RAD;
 	spoint->d = dec * DEG2RAD;

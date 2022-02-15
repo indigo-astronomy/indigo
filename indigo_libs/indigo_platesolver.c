@@ -228,6 +228,38 @@ static void populate_pa_state(indigo_device * device) {
 		&AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM->number.value
 	);
 
+
+
+	double gcd = indigo_gc_distance(
+		AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM->number.value,
+		AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM->number.value,
+		AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM->number.value,
+		AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM->number.value
+	);
+
+	double ra_diff = (AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM->number.value - AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM->number.value) * 15;
+	if (ra_diff >= 180) ra_diff -= 180;
+	if (ra_diff <= -180) ra_diff += 180;
+
+	double dec_diff = AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM->number.value - AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM->number.value;
+	if (dec_diff >= 180) dec_diff -= 180;
+	if (dec_diff <= -180) dec_diff += 180;
+
+	indigo_log(
+		"POLAR_ALIGN: DELTA RA = %.5f' DELTA Dec = %.5f', TOTAL = %.5f'",
+		ra_diff * 60,
+		dec_diff * 60,
+		gcd * 60
+	);
+
+	indigo_log(
+		"POLAR_ALIGN: Target RA = %.10f Dec = %.10f, Current RA = %.10f Dec = %.10f",
+		AGENT_PLATESOLVER_PA_STATE_TARGET_RA_ITEM->number.value,
+		AGENT_PLATESOLVER_PA_STATE_TARGET_DEC_ITEM->number.value,
+		AGENT_PLATESOLVER_PA_STATE_CURRENT_RA_ITEM->number.value,
+		AGENT_PLATESOLVER_PA_STATE_CURRENT_DEC_ITEM->number.value
+	);
+
 	indigo_log(
 		"POLAR_ALIGN: d2 = %.10f d3 = %.10f u = %.10f v = %.10f",
 		AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value,
