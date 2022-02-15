@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x001C
+#define DRIVER_VERSION 0x001D
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -1560,7 +1560,7 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define NO_DEVICE                 (-1000)
 
 
-static int asi_products[100];
+static int asi_products[ASICAMERA_ID_MAX];
 static int asi_id_count = 0;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
