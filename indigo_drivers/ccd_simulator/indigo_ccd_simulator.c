@@ -98,8 +98,8 @@
 #define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 16)
 #define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 17)
 #define GUIDER_IMAGE_EPOCH_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 18)
-#define GUIDER_IMAGE_EW_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 19)
-#define GUIDER_IMAGE_NS_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
+#define GUIDER_IMAGE_ALT_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 19)
+#define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
 #define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 21)
 
 #define FILE_NAME_PROPERTY					PRIVATE_DATA->file_name_property
@@ -154,14 +154,14 @@ static int mags[] = { 760000, 305000, 122000, 49000, 20000, 7800, 3100, 1200, 50
 
 static void search_stars(indigo_device *device) {
 	double lst = indigo_lst(NULL, GUIDER_IMAGE_LONG_ITEM->number.target);
-	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_EW_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_NS_ERROR_ITEM->number.value) {
+	if (lst - PRIVATE_DATA->lst >= GUIDER_IMAGE_IMAGE_AGE_ITEM->number.value || PRIVATE_DATA->ra != GUIDER_IMAGE_RA_ITEM->number.value || PRIVATE_DATA->dec != GUIDER_IMAGE_DEC_ITEM->number.value || PRIVATE_DATA->lat != GUIDER_IMAGE_LAT_ITEM->number.value || PRIVATE_DATA->lon != GUIDER_IMAGE_LONG_ITEM->number.value || PRIVATE_DATA->ew_error != GUIDER_IMAGE_ALT_ERROR_ITEM->number.value || PRIVATE_DATA->ns_error != GUIDER_IMAGE_AZ_ERROR_ITEM->number.value) {
 		double h2r = M_PI / 12;
 		double d2r = M_PI / 180;
 		double mount_ra = GUIDER_IMAGE_RA_ITEM->number.value; // where mount thinks it is pointing
 		double mount_dec = GUIDER_IMAGE_DEC_ITEM->number.value;
 		indigo_spherical_point_t point;
 		indigo_ra_dec_to_point(mount_ra, mount_dec, lst, &point);
-		indigo_spherical_point_t point_r = indigo_apply_polar_error(&point, GUIDER_IMAGE_EW_ERROR_ITEM->number.target * DEG2RAD, GUIDER_IMAGE_NS_ERROR_ITEM->number.target * DEG2RAD);
+		indigo_spherical_point_t point_r = indigo_apply_polar_error(&point, GUIDER_IMAGE_ALT_ERROR_ITEM->number.target * DEG2RAD, GUIDER_IMAGE_AZ_ERROR_ITEM->number.target * DEG2RAD);
 		indigo_point_to_ra_dec(&point_r, lst, &mount_ra, &mount_dec);
 		mount_ra *= h2r;
 		mount_dec *= d2r;
@@ -207,10 +207,10 @@ static void search_stars(indigo_device *device) {
 		PRIVATE_DATA->dec = GUIDER_IMAGE_DEC_ITEM->number.target;
 		PRIVATE_DATA->lat = GUIDER_IMAGE_LAT_ITEM->number.target;
 		PRIVATE_DATA->lon = GUIDER_IMAGE_LONG_ITEM->number.target;
-		PRIVATE_DATA->ew_error = GUIDER_IMAGE_EW_ERROR_ITEM->number.target;
-		PRIVATE_DATA->ns_error = GUIDER_IMAGE_NS_ERROR_ITEM->number.target;
+		PRIVATE_DATA->ew_error = GUIDER_IMAGE_ALT_ERROR_ITEM->number.target;
+		PRIVATE_DATA->ns_error = GUIDER_IMAGE_AZ_ERROR_ITEM->number.target;
 		PRIVATE_DATA->lst = lst;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d stars, center at %g/%g, seen from %g/%g with polar error %g/%g", PRIVATE_DATA->star_count, PRIVATE_DATA->ra, PRIVATE_DATA->dec, PRIVATE_DATA->lat, PRIVATE_DATA->lon, GUIDER_IMAGE_EW_ERROR_ITEM->number.target, GUIDER_IMAGE_NS_ERROR_ITEM->number.target);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d stars, center at %g/%g, seen from %g/%g with polar error %g/%g", PRIVATE_DATA->star_count, PRIVATE_DATA->ra, PRIVATE_DATA->dec, PRIVATE_DATA->lat, PRIVATE_DATA->lon, GUIDER_IMAGE_ALT_ERROR_ITEM->number.target, GUIDER_IMAGE_AZ_ERROR_ITEM->number.target);
 	}
 }
 
@@ -693,8 +693,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 14.84511111);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 74.1555);
 				indigo_init_number_item(GUIDER_IMAGE_EPOCH_ITEM, "EPOCH", "Epoch (0, 2000)", 0, 2000, 2000, 2000);
-				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_EW_ERROR_ITEM, "EW_ROTATION_ERROR", "East-West axis rotation error (°)", -30, +30, 0, 0);
-				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_NS_ERROR_ITEM, "NS_ROTATION_ERROR", "North-South axis rotation error (°)", -30, +30, 0, 0);
+				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_ALT_ERROR_ITEM, "ALT_POLAR_ERROR", "Altitude polar error (°)", -30, +30, 0, 0);
+				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_AZ_ERROR_ITEM, "AZ_POLAR_ERROR", "Azimuth polar error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_IMAGE_AGE_ITEM, "IMAGE_AGE", "Max image age (s)", 0, 3600, 0, 1.0 / 60.0);
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = GUIDER_IMAGE_WIDTH_ITEM->number.target;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
