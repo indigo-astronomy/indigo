@@ -87,19 +87,19 @@ extern indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian
  * possition->a = Hour angle in radians
  * possition->d = Declination in radians
  * possition->r = 1; (should be 1)
- * u = angle in radians, rotate around Y (East - West) axis. Eastward is poritive.
- * v = angle in radians, rotate around X (North - South) axis, Southward is positive.
+ * alt_error = angle in radians, altitude polar error (Up - Down)
+ * az_error = angle in radians, azimuth polar error (East - West)
  */
-extern indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v);
+extern indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double alt_error, double az_error);
 
 /** derotate coordinates using polar errors
  * possition->a = Hour angle in radians
  * possition->d = Declination in radians
  * possition->r = 1; (should be 1)
- * u = angle in radians, rotate around Y (East - West) axis. Eastward is poritive.
- * v = angle in radians, rotate around X (North - South) axis, Southward is positive.
+ * alt_error = angle in radians, altitude polar error (Up - Down)
+ * az_error = angle in radians, azimuth polar error (East - West)
  */
-extern indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v);
+extern indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double alt_error, double az_error);
 
 
 /** convert spherical point in radians to ha/ra dec in hours and degrees
@@ -151,8 +151,8 @@ extern bool indigo_polar_alignment_error_3p(
 	const indigo_spherical_point_t *p3,
 	double *d2,
 	double *d3,
-	double *u,
-	double *v
+	double *alt_error,
+	double *az_error
 );
 
 /** recalculates polar error for a given target position (if thelescope is aligned) and current position
@@ -161,8 +161,8 @@ extern bool indigo_reestimate_polar_error(
 	const indigo_spherical_point_t *position,
 	const indigo_spherical_point_t *target_position,
 	const double latitude,
-	double *u,
-	double *v
+	double *alt_error,
+	double *az_error
 );
 
 /** calculates corrections in az and alt and the position where the telescope sould point if properly polar aligned
@@ -171,8 +171,8 @@ extern bool indigo_reestimate_polar_error(
 bool indigo_polar_alignment_target_position(
 	const indigo_spherical_point_t *position,
 	const double latitude,
-	const double u,
-	const double v,
+	const double alt_error,
+	const double az_error,
 	indigo_spherical_point_t *target_position,
 	indigo_spherical_point_t *horizontal_correction
 );
