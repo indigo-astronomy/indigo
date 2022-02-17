@@ -23,9 +23,13 @@
  \file indigo_align.c
  */
 
+#ifdef NO_INDIGO_TEST
+#define indigo_log printf
+#define indigo_debug printf
+#else
 #include <indigo/indigo_bus.h>
+#endif
 #include <indigo/indigo_align.h>
-
 /*
 static void print_cartesian(char *caption, char *name, indigo_cartesian_point_t *cp) {
 	indigo_log("%s: %s->x = %.5f, %s->y = %.5f, %s->z = %.5f\n", caption, name, cp->x, name, cp->y, name, cp->z);
@@ -185,16 +189,18 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 	indigo_log("%s(): ORIG", __FUNCTION__);
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, u);
-	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, v);
-	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
+	indigo_cartesian_point_t position_h_yz = indigo_cartesian_rotate_z(&position_h_y, v);
+	indigo_cartesian_point_t position_h_yzx = indigo_cartesian_rotate_x(&position_h_yz, v);
+	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_yzx);
 	return p;
 }
 
 indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_x = indigo_cartesian_rotate_x(&position_h, -v);
-	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_y(&position_h_x, -u);
-	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
+	indigo_cartesian_point_t position_h_xz = indigo_cartesian_rotate_z(&position_h_x, -v);
+	indigo_cartesian_point_t position_h_xzy = indigo_cartesian_rotate_y(&position_h_xz, -u);
+	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xzy);
 	return p;
 }
 #endif
@@ -277,7 +283,7 @@ double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const i
 
 double indigo_calculate_refraction(const double z) {
 		double r = (1.02 / tan(DEG2RAD * ((90 - z * RAD2DEG) + 10.3 / ((90 - z * RAD2DEG) + 5.11)))) / 60 * DEG2RAD; // in arcmin
-		INDIGO_DEBUG(indigo_debug("Refraction = %.3f', Z = %.4f deg\n", r * RAD2DEG * 60, z * RAD2DEG));
+		indigo_debug("Refraction = %.3f', Z = %.4f deg\n", r * RAD2DEG * 60, z * RAD2DEG);
 		return r;
 }
 
@@ -311,7 +317,7 @@ bool indigo_compensate_refraction(
 	if (st_aparent->a < 0) st_aparent->a += 2 * M_PI;
 	st_aparent->d = asin(sin_lat * cos(azd) + cos_lat * sin(azd) * cos_az);
 	st_aparent->r = 1;
-	INDIGO_DEBUG(indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG));
+	indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG);
 	return true;
 }
 
@@ -344,7 +350,7 @@ bool indigo_compensate_refraction2(
 	if (st_aparent->a < 0) st_aparent->a += 2 * M_PI;
 	st_aparent->d = asin(sin_lat * cos(azd) + cos_lat * sin(azd) * cos_az);
 	st_aparent->r = 1;
-	INDIGO_DEBUG(indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG));
+	indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG);
 	return true;
 }
 
