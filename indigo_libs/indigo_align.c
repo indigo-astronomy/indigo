@@ -165,28 +165,8 @@ indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian_point_
 	return rpoint;
 }
 
-#define ORIG
-#ifndef ORIG
-indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
-	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
-	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, -u);
-	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_x(&position_h_y, -v);
-	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
-	return p;
-}
-
+/* rotate coordinates using polar errors */
 indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
-	indigo_log("%s(): !ORIG", __FUNCTION__);
-	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
-	indigo_cartesian_point_t position_h_x = indigo_cartesian_rotate_x(&position_h, v);
-	indigo_cartesian_point_t position_h_xy = indigo_cartesian_rotate_y(&position_h_x, u);
-	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_xy);
-	return p;
-}
-
-#else
-indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v) {
-	indigo_log("%s(): ORIG", __FUNCTION__);
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_z = indigo_cartesian_rotate_z(&position_h, v);
 	indigo_cartesian_point_t position_h_zx = indigo_cartesian_rotate_x(&position_h_z, v);
@@ -195,6 +175,7 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 	return p;
 }
 
+/* derotate coordinates using polar errors */
 indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
 	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
 	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, -u);
@@ -203,7 +184,6 @@ indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point
 	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_yxz);
 	return p;
 }
-#endif
 
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
 void indigo_point_to_ra_dec(const indigo_spherical_point_t *spoint, const double lst, double *ra, double *dec) {
@@ -445,6 +425,7 @@ static void _reestimate_polar_error(
 	}
 }
 
+/* recalculates polar error for a given target position (if thelescope is aligned) and current position */
 bool indigo_reestimate_polar_error(
 	const indigo_spherical_point_t *position,
 	const indigo_spherical_point_t *target_position,
@@ -491,21 +472,7 @@ bool indigo_reestimate_polar_error(
 		u,
 		v
 	);
-	/*
-	_reestimate_polar_error(
-		position,
-		target_position,
-		latitude,
-		*v - .002 * DEG2RAD,
-		*v + .002 * DEG2RAD,
-		0.0002 * DEG2RAD,
-		*u - .002 * DEG2RAD,
-		*u + .002 * DEG2RAD,
-		0.0002 * DEG2RAD,
-		u,
-		v
-	);
-	*/
+
 	if (fabs(*u * RAD2DEG) > search_radius * 0.95 || fabs(*v * RAD2DEG) > search_radius * 0.95) {
 		return false;
 	}
