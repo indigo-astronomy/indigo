@@ -87,8 +87,8 @@ extern indigo_cartesian_point_t indigo_cartesian_rotate_z(const indigo_cartesian
  * possition->a = Hour angle in radians
  * possition->d = Declination in radians
  * possition->r = 1; (should be 1)
- * u = angle in radians, rotate around Y (East - West) axis. Eastward is poritive.
- * v = angle in radians, rotate around X (North - South) axis, Southward is positive.
+ * u = angle in radians, Altitude error.
+ * v = angle in radians, Azimuth error.
  */
 extern indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t *position, double u, double v);
 
@@ -96,8 +96,8 @@ extern indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_
  * possition->a = Hour angle in radians
  * possition->d = Declination in radians
  * possition->r = 1; (should be 1)
- * u = angle in radians, rotate around Y (East - West) axis. Eastward is poritive.
- * v = angle in radians, rotate around X (North - South) axis, Southward is positive.
+ * u = angle in radians, Altitude error.
+ * v = angle in radians, Azimuth error.
  */
 extern indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v);
 
