@@ -187,15 +187,22 @@ static void reset_pa_state(indigo_device * device, bool force) {
 }
 
 static void populate_pa_state(indigo_device * device) {
-	AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->az_error * RAD2DEG;
-	AGENT_PLATESOLVER_PA_STATE_ALT_ERROR_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->alt_error * RAD2DEG;
+	AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error * RAD2DEG;
+	AGENT_PLATESOLVER_PA_STATE_ALT_ERROR_ITEM->number.value = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error * RAD2DEG;
 	AGENT_PLATESOLVER_PA_STATE_POLAR_ERROR_ITEM->number.value = sqrt(
 		AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_AZ_ERROR_ITEM->number.value +
 		AGENT_PLATESOLVER_PA_STATE_ALT_ERROR_ITEM->number.value * AGENT_PLATESOLVER_PA_STATE_ALT_ERROR_ITEM->number.value
 	);
 
-	AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->alt_error > 0) ? 1 : 0;
-	AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->az_error > 0) ? 1 : 0;
+	if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d > 0) {
+		/* Northern hemisphere */
+		AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error > 0) ? 1 : 0;
+	} else {
+		/* Southen hemisphere */
+		AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM->number.value = (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error > 0) ? 0 : 1;
+	}
+	/* for azimuth northern or southern does not matter as long as we use CW and CCW*/
+	AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM->number.value = (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error > 0) ? 1 : 0;
 
 	indigo_point_to_ra_dec(
 		&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
@@ -376,8 +383,8 @@ static void solve(indigo_platesolver_task *task) {
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3,
 				&AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value,
 				&AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value,
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->alt_error,
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->az_error
+				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error,
+				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error
 			);
 			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value *= RAD2DEG;
 			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value *= RAD2DEG;
@@ -385,8 +392,8 @@ static void solve(indigo_platesolver_task *task) {
 			indigo_polar_alignment_target_position(
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3,
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->alt_error,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->az_error,
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error,
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
 				NULL
 			);
@@ -416,8 +423,8 @@ static void solve(indigo_platesolver_task *task) {
 				&position,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->alt_error,
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->az_error
+				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error,
+				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error
 			);
 
 			if (!ok) {
