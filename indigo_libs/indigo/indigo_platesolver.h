@@ -142,6 +142,7 @@ typedef struct {
 	bool (*solve)(indigo_device *, void *image, unsigned long size);
 	pthread_mutex_t mutex;
 	bool failed;
+	bool abort_process_requested;
 } platesolver_private_data;
 
 extern bool indigo_platesolver_validate_executable(const char *executable);
