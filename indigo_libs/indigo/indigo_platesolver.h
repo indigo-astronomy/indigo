@@ -133,11 +133,11 @@ typedef struct {
 	indigo_spherical_point_t pa_reference1;
 	indigo_spherical_point_t pa_reference2;
 	indigo_spherical_point_t pa_reference3;
-	double pa_lst_at_reference3;
-	double alt_error;
-	double az_error;
 	indigo_spherical_point_t pa_target_at_reference3;
 	indigo_spherical_point_t pa_current_position;
+	double pa_lst_at_reference3;
+	double pa_alt_error;
+	double pa_az_error;
 	void (*save_config)(indigo_device *);
 	bool (*solve)(indigo_device *, void *image, unsigned long size);
 	pthread_mutex_t mutex;
