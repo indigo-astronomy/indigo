@@ -379,6 +379,14 @@ static bool execute_command(indigo_device *device, char *command, ...) {
 
 #define astap_save_config indigo_platesolver_save_config
 
+static void astap_abort(indigo_device *device) {
+	if (ASTAP_DEVICE_PRIVATE_DATA->pid) {
+		ASTAP_DEVICE_PRIVATE_DATA->abort_requested = true;
+		/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
+		kill(-ASTAP_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+	}
+}
+
 static bool astap_solve(indigo_device *device, void *image, unsigned long image_size) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		char *ext = "raw";
@@ -623,6 +631,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		ASTAP_DEVICE_PRIVATE_DATA->platesolver.save_config = astap_save_config;
 		ASTAP_DEVICE_PRIVATE_DATA->platesolver.solve = astap_solve;
+		ASTAP_DEVICE_PRIVATE_DATA->platesolver.abort = astap_abort;
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -651,16 +660,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ASTAP_INDEX_PROPERTY, NULL);
 		indigo_set_timer(device, 0, index_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property)) {
-	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT
-		indigo_property_copy_values(AGENT_PLATESOLVER_ABORT_PROPERTY, property, false);
-		if (AGENT_PLATESOLVER_ABORT_ITEM && ASTAP_DEVICE_PRIVATE_DATA->pid) {
-			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
-			ASTAP_DEVICE_PRIVATE_DATA->abort_requested = true;
-			/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
-			kill(-ASTAP_DEVICE_PRIVATE_DATA->pid, SIGTERM);
-		}
 	}
 	return indigo_platesolver_change_property(device, client, property);
 }

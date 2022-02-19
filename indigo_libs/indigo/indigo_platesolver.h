@@ -80,6 +80,20 @@ typedef enum {
 #define AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM		(AGENT_PLATESOLVER_SYNC_PROPERTY->items+3)
 #define AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM		(AGENT_PLATESOLVER_SYNC_PROPERTY->items+4)
 
+#define AGENT_PLATESOLVER_SYNC_PROPERTY				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->sync_mode_property)
+#define AGENT_PLATESOLVER_SYNC_DISABLED_ITEM	(AGENT_PLATESOLVER_SYNC_PROPERTY->items+0)
+#define AGENT_PLATESOLVER_SYNC_SYNC_ITEM			(AGENT_PLATESOLVER_SYNC_PROPERTY->items+1)
+#define AGENT_PLATESOLVER_SYNC_CENTER_ITEM		(AGENT_PLATESOLVER_SYNC_PROPERTY->items+2)
+#define AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM		(AGENT_PLATESOLVER_SYNC_PROPERTY->items+3)
+#define AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM	(AGENT_PLATESOLVER_SYNC_PROPERTY->items+4)
+
+#define AGENT_START_PROCESS_PROPERTY					(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->start_process_property)
+#define AGENT_PLATESOLVER_START_SOLVE_ITEM		(AGENT_START_PROCESS_PROPERTY->items+0)
+#define AGENT_PLATESOLVER_START_SYNC_ITEM			(AGENT_START_PROCESS_PROPERTY->items+1)
+#define AGENT_PLATESOLVER_START_CENTER_ITEM		(AGENT_START_PROCESS_PROPERTY->items+2)
+#define AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM		(AGENT_START_PROCESS_PROPERTY->items+3)
+#define AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM	(AGENT_START_PROCESS_PROPERTY->items+4)
+
 #define AGENT_PLATESOLVER_PA_STATE_PROPERTY				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->polar_alignment_state_property)
 #define AGENT_PLATESOLVER_PA_STATE_ITEM					(AGENT_PLATESOLVER_PA_STATE_PROPERTY->items+0)
 #define AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM		(AGENT_PLATESOLVER_PA_STATE_PROPERTY->items+1)
@@ -121,6 +135,7 @@ typedef struct {
 	indigo_property *hints_property;
 	indigo_property *wcs_property;
 	indigo_property *sync_mode_property;
+	indigo_property *start_process_property;
 	indigo_property *abort_property;
 	indigo_property *image_property;
 	indigo_property *polar_alignment_state_property;
@@ -140,6 +155,7 @@ typedef struct {
 	double pa_az_error;
 	void (*save_config)(indigo_device *);
 	bool (*solve)(indigo_device *, void *image, unsigned long size);
+	void (*abort)(indigo_device *);
 	pthread_mutex_t mutex;
 	bool failed;
 	bool abort_process_requested;
