@@ -326,7 +326,13 @@ static void abort_process(indigo_device *device) {
 		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 	}
+
 	if (
+		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS ||
+		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE
+	) {
+		reset_pa_state(device, true);
+	} else if (
 		AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value ||
 		AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value
 	) {
@@ -334,6 +340,7 @@ static void abort_process(indigo_device *device) {
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
 		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 	}
+
 	indigo_send_message(device, "Process aborted");
 }
 
@@ -360,7 +367,8 @@ static void solve(indigo_platesolver_task *task) {
 			indigo_log("%s(): can not transit to POLAR_ALIGN_RECALCULATE from the current state", __FUNCTION__);
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
-			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, "Alignment process is not in progress");
+			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+			indigo_send_message(device, "Alignment process is not in progress");
 			return;
 		}
 	}
