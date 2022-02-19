@@ -118,7 +118,7 @@ static bool abort_mount_move(indigo_device *device) {
 #define mount_slew(device, ra, dec, settle_time) mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra, dec, settle_time)
 
 static bool mount_control(indigo_device *device, char *operation, double ra, double dec, double settle_time) {
-	ra = modf(ra + 24, 24.0);
+	ra = fmod(ra + 24, 24.0);
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
 		if (item->sw.value && !strncmp(item->name, "Mount Agent", 11)) {
