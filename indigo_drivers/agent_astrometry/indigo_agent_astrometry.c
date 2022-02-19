@@ -309,6 +309,14 @@ static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
 
 #define astrometry_save_config indigo_platesolver_save_config
 
+static void astrometry_abort(indigo_device *device) {
+	if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
+		ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
+		/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
+		kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+	}
+}
+
 static bool astrometry_solve(indigo_device *device, void *image, unsigned long image_size) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->failed = true;
@@ -690,6 +698,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.save_config = astrometry_save_config;
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.solve = astrometry_solve;
+		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.abort = astrometry_abort;
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -727,16 +736,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
 		indigo_set_timer(device, 0, index_42xx_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property)) {
-	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT
-		indigo_property_copy_values(AGENT_PLATESOLVER_ABORT_PROPERTY, property, false);
-		if (AGENT_PLATESOLVER_ABORT_ITEM->sw.value && ASTROMETRY_DEVICE_PRIVATE_DATA->pid) {
-			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
-			ASTROMETRY_DEVICE_PRIVATE_DATA->abort_requested = true;
-			/* NB: To kill the whole process group with PID you should send kill signal to -PID (-1 * PID) */
-			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
-		}
 	}
 	return indigo_platesolver_change_property(device, client, property);
 }
