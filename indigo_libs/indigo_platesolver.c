@@ -127,7 +127,6 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			for (int i = 0; i < 300; i++) { // wait 3s to become OK
 				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
 					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
-					indigo_send_message(device, "Process aborted");
 					return false;
 				}
 				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->on_coordinates_set_state == INDIGO_OK_STATE)
@@ -146,7 +145,6 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			for (int i = 0; i < 300; i++) { // wait 3 s to become BUSY
 				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
 					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
-					indigo_send_message(device, "Process aborted");
 					abort_mount_move(device);
 					return false;
 				}
@@ -160,7 +158,6 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			for (int i = 0; i < 6000; i++) { // wait 60s to become not BUSY
 				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
 					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
-					indigo_send_message(device, "Process aborted");
 					abort_mount_move(device);
 					return false;
 				}
@@ -317,6 +314,20 @@ static void to_jnow_if_not(indigo_device *device, double *ra, double *dec) {
 	if (AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value != 0) {
 		indigo_app_star(0, 0, 0, 0, ra, dec);
 	}
+}
+
+static void abort_process(indigo_device *device) {
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = true;
+	abort_exposure(device);
+	if (
+		AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value ||
+		AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value
+	) {
+		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+	}
+	indigo_send_message(device, "Process aborted");
 }
 
 static void solve(indigo_platesolver_task *task) {
@@ -719,7 +730,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT
 		indigo_property_copy_values(AGENT_PLATESOLVER_ABORT_PROPERTY, property, false);
 		if (AGENT_PLATESOLVER_ABORT_ITEM->sw.value) {
-			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = true;
+			indigo_async((void *(*)(void *))abort_process, device);
 			AGENT_PLATESOLVER_ABORT_ITEM->sw.value = false;
 			AGENT_PLATESOLVER_ABORT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
