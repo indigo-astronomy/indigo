@@ -320,8 +320,15 @@ static void abort_process(indigo_device *device) {
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = true;
 	abort_exposure(device);
 	if (
+		AGENT_PLATESOLVER_SYNC_SYNC_ITEM->sw.value ||
+		AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value
+	) {
+		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+	}
+	if (
 		AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value ||
-		AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value
+		AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value
 	) {
 		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
@@ -767,7 +774,7 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 					double ra = NAN, dec = NAN;
 					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates_state = property->state;
 					if (property->state == INDIGO_BUSY_STATE) {
-						/* if mount is moved and polat alignment is in progress stop polar alignment and invalidate values */
+						/* if mount is moved and polar alignment is in progress stop polar alignment and invalidate values */
 						reset_pa_state(device, false);
 					}
 					if (property->state == INDIGO_OK_STATE || property->state == INDIGO_BUSY_STATE) {
