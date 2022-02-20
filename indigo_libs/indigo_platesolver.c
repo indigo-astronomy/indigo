@@ -376,6 +376,7 @@ static void start_process(indigo_device *device) {
 	} else if (AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM->sw.value) {
 		indigo_set_switch(AGENT_PLATESOLVER_SYNC_PROPERTY, AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM, true);
 	}
+	indigo_update_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY, NULL);
 	if (!start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value))
 		process_failed(device, NULL);
 }
