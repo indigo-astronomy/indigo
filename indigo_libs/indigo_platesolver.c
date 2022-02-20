@@ -350,10 +350,7 @@ static void abort_process(indigo_device *device) {
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE
 	) {
 		reset_pa_state(device, true);
-	} else if (
-		AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value ||
-		AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value
-	) {
+	} else {
 		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
 		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
