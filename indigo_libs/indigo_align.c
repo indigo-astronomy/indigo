@@ -370,41 +370,20 @@ bool indigo_polar_alignment_error_3p(
 
 bool indigo_polar_alignment_target_position(
 	const indigo_spherical_point_t *position,
-	const double latitude,
 	const double u,
 	const double v,
-	indigo_spherical_point_t *target_position,
-	indigo_spherical_point_t *horizontal_correction
+	indigo_spherical_point_t *target_position
 ) {
-	indigo_spherical_point_t target = indigo_correct_polar_error(position, u, v);
-	if (target_position) {
-		*target_position = target;
+	if (target_position == NULL) {
+		return false;
 	}
-
-	if (horizontal_correction) {
-		indigo_spherical_point_t position_h;
-		indigo_equatorial_to_hotizontal(position, latitude, &position_h);
-
-		indigo_spherical_point_t target_h;
-		indigo_equatorial_to_hotizontal(&target, latitude, &target_h);
-
-		horizontal_correction->a = target_h.a - position_h.a;
-		if (horizontal_correction->a > M_PI) {
-			horizontal_correction->a -= 2 * M_PI;
-		}
-		if (horizontal_correction->a < -M_PI) {
-			horizontal_correction->a += 2 * M_PI;
-		}
-		horizontal_correction->d = target_h.d - position_h.d;
-		horizontal_correction->r = 1;
-	}
+	*target_position = indigo_correct_polar_error(position, u, v);
 	return true;
 }
 
 static void _reestimate_polar_error(
 	const indigo_spherical_point_t *position,
 	const indigo_spherical_point_t *target_position,
-	const double latitude,
 	double min_az, double max_az, double az_inc,
 	double min_alt, double max_alt, double alt_inc,
 	double *u, double *v
@@ -412,9 +391,8 @@ static void _reestimate_polar_error(
 	double min_distance = 1e9;
 	for (double c_az = min_az; c_az < max_az; c_az += az_inc) {
 		for (double c_alt = min_alt; c_alt < max_alt; c_alt += alt_inc) {
-			indigo_spherical_point_t position_r;
 			indigo_spherical_point_t tp;
-			indigo_polar_alignment_target_position(position, latitude, c_alt, c_az, &tp,  &position_r);
+			indigo_polar_alignment_target_position(position, c_alt, c_az, &tp);
 			double distance = indigo_gc_distance_spherical(&tp, target_position);
 			if (distance < min_distance) {
 				min_distance = distance;
@@ -429,14 +407,12 @@ static void _reestimate_polar_error(
 bool indigo_reestimate_polar_error(
 	const indigo_spherical_point_t *position,
 	const indigo_spherical_point_t *target_position,
-	const double latitude,
 	double *u, double *v
 ) {
 	const double search_radius = 5.0;
 	_reestimate_polar_error(
 		position,
 		target_position,
-		latitude,
 		-search_radius * DEG2RAD,
 		 search_radius * DEG2RAD,
 		 0.2 * DEG2RAD,
@@ -449,7 +425,6 @@ bool indigo_reestimate_polar_error(
 	_reestimate_polar_error(
 		position,
 		target_position,
-		latitude,
 		*v - .2 * DEG2RAD,
 		*v + .2 * DEG2RAD,
 		0.02 * DEG2RAD,
@@ -462,7 +437,6 @@ bool indigo_reestimate_polar_error(
 	_reestimate_polar_error(
 		position,
 		target_position,
-		latitude,
 		*v - .02 * DEG2RAD,
 		*v + .02 * DEG2RAD,
 		0.002 * DEG2RAD,
