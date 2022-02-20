@@ -159,6 +159,7 @@ typedef struct {
 	pthread_mutex_t mutex;
 	bool failed;
 	bool abort_process_requested;
+	int saved_sync_mode;
 } platesolver_private_data;
 
 extern bool indigo_platesolver_validate_executable(const char *executable);
