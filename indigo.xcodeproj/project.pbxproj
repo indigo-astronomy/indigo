@@ -1847,6 +1847,9 @@
 		598005FB22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		598005FD22E4FFEA00021D67 /* libqsiapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqsiapi.a; sourceTree = "<group>"; };
 		5981C8E21DC2A2D300C7705F /* TODO.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = TODO.md; sourceTree = "<group>"; };
+		5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = IMAGING_AF_TUNING.md; sourceTree = "<group>"; };
+		5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = POLAR_ALIGNMENT.md; sourceTree = "<group>"; };
+		5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_PI_CONTROLLER_TUNING.md; sourceTree = "<group>"; };
 		598786452540C62D00CE8B48 /* libtiff.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiff.a; path = build/lib/libtiff.a; sourceTree = "<group>"; };
 		598786472540C69E00CE8B48 /* libtiffxx.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libtiffxx.a; path = build/lib/libtiffxx.a; sourceTree = "<group>"; };
 		5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "CMOS Camera Specific Options.pdf"; sourceTree = "<group>"; };
@@ -4960,6 +4963,9 @@
 		5912C80723D2447400A48B75 /* indigo_docs */ = {
 			isa = PBXGroup;
 			children = (
+				5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */,
+				5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */,
+				5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */,
 				594C6FBD24DF2901000E4BF0 /* INDIGO_AGENTS.md */,
 				594C6FBE24DF2901000E4BF0 /* INDIGO_DEVICE_ACCESS_CONTROL_AND_LOCKING.md */,
 				594C6FBC24DF2900000E4BF0 /* INDIGO_SERVER_AND_DRIVERS_GUIDE.md */,
