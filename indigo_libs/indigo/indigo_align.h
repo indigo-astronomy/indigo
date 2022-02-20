@@ -160,21 +160,18 @@ extern bool indigo_polar_alignment_error_3p(
 extern bool indigo_reestimate_polar_error(
 	const indigo_spherical_point_t *position,
 	const indigo_spherical_point_t *target_position,
-	const double latitude,
 	double *u,
 	double *v
 );
 
-/** calculates corrections in az and alt and the position where the telescope sould point if properly polar aligned
+/** calculates the position where the telescope sould point if properly polar aligned
  *  for the given position and polar errors
  */
 bool indigo_polar_alignment_target_position(
 	const indigo_spherical_point_t *position,
-	const double latitude,
 	const double u,
 	const double v,
-	indigo_spherical_point_t *target_position,
-	indigo_spherical_point_t *horizontal_correction
+	indigo_spherical_point_t *target_position
 );
 
 #ifdef __cplusplus

@@ -555,11 +555,9 @@ static void solve(indigo_platesolver_task *task) {
 
 			indigo_polar_alignment_target_position(
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error,
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error,
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
-				NULL
+				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3
 			);
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_current_position = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3;
 
@@ -589,7 +587,6 @@ static void solve(indigo_platesolver_task *task) {
 			bool ok = indigo_reestimate_polar_error(
 				&position,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_at_reference3,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_az_error
 			);
