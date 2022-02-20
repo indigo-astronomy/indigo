@@ -13,13 +13,13 @@ Polar alignment procedure uses 3 point polar alignment. It will move the telesco
 ## Configuration
 - **Exposure time** - This is the exposure time in seconds used for the frame acquisition usually several seconds is enough.
 - **Hour angle move** - This is how much the mount should move in Hour angle (-RA) between the exposures. Positive value will move the mount Clockwise, negative - Counterclockwise. Recommended value is something between 15 and 25 degrees.  
-- **Related Agents** - The polar alignment will work only if image source agent and the mount agent is selected which will command the mount to be aligned. This is usually done in the client. This is how it looks in Ain INDIGO Imager ("Mount Agent @ vega" with "Mount Simulator" selected with images from "Imager Agent"):
+- **Related Agents** - The polar alignment will work only if image source agent and the mount agent is selected. This is usually done in the client. Here is how it looks in Ain INDIGO Imager - "Mount Agent @ vega" is selected to control "Mount Simulator" mount. Images will be taken by "Imager Agent":
 
  ![](POLAR_ALIGNMENT/pa_config.png)
 
 ## Running the process
 1. Point the mount above 35-40 degrees in altitude and preferably close to the meridian. If **Hour angle move** is negative you should be before the meridian and if positive past the meridian to avoid meridian flip. Please note if the final position is close to 90 degrees azimuth (due east) or 270 degrees azimuth (dew west) the polar alignment calculation will not be accurate. This is another reason to start close to the meridian.
-2. Click on "Start alignment" this will take some time. The agent will take three exposures and solve them, and move mount between them. When it is done it will show the error and give you clear instructions how to correct the error:
+2. Click on "Start alignment". This will take some time. The agent will take three exposures and solve them, and move mount between them. When it is done it will show the error and give you clear instructions how to correct the error:
 
  ![](POLAR_ALIGNMENT/pa_start.png)
 
