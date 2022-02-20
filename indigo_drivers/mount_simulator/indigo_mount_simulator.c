@@ -54,6 +54,11 @@ static void position_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
 	if (IS_CONNECTED) {
 		double diffRA = MOUNT_RAW_COORDINATES_RA_ITEM->number.target - MOUNT_RAW_COORDINATES_RA_ITEM->number.value;
+		if (diffRA > 12)
+			diffRA = -(24 - diffRA);
+		else if (diffRA < -12) {
+			diffRA = (24 - diffRA);
+		}
 		double diffDec = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target - MOUNT_RAW_COORDINATES_DEC_ITEM->number.value;
 		if (PRIVATE_DATA->slew_in_progress) {
 			if (diffRA == 0 && diffDec == 0) {
@@ -81,12 +86,17 @@ static void position_timer_callback(indigo_device *device) {
 			} else {
 				double speedRA = 0.2;
 				double speedDec = 1.5;
-				if (fabs(diffRA) < speedRA)
+				if (fabs(diffRA) < speedRA) {
 					MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target;
-				else if (diffRA > 0)
+				} else if (diffRA > 0) {
 					MOUNT_RAW_COORDINATES_RA_ITEM->number.value += speedRA;
-				else if (diffRA < 0)
+					if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value > 24)
+						MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= 24;
+				} else if (diffRA < 0) {
 					MOUNT_RAW_COORDINATES_RA_ITEM->number.value -= speedRA;
+					if (MOUNT_RAW_COORDINATES_RA_ITEM->number.value < 0)
+						MOUNT_RAW_COORDINATES_RA_ITEM->number.value += 24;
+				}
 				if (fabs(diffDec) < speedDec)
 					MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target;
 				else if (diffDec > 0)
