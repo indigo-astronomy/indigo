@@ -18,7 +18,9 @@ INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived fro
 - **Related Agents** - The polar alignment will work only if image source agent and the mount agent is selected. This is usually done in the client. Here is how it looks in Ain INDIGO Imager - "Mount Agent @ vega" is selected to control "Mount Simulator" mount. Images will be taken by "Imager Agent":
 
  ![](POLAR_ALIGNMENT/pa_config.png)
- 
+
+ And this is how it looks in INDIGO A1 on MacOS:
+
  ![](POLAR_ALIGNMENT/pa_config_cm.png)
 
 ## Running the process
@@ -26,7 +28,7 @@ INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived fro
 2. Click on "Start alignment". This will take some time. The agent will take three exposures and solve them, and move mount between them. When it is done it will show the error and give you clear instructions how to correct the error:
 
  ![](POLAR_ALIGNMENT/pa_start.png)
- 
+
  ![](POLAR_ALIGNMENT/pa_start_cm.png)
 
  And will print in the log messages like this:
