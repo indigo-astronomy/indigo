@@ -52,7 +52,9 @@ Polar alignment procedure uses 3 point polar alignment. It will move the telesco
 ## Notes
 1. If the initial error is larger than 5 degrees the process will fail and ask for better initial polar alignment.
 2. If the initial error is more than 3 degrees it is recommended to repeat the process for better accuracy.
-3. The polar error estimate may vary between different runs with several arc minutes. There are many reasons for that - cone error, periodic error, backlash, camera pixel scale etc. Do not be too picky on that.
-4. Polar error of several arc minutes (even up to 10') is ok for most of the cases.
+3. Make sure the the mount is above 35-40 degrees in altitude at its lowest during the polar alignment process to minimize the effect of Atmospheric Refraction. The current implementation does not take refraction in to account. It will be enhanced in the future.
+4. Polar alignment end position should not be close to 90 (due East) and 270 (due West) degrees in azimuth. Close to these azimuths error estimation is inaccurate and turning the altitude knob will mostly change the azimuth and not the altitude.
+5. The polar error estimate may vary between different runs with several arc minutes. There are many reasons for that - cone error, periodic error, backlash, camera pixel scale etc. Do not be too picky on that.
+6. Polar error of several arc minutes (even up to 10') is ok for most of the cases.
 
 Clear skies!  
