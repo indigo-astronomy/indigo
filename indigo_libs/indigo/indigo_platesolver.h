@@ -144,13 +144,13 @@ typedef struct {
 	indigo_spherical_point_t eq_coordinates;
 	indigo_property_state eq_coordinates_state;
 	indigo_spherical_point_t geo_coordinates;
-	//indigo_property_state geo_coordinates_state;
 	indigo_spherical_point_t pa_reference1;
 	indigo_spherical_point_t pa_reference2;
 	indigo_spherical_point_t pa_reference3;
-	indigo_spherical_point_t pa_target_at_reference3;
-	indigo_spherical_point_t pa_current_position;
-	double pa_lst_at_reference3;
+	double pa_current_ra;
+	double pa_current_dec;
+	double pa_target_ra;
+	double pa_target_dec;
 	double pa_alt_error;
 	double pa_az_error;
 	void (*save_config)(indigo_device *);
