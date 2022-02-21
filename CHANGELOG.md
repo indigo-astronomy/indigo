@@ -2,6 +2,85 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-168] - Mon Feb 21 2022
+### Overall
+- added WRITE_ONLY BLOBs
+- indigo_platesolver: added 3 point polar alignment
+- indigo_platesolver: local files can be uploaded for solving
+- indigo_platesolver: code refactored
+- indigo_platesolver: add processes
+- indigo_prop_tool: add support for WRITE_ONLY BLOBs
+- indigo_libs: libnovas fixed for arm64 linux machines
+- indigo_libs: HIDAPI switched from libraw to libusb on linux
+- indigo_docs: POLAR_ALIGNMENT.md added
+- ccd_driver: byte_order_rgb interpreted correctly for TIFF format
+
+### New drivers
+- indigo_astap_agent:
+	- plate solver agent using ASTAP
+	- has all the features as Astrometry agent
+
+- indigo_ccd_svb:
+	- driver for SvBony cameras
+
+### Driver fixes
+- indigo_astrometry_agent:
+	- solving can be triggered by a processes
+	- added 3-point polar alignment
+	- local files can be uploaded for solving
+	- solution can be transformed to JNow
+	- fix abort function
+	- fixed cleanup of the temporary files
+
+- indigo_agent_imager:
+	- set SKIP_FRAMES to more reasonable limits
+
+- indigo_agent_scripting:
+	- race fixed
+
+- indigo_ccd_simulator:
+	- Hipparcos data is used for real sky images from "CCD Guider Simulator"
+	- add polar error simulation
+	- images from "CCD Guider Simulator" can be in JNow or J2000
+	- "CCD Guider Simulator" frame size is user defined
+
+- indigo_ccd_asi:
+	- use SDK v1.21
+	- fix array overrun
+	- number.target vs. number.value cleanup
+
+- indigo_gps_nmea:
+	- support for Glonass messages
+
+- indigo_ccd_qhy:
+	- provde hack for missing pthread_yield() call
+
+- indigo_mount_synscan:
+	- add support for "StarSeek" mounts
+
+- indigo_ccd_ptp:
+	- Fuji driver improved, tested with XT1
+	- add Canon EOS 250D
+	- add Fujifilm X-S10
+	- generalised image download code for Fujifilm
+	- Sony A7R4 compatibility fixes
+
+- indigo_mount_lx200:
+	- add experimental support for ZWO AM5 mount
+	- 10micron bugfixes
+	- guiding commands made synchronous
+	- mount type override fixed
+
+- indigo_mount_ioptron:
+	- guiding commands made synchronous
+
+- indigo_mount_pmc8:
+	- new firmware support added
+	- rounding issues fixed
+
+- indigo_focuser_fcusb:
+	- rules file added
+
 ## [2.0-166] - Tue Nov 30 2021
 ### Overall
 - indigo_raw_utils: new API for RMS contrast estimator
