@@ -33,7 +33,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- fixed cleanup of the temporary files
 
 - indigo_agent_imager:
-	- set SKIP_FRAMES to more reasonable limits
+	- dithering can skip frames
 
 - indigo_agent_scripting:
 	- race fixed
