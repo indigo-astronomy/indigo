@@ -386,7 +386,11 @@ static void solve(indigo_platesolver_task *task) {
 	if (!INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size)) {
 		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != POLAR_ALIGN_IDLE) {
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+			if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_RECALCULATE) {
+				AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IN_PROGRESS;
+			} else {
+				AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+			}
 			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 		}
 		process_failed(device, "Solving failed");
