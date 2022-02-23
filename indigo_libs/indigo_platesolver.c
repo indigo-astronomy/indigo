@@ -514,10 +514,24 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3.d
 			);
 
+			indigo_spherical_point_t reference1 = {0,0,0};
+			indigo_spherical_point_t reference2 = {0,0,0};
+			indigo_spherical_point_t reference3 = {0,0,0};
+
+			if (AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.value != 0) {
+				indigo_compensate_refraction(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d, &reference1);
+				indigo_compensate_refraction(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d, &reference2);
+				indigo_compensate_refraction(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d, &reference3);
+			} else {
+				reference1 = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1;
+				reference2 = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2;
+				reference3 = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3;
+			}
+
 			indigo_polar_alignment_error_3p(
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference1,
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference2,
-				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3,
+				&reference1,
+				&reference2,
+				&reference3,
 				&AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value,
 				&AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value,
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_alt_error,
@@ -526,6 +540,7 @@ static void solve(indigo_platesolver_task *task) {
 			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value *= RAD2DEG;
 			AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value *= RAD2DEG;
 
+			// here we do not care about the refraction since we work with real coordinates
 			indigo_spherical_point_t target_position = {0,0,0};
 			indigo_polar_alignment_target_position(
 				&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_reference3,
@@ -551,6 +566,8 @@ static void solve(indigo_platesolver_task *task) {
 
 	if (AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
 		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_RECALCULATE) {
+			indigo_spherical_point_t position_raw = {0,0,0};
+			indigo_spherical_point_t reference_position_raw = {0,0,0};
 			indigo_spherical_point_t position = {0,0,0};
 			indigo_spherical_point_t reference_position = {0,0,0};
 			double lst_now = indigo_lst(NULL, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.a * RAD2DEG);
@@ -561,14 +578,22 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_current_ra,
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_current_dec,
 				lst_now,
-				&position
+				&position_raw
 			);
 			indigo_ra_dec_to_point(
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_ra,
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_target_dec,
 				lst_now,
-				&reference_position
+				&reference_position_raw
 			);
+
+			if (AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.value != 0) {
+				indigo_compensate_refraction(&position_raw, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d, &position);
+				indigo_compensate_refraction(&reference_position_raw, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.d, &reference_position);
+			} else {
+				position = position_raw;
+				reference_position = reference_position_raw;
+			}
 
 			bool ok = indigo_reestimate_polar_error(
 				&position,
@@ -691,8 +716,6 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM_NAME, "Compensate refraction (1=On, 0=Off)", 0, 1, 0, 0);
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
-		// hide refrction as it is not implemented yet
-		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
 		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 12);
 		if (AGENT_PLATESOLVER_PA_STATE_PROPERTY == NULL)
