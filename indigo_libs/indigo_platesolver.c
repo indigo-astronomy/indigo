@@ -181,8 +181,13 @@ static bool start_exposure(indigo_device *device, double exposure) {
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
 		if (item->sw.value && (!strncmp(item->name, "Imager Agent", 12) || !strncmp(item->name, "Guider Agent", 12))) {
-			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure);
-			return true;
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->can_start_exposure) {
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure);
+				return true;
+			} else {
+				indigo_send_message(device, "No camera selected");
+				return false;
+			}
 		}
 	}
 	indigo_send_message(device, "No image source agent selected");
@@ -950,6 +955,21 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 				if (item->sw.value && !strcmp(item->name, device_name)) {
 					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->on_coordinates_set_state = property->state;
 					//indigo_debug("'%s'.'MOUNT_ON_COORDINATES_SET' state %s", device_name, indigo_property_state_text[property->state]);
+					break;
+				}
+			}
+		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
+			indigo_property *agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
+			for (int j = 0; j < agents->count; j++) {
+				indigo_item *item = agents->items + j;
+				if (item->sw.value && !strcmp(item->name, device_name)) {
+					for (int i = 0; i < property->count; i++) {
+						indigo_item *item = property->items + i;
+						if (item->sw.value) {
+							INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->can_start_exposure = i > 0;
+							break;
+						}
+					}
 					break;
 				}
 			}
