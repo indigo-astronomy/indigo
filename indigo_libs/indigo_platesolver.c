@@ -453,6 +453,9 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG,
 				3
 			);
+			if (ok) {
+				ok = start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
+			}
 			if (!ok) {
 				AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
@@ -460,7 +463,6 @@ static void solve(indigo_platesolver_task *task) {
 				process_failed(device, NULL);
 				return;
 			}
-			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
 		} else if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_REFERENCE_2) {
 			indigo_debug("%s(): state POLAR_ALIGN_REFERENCE_2 -> POLAR_ALIGN_REFERENCE_3", __FUNCTION__);
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -491,6 +493,9 @@ static void solve(indigo_platesolver_task *task) {
 				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG,
 				3
 			);
+			if (ok) {
+				ok = start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
+			}
 			if (!ok) {
 				AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
@@ -498,7 +503,6 @@ static void solve(indigo_platesolver_task *task) {
 				process_failed(device, NULL);
 				return;
 			}
-			start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
 		} else if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_REFERENCE_3) {
 			double lst_now = indigo_lst(NULL, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->geo_coordinates.a * RAD2DEG);
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pa_current_ra = AGENT_PLATESOLVER_WCS_RA_ITEM->number.value;
