@@ -262,9 +262,9 @@ double indigo_gc_distance_cartesian(const indigo_cartesian_point_t *cp1, const i
 }
 
 double indigo_calculate_refraction(const double z) {
-		double r = (1.02 / tan(DEG2RAD * ((90 - z * RAD2DEG) + 10.3 / ((90 - z * RAD2DEG) + 5.11)))) / 60 * DEG2RAD; // in arcmin
-		indigo_debug("Refraction = %.3f', Z = %.4f deg\n", r * RAD2DEG * 60, z * RAD2DEG);
-		return r;
+	double r = (1.02 / tan(DEG2RAD * ((90 - z * RAD2DEG) + 10.3 / ((90 - z * RAD2DEG) + 5.11)))) / 60 * DEG2RAD; // in arcmin
+	indigo_debug("Refraction = %.3f', Z = %.4f deg\n", r * RAD2DEG * 60, z * RAD2DEG);
+	return r;
 }
 
 /* compensate atmospheric refraction */
