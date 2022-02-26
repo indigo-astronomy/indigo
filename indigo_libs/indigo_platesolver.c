@@ -983,21 +983,29 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 
 indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	{ char *device_name = property->device;
-		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+		if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			indigo_property *related_agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
 			for (int j = 0; j < related_agents->count; j++) {
 				indigo_item *item = related_agents->items + j;
 				if (item->sw.value && !strcmp(item->name, device_name)) {
-					for (int i = 0; i < property->count; i++) {
-						indigo_item *item = property->items + i;
-						if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
-							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
-							task->device = FILTER_CLIENT_CONTEXT->device;
-							task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
-							indigo_async((void *(*)(void *))solve, task);
+					if (property->state == INDIGO_OK_STATE) {
+						for (int i = 0; i < property->count; i++) {
+							indigo_item *item = property->items + i;
+							if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
+								indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
+								task->device = FILTER_CLIENT_CONTEXT->device;
+								task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
+								indigo_async((void *(*)(void *))solve, task);
+							}
 						}
+						break;
 					}
-					break;
+				} else if (property->state == INDIGO_BUSY_STATE) {
+					indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+					if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
+						AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+						indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+					}
 				}
 			}
 		}
