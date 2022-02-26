@@ -1000,10 +1000,10 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						}
 						break;
 					}
-				} else if (property->state == INDIGO_BUSY_STATE) {
+				} else {
 					indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 					if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
-						AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+						AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = property->state;
 						indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 					}
 				}
