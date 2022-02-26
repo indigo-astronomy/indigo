@@ -998,14 +998,14 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 								indigo_async((void *(*)(void *))solve, task);
 							}
 						}
-						break;
+					} else {
+						indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+						if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
+							AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = property->state;
+							indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+						}
 					}
-				} else {
-					indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-					if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
-						AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = property->state;
-						indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-					}
+					break;
 				}
 			}
 		}
