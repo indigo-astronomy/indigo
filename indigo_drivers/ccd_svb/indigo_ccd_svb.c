@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -96,6 +96,7 @@ typedef struct {
 	SVB_CAMERA_PROPERTY_EX property_ex;
 	indigo_property *pixel_format_property;
 	indigo_property *svb_advanced_property;
+	bool first_frame;
 } svb_private_data;
 
 static char *get_bayer_string(indigo_device *device) {
@@ -222,7 +223,7 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 	res = SVBGetOutputImageType(id, &c_pixel_format);
 	if (res)
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetOutputImageType(%d) = %d", id, res);
-	if (c_pixel_format != get_pixel_format(device)) {
+	if (c_pixel_format != get_pixel_format(device) || PRIVATE_DATA->first_frame) {
 		res = SVBSetOutputImageType(id, get_pixel_format(device));
 		if (res) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -231,6 +232,7 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetOutputImageType(%d) = %d", id, res);
 		}
+		PRIVATE_DATA->first_frame = false;
 	}
 	res = SVBGetROIFormat(id, &c_frame_left, &c_frame_top, &c_frame_width, &c_frame_height, &c_bin);
 	if (res)
@@ -883,7 +885,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 					init_camera_property(device, ctrl_caps);
 				}
 				indigo_define_property(device, SVB_ADVANCED_PROPERTY, NULL);
-
+				PRIVATE_DATA->first_frame = true;
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->has_temperature_sensor) {
