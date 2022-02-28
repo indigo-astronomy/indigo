@@ -207,7 +207,16 @@ static bool abort_exposure(indigo_device *device) {
 
 static void reset_pa_state(indigo_device * device, bool force) {
 	if (force || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS) {
-		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_IDLE_STATE;
+		if ((
+			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS ||
+			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE
+		) && (
+			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state != INDIGO_BUSY_STATE
+		)) {
+			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_IDLE_STATE;
+		} else {
+			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
 		AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_2_ITEM->number.value =
 		AGENT_PLATESOLVER_PA_STATE_DEC_DRIFT_3_ITEM->number.value =
@@ -319,16 +328,7 @@ static void abort_process(indigo_device *device) {
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = true;
 	abort_exposure(device);
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort(device);
-	if (
-		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS ||
-		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE
-	) {
-		reset_pa_state(device, true);
-	} else {
-		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
-		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
-		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-	}
+	reset_pa_state(device, true);
 	process_failed(device, "Process aborted");
 }
 
@@ -998,10 +998,13 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 								indigo_async((void *(*)(void *))solve, task);
 							}
 						}
-					} else {
+					} else if (property->state == INDIGO_BUSY_STATE) {
 						indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-						if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
-							AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = property->state;
+						if (
+							(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) &&
+							(AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS)
+						) {
+							AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 							indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 						}
 					}
