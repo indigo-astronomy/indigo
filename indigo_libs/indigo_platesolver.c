@@ -1002,9 +1002,11 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 									indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 									abort_exposure(device);
 									process_failed(device, "Polar alignment is not in progress");
-									return INDIGO_OK;
 								}
 							}
+						} else if (AGENT_PLATESOLVER_WCS_PROPERTY->state != INDIGO_BUSY_STATE) {
+							AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 						}
 					} else if (property->state == INDIGO_ALERT_STATE) {
 						indigo_device *device = FILTER_CLIENT_CONTEXT->device;
@@ -1018,7 +1020,8 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 							AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
 							indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 							process_failed(device, "Polar alignment failed");
-							return INDIGO_OK;
+						} else {
+							process_failed(device, "Capture failed");
 						}
 					}
 					break;
