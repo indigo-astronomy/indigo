@@ -361,32 +361,6 @@ static void solve(indigo_platesolver_task *task) {
 	double recenter_dec = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value;
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
 
-	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
-		if (
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE ||
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS
-		) {
-			indigo_debug("%s(): state POLAR_ALIGN_IDLE -> POLAR_ALIGN_REFERENCE_1", __FUNCTION__);
-			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_REFERENCE_1;
-			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-		}
-	} else if (AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
-		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS) {
-			indigo_debug("%s(): state POLAR_ALIGN_IN_PROGRESS -> POLAR_ALIGN_RECALCULATE", __FUNCTION__);
-			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_RECALCULATE;
-			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-		} else {
-			indigo_debug("%s(): can not transit to POLAR_ALIGN_RECALCULATE from the current state (%d)", __FUNCTION__, (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value);
-			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
-			indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-			process_failed(device, "Polar alignment is not in progress");
-			return;
-		}
-	}
-
 	// Solve with a particular plate solver
 	if (!INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size)) {
 		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != POLAR_ALIGN_IDLE) {
@@ -1004,8 +978,32 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 							(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) &&
 							(AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS)
 						) {
-							AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-							indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+							if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
+								if (
+									AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE ||
+									AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS
+								) {
+									indigo_debug("%s(): state POLAR_ALIGN_IDLE -> POLAR_ALIGN_REFERENCE_1", __FUNCTION__);
+									AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+									AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_REFERENCE_1;
+									indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+								}
+							} else if (AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
+								if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS) {
+									indigo_debug("%s(): state POLAR_ALIGN_IN_PROGRESS -> POLAR_ALIGN_RECALCULATE", __FUNCTION__);
+									AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+									AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_RECALCULATE;
+									indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+								} else {
+									indigo_debug("%s(): can not transit to POLAR_ALIGN_RECALCULATE from the current state (%d)", __FUNCTION__, (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value);
+									AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+									AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+									indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+									abort_exposure(device);
+									process_failed(device, "Polar alignment is not in progress");
+									return;
+								}
+							}
 						}
 					}
 					break;
