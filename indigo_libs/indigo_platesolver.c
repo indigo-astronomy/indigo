@@ -211,7 +211,8 @@ static void reset_pa_state(indigo_device * device, bool force) {
 			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS ||
 			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE
 		) && (
-			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state != INDIGO_BUSY_STATE
+			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state == INDIGO_OK_STATE ||
+			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state == INDIGO_IDLE_STATE
 		)) {
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_IDLE_STATE;
 		} else {
@@ -1001,9 +1002,23 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 									indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 									abort_exposure(device);
 									process_failed(device, "Polar alignment is not in progress");
-									return;
+									return INDIGO_OK;
 								}
 							}
+						}
+					} else if (property->state == INDIGO_ALERT_STATE) {
+						indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+						if (
+							(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) &&
+							AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != POLAR_ALIGN_IDLE &&
+							AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != POLAR_ALIGN_IN_PROGRESS
+						) {
+							indigo_debug("%s(): Exposure failed in AGENT_PLATESOLVER_PA_STATE = %d", __FUNCTION__, (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value);
+							AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+							AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = POLAR_ALIGN_IDLE;
+							indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+							process_failed(device, "Polar alignment failed");
+							return INDIGO_OK;
 						}
 					}
 					break;
