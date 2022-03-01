@@ -140,7 +140,7 @@ else
 		endif
 		ARFLAGS = -rv
 		SOEXT = so
-		LIBHIDAPI = $(BUILD_LIB)/libhidapi-hidraw.a
+		LIBHIDAPI = $(BUILD_LIB)/libhidapi-libusb.a
 	endif
 endif
 
