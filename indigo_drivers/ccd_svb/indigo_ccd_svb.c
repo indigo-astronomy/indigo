@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -97,6 +97,7 @@ typedef struct {
 	indigo_property *pixel_format_property;
 	indigo_property *svb_advanced_property;
 	bool first_frame;
+	bool repeating_exposure;
 } svb_private_data;
 
 static char *get_bayer_string(indigo_device *device) {
@@ -348,7 +349,6 @@ static void svb_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 	char *color_string = get_bayer_string(device);
@@ -390,9 +390,29 @@ static void exposure_timer_callback(indigo_device *device) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res != SVB_ERROR_TIMEOUT)
-						break;
 					double remaining = CCD_EXPOSURE_ITEM->number.target - (time(NULL) - start);
+					if (res == SVB_SUCCESS) {
+						if (remaining > 0) {
+							if (PRIVATE_DATA->repeating_exposure) {
+								indigo_send_message(device, "Exposure is terminated prematurely again, failing...");
+								CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+								break;
+							}
+							PRIVATE_DATA->repeating_exposure = true;
+							CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target;
+							indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure is terminated prematurely, repeating...");
+							pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+							SVBStopVideoCapture(id);
+							pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+							indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+							return;
+						}
+						break;
+					}
+					if (res != SVB_ERROR_TIMEOUT) {
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
 					if (CCD_EXPOSURE_ITEM->number.value > remaining && remaining >= 0) {
 						CCD_EXPOSURE_ITEM->number.value = remaining;
 						indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -411,6 +431,7 @@ static void exposure_timer_callback(indigo_device *device) {
 						} else {
 							indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
 						}
+						PRIVATE_DATA->repeating_exposure = false;
 					}
 				}
 			}
@@ -469,11 +490,29 @@ static void streaming_timer_callback(indigo_device *device) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
-						break;
-					if (res != SVB_ERROR_TIMEOUT)
-						break;
 					double remaining = CCD_STREAMING_EXPOSURE_ITEM->number.target - (time(NULL) - start);
+					if (res == SVB_SUCCESS) {
+						if (remaining > 0) {
+							if (PRIVATE_DATA->repeating_exposure) {
+								indigo_send_message(device, "Exposure is terminated prematurely again, failing...");
+								CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+								break;
+							}
+							PRIVATE_DATA->repeating_exposure = true;
+							pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+							SVBStopVideoCapture(id);
+							pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+							CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
+							indigo_update_property(device, CCD_STREAMING_PROPERTY, "Exposure is terminated prematurely, repeating...");
+							indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+							return;
+						}
+						break;
+					}
+					if (res != SVB_ERROR_TIMEOUT) {
+						CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
 					if (CCD_STREAMING_EXPOSURE_ITEM->number.value > remaining && remaining >= 0) {
 						CCD_STREAMING_EXPOSURE_ITEM->number.value = remaining;
 						indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
@@ -494,6 +533,7 @@ static void streaming_timer_callback(indigo_device *device) {
 					} else {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
 					}
+					PRIVATE_DATA->repeating_exposure = false;
 					if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
 						CCD_STREAMING_COUNT_ITEM->number.value -= 1;
 					CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
@@ -947,6 +987,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
+		PRIVATE_DATA->repeating_exposure = false;
 		indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
@@ -965,6 +1006,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
+		PRIVATE_DATA->repeating_exposure = false;
 		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -1365,8 +1407,6 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define MAX_DEVICES                   12
 #define NO_DEVICE                 (-1000)
 
-
-static int svb_id_count = 0;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static bool connected_ids[SVBCAMERA_ID_MAX] = {false};
