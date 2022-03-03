@@ -74,7 +74,7 @@
 
 #ifdef INDIGO_WINDOWS
 #include <malloc.h>
-#define MALLOCED_SIZE malloc_size
+#define MALLOCED_SIZE _msize
 #endif
 
 
