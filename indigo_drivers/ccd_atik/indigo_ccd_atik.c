@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x001A
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -53,7 +53,6 @@
 
 #define ATIK_VID1	0x20E7
 #define ATIK_VID2 0x04B4
-#define ATIK_VID3 0x04D8
 
 #define ATIK_GUIDE_EAST             0x04     /* RA+ */
 #define ATIK_GUIDE_NORTH            0x01     /* DEC+ */
@@ -81,13 +80,12 @@
 typedef struct {
 	ArtemisHandle handle;
 	int index;
-	char serial[100];
+	libusb_device *dev;
 	int device_count;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	unsigned short relay_mask;
 	unsigned char *buffer;
 	bool can_check_temperature;
-	bool standalone_wheel;
 	indigo_property *presets_property;
 	indigo_property *heater_property;
 } atik_private_data;
@@ -699,20 +697,8 @@ static void wheel_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 
-	int num_filters = 0, moving = false, current_pos = 0, target_pos = 0;
-	int result;
-	if (PRIVATE_DATA->standalone_wheel) {
-		result = ArtemisEFWNmrPosition(PRIVATE_DATA->handle, &num_filters);
-		if (result == ARTEMIS_OK) {
-			bool efw_moving;
-			result = ArtemisEFWGetPosition(PRIVATE_DATA->handle, &current_pos, &efw_moving);
-			moving = efw_moving;
-			target_pos = WHEEL_SLOT_ITEM->number.target - 1;
-		}
-	} else {
-		result = ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos);
-	}
-	if (result == ARTEMIS_OK) {
+	int num_filters, moving, current_pos, target_pos;
+	if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
 		if (current_pos >= num_filters)
 			current_pos = 0;
 		if (target_pos >= num_filters)
@@ -750,47 +736,27 @@ static void wheel_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				PRIVATE_DATA->handle = NULL;
 			} else {
-				if (PRIVATE_DATA->standalone_wheel)
-					PRIVATE_DATA->handle = ArtemisEFWConnect(PRIVATE_DATA->index);
-				else
-					PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
+				PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
 			}
 		}
 		if (PRIVATE_DATA->handle) {
-			if (PRIVATE_DATA->standalone_wheel) {
-				int num_filters, current_pos;
-				bool moving;
-				if (ArtemisEFWNmrPosition(PRIVATE_DATA->handle, &num_filters) == ARTEMIS_OK && ArtemisEFWGetPosition(PRIVATE_DATA->handle, &current_pos, &moving) == ARTEMIS_OK) {
-					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = num_filters;
-					if (current_pos >= num_filters)
-						current_pos = 0;
-					if (moving) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Wheel is moving!");
-						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = current_pos + 1;
-						indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
-					} else {
-						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = current_pos + 1;
-					}
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			int num_filters, moving, current_pos, target_pos;
+			if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
+				WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = num_filters;
+				if (current_pos >= num_filters)
+					current_pos = 0;
+				if (target_pos >= num_filters)
+					target_pos = 0;
+				if (moving) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Wheel is moving!");
+					WHEEL_SLOT_ITEM->number.value = current_pos + 1;
+					WHEEL_SLOT_ITEM->number.target = target_pos + 1;
+					indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 				}
-			} else {
-				int num_filters, moving, current_pos, target_pos;
-				if (ArtemisFilterWheelInfo(PRIVATE_DATA->handle, &num_filters, &moving, &current_pos, &target_pos) == ARTEMIS_OK) {
-					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = num_filters;
-					if (current_pos >= num_filters)
-						current_pos = 0;
-					if (target_pos >= num_filters)
-						target_pos = 0;
-					if (moving) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Wheel is moving!");
-						WHEEL_SLOT_ITEM->number.value = current_pos + 1;
-						WHEEL_SLOT_ITEM->number.target = target_pos + 1;
-						indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
-					} else {
-						WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = current_pos + 1;
-					}
-					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				else {
+					WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = current_pos + 1;
 				}
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		} else {
 			PRIVATE_DATA->device_count--;
@@ -799,10 +765,7 @@ static void wheel_connect_callback(indigo_device *device) {
 		}
 	} else {
 		if (--PRIVATE_DATA->device_count == 0) {
-			if (PRIVATE_DATA->standalone_wheel)
-				ArtemisEFWDisconnect(PRIVATE_DATA->handle);
-			else
-				ArtemisDisconnect(PRIVATE_DATA->handle);
+			ArtemisDisconnect(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = NULL;
 			indigo_global_unlock(device);
 		}
@@ -833,10 +796,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (PRIVATE_DATA->standalone_wheel)
-				ArtemisEFWSetPosition(PRIVATE_DATA->handle, (int)WHEEL_SLOT_ITEM->number.target - 1);
-			else
-				ArtemisFilterWheelMove(PRIVATE_DATA->handle, (int)WHEEL_SLOT_ITEM->number.target - 1);
+			ArtemisFilterWheelMove(PRIVATE_DATA->handle, (int)WHEEL_SLOT_ITEM->number.target - 1);
 			indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -861,8 +821,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 #define MAX_DEVICES                   10
 
-static indigo_device *cameras[MAX_DEVICES];
-static indigo_device *wheels[MAX_DEVICES];
+static indigo_device *devices[MAX_DEVICES];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void plug_handler(indigo_device *device) {
@@ -891,52 +850,50 @@ static void plug_handler(indigo_device *device) {
 		wheel_detach
 		);
 	pthread_mutex_lock(&mutex);
-	enum ARTEMISEFWTYPE type;
-	char serial[100] = "";
-	ArtemisRefreshDevicesCount();
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if (device)
+			PRIVATE_DATA->index = -1;
+	}
 	int count = ArtemisDeviceCount();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ArtemisDeviceCount() -> %d", count);
 	for (int j = 0; j < count; j++) {
-		if (!ArtemisDeviceIsPresent(j))
-			continue;
-		bool notFound = true;
-		if (ArtemisDeviceSerial(j, serial)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ArtemisDeviceSerial(%d, -> %s)", j, serial);
+		libusb_device *dev;
+		if (ArtemisDeviceGetLibUSBDevice(j, &dev) == ARTEMIS_OK) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = cameras[i];
-				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {
+				indigo_device *device = devices[i];
+				if (device && PRIVATE_DATA->dev == dev) {
 					PRIVATE_DATA->index = j;
-					notFound = false;
+					dev = NULL;
 					break;
 				}
 			}
 		}
-		if (notFound) {
+		if (dev) {
 			atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
 			private_data->index = j;
-			strcpy(private_data->serial, serial);
-			char name[INDIGO_NAME_SIZE];
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ArtemisDeviceIsCamera(%d)", j);
+			private_data->dev = dev;
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
 			device->master_device = master_device;
+			char name[INDIGO_NAME_SIZE], usb_path[INDIGO_NAME_SIZE];
 			ArtemisDeviceName(j, name);
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", name, serial);
+			indigo_get_usb_path(dev, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", name, usb_path);
 			device->private_data = private_data;
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				if (cameras[i] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, cameras[i] = device);
+				if (devices[i] == NULL) {
+					indigo_async((void *)(void *)indigo_attach_device, devices[i] = device);
 					break;
 				}
 			}
 			if (ArtemisDeviceHasGuidePort(j)) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, serial);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, usb_path);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (cameras[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, cameras[j] = device);
+					if (devices[j] == NULL) {
+						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
 						break;
 					}
 				}
@@ -944,47 +901,13 @@ static void plug_handler(indigo_device *device) {
 			if (ArtemisDeviceHasFilterWheel(j)) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%s", name, serial);
-				private_data->standalone_wheel = false;
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%s", name, usb_path);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (cameras[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, cameras[j] = device);
+					if (devices[j] == NULL) {
+						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
 						break;
 					}
-				}
-			}
-		}
-	}
-	for (int j = 0; j < MAX_DEVICES; j++) {
-		if (!ArtemisEFWIsPresent(j))
-			continue;
-		bool notFound = true;
-		if (ArtemisEFWGetDeviceDetails(j, &type, serial) == ARTEMIS_OK) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ArtemisEFWGetDeviceDetails(%d, ->%d, -> %s)", j, type, serial);
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = wheels[i];
-				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {
-					PRIVATE_DATA->index = j;
-					notFound = false;
-					break;
-				}
-			}
-		}
-		if (notFound) {
-			atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
-			private_data->index = j;
-			strcpy(private_data->serial, serial);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ArtemisEFWIsPresent(%d)", j);
-			device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-			device->master_device = device;
-			snprintf(device->name, INDIGO_NAME_SIZE, "Atik EFW%d #%s", type, serial);
-			private_data->standalone_wheel = true;
-			device->private_data = private_data;
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (wheels[j] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, wheels[j] = device);
-					break;
 				}
 			}
 		}
@@ -994,53 +917,35 @@ static void plug_handler(indigo_device *device) {
 
 static void unplug_handler(indigo_device *device) {
 	pthread_mutex_lock(&mutex);
-	char serial[100];
-	enum ARTEMISEFWTYPE type;
 	for (int i = 0; i < MAX_DEVICES; i++) {
-		indigo_device *device = cameras[i];
-		if (device)
-			device->gp_bits = 0;
-		device = wheels[i];
+		indigo_device *device = devices[i];
 		if (device)
 			device->gp_bits = 0;
 	}
 	int count = ArtemisDeviceCount();
 	for (int j = 0; j < count; j++) {
-		if (!ArtemisDeviceIsPresent(j))
-			continue;
-		if (ArtemisDeviceSerial(j, serial)) {
+		libusb_device *dev;
+		if (ArtemisDeviceGetLibUSBDevice(j, &dev) == ARTEMIS_OK) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = cameras[i];
-				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {
+				indigo_device *device = devices[i];
+				if (device && PRIVATE_DATA->dev == dev) {
 					device->gp_bits = 1;
-					break;
-				}
-			}
-		}
-	}
-	for (int j = 0; j < MAX_DEVICES; j++) {
-		if (!ArtemisEFWIsPresent(j))
-			continue;
-		if (ArtemisEFWGetDeviceDetails(j, &type, serial) == ARTEMIS_OK) {
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = wheels[i];
-				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {
-					device->gp_bits = 1;
+					dev = NULL;
 					break;
 				}
 			}
 		}
 	}
 	for (int i = 0; i < MAX_DEVICES; i++) {
-		indigo_device *device = cameras[i];
+		indigo_device *device = devices[i];
 		if (device && device->gp_bits == 0 && device->master_device != device) {
 			indigo_detach_device(device);
 			free(device);
-			cameras[i] = NULL;
+			devices[i] = NULL;
 		}
 	}
 	for (int i = 0; i < MAX_DEVICES; i++) {
-		indigo_device *device = cameras[i];
+		indigo_device *device = devices[i];
 		if (device && device->gp_bits == 0) {
 			indigo_detach_device(device);
 			if (PRIVATE_DATA) {
@@ -1049,18 +954,7 @@ static void unplug_handler(indigo_device *device) {
 				free(PRIVATE_DATA);
 			}
 			free(device);
-			cameras[i] = NULL;
-		}
-		device = wheels[i];
-		if (device && device->gp_bits == 0) {
-			indigo_detach_device(device);
-			if (PRIVATE_DATA) {
-				if (PRIVATE_DATA->buffer)
-					free(PRIVATE_DATA->buffer);
-				free(PRIVATE_DATA);
-			}
-			free(device);
-			wheels[i] = NULL;
+			devices[i] = NULL;
 		}
 	}
 	pthread_mutex_unlock(&mutex);
@@ -1080,7 +974,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	return 0;
 }
 
-static libusb_hotplug_callback_handle callback_handle1, callback_handle2, callback_handle3;
+static libusb_hotplug_callback_handle callback_handle1, callback_handle2;
 
 indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *info) {
 	ArtemisSetDebugCallback(debug_log);
@@ -1096,36 +990,33 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				cameras[i] = NULL;
+				devices[i] = NULL;
 			}
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Artemis SDK %d", ArtemisDLLVersion());
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID1, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle1);
 			if (rc >= 0)
 				rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID2, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle2);
-			if (rc >= 0)
-				rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ATIK_VID3, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle3);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++)
-				VERIFY_NOT_CONNECTED(cameras[i]);
+				VERIFY_NOT_CONNECTED(devices[i]);
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle1);
 			libusb_hotplug_deregister_callback(NULL, callback_handle2);
-			libusb_hotplug_deregister_callback(NULL, callback_handle3);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = cameras[i];
+				indigo_device *device = devices[i];
 				if (device && device->master_device != device) {
 					indigo_detach_device(device);
 					free(device);
-					cameras[i] = NULL;
+					devices[i] = NULL;
 				}
 			}
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = cameras[i];
+				indigo_device *device = devices[i];
 				if (device) {
 					indigo_detach_device(device);
 					if (PRIVATE_DATA) {
@@ -1134,7 +1025,7 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 						free(PRIVATE_DATA);
 					}
 					free(device);
-					cameras[i] = NULL;
+					devices[i] = NULL;
 				}
 			}
 			ArtemisShutdown();
