@@ -62,6 +62,23 @@
 #define DEFAULT_TTY "/dev/tty"
 #endif
 
+#ifdef INDIGO_LINUX
+#include <malloc.h>
+#define MALLOCED_SIZE malloc_usable_size
+#endif
+
+#ifdef INDIGO_MACOS
+#include <malloc/malloc.h>
+#define MALLOCED_SIZE malloc_size
+#endif
+
+#ifdef INDIGO_WINDOWS
+#include <malloc.h>
+#define MALLOCED_SIZE malloc_size
+#endif
+
+
+
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_names.h>
@@ -338,6 +355,12 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		AUTHENTICATION_PROPERTY->hidden = true;
 		indigo_init_text_item(AUTHENTICATION_PASSWORD_ITEM, AUTHENTICATION_PASSWORD_ITEM_NAME, "Password", "");
 		indigo_init_text_item(AUTHENTICATION_USER_ITEM, AUTHENTICATION_USER_ITEM_NAME, "User name", "");
+		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+		ADDITIONAL_INSTANCES_PROPERTY = indigo_init_number_property(NULL, device->name, ADDITIONAL_INSTANCES_PROPERTY_NAME, MAIN_GROUP, "Additional instances", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (ADDITIONAL_INSTANCES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = true;
+		indigo_init_number_item(ADDITIONAL_INSTANCES_COUNT_ITEM, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, "Count", 0, MAX_ADDITIONAL_INSTANCES, 1, 0);
 		pthread_mutex_init(&DEVICE_CONTEXT->config_mutex, NULL);
 		return INDIGO_OK;
 	}
@@ -363,6 +386,8 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, DEVICE_PORTS_PROPERTY, NULL);
 	if (indigo_property_match(AUTHENTICATION_PROPERTY, property) && !AUTHENTICATION_PROPERTY->hidden)
 		indigo_define_property(device, AUTHENTICATION_PROPERTY, NULL);
+	if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property) && !ADDITIONAL_INSTANCES_PROPERTY->hidden)
+		indigo_define_property(device, ADDITIONAL_INSTANCES_PROPERTY, NULL);
 	if (indigo_property_match(CONNECTION_PROPERTY, property) && !CONNECTION_PROPERTY->hidden)
 		indigo_define_property(device, CONNECTION_PROPERTY, NULL);
 	return INDIGO_OK;
@@ -478,6 +503,48 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(AUTHENTICATION_PROPERTY, property, false);
 		PROFILE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUTHENTICATION_PROPERTY, NULL);
+	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
+		int count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
+		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
+			if (DEVICE_CONTEXT->additional_instances[i] != NULL) {
+				indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+				if (((indigo_device_context *)additional_device->device_context)->connection_property->items->sw.value) {
+					ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, "Device %s is connected", additional_device->name);
+					return INDIGO_OK;
+				}
+			}
+		}
+		for (int i = 0; i < count; i++) {
+			if (DEVICE_CONTEXT->additional_instances[i] == NULL) {
+				indigo_device *additional_device = indigo_safe_malloc_copy(sizeof(indigo_device), device);
+				snprintf(additional_device->name, INDIGO_NAME_SIZE, "%s #%d", device->name, i + 2);
+				additional_device->lock = -1;
+				additional_device->is_remote = false;
+				additional_device->gp_bits = 0;
+				additional_device->master_device = NULL;
+				additional_device->last_result = 0;
+				additional_device->access_token = 0;
+				additional_device->device_context = indigo_safe_malloc(MALLOCED_SIZE(device->device_context));
+				((indigo_device_context *)additional_device->device_context)->is_additional_instance = true;
+				additional_device->private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
+				indigo_attach_device(additional_device);
+				DEVICE_CONTEXT->additional_instances[i] = additional_device;
+			}
+		}
+		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
+			if (DEVICE_CONTEXT->additional_instances[i] != NULL) {
+				indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+				indigo_detach_device(additional_device);
+				free(additional_device->private_data);
+				free(additional_device);
+				DEVICE_CONTEXT->additional_instances[i] = NULL;
+			}
+		}
+		ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, NULL);
 		// --------------------------------------------------------------------------------
 	}
 	return INDIGO_OK;
@@ -495,6 +562,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(CONFIG_PROPERTY);
 	indigo_release_property(PROFILE_PROPERTY);
 	indigo_release_property(AUTHENTICATION_PROPERTY);
+	indigo_release_property(ADDITIONAL_INSTANCES_PROPERTY);
 	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
 	indigo_delete_property(device, all_properties, NULL);
 	indigo_release_property(all_properties);

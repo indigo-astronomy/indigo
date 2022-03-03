@@ -179,7 +179,17 @@ extern "C" {
 /** Client name for saved configuration reader.
  */
 
+/** ADDITIONAL_INSTANCES  property pointer, property is optional, property change request is handled by indigo_device_change_property.
+ */
+#define ADDITIONAL_INSTANCES_PROPERTY					(DEVICE_CONTEXT->device_inst_property)
+
+/** ADDITIONAL_INSTANCES.COUNT property item pointer.
+ */
+#define ADDITIONAL_INSTANCES_COUNT_ITEM			(ADDITIONAL_INSTANCES_PROPERTY->items+0)
+
+
 #define CONFIG_READER								"CONFIG_READER"
+#define MAX_ADDITIONAL_INSTANCES		5
 
 /** Device driver entrypoint actions
  */
@@ -223,6 +233,9 @@ typedef struct {
 	indigo_property *device_baudrate_property;///< DEVICE_BAUDRATE property pointer
 	indigo_property *device_ports_property;		///< DEVICE_PORTS property pointer
 	indigo_property *device_auth_property;		///< SECURITY property pointer
+	indigo_property *device_inst_property;		///< ADDITIONAL_INSTANCES  property pointer
+	bool is_additional_instance;							///< device is additional instance
+	indigo_device *additional_instances[MAX_ADDITIONAL_INSTANCES]; ///< additional device instances
 } indigo_device_context;
 
 /** log macros
