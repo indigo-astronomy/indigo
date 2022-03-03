@@ -2,6 +2,35 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-170] - XXX Mar XX 2022
+### Overall
+- indigo_platesolver: do not fail the whole process if platesolve during recalculate fails
+- indigo_platesolver: implement refraction compensation for polar alignment
+- indigo_platesolver: start_exposure() checks for available camera
+- indigo_platesolver: better error handling
+- indigo_platesolver: start_exposure() checks if the camera is available
+- indigo_platesolver: better AGENT_PLATESOLVER_PA_STATE property state transitions
+- Makefile: libhidapi-libhidraw.a replaced with libhidapi-libusb.a
+
+### Driver fixes
+- indigo_astrometry_agent:
+	- see overall: indigo_platesolver
+
+- indigo_astap_agent:
+	- see overall: indigo_platesolver
+
+- indigo_ccd_atik:
+	- EFW1/2 SDK support added to the CCD driver
+
+- indigo_wheel_atik:
+	- usb rules fixed
+
+- indigo_ccd_simulator:
+	- set more reasonable value for default image in Guider Camera
+
+- indigo_ccd_svb:
+	- initialization fixed
+
 ## [2.0-168] - Mon Feb 21 2022
 ### Overall
 - added WRITE_ONLY BLOBs
