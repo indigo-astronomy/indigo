@@ -123,10 +123,7 @@
  */
 #define DEVICE_BAUDRATE_ITEM_NAME                                                                   "BAUDRATE"
 
-
-
 //----------------------------------------------------------------------
-
 /** AUTHENTICATION property name.
  */
 #define AUTHENTICATION_PROPERTY_NAME							"AUTHENTICATION"
@@ -138,6 +135,15 @@
 /** AUTHENTICATION.USER property name.
  */
 #define AUTHENTICATION_USER_ITEM_NAME							"USER"
+
+//----------------------------------------------------------------------
+/** ADDITIONAL_INSTANCES  property name.
+ */
+#define ADDITIONAL_INSTANCES_PROPERTY_NAME				"ADDITIONAL_INSTANCES"
+
+/** ADDITIONAL_INSTANCES.COUNT property item mame.
+ */
+#define ADDITIONAL_INSTANCES_COUNT_ITEM_NAME			"COUNT"
 
 //----------------------------------------------------------------------
 /** DEVICE_PORTS property name.
