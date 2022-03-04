@@ -7,7 +7,7 @@ https://www.nexdome.com/
 All NexDome domes with "official" firmware version 3.X.X by Tim Long (available here:
 https://github.com/nexdome/Firmware)
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
