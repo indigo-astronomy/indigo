@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -160,6 +160,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
+		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 4, (const char **)selection_property_items);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
@@ -1393,6 +1394,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_DITHERING_ITEM, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME, "Dithering RMSE (px)", 0, 100, 0, 0);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->is_additional_instance;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1592,6 +1594,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
+			save_config(device);
+		}
 		return INDIGO_OK;
 	}
 	return indigo_filter_change_property(device, client, property);
