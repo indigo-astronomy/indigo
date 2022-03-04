@@ -19,11 +19,11 @@
 // version history
 // 2.0 by Rumen G.Bogdanovski <rumen@skyarchive.org>
 
-// Mathematics were derived independantly based on the common spherical geometry principles and the source code is developed based on the math we derived.
-// The idea for the three point polar alignment was borowed from N.I.N.A. and some mount hand controllers that provide such functionality.
+// Mathematics were derived independently based on the common spherical geometry principles and the source code is developed based on the math we derived.
+// The idea for the three point polar alignment was borrowed from N.I.N.A. and some mount hand controllers that provide such functionality.
 // I even had some discusson with Stefan Berg on the final touches. He was kind enough to point me to some "gotchas" he faced during the N.I.N.A. development.
-// I also want to thank to Dr.Alexander Kurtenkov and Prof.Tanyu Bonev for the disussions we had during the development, and Stoyan Glushkov
-// for staying late at hinght and testing the implemntation.
+// I also want to thank to Dr.Alexander Kurtenkov and Prof.Tanyu Bonev for the discussions we had during the development, and Stoyan Glushkov
+// for staying late at night and testing the implementation.
 
 /** INDIGO Bus
  \file indigo_align.h
