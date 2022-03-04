@@ -5,7 +5,7 @@ https://astromechanics.org
 ## Supported devices
 * ASCOM Canon EF Lens Controller
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
