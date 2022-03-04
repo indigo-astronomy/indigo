@@ -102,7 +102,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyARTESKYFLAT");
 #endif
 		// --------------------------------------------------------------------------------
-		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->is_additional_instance;
+				pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_aux_enumerate_properties(device, NULL, NULL);
 	}

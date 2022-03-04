@@ -5,7 +5,7 @@ https://www.telescopi-artesky.it/en/artesky/flat-field-panels/3587-flat-box-usb-
 ## Supported devices
 * Flat Box USB Artesky
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
