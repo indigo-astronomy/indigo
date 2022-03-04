@@ -5,7 +5,7 @@ https://www.cloudynights.com/topic/457536-usb-corded-shutter-control-for-nikon/
 ## Supported devices
 * Any RTS on COM device
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
