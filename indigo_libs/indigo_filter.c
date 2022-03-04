@@ -254,6 +254,50 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
+static void update_additional_instances(indigo_device *device) {
+	int count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
+	for (int i = 0; i < count; i++) {
+		if (DEVICE_CONTEXT->additional_device_instances[i] == NULL) {
+			indigo_device *additional_device = indigo_safe_malloc_copy(sizeof(indigo_device), device);
+			snprintf(additional_device->name, INDIGO_NAME_SIZE, "%s #%d", device->name, i + 2);
+			additional_device->lock = -1;
+			additional_device->is_remote = false;
+			additional_device->gp_bits = 0;
+			additional_device->master_device = NULL;
+			additional_device->last_result = 0;
+			additional_device->access_token = 0;
+			additional_device->device_context = indigo_safe_malloc(MALLOCED_SIZE(device->device_context));
+			((indigo_device_context *)additional_device->device_context)->is_additional_instance = true;
+			additional_device->private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
+			indigo_attach_device(additional_device);
+			DEVICE_CONTEXT->additional_device_instances[i] = additional_device;
+			indigo_client *agent_client = FILTER_DEVICE_CONTEXT->client;
+			indigo_client *additional_client = indigo_safe_malloc_copy(sizeof(indigo_client), agent_client);
+			snprintf(additional_client->name, INDIGO_NAME_SIZE, "%s #%d", agent_client->name, i + 2);
+			additional_client->is_remote = false;
+			additional_client->last_result = 0;
+			additional_client->enable_blob_mode_records = NULL;
+			additional_client->client_context = additional_device->device_context;
+			indigo_attach_client(additional_client);
+			FILTER_DEVICE_CONTEXT->additional_client_instances[i] = additional_client;
+		}
+	}
+	for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
+		indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
+		if (additional_device != NULL) {
+			indigo_client *additional_client = FILTER_DEVICE_CONTEXT->additional_client_instances[i];
+			indigo_detach_client(additional_client);
+			free(additional_client);
+			indigo_detach_device(additional_device);
+			free(additional_device->private_data);
+			free(additional_device);
+			DEVICE_CONTEXT->additional_device_instances[i] = NULL;
+		}
+	}
+	ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, NULL);
+}
+
 static indigo_result update_device_list(indigo_device *device, indigo_client *client, indigo_property *device_list, indigo_property *property, char *device_name) {
 	for (int i = 0; i < property->count; i++) {
 		if (property->items[i].sw.value) {
@@ -371,6 +415,7 @@ static indigo_result update_related_agent_list(indigo_device *device, indigo_pro
 	return INDIGO_OK;
 }
 
+
 indigo_result indigo_filter_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -413,6 +458,15 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			return INDIGO_OK;
 		}
 	}
+	if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+		assert(!DEVICE_CONTEXT->is_additional_instance);
+		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
+		if (FILTER_DEVICE_CONTEXT->client != NULL)
+			update_additional_instances(device);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
 	return indigo_device_change_property(device, client, property);
 }
 
@@ -423,6 +477,14 @@ indigo_result indigo_filter_device_detach(indigo_device *device) {
 		indigo_release_property(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i]);
 	}
 	indigo_release_property(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property);
+	for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
+		indigo_client *additional_client = FILTER_DEVICE_CONTEXT->additional_client_instances[i];
+		if (additional_client != NULL) {
+			indigo_detach_client(additional_client);
+			free(additional_client);
+			FILTER_DEVICE_CONTEXT->additional_client_instances[i] = NULL;
+		}
+	}
 	return indigo_device_detach(device);
 }
 
@@ -439,6 +501,7 @@ indigo_result indigo_filter_client_attach(indigo_client *client) {
 	indigo_property all_properties;
 	memset(&all_properties, 0, sizeof(all_properties));
 	indigo_enumerate_properties(client, &all_properties);
+	update_additional_instances(FILTER_CLIENT_CONTEXT->device);
 	return INDIGO_OK;
 }
 

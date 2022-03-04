@@ -178,6 +178,7 @@ typedef struct {
 	bool (*validate_related_agent)(indigo_device *device, indigo_property *info_property, int mask);
 	bool (*validate_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
 	bool (*validate_related_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
+	indigo_client *additional_client_instances[MAX_ADDITIONAL_INSTANCES];
 } indigo_filter_context;
 
 /** Device attach callback function.
