@@ -237,6 +237,7 @@ static indigo_result aux_attach(indigo_device *device) {
 	}
 #endif
 		// --------------------------------------------------------------------------------
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->is_additional_instance;
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
