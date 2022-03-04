@@ -4,7 +4,7 @@
 
 * Dome Simulator
 
-Device is present on startup.
+Single device is present on the first startup. Additional devices can be configured on runtime.
 
 ## Supported platforms
 
