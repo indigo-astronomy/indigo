@@ -8,7 +8,7 @@ https://github.com/sirJolo/ascom-jolo-focuser
 * AstroGadget FocusDreamPro controller
 * Jolo ASCOM focuser (the same RS232 command set)
 
-Single device is present on startup (no hot-plug support, you may need to install Silicon Labs CP2102 driver for host operating system).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
@@ -25,3 +25,4 @@ indigo_server indigo_focuser_focusdreampro
 ## Status: Stable
 
 Tested with physical device provided by courtesy of AstroGadget.
+You may need to install Silicon Labs CP2102 driver for host operating system).
