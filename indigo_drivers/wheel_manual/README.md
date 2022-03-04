@@ -4,8 +4,9 @@
 
 * All manual filter wheels and drawers
 
-Single device is present on startup. The driver does not control any hardware. It should be used
-to keep a record of the used filters with a manual filter wheels or drawers.
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
+
+The driver does not control any hardware. It should be used to keep a record of the used filters with a manual filter wheels or drawers.
 
 ## Supported platforms
 

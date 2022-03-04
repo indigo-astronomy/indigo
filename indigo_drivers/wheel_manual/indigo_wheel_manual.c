@@ -49,6 +49,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = FILTER_COUNT;
 		WHEEL_SLOT_ITEM->number.value = WHEEL_SLOT_ITEM->number.target = 1;
 		// --------------------------------------------------------------------------------
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->is_additional_instance;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
