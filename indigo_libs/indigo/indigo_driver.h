@@ -189,7 +189,7 @@ extern "C" {
 
 
 #define CONFIG_READER								"CONFIG_READER"
-#define MAX_ADDITIONAL_INSTANCES		5
+#define MAX_ADDITIONAL_INSTANCES		4
 
 /** Device driver entrypoint actions
  */
