@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x001F
+#define DRIVER_VERSION 0x0020
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -205,6 +205,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_DITHERING_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_SEQUENCE_PROPERTY);
+		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 		char *selection_property_items[] = { AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_IMAGER_SELECTION_PROPERTY, 2, (const char **)selection_property_items);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
@@ -1820,7 +1821,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
 		DEVICE_PRIVATE_DATA->use_rms_estimator = false;
+		DEVICE_PRIVATE_DATA->bin_x = DEVICE_PRIVATE_DATA->bin_y = 1;
 		CONNECTION_PROPERTY->hidden = true;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->is_additional_instance;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -2141,6 +2144,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
+			save_config(device);
+		}
+		return INDIGO_OK;
 	} else if (!strcmp(property->device, device->name)) {
 		if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
 			AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
@@ -2394,7 +2403,6 @@ indigo_result indigo_agent_imager(indigo_driver_action action, indigo_driver_inf
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(agent_private_data));
-			private_data->bin_x = private_data->bin_y = 1;
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
