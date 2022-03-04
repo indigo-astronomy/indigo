@@ -33,6 +33,21 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_timer.h>
 
+#ifdef INDIGO_LINUX
+#include <malloc.h>
+#define MALLOCED_SIZE malloc_usable_size
+#endif
+
+#ifdef INDIGO_MACOS
+#include <malloc/malloc.h>
+#define MALLOCED_SIZE malloc_size
+#endif
+
+#ifdef INDIGO_WINDOWS
+#include <malloc.h>
+#define MALLOCED_SIZE _msize
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -235,7 +250,7 @@ typedef struct {
 	indigo_property *device_auth_property;		///< SECURITY property pointer
 	indigo_property *device_inst_property;		///< ADDITIONAL_INSTANCES  property pointer
 	bool is_additional_instance;							///< device is additional instance
-	indigo_device *additional_instances[MAX_ADDITIONAL_INSTANCES]; ///< additional device instances
+	indigo_device *additional_device_instances[MAX_ADDITIONAL_INSTANCES]; ///< additional device instances
 } indigo_device_context;
 
 /** log macros
@@ -270,7 +285,7 @@ typedef struct {
 		if (!IS_DISCONNECTED)\
 			return INDIGO_BUSY;\
 		for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {\
-			indigo_device *tmp = DEVICE_CONTEXT->additional_instances[i];\
+			indigo_device *tmp = DEVICE_CONTEXT->additional_device_instances[i];\
 			indigo_device *device = tmp;\
 			if (device != NULL && !IS_DISCONNECTED)\
 				return INDIGO_BUSY;\
