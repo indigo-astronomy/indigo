@@ -100,27 +100,27 @@ static bool goflat_firmware(int handle, char *firmware) {
 	return false;
 }
 
-static bool goflat_get_intensity(int handle, int *intensity) {
-	char response[15];
-	if (goflat_command(handle, ">JOOO", response, sizeof(response)) && !strncmp(response, "*J", 2)) {
-		int parsed = sscanf(response + 4, "%d", intensity);
-		if (parsed != 1) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ">JOOO -> %s = '%d'", response, *intensity);
-		return true;
-	}
-	return false;
-}
-
-static bool goflat_get_tension(int handle, int *tension) {
-	char response[15];
-	if (goflat_command(handle, ">TOOO", response, sizeof(response)) && !strncmp(response, "*T", 2)) {
-		int parsed = sscanf(response + 4, "%d", tension);
-		if (parsed != 1) return false;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ">JOOO -> %s = '%d'", response, *tension);
-		return true;
-	}
-	return false;
-}
+//static bool goflat_get_intensity(int handle, int *intensity) {
+//	char response[15];
+//	if (goflat_command(handle, ">JOOO", response, sizeof(response)) && !strncmp(response, "*J", 2)) {
+//		int parsed = sscanf(response + 4, "%d", intensity);
+//		if (parsed != 1) return false;
+//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ">JOOO -> %s = '%d'", response, *intensity);
+//		return true;
+//	}
+//	return false;
+//}
+//
+//static bool goflat_get_tension(int handle, int *tension) {
+//	char response[15];
+//	if (goflat_command(handle, ">TOOO", response, sizeof(response)) && !strncmp(response, "*T", 2)) {
+//		int parsed = sscanf(response + 4, "%d", tension);
+//		if (parsed != 1) return false;
+//		INDIGO_DRIVER_DEBUG(DRIVER_NAME, ">JOOO -> %s = '%d'", response, *tension);
+//		return true;
+//	}
+//	return false;
+//}
 
 static bool goflat_set_intensity(int handle, int intensity) {
 	char response[15];
@@ -171,6 +171,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
 #endif
 		// --------------------------------------------------------------------------------
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->is_additional_instance;
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_aux_enumerate_properties(device, NULL, NULL);
@@ -189,7 +190,7 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_connection_handler(indigo_device *device) {
-	char command[16], response[16];
+	char response[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		for (int i = 0; i < 2; i++) {
