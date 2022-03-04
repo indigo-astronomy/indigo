@@ -269,6 +269,12 @@ typedef struct {
 	if (device) {\
 		if (!IS_DISCONNECTED)\
 			return INDIGO_BUSY;\
+		for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {\
+			indigo_device *tmp = DEVICE_CONTEXT->additional_instances[i];\
+			indigo_device *device = tmp;\
+			if (device != NULL && !IS_DISCONNECTED)\
+				return INDIGO_BUSY;\
+		}\
 		indigo_usleep(100000);\
 	}\
 }
