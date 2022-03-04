@@ -7,7 +7,7 @@ https://www.qhyccd.com/index.php?m=content&c=index&a=show&catid=137&id=34
 
 * QHY CFW1/2/3  filter wheels
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
