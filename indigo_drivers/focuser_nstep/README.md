@@ -7,7 +7,7 @@ Thanks to Gene Nolan and Leon Palmer for their support.
 ## Supported devices
 * Riegel Systems nSTEP controller
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
