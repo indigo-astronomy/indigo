@@ -429,6 +429,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
+			if (!DEVICE_CONTEXT->is_additional_instance)
+				indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 			if (DEVICE_CONTEXT->property_save_file_handle) {
 				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 				close(DEVICE_CONTEXT->property_save_file_handle);
@@ -505,12 +507,15 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, AUTHENTICATION_PROPERTY, NULL);
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+		assert(!DEVICE_CONTEXT->is_additional_instance);
+		int saved_count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
 		int count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
 		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
-			if (DEVICE_CONTEXT->additional_instances[i] != NULL) {
-				indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+			indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+			if (additional_device != NULL) {
 				if (((indigo_device_context *)additional_device->device_context)->connection_property->items->sw.value) {
+					ADDITIONAL_INSTANCES_COUNT_ITEM->number.target = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value = saved_count;
 					ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, "Device %s is connected", additional_device->name);
 					return INDIGO_OK;
@@ -535,8 +540,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 		}
 		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
-			if (DEVICE_CONTEXT->additional_instances[i] != NULL) {
-				indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+			indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+			if (additional_device != NULL) {
 				indigo_detach_device(additional_device);
 				free(additional_device->private_data);
 				free(additional_device);
@@ -552,6 +557,15 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 
 indigo_result indigo_device_detach(indigo_device *device) {
 	assert(device != NULL);
+	for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
+		indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+		if (additional_device != NULL) {
+			indigo_detach_device(additional_device);
+			free(additional_device->private_data);
+			free(additional_device);
+			DEVICE_CONTEXT->additional_instances[i] = NULL;
+		}
+	}
 	indigo_cancel_all_timers(device);
 	indigo_release_property(CONNECTION_PROPERTY);
 	indigo_release_property(INFO_PROPERTY);
