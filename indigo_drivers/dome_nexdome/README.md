@@ -7,7 +7,7 @@ https://www.nexdome.com/
 All NexDome domes based on Gerry Rozema's firmware (available here:
 https://github.com/grozzie2/NexDome)
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
