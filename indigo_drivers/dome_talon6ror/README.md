@@ -6,7 +6,7 @@ http://observatoriosspag.es/Whats_TALON6.htm
 
 * Talon6ROR
 
-Device is present on startup.
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
