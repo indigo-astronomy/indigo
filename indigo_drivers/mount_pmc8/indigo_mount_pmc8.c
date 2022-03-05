@@ -897,7 +897,6 @@ static indigo_result guider_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- GUIDER_RATE
 		GUIDER_RATE_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
