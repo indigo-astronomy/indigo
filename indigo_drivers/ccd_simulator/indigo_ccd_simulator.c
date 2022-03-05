@@ -749,6 +749,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_EXPOSURE_ITEM->number.min = 0.001;
 		CCD_STREAMING_EXPOSURE_ITEM->number.max = 0.5;
 		// --------------------------------------------------------------------------------
+		if (device == PRIVATE_DATA->imager)
+			ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return ccd_enumerate_properties(device, NULL, NULL);
 	}
@@ -1732,28 +1734,34 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			indigo_attach_device(imager_ccd);
 			imager_wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_wheel_template);
 			imager_wheel->private_data = private_data;
+			imager_wheel->master_device = imager_ccd;
 			indigo_attach_device(imager_wheel);
 			imager_focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_focuser_template);
 			imager_focuser->private_data = private_data;
+			imager_focuser->master_device = imager_ccd;
 			indigo_attach_device(imager_focuser);
 			guider_ccd = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_camera_template);
 			guider_ccd->private_data = private_data;
-			private_data->guider = guider_ccd;
+			private_data->guider = imager_ccd;
 			indigo_attach_device(guider_ccd);
 			guider_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider_guider->private_data = private_data;
+			guider_guider->master_device = imager_ccd;
 			indigo_attach_device(guider_guider);
 			guider_ao = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
 			guider_ao->private_data = private_data;
+			guider_ao->master_device = imager_ccd;
 			indigo_attach_device(guider_ao);
 
 			dslr = indigo_safe_malloc_copy(sizeof(indigo_device), &dslr_template);
 			dslr->private_data = private_data;
+			dslr->master_device = imager_ccd;
 			private_data->dslr = dslr;
 			indigo_attach_device(dslr);
 
 			file = indigo_safe_malloc_copy(sizeof(indigo_device), &file_template);
 			file->private_data = private_data;
+			file->master_device = imager_ccd;
 			private_data->file = file;
 			indigo_attach_device(file);
 			break;

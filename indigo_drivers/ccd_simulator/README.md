@@ -9,7 +9,7 @@
 * CCD Guider Simulator (guider)
 * DSLR Simulator
 
-All devices are present on startup.
+All devices are present on startup. Additional devices can be configured on runtime.
 
 ## Supported platforms
 
