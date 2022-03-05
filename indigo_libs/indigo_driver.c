@@ -560,6 +560,15 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				DEVICE_CONTEXT->additional_device_instances[i] = additional_device;
 			}
 		}
+		if (device->master_device == NULL || device->master_device == device) {
+			int slave_count = MAX_SLAVE_DEVICES;
+			indigo_query_slave_devices(device, slave_devices, &slave_count);
+			for (int j = 0; j < slave_count; j++) {
+				const char *names[] = { ADDITIONAL_INSTANCES_COUNT_ITEM_NAME };
+				const double values[] = { count };
+				indigo_change_number_property(client, slave_devices[j]->name, ADDITIONAL_INSTANCES_PROPERTY_NAME, 1, names, values);
+			}
+		}
 		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
 			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 			if (additional_device != NULL) {
@@ -568,15 +577,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 					free(additional_device->private_data);
 				free(additional_device);
 				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
-			}
-		}
-		if (device->master_device == NULL || device->master_device == device) {
-			int slave_count = MAX_SLAVE_DEVICES;
-			indigo_query_slave_devices(device, slave_devices, &slave_count);
-			for (int j = 0; j < slave_count; j++) {
-				const char *names[] = { ADDITIONAL_INSTANCES_COUNT_ITEM_NAME };
-				const double values[] = { count };
-				indigo_change_number_property(client, slave_devices[j]->name, ADDITIONAL_INSTANCES_PROPERTY_NAME, 1, names, values);
 			}
 		}
 		ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_OK_STATE;
