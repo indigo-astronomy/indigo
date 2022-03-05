@@ -316,6 +316,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
 		indigo_init_number_item(X_AUX_VARIABLE_POWER_OUTLET_1_ITEM, "OUTLET_1", "Variable voltage power outlet ", 3, 12, 1, 12);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 #ifdef INDIGO_MACOS
@@ -1685,6 +1686,7 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 			indigo_attach_device(aux);
 			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
+			focuser->master_device = aux;
 			indigo_attach_device(focuser);
 			break;
 
