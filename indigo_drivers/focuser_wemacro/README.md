@@ -5,7 +5,7 @@ https://www.wemacro.com
 ## Supported devices
 * WeMacro Rail controller over USB
 
-This driver doesn't support hot-plug (actually serial device).
+Single device is present on startup (no hot-plug support).
 
 ## Supported platforms
 
