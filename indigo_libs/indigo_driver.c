@@ -62,23 +62,6 @@
 #define DEFAULT_TTY "/dev/tty"
 #endif
 
-#ifdef INDIGO_LINUX
-#include <malloc.h>
-#define MALLOCED_SIZE malloc_usable_size
-#endif
-
-#ifdef INDIGO_MACOS
-#include <malloc/malloc.h>
-#define MALLOCED_SIZE malloc_size
-#endif
-
-#ifdef INDIGO_WINDOWS
-#include <malloc.h>
-#define MALLOCED_SIZE _msize
-#endif
-
-
-
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_names.h>
@@ -512,7 +495,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
 		int count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
 		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
-			indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 			if (additional_device != NULL) {
 				if (((indigo_device_context *)additional_device->device_context)->connection_property->items->sw.value) {
 					ADDITIONAL_INSTANCES_COUNT_ITEM->number.target = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value = saved_count;
@@ -523,7 +506,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 		}
 		for (int i = 0; i < count; i++) {
-			if (DEVICE_CONTEXT->additional_instances[i] == NULL) {
+			if (DEVICE_CONTEXT->additional_device_instances[i] == NULL) {
 				indigo_device *additional_device = indigo_safe_malloc_copy(sizeof(indigo_device), device);
 				snprintf(additional_device->name, INDIGO_NAME_SIZE, "%s #%d", device->name, i + 2);
 				additional_device->lock = -1;
@@ -536,16 +519,16 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				((indigo_device_context *)additional_device->device_context)->is_additional_instance = true;
 				additional_device->private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
 				indigo_attach_device(additional_device);
-				DEVICE_CONTEXT->additional_instances[i] = additional_device;
+				DEVICE_CONTEXT->additional_device_instances[i] = additional_device;
 			}
 		}
 		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
-			indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 			if (additional_device != NULL) {
 				indigo_detach_device(additional_device);
 				free(additional_device->private_data);
 				free(additional_device);
-				DEVICE_CONTEXT->additional_instances[i] = NULL;
+				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
 			}
 		}
 		ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_OK_STATE;
@@ -558,12 +541,12 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 indigo_result indigo_device_detach(indigo_device *device) {
 	assert(device != NULL);
 	for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
-		indigo_device *additional_device = DEVICE_CONTEXT->additional_instances[i];
+		indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 		if (additional_device != NULL) {
 			indigo_detach_device(additional_device);
 			free(additional_device->private_data);
 			free(additional_device);
-			DEVICE_CONTEXT->additional_instances[i] = NULL;
+			DEVICE_CONTEXT->additional_device_instances[i] = NULL;
 		}
 	}
 	indigo_cancel_all_timers(device);
