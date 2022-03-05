@@ -408,7 +408,6 @@ static indigo_result guider_attach(indigo_device *device) {
 		GUIDER_RATE_PROPERTY->count = 2;
 		strncpy(GUIDER_RATE_PROPERTY->label,"Pulse-Guide Rate", INDIGO_VALUE_SIZE);
 		indigo_copy_value(GUIDER_RATE_ITEM->label, "RA Guiding rate (% of sidereal)");
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 
