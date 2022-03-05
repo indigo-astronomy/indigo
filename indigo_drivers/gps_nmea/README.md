@@ -4,7 +4,7 @@
 
 All NMEA 0183 GPS devices connected over USB, serial port @ 9600bps, bluetooth or network.
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 

@@ -251,6 +251,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_GEOGRAPHIC_COORDINATES_PROPERTY->count = 3;
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 #ifdef INDIGO_LINUX
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "ttyGPS")) {
