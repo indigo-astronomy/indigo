@@ -208,7 +208,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		INFO_PROPERTY->count = 6;
 		WHEEL_SLOT_ITEM->number.value = 1;
-		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->is_additional_instance;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		return wheel_enumerate_properties(device, NULL, NULL);
