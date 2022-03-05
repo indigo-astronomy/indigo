@@ -139,6 +139,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		pthread_mutex_init(&PRIVATE_DATA->driver_mutex, NULL);
 		PRIVATE_DATA->mountConfigured = false;
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		
 		return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -407,6 +408,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		GUIDER_RATE_PROPERTY->count = 2;
 		strncpy(GUIDER_RATE_PROPERTY->label,"Pulse-Guide Rate", INDIGO_VALUE_SIZE);
 		indigo_copy_value(GUIDER_RATE_ITEM->label, "RA Guiding rate (% of sidereal)");
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 
