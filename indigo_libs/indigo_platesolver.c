@@ -207,14 +207,11 @@ static bool abort_exposure(indigo_device *device) {
 
 static void reset_pa_state(indigo_device * device, bool force) {
 	if (force || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS) {
-		if ((
+		if (
 			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IN_PROGRESS ||
 			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_IDLE
-		) && (
-			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state == INDIGO_OK_STATE ||
-			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state == INDIGO_IDLE_STATE
-		)) {
-			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_IDLE_STATE;
+		) {
+			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -701,7 +698,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM->number.format, "%.0f");
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_ERROR property
-		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 12);
+		AGENT_PLATESOLVER_PA_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_STATE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment state", INDIGO_OK_STATE, INDIGO_RO_PERM, 12);
 		if (AGENT_PLATESOLVER_PA_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_STATE_ITEM, AGENT_PLATESOLVER_PA_STATE_ITEM_NAME, "Polar alignment state", 0, 10, 0, 0);

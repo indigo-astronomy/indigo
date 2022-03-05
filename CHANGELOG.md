@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-170] - XXX Mar XX 2022
+## [2.0-170] - 05 Mar Sat 2022
 ### Overall
 - indigo_platesolver: do not fail the whole process if platesolve during recalculate fails
 - indigo_platesolver: implement refraction compensation for polar alignment
@@ -30,6 +30,7 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_ccd_svb:
 	- initialization fixed
+	- workatound for prematurely ended exposures
 
 ## [2.0-168] - Mon Feb 21 2022
 ### Overall
