@@ -267,7 +267,7 @@ static void update_additional_instances(indigo_device *device) {
 			additional_device->last_result = 0;
 			additional_device->access_token = 0;
 			additional_device->device_context = indigo_safe_malloc(MALLOCED_SIZE(device->device_context));
-			((indigo_device_context *)additional_device->device_context)->is_additional_instance = true;
+			((indigo_device_context *)additional_device->device_context)->base_device = device;
 			additional_device->private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
 			indigo_attach_device(additional_device);
 			DEVICE_CONTEXT->additional_device_instances[i] = additional_device;
@@ -460,7 +460,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 	}
 	if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
-		assert(!DEVICE_CONTEXT->is_additional_instance);
+		assert(DEVICE_CONTEXT->base_device == NULL);
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
 		if (FILTER_DEVICE_CONTEXT->client != NULL)
 			update_additional_instances(device);

@@ -653,6 +653,10 @@ extern indigo_result indigo_device_connect(indigo_client *client, char *device);
  */
 extern indigo_result indigo_device_disconnect(indigo_client *client, char *device);
 
+/** Query slave devices of given master device.
+ */
+extern void indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int *count);
+
 /** Trim " @ local_service_name" from the string.
  */
 extern void indigo_trim_local_service(char *device_name);
