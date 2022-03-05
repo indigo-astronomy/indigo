@@ -5,7 +5,7 @@
 * Mount Simulator
 * Mount Simulator (guider)
 
-All devices are present on startup.
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
