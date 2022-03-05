@@ -7,7 +7,7 @@
 
 Connection over serial port, UDP and TCP.
 
-Single device is present on startup (no hot-plug support).
+Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
 ## Supported platforms
 
