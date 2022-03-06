@@ -655,7 +655,7 @@ extern indigo_result indigo_device_disconnect(indigo_client *client, char *devic
 
 /** Query slave devices of given master device.
  */
-extern void indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int *count);
+extern int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int max);
 
 /** Trim " @ local_service_name" from the string.
  */

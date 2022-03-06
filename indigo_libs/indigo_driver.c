@@ -517,12 +517,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 						indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, "Device %s is connected", additional_device->name);
 						return INDIGO_OK;
 					}
-					int slave_count = MAX_SLAVE_DEVICES;
-					indigo_query_slave_devices(device, slave_devices, &slave_count);
+					int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
 					for (int j = 0; j < slave_count; j++) {
 						indigo_device *slave_device = slave_devices[j];
-						for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
-							indigo_device *additional_device = ((indigo_device_context *)slave_device->device_context)->additional_device_instances[i];
+						for (int k = count; k < MAX_ADDITIONAL_INSTANCES; k++) {
+							indigo_device *additional_device = ((indigo_device_context *)slave_device->device_context)->additional_device_instances[k];
 							if (additional_device != NULL && ((indigo_device_context *)additional_device->device_context)->connection_property->items->sw.value) {
 								ADDITIONAL_INSTANCES_COUNT_ITEM->number.target = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value = saved_count;
 								ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -561,8 +560,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 		}
 		if (device->master_device == NULL || device->master_device == device) {
-			int slave_count = MAX_SLAVE_DEVICES;
-			indigo_query_slave_devices(device, slave_devices, &slave_count);
+			int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
 			for (int j = 0; j < slave_count; j++) {
 				const char *names[] = { ADDITIONAL_INSTANCES_COUNT_ITEM_NAME };
 				const double values[] = { count };
