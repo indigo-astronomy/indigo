@@ -1525,21 +1525,21 @@ indigo_result indigo_device_disconnect(indigo_client *client, char *device) {
 	return indigo_change_switch_property(client, device, CONNECTION_PROPERTY_NAME, 2, items, values);
 }
 
-void indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int *count) {
+int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int max) {
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&device_mutex);
-	int max = *count;
-	*count = 0;
+	int count = 0;
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device && device != master && device->master_device == master) {
-			slaves[*count] = device;
-			if ((*count)++ >= max)
+			slaves[count] = device;
+			if (count++ >= max)
 				break;
 		}
 	}
 	if (indigo_use_strict_locking)
 		pthread_mutex_unlock(&device_mutex);
+	return count;
 }
 
 void indigo_trim_local_service(char *device_name) {
