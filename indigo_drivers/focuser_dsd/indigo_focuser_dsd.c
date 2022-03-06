@@ -603,6 +603,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		PRIVATE_DATA->handle = -1;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -1375,7 +1376,6 @@ indigo_result indigo_focuser_dsd(indigo_driver_action action, indigo_driver_info
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
 		private_data = indigo_safe_malloc(sizeof(dsd_private_data));
-		private_data->handle = -1;
 		focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 		focuser->private_data = private_data;
 		indigo_attach_device(focuser);
