@@ -2644,6 +2644,7 @@
 		59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_sony.m; sourceTree = "<group>"; };
 		59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
 		59CD7311218EF88600F646D4 /* 99-indigo_aux_upb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_aux_upb.rules"; sourceTree = "<group>"; };
+		59CEDA6127D514B700D9277A /* MULTI-INSTANCE_SUPPORT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "MULTI-INSTANCE_SUPPORT.md"; sourceTree = "<group>"; };
 		59D1EA032190B907001901BE /* indigo_dome_azimuth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_azimuth.h; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_libs/indigo/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_bus.c; path = indigo_libs/indigo_bus.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
@@ -4963,6 +4964,7 @@
 		5912C80723D2447400A48B75 /* indigo_docs */ = {
 			isa = PBXGroup;
 			children = (
+				59CEDA6127D514B700D9277A /* MULTI-INSTANCE_SUPPORT.md */,
 				5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */,
 				5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */,
 				5984C90927C2E22A0090204B /* POLAR_ALIGNMENT.md */,
