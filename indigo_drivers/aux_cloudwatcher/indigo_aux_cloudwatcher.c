@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION         0x0006
+#define DRIVER_VERSION         0x0007
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #define DRIVER_NAME              "indigo_aux_skywatcher"
@@ -50,8 +50,6 @@
 #define DEFAULT_BAUDRATE "9600"
 
 #define NO_READING (-100000)
-
-#define MAX_DEVICES 1
 
 #define PRIVATE_DATA                   ((aag_private_data *)device->private_data)
 
@@ -313,17 +311,6 @@ typedef struct {
 	                *rain_sensor_heater_setup_property,
 	                *sensors_property;
 } aag_private_data;
-
-typedef struct {
-	indigo_device *device;
-	aag_private_data *private_data;
-} aag_device_data;
-
-static aag_device_data device_data[MAX_DEVICES] = {0};
-
-static void create_port_device(int device_index);
-static void delete_port_device(int device_index);
-
 
 #define DEVICE_CONNECTED_MASK            0x80
 
@@ -1666,6 +1653,8 @@ static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		if (aag_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
+		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
 	}
@@ -1961,7 +1950,11 @@ static indigo_result aux_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static void create_port_device(int device_index) {
+indigo_result indigo_aux_cloudwatcher(indigo_driver_action action, indigo_driver_info *info) {
+	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+	static indigo_device *aag_cw = NULL;
+	static aag_private_data *private_data = NULL;
+
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
 		AUX_CLOUDWATCHER_NAME,
 		aux_attach,
@@ -1971,54 +1964,6 @@ static void create_port_device(int device_index) {
 		aux_detach
 	);
 
-	if (device_index >= MAX_DEVICES) return;
-	if (device_data[device_index].device != NULL) return;
-
-	if (device_data[device_index].private_data == NULL) {
-		device_data[device_index].private_data = indigo_safe_malloc(sizeof(aag_private_data));
-		pthread_mutex_init(&device_data[device_index].private_data->port_mutex, NULL);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: PRIVATE_DATA");
-	}
-
-	device_data[device_index].device = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
-	sprintf(device_data[device_index].device->name, "%s", AUX_CLOUDWATCHER_NAME);
-
-	device_data[device_index].device->private_data = device_data[device_index].private_data;
-	indigo_attach_device(device_data[device_index].device);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ADD: Device with port index = %d", device_index);
-}
-
-
-static void delete_port_device(int device_index) {
-	if (device_index >= MAX_DEVICES) return;
-
-	if (device_data[device_index].device != NULL) {
-		indigo_detach_device(device_data[device_index].device);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: Locical Device with index = %d", device_index);
-		free(device_data[device_index].device);
-		device_data[device_index].device = NULL;
-	}
-
-	if (device_data[device_index].private_data != NULL) {
-		free(device_data[device_index].private_data);
-		device_data[device_index].private_data = NULL;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "REMOVE: PRIVATE_DATA");
-	}
-}
-
-
-static bool at_least_one_device_connected() {
-	for (int index = 0; index < MAX_DEVICES; index++) {
-		if (is_connected(device_data[index].device)) return true;
-	}
-	return false;
-}
-
-
-indigo_result indigo_aux_cloudwatcher(indigo_driver_action action, indigo_driver_info *info) {
-
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
 	SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
@@ -2027,18 +1972,24 @@ indigo_result indigo_aux_cloudwatcher(indigo_driver_action action, indigo_driver
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		for (int index = 0; index < MAX_DEVICES; index++) {
-			create_port_device(index);
-		}
+		private_data = indigo_safe_malloc(sizeof(aag_private_data));
+		aag_cw = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
+		aag_cw->private_data = private_data;
+		indigo_attach_device(aag_cw);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
-		if (at_least_one_device_connected() == true) return INDIGO_BUSY;
+		VERIFY_NOT_CONNECTED(aag_cw);
 		last_action = action;
-		for (int index = 0; index < MAX_DEVICES; index++) {
-			delete_port_device(index);
+		if (aag_cw != NULL) {
+			indigo_detach_device(aag_cw);
+			free(aag_cw);
+			aag_cw = NULL;
 		}
-		break;
+		if (private_data != NULL) {
+			free(private_data);
+			private_data = NULL;
+		}
 
 	case INDIGO_DRIVER_INFO:
 		break;
