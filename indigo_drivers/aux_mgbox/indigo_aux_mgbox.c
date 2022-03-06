@@ -805,6 +805,10 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_WEATHER | INDIGO_INTERFACE_AUX_GPIO) == INDIGO_OK) {
 		if (aux_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
+		PRIVATE_DATA->handle = -1;
+		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
+		pthread_mutex_init(&PRIVATE_DATA->reset_mutex, NULL);
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
 	}
@@ -1015,33 +1019,32 @@ indigo_result indigo_aux_mgbox(indigo_driver_action action, indigo_driver_info *
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
-		private_data = indigo_safe_malloc(sizeof(mg_private_data));
-		private_data->handle = -1;
-		pthread_mutex_init(&private_data->serial_mutex, NULL);
-		pthread_mutex_init(&private_data->reset_mutex, NULL);
-		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
-		gps->private_data = private_data;
-		indigo_attach_device(gps);
 
+		private_data = indigo_safe_malloc(sizeof(mg_private_data));
 		aux_weather = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
-		sprintf(aux_weather->name, "%s", WEATHER_MGBOX_NAME);
 		aux_weather->private_data = private_data;
 		indigo_attach_device(aux_weather);
+
+		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
+		gps->private_data = private_data;
+		gps->master_device = aux_weather;
+		indigo_attach_device(gps);
+
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
 		VERIFY_NOT_CONNECTED(gps);
 		VERIFY_NOT_CONNECTED(aux_weather);
 		last_action = action;
-		if (gps != NULL) {
-			indigo_detach_device(gps);
-			free(gps);
-			gps = NULL;
-		}
 		if (aux_weather != NULL) {
 			indigo_detach_device(aux_weather);
 			free(aux_weather);
 			aux_weather = NULL;
+		}
+		if (gps != NULL) {
+			indigo_detach_device(gps);
+			free(gps);
+			gps = NULL;
 		}
 		if (private_data != NULL) {
 			free(private_data);
