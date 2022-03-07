@@ -570,10 +570,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
 			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 			if (additional_device != NULL) {
-				indigo_detach_device(additional_device);
-				if (additional_device->master_device == NULL || additional_device->master_device == additional_device)
-					free(additional_device->private_data);
-				free(additional_device);
+				if (indigo_detach_device(additional_device) != INDIGO_NOT_FOUND) {
+					if (additional_device->master_device == NULL || additional_device->master_device == additional_device)
+						free(additional_device->private_data);
+					free(additional_device);
+				}
 				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
 			}
 		}
@@ -590,10 +591,11 @@ indigo_result indigo_device_detach(indigo_device *device) {
 		for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
 			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 			if (additional_device != NULL) {
-				indigo_detach_device(additional_device);
-				if (additional_device->master_device == NULL || additional_device->master_device == additional_device)
-					free(additional_device->private_data);
-				free(additional_device);
+				if (indigo_detach_device(additional_device) != INDIGO_NOT_FOUND) {
+					if (additional_device->master_device == NULL || additional_device->master_device == additional_device)
+						free(additional_device->private_data);
+					free(additional_device);
+				}
 				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
 			}
 		}
