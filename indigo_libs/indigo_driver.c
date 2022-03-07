@@ -73,7 +73,7 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	if (device->master_device) {
+	if (device->master_device != NULL && device->master_device != device) {
 		if (device->master_device->lock > 0) return INDIGO_FAILED;
 		strncat(tmp_lock_file, device->master_device->name, 250);
 	} else {
