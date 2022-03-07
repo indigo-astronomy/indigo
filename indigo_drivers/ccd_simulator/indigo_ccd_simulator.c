@@ -1742,7 +1742,8 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			indigo_attach_device(imager_focuser);
 			guider_ccd = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_camera_template);
 			guider_ccd->private_data = private_data;
-			private_data->guider = imager_ccd;
+			guider_ccd->master_device = imager_ccd;
+			private_data->guider = guider_ccd;
 			indigo_attach_device(guider_ccd);
 			guider_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider_guider->private_data = private_data;
