@@ -449,7 +449,7 @@ indigo_result indigo_detach_device(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
-	return INDIGO_OK;
+	return INDIGO_NOT_FOUND;
 }
 
 indigo_result indigo_detach_client(indigo_client *client) {
@@ -467,7 +467,7 @@ indigo_result indigo_detach_client(indigo_client *client) {
 		}
 	}
 	pthread_mutex_unlock(&client_mutex);
-	return INDIGO_OK;
+	return INDIGO_NOT_FOUND;
 }
 
 indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property) {
