@@ -453,7 +453,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		if (*DEVICE_PORT_ITEM->text.value == '/') {
 			if (!access(DEVICE_PORT_ITEM->text.value, R_OK)) {
 				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
+				//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 			} else {
 				DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -461,7 +461,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			}
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
+			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
 	} else if (indigo_property_match_w(DEVICE_BAUDRATE_PROPERTY, property)) {
@@ -490,7 +490,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
+			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 		}
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
