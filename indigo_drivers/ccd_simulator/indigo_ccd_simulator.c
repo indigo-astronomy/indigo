@@ -795,12 +795,6 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) { /* Do not double open device */
-			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-				indigo_update_property(device, CONNECTION_PROPERTY, "Device is locked");
-				return;
-			}
 			device->is_connected = true;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			if (device == PRIVATE_DATA->dslr) {
