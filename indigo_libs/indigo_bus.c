@@ -727,17 +727,21 @@ indigo_result indigo_stop() {
 	pthread_mutex_lock(&client_mutex);
 	INDIGO_TRACE(indigo_trace("INDIGO Bus: stop request"));
 	if (is_started) {
-		is_started = false;
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
-			if (client != NULL && client->detach != NULL)
+			if (client != NULL && client->detach != NULL) {
+				clients[i] = NULL;
 				client->last_result = client->detach(client);
+			}
 		}
 		for (int i = 0; i < MAX_DEVICES; i++) {
 			indigo_device *device = devices[i];
-			if (device != NULL && device->detach != NULL)
+			if (device != NULL && device->detach != NULL) {
+				devices[i] = NULL;
 				device->last_result = device->detach(device);
+			}
 		}
+		is_started = false;
 	}
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
