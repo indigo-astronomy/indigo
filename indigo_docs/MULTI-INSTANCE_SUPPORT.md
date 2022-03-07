@@ -141,8 +141,6 @@ if (private_data != NULL) {
 
 See [indigo_agent_imager.c](https://github.com/indigo-astronomy/indigo/blob/8a3ebdef0f3128f63ec4ec4ed2d4c100678072c2/indigo_drivers/agent_imager/indigo_agent_imager.c#L2366) for real life example.
 
-https://github.com/indigo-astronomy/indigo/blob/8a3ebdef0f3128f63ec4ec4ed2d4c100678072c2/indigo_drivers/agent_imager/indigo_agent_imager.c#L2366
-
 Don't underestimate the order in which slave devices and clients are created and freed, it is critical!
 
 Most of the shared code is located in [indigo_driver.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_libs/indigo_driver.c).
