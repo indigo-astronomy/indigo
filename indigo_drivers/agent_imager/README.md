@@ -72,8 +72,8 @@ Set the same COUNT value in AGENT_IMAGER_BATCH and start exposure batch on all I
 
 ### Configuration for synchronising dithering on multiple Imager Agent instances
  
-On one of Imager Agent instances select other Imager Agent instances and Guider agent as related agents, select PRE-DITHER and POST_DITHER breakpoints in AGENT_IMAGER_BREAKPOINT and BARRIER in AGENT_IMAGER_RESUME_CONDITION. Configure dithering as usual.
-On other Imager Agent instances don't select related agents, select PRE-DITHER and POST_DITHER breakpoints in AGENT_IMAGER_BREAKPOINT and TRIGGER in AGENT_IMAGER_RESUME_CONDITION.
+On one of Imager Agent instances select other Imager Agent instances and Guider agent as related agents, select PRE-CAPTURE and POST-CAPTURE breakpoints in AGENT_IMAGER_BREAKPOINT and BARRIER in AGENT_IMAGER_RESUME_CONDITION. Configure dithering as usual.
+On other Imager Agent instances don't select related agents, select PRE-CAPTURE and CAPTURE breakpoints in AGENT_IMAGER_BREAKPOINT and TRIGGER in AGENT_IMAGER_RESUME_CONDITION.
 
 Set the same COUNT value in AGENT_IMAGER_BATCH and start guiding on Guider Agent and exposure batch on all Imager Agents in any order. The will wait for each other until all are suspended on PRE-DITHER and then resumed by Imager Agent with AGENT_IMAGER_RESUME_CONDITION set to BARRIER.
 
