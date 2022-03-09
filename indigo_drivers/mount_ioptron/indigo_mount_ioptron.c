@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x001F
+#define DRIVER_VERSION 0x0020
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -1846,8 +1846,6 @@ static void guider_connect_callback(indigo_device *device) {
 static void guider_guide_dec_callback(indigo_device *device) {
 	char command[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	start_tracking(device->master_device);
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 		sprintf(command, ":Mn%05d#", (int)GUIDER_GUIDE_NORTH_ITEM->number.value);
@@ -1867,8 +1865,6 @@ static void guider_guide_dec_callback(indigo_device *device) {
 static void guider_guide_ra_callback(indigo_device *device) {
 	char command[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 	start_tracking(device->master_device);
 	if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 		sprintf(command, ":Mw%05d#", (int)GUIDER_GUIDE_WEST_ITEM->number.value);
@@ -2124,11 +2120,15 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guider_guide_dec_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guider_guide_ra_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(GUIDER_RATE_PROPERTY, property)) {
