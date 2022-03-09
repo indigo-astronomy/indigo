@@ -116,8 +116,6 @@ static void xagyl_query(indigo_device *device) {
 
 static void xagyl_goto(indigo_device *device, int slot) {
 	indigo_printf(PRIVATE_DATA->handle, "G%d", slot);
-	WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 	indigo_set_timer(device, 1, xagyl_query, NULL);
 }
 
