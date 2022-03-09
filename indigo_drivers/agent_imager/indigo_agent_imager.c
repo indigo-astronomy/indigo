@@ -138,6 +138,22 @@
 #define AGENT_IMAGER_SEQUENCE_PROPERTY				(DEVICE_PRIVATE_DATA->agent_sequence)
 #define AGENT_IMAGER_SEQUENCE_ITEM						(AGENT_IMAGER_SEQUENCE_PROPERTY->items+0)
 
+#define AGENT_IMAGER_BREAKPOINT_PROPERTY						(DEVICE_PRIVATE_DATA->agent_breakpoint_property)
+#define AGENT_IMAGER_BREAKPOINT_PRE_BATCH_ITEM			(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+0)
+#define AGENT_IMAGER_BREAKPOINT_PRE_CAPTURE_ITEM		(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+1)
+#define AGENT_IMAGER_BREAKPOINT_POST_CAPTURE_ITEM		(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+2)
+#define AGENT_IMAGER_BREAKPOINT_PRE_DITHER_ITEM			(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+3)
+#define AGENT_IMAGER_BREAKPOINT_POST_DITHER_ITEM		(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+4)
+#define AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM			(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+5)
+#define AGENT_IMAGER_BREAKPOINT_POST_DELAY_ITEM			(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+6)
+#define AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM			(AGENT_IMAGER_BREAKPOINT_PROPERTY->items+7)
+
+#define AGENT_IMAGER_RESUME_CONDITION_PROPERTY			(DEVICE_PRIVATE_DATA->agent_resume_condition_property)
+#define AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM	(AGENT_IMAGER_RESUME_CONDITION_PROPERTY->items+0)
+#define AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM	(AGENT_IMAGER_RESUME_CONDITION_PROPERTY->items+1)
+
+#define AGENT_IMAGER_BARRIER_STATE_PROPERTY					(DEVICE_PRIVATE_DATA->agent_barrier_property)
+
 #define SEQUENCE_SIZE			16
 
 #define BUSY_TIMEOUT 5
@@ -165,6 +181,9 @@ typedef struct {
 	indigo_property *agent_stats_property;
 	indigo_property *agent_sequence;
 	indigo_property *agent_sequence_state;
+	indigo_property *agent_breakpoint_property;
+	indigo_property *agent_resume_condition_property;
+	indigo_property *agent_barrier_property;
 	indigo_property *saved_frame;
 	double saved_frame_left, saved_frame_top;
 	char current_folder[INDIGO_VALUE_SIZE];
@@ -188,6 +207,7 @@ typedef struct {
 	bool use_hfd_estimator;
 	bool use_rms_estimator;
 	bool use_aux_1;
+	bool barrier_resume;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -204,6 +224,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_IMAGER_FOCUS_FAILURE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_DITHERING_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_IMAGER_BREAKPOINT_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_SEQUENCE_PROPERTY);
 		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 		char *selection_property_items[] = { AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME };
@@ -549,6 +570,31 @@ static void preview_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+static void check_breakpoint(indigo_device *device, indigo_item *breakpoint) {
+	if (breakpoint->sw.value) {
+		AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, "%s paused on %s breakpoint", device->name, breakpoint->name);
+		while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, "%s aborted on %s breakpoint", device->name, breakpoint->name);
+				return;
+			}
+			if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value && DEVICE_PRIVATE_DATA->barrier_resume) {
+				const char *names[] = { AGENT_PAUSE_PROCESS_ITEM_NAME };
+				const bool values[] = { true };
+				for (int i = 0; i < AGENT_IMAGER_BARRIER_STATE_PROPERTY->count; i++) {
+					indigo_item *item = AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + i;
+					indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME, 1, names, values);
+				}
+				AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+				break;
+			}
+			indigo_usleep(1000);
+		}
+		indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, "%s resumed on %s breakpoint", device->name, breakpoint->name);
+	}
+}
+
 static bool exposure_batch(indigo_device *device) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_exposure_property, *agent_exposure_property, *device_aux_1_exposure_property, *agent_aux_1_exposure_property, *device_frame_type_property;
@@ -576,6 +622,7 @@ static bool exposure_batch(indigo_device *device) {
 			}
 		}
 	}
+	check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_BATCH_ITEM);
 	set_headers(device);
 	FILTER_DEVICE_CONTEXT->property_removed = false;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value++;
@@ -584,6 +631,7 @@ static bool exposure_batch(indigo_device *device) {
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (remaining_exposures < 0)
 			remaining_exposures = -1;
+		check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_CAPTURE_ITEM);
 		for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
 			if (FILTER_DEVICE_CONTEXT->property_removed)
 				return INDIGO_ALERT_STATE;
@@ -645,6 +693,7 @@ static bool exposure_batch(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 			return false;
 		}
+		check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_CAPTURE_ITEM);
 		if (light_frame) {
 			if (remaining_exposures != 0) {
 				if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
@@ -659,6 +708,7 @@ static bool exposure_batch(indigo_device *device) {
 								double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (drand48() - 0.5);
 								double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (drand48() - 0.5) : 0;
 								double item_values[] = { x_value, y_value };
+								check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DITHER_ITEM);
 								DEVICE_PRIVATE_DATA->dithering_started = false;
 								indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
 								for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
@@ -688,11 +738,13 @@ static bool exposure_batch(indigo_device *device) {
 										indigo_usleep(200000);
 									}
 								}
+								check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DITHER_ITEM);
 								break;
 							}
 						}
 					}
 				}
+				check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM);
 				double reported_delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
 				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = reported_delay_time;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -718,9 +770,11 @@ static bool exposure_batch(indigo_device *device) {
 				}
 				AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+				check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DELAY_ITEM);
 			}
 		}
 	}
+	check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM);
 	return true;
 }
 
@@ -1818,6 +1872,27 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			sprintf(label, "Batch #%d", i);
 			indigo_init_text_item(AGENT_IMAGER_SEQUENCE_PROPERTY->items + i, name, label, "");
 		}
+		// -------------------------------------------------------------------------------- Breakpoint support
+		AGENT_IMAGER_BREAKPOINT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_BREAKPOINT_PROPERTY_NAME, MAIN_GROUP, "Breakpoints", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
+		if (AGENT_IMAGER_BREAKPOINT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_PRE_BATCH_ITEM, AGENT_IMAGER_BREAKPOINT_PRE_BATCH_ITEM_NAME, "Pre-batch", false);
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_PRE_CAPTURE_ITEM, AGENT_IMAGER_BREAKPOINT_PRE_CAPTURE_ITEM_NAME, "Pre-capture", false);
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_POST_CAPTURE_ITEM, AGENT_IMAGER_BREAKPOINT_POST_CAPTURE_ITEM_NAME, "Post-capture", false);
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_PRE_DITHER_ITEM, AGENT_IMAGER_BREAKPOINT_PRE_DITHER_ITEM_NAME, "Pre-dither", false);
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_POST_DITHER_ITEM, AGENT_IMAGER_BREAKPOINT_POST_DITHER_ITEM_NAME, "Post-dither", false);
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM, AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM_NAME, "Pre-delay", false);
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_POST_DELAY_ITEM, AGENT_IMAGER_BREAKPOINT_POST_DELAY_ITEM_NAME, "Post-delay", false);
+		indigo_init_switch_item(AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM, AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM_NAME, "Post-batch", false);
+		AGENT_IMAGER_RESUME_CONDITION_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_RESUME_CONDITION_PROPERTY_NAME, MAIN_GROUP, "Breakpoint resume condition", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AGENT_IMAGER_RESUME_CONDITION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM, AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM_NAME, "Trigger/manual", true);
+		indigo_init_switch_item(AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM, AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM_NAME, "Barrier", false);
+		AGENT_IMAGER_BARRIER_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_IMAGER_BARRIER_STATE_PROPERTY_NAME, MAIN_GROUP, "Breakpoint barrier state", INDIGO_OK_STATE, INDIGO_MAX_ITEMS);
+		if (AGENT_IMAGER_BARRIER_STATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		AGENT_IMAGER_BARRIER_STATE_PROPERTY->count = 0;
 		// --------------------------------------------------------------------------------
 		DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
 		DEVICE_PRIVATE_DATA->use_rms_estimator = false;
@@ -1867,6 +1942,12 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_PROPERTY, property))
 		indigo_define_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_BREAKPOINT_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_BREAKPOINT_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_RESUME_CONDITION_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_BARRIER_STATE_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -1995,7 +2076,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else 	if (indigo_property_match(AGENT_PAUSE_PROCESS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_PAUSE_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_PAUSE_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_PAUSE_PROCESS_PROPERTY, property, false);
@@ -2011,7 +2092,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_PAUSE_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
@@ -2026,7 +2107,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DOWNLOAD_FILE
-	} else 	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_property_copy_values(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property, false);
 		AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2072,7 +2153,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DELETE_FILE
-	} else 	if (indigo_property_match(AGENT_IMAGER_DELETE_FILE_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_DELETE_FILE_PROPERTY, property)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_property_copy_values(AGENT_IMAGER_DELETE_FILE_PROPERTY, property, false);
 		AGENT_IMAGER_DELETE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2100,7 +2181,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_IMAGER_DELETE_FILE_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 		return INDIGO_OK;
-	} else 	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DOWNLOAD_FILES
 		indigo_property_copy_values(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property, false);
 		if (AGENT_IMAGER_DOWNLOAD_FILES_REFRESH_ITEM->sw.value) {
@@ -2126,7 +2207,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- AGENT_WHEEL_FILTER
-	} else 	if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_WHEEL_FILTER_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
 			if (AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value) {
@@ -2138,11 +2219,25 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- AGENT_IMAGER_SEQUENCE
-	} else 	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_SEQUENCE_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_IMAGER_SEQUENCE_PROPERTY, property, false);
 		AGENT_IMAGER_SEQUENCE_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- AGENT_IMAGER_BREAKPOINT
+	} else if (indigo_property_match(AGENT_IMAGER_BREAKPOINT_PROPERTY, property)) {
+		indigo_property_copy_values(AGENT_IMAGER_BREAKPOINT_PROPERTY, property, false);
+		AGENT_IMAGER_BREAKPOINT_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_IMAGER_BREAKPOINT_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- AGENT_IMAGER_RESUME_CONDITION
+	} else if (indigo_property_match(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property)) {
+		indigo_property_copy_values(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property, false);
+		AGENT_IMAGER_RESUME_CONDITION_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_IMAGER_RESUME_CONDITION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
@@ -2178,6 +2273,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PAUSE_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_SEQUENCE_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_BREAKPOINT_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_RESUME_CONDITION_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_BARRIER_STATE_PROPERTY);
 	indigo_release_property(AGENT_WHEEL_FILTER_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
@@ -2213,6 +2311,28 @@ static void snoop_guider_stats(indigo_client *client, indigo_property *property)
 	}
 }
 
+static void snoop_barrier_state(indigo_client *client, indigo_property *property) {
+	if (!strcmp(property->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME)) {
+		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
+			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
+			if (!strcmp(agent->name, property->device)) {
+				indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+				CLIENT_PRIVATE_DATA->barrier_resume = true;
+				for (int i = 0; i < AGENT_IMAGER_BARRIER_STATE_PROPERTY->count; i++) {
+					indigo_item *item = AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + i;
+					if (!strcmp(item->name, property->device)) {
+						item->light.value = property->state;
+						indigo_update_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
+					}
+					CLIENT_PRIVATE_DATA->barrier_resume &= (item->light.value == INDIGO_BUSY_STATE);
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Breakpoint barrier state %s", CLIENT_PRIVATE_DATA->barrier_resume ? "complete" : "incomplete");
+				break;
+			}
+		}
+	}
+}
+
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
@@ -2237,7 +2357,45 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				}
 			}
 		}
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX])) {
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX])) {
+		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
+			CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+		} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
+			indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+			DEVICE_PRIVATE_DATA->focuser_has_backlash = true;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
+			AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
+			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
+		}
+	} else {
+		snoop_guider_stats(client, property);
+		snoop_barrier_state(client, property);
+	}
+	return indigo_filter_define_property(client, device, property, message);
+}
+
+static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (device == FILTER_CLIENT_CONTEXT->device) {
+		if (!strcmp(property->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
+			AGENT_IMAGER_BARRIER_STATE_PROPERTY->count = 0;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (item->sw.value && !strncmp(item->name, "Imager Agent", 12)) {
+					indigo_init_light_item(AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + AGENT_IMAGER_BARRIER_STATE_PROPERTY->count, item->name, item->label, INDIGO_IDLE_STATE);
+					AGENT_IMAGER_BARRIER_STATE_PROPERTY->count++;
+				}
+			}
+			indigo_delete_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
+			indigo_define_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
+			indigo_property property = { 0 };
+			strcpy(property.name, AGENT_PAUSE_PROCESS_PROPERTY_NAME);
+			for (int i = 0; i < AGENT_IMAGER_BARRIER_STATE_PROPERTY->count; i++) {
+				indigo_item *item = AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + i;
+				strcpy(property.device, item->name);
+				indigo_enumerate_properties(client, &property);
+			}
+		}
+	} else 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX])) {
 		if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
 			agent_wheel_filter_property->count = property->count;
@@ -2255,24 +2413,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			agent_wheel_filter_property->state = property->state;
 			indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
 		}
-	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX])) {
-		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
-			CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
-		} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
-			indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-			DEVICE_PRIVATE_DATA->focuser_has_backlash = true;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
-			AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
-			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
-		}
-	} else {
-		snoop_guider_stats(client, property);
-	}
-	return indigo_filter_define_property(client, device, property, message);
-}
-
-static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			if (strchr(property->device, '@'))
 				indigo_populate_http_blob_item(property->items);
@@ -2346,6 +2487,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 		}
 	} else {
 		snoop_guider_stats(client, property);
+		snoop_barrier_state(client, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
 }
