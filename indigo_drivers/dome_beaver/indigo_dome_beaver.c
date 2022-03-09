@@ -23,7 +23,7 @@
  \file indigo_dome_beaver.c
  */
 
-#define DRIVER_VERSION 0x00001
+#define DRIVER_VERSION 0x00002
 #define DRIVER_NAME	"indigo_dome_beaver"
 
 #include <stdlib.h>
@@ -819,7 +819,7 @@ static void dome_timer_callback(indigo_device *device) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_get_failure_codes(): returned error %d", rc);
 	} else {
 		if (rotator_code != PRIVATE_DATA->rotator_failure_code || shutter_code != PRIVATE_DATA->shutter_failure_code) {
-			beaver_get_failure_messages(device, &X_FAILURE_MESSAGE_ROTATOR_ITEM->text.value, &X_FAILURE_MESSAGE_SHUTTER_ITEM->text.value);
+			beaver_get_failure_messages(device, X_FAILURE_MESSAGE_ROTATOR_ITEM->text.value, X_FAILURE_MESSAGE_SHUTTER_ITEM->text.value);
 			if (rotator_code != 0 || shutter_code != 0) {
 				X_FAILURE_MESSAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, X_FAILURE_MESSAGE_PROPERTY, "Rotator or Shutter failure detected, check X_FAILURE_MESSAGES property");
@@ -1056,8 +1056,6 @@ static void dome_steps_callback(indigo_device *device) {
 	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
-	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 
 	indigo_usleep(0.5*ONE_SECOND_DELAY);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
@@ -1107,8 +1105,6 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 	DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.value = PRIVATE_DATA->current_position;
 	DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
-	DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 	DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 
@@ -1133,8 +1129,6 @@ static void dome_shutter_callback(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 		return;
 	}
-	DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-	indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 
 	indigo_usleep(0.5*ONE_SECOND_DELAY);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
@@ -1157,7 +1151,6 @@ static void dome_park_callback(indigo_device *device) {
 		}
 		PRIVATE_DATA->park_requested = true;
 
-		DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1190,7 +1183,6 @@ static void dome_gohome_callback(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_goto_home(%d): returned error %d", PRIVATE_DATA->handle, rc);
 		}
 
-		DOME_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_HOME_PROPERTY, "Dome going home...");
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
@@ -1217,7 +1209,6 @@ static void dome_calibrate_rotator_callback(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (X_ROTATOR_CALIBRATE_ITEM->sw.value) {
-		X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		if ((rc = beaver_calibrate_rotator(device)) != BD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_calibrate_rotator(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1240,7 +1231,6 @@ static void dome_calibrate_shutter_callback(indigo_device *device) {
 
 	pthread_mutex_lock(&PRIVATE_DATA->move_mutex);
 	if (X_SHUTTER_CALIBRATE_ITEM->sw.value) {
-		X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		if ((rc = beaver_calibrate_shutter(device)) != BD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_calibrate_shutter(%d): returned error %d", PRIVATE_DATA->handle, rc);
 			X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1280,9 +1270,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		indigo_set_timer(device, 0, dome_steps_callback, NULL);
+		if (IS_CONNECTED) {
+			DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
+			indigo_set_timer(device, 0, dome_steps_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
@@ -1291,9 +1283,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		indigo_set_timer(device, 0, dome_horizontal_coordinates_callback, NULL);
+		if (IS_CONNECTED) {
+			DOME_HORIZONTAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
+			indigo_set_timer(device, 0, dome_horizontal_coordinates_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
@@ -1342,16 +1336,20 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		 }
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		indigo_set_timer(device, 0, dome_shutter_callback, NULL);
+		if (IS_CONNECTED) {
+			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+			indigo_set_timer(device, 0, dome_shutter_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		indigo_set_timer(device, 0, dome_park_callback, NULL);
+		if (IS_CONNECTED) {
+			DOME_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
+			indigo_set_timer(device, 0, dome_park_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_PARK_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK_POSITION
@@ -1380,9 +1378,11 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HOME
 		indigo_property_copy_values(DOME_HOME_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		indigo_set_timer(device, 0, dome_gohome_callback, NULL);
+		if (IS_CONNECTED) {
+			DOME_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, DOME_HOME_PROPERTY, NULL);
+			indigo_set_timer(device, 0, dome_gohome_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_CLEAR_FAILURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CLEAR_FAILURE
@@ -1400,16 +1400,20 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(X_ROTATOR_CALIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_ROTATOR_CALIBRATE
 		indigo_property_copy_values(X_ROTATOR_CALIBRATE_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		indigo_set_timer(device, 0, dome_calibrate_rotator_callback, NULL);
+		if (IS_CONNECTED) {
+			X_ROTATOR_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, dome_calibrate_rotator_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_SHUTTER_CALIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SHUTTER_CALIBRATE
 		indigo_property_copy_values(X_SHUTTER_CALIBRATE_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
-
-		indigo_set_timer(device, 0, dome_calibrate_shutter_callback, NULL);
+		if (IS_CONNECTED) {
+			X_SHUTTER_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
+			indigo_set_timer(device, 0, dome_calibrate_shutter_callback, NULL);
+		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
