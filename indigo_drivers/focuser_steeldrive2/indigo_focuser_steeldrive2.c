@@ -23,7 +23,7 @@
  \file indigo_focuser_steeldrive2.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_focuser_steeldrive2"
 
 #include <stdlib.h>
@@ -576,223 +576,197 @@ static void focuser_connection_handler(indigo_device *device) {
 }
 
 static void focuser_position_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		int position = FOCUSER_POSITION_ITEM->number.target;
-		if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
-			if (position < 0)
-				position = 0;
-			else if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
-				position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
-			sprintf(command, "$BS GO %d", position);
-		} else {
-			sprintf(command, "$BS SET POS:%d", position);
-		}
-		if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
-}
-
-static void focuser_steps_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		int position = FOCUSER_POSITION_ITEM->number.value + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1) * FOCUSER_STEPS_ITEM->number.target;
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	int position = FOCUSER_POSITION_ITEM->number.target;
+	if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) {
 		if (position < 0)
 			position = 0;
 		else if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
 			position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 		sprintf(command, "$BS GO %d", position);
-		if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	} else {
+		sprintf(command, "$BS SET POS:%d", position);
 	}
+	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void focuser_steps_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	int position = FOCUSER_POSITION_ITEM->number.value + (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1) * (FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? -1 : 1) * FOCUSER_STEPS_ITEM->number.target;
+	if (position < 0)
+		position = 0;
+	else if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
+		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
+	sprintf(command, "$BS GO %d", position);
+	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_abort_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char response[256];
-		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
-			if (steeldrive2_command(device, "$BS STOP", response, sizeof(response)) && !strcmp(response, "$BS OK"))
-				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
-			else
-				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[256];
+	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
+		if (steeldrive2_command(device, "$BS STOP", response, sizeof(response)) && !strcmp(response, "$BS OK"))
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_name_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		sprintf(command, "$BS SET NAME:%s", X_NAME_ITEM->text.value);
-		if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_NAME_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, X_NAME_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	sprintf(command, "$BS SET NAME:%s", X_NAME_ITEM->text.value);
+	if (steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_NAME_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		X_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_NAME_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_saved_values_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		X_SAVED_VALUES_PROPERTY->state = INDIGO_OK_STATE;
-		sprintf(command, "$BS SET FOCUS:%d", (int)X_SAVED_FOCUS_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET JOGSTEPS:%d", (int)X_SAVED_JOGSTEPS_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET SINGLESTEPS:%d", (int)X_SAVED_SINGLESTEPS_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET BKLGT:%d", (int)X_SAVED_BKLGT_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET TEMP0_OFS:%d", (int)X_SAVED_TEMP0_OFS_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET TEMP1_OFS:%d", (int)X_SAVED_TEMP1_OFS_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET PID_DEW_OFS:%d", (int)X_PID_SETTINGS_OFS_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET PID_TARGET:%d", (int)X_PID_SETTINGS_TARGET_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, X_SAVED_VALUES_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	X_SAVED_VALUES_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET FOCUS:%d", (int)X_SAVED_FOCUS_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET JOGSTEPS:%d", (int)X_SAVED_JOGSTEPS_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET SINGLESTEPS:%d", (int)X_SAVED_SINGLESTEPS_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET BKLGT:%d", (int)X_SAVED_BKLGT_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET TEMP0_OFS:%d", (int)X_SAVED_TEMP0_OFS_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET TEMP1_OFS:%d", (int)X_SAVED_TEMP1_OFS_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET PID_DEW_OFS:%d", (int)X_PID_SETTINGS_OFS_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET PID_TARGET:%d", (int)X_PID_SETTINGS_TARGET_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_SAVED_VALUES_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_mode_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		sprintf(command, "$BS SET TCOMP:%d", FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? 1 : 0);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET TCOMP:%d", FOCUSER_MODE_AUTOMATIC_ITEM->sw.value ? 1 : 0);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_compensation_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
-		sprintf(command, "$BS SET TCOMP_FACTOR:%.2f", FOCUSER_COMPENSATION_ITEM->number.value);
-		indigo_fix_locale(command);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET TCOMP_PERIOD:%d", (int)(FOCUSER_COMPENSATION_PERIOD_ITEM->number.value * 1000));
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		sprintf(command, "$BS SET TCOMP_DELTA:%.1f", FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
-		indigo_fix_locale(command);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET TCOMP_FACTOR:%.2f", FOCUSER_COMPENSATION_ITEM->number.value);
+	indigo_fix_locale(command);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET TCOMP_PERIOD:%d", (int)(FOCUSER_COMPENSATION_PERIOD_ITEM->number.value * 1000));
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+	sprintf(command, "$BS SET TCOMP_DELTA:%.1f", FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
+	indigo_fix_locale(command);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_limits_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
-			sprintf(command, "$BS SET LIMIT:%d", (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value);
-			if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-				FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
-		}
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET LIMIT:%d", (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_tc_sensor_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
-		sprintf(command, "$BS SET TCOMP_SENSOR:%d", X_SELECT_TC_SENSOR_0_ITEM->sw.value ? 0 : X_SELECT_TC_SENSOR_1_ITEM->sw.value ? 1 : 2);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET TCOMP_SENSOR:%d", X_SELECT_TC_SENSOR_0_ITEM->sw.value ? 0 : X_SELECT_TC_SENSOR_1_ITEM->sw.value ? 1 : 2);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_reset_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char response[256];
-		X_RESET_PROPERTY->state = INDIGO_OK_STATE;
-		if (X_RESET_ITEM->sw.value) {
-			X_RESET_ITEM->sw.value = false;
-			if (steeldrive2_command(device, "$BS RESET", response, sizeof(response)) && !strcmp(response, "$BS OK")) {
-				indigo_device_disconnect(NULL, device->name);
-				return;
-			}
-		} else if (X_REBOOT_ITEM->sw.value) {
-			X_REBOOT_ITEM->sw.value = false;
-			indigo_printf(PRIVATE_DATA->handle, "$BS REBOOT\r\n");
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[256];
+	X_RESET_PROPERTY->state = INDIGO_OK_STATE;
+	if (X_RESET_ITEM->sw.value) {
+		X_RESET_ITEM->sw.value = false;
+		if (steeldrive2_command(device, "$BS RESET", response, sizeof(response)) && !strcmp(response, "$BS OK")) {
 			indigo_device_disconnect(NULL, device->name);
-			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			return;
 		}
-		X_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, X_RESET_PROPERTY, NULL);
+	} else if (X_REBOOT_ITEM->sw.value) {
+		X_REBOOT_ITEM->sw.value = false;
+		indigo_printf(PRIVATE_DATA->handle, "$BS REBOOT\r\n");
+		indigo_device_disconnect(NULL, device->name);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		return;
 	}
+	X_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_RESET_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_use_endstop_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char command[64], response[256];
-		X_USE_ENDSTOP_PROPERTY->state = INDIGO_OK_STATE;
-		sprintf(command, "$BS SET USE_ENDSTOP:%d", X_USE_ENDSTOP_ENABLED_ITEM->sw.value ? 1 : 0);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_USE_ENDSTOP_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	}
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[64], response[256];
+	X_USE_ENDSTOP_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET USE_ENDSTOP:%d", X_USE_ENDSTOP_ENABLED_ITEM->sw.value ? 1 : 0);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_USE_ENDSTOP_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void focuser_start_zeroing_handler(indigo_device *device) {
-	if (IS_CONNECTED) {
-		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		char response[256];
-		X_START_ZEROING_PROPERTY->state = INDIGO_OK_STATE;
-		if (X_START_ZEROING_ITEM->sw.value) {
-			X_START_ZEROING_ITEM->sw.value = false;
-			if (!steeldrive2_command(device, "$BS ZEROING", response, sizeof(response)) && !strcmp(response, "$BS OK"))
-				X_START_ZEROING_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, X_START_ZEROING_PROPERTY, NULL);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[256];
+	X_START_ZEROING_PROPERTY->state = INDIGO_OK_STATE;
+	if (X_START_ZEROING_ITEM->sw.value) {
+		X_START_ZEROING_ITEM->sw.value = false;
+		if (!steeldrive2_command(device, "$BS ZEROING", response, sizeof(response)) && !strcmp(response, "$BS OK"))
+			X_START_ZEROING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	indigo_update_property(device, X_START_ZEROING_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -813,61 +787,89 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		int value = FOCUSER_POSITION_ITEM->number.value;
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		FOCUSER_POSITION_ITEM->number.value = value;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_position_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_steps_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_abort_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_NAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_NAME
 		indigo_property_copy_values(X_NAME_PROPERTY, property, false);
+		X_NAME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_NAME_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_name_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_SAVED_VALUES_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- X_SAVED_VALUES
 		indigo_property_copy_values(X_SAVED_VALUES_PROPERTY, property, false);
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_SAVED_VALUES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_saved_values_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
+		FOCUSER_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_mode_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_compensation_handler, NULL);
+		if (IS_CONNECTED) {
+			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_compensation_handler, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 	} else if (indigo_property_match(FOCUSER_LIMITS_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
-		indigo_set_timer(device, 0, focuser_limits_handler, NULL);
+		if (IS_CONNECTED) {
+			FOCUSER_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+			indigo_set_timer(device, 0, focuser_limits_handler, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_TC_SENSOR
 	} else if (indigo_property_match(X_SELECT_TC_SENSOR_PROPERTY, property)) {
 		indigo_property_copy_values(X_SELECT_TC_SENSOR_PROPERTY, property, false);
+		X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_tc_sensor_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_RESET
 	} else if (indigo_property_match(X_RESET_PROPERTY, property)) {
 		indigo_property_copy_values(X_RESET_PROPERTY, property, false);
+		X_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_RESET_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_reset_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_USE_ENDSTOP
 	} else if (indigo_property_match(X_USE_ENDSTOP_PROPERTY, property)) {
 		indigo_property_copy_values(X_USE_ENDSTOP_PROPERTY, property, false);
+		X_USE_ENDSTOP_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_use_endstop_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_START_ZEROING
 	} else if (indigo_property_match(X_START_ZEROING_PROPERTY, property)) {
 		indigo_property_copy_values(X_START_ZEROING_PROPERTY, property, false);
+		X_START_ZEROING_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_START_ZEROING_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_start_zeroing_handler, NULL);
 		return INDIGO_OK;
 	}
@@ -1081,46 +1083,42 @@ static void aux_connection_handler(indigo_device *device) {
 static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
-	if (IS_CONNECTED) {
-		sprintf(command, "$BS SET PWM:%d", (int)AUX_HEATER_OUTLET_1_ITEM->number.value);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
-		X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
-		int value;
-		if (steeldrive2_command(device, "$BS GET PID_CTRL", response, sizeof(response)) && sscanf(response, "$BS STATUS PID_CTRL:%d", &value) == 1) {
-			if (value)
-				indigo_set_switch(X_USE_PID_PROPERTY, X_USE_PID_ENABLED_ITEM, true);
-			else
-				indigo_set_switch(X_USE_PID_PROPERTY, X_USE_PID_DISABLED_ITEM, true);
-		} else {
-			X_USE_PID_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, X_USE_PID_PROPERTY, NULL);
-		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
-		if (steeldrive2_command(device, "$BS GET AUTO_DEW", response, sizeof(response)) && sscanf(response, "$BS STATUS AUTO_DEW:%d", &value) == 1) {
-			if (value)
-				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
-			else
-				indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
-		} else {
-			AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+	sprintf(command, "$BS SET PWM:%d", (int)AUX_HEATER_OUTLET_1_ITEM->number.value);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		X_SAVED_VALUES_PROPERTY->state = INDIGO_ALERT_STATE;
+	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
+	int value;
+	if (steeldrive2_command(device, "$BS GET PID_CTRL", response, sizeof(response)) && sscanf(response, "$BS STATUS PID_CTRL:%d", &value) == 1) {
+		if (value)
+			indigo_set_switch(X_USE_PID_PROPERTY, X_USE_PID_ENABLED_ITEM, true);
+		else
+			indigo_set_switch(X_USE_PID_PROPERTY, X_USE_PID_DISABLED_ITEM, true);
+	} else {
+		X_USE_PID_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	indigo_update_property(device, X_USE_PID_PROPERTY, NULL);
+	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+	if (steeldrive2_command(device, "$BS GET AUTO_DEW", response, sizeof(response)) && sscanf(response, "$BS STATUS AUTO_DEW:%d", &value) == 1) {
+		if (value)
+			indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_AUTOMATIC_ITEM, true);
+		else
+			indigo_set_switch(AUX_DEW_CONTROL_PROPERTY, AUX_DEW_CONTROL_MANUAL_ITEM, true);
+	} else {
+		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_dew_control_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];
-	if (IS_CONNECTED) {
-		X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
-		sprintf(command, "$BS SET PID_CTRL:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
-		if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
-			AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-	}
+	X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
+	sprintf(command, "$BS SET PID_CTRL:%d", AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
+	if (!steeldrive2_command(device, command, response, sizeof(response)) && !strcmp(response, "$BS OK"))
+		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -1192,31 +1190,43 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
 	} else if (indigo_property_match(AUX_HEATER_OUTLET_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
+		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
 	} else if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_DEW_CONTROL_PROPERTY, property, false);
+		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_USE_PID
 	} else if (indigo_property_match(X_USE_PID_PROPERTY, property)) {
 		indigo_property_copy_values(X_USE_PID_PROPERTY, property, false);
+		X_USE_PID_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_USE_PID_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_use_pid_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_PID_SETTINGS
 	} else if (indigo_property_match(X_PID_SETTINGS_PROPERTY, property)) {
 		indigo_property_copy_values(X_PID_SETTINGS_PROPERTY, property, false);
+		X_PID_SETTINGS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_PID_SETTINGS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_pid_settings_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_PID_SENSOR
 	} else if (indigo_property_match(X_SELECT_PID_SENSOR_PROPERTY, property)) {
 		indigo_property_copy_values(X_SELECT_PID_SENSOR_PROPERTY, property, false);
+		X_SELECT_PID_SENSOR_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_SELECT_PID_SENSOR_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_select_pid_sensor_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_AMB_SENSOR
 	} else if (indigo_property_match(X_SELECT_AMB_SENSOR_PROPERTY, property)) {
 		indigo_property_copy_values(X_SELECT_AMB_SENSOR_PROPERTY, property, false);
+		X_SELECT_AMB_SENSOR_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_SELECT_AMB_SENSOR_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_select_amb_sensor_handler, NULL);
 		return INDIGO_OK;
 	}

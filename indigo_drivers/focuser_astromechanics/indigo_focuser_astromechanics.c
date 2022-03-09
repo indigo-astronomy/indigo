@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_astromechanics"
 
 #include <stdlib.h>
@@ -195,7 +195,6 @@ static void focuser_steps_handler(indigo_device *device) {
 		sprintf(command, "M%04d#", position);
 	}
 	if (astromechanics_command(device, command, NULL)) {
-		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		for (int i = 0; i < 50 && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
@@ -235,7 +234,6 @@ static void focuser_position_handler(indigo_device *device) {
 	else if (position > 9999)
 		position = 9999;
 	sprintf(command, "M%04d#", position);
-	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	if (astromechanics_command(device, command, NULL)) {
 		for (int i = 0; i < 50 && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
 			if (astromechanics_command(device, "P#", response)) {
@@ -290,11 +288,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_steps_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_position_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
@@ -310,6 +312,8 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(X_FOCUSER_APERTURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_FOCUSER_APERTURE
 		indigo_property_copy_values(X_FOCUSER_APERTURE_PROPERTY, property, false);
+		X_FOCUSER_APERTURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_FOCUSER_APERTURE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_aperture_handler, NULL);
 		return INDIGO_OK;
 	}
