@@ -228,11 +228,12 @@ static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[16];
 	int position;
-	position = FOCUSER_POSITION_ITEM->number.value;
+	position = FOCUSER_POSITION_ITEM->number.target;
 	if (position < 0)
 		position = 0;
 	else if (position > 9999)
 		position = 9999;
+	FOCUSER_POSITION_ITEM->number.target = position;
 	sprintf(command, "M%04d#", position);
 	if (astromechanics_command(device, command, NULL)) {
 		for (int i = 0; i < 50 && FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
@@ -294,7 +295,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		long position = FOCUSER_POSITION_ITEM->number.value;
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		FOCUSER_POSITION_ITEM->number.value = position;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_position_handler, NULL);
