@@ -295,6 +295,8 @@ static void focuser_position_handler(indigo_device *device) {
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target;
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target)
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+	FOCUSER_POSITION_ITEM->number.target = position;
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 	snprintf(command, sizeof(command), "%c:%d", FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value ? 'R': 'M', position);
 	if (focusdreampro_command(device, command, response, sizeof(response)) && *response == *command) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
