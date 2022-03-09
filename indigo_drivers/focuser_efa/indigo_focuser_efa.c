@@ -27,7 +27,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME "indigo_focuser_efa"
 
 #include <stdlib.h>
@@ -272,8 +272,7 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static long focuser_position(indigo_device *device) {
 	uint8_t response_packet[16];
-	uint8_t get_position_packet[16] = { SOM,
-           0x03, APP, FOC, 0x01, 0 };
+	uint8_t get_position_packet[16] = { SOM, 0x03, APP, FOC, 0x01, 0 };
 	if (efa_command(device, get_position_packet, response_packet)) {
 		long position = response_packet[5] << 16 | response_packet[6] << 8 | response_packet[7];
 		if (position & 0x800000)
@@ -285,8 +284,7 @@ static long focuser_position(indigo_device *device) {
 
 static void focuser_goto(indigo_device *device, long target) {
 	uint8_t response_packet[16];
-	uint8_t check_state_packet[16] = { SOM,
-           0x03, APP, FOC, 0x13, 0 };
+	uint8_t check_state_packet[16] = { SOM, 0x03, APP, FOC, 0x13, 0 };
 	
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -296,12 +294,9 @@ static void focuser_goto(indigo_device *device, long target) {
 	long position = focuser_position(device);
 
 	if (PRIVATE_DATA->is_efa) {
-		uint8_t slew_positive_packet[16] = { SOM,
-           0x04, APP, FOC, 0x24, 0x09, 0 };
-		uint8_t slew_negative_packet[16] = { SOM,
-           0x04, APP, FOC, 0x25, 0x09, 0 };
-		uint8_t stop_packet[16] = { SOM,
-           0x04, APP, FOC, 0x24, 0x00, 0 };
+		uint8_t slew_positive_packet[16] = { SOM, 0x04, APP, FOC, 0x24, 0x09, 0 };
+		uint8_t slew_negative_packet[16] = { SOM, 0x04, APP, FOC, 0x25, 0x09, 0 };
+		uint8_t stop_packet[16] = { SOM, 0x04, APP, FOC, 0x24, 0x00, 0 };
 		if (labs(target - position) > THRESHOLD) {
 			if (!efa_command(device, target > position ? slew_positive_packet : slew_negative_packet, response_packet))
 				goto failure;
@@ -322,8 +317,7 @@ static void focuser_goto(indigo_device *device, long target) {
 			}
 		}
 	}
-	uint8_t goto_packet[16] = { SOM,
-           0x06, APP, FOC, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (target >> 16) & 0xFF, (target >> 8) & 0xFF, target & 0xFF, 0 };
+	uint8_t goto_packet[16] = { SOM, 0x06, APP, FOC, PRIVATE_DATA->is_efa ? 0x17 : 0x02, (target >> 16) & 0xFF, (target >> 8) & 0xFF, target & 0xFF, 0 };
 	if (!efa_command(device, goto_packet, response_packet))
 		goto failure;
 	while (true) {
@@ -353,15 +347,10 @@ failure:
 static void focuser_calibration_handler(indigo_device *device) {
 	if (X_FOCUSER_CALIBRATION_ITEM->sw.value) {
 		uint8_t response_packet[16];
-		uint8_t start_calibration_packet[16] = { SOM,
-           0x04, APP, FOC, 0x2A, 1, 0 };
-		uint8_t check_calibration_packet[16] = { SOM,
-           0x03, APP, FOC, 0x2B, 0 };
-		uint8_t get_limits_packet[16] = { SOM,
-           0x03, APP, FOC, 0x2C, 0 };
+		uint8_t start_calibration_packet[16] = { SOM, 0x04, APP, FOC, 0x2A, 1, 0 };
+		uint8_t check_calibration_packet[16] = { SOM, 0x03, APP, FOC, 0x2B, 0 };
+		uint8_t get_limits_packet[16] = { SOM, 0x03, APP, FOC, 0x2C, 0 };
 		X_FOCUSER_CALIBRATION_ITEM->sw.value = false;
-		X_FOCUSER_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
 		if (!efa_command(device, start_calibration_packet, response_packet))
 			goto failure;
 		while (true) {
@@ -522,8 +511,7 @@ static void focuser_position_handler(indigo_device *device) {
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
 	if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
 		uint8_t response_packet[16];
-		uint8_t sync_packet[16] = { SOM,
-           0x06, APP, FOC, 0x04, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
+		uint8_t sync_packet[16] = { SOM, 0x06, APP, FOC, 0x04, (position >> 16) & 0xFF, (position >> 8) & 0xFF, position & 0xFF, 0 };
 		if (efa_command(device, sync_packet, response_packet))
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		else
@@ -557,6 +545,8 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 			}
 		}
 		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+	} else {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 //	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -565,8 +555,7 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 static void focuser_fans_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	uint8_t response_packet[16];
-	uint8_t fans_packet[16] = { SOM,
-           0x04, APP, FAN, 0x27, X_FOCUSER_FANS_ON_ITEM->sw.value ? 0x01 : 0x00, 0 };
+	uint8_t fans_packet[16] = { SOM, 0x04, APP, FAN, 0x27, X_FOCUSER_FANS_ON_ITEM->sw.value ? 0x01 : 0x00, 0 };
 	if (efa_command(device, fans_packet, response_packet)) {
 		X_FOCUSER_FANS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -592,26 +581,36 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_steps_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_position_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_abort_motion_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_FOCUSER_FANS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_FOCUSER_FANS
 		indigo_property_copy_values(X_FOCUSER_FANS_PROPERTY, property, false);
+		X_FOCUSER_FANS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_fans_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_FOCUSER_CALIBRATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_FOCUSER_CALIBRATION
 		indigo_property_copy_values(X_FOCUSER_CALIBRATION_PROPERTY, property, false);
+		X_FOCUSER_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_calibration_handler, NULL);
 		return INDIGO_OK;
 	}
