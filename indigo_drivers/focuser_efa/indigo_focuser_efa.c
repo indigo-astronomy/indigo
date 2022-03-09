@@ -249,8 +249,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	uint8_t response_packet[16];
 	if (PRIVATE_DATA->is_efa) {
-		uint8_t get_temp_packet[16] = { SOM,
-           0x04, APP, FOC, 0x26, 0x00, 0 };
+		uint8_t get_temp_packet[16] = { SOM, 0x04, APP, FOC, 0x26, 0x00, 0 };
 		if (efa_command(device, get_temp_packet, response_packet)) {
 			int raw_temp = response_packet[6] << 8 | response_packet[7];
 			if (raw_temp & 0x8000) {
@@ -398,8 +397,7 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			PRIVATE_DATA->is_efa = true;
 			PRIVATE_DATA->is_celestron = false;
-			uint8_t get_version_packet[16] = { SOM,
-           0x03, APP, FOC, 0xFE, 0 };
+			uint8_t get_version_packet[16] = { SOM, 0x03, APP, FOC, 0xFE, 0 };
 			if (efa_command(device, get_version_packet, response_packet)) {
 				if (response_packet[1] == 5) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PlaneWave EFA");
@@ -427,18 +425,15 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_update_property(device, CONNECTION_PROPERTY, "Failed to open port %s (%s)", DEVICE_PORT_ITEM->text.value, strerror(errno));
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			FOCUSER_POSITION_ITEM->number.value = focuser_position(device);
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = focuser_position(device);
 			if (PRIVATE_DATA->is_efa) {
-				uint8_t get_calibration_status_packet[16] = { SOM,
-           0x03, APP, FOC, 0x30, 0 };
+				uint8_t get_calibration_status_packet[16] = { SOM, 0x03, APP, FOC, 0x30, 0 };
 				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
 					indigo_send_message(device, "Warning! Focuser is not calibrated!");
 				}
-				uint8_t set_stop_detect_packet[16] = { SOM,
-           0x04, APP, FOC, 0xEF, 0x01, 0 };
+				uint8_t set_stop_detect_packet[16] = { SOM, 0x04, APP, FOC, 0xEF, 0x01, 0 };
 				efa_command(device, set_stop_detect_packet, response_packet);
-				uint8_t get_fans_packet[16] = { SOM,
-           0x03, APP, FAN, 0x28, 0 };
+				uint8_t get_fans_packet[16] = { SOM, 0x03, APP, FAN, 0x28, 0 };
 				if (efa_command(device, get_fans_packet, response_packet)) {
 					indigo_set_switch(X_FOCUSER_FANS_PROPERTY, X_FOCUSER_FANS_ON_ITEM, response_packet[5] == 0);
 				}
@@ -450,13 +445,11 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_LIMITS_PROPERTY->perm = INDIGO_RW_PERM;
 				indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
 			} else {
-				uint8_t get_calibration_status_packet[16] = { SOM,
-           0x03, APP, FOC, 0x2B, 0 };
+				uint8_t get_calibration_status_packet[16] = { SOM, 0x03, APP, FOC, 0x2B, 0 };
 				if (!efa_command(device, get_calibration_status_packet, response_packet) || response_packet[5] == 0) {
 					indigo_send_message(device, "Warning! Focuser is not calibrated!");
 				}
-				uint8_t get_limits_packet[16] = { SOM,
-           0x03, APP, FOC, 0x2C, 0 };
+				uint8_t get_limits_packet[16] = { SOM, 0x03, APP, FOC, 0x2C, 0 };
 				if (efa_command(device, get_limits_packet, response_packet)) {
 					FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = (response_packet[5] << 24) + (response_packet[6] << 16) + (response_packet[7] << 8) + response_packet[8];
 					FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (response_packet[9] << 24) + (response_packet[10] << 16) + (response_packet[11] << 8) + response_packet[12];
@@ -476,8 +469,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-			uint8_t stop_packet[16] = { SOM,
-           0x06, APP, FOC, 0x24, 0x00, 0 };
+			uint8_t stop_packet[16] = { SOM, 0x06, APP, FOC, 0x24, 0x00, 0 };
 			efa_command(device, stop_packet, response_packet);
 			indigo_delete_property(device, X_FOCUSER_FANS_PROPERTY, NULL);
 			indigo_delete_property(device, X_FOCUSER_CALIBRATION_PROPERTY, NULL);
@@ -528,16 +520,14 @@ static void focuser_abort_motion_handler(indigo_device *device) {
 	if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 		uint8_t response_packet[16];
 		if (X_FOCUSER_CALIBRATION_PROPERTY->state == INDIGO_BUSY_STATE) {
-			uint8_t stop_packet[16] = { SOM,
-           0x04, APP, FOC, 0x2A, 0, 0 };
+			uint8_t stop_packet[16] = { SOM, 0x04, APP, FOC, 0x2A, 0, 0 };
 			if (efa_command(device, stop_packet, response_packet)) {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else {
-			uint8_t stop_packet[16] = { SOM,
-           0x06, APP, FOC, 0x24, 0x00, 0 };
+			uint8_t stop_packet[16] = { SOM, 0x06, APP, FOC, 0x24, 0x00, 0 };
 			if (efa_command(device, stop_packet, response_packet)) {
 				FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {

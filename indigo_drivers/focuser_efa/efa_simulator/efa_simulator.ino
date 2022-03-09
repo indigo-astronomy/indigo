@@ -34,10 +34,10 @@
 LiquidCrystal lcd(8, 9, 4, 5, 6, 7);
 #endif
 
-uint32_t current_position = 0;
-uint32_t target_position = 0;
-uint32_t min_position = 0x010203;
-uint32_t max_position = 0x403020;
+uint32_t current_position = 10;
+uint32_t target_position = 10;
+uint32_t min_position = 10;
+uint32_t max_position = 1000000;
 bool calibration_state = false;
 bool stop_detect = true;
 bool fans_on = false;
