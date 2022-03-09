@@ -23,7 +23,7 @@
  \file indigo_aux_geoptikflat.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_geoptikflat"
 
 #include <stdlib.h>
@@ -245,24 +245,20 @@ static void aux_connection_handler(indigo_device *device) {
 
 static void aux_intensity_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (AUX_LIGHT_INTENSITY_PROPERTY->state != INDIGO_BUSY_STATE) {
-		if (goflat_set_intensity(PRIVATE_DATA->handle, CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value)))
-			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
+	if (goflat_set_intensity(PRIVATE_DATA->handle, CALCULATE_INTENSITY(AUX_LIGHT_INTENSITY_ITEM->number.value)))
+		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_switch_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (AUX_LIGHT_SWITCH_PROPERTY->state != INDIGO_BUSY_STATE) {
-		if (goflat_light(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value))
-			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
+	if (goflat_light(PRIVATE_DATA->handle, AUX_LIGHT_SWITCH_ON_ITEM->sw.value))
+		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+	else
+		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -283,14 +279,20 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- AUX_LIGHT_SWITCH
 	} else if (indigo_property_match(AUX_LIGHT_SWITCH_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
-		if (IS_CONNECTED)
+		if (IS_CONNECTED) {
+			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_switch_handler, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
 	} else if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
-		if (IS_CONNECTED)
+		if (IS_CONNECTED) {
+			AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_intensity_handler, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

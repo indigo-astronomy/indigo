@@ -23,7 +23,7 @@
  \file indigo_aux_dsusb.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_aux_dsusb"
 
 #include <stdlib.h>
@@ -139,14 +139,10 @@ static void aux_connection_handler(indigo_device *device) {
 
 static void aux_exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (X_CCD_EXPOSURE_PROPERTY->state != INDIGO_BUSY_STATE) {
-		X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-		libdsusb_focus(PRIVATE_DATA->device_context);
-		indigo_usleep(100000);
-		libdsusb_start(PRIVATE_DATA->device_context);
-		indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->timer_callback);
-	}
-	indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
+	libdsusb_focus(PRIVATE_DATA->device_context);
+	indigo_usleep(100000);
+	libdsusb_start(PRIVATE_DATA->device_context);
+	indigo_set_timer(device, X_CCD_EXPOSURE_ITEM->number.value < 1 ? X_CCD_EXPOSURE_ITEM->number.value : 1, aux_timer_callback, &PRIVATE_DATA->timer_callback);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
