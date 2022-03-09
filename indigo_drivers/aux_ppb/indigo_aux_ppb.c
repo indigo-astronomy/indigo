@@ -24,7 +24,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -538,90 +538,63 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void aux_outlet_names_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		if(PRIVATE_DATA->is_advance) {
-			indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
-		}
-	}
-	snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-	if (IS_CONNECTED) {
-		indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
 static void aux_power_outlet_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		ppb_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:1" : "P1:0", response, sizeof(response));
-		ppb_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:1" : "P2:0", response, sizeof(response));
-		AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-	}
+	ppb_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:1" : "P1:0", response, sizeof(response));
+	ppb_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:1" : "P2:0", response, sizeof(response));
+	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_dslr_power_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		if (AUX_DSLR_POWER_3_ITEM->sw.value)
-			ppb_command(device, "P2:3", response, sizeof(response));
-		else if (AUX_DSLR_POWER_5_ITEM->sw.value)
-			ppb_command(device, "P2:5", response, sizeof(response));
-		else if (AUX_DSLR_POWER_8_ITEM->sw.value)
-			ppb_command(device, "P2:8", response, sizeof(response));
-		else if (AUX_DSLR_POWER_9_ITEM->sw.value)
-			ppb_command(device, "P2:9", response, sizeof(response));
-		else if (AUX_DSLR_POWER_12_ITEM->sw.value)
-			ppb_command(device, "P2:12", response, sizeof(response));
-		AUX_DSLR_POWER_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
-	}
+	if (AUX_DSLR_POWER_3_ITEM->sw.value)
+		ppb_command(device, "P2:3", response, sizeof(response));
+	else if (AUX_DSLR_POWER_5_ITEM->sw.value)
+		ppb_command(device, "P2:5", response, sizeof(response));
+	else if (AUX_DSLR_POWER_8_ITEM->sw.value)
+		ppb_command(device, "P2:8", response, sizeof(response));
+	else if (AUX_DSLR_POWER_9_ITEM->sw.value)
+		ppb_command(device, "P2:9", response, sizeof(response));
+	else if (AUX_DSLR_POWER_12_ITEM->sw.value)
+		ppb_command(device, "P2:12", response, sizeof(response));
+	AUX_DSLR_POWER_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_heater_outlet_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		sprintf(command, "P3:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
-		ppb_command(device, command, response, sizeof(response));
-		sprintf(command, "P4:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
-		ppb_command(device, command, response, sizeof(response));
-		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-	}
+	sprintf(command, "P3:%d", (int)(AUX_HEATER_OUTLET_1_ITEM->number.value * 255.0 / 100.0));
+	ppb_command(device, command, response, sizeof(response));
+	sprintf(command, "P4:%d", (int)(AUX_HEATER_OUTLET_2_ITEM->number.value * 255.0 / 100.0));
+	ppb_command(device, command, response, sizeof(response));
+	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_dew_control_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		ppb_command(device, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? "PD:1" : "PD:0", response, sizeof(response));
-		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-	}
+	ppb_command(device, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? "PD:1" : "PD:0", response, sizeof(response));
+	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void aux_reboot_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		if (X_AUX_REBOOT_ITEM->sw.value) {
-			ppb_command(device, "PF", response, sizeof(response));
-			X_AUX_REBOOT_ITEM->sw.value = false;
-			X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
-		}
+	if (X_AUX_REBOOT_ITEM->sw.value) {
+		ppb_command(device, "PF", response, sizeof(response));
+		X_AUX_REBOOT_ITEM->sw.value = false;
+		X_AUX_REBOOT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
@@ -642,32 +615,63 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_outlet_names_handler, NULL);
+		snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			if (PRIVATE_DATA->is_advance) {
+				indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+				indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+			}
+			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
 		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_power_outlet_handler, NULL);
+		if (IS_CONNECTED) {
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_power_outlet_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DSLR_POWER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DSLR_POWER_PROPERTY
 		indigo_property_copy_values(AUX_DSLR_POWER_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_dslr_power_handler, NULL);
+		if (IS_CONNECTED) {
+			AUX_DSLR_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_dslr_power_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_HEATER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
 		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
+		if (IS_CONNECTED) {
+			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
 		indigo_property_copy_values(AUX_DEW_CONTROL_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
+		if (IS_CONNECTED) {
+			AUX_DEW_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_REBOOT
 		indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_reboot_handler, NULL);
+		if (IS_CONNECTED) {
+			X_AUX_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_reboot_handler, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {

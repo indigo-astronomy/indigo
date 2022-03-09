@@ -23,7 +23,7 @@
  \file indigo_aux_usbdp.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_aux_usbdp"
 
 #include <stdlib.h>
@@ -739,62 +739,20 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-
-static void aux_outlet_names_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
-		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-	}
-	snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
-	snprintf(AUX_TEMPERATURE_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_TEMPERATURE_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_CALLIBRATION_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_CALLIBRATION_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	snprintf(AUX_DEW_WARNING_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
-	snprintf(AUX_DEW_WARNING_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
-	AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
-	if (IS_CONNECTED) {
-		indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-		indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
-		indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
-		indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
-		indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
-
 static void aux_heater_outlet_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		sprintf(command, UDP2_OUTPUT_CMD, 1, (int)(AUX_HEATER_OUTLET_1_ITEM->number.value));
-		usbdp_command(device, command, response, sizeof(response));
-		// maybe check responce if "DONE" ?
-		sprintf(command, UDP2_OUTPUT_CMD, 2, (int)(AUX_HEATER_OUTLET_2_ITEM->number.value));
-		usbdp_command(device, command, response, sizeof(response));
-		// maybe check responce if "DONE" ?
-		sprintf(command, UDP2_OUTPUT_CMD, 3, (int)(AUX_HEATER_OUTLET_3_ITEM->number.value));
-		usbdp_command(device, command, response, sizeof(response));
-		// maybe check responce if "DONE" ?
-		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-	}
+	sprintf(command, UDP2_OUTPUT_CMD, 1, (int)(AUX_HEATER_OUTLET_1_ITEM->number.value));
+	usbdp_command(device, command, response, sizeof(response));
+	// maybe check responce if "DONE" ?
+	sprintf(command, UDP2_OUTPUT_CMD, 2, (int)(AUX_HEATER_OUTLET_2_ITEM->number.value));
+	usbdp_command(device, command, response, sizeof(response));
+	// maybe check responce if "DONE" ?
+	sprintf(command, UDP2_OUTPUT_CMD, 3, (int)(AUX_HEATER_OUTLET_3_ITEM->number.value));
+	usbdp_command(device, command, response, sizeof(response));
+	// maybe check responce if "DONE" ?
+	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -802,17 +760,14 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_callibration_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if ((IS_CONNECTED) && (PRIVATE_DATA->version == 2)) {
-		sprintf(command, UDP2_CALIBRATION_CMD,
-			(int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value),
-			(int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value),
-			(int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value)
-		);
-		usbdp_command(device, command, response, sizeof(response));
-
-		AUX_CALLIBRATION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
-	}
+	sprintf(command, UDP2_CALIBRATION_CMD,
+		(int)(AUX_CALLIBRATION_SENSOR_1_ITEM->number.value),
+		(int)(AUX_CALLIBRATION_SENSOR_2_ITEM->number.value),
+		(int)(AUX_CALLIBRATION_SENSOR_3_ITEM->number.value)
+	);
+	usbdp_command(device, command, response, sizeof(response));
+	AUX_CALLIBRATION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -820,16 +775,13 @@ static void aux_callibration_handler(indigo_device *device) {
 static void aux_dew_threshold_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if ((IS_CONNECTED) && (PRIVATE_DATA->version == 2)) {
-		sprintf(command, UDP2_THRESHOLD_CMD,
-			(int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value),
-			(int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value)
-		);
-		usbdp_command(device, command, response, sizeof(response));
-
-		AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
-	}
+	sprintf(command, UDP2_THRESHOLD_CMD,
+		(int)(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->number.value),
+		(int)(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->number.value)
+	);
+	usbdp_command(device, command, response, sizeof(response));
+	AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -837,21 +789,19 @@ static void aux_dew_threshold_handler(indigo_device *device) {
 static void aux_aggressivity_handler(indigo_device *device) {
 	char command[16], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if ((IS_CONNECTED) && (PRIVATE_DATA->version == 2)) {
-		if (AUX_HEATER_AGGRESSIVITY_1_ITEM->sw.value) {
-			PRIVATE_DATA->requested_aggressivity = 1;
-		} else if (AUX_HEATER_AGGRESSIVITY_2_ITEM->sw.value) {
-			PRIVATE_DATA->requested_aggressivity = 2;
-		} else if (AUX_HEATER_AGGRESSIVITY_5_ITEM->sw.value) {
-			PRIVATE_DATA->requested_aggressivity = 3;
-		} else if (AUX_HEATER_AGGRESSIVITY_10_ITEM->sw.value) {
-			PRIVATE_DATA->requested_aggressivity = 4;
-		}
-		sprintf(command, UDP2_AGGRESSIVITY_CMD, PRIVATE_DATA->requested_aggressivity);
-		usbdp_command(device, command, response, sizeof(response));
-		AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
+	if (AUX_HEATER_AGGRESSIVITY_1_ITEM->sw.value) {
+		PRIVATE_DATA->requested_aggressivity = 1;
+	} else if (AUX_HEATER_AGGRESSIVITY_2_ITEM->sw.value) {
+		PRIVATE_DATA->requested_aggressivity = 2;
+	} else if (AUX_HEATER_AGGRESSIVITY_5_ITEM->sw.value) {
+		PRIVATE_DATA->requested_aggressivity = 3;
+	} else if (AUX_HEATER_AGGRESSIVITY_10_ITEM->sw.value) {
+		PRIVATE_DATA->requested_aggressivity = 4;
 	}
+	sprintf(command, UDP2_AGGRESSIVITY_CMD, PRIVATE_DATA->requested_aggressivity);
+	usbdp_command(device, command, response, sizeof(response));
+	AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -860,13 +810,11 @@ static void aux_dew_control_handler(indigo_device *device) {
 	char response[128];
 	char command[10];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		sprintf(command, UDP2_AUTO_CMD, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
-		usbdp_command(device, command, response, sizeof(response));
-		// maybe check responce if "DONE" ?
-		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-	}
+	sprintf(command, UDP2_AUTO_CMD, AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value ? 1 : 0);
+	usbdp_command(device, command, response, sizeof(response));
+	// maybe check responce if "DONE" ?
+	AUX_DEW_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -875,13 +823,11 @@ static void aux_link_channels_handler(indigo_device *device) {
 	char response[128];
 	char command[10];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (IS_CONNECTED) {
-		sprintf(command, UDP2_LINK_CMD, AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value ? 1 : 0);
-		usbdp_command(device, command, response, sizeof(response));
-		// maybe check responce if "DONE" ?
-		AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
-	}
+	sprintf(command, UDP2_LINK_CMD, AUX_LINK_CH_2AND3_LINKED_ITEM->sw.value ? 1 : 0);
+	usbdp_command(device, command, response, sizeof(response));
+	// maybe check responce if "DONE" ?
+	AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -902,38 +848,90 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_outlet_names_handler, NULL);
+		snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_HEATER_OUTLET_2_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_HEATER_OUTLET_3_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
+		snprintf(AUX_HEATER_OUTLET_STATE_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_HEATER_OUTLET_STATE_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_HEATER_OUTLET_STATE_3_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_3_ITEM->text.value);
+		snprintf(AUX_TEMPERATURE_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_TEMPERATURE_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_CALLIBRATION_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_CALLIBRATION_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_DEW_THRESHOLD_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_DEW_THRESHOLD_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s (°C)", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		snprintf(AUX_DEW_WARNING_SENSOR_1_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
+		snprintf(AUX_DEW_WARNING_SENSOR_2_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_HEATER_OUTLET_NAME_2_ITEM->text.value);
+		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
+		if (IS_CONNECTED) {
+			indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
+			indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
+			indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
+			indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
+			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_HEATER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
 		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
+		if (IS_CONNECTED) {
+			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_CALLIBRATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_CALLIBRATIN
 		indigo_property_copy_values(AUX_CALLIBRATION_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_callibration_handler, NULL);
+		if ((IS_CONNECTED) && (PRIVATE_DATA->version == 2)) {
+			AUX_CALLIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_callibration_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_THRESHOLD
 		indigo_property_copy_values(AUX_DEW_THRESHOLD_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_dew_threshold_handler, NULL);
+		if ((IS_CONNECTED) && (PRIVATE_DATA->version == 2)) {
+			AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_dew_threshold_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
 		indigo_property_copy_values(AUX_DEW_CONTROL_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
+		if (IS_CONNECTED) {
+			AUX_DEW_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_LINK_CH_2AND3_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_LINK_CHANNELS_2AND3
 		indigo_property_copy_values(AUX_LINK_CH_2AND3_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_link_channels_handler, NULL);
-		indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
+		if (IS_CONNECTED) {
+			AUX_LINK_CH_2AND3_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_link_channels_handler, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_HEATER_AGGRESSIVITY_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_HEATER_AGGRESSIVITY
 		indigo_property_copy_values(AUX_HEATER_AGGRESSIVITY_PROPERTY, property, false);
-		indigo_set_timer(device, 0, aux_aggressivity_handler, NULL);
+		if ((IS_CONNECTED) && (PRIVATE_DATA->version == 2)) {
+			AUX_HEATER_AGGRESSIVITY_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
+			indigo_set_timer(device, 0, aux_aggressivity_handler, NULL);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
