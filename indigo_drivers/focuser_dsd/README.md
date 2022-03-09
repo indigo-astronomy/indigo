@@ -8,8 +8,6 @@ AF1, AF2, AF3 focusers.
 
 Single device is present on the first startup (no hot-plug support). Additional devices can be configured at runtime.
 
-export FOCUSER_DSD_DEVICE_NUMBER=3
-
 ## Supported platforms
 
 This driver is supported on Linux (Intel 32/64 bit and ARM v6+) and MacOS.

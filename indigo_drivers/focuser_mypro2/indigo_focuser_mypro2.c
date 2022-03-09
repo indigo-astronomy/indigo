@@ -513,6 +513,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
+		PRIVATE_DATA->handle = -1;
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
@@ -550,6 +551,8 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
 		X_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
@@ -1085,12 +1088,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 
 // --------------------------------------------------------------------------------
-#define MAX_DEVICES 8
-static int device_number = 1;
-static mfp_private_data *private_data[MAX_DEVICES] = {NULL};
-static indigo_device *focuser[MAX_DEVICES] = {NULL};
-
 indigo_result indigo_focuser_mypro2(indigo_driver_action action, indigo_driver_info *info) {
+	static mfp_private_data *private_data = NULL;
+	static indigo_device *focuser = NULL;
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_MFP2_NAME,
 		focuser_attach,
@@ -1111,37 +1111,23 @@ indigo_result indigo_focuser_mypro2(indigo_driver_action action, indigo_driver_i
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
 
-		/* figure out the number of devices to expose */
-		if (getenv("FOCUSER_MFP_DEVICE_NUMBER") != NULL) {
-			device_number = atoi(getenv("FOCUSER_MFP_DEVICE_NUMBER"));
-			if (device_number < 1) device_number = 1;
-			if (device_number > MAX_DEVICES) device_number = MAX_DEVICES;
-		}
-
-		for (int index = 0; index < device_number; index++) {
-			private_data[index] = indigo_safe_malloc(sizeof(mfp_private_data));
-			private_data[index]->handle = -1;
-			focuser[index] = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
-			focuser[index]->private_data = private_data[index];
-			sprintf(focuser[index]->name, "%s #%d", FOCUSER_MFP2_NAME, index);
-			indigo_attach_device(focuser[index]);
-		}
+		private_data = indigo_safe_malloc(sizeof(mfp_private_data));
+		focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+		focuser->private_data = private_data;
+		indigo_attach_device(focuser);
 		break;
 
 	case INDIGO_DRIVER_SHUTDOWN:
-		for (int i = 0; i < MAX_DEVICES; i++)
-			VERIFY_NOT_CONNECTED(focuser[i]);
+		VERIFY_NOT_CONNECTED(focuser);
 		last_action = action;
-		for (int index = 0; index < device_number; index++) {
-			if (focuser[index] != NULL) {
-				indigo_detach_device(focuser[index]);
-				free(focuser[index]);
-				focuser[index] = NULL;
-			}
-			if (private_data[index] != NULL) {
-				free(private_data[index]);
-				private_data[index] = NULL;
-			}
+		if (focuser != NULL) {
+			indigo_detach_device(focuser);
+			free(focuser);
+			focuser = NULL;
+		}
+		if (private_data != NULL) {
+			free(private_data);
+			private_data = NULL;
 		}
 		break;
 
