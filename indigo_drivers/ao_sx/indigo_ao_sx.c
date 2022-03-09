@@ -254,16 +254,22 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	} else if (indigo_property_match(AO_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_DEC
 		indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
+		AO_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ao_guide_dec_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AO_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_RA
 		indigo_property_copy_values(AO_GUIDE_RA_PROPERTY, property, false);
+		AO_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ao_guide_ra_handler, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AO_RESET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_RESET
 		indigo_property_copy_values(AO_RESET_PROPERTY, property, false);
+		AO_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AO_RESET_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ao_reset_handler, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
