@@ -482,6 +482,7 @@ static void dome_close_handler(indigo_device *device) {
 static void dome_abort_handler(indigo_device *device) {
 	uint8_t response[RESPONSE_LENGTH];
 	if (talon6ror_command(device, "S", response)) {
+		DOME_SHUTTER_CLOSED_ITEM->sw.value = DOME_SHUTTER_OPENED_ITEM->sw.value = false;
 		DOME_SHUTTER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
