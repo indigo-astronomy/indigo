@@ -496,9 +496,6 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
-			if(PRIVATE_DATA->is_advance) {
-				indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
-			}
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -518,9 +515,6 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
-		if(PRIVATE_DATA->is_advance) {
-			indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
-		}
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -621,10 +615,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (IS_CONNECTED) {
 			indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-			if (PRIVATE_DATA->is_advance) {
-				indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
-				indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
-			}
+			indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
+			indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
@@ -697,9 +689,6 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(X_AUX_REBOOT_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
-	if(PRIVATE_DATA->is_advance) {
-		indigo_release_property(AUX_POWER_OUTLET_STATE_PROPERTY);
-	}
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
