@@ -246,7 +246,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				FOCUSER_TEMPERATURE_ITEM->number.value = ((int8_t)strtol(response, NULL, 16)) / 2.0;
 			}
 			if (moonlite_command(device, ":GP#", response, sizeof(response))) {
-				FOCUSER_POSITION_ITEM->number.value = strtol(response, NULL, 16);
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = strtol(response, NULL, 16);
 			}
 			if (moonlite_command(device, ":GC#", response, sizeof(response))) {
 				FOCUSER_COMPENSATION_ITEM->number.value = (char)strtol(response, NULL, 16);
@@ -317,12 +317,12 @@ static void focuser_steps_handler(indigo_device *device) {
 static void focuser_position_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16];
-	int position = (int)FOCUSER_POSITION_ITEM->number.value;
+	int position = (int)FOCUSER_POSITION_ITEM->number.target;
 	if (position < FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value)
 		position = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value;
 	if (position > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value)
 		position = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value;
-	FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = position;
+	FOCUSER_POSITION_ITEM->number.target = position;
 	snprintf(command, sizeof(command), ":SN%04X#:FG#", position);
 	if (moonlite_command(device, command, NULL, 0)) {
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -421,7 +421,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		return INDIGO_OK;
 	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		long position = FOCUSER_POSITION_ITEM->number.value;
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		FOCUSER_POSITION_ITEM->number.value = position;
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_position_handler, NULL);
