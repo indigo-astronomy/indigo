@@ -341,6 +341,7 @@ typedef enum {
 	ptp_property_nikon_ExposureIndicateStatus = 0xD1B1,
 	ptp_property_nikon_InfoDispErrStatus = 0xD1B2,
 	ptp_property_nikon_ExposureIndicateLightup = 0xD1B3,
+	ptp_property_nikon_LiveViewZoomArea = 0xD1BD,
 	ptp_property_nikon_FlashOpen = 0xD1C0,
 	ptp_property_nikon_FlashCharged = 0xD1C1,
 	ptp_property_nikon_FlashMRepeatValue = 0xD1D0,
