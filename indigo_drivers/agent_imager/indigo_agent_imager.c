@@ -224,7 +224,6 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_IMAGER_FOCUS_FAILURE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_DITHERING_PROPERTY);
-		indigo_save_property(device, NULL, AGENT_IMAGER_BREAKPOINT_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_SEQUENCE_PROPERTY);
 		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 		char *selection_property_items[] = { AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME };
