@@ -2333,6 +2333,29 @@ static void snoop_barrier_state(indigo_client *client, indigo_property *property
 	}
 }
 
+static void snoop_wheel_changes(indigo_client *client, indigo_property *property) {
+	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX])) {
+		if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
+			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+			agent_wheel_filter_property->count = property->count;
+			for (int i = 0; i < property->count; i++)
+				strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
+			indigo_delete_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+			agent_wheel_filter_property->hidden = false;
+			indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+		} else if (!strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
+			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
+			int value = property->items->number.value;
+			if (value)
+				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
+			else
+				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
+			agent_wheel_filter_property->state = property->state;
+			indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
+		}
+	}
+}
+
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
@@ -2368,6 +2391,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
 		}
 	} else {
+		snoop_wheel_changes(client, property);
 		snoop_guider_stats(client, property);
 		snoop_barrier_state(client, property);
 	}
@@ -2376,7 +2400,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device) {
-		if (!strcmp(property->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
 			AGENT_IMAGER_BARRIER_STATE_PROPERTY->count = 0;
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -2394,24 +2418,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				strcpy(property.device, item->name);
 				indigo_enumerate_properties(client, &property);
 			}
-		}
-	} else 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX])) {
-		if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
-			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
-			agent_wheel_filter_property->count = property->count;
-			for (int i = 0; i < property->count; i++)
-				strcpy(agent_wheel_filter_property->items[i].label, property->items[i].text.value);
-			agent_wheel_filter_property->hidden = false;
-			indigo_define_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
-		} else if (!strcmp(property->name, WHEEL_SLOT_PROPERTY_NAME)) {
-			indigo_property *agent_wheel_filter_property = CLIENT_PRIVATE_DATA->agent_wheel_filter_property;
-			int value = property->items->number.value;
-			if (value)
-				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items + value - 1, true);
-			else
-				indigo_set_switch(agent_wheel_filter_property, agent_wheel_filter_property->items, false);
-			agent_wheel_filter_property->state = property->state;
-			indigo_update_property(FILTER_CLIENT_CONTEXT->device, agent_wheel_filter_property, NULL);
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
@@ -2486,6 +2492,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
 		}
 	} else {
+		snoop_wheel_changes(client, property);
 		snoop_guider_stats(client, property);
 		snoop_barrier_state(client, property);
 	}
