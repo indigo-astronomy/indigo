@@ -577,6 +577,15 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 				case 0x10010002:
 					strcat(label, "Large JPEG");
 					break;
+				case 0x10010100:
+					strcat(label, "M JPEG");
+					break;
+				case 0x10010e00:
+					strcat(label, "S1 JPEG");
+					break;
+				case 0x10010f00:
+					strcat(label, "S2 JPEG");
+					break;
 				case 0x10010103:
 					strcat(label, "Medium fine JPEG");
 					break;
@@ -773,6 +782,12 @@ char *ptp_property_canon_value_code_label(indigo_device *device, uint16_t proper
 		case ptp_property_canon_WhiteBalanceAdjustB: {
 			sprintf(label, "%d", (int16_t)code);
 			return label;
+		}
+		case ptp_property_canon_AutoPowerOff: {
+			switch (code) {
+				case 15: return "15s"; case 30: return "30s"; case 60: return "1m"; case 180: return "3m"; case 300: return "5m"; case 600: return "10m"; case 1800: return "30m"; case 0: return "Disable";
+			}
+			break;
 		}
 	}
 	return ptp_property_value_code_label(device, property, code);

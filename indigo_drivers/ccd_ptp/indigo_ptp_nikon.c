@@ -56,9 +56,12 @@
 #define NIKON_PRODUCT_Z6    0x0443
 #define NIKON_PRODUCT_Z50   0x0444
 #define NIKON_PRODUCT_D780	0x0446
+#define NIKON_PRODUCT_D6    0x0447
 #define NIKON_PRODUCT_Z5    0x0448
 #define NIKON_PRODUCT_Z7II  0x044B
 #define NIKON_PRODUCT_Z6II  0x044C
+// Nikon EXPEED 7 series
+#define NIKON_PRODUCT_Z9    0x0450
 
 #define IS_NIKON_D3000_OR_D3100() \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3000 || \
@@ -85,11 +88,20 @@
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z6II || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z50 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z5 || \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_D780
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D780 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D6
+
+#define IS_NIKON_EXPEED7_SERIES() \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z9
 
 #define IS_NIKON_EXPEED5_OR_LATER() \
 	IS_NIKON_EXPEED5_SERIES() || \
-	IS_NIKON_EXPEED6_SERIES()
+	IS_NIKON_EXPEED6_SERIES() || \
+	IS_NIKON_EXPEED7_SERIES()
+
+#define IS_NIKON_EXPEED6_OR_LATER() \
+	IS_NIKON_EXPEED6_SERIES() || \
+	IS_NIKON_EXPEED7_SERIES()
 
 char *ptp_operation_nikon_code_label(uint16_t code) {
 	switch (code) {
@@ -462,6 +474,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_ExposureIndicateStatus: return "ExposureIndicateStatus_Nikon";
 		case ptp_property_nikon_InfoDispErrStatus: return "InfoDispErrStatus_Nikon";
 		case ptp_property_nikon_ExposureIndicateLightup: return "ExposureIndicateLightup_Nikon";
+		case ptp_property_nikon_LiveViewZoomArea: return "LiveViewZoomArea_Nikon";
 		case ptp_property_nikon_FlashOpen: return "FlashOpen_Nikon";
 		case ptp_property_nikon_FlashCharged: return "FlashCharged_Nikon";
 		case ptp_property_nikon_FlashMRepeatValue: return "FlashMRepeatValue_Nikon";
@@ -528,6 +541,10 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 		}
 		case ptp_property_nikon_LiveViewImageZoomRatio: {
 			switch (code) { case 0: return "1x"; case 1: return "2x"; case 2: return "3x"; case 3: return "4x"; case 4: return "6x"; case 5: return "8x"; }
+			break;
+		}
+		case ptp_property_nikon_LiveViewZoomArea: {
+			switch (code) { case 0: return "full"; case 0x200: case 0x280: return "200%"; case 0x400: case 0x500: return "100%"; case 0x800: case 0xa00: return "50%"; }
 			break;
 		}
 		case ptp_property_nikon_VignetteCtrl: {
@@ -1188,6 +1205,11 @@ bool ptp_nikon_zoom(indigo_device *device) {
 	if (ptp_property_supported(device, ptp_property_nikon_LiveViewImageZoomRatio)) {
 		uint8_t value = DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value ? 5 : 0;
 		return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_LiveViewImageZoomRatio, &value, sizeof(uint8_t));
+	} else {
+		if (IS_NIKON_EXPEED6_OR_LATER()) {
+			uint16_t value = DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value ? 0x200 : 0;
+			return ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_LiveViewZoomArea, &value, sizeof(uint16_t));
+		}
 	}
 	return false;
 }
