@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -742,8 +742,8 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					indigo_property *agent_park_property;
 					if (indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_PARK_PROPERTY_NAME, NULL, &agent_park_property) && agent_park_property->state == INDIGO_OK_STATE) {
 						for (int j = 0; j < agent_park_property->count; j++) {
-							if (!strcmp(agent_park_property->items[j].name, MOUNT_PARK_UNPARKED_ITEM_NAME)) {
-								if (agent_park_property->items[j].sw.value) {
+							if (!strcmp(agent_park_property->items[j].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
+								if (!agent_park_property->items[j].sw.value) {
 									bool park = false;
 									if (ha > CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target) {
 										park = true;
