@@ -693,7 +693,17 @@ static bool exposure_batch(indigo_device *device) {
 			return false;
 		}
 		check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_CAPTURE_ITEM);
-		if (light_frame) {
+		bool is_controlled_instance = false;
+		if (!AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
+			// Do not dither if any breakpoint is set and resume condition is not set to barrier
+			for (int i = 0; i < AGENT_IMAGER_BREAKPOINT_PROPERTY->count; i++) {
+				if (AGENT_IMAGER_BREAKPOINT_PROPERTY->items[i].sw.value) {
+					is_controlled_instance = true;
+					break;
+				}
+			}
+		}
+		if (light_frame && !is_controlled_instance) {
 			if (remaining_exposures != 0) {
 				if (AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target != 0) {
 					if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value > 0) {
@@ -2227,15 +2237,33 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_BREAKPOINT
 	} else if (indigo_property_match(AGENT_IMAGER_BREAKPOINT_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_IMAGER_BREAKPOINT_PROPERTY, property, false);
+		indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+		indigo_property *clone = indigo_init_switch_property(NULL, AGENT_IMAGER_BREAKPOINT_PROPERTY->device, AGENT_IMAGER_BREAKPOINT_PROPERTY->name, NULL, NULL, 0, 0, 0, AGENT_IMAGER_BREAKPOINT_PROPERTY->count);
+		memcpy(clone, AGENT_IMAGER_BREAKPOINT_PROPERTY, sizeof(indigo_property) + AGENT_IMAGER_BREAKPOINT_PROPERTY->count * sizeof(indigo_item));
+		for (int i = 0; i < related_agents_property->count; i++) {
+			indigo_item *item = related_agents_property->items + i;
+			// On related imager agents duplicate AGENT_IMAGER_BREAKPOINT_PROPERTY
+			if (item->sw.value && !strncmp(item->name, "Imager Agent", 12)) {
+				strcpy(clone->device, item->name);
+				indigo_change_property(client, clone);
+			}
+		}
+		indigo_release_property(clone);
 		AGENT_IMAGER_BREAKPOINT_PROPERTY->state = INDIGO_OK_STATE;
-		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_BREAKPOINT_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_RESUME_CONDITION
 	} else if (indigo_property_match(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property, false);
+		indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+		for (int i = 0; i < related_agents_property->count; i++) {
+			indigo_item *item = related_agents_property->items + i;
+			// On related imager agents reset AGENT_IMAGER_RESUME_CONDITION_PROPERTY to AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM
+			if (item->sw.value && !strncmp(item->name, "Imager Agent", 12)) {
+				indigo_change_switch_property_1(client, item->name, AGENT_IMAGER_RESUME_CONDITION_PROPERTY_NAME, AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM_NAME, true);
+			}
+		}
 		AGENT_IMAGER_RESUME_CONDITION_PROPERTY->state = INDIGO_OK_STATE;
-		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_RESUME_CONDITION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
@@ -2401,13 +2429,20 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
 			AGENT_IMAGER_BARRIER_STATE_PROPERTY->count = 0;
+			indigo_property *clone = indigo_init_switch_property(NULL, AGENT_IMAGER_BREAKPOINT_PROPERTY->device, AGENT_IMAGER_BREAKPOINT_PROPERTY->name, NULL, NULL, 0, 0, 0, AGENT_IMAGER_BREAKPOINT_PROPERTY->count);
+			memcpy(clone, AGENT_IMAGER_BREAKPOINT_PROPERTY, sizeof(indigo_property) + AGENT_IMAGER_BREAKPOINT_PROPERTY->count * sizeof(indigo_item));
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
+				// On related imager agents duplicate AGENT_IMAGER_BREAKPOINT_PROPERTY and reset AGENT_IMAGER_RESUME_CONDITION_PROPERTY to AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM
 				if (item->sw.value && !strncmp(item->name, "Imager Agent", 12)) {
 					indigo_init_light_item(AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + AGENT_IMAGER_BARRIER_STATE_PROPERTY->count, item->name, item->label, INDIGO_IDLE_STATE);
 					AGENT_IMAGER_BARRIER_STATE_PROPERTY->count++;
+					strcpy(clone->device, item->name);
+					indigo_change_property(client, clone);
+					indigo_change_switch_property_1(client, item->name, AGENT_IMAGER_RESUME_CONDITION_PROPERTY_NAME, AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM_NAME, true);
 				}
 			}
+			indigo_release_property(clone);
 			indigo_delete_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
 			indigo_property property = { 0 };
