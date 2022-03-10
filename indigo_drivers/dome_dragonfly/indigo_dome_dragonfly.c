@@ -25,7 +25,7 @@
 
 #include "indigo_dome_dragonfly.h"
 
-#define DRIVER_VERSION         0x0004
+#define DRIVER_VERSION         0x0005
 
 #define DOME_DRAGONFLY_NAME    "Dome Dragonfly"
 #define AUX_DRAGONFLY_NAME     "Dragonfly Controller"
@@ -193,7 +193,6 @@ static lunatico_device_data device_data[MAX_PHYSICAL_DEVICES] = {0};
 
 static void create_port_device(int p_device_index, int l_device_index, device_type_t type);
 static void delete_port_device(int p_device_index, int l_device_index);
-
 
 #include "../aux_dragonfly/shared/dragonfly_shared.c"
 
@@ -546,6 +545,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
+		if (DEVICE_CONNECTED) {
+			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
+		}
 		snprintf(AUX_GPIO_OUTLET_4_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_4_ITEM->text.value);
 		snprintf(AUX_GPIO_OUTLET_5_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_5_ITEM->text.value);
 		snprintf(AUX_GPIO_OUTLET_6_ITEM->label, INDIGO_NAME_SIZE, "%s", AUX_OUTLET_NAME_6_ITEM->text.value);
@@ -560,12 +563,10 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		if (DEVICE_CONNECTED) {
-			indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-			indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		}
+		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
@@ -752,6 +753,11 @@ static void dome_handle_abort(indigo_device *device) {
 
 
 static void dome_handle_shutter(indigo_device *device) {
+
+	if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
+		return;
+	}
 
 	int sensors[8] = {0};
 	bool parked = false;
@@ -1026,20 +1032,14 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
-		if (DEVICE_CONNECTED) {
-			DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, dome_handle_abort, NULL);
-		}
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
+		indigo_set_timer(device, 0, dome_handle_abort, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		if (DEVICE_CONNECTED) {
-			DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
-			indigo_set_timer(device, 0, dome_handle_shutter, NULL);
-		}
+		if (!DEVICE_CONNECTED) return INDIGO_OK;
+		indigo_set_timer(device, 0, dome_handle_shutter, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(LA_DOME_SETTINGS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_DOME_SETTINGS
