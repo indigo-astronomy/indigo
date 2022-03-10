@@ -34,6 +34,7 @@ static struct dslr_model_info {
   { "CANON EOS REBEL SL1", 5184, 3456, 4.3 },
   { "CANON EOS R6", 5472, 3648, 6.56 },
   { "CANON EOS R5", 8192, 5464, 4.4 },
+  { "CANON EOS R3", 6000, 4000, 6.0 },
   { "CANON EOS R", 6720, 4480, 5.35 },
   { "CANON EOS M6 MARK II", 6960, 4640, 3.2 },
   { "CANON EOS M6", 6000, 4000, 3.71 },
