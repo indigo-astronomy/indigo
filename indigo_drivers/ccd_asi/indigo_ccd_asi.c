@@ -566,11 +566,13 @@ static void streaming_timer_callback(indigo_device *device) {
 	}
 	PRIVATE_DATA->can_check_temperature = true;
 	indigo_finalize_video_stream(device);
-	if (res)
+	if (res) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-	else
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, "Streaming failed");
+	} else {
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+	}
 }
 
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
