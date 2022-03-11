@@ -237,8 +237,22 @@ Paras:
 int* pPIDs: pointer to array of PIDs
 
 Return: length of the array.
+
+Note: This api will be deprecated. Please use ASICameraCheck instead
 ***************************************************************************/
 ASICAMERA_API int ASIGetProductIDs(int* pPIDs);
+
+/***************************************************************************
+Descriptions:
+Check if the device is ASI Camera
+
+Paras:
+int iVID: VID is 0x03C3 for ASI Cameras
+int iPID: PID of the device
+
+Return: ASI_TRUE if the device is ASI Camera, otherwise ASI_FALSE
+***************************************************************************/
+ASICAMERA_API ASI_BOOL ASICameraCheck(int iVID, int iPID);
 
 /***************************************************************************
 Descriptions:
