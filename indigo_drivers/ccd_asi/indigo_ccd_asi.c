@@ -500,11 +500,11 @@ static void exposure_timer_callback(indigo_device *device) {
 				indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL, false);
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_send_message(device, "Exposure failed");
+			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
-		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
 	PRIVATE_DATA->can_check_temperature = true;
 }
@@ -566,12 +566,10 @@ static void streaming_timer_callback(indigo_device *device) {
 	}
 	PRIVATE_DATA->can_check_temperature = true;
 	indigo_finalize_video_stream(device);
-	if (res) {
+	if (res)
 		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_send_message(device, "Streaming failed");
-	} else {
+	else
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 
