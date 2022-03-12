@@ -331,8 +331,13 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	if (message)
-		INDIGO_PRINTF(handle, "<message%s/>\n", message_attribute(message));
+	if (message) {
+		if (device) {
+			INDIGO_PRINTF(handle, "<message device='%s'%s/>\n", device->name, message_attribute(message));
+		} else {
+			INDIGO_PRINTF(handle, "<message%s/>\n", message_attribute(message));
+		}
+	}
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
