@@ -396,7 +396,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					if (res == SVB_SUCCESS) {
 						if (remaining > 0) {
 							if (PRIVATE_DATA->retry == 0) {
-								indigo_send_message(device, "Exposure was retried %d times, failing...", RETRY_COUNT);
+								indigo_send_message(device, "Exposure was retried %d times, failed", RETRY_COUNT);
 								CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 								break;
 							}
@@ -505,7 +505,7 @@ static void streaming_timer_callback(indigo_device *device) {
 					if (res == SVB_SUCCESS) {
 						if (remaining > 0) {
 							if (PRIVATE_DATA->retry == 0) {
-								indigo_send_message(device, "Exposure was retried %d times, failing...", RETRY_COUNT);
+								indigo_send_message(device, "Exposure was retried %d times, failed", RETRY_COUNT);
 								CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 								break;
 							}
