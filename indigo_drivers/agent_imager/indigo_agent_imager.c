@@ -449,7 +449,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 				header->signature == INDIGO_RAW_RGB24 ||
 				header->signature == INDIGO_RAW_RGB48
 			) {
-				indigo_send_message(device, "Frame saturation detected, masking out saturated areas and resetting statistics");
+				indigo_send_message(device, "Warning: Frame saturation detected, masking out saturated areas and resetting statistics");
 				if (*saturation_mask == NULL) {
 					indigo_init_saturation_mask(header->width, header->height, saturation_mask);
 				}
@@ -457,7 +457,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 				AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = indigo_contrast(header->signature, (void*)header + sizeof(indigo_raw_header), *saturation_mask, header->width, header->height, NULL);
 				AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 			} else {  // Colour image saturation masking is not supported yet.
-				indigo_send_message(device, "Frame saturation detected, final focus may not be accurate");
+				indigo_send_message(device, "Warning: Frame saturation detected, final focus may not be accurate");
 				DEVICE_PRIVATE_DATA->frame_saturated = false;
 			}
 		}

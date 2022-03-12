@@ -285,7 +285,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 				if (item_x->number.value == 0 || item_y->number.value == 0) {
 					if (j == AGENT_GUIDER_STARS_PROPERTY->count - 1) {
-						indigo_send_message(device, "Only %d suitable stars found (%d requested).", star_count, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
+						indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
 						break;
 					}
 					item_x->number.target = item_x->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
@@ -368,7 +368,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
-					indigo_send_message(device, "Can not detect star, reseting selection");
+					indigo_send_message(device, "Warning: Can not detect star, reseting selection");
 					DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
 					DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
 					for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
@@ -934,7 +934,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = round(1000 * (last_drift - DEVICE_PRIVATE_DATA->drift)) / 1000;
 					} else {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
-						indigo_send_message(device, "Inconsitent backlash");
+						indigo_send_message(device, "Warning: Inconsitent backlash");
 					}
 					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 					DEVICE_PRIVATE_DATA->phase = MOVE_WEST;
@@ -1022,7 +1022,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 				} else {
 					indigo_send_message(device, "Calculated pole distance %.1f°", pole_distnce);
 				}
-				indigo_send_message(device, "Calibration done");
+				indigo_send_message(device, "Calibration complete");
 				save_config(device);
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				break;
