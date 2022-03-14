@@ -125,7 +125,7 @@ $(BUILD_LIB)/libjpeg.a:
 libtiff: $(BUILD_LIB)/libtiff.a
 
 $(BUILD_LIB)/libtiff.a:
-	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libtiff; ./configure --disable-ccitt --disable-packbits --disable-lzw --disable-thunder --disable-next --disable-logluv --disable-mdi --disable-zlib --disable-pixarlog --disable-jpeg --disable-old-jpeg --disable-jbig --disable-lzma --disable-zstd --disable-webp --enable-shared=no --enable-static=yes --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) CFLAGS="$(CFLAGS)"; make install
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libtiff; ./configure --disable-ccitt --disable-packbits --disable-thunder --disable-next --disable-logluv --disable-mdi --disable-zlib --disable-pixarlog --disable-jpeg --disable-old-jpeg --disable-jbig --disable-lzma --disable-zstd --disable-webp --enable-shared=no --enable-static=yes --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) CFLAGS="$(CFLAGS)"; make install
 
 #---------------------------------------------------------------------
 #
