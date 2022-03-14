@@ -985,11 +985,111 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 }
 
-static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out) {
+static void add_key(char **header, bool fits, char *format, ...) {
+	char *buffer = *header;
+	va_list argList;
+	va_start(argList, format);
+	int length = vsnprintf(buffer, 80, format, argList);
+	va_end(argList);
+	indigo_fix_locale(buffer);
+	if (fits) {
+		buffer[length] = ' ';
+		length = 80;
+	} else {
+		buffer[length++] = '\n';
+		buffer[length] = 0;
+	}
+	*header = buffer + length;
+}
+
+static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, indigo_fits_keyword *keywords) {
 	indigo_tiff_memory_handle *memory_handle = indigo_safe_malloc(sizeof(indigo_tiff_memory_handle));
 	memory_handle->data = indigo_safe_malloc(memory_handle->size = 10240);
 	memory_handle->file_length = memory_handle->file_offset = 0;
 	TIFF *tiff = TIFFClientOpen("", little_endian ? "wl" : "wb", (thandle_t)memory_handle, indigo_tiff_read, indigo_tiff_write, indigo_tiff_seek, indigo_tiff_close, indigo_tiff_size, NULL, NULL);
+	TIFFSetField(tiff, TIFFTAG_COMPRESSION, COMPRESSION_LZW);
+	time_t timer;
+	struct tm* tm_info;
+	char date_time_end[20];
+	time(&timer);
+	timer -= CCD_EXPOSURE_ITEM->number.target;
+	tm_info = gmtime(&timer);
+	strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
+	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
+	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
+	char *fits_header = malloc(FITS_HEADER_SIZE);
+	char *next_key = fits_header;
+	add_key(&next_key, false, "SIMPLE  =                    T / file conforms to FITS standard");
+	if (bpp == 8 || bpp == 16) {
+		add_key(&next_key, false, "BITPIX  = %20d / number of bits per data pixel", bpp);
+		add_key(&next_key, false, "NAXIS   =                    %d / number of data axes", 2);
+		add_key(&next_key, false, "NAXIS1  = %20d / length of data axis 1 [pixels]", frame_width);
+		add_key(&next_key, false, "NAXIS2  = %20d / length of data axis 2 [pixels]", frame_height);
+	} else {
+		add_key(&next_key, false, "BITPIX  = %20d / number of bits per data pixel", bpp / 3);
+		add_key(&next_key, false, "NAXIS   =                    %d / number of data axes", 3);
+		add_key(&next_key, false, "NAXIS1  = %20d / length of data axis 1 [pixels]", frame_width);
+		add_key(&next_key, false, "NAXIS2  = %20d / length of data axis 2 [pixels]", frame_height);
+		add_key(&next_key, false, "NAXIS3  = %20d / length of data axis 3 [RGB]\n", 3);
+	}
+	add_key(&next_key, false, "EXTEND  =                    T / FITS dataset may contain extensions");
+	if (bpp == 16 || bpp == 48) {
+		add_key(&next_key, false, "BZERO   =                32768 / offset data range to that of unsigned short");
+		add_key(&next_key, false, "BSCALE  =                    1 / default scaling factor");
+	}
+	add_key(&next_key, false, "XBINNING= %20d / horizontal binning [pixels]", horizontal_bin);
+	add_key(&next_key, false, "YBINNING= %20d / vertical binning [pixels]", vertical_bin);
+	if (CCD_INFO_PIXEL_WIDTH_ITEM->number.value > 0 && CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) {
+		add_key(&next_key, false, "XPIXSZ  = %20.2f / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin);
+		add_key(&next_key, false, "YPIXSZ  = %20.2f / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
+	}
+	add_key(&next_key, false, "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
+	if (!CCD_TEMPERATURE_PROPERTY->hidden)
+		add_key(&next_key, false, "CCD-TEMP= %20.2f / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
+	if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
+		add_key(&next_key, false, "IMAGETYP= 'Light'               / frame type");
+	else if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
+		add_key(&next_key, false, "IMAGETYP= 'Flat'                / frame type");
+	else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
+		add_key(&next_key, false, "IMAGETYP= 'Bias'                / frame type");
+	else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
+		add_key(&next_key, false, "IMAGETYP= 'Dark'                / frame type");
+	else if (CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value)
+		add_key(&next_key, false, "IMAGETYP= 'DarkFlat'            / frame type");
+	if (!CCD_GAIN_PROPERTY->hidden)
+		add_key(&next_key, false, "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
+	if (!CCD_OFFSET_PROPERTY->hidden)
+		add_key(&next_key, false, "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
+	if (!CCD_GAMMA_PROPERTY->hidden)
+		add_key(&next_key, false, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
+	add_key(&next_key, false, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
+	add_key(&next_key, false, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
+	add_key(&next_key, false, "ROWORDER= 'TOP-DOWN'           / Image row order");
+	if (keywords) {
+		while (keywords->type && (next_key - fits_header) < (FITS_HEADER_SIZE - 80)) {
+			switch (keywords->type) {
+				case INDIGO_FITS_NUMBER:
+					add_key(&next_key, false, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
+					break;
+				case INDIGO_FITS_STRING:
+					add_key(&next_key, false, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+					break;
+				case INDIGO_FITS_LOGICAL:
+					add_key(&next_key, false, "%7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
+					break;
+			}
+			keywords++;
+		}
+	}
+	for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+		indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+		if (*item->text.value && (next_key - fits_header) < (FITS_HEADER_SIZE - 80)) {
+			add_key(&next_key, false, "%s", item->text.value);
+		}
+	}
+
+	add_key(&next_key, false, "END");
+	TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, fits_header);
 	TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, frame_width);
 	TIFFSetField(tiff, TIFFTAG_IMAGELENGTH, frame_height);
 	if (bpp == 8) {
@@ -1034,19 +1134,17 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		}
 	}
 	TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
-	TIFFSetField(tiff, TIFFTAG_COMPRESSION, COMPRESSION_NONE);
 	TIFFSetField(tiff, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
 	TIFFSetField(tiff, TIFFTAG_PLANARCONFIG, PLANARCONFIG_CONTIG);
 	TIFFSetField(tiff, TIFFTAG_ROWSPERSTRIP, frame_height);
 	TIFFSetField(tiff, TIFFTAG_SOFTWARE, "INDIGO");
-	TIFFWriteRawStrip(tiff, 0, data_in + FITS_HEADER_SIZE, frame_width * frame_height * bpp / 8);
+	TIFFWriteEncodedStrip(tiff, 0, data_in + FITS_HEADER_SIZE, frame_width * frame_height * bpp / 8);
 	TIFFWriteDirectory(tiff);
 	indigo_tiff_close(tiff);
 	*data_out = memory_handle->data;
 	*size_out = memory_handle->file_length;
 	free(memory_handle);
 }
-
 
 static bool create_file_name(char *dir, char *prefix, char *suffix, char *file_name) {
 	if (strlen(dir) + strlen(prefix) + strlen(suffix) < INDIGO_VALUE_SIZE) {
@@ -1161,118 +1259,75 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
 		char *header = data;
 		memset(header, ' ', FITS_HEADER_SIZE);
-		int t = sprintf(header, "SIMPLE  =                    T / file conforms to FITS standard");
-		header[t] = ' ';
-		t = sprintf(header += 80, "BITPIX  = %20d / number of bits per data pixel", byte_per_pixel * 8);
-		header[t] = ' ';
-		t = sprintf(header += 80, "NAXIS   =                    %d / number of data axes", naxis);
-		header[t] = ' ';
-		t = sprintf(header += 80, "NAXIS1  = %20d / length of data axis 1 [pixels]", frame_width);
-		header[t] = ' ';
-		t = sprintf(header += 80, "NAXIS2  = %20d / length of data axis 2 [pixels]", frame_height);
-		header[t] = ' ';
-		if (naxis == 3) {
-			t = sprintf(header += 80, "NAXIS3  = %20d / length of data axis 3 [RGB]", 3);
-			header[t] = ' ';
-		}
-		t = sprintf(header += 80, "EXTEND  =                    T / FITS dataset may contain extensions");
-		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy");
-		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H");
-		header[t] = ' ';
-		t = sprintf(header += 80, "COMMENT   Created by INDIGO %d.%d framework, see www.indigo-astronomy.org", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
-		header[t] = ' ';
-		if (byte_per_pixel == 2) {
-			t = sprintf(header += 80, "BZERO   =                32768 / offset data range to that of unsigned short");
-			header[t] = ' ';
-			t = sprintf(header += 80, "BSCALE  =                    1 / default scaling factor");
-			header[t] = ' ';
+		add_key(&header, true,  "SIMPLE  =                    T / file conforms to FITS standard");
+		if (bpp == 8 || bpp == 16) {
+			add_key(&header, true,  "BITPIX  = %20d / number of bits per data pixel", bpp);
+			add_key(&header, true,  "NAXIS   =                    %d / number of data axes", 2);
+			add_key(&header, true,  "NAXIS1  = %20d / length of data axis 1 [pixels]", frame_width);
+			add_key(&header, true,  "NAXIS2  = %20d / length of data axis 2 [pixels]", frame_height);
 		} else {
-		//	t = sprintf(header += 80, "BZERO   =                    0 / offset data range to that of unsigned short");
-		//	header[t] = ' ';
-		//	t = sprintf(header += 80, "BSCALE  =                  256 / default scaling factor");
-		//	header[t] = ' ';
+			add_key(&header, true,  "BITPIX  = %20d / number of bits per data pixel", bpp / 3);
+			add_key(&header, true,  "NAXIS   =                    %d / number of data axes", 3);
+			add_key(&header, true,  "NAXIS1  = %20d / length of data axis 1 [pixels]", frame_width);
+			add_key(&header, true,  "NAXIS2  = %20d / length of data axis 2 [pixels]", frame_height);
+			add_key(&header, true,  "NAXIS3  = %20d / length of data axis 3 [RGB]\n", 3);
 		}
-		t = sprintf(header += 80, "XBINNING= %20d / horizontal binning [pixels]", horizontal_bin);
-		header[t] = ' ';
-		t = sprintf(header += 80, "YBINNING= %20d / vertical binning [pixels]", vertical_bin);
-		header[t] = ' ';
+		add_key(&header, true,  "EXTEND  =                    T / FITS dataset may contain extensions");
+		if (bpp == 16 || bpp == 48) {
+			add_key(&header, true,  "BZERO   =                32768 / offset data range to that of unsigned short");
+			add_key(&header, true,  "BSCALE  =                    1 / default scaling factor");
+		}
+		add_key(&header, true,  "XBINNING= %20d / horizontal binning [pixels]", horizontal_bin);
+		add_key(&header, true,  "YBINNING= %20d / vertical binning [pixels]", vertical_bin);
 		if (CCD_INFO_PIXEL_WIDTH_ITEM->number.value > 0 && CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) {
-			t = sprintf(header += 80, "XPIXSZ  = %20.2f / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin);
-			indigo_fix_locale(header - 80);
-			header[t] = ' ';
-			t = sprintf(header += 80, "YPIXSZ  = %20.2f / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
-			indigo_fix_locale(header - 80);
-			header[t] = ' ';
+			add_key(&header, true,  "XPIXSZ  = %20.2f / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin);
+			add_key(&header, true,  "YPIXSZ  = %20.2f / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
 		}
-		t = sprintf(header += 80, "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
-		indigo_fix_locale(header - 80);
-		header[t] = ' ';
-		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
-			t = sprintf(header += 80, "CCD-TEMP= %20.2f / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
-			indigo_fix_locale(header - 80);
-			header[t] = ' ';
-		}
+		add_key(&header, true,  "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
+		if (!CCD_TEMPERATURE_PROPERTY->hidden)
+			add_key(&header, true,  "CCD-TEMP= %20.2f / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
 		if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Light'               / frame type");
+			add_key(&header, true,  "IMAGETYP= 'Light'               / frame type");
 		else if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Flat'                / frame type");
+			add_key(&header, true,  "IMAGETYP= 'Flat'                / frame type");
 		else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Bias'                / frame type");
+			add_key(&header, true,  "IMAGETYP= 'Bias'                / frame type");
 		else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'Dark'                / frame type");
+			add_key(&header, true,  "IMAGETYP= 'Dark'                / frame type");
 		else if (CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value)
-			t = sprintf(header += 80, "IMAGETYP= 'DarkFlat'            / frame type");
-		header[t] = ' ';
-		if (!CCD_GAIN_PROPERTY->hidden) {
-			t = sprintf(header += 80, "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
-			indigo_fix_locale(header - 80);
-			header[t] = ' ';
-		}
-		if (!CCD_OFFSET_PROPERTY->hidden) {
-			t = sprintf(header += 80, "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
-			indigo_fix_locale(header - 80);
-			header[t] = ' ';
-		}
-		if (!CCD_GAMMA_PROPERTY->hidden) {
-			t = sprintf(header += 80, "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
-			indigo_fix_locale(header - 80);
-			header[t] = ' ';
-		}
-		t = sprintf(header += 80, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
-		header[t] = ' ';
-		t = sprintf(header += 80, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
-		header[t] = ' ';
-		t = sprintf(header += 80, "ROWORDER= 'TOP-DOWN'           / Image row order");
-		header[t] = ' ';
+			add_key(&header, true,  "IMAGETYP= 'DarkFlat'            / frame type");
+		if (!CCD_GAIN_PROPERTY->hidden)
+			add_key(&header, true,  "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
+		if (!CCD_OFFSET_PROPERTY->hidden)
+			add_key(&header, true,  "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
+		if (!CCD_GAMMA_PROPERTY->hidden)
+			add_key(&header, true,  "GAMMA   = %20.2f / Gamma", CCD_GAMMA_ITEM->number.value);
+		add_key(&header, true,  "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
+		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
+		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
 		if (keywords) {
 			while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
 				switch (keywords->type) {
 					case INDIGO_FITS_NUMBER:
-						t = sprintf(header += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
-						indigo_fix_locale(header - 80);
+						add_key(&header, true,  "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
 						break;
 					case INDIGO_FITS_STRING:
-						t = sprintf(header += 80, "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+						add_key(&header, true,  "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
 						break;
 					case INDIGO_FITS_LOGICAL:
-						t = sprintf(header += 80, "%7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
+						add_key(&header, true,  "%7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
 						break;
 				}
-				header[t] = ' ';
 				keywords++;
 			}
 		}
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 			if (*item->text.value && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
-				t = sprintf(header += 80, "%s", item->text.value);
-				header[t] = ' ';
+				add_key(&header, true, "%s", item->text.value);
 			}
 		}
-		t = sprintf(header += 80, "END");
-		header[t] = ' ';
+		add_key(&header, true,  "END");
 		if (byte_per_pixel == 2 && naxis == 2) {
 			uint16_t *raw = (uint16_t *)(data + FITS_HEADER_SIZE);
 			if (little_endian) {
@@ -1611,7 +1666,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	} else if (CCD_IMAGE_FORMAT_TIFF_ITEM->sw.value) {
 		void *tiff_data = NULL;
 		unsigned long tiff_size = 0;
-		raw_to_tiff(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &tiff_data, &tiff_size);
+		raw_to_tiff(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &tiff_data, &tiff_size, keywords);
 		if (tiff_data) {
 			if (tiff_size < blobsize + FITS_HEADER_SIZE) {
 				memcpy(data, tiff_data, tiff_size);

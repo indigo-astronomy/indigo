@@ -24,6 +24,10 @@
 
 #include <indigo/indigo_tiff.h>
 
+#ifndef LZW_SUPPORT
+#error "LZW_SUPPORT is not defined, pls. execute 'make clean-all; make' to fix it"
+#endif
+
 tsize_t indigo_tiff_read(thandle_t handle, tdata_t data, tsize_t size) {
 	indigo_tiff_memory_handle *memory_handle = (indigo_tiff_memory_handle *)handle;
 	tsize_t length;
