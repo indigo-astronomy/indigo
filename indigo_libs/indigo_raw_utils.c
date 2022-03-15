@@ -98,7 +98,7 @@ static int clear_hot_pixel_16(uint16_t* image, int x, int y, int width, int heig
 }
 
 static int clear_hot_pixel_8(uint8_t* image, int x, int y, int width, int height) {
-	int i, j, k, max, value;
+	int i, k, max, value;
 	k = 0;
 	int window[5];
 
@@ -116,11 +116,11 @@ static int clear_hot_pixel_8(uint8_t* image, int x, int y, int width, int height
 	//if ((x == 100 && y == 100) || (x == 900 && y == 500))
 	//	indigo_error("x = %d y = %d => %d %d [%d] %d %d", x, y, window[0], window[1], window[2], window[3], window[4]);
 
-	for (j = 0; j < 3; j++) {
-		max = j;
-		for (k = j + 1; k < 5; k++) if (window[k] > window[max]) max = k;
-		int temp = window[j];
-		window[j] = window[max];
+	for (i = 0; i < 3; i++) {
+		max = i;
+		for (k = i + 1; k < 5; k++) if (window[k] > window[max]) max = k;
+		int temp = window[i];
+		window[i] = window[max];
 		window[max] = temp;
 	}
 	/* window[0] = max;
@@ -133,6 +133,7 @@ static int clear_hot_pixel_8(uint8_t* image, int x, int y, int width, int height
 	return value;
 }
 
+/*
 static void hann_window(double (*data)[2], int len) {
 	for (int n = 0; n < len; n++) {
 		double sin_value = sin(3.14159265358979 * n / len);
@@ -151,6 +152,7 @@ static void tuckey_window(double (*data)[2], int len, double alpha) {
 		//indigo_error("Tuckey %d %d -> %.4f -> %.4f ", N, n, data[n][RE], sin_value_sqr);
 	}
 }
+*/
 
 static void _fft(const int n, const int offset, const int delta, const double (*x)[2], double (*X)[2], double (*_X)[2]);
 
@@ -1381,7 +1383,7 @@ static double indigo_stddev_8(uint8_t set[], const int width, const int height, 
 	return sqrt(sum / real_count);
 }
 
-static double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
+static double indigo_stddev_masked_8(uint8_t set[], const uint8_t mask[], const int width, const int height, bool *saturated) {
 	double d, m, sum = 0;
 	int real_count = 0;
 
@@ -1426,7 +1428,7 @@ static double indigo_stddev_masked_8(uint8_t set[], uint8_t mask[], const int wi
 	return sqrt(sum / real_count);
 }
 
-static double indigo_stddev_masked_rgb24(uint8_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
+static double indigo_stddev_masked_rgb24(uint8_t set[], const uint8_t mask[], const int width, const int height, bool *saturated) {
 	double d, m, sum = 0;
 	int real_count = 0;
 	int index = 0, i = 0;
@@ -1590,7 +1592,7 @@ static double indigo_stddev_16(uint16_t set[], const int width, const int height
 	return sqrt(sum / real_count);
 }
 
-static double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
+static double indigo_stddev_masked_16(uint16_t set[], const uint8_t mask[], const int width, const int height, bool *saturated) {
 	double d, m, sum = 0;
 	int real_count = 0;
 
@@ -1635,7 +1637,7 @@ static double indigo_stddev_masked_16(uint16_t set[], uint8_t mask[], const int 
 	return sqrt(sum / real_count);
 }
 
-static double indigo_stddev_masked_rgb48(uint16_t set[], uint8_t mask[], const int width, const int height, bool *saturated) {
+static double indigo_stddev_masked_rgb48(uint16_t set[], const uint8_t mask[], const int width, const int height, bool *saturated) {
 	double d, m, sum = 0;
 	int real_count = 0;
 	int index = 0, i = 0;
