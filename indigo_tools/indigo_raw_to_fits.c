@@ -53,7 +53,6 @@ int save_file(char *file_name, char *data, int size) {
 }
 
 int open_file(const char *file_name, char **data, int *size) {
-	char msg[PATH_MAX];
 	int image_size = 0;
 	if (file_name[0] == '\0') {
 		errno = ENOENT;
@@ -94,7 +93,6 @@ static void print_help(const char *name) {
 int main(int argc, char *argv[]) {
 	indigo_fits_keyword extra_keywords[MAX_EXTRA_KEYWORDS + 1] = {0};
 	int extra_keywords_count = 0;
-	double exptime, ccdtemp;
 
 	bool not_quiet = true;
 	if (argc < 2) {
@@ -145,7 +143,7 @@ int main(int argc, char *argv[]) {
 				fprintf(stderr, "No CCD temperture specified\n");
 				return 1;
 			}
-		} else if (argv[i] != "-") {
+		} else if (argv[i][0] != '-') {
 			break;
 		}
 		arg_base++;
