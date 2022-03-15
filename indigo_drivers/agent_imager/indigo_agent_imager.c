@@ -1415,9 +1415,14 @@ static bool autofocus_repeat(indigo_device *device) {
 }
 
 static void autofocus_process(indigo_device *device) {
+	char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
 	DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
+	int focuser_mode = save_switch_state(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_MODE_PROPERTY_NAME);
+	if (focuser_mode != -1) {
+		indigo_change_switch_property_1(device, focuser_name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME, true);
+	}
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 	indigo_send_message(device, "Focusing started");
@@ -1438,6 +1443,9 @@ static void autofocus_process(indigo_device *device) {
 	}
 	restore_subframe(device);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
+	if (focuser_mode != -1) {
+		restore_switch_state(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_MODE_PROPERTY_NAME, focuser_mode);
+	}
 	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
