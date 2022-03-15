@@ -174,7 +174,7 @@ static bool synscan_read_response(indigo_device* device, char* r) {
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RESPONSE: [%.*s]", len - 1, resp);
 	}
-	
+
 	//  Extract response payload, return
 	if (r) {
 		strncpy(r, resp+1, len-2);
@@ -210,7 +210,7 @@ static bool synscan_command(indigo_device* device, const char* cmd, char* r) {
 //		indigo_send_message(device, "Lost connection");
 //		indigo_device_disconnect(NULL, device->name);
 //	}
-	
+
 	//  Mount command failed
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return false;
@@ -383,21 +383,21 @@ static void synscan_delay_ms(int millis) {
 	//  Get current time
 	struct timeval now;
 	gettimeofday(&now, NULL);
-	
+
 	//  Convert to milliseconds and compute stop time
 	uint64_t tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
 	uint64_t tend = tnow + millis;
-	
+
 	//  Wait until current time reaches TEND
 	while (true) {
 		//  Get current time
 		gettimeofday(&now, NULL);
 		tnow = (now.tv_sec * 1000) + (now.tv_usec / 1000);
-		
+
 		//  This is not ideal as we are busy-waiting here and just consuming CPU cycles doing nothing,
 		//  but if we actually sleep, then the OS might not give control back for much longer than we
 		//  wanted to sleep for.
-		
+
 		//  Return if we've reached the end time
 		if (tnow >= tend)
 			return;
@@ -423,7 +423,7 @@ bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration
 
 	//  Flush the port ready
 	synscan_flush(device);
-	
+
 	//  Set rate for axis
 	sprintf(buffer, ":I%c%s", kAxisRA, longToHex(guide_rate));
 	bool ok = synscan_command_unlocked(device, buffer);
@@ -445,7 +445,7 @@ bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration
 		total_overhead += (long)overhead;
 		pulse_count++;
 	}
-	
+
 	//  Do the delay (if any still required)
 	if (duration_ms > 0)
 		synscan_delay_ms(duration_ms);
@@ -468,7 +468,7 @@ bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration
 		reported = true;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-RA: minimum pulse length is %ldms\n", total_overhead / pulse_count);
 	}
-	
+
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return ok;
 }
@@ -477,11 +477,11 @@ bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID directi
 	static int pulse_count = 0;
 	static long total_overhead = 0;
 	static bool reported = false;
-	
+
 	char buffer[11];
 	char response[20];
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	
+
 	//  Flush the port ready
 	synscan_flush(device);
 
@@ -495,7 +495,7 @@ bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID directi
 	sprintf(buffer, ":I%c%s", kAxisDEC, longToHex(guide_rate));
 	ok = ok && synscan_command_unlocked(device, buffer);
 	ok = ok && synscan_read_response(device, response);		//  Rate command
-	
+
 	//  Set the axis moving
 	sprintf(buffer, ":J%c", kAxisDEC);
 	ok = ok && synscan_command_unlocked(device, buffer);
@@ -505,23 +505,23 @@ bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID directi
 	//  Read response and record time
 	uint64_t tnow = current_time_millis();
 	ok = ok && synscan_read_response(device, response);		//  Start moving command
-	
+
 	//  Compute duration of overhead
 	uint64_t overhead = current_time_millis() - tnow;
-	
+
 	//  Adjust pulse length to account for overhead
 	duration_ms -= (int)overhead;
-	
+
 	//  Average the overhead
 	if (!reported) {
 		total_overhead += (long)overhead;
 		pulse_count++;
 	}
-	
+
 	//  Do the delay (if any still required)
 	if (duration_ms > 0)
 		synscan_delay_ms(duration_ms);
-	
+
 	//  Stop the axis
 	sprintf(buffer, ":L%c", kAxisDEC);
 	ok = ok && synscan_command_unlocked(device, buffer);
@@ -529,7 +529,7 @@ bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID directi
 	//------  GUIDE PULSE STOPS NOW  -----------------------
 
 	//  Determine how long the pulse took
-	uint64_t pulse_length = current_time_millis() - tnow;
+	//uint64_t pulse_length = current_time_millis() - tnow;
 
 	//  Read response from last command
 	ok = ok && synscan_read_response(device, response);		//  Stop command
@@ -540,7 +540,7 @@ bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID directi
 		reported = true;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "PULSE-GUIDE-DEC: minimum pulse length is %ldms\n", total_overhead / pulse_count);
 	}
-	
+
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return ok;
 }

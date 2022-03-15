@@ -87,9 +87,10 @@ static void wheel_connect_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_open ->  ok");
 			while (true) {
 				libatik_wheel_query(PRIVATE_DATA->handle, &PRIVATE_DATA->slot_count, &PRIVATE_DATA->current_slot);
-				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9)
+				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
 					break;
-					indigo_usleep(ONE_SECOND_DELAY);
+				}
+				indigo_usleep(ONE_SECOND_DELAY);
 			}
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;

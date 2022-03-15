@@ -1707,7 +1707,7 @@ int dsi_scan_usb(dsi_device_list devices) {
  * control the camera.
  */
 dsi_camera_t *dsi_open_camera(const char *identifier) {
-	struct libusb_device *dev;
+	struct libusb_device *dev = NULL;
 	struct libusb_device_handle *handle = NULL;
 	struct libusb_device **list = NULL;
 	struct libusb_device_descriptor desc;
@@ -2200,7 +2200,7 @@ int dsitst_read_image(dsi_camera_t *dsi, const char *filename, int is_binary) {
 			if (state > 3)
 				break;
 
-			char *res = fgets(line, 1000, fptr);
+			res = fgets(line, 1000, fptr);
 		}
 		regfree(&preg);
 	}

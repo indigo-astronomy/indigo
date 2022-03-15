@@ -439,9 +439,9 @@ bool ptp_fuji_initialise(indigo_device *device) {
 		ptp_property_fuji_ControlPriority,
 		ptp_property_fuji_AutoFocus,
 		ptp_property_fuji_AutoFocusState,
-		ptp_property_fuji_CardSave,
+		ptp_property_fuji_CardSave
 	};
-	for (int i = 0; i < sizeof(hidden_properties); ++i) {
+	for (int i = 0; i < sizeof(hidden_properties)/sizeof(int); ++i) {
 		if (!ptp_property_supported(device, hidden_properties[i])) {
 			// Fujifilm hidden property special case
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, hidden_properties[i], &buffer, &size)) {
@@ -582,8 +582,7 @@ bool ptp_fuji_exposure(indigo_device *device) {
 		while (result && value == 1) {
 			result = ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropValue, ptp_property_fuji_AutoFocusState, &buffer, &size);
 			if (buffer) {
-				uint8_t *source = buffer;
-				source = ptp_decode_uint16(buffer, &value);
+				(void)ptp_decode_uint16(buffer, &value);
 				free(buffer);
 			}
 		}
