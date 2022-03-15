@@ -697,7 +697,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 						for (i = 0; i < property->count; i++) {
 							item = &(property->items[i]);
 							if (strcmp(item->name, change_request.item_name[r])) continue;
-							int size = read_file(change_request.value_string[r], &item->blob.value);
+							int size = read_file(change_request.value_string[r], (char**)&item->blob.value);
 							if (size < 0) {
 								fprintf(stderr, "Can't read '%s' file: %s\n", change_request.value_string[r], strerror(errno));
 								exit(1);
@@ -785,7 +785,7 @@ static void print_help(const char *name) {
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("       %s list_state [options] [device[.property]]\n", name);
-	printf("set write-only BLOBs:\n", name);
+	printf("set write-only BLOBs:\n");
 	printf("       %s set [options] device.property.item=filename[;NAME=filename]\n", name);
 	printf("options:\n"
 	       "       -h  | --help\n"
