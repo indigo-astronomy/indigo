@@ -1602,6 +1602,7 @@ static void sequence_process(indigo_device *device) {
 		AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FILTER_DEVICE_CONTEXT->running_process = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No focuser is selected");
 		return;
 	}
