@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x001D
+#define DRIVER_VERSION 0x001E
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -1693,7 +1693,7 @@ static void process_plug_event(indigo_device *unused) {
 	private_data->dev_id = id;
 	memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 	if (info.ST4Port) {
 		slot = find_available_device_slot();
@@ -1707,7 +1707,7 @@ static void process_plug_event(indigo_device *unused) {
 		sprintf(device->name, "%s Guider #%d", info.Name, id);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
-		indigo_async((void *)(void *)indigo_attach_device, device);
+		indigo_attach_device(device);
 		devices[slot]=device;
 	}
 	pthread_mutex_unlock(&device_mutex);
