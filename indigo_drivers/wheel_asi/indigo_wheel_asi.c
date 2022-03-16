@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -341,7 +341,7 @@ static void process_plug_event(indigo_device *unused) {
 	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 	pthread_mutex_unlock(&device_mutex);
 }

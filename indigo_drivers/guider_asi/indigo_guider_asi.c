@@ -24,7 +24,7 @@
  \file indigo_guider_asi.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_guider_asi"
 
 #include <stdlib.h>
@@ -401,7 +401,7 @@ static void process_plug_event(indigo_device *unused) {
 	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 }
 
@@ -525,7 +525,7 @@ indigo_result indigo_guider_asi(indigo_driver_action action, indigo_driver_info 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "ZWO ASI USB-St4 Guider", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
