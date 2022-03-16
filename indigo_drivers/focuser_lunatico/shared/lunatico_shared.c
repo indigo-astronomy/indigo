@@ -2267,8 +2267,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // --------------------------------------------------------------------------------
 
-static int device_number = 0;
-
 static void create_port_device(int device_index, int port_index, device_type_t device_type) {
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_LUNATICO_NAME,

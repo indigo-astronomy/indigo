@@ -291,10 +291,8 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	ra = ra * M_PI / 12.0;
 	dec = dec * M_PI / 180.0;
 	double target_lst = indigo_lst(NULL, lng) + (5 / 3600.0);
-	bool lst_wrap = false;
 	if (target_lst >= 24.0) {
 		target_lst -= 24.0;
-		lst_wrap = true;
 	}
 	ha = (target_lst * M_PI / 12.0) - ra;
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
@@ -933,7 +931,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	long value, position_ra, position_dec;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Auto home procedure started");
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Steps/Revolution RA = %06lx, DEC = %06lx", PRIVATE_DATA->raTotalSteps & 0xFFFFFF, PRIVATE_DATA->decTotalSteps & 0xFFFFFF);
-	
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Turn encoders off");
 	MOUNT_USE_RA_ENCODER_ITEM->sw.value = MOUNT_USE_DEC_ENCODER_ITEM->sw.value = false;
 	mount_handle_encoders(device);
@@ -1032,7 +1030,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		slewing_up_dec = value == 0;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Slewing up RA = %d, DEC = %d", slewing_up_ra, slewing_up_dec);
-	
+
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Move the axis to negative position");
 	if (!slewing_up_ra) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Set RA slewing mode");
@@ -1150,7 +1148,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "********** Reset mount positions");
 	synscan_init_axis_position(device, kAxisRA, PRIVATE_DATA->raHomePosition);
 	synscan_init_axis_position(device, kAxisDEC, PRIVATE_DATA->decHomePosition + MOUNT_AUTOHOME_DEC_OFFSET_ITEM->number.target / 360.0 *  PRIVATE_DATA->decTotalSteps);
-	
+
 	PRIVATE_DATA->globalMode = kGlobalModeIdle;
 	MOUNT_AUTOHOME_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
