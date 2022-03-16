@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -765,7 +765,7 @@ static void process_plug_event(indigo_device *unused) {
 	private_data->dev_id = id;
 	private_data->info = info;
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 	pthread_mutex_unlock(&device_mutex);
 }
