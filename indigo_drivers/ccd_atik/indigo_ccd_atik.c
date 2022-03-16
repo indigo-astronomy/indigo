@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x001A
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -882,7 +882,7 @@ static void plug_handler(indigo_device *device) {
 			device->private_data = private_data;
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, devices[i] = device);
+					indigo_attach_device(devices[i] = device);
 					break;
 				}
 			}
@@ -893,7 +893,7 @@ static void plug_handler(indigo_device *device) {
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						indigo_attach_device(devices[j] = device);
 						break;
 					}
 				}
@@ -905,7 +905,7 @@ static void plug_handler(indigo_device *device) {
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+						indigo_attach_device(devices[j] = device);
 						break;
 					}
 				}
@@ -1044,7 +1044,7 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "Atik Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
