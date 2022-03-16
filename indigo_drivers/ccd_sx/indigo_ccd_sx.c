@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -1106,15 +1106,17 @@ static struct {
 	{ 0x0509, "SX SuperStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0x0525, "SX UltraStar", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
 	{ 0x0519, "SX Oculus", INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER },
-	
+
 	{ 0x0719, "LSI9", INDIGO_INTERFACE_CCD },
 	{ 0x0720, "HLSI9", INDIGO_INTERFACE_CCD },
 	{ 0, NULL }
 };
 
 static indigo_device *devices[MAX_DEVICES];
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static void process_plug_event(libusb_device *dev) {
+	struct libusb_device_descriptor descriptor;
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -1131,67 +1133,75 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		NULL,
 		guider_detach
 	);
-	struct libusb_device_descriptor descriptor;
+	pthread_mutex_lock(&device_mutex);
+	INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	for (int i = 0; SX_PRODUCTS[i].name; i++) {
+		if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
+			sx_private_data *private_data = indigo_safe_malloc(sizeof(sx_private_data));
+			private_data->dev = dev;
+			libusb_ref_device(dev);
+			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+			indigo_device *master_device = device;
+			device->master_device = master_device;
+			char usb_path[INDIGO_NAME_SIZE];
+			indigo_get_usb_path(dev, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", SX_PRODUCTS[i].name, usb_path);
+			device->private_data = private_data;
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				if (devices[j] == NULL) {
+					indigo_attach_device(devices[j] = device);
+					break;
+				}
+			}
+			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			device->master_device = master_device;
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", SX_PRODUCTS[i].name, usb_path);
+			device->private_data = private_data;
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				if (devices[j] == NULL) {
+					indigo_attach_device(devices[j] = device);
+					break;
+				}
+			}
+			break;
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
 
+static void process_unplug_event(libusb_device *dev) {
+	pthread_mutex_lock(&device_mutex);
+	sx_private_data *private_data = NULL;
+	for (int j = 0; j < MAX_DEVICES; j++) {
+		if (devices[j] != NULL) {
+			indigo_device *device = devices[j];
+			if (PRIVATE_DATA->dev == dev) {
+				private_data = PRIVATE_DATA;
+				indigo_detach_device(device);
+				free(device);
+				devices[j] = NULL;
+			}
+		}
+	}
+	if (private_data != NULL) {
+		libusb_unref_device(dev);
+		if (private_data->buffer != NULL) free(private_data->buffer);
+		if (private_data->even != NULL) free(private_data->even);
+		if (private_data->odd != NULL) free(private_data->odd);
+		free(private_data);
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
-	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-		INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-		for (int i = 0; SX_PRODUCTS[i].name; i++) {
-			if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
-				sx_private_data *private_data = indigo_safe_malloc(sizeof(sx_private_data));
-				private_data->dev = dev;
-				libusb_ref_device(dev);
-				indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-				indigo_device *master_device = device;
-				device->master_device = master_device;
-				char usb_path[INDIGO_NAME_SIZE];
-				indigo_get_usb_path(dev, usb_path);
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", SX_PRODUCTS[i].name, usb_path);
-				device->private_data = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
-				}
-				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", SX_PRODUCTS[i].name, usb_path);
-				device->private_data = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
-				}
-				break;
-			}
-		}
+	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
+		INDIGO_ASYNC(process_plug_event, dev);
 		break;
-	}
-	case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-		sx_private_data *private_data = NULL;
-		for (int j = 0; j < MAX_DEVICES; j++) {
-			if (devices[j] != NULL) {
-				indigo_device *device = devices[j];
-				if (PRIVATE_DATA->dev == dev) {
-					private_data = PRIVATE_DATA;
-					indigo_detach_device(device);
-					free(device);
-					devices[j] = NULL;
-				}
-			}
-		}
-		if (private_data != NULL) {
-			libusb_unref_device(dev);
-			if (private_data->buffer != NULL) free(private_data->buffer);
-			if (private_data->even != NULL) free(private_data->even);
-			if (private_data->odd != NULL) free(private_data->odd);
-			free(private_data);
-		}
+	case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
+		process_unplug_event(dev);
 		break;
-	}
 	}
 	return 0;
 };
