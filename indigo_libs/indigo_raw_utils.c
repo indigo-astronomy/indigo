@@ -278,7 +278,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	if ((data == NULL) || (hfd == NULL) || (peak == NULL))
 		return INDIGO_FAILED;
 
-	double background = 0, max = 0, value;
+	double background = 0, max = 0, value = 0;
 	int background_count = 0;
 
 	int *values = (int*)malloc(8 * radius * sizeof(int));
@@ -1935,7 +1935,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	const int clip_edge   = height >= FIND_STAR_EDGE_CLIPPING * 4 ? FIND_STAR_EDGE_CLIPPING : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
-	uint16_t max_luminance;
+	uint16_t max_luminance = 0;
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;

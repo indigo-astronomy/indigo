@@ -287,7 +287,6 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 	char *name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
 	indigo_property *property = indigo_safe_malloc(PROPERTY_SIZE);
 	char *pointer = buffer;
-	char *buffer_end = NULL;
 	char *value_pointer = value_buffer;
 	char *name_pointer = name_buffer;
 	memset(property, 0, PROPERTY_SIZE);
@@ -311,7 +310,6 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 				goto exit_loop;
 			}
 			pointer = buffer;
-			buffer_end = buffer + count;
 			buffer[count] = 0;
 			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
 		}

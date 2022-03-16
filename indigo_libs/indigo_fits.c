@@ -153,7 +153,7 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 			uint8_t *out_ch0 = (uint8_t *)p;
 			uint8_t *out_ch1 = (uint8_t *)p + pixel_count;
 			uint8_t *out_ch2 = (uint8_t *)p + 2 * pixel_count;
-			uint8_t *in = image;
+			uint8_t *in = (uint8_t *)image;
 			for (int i = 0; i < pixel_count; i++) {
 				*out_ch0++ = *in++;
 				*out_ch1++ = *in++;

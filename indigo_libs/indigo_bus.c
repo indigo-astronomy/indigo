@@ -1311,6 +1311,8 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 						case INDIGO_BLOB_VECTOR:
 							property_item->blob.value = indigo_safe_realloc_copy(property_item->blob.value, property_item->blob.size = other_item->blob.size, other_item->blob.value);
 							break;
+						default:
+							break;
 						}
 						break;
 					}

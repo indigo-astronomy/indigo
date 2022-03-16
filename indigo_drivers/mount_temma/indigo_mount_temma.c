@@ -184,7 +184,6 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 	if (wait) {
 		char buffer[128];
 		int index = 0;
-		int timeout = 3;
 		int max = sizeof(buffer) - 1;
 		while (index < max) {
 			fd_set readout;
@@ -192,7 +191,6 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			tv.tv_sec = 0;
 			tv.tv_usec = 300000;
-			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result <= 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "select failed from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
