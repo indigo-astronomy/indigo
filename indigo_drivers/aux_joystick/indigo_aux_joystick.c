@@ -567,7 +567,6 @@ static NSMutableArray *wrappers = nil;
 }
 
 +(void)rescan {
-  NSLog(@"******* %@", dispatch_get_current_queue());
 	if (wrappers == nil) {
 		wrappers = [NSMutableArray array];
 	}

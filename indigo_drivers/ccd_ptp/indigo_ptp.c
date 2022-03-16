@@ -1504,7 +1504,7 @@ bool ptp_check_jpeg_ext(const char *ext) {
 	return strcmp(ext, ".JPG") == 0 || strcmp(ext, ".jpg") == 0 || strcmp(ext, ".JPEG") == 0 || strcmp(ext, ".jpeg") == 0;
 }
 
-double timestamp() {
+double timestamp(void) {
 	struct timespec ts;
 	clock_gettime(CLOCK_REALTIME, &ts);
 	return ts.tv_sec + ts.tv_nsec / 1000000000.0;

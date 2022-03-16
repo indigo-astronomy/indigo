@@ -131,7 +131,7 @@ uvc_error_t uvc_find_device(
   uvc_error_t ret = UVC_SUCCESS;
 
   uvc_device_t **list;
-  uvc_device_t *test_dev;
+  uvc_device_t *test_dev = NULL;
   int dev_idx;
   int found_dev;
 
@@ -1775,7 +1775,7 @@ size_t uvc_num_devices(uvc_context_t *ctx) {
 }
 
 void uvc_process_control_status(uvc_device_handle_t *devh, unsigned char *data, int len) {
-  enum uvc_status_class status_class;
+  enum uvc_status_class status_class = 0;
   uint8_t originator = 0, selector = 0, event = 0;
   enum uvc_status_attribute attribute = UVC_STATUS_ATTRIBUTE_UNKNOWN;
   void *content = NULL;

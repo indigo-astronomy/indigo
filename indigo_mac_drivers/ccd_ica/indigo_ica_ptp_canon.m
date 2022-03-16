@@ -1037,7 +1037,7 @@ static struct info {
             break;
           }
           case PTPPropertyCodeCanonPictureStyle: {
-            NSDictionary *map = @{ @0x81: @"Standard", @0x82: @"Portrait", @0x83: @"Landscape", @0x84: @"Neutral", @0x85: @"Faithful", @0x86: @"Monochrome", @0x87:@"Auto", @0x88: @"Fine detail", @0x21: @"User 1", @0x22: @"User 2", @0x23: @"User 3", @0x41: @"PC 1", @0x41: @"PC 2", @0x41: @"PC 3" };
+            NSDictionary *map = @{ @0x81: @"Standard", @0x82: @"Portrait", @0x83: @"Landscape", @0x84: @"Neutral", @0x85: @"Faithful", @0x86: @"Monochrome", @0x87:@"Auto", @0x88: @"Fine detail", @0x21: @"User 1", @0x22: @"User 2", @0x23: @"User 3", @0x41: @"PC 1", @0x42: @"PC 2", @0x43: @"PC 3" };
             property.readOnly = currentMode >= 8;
             if (property.readOnly)
               [self.delegate cameraPropertyChanged:self code:property.propertyCode value:@"Auto" values:@[ @"Auto" ] labels:@[ @"Auto" ] readOnly:true];
