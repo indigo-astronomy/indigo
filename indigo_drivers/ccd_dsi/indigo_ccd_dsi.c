@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
@@ -640,7 +640,7 @@ static void process_plug_event(indigo_device *unusued) {
 	memset(private_data, 0, sizeof(dsi_private_data));
 	sprintf(private_data->dev_sid, "%s", sid);
 	device->private_data = private_data;
-	indigo_async((void *(*)(void *))indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 	pthread_mutex_unlock(&device_mutex);
 }
