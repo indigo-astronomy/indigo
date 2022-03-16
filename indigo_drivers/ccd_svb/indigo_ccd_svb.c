@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -622,7 +622,7 @@ static void guider_timer_callback_ra(indigo_device *device) {
 
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
-	
+
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 
@@ -1566,7 +1566,7 @@ static void process_plug_event(indigo_device *unused) {
 		memcpy(&(private_data->info), &info, sizeof(SVB_CAMERA_INFO));
 		memcpy(&(private_data->property), &property, sizeof(SVB_CAMERA_PROPERTY));
 		device->private_data = private_data;
-		indigo_async((void *)(void *)indigo_attach_device, device);
+		indigo_attach_device(device);
 		devices[slot]=device;
 		if (is_guider) {
 		slot = find_available_device_slot();
@@ -1580,7 +1580,7 @@ static void process_plug_event(indigo_device *unused) {
 		sprintf(device->name, "%s Guider #%d", info.FriendlyName, id);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
-		indigo_async((void *)(void *)indigo_attach_device, device);
+		indigo_attach_device(device);
 		devices[slot]=device;
 	}
 	}
