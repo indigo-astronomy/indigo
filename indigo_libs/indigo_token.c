@@ -121,7 +121,7 @@ indigo_token indigo_get_device_or_master_token(const char *device) {
 	return 0;
 }
 
-indigo_token indigo_get_master_token() {
+indigo_token indigo_get_master_token(void) {
 	pthread_mutex_lock(&token_mutex);
 	indigo_token token = master_token;
 	pthread_mutex_unlock(&token_mutex);
@@ -135,7 +135,7 @@ void indigo_set_master_token(indigo_token token) {
 	INDIGO_DEBUG(indigo_debug("ACL: set master_token = 0x%x", master_token));
 }
 
-void indigo_clear_device_tokens() {
+void indigo_clear_device_tokens(void) {
 	pthread_mutex_lock(&token_mutex);
 	memset(tokens, 0, sizeof(tokens));
 	pthread_mutex_unlock(&token_mutex);

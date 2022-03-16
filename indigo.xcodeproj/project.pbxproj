@@ -554,8 +554,6 @@
 		59A68E1F277DC3D0000439CC /* indigo_ccd_svb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A68E06277DC3D0000439CC /* indigo_ccd_svb.c */; };
 		59A68E20277DC3D0000439CC /* SVBCameraSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A68E0A277DC3D0000439CC /* SVBCameraSDK.h */; };
 		59A68E21277DC3D0000439CC /* SVBCameraSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A68E0A277DC3D0000439CC /* SVBCameraSDK.h */; };
-		59A68E2C277DC3D0000439CC /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A68E1A277DC3D0000439CC /* Makefile.inc */; };
-		59A68E2D277DC3D0000439CC /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A68E1A277DC3D0000439CC /* Makefile.inc */; };
 		59A68E31277DE623000439CC /* indigo_ccd_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 590A86401DB80A04002F12FB /* indigo_ccd_asi.c */; };
 		59A68E32277DE626000439CC /* indigo_ccd_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 590A86411DB80A04002F12FB /* indigo_ccd_asi.h */; };
 		59A68E33277DE627000439CC /* indigo_ccd_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 590A86411DB80A04002F12FB /* indigo_ccd_asi.h */; };
@@ -13358,7 +13356,6 @@
 				598A1B97259BA94A00C0B34C /* DDHidJoystick.m in Sources */,
 				598A1B98259BA94A00C0B34C /* indigo_ccd_atik.c in Sources */,
 				598A1B99259BA94A00C0B34C /* indigo_aux_ppb.c in Sources */,
-				59A68E2D277DC3D0000439CC /* Makefile.inc in Sources */,
 				598A1B9A259BA94A00C0B34C /* DDHidKeyboardBarcodeScanner.m in Sources */,
 				598A1B9B259BA94A00C0B34C /* indigo_agent_lx200_server.c in Sources */,
 				598A1B9C259BA94A00C0B34C /* libdsi.c in Sources */,
@@ -13574,7 +13571,6 @@
 				595F291F211E211100380EF4 /* DDHidJoystick.m in Sources */,
 				9D9EA6A51DBE1F7300E11841 /* indigo_ccd_atik.c in Sources */,
 				5996615822CF44D500330652 /* indigo_aux_ppb.c in Sources */,
-				59A68E2C277DC3D0000439CC /* Makefile.inc in Sources */,
 				595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */,
 				9D3BBBA821147EB500800FB0 /* indigo_agent_lx200_server.c in Sources */,
 				5911F7B41F02E1400053F3CA /* libdsi.c in Sources */,

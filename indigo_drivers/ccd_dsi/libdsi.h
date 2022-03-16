@@ -202,9 +202,9 @@ enum DSI_BIN_MODE {
 #define libdsi_exit() libusb_exit(NULL)
 
 void libdsi_set_verbose_init(int on);
-int libdsi_get_verbose_init();
+int libdsi_get_verbose_init(void);
 
-bool dsi_load_firmware();
+bool dsi_load_firmware(void);
 int dsi_scan_usb(dsi_device_list devices);
 
 dsi_camera_t *dsi_open_camera(const char *identifier);

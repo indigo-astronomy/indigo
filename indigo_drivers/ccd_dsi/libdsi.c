@@ -775,9 +775,9 @@ static int dsicmd_usb_command(dsi_camera_t *dsi, unsigned char *ibuf, int ibuf_l
 	return result;
 }
 
-static int dsicmd_wake_camera(dsi_camera_t *dsi) {
-	return dsicmd_command_1(dsi, PING);
-}
+//static int dsicmd_wake_camera(dsi_camera_t *dsi) {
+//	return dsicmd_command_1(dsi, PING);
+//}
 
 static int dsicmd_reset_camera(dsi_camera_t *dsi) {
 	return dsicmd_command_1(dsi, RESET);
@@ -813,36 +813,36 @@ static int dsicmd_set_gain(dsi_camera_t *dsi, int gain) {
 	return dsicmd_command_2(dsi, SET_GAIN, gain);
 }
 
-static int dsicmd_get_gain(dsi_camera_t *dsi) {
-	return dsicmd_command_1(dsi, GET_GAIN);
-}
+//static int dsicmd_get_gain(dsi_camera_t *dsi) {
+//	return dsicmd_command_1(dsi, GET_GAIN);
+//}
 
 static int dsicmd_set_offset(dsi_camera_t *dsi, int offset) {
 	/* FIXME: check offset for validity */
 	return dsicmd_command_2(dsi, SET_OFFSET, offset);
 }
 
-static int dsicmd_get_offset(dsi_camera_t *dsi) {
-	return dsicmd_command_1(dsi, GET_OFFSET);
-}
+//static int dsicmd_get_offset(dsi_camera_t *dsi) {
+//	return dsicmd_command_1(dsi, GET_OFFSET);
+//}
 
 static int dsicmd_set_vdd_mode(dsi_camera_t *dsi, int mode) {
 	/* FIXME: check mode for validity */
 	return dsicmd_command_2(dsi, SET_VDD_MODE, mode);
 }
 
-static int dsicmd_get_vdd_mode(dsi_camera_t *dsi) {
-	return dsicmd_command_1(dsi, GET_VDD_MODE);
-}
+//static int dsicmd_get_vdd_mode(dsi_camera_t *dsi) {
+//	return dsicmd_command_1(dsi, GET_VDD_MODE);
+//}
 
 static int dsicmd_set_flush_mode(dsi_camera_t *dsi, int mode) {
 	/* FIXME: check mode for validity */
 	return dsicmd_command_2(dsi, SET_FLUSH_MODE, mode);
 }
 
-static int dsicmd_get_flush_mode(dsi_camera_t *dsi) {
-	return dsicmd_command_1(dsi, GET_FLUSH_MODE);
-}
+//static int dsicmd_get_flush_mode(dsi_camera_t *dsi) {
+//	return dsicmd_command_1(dsi, GET_FLUSH_MODE);
+//}
 
 static int dsicmd_set_readout_mode(dsi_camera_t *dsi, int mode) {
 	/* FIXME: check mode for validity */
@@ -858,39 +858,39 @@ static int dsicmd_set_readout_delay(dsi_camera_t *dsi, int delay) {
 	return dsicmd_command_2(dsi, SET_READOUT_DELAY, delay);
 }
 
-static int dsicmd_get_readout_delay(dsi_camera_t *dsi) {
-	return dsicmd_command_1(dsi, GET_READOUT_DELAY);
-}
+//static int dsicmd_get_readout_delay(dsi_camera_t *dsi) {
+//	return dsicmd_command_1(dsi, GET_READOUT_DELAY);
+//}
 
 static int dsicmd_set_readout_speed(dsi_camera_t *dsi, int speed) {
 	/* FIXME: check speed for validity */
 	return dsicmd_command_2(dsi, SET_READOUT_SPEED, speed);
 }
 
-static int dsicmd_get_readout_speed(dsi_camera_t *dsi) {
-	return dsicmd_command_1(dsi, GET_READOUT_SPEED);
-}
+//static int dsicmd_get_readout_speed(dsi_camera_t *dsi) {
+//	return dsicmd_command_1(dsi, GET_READOUT_SPEED);
+//}
 
 static int dsicmd_get_temperature(dsi_camera_t *dsi) {
 	if (!dsi->has_temperature_sensor) return NO_TEMP_SENSOR;
 	return dsicmd_command_1(dsi, GET_TEMP);
 }
 
-static int dsicmd_get_row_count_odd(dsi_camera_t *dsi) {
-	/* While we read the value from the camera, it lies except for the
-	   original DSI.  So if it has been set, we just use it as-is. */
-	if (dsi->read_height_odd <= 0)
-		dsi->read_height_odd = dsicmd_command_1(dsi, GET_ROW_COUNT_ODD);
-	return dsi->read_height_odd;
-}
+//static int dsicmd_get_row_count_odd(dsi_camera_t *dsi) {
+//	/* While we read the value from the camera, it lies except for the
+//	   original DSI.  So if it has been set, we just use it as-is. */
+//	if (dsi->read_height_odd <= 0)
+//		dsi->read_height_odd = dsicmd_command_1(dsi, GET_ROW_COUNT_ODD);
+//	return dsi->read_height_odd;
+//}
 
-static int dsicmd_get_row_count_even(dsi_camera_t *dsi) {
-	/* While we read the value from the camera, it lies except for the
-	   original DSI.  So if it has been set, we just use it as-is. */
-	if (dsi->read_height_even <= 0)
-		dsi->read_height_even = dsicmd_command_1(dsi, GET_ROW_COUNT_EVEN);
-	return dsi->read_height_even;
-}
+//static int dsicmd_get_row_count_even(dsi_camera_t *dsi) {
+//	/* While we read the value from the camera, it lies except for the
+//	   original DSI.  So if it has been set, we just use it as-is. */
+//	if (dsi->read_height_even <= 0)
+//		dsi->read_height_even = dsicmd_command_1(dsi, GET_ROW_COUNT_EVEN);
+//	return dsi->read_height_even;
+//}
 
 
 static unsigned char dsicmd_get_eeprom_byte(dsi_camera_t *dsi, int offset) {
@@ -1008,10 +1008,10 @@ static void dsicmd_load_status(dsi_camera_t *dsi) {
 	}
 }
 
-static int dsicmd_get_usb_speed(dsi_camera_t *dsi) {
-	dsicmd_load_status(dsi);
-	return dsi->usb_speed;
-}
+//static int dsicmd_get_usb_speed(dsi_camera_t *dsi) {
+//	dsicmd_load_status(dsi);
+//	return dsi->usb_speed;
+//}
 
 int dsicmd_get_firmware_debug(dsi_camera_t *dsi) {
 	dsicmd_load_status(dsi);
@@ -1639,7 +1639,7 @@ static int dsicmd_write_firmware(libusb_device_handle *handle) {
 	return rc;
 }
 
-bool dsi_load_firmware() {
+bool dsi_load_firmware(void) {
 	struct libusb_device **list = NULL;
 	struct libusb_device_descriptor desc;
 	int i;
@@ -2147,8 +2147,8 @@ int dsitst_read_image(dsi_camera_t *dsi, const char *filename, int is_binary) {
 		regmatch_t pmatch[32];
 		const char *regex = " *([0-9a-f]{8}):( [0-9a-f]{2}){16}";
 		int status;
-		unsigned char *write_buffer;
-		size_t buffer_size;
+		unsigned char *write_buffer = NULL;
+		size_t buffer_size = 0;
 
 		status = regcomp(&preg, regex, REG_EXTENDED|REG_ICASE);
 		assert(status == 0);

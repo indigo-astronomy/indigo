@@ -630,7 +630,7 @@ static duk_ret_t delete_property(duk_context *ctx) {
 
 static void timer_handler(indigo_device *device, void *data) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	uintptr_t index = (int)data;
+	uintptr_t index = (uintptr_t)data;
 	duk_push_global_object(PRIVATE_DATA->ctx);
 	duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_timers");
 	duk_push_number(PRIVATE_DATA->ctx, (double)(index - 1));
