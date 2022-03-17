@@ -186,8 +186,8 @@ static void process_plug_event(libusb_device *dev) {
 		NULL,
 		guider_detach
 	);
-	pthread_mutex_lock(&hotplug_mutex);
 	const char *name;
+	pthread_mutex_lock(&hotplug_mutex);
 	if (libgpusb_guider(dev, &name)) {
 		gpusb_private_data *private_data = indigo_safe_malloc(sizeof(gpusb_private_data));
 		private_data->dev = dev;
