@@ -397,7 +397,7 @@ static void process_plug_event(indigo_device *unused) {
 	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
 	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 	pthread_mutex_unlock(&device_mutex);
 }
