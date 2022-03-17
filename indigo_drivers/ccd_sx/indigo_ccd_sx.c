@@ -1186,9 +1186,12 @@ static void process_unplug_event(libusb_device *dev) {
 	}
 	if (private_data != NULL) {
 		libusb_unref_device(dev);
-		if (private_data->buffer != NULL) free(private_data->buffer);
-		if (private_data->even != NULL) free(private_data->even);
-		if (private_data->odd != NULL) free(private_data->odd);
+		if (private_data->buffer != NULL)
+			free(private_data->buffer);
+		if (private_data->even != NULL)
+			free(private_data->even);
+		if (private_data->odd != NULL)
+			free(private_data->odd);
 		free(private_data);
 	}
 	pthread_mutex_unlock(&device_mutex);
@@ -1196,15 +1199,17 @@ static void process_unplug_event(libusb_device *dev) {
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
-	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
-		INDIGO_ASYNC(process_plug_event, dev);
-		break;
-	case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
-		process_unplug_event(dev);
-		break;
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			INDIGO_ASYNC(process_plug_event, dev);
+			break;
+		}
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+			process_unplug_event(dev);
+			break;
+		}
 	}
 	return 0;
-};
+}
 
 static libusb_hotplug_callback_handle callback_handle;
 
