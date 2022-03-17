@@ -26,7 +26,7 @@
 #define MAX_PATH                      255     /* Maximal Path Length */
 
 #define DRIVER_NAME		"indigo_focuser_fli"
-#define DRIVER_VERSION             0x000A
+#define DRIVER_VERSION             0x000B
 #define FLI_VENDOR_ID              0x0f18
 
 #define POLL_TIME                       1     /* Seconds */
@@ -582,7 +582,7 @@ static void process_plug_event(indigo_device *unused) {
 	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
 	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 	pthread_mutex_unlock(&device_mutex);
 }
