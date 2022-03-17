@@ -958,8 +958,7 @@ static bool hotplug_callback_initialized = false;
 static indigo_device *devices[ALTAIRCAM_MAX];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void hotplug_callback(void* pCallbackCtx) {
-	indigo_usleep(200000);
+static void process_plug_event(indigo_device *unusued) {
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < ALTAIRCAM_MAX; i++) {
 		indigo_device *device = devices[i];
@@ -997,7 +996,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 			private_data->camera = camera;
 			for (int i = 0; i < ALTAIRCAM_MAX; i++) {
 				if (devices[j] == NULL) {
-					indigo_async((void *)(void *)indigo_attach_device, devices[j] = camera);
+					indigo_attach_device(devices[j] = camera);
 					break;
 				}
 			}
@@ -1014,7 +1013,7 @@ static void hotplug_callback(void* pCallbackCtx) {
 				snprintf(guider->name, INDIGO_NAME_SIZE, "AltairAstro %s (guider) #%s", cam.displayname, cam.id);
 				guider->private_data = private_data;
 				private_data->guider = guider;
-				indigo_async((void *)(void *)indigo_attach_device, guider);
+				indigo_attach_device(guider);
 			}
 		}
 	}
@@ -1034,6 +1033,10 @@ static void hotplug_callback(void* pCallbackCtx) {
 		}
 	}
 	pthread_mutex_unlock(&mutex);
+}
+
+static void hotplug_callback(void* pCallbackCtx) {
+	indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 }
 
 indigo_result indigo_ccd_altair(indigo_driver_action action, indigo_driver_info *info) {
