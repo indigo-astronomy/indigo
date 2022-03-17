@@ -139,7 +139,7 @@ typedef SSIZE_T ssize_t;
  * Internally, LIBUSB_API_VERSION is defined as follows:
  * (libusb major << 24) | (libusb minor << 16) | (16 bit incremental)
  */
-#define LIBUSB_API_VERSION 0x01000108
+#define LIBUSB_API_VERSION 0x01000109
 
 /* The following is kept for compatibility, but will be deprecated in the future */
 #define LIBUSBX_API_VERSION LIBUSB_API_VERSION
@@ -2115,17 +2115,15 @@ enum libusb_option {
 	 * This is typically needed on Android, where access to USB devices
 	 * is limited.
 	 *
+	 * For LIBUSB_API_VERSION 0x01000108 it was called LIBUSB_OPTION_WEAK_AUTHORITY
+	 *
 	 * Only valid on Linux.
 	 */
 	LIBUSB_OPTION_NO_DEVICE_DISCOVERY = 2,
 
-	/** Flag that libusb has weak authority.
-	 *
-	 * (Deprecated) alias for LIBUSB_OPTION_NO_DEVICE_DISCOVERY
-	 */
-	LIBUSB_OPTION_WEAK_AUTHORITY = 3,
+#define LIBUSB_OPTION_WEAK_AUTHORITY LIBUSB_OPTION_NO_DEVICE_DISCOVERY
 
-	LIBUSB_OPTION_MAX = 4
+	LIBUSB_OPTION_MAX = 3
 };
 
 int LIBUSB_CALL libusb_set_option(libusb_context *ctx, enum libusb_option option, ...);
