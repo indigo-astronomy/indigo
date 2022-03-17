@@ -124,6 +124,7 @@ case $host in
 	platform=windows
 	test "x$enable_shared" = xyes && create_import_lib=yes
 	EXTRA_CFLAGS="-mwin32 -fno-omit-frame-pointer"
+	EXTRA_LDFLAGS="-static-libgcc"
 	;;
 *)
 	AC_MSG_RESULT([Null])
@@ -152,6 +153,7 @@ if test "x$platform" = xposix; then
 	AC_SEARCH_LIBS([pthread_create], [pthread],
 		[test "x$ac_cv_search_pthread_create" != "xnone required" && AC_SUBST(THREAD_LIBS, [-lpthread])],
 		[], [])
+	AC_SEARCH_LIBS([__atomic_fetch_add_4], [atomic])
 elif test "x$platform" = xwindows; then
 	AC_DEFINE([PLATFORM_WINDOWS], [1], [Define to 1 if compiling for a Windows platform.])
 else
@@ -206,7 +208,7 @@ if test "x$platform" = xposix; then
 		AC_MSG_CHECKING([whether OS X target version is 10.12 or later])
 		AC_COMPILE_IFELSE([AC_LANG_PROGRAM([
 				#include <AvailabilityMacros.h>
-				#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_12
+				#if MAC_OS_X_VERSION_MIN_REQUIRED < 101200
 				# error "Target OS X version is too old"
 				#endif
 			], [])],
@@ -392,6 +394,8 @@ AM_CXXFLAGS="-std=${c_dialect}++11 ${EXTRA_CFLAGS} ${SHARED_CFLAGS} -Wmissing-de
 AC_SUBST(AM_CXXFLAGS)
 
 AC_SUBST(LT_LDFLAGS)
+
+AC_SUBST([EXTRA_LDFLAGS])
 
 dnl set name of html output directory for doxygen
 AC_SUBST(DOXYGEN_HTMLDIR, [api-1.0])

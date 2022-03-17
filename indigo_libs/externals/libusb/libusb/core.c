@@ -2229,7 +2229,6 @@ int API_EXPORTED libusb_set_option(libusb_context *ctx,
 		/* Handle all backend-specific options here */
 	case LIBUSB_OPTION_USE_USBDK:
 	case LIBUSB_OPTION_NO_DEVICE_DISCOVERY:
-	case LIBUSB_OPTION_WEAK_AUTHORITY:
 		if (usbi_backend.set_option)
 			return usbi_backend.set_option(ctx, option, ap);
 
@@ -2319,16 +2318,14 @@ int API_EXPORTED libusb_init(libusb_context **ctx)
 	list_init(&_ctx->usb_devs);
 	list_init(&_ctx->open_devs);
 
-	/* apply options to new contexts (also default context being created) */
-	if (ctx || !usbi_default_context) {
-		for (enum libusb_option option = 0 ; option < LIBUSB_OPTION_MAX ; option++) {
-			if (LIBUSB_OPTION_LOG_LEVEL == option || !default_context_options[option].is_set) {
-				continue;
-			}
-			r = libusb_set_option(_ctx, option);
-			if (LIBUSB_SUCCESS != r)
-				goto err_free_ctx;
+	/* apply default options to all new contexts */
+	for (enum libusb_option option = 0 ; option < LIBUSB_OPTION_MAX ; option++) {
+		if (LIBUSB_OPTION_LOG_LEVEL == option || !default_context_options[option].is_set) {
+			continue;
 		}
+		r = libusb_set_option(_ctx, option);
+		if (LIBUSB_SUCCESS != r)
+			goto err_free_ctx;
 	}
 
 	/* default context must be initialized before calling usbi_dbg */
@@ -2342,22 +2339,21 @@ int API_EXPORTED libusb_init(libusb_context **ctx)
 		libusb_version_internal.micro, libusb_version_internal.nano, libusb_version_internal.rc);
 
 	r = usbi_io_init(_ctx);
-	if (r < 0) {
-		usbi_mutex_static_unlock(&default_context_lock);
+	if (r < 0)
 		goto err_free_ctx;
-	}
 
 	usbi_mutex_static_lock(&active_contexts_lock);
 	list_add(&_ctx->list, &active_contexts_list);
 	usbi_mutex_static_unlock(&active_contexts_lock);
-
-	usbi_hotplug_init(_ctx);
 
 	if (usbi_backend.init) {
 		r = usbi_backend.init(_ctx);
 		if (r)
 			goto err_io_exit;
 	}
+
+	/* Initialize hotplug after the initial enumeration is done. */
+	usbi_hotplug_init(_ctx);
 
 	if (ctx)
 		*ctx = _ctx;
@@ -2371,21 +2367,22 @@ err_io_exit:
 	list_del(&_ctx->list);
 	usbi_mutex_static_unlock(&active_contexts_lock);
 
-	if (!ctx) {
-		usbi_default_context = NULL;
-		default_context_refcnt = 0;
-	}
-
-	usbi_mutex_static_unlock(&default_context_lock);
-
 	usbi_hotplug_exit(_ctx);
 	usbi_io_exit(_ctx);
 
 err_free_ctx:
+	if (!ctx) {
+		/* clear default context that was not fully initialized */
+		usbi_default_context = NULL;
+		default_context_refcnt = 0;
+	}
+
 	usbi_mutex_destroy(&_ctx->open_devs_lock);
 	usbi_mutex_destroy(&_ctx->usb_devs_lock);
 
 	free(_ctx);
+
+	usbi_mutex_static_unlock(&default_context_lock);
 
 	return r;
 }
@@ -2445,6 +2442,7 @@ void API_EXPORTED libusb_exit(libusb_context *ctx)
 	for_each_device(_ctx, dev) {
 		usbi_warn(_ctx, "device %d.%d still referenced",
 			dev->bus_number, dev->device_address);
+		DEVICE_CTX(dev) = NULL;
 	}
 
 	if (!list_empty(&_ctx->open_devs))
