@@ -26,7 +26,7 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
@@ -565,8 +565,9 @@ static indigo_result guider_detach(indigo_device *device) {
 #define OTI_LOADER_PRODUCT_ID 0x296D
 
 static indigo_device *devices[MAX_DEVICES];
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static void process_plug_event(libusb_device *dev) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -584,63 +585,72 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		guider_detach
 	);
 	struct libusb_device_descriptor descriptor;
+	pthread_mutex_lock(&device_mutex);
+	INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
+	if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID) || (descriptor.idVendor == OTI_LOADER_VENDOR_ID && descriptor.idProduct == OTI_LOADER_PRODUCT_ID)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
+		libusb_ref_device(dev);
+		indigo_async((void *)(void *)ssag_firmware, dev);
+	} else if (descriptor.idVendor == SSAG_VENDOR_ID && descriptor.idProduct == SSAG_PRODUCT_ID) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
+		ssag_private_data *private_data = indigo_safe_malloc(sizeof(ssag_private_data));
+		libusb_ref_device(dev);
+		private_data->dev = dev;
+		indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+		char usb_path[INDIGO_NAME_SIZE];
+		indigo_get_usb_path(dev, usb_path);
+		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG #%s", usb_path);
+		device->private_data = private_data;
+		for (int j = 0; j < MAX_DEVICES; j++) {
+			if (devices[j] == NULL) {
+				indigo_attach_device(devices[j] = device);
+				break;
+			}
+		}
+		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG (guider) #%s", usb_path);
+		device->private_data = private_data;
+		for (int j = 0; j < MAX_DEVICES; j++) {
+			if (devices[j] == NULL) {
+				indigo_attach_device(devices[j] = device);
+				break;
+			}
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
 
+static void process_unplug_event(libusb_device *dev) {
+	pthread_mutex_lock(&device_mutex);
+	ssag_private_data *private_data = NULL;
+	for (int j = 0; j < MAX_DEVICES; j++) {
+		if (devices[j] != NULL) {
+			indigo_device *device = devices[j];
+			if (PRIVATE_DATA->dev == dev) {
+				private_data = PRIVATE_DATA;
+				indigo_detach_device(device);
+				free(device);
+				devices[j] = NULL;
+			}
+		}
+	}
+	if (private_data != NULL) {
+		libusb_unref_device(dev);
+		if (private_data->buffer)
+			free(private_data->buffer);
+		free(private_data);
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-			if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID) || (descriptor.idVendor == OTI_LOADER_VENDOR_ID && descriptor.idProduct == OTI_LOADER_PRODUCT_ID)) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
-				libusb_ref_device(dev);
-				indigo_async((void *)(void *)ssag_firmware, dev);
-			} else if (descriptor.idVendor == SSAG_VENDOR_ID && descriptor.idProduct == SSAG_PRODUCT_ID) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
-				ssag_private_data *private_data = indigo_safe_malloc(sizeof(ssag_private_data));
-				libusb_ref_device(dev);
-				private_data->dev = dev;
-				indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-				char usb_path[INDIGO_NAME_SIZE];
-				indigo_get_usb_path(dev, usb_path);
-				snprintf(device->name, INDIGO_NAME_SIZE, "SSAG #%s", usb_path);
-				device->private_data = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
-				}
-				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-				snprintf(device->name, INDIGO_NAME_SIZE, "SSAG (guider) #%s", usb_path);
-				device->private_data = private_data;
-				for (int j = 0; j < MAX_DEVICES; j++) {
-					if (devices[j] == NULL) {
-						indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-						break;
-					}
-				}
-			}
-			break;
-		}
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			ssag_private_data *private_data = NULL;
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] != NULL) {
-					indigo_device *device = devices[j];
-					if (PRIVATE_DATA->dev == dev) {
-						private_data = PRIVATE_DATA;
-						indigo_detach_device(device);
-						free(device);
-						devices[j] = NULL;
-					}
-				}
-			}
-			if (private_data != NULL) {
-				libusb_unref_device(dev);
-				if (private_data->buffer)
-					free(private_data->buffer);
-				free(private_data);
-			}
-			break;
-		}
+	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
+		INDIGO_ASYNC(process_plug_event, dev);
+		break;
+	case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
+		process_unplug_event(dev);
+		break;
 	}
 	return 0;
 };
