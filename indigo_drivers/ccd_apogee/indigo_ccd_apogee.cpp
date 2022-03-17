@@ -1256,7 +1256,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
-				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
+				indigo_attach_device(device);
 				break;
 			}
 		}
@@ -1381,7 +1381,7 @@ static void process_plug_event(indigo_device *unused) {
 		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
-				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
+				indigo_attach_device(devices[j] = device);
 				break;
 			}
 		}
