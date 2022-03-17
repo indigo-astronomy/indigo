@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -486,8 +486,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 #define MAX_DEVICES                   10
 
 static indigo_device *devices[MAX_DEVICES];
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static void process_plug_event(libusb_device *dev) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -497,62 +498,74 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		ccd_detach
 	);
 
-	switch (event) {
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			uvc_device_t **list;
-			uvc_error_t res = uvc_get_device_list(uvc_ctx, &list);
+	uvc_device_t **list;
+	pthread_mutex_lock(&device_mutex);
+
+	uvc_error_t res = uvc_get_device_list(uvc_ctx, &list);
+	if (res != UVC_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_get_device_list() -> %s", uvc_strerror(res));
+		pthread_mutex_unlock(&device_mutex);
+		return;
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_init() -> %s", uvc_strerror(res));
+	}
+	for (int i = 0; list[i]; i++) {
+		uvc_device_t *uvc_dev = list[i];
+		if (uvc_get_bus_number(uvc_dev) == libusb_get_bus_number(dev) && uvc_get_device_address(uvc_dev) == libusb_get_device_address(dev)) {
+			uvc_device_descriptor_t *descriptor;
+			uvc_get_device_descriptor(list[i], &descriptor);
 			if (res != UVC_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_get_device_list() -> %s", uvc_strerror(res));
-				return 0;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_get_device_descriptor() -> %s", uvc_strerror(res));
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_init() -> %s", uvc_strerror(res));
 			}
-			for (int i = 0; list[i]; i++) {
-				uvc_device_t *uvc_dev = list[i];
-				if (uvc_get_bus_number(uvc_dev) == libusb_get_bus_number(dev) && uvc_get_device_address(uvc_dev) == libusb_get_device_address(dev)) {
-					uvc_device_descriptor_t *descriptor;
-					uvc_get_device_descriptor(list[i], &descriptor);
-					if (res != UVC_SUCCESS) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "uvc_get_device_descriptor() -> %s", uvc_strerror(res));
-					} else {
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_init() -> %s", uvc_strerror(res));
-					}
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%p %s %s detected", uvc_dev, descriptor->manufacturer, descriptor->product);
-					uvc_private_data *private_data = indigo_safe_malloc(sizeof(uvc_private_data));
-					private_data->dev = uvc_dev;
-					indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-					char usb_path[INDIGO_NAME_SIZE];
-					indigo_get_usb_path(dev, usb_path);
-					snprintf(device->name, INDIGO_NAME_SIZE, "%s %s #%s", descriptor->manufacturer, descriptor->product, usb_path);
-					device->private_data = private_data;
-					for (int j = 0; j < MAX_DEVICES; j++) {
-						if (devices[j] == NULL) {
-							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-							break;
-						}
-					}
-				} else {
-					uvc_unref_device(uvc_dev);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_unref_device");
-				}
-			}
-			uvc_free_device_list(list, 0);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_free_device_list");
-			break;
-		}
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%p %s %s detected", uvc_dev, descriptor->manufacturer, descriptor->product);
+			uvc_private_data *private_data = indigo_safe_malloc(sizeof(uvc_private_data));
+			private_data->dev = uvc_dev;
+			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+			char usb_path[INDIGO_NAME_SIZE];
+			indigo_get_usb_path(dev, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s %s #%s", descriptor->manufacturer, descriptor->product, usb_path);
+			device->private_data = private_data;
 			for (int j = 0; j < MAX_DEVICES; j++) {
-				indigo_device *device = devices[j];
-				if (device && uvc_get_bus_number(PRIVATE_DATA->dev) == libusb_get_bus_number(dev) && uvc_get_device_address(PRIVATE_DATA->dev) == libusb_get_device_address(dev)) {
-					indigo_detach_device(device);
-					free(PRIVATE_DATA);
-					free(device);
-					devices[j] = NULL;
+				if (devices[j] == NULL) {
+					indigo_attach_device(devices[j] = device);
 					break;
 				}
 			}
+		} else {
+			uvc_unref_device(uvc_dev);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_unref_device");
+		}
+	}
+	uvc_free_device_list(list, 0);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_free_device_list");
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static void process_unplug_event(libusb_device *dev) {
+	pthread_mutex_lock(&device_mutex);
+	for (int j = 0; j < MAX_DEVICES; j++) {
+		indigo_device *device = devices[j];
+		if (device && uvc_get_bus_number(PRIVATE_DATA->dev) == libusb_get_bus_number(dev) && uvc_get_device_address(PRIVATE_DATA->dev) == libusb_get_device_address(dev)) {
+			indigo_detach_device(device);
+			free(PRIVATE_DATA);
+			free(device);
+			devices[j] = NULL;
 			break;
 		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+	switch (event) {
+	case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED:
+		INDIGO_ASYNC(process_plug_event, dev);
+		break;
+	case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT:
+		process_unplug_event(dev);
+		break;
 	}
 	return 0;
 };
