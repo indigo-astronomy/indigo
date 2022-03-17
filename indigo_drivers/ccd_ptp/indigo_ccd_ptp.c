@@ -496,8 +496,9 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return indigo_focuser_detach(device);
 }
 
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static void process_plug_event(libusb_device *dev) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -506,7 +507,6 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		NULL,
 		ccd_detach
 	);
-
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		focuser_attach,
@@ -515,171 +515,181 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		NULL,
 		focuser_detach
 	);
-
 	struct libusb_device_descriptor descriptor;
-
-	switch (event) {
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			int rc = libusb_get_device_descriptor(dev, &descriptor);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "searching for %04x:%04x", descriptor.idVendor, descriptor.idProduct);
-			for (int i = 0; CAMERA[i].vendor; i++) {
-				if (CAMERA[i].vendor == descriptor.idVendor && (CAMERA[i].product == descriptor.idProduct || CAMERA[i].product == 0xFFFF)) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "found %s", CAMERA[i].name);
-					ptp_private_data *private_data = indigo_safe_malloc(sizeof(ptp_private_data));
-					private_data->dev = dev;
-					private_data->model = CAMERA[i];
-					if (descriptor.idVendor == CANON_VID) {
-						private_data->operation_code_label = ptp_operation_canon_code_label;
-						private_data->response_code_label = ptp_response_canon_code_label;
-						private_data->event_code_label = ptp_event_canon_code_label;
-						private_data->property_code_name = ptp_property_canon_code_name;
-						private_data->property_code_label = ptp_property_canon_code_label;
-						private_data->property_value_code_label = ptp_property_canon_value_code_label;
-						private_data->initialise = ptp_canon_initialise;
-						private_data->handle_event = NULL;
-						private_data->fix_property = NULL;
-						private_data->set_property = ptp_canon_set_property;
-						private_data->exposure = ptp_canon_exposure;
-						private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_liveview : NULL;
-						private_data->lock = ptp_canon_lock;
-						private_data->af = ptp_canon_af;
-						private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_zoom : NULL;
-						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_focus : NULL;
-						private_data->set_host_time = ptp_canon_set_host_time;
-						private_data->check_dual_compression = ptp_canon_check_dual_compression;
-					} else if (descriptor.idVendor == NIKON_VID) {
-						private_data->operation_code_label = ptp_operation_nikon_code_label;
-						private_data->response_code_label = ptp_response_nikon_code_label;
-						private_data->event_code_label = ptp_event_nikon_code_label;
-						private_data->property_code_name = ptp_property_nikon_code_name;
-						private_data->property_code_label = ptp_property_nikon_code_label;
-						private_data->property_value_code_label = ptp_property_nikon_value_code_label;
-						private_data->initialise = ptp_nikon_initialise;
-						private_data->handle_event = ptp_nikon_handle_event;
-						private_data->fix_property = ptp_nikon_fix_property;
-						private_data->set_property = ptp_nikon_set_property;
-						private_data->exposure = ptp_nikon_exposure;
-						private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_liveview : NULL;
-						private_data->lock = ptp_nikon_lock;
-						private_data->af = NULL;
-						private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_zoom : NULL;
-						private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus : NULL;
-						private_data->set_host_time = ptp_set_host_time;
-						private_data->check_dual_compression = ptp_nikon_check_dual_compression;
-					} else if (descriptor.idVendor == SONY_VID) {
-						private_data->operation_code_label = ptp_operation_sony_code_label;
-						private_data->response_code_label = ptp_response_code_label;
-						private_data->event_code_label = ptp_event_sony_code_label;
-						private_data->property_code_name = ptp_property_sony_code_name;
-						private_data->property_code_label = ptp_property_sony_code_label;
-						private_data->property_value_code_label = ptp_property_sony_value_code_label;
-						private_data->initialise = ptp_sony_initialise;
-						private_data->handle_event = ptp_sony_handle_event;
-						private_data->fix_property = NULL;
-						private_data->set_property = ptp_sony_set_property;
-						private_data->exposure = ptp_sony_exposure;
-						private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_sony_liveview : NULL;
-						private_data->lock = NULL;
-						private_data->af = ptp_sony_af;
-						private_data->zoom = NULL;
-						private_data->focus = NULL;
-						private_data->set_host_time = NULL;
-						private_data->check_dual_compression = ptp_sony_check_dual_compression;
-					} else if (descriptor.idVendor == FUJI_VID) {
-						private_data->operation_code_label = ptp_operation_fuji_code_label;
-						private_data->response_code_label = ptp_response_code_label;
-						private_data->event_code_label = ptp_event_fuji_code_label;
-						private_data->property_code_name = ptp_property_fuji_code_name;
-						private_data->property_code_label = ptp_property_fuji_code_label;
-						private_data->property_value_code_label = ptp_property_fuji_value_code_label;
-						private_data->initialise = ptp_fuji_initialise;
-						private_data->handle_event = NULL;
-						private_data->fix_property = ptp_fuji_fix_property;
-						private_data->set_property = ptp_fuji_set_property;
-						private_data->exposure = ptp_fuji_exposure;
-						private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_fuji_liveview : NULL;
-						private_data->lock = NULL;
-						private_data->af = NULL;
-						private_data->zoom = NULL;
-						private_data->focus = NULL;
-						private_data->set_host_time = ptp_set_host_time;
-						private_data->check_dual_compression = ptp_fuji_check_dual_compression;
-					} else {
-						private_data->operation_code_label = ptp_operation_code_label;
-						private_data->response_code_label = ptp_response_code_label;
-						private_data->event_code_label = ptp_event_code_label;
-						private_data->property_code_name = ptp_property_code_name;
-						private_data->property_code_label = ptp_property_code_label;
-						private_data->property_value_code_label = ptp_property_value_code_label;
-						private_data->initialise = ptp_initialise;
-						private_data->handle_event = ptp_handle_event;
-						private_data->fix_property = NULL;
-						private_data->set_property = ptp_set_property;
-						private_data->exposure = ptp_exposure;
-						private_data->liveview = NULL;
-						private_data->lock = NULL;
-						private_data->af = NULL;
-						private_data->zoom = NULL;
-						private_data->focus = NULL;
-						private_data->set_host_time = ptp_set_host_time;
-						private_data->check_dual_compression = NULL;
-					}
-					libusb_ref_device(dev);
-					indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-					device->master_device = device;
-					char usb_path[INDIGO_NAME_SIZE];
-					indigo_get_usb_path(dev, usb_path);
-					snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", CAMERA[i].name, usb_path);
-					device->private_data = private_data;
-					if (private_data->focus) {
-						indigo_device *focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
-						focuser->master_device = device;
-						snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser) #%s", CAMERA[i].name, usb_path);
-						focuser->private_data = private_data;
-						private_data->focuser = focuser;
-					}
-					for (int j = 0; j < MAX_DEVICES; j++) {
-						if (devices[j] == NULL) {
-							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-							break;
-						}
-					}
+	pthread_mutex_lock(&device_mutex);
+	int rc = libusb_get_device_descriptor(dev, &descriptor);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "searching for %04x:%04x", descriptor.idVendor, descriptor.idProduct);
+	for (int i = 0; CAMERA[i].vendor; i++) {
+		if (CAMERA[i].vendor == descriptor.idVendor && (CAMERA[i].product == descriptor.idProduct || CAMERA[i].product == 0xFFFF)) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "found %s", CAMERA[i].name);
+			ptp_private_data *private_data = indigo_safe_malloc(sizeof(ptp_private_data));
+			private_data->dev = dev;
+			private_data->model = CAMERA[i];
+			if (descriptor.idVendor == CANON_VID) {
+				private_data->operation_code_label = ptp_operation_canon_code_label;
+				private_data->response_code_label = ptp_response_canon_code_label;
+				private_data->event_code_label = ptp_event_canon_code_label;
+				private_data->property_code_name = ptp_property_canon_code_name;
+				private_data->property_code_label = ptp_property_canon_code_label;
+				private_data->property_value_code_label = ptp_property_canon_value_code_label;
+				private_data->initialise = ptp_canon_initialise;
+				private_data->handle_event = NULL;
+				private_data->fix_property = NULL;
+				private_data->set_property = ptp_canon_set_property;
+				private_data->exposure = ptp_canon_exposure;
+				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_liveview : NULL;
+				private_data->lock = ptp_canon_lock;
+				private_data->af = ptp_canon_af;
+				private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_zoom : NULL;
+				private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_focus : NULL;
+				private_data->set_host_time = ptp_canon_set_host_time;
+				private_data->check_dual_compression = ptp_canon_check_dual_compression;
+			} else if (descriptor.idVendor == NIKON_VID) {
+				private_data->operation_code_label = ptp_operation_nikon_code_label;
+				private_data->response_code_label = ptp_response_nikon_code_label;
+				private_data->event_code_label = ptp_event_nikon_code_label;
+				private_data->property_code_name = ptp_property_nikon_code_name;
+				private_data->property_code_label = ptp_property_nikon_code_label;
+				private_data->property_value_code_label = ptp_property_nikon_value_code_label;
+				private_data->initialise = ptp_nikon_initialise;
+				private_data->handle_event = ptp_nikon_handle_event;
+				private_data->fix_property = ptp_nikon_fix_property;
+				private_data->set_property = ptp_nikon_set_property;
+				private_data->exposure = ptp_nikon_exposure;
+				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_liveview : NULL;
+				private_data->lock = ptp_nikon_lock;
+				private_data->af = NULL;
+				private_data->zoom = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_zoom : NULL;
+				private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus : NULL;
+				private_data->set_host_time = ptp_set_host_time;
+				private_data->check_dual_compression = ptp_nikon_check_dual_compression;
+			} else if (descriptor.idVendor == SONY_VID) {
+				private_data->operation_code_label = ptp_operation_sony_code_label;
+				private_data->response_code_label = ptp_response_code_label;
+				private_data->event_code_label = ptp_event_sony_code_label;
+				private_data->property_code_name = ptp_property_sony_code_name;
+				private_data->property_code_label = ptp_property_sony_code_label;
+				private_data->property_value_code_label = ptp_property_sony_value_code_label;
+				private_data->initialise = ptp_sony_initialise;
+				private_data->handle_event = ptp_sony_handle_event;
+				private_data->fix_property = NULL;
+				private_data->set_property = ptp_sony_set_property;
+				private_data->exposure = ptp_sony_exposure;
+				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_sony_liveview : NULL;
+				private_data->lock = NULL;
+				private_data->af = ptp_sony_af;
+				private_data->zoom = NULL;
+				private_data->focus = NULL;
+				private_data->set_host_time = NULL;
+				private_data->check_dual_compression = ptp_sony_check_dual_compression;
+			} else if (descriptor.idVendor == FUJI_VID) {
+				private_data->operation_code_label = ptp_operation_fuji_code_label;
+				private_data->response_code_label = ptp_response_code_label;
+				private_data->event_code_label = ptp_event_fuji_code_label;
+				private_data->property_code_name = ptp_property_fuji_code_name;
+				private_data->property_code_label = ptp_property_fuji_code_label;
+				private_data->property_value_code_label = ptp_property_fuji_value_code_label;
+				private_data->initialise = ptp_fuji_initialise;
+				private_data->handle_event = NULL;
+				private_data->fix_property = ptp_fuji_fix_property;
+				private_data->set_property = ptp_fuji_set_property;
+				private_data->exposure = ptp_fuji_exposure;
+				private_data->liveview = (CAMERA[i].flags && ptp_flag_lv) ? ptp_fuji_liveview : NULL;
+				private_data->lock = NULL;
+				private_data->af = NULL;
+				private_data->zoom = NULL;
+				private_data->focus = NULL;
+				private_data->set_host_time = ptp_set_host_time;
+				private_data->check_dual_compression = ptp_fuji_check_dual_compression;
+			} else {
+				private_data->operation_code_label = ptp_operation_code_label;
+				private_data->response_code_label = ptp_response_code_label;
+				private_data->event_code_label = ptp_event_code_label;
+				private_data->property_code_name = ptp_property_code_name;
+				private_data->property_code_label = ptp_property_code_label;
+				private_data->property_value_code_label = ptp_property_value_code_label;
+				private_data->initialise = ptp_initialise;
+				private_data->handle_event = ptp_handle_event;
+				private_data->fix_property = NULL;
+				private_data->set_property = ptp_set_property;
+				private_data->exposure = ptp_exposure;
+				private_data->liveview = NULL;
+				private_data->lock = NULL;
+				private_data->af = NULL;
+				private_data->zoom = NULL;
+				private_data->focus = NULL;
+				private_data->set_host_time = ptp_set_host_time;
+				private_data->check_dual_compression = NULL;
+			}
+			libusb_ref_device(dev);
+			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+			device->master_device = device;
+			char usb_path[INDIGO_NAME_SIZE];
+			indigo_get_usb_path(dev, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", CAMERA[i].name, usb_path);
+			device->private_data = private_data;
+			if (private_data->focus) {
+				indigo_device *focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
+				focuser->master_device = device;
+				snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser) #%s", CAMERA[i].name, usb_path);
+				focuser->private_data = private_data;
+				private_data->focuser = focuser;
+			}
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				if (devices[j] == NULL) {
+					indigo_attach_device(devices[j] = device);
 					break;
 				}
 			}
 			break;
 		}
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			ptp_private_data *private_data = NULL;
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] != NULL) {
-					indigo_device *device = devices[j];
-					if (PRIVATE_DATA->dev == dev) {
-						private_data = PRIVATE_DATA;
-						if (private_data->focuser) {
-							indigo_detach_device(private_data->focuser);
-							free(private_data->focuser);
-							private_data->focuser = NULL;
-						}
-						indigo_detach_device(device);
-						free(device);
-						devices[j] = NULL;
-					}
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+
+static void process_unplug_event(libusb_device *dev) {
+	pthread_mutex_lock(&device_mutex);
+	ptp_private_data *private_data = NULL;
+	for (int j = 0; j < MAX_DEVICES; j++) {
+		if (devices[j] != NULL) {
+			indigo_device *device = devices[j];
+			if (PRIVATE_DATA->dev == dev) {
+				private_data = PRIVATE_DATA;
+				if (private_data->focuser) {
+					indigo_detach_device(private_data->focuser);
+					free(private_data->focuser);
+					private_data->focuser = NULL;
 				}
+				indigo_detach_device(device);
+				free(device);
+				devices[j] = NULL;
 			}
-			if (private_data != NULL) {
-				libusb_unref_device(dev);
-				if (private_data->vendor_private_data)
-					free(private_data->vendor_private_data);
-				free(private_data);
-			}
+		}
+	}
+	if (private_data != NULL) {
+		libusb_unref_device(dev);
+		if (private_data->vendor_private_data)
+			free(private_data->vendor_private_data);
+		free(private_data);
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+	switch (event) {
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			INDIGO_ASYNC(process_plug_event, dev);
+			break;
+		}
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
+			process_unplug_event(dev);
 			break;
 		}
 	}
 	return 0;
-};
-
+}
 
 static libusb_hotplug_callback_handle callback_handle;
 
