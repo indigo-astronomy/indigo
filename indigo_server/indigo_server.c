@@ -79,7 +79,7 @@
 #include "ccd_apogee/indigo_ccd_apogee.h"
 #include "focuser_usbv3/indigo_focuser_usbv3.h"
 #include "focuser_wemacro/indigo_focuser_wemacro.h"
-//#include "ccd_mi/indigo_ccd_mi.h"
+#include "ccd_mi/indigo_ccd_mi.h"
 #include "aux_joystick/indigo_aux_joystick.h"
 #include "mount_synscan/indigo_mount_synscan.h"
 #include "mount_ioptron/indigo_mount_ioptron.h"
@@ -218,7 +218,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ica,
 #endif
 	indigo_ccd_iidc,
-	//indigo_ccd_mi,
+	indigo_ccd_mi,
 	indigo_ccd_ptp,
 	indigo_ccd_qhy2,
 	indigo_ccd_qsi,

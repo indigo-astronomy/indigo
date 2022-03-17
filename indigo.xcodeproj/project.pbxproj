@@ -631,6 +631,8 @@
 		59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59E38B511F1577A000187839 /* indigo_ica_ptp_nikon.h */; };
 		59E38B561F1577A000187839 /* indigo_ica_ptp_nikon.m in Sources */ = {isa = PBXBuildFile; fileRef = 59E38B521F1577A000187839 /* indigo_ica_ptp_nikon.m */; };
 		59E5A2A323C125A300E8BBBF /* indigo_mount_rainbow.c in Sources */ = {isa = PBXBuildFile; fileRef = 59E5A29823C1238400E8BBBF /* indigo_mount_rainbow.c */; };
+		59E6B7FA27E3835E007A2A7B /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
+		59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
 		59EF8BC924683B2A009D75C5 /* indigo_dome_baader.c in Sources */ = {isa = PBXBuildFile; fileRef = 59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */; };
 		59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59EFE8A22363481D00ED5337 /* indigo_focuser_focusdreampro.c */; };
 		59F0FE2D2083EA4F001B34E9 /* indigo_ccd_simulator_data.c in Sources */ = {isa = PBXBuildFile; fileRef = 59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */; };
@@ -4603,6 +4605,7 @@
 				9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */,
 				9DDEFBFB21EE351C00657C8F /* libaltaircam.dylib in Frameworks */,
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
+				59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
 				9D495737245601B400674101 /* libusb-1.0.0.dylib in Frameworks */,
 			);
@@ -13680,6 +13683,7 @@
 				59A242DA22A2C6AE001C38F8 /* indigo_system_ascol.c in Sources */,
 				9D73E61C21FF37F9003CEC15 /* libuvc_device.c in Sources */,
 				591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */,
+				59E6B7FA27E3835E007A2A7B /* indigo_ccd_mi.c in Sources */,
 				5979C862254710B0005395BE /* indigo_tiff.c in Sources */,
 				9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */,
 				9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */,
