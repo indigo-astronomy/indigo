@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -641,6 +641,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 static indigo_device *devices[MAX_DEVICES];
 static int new_eid = -1;
+static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void callback(int eid) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
@@ -653,8 +654,7 @@ static void callback(int eid) {
 	new_eid = eid;
 }
 
-
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static void process_plug_event(libusb_device *dev) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -679,85 +679,97 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		NULL,
 		wheel_detach
 		);
-	switch (event) {
-		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			new_eid = -1;
-			gxccd_enumerate_usb(callback);
-			if (new_eid != -1) {
-				camera_t *camera = gxccd_initialize_usb(new_eid);
-				if (camera) {
-					char name[128] = "MI ";
-					bool is_guider, has_wheel;
-					gxccd_get_string_parameter(camera, GSP_CAMERA_DESCRIPTION, name + 3, sizeof(name) - 3);
-					gxccd_get_boolean_parameter(camera, GBP_GUIDE, &is_guider);
-					gxccd_get_boolean_parameter(camera, GBP_FILTERS, &has_wheel);
-					gxccd_release(camera);
-					char *end = name + strlen(name) - 1;
-					while(end > name && isspace((unsigned char)*end))
-						end--;
-					end[1] = '\0';
-					mi_private_data *private_data = indigo_safe_malloc(sizeof(mi_private_data));
-					private_data->eid = new_eid;
-					indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-					indigo_device *master_device = device;
-					device->master_device = master_device;
-					snprintf(device->name, INDIGO_NAME_SIZE, "%s #%d", name, new_eid);
-					device->private_data = private_data;
-					for (int j = 0; j < MAX_DEVICES; j++) {
-						if (devices[j] == NULL) {
-							indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-							break;
-						}
-					}
-					if (is_guider) {
-						device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-						device->master_device = master_device;
-						snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%d", name, new_eid);
-						device->private_data = private_data;
-						for (int j = 0; j < MAX_DEVICES; j++) {
-							if (devices[j] == NULL) {
-								indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-								break;
-							}
-						}
-					}
-					if (has_wheel) {
-						device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-						device->master_device = master_device;
-						snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%d", name, new_eid);
-						device->private_data = private_data;
-						for (int j = 0; j < MAX_DEVICES; j++) {
-							if (devices[j] == NULL) {
-								indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-								break;
-							}
-						}
+	pthread_mutex_lock(&device_mutex);
+	new_eid = -1;
+	gxccd_enumerate_usb(callback);
+	if (new_eid != -1) {
+		camera_t *camera = gxccd_initialize_usb(new_eid);
+		if (camera) {
+			char name[128] = "MI ";
+			bool is_guider, has_wheel;
+			gxccd_get_string_parameter(camera, GSP_CAMERA_DESCRIPTION, name + 3, sizeof(name) - 3);
+			gxccd_get_boolean_parameter(camera, GBP_GUIDE, &is_guider);
+			gxccd_get_boolean_parameter(camera, GBP_FILTERS, &has_wheel);
+			gxccd_release(camera);
+			char *end = name + strlen(name) - 1;
+			while(end > name && isspace((unsigned char)*end))
+				end--;
+			end[1] = '\0';
+			mi_private_data *private_data = indigo_safe_malloc(sizeof(mi_private_data));
+			private_data->eid = new_eid;
+			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+			indigo_device *master_device = device;
+			device->master_device = master_device;
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%d", name, new_eid);
+			device->private_data = private_data;
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				if (devices[j] == NULL) {
+					indigo_attach_device(devices[j] = device);
+					break;
+				}
+			}
+			if (is_guider) {
+				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+				device->master_device = master_device;
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%d", name, new_eid);
+				device->private_data = private_data;
+				for (int j = 0; j < MAX_DEVICES; j++) {
+					if (devices[j] == NULL) {
+						indigo_attach_device(devices[j] = device);
+						break;
 					}
 				}
 			}
+			if (has_wheel) {
+				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+				device->master_device = master_device;
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%d", name, new_eid);
+				device->private_data = private_data;
+				for (int j = 0; j < MAX_DEVICES; j++) {
+					if (devices[j] == NULL) {
+						indigo_attach_device(devices[j] = device);
+						break;
+					}
+				}
+			}
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static void process_unplug_event(libusb_device *dev) {
+	pthread_mutex_lock(&device_mutex);
+	for (int i = 0; i < MAX_DEVICES; i++) {
+		indigo_device *device = devices[i];
+		if (device)
+			PRIVATE_DATA->enumerated = false;
+	}
+	gxccd_enumerate_usb(callback);
+	for (int i = MAX_DEVICES - 1; i >=0; i--) {
+		indigo_device *device = devices[i];
+		if (device && !PRIVATE_DATA->enumerated) {
+			indigo_detach_device(device);
+			if (device->master_device == device) {
+				mi_private_data *private_data = PRIVATE_DATA;
+				if (private_data->buffer != NULL)
+					free(private_data->buffer);
+				free(private_data);
+			}
+			free(device);
+			devices[i] = NULL;
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+}
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+	switch (event) {
+		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
+			INDIGO_ASYNC(process_plug_event, dev);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			for (int i = 0; i < MAX_DEVICES; i++) {
-				indigo_device *device = devices[i];
-				if (device)
-					PRIVATE_DATA->enumerated = false;
-			}
-			gxccd_enumerate_usb(callback);
-			for (int i = MAX_DEVICES - 1; i >=0; i--) {
-				indigo_device *device = devices[i];
-				if (device && !PRIVATE_DATA->enumerated) {
-					indigo_detach_device(device);
-					if (device->master_device == device) {
-						mi_private_data *private_data = PRIVATE_DATA;
-						if (private_data->buffer != NULL)
-							free(private_data->buffer);
-						free(private_data);
-					}
-					free(device);
-					devices[i] = NULL;
-				}
-			}
+			process_unplug_event(dev);
 			break;
 		}
 	}
