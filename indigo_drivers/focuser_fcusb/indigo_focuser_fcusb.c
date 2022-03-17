@@ -23,7 +23,7 @@
  \file indigo_focuser_fcusb.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_fcusb"
 
 #include <stdlib.h>
@@ -263,8 +263,6 @@ static void process_unplug_event(libusb_device *dev) {
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
-
-
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			INDIGO_ASYNC(process_plug_event, dev);
