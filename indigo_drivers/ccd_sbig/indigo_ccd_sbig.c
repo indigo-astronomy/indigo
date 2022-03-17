@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -2301,7 +2301,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	set_primary_ccd_flag(device);
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 
 	/* Creating guider device */
@@ -2315,7 +2315,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	sprintf(device->name, "SBIG %s Guider Port #%s", cam_name, device_index_str);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	device->private_data = private_data;
-	indigo_async((void *)(void *)indigo_attach_device, device);
+	indigo_attach_device(device);
 	devices[slot]=device;
 
 	/* Check if there is secondary CCD and create device */
@@ -2336,7 +2336,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
 		clear_primary_ccd_flag(device);
-		indigo_async((void *)(void *)indigo_attach_device, device);
+		indigo_attach_device(device);
 		devices[slot]=device;
 	}
 
@@ -2385,7 +2385,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				private_data->fw_device = cfwr.cfwModel;
 				private_data->fw_count = (int)cfwr.cfwResult2;
 				device->private_data = private_data;
-				indigo_async((void *)(void *)indigo_attach_device, device);
+				indigo_attach_device(device);
 				devices[slot]=device;
 			}
 		}
@@ -2417,7 +2417,7 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				private_data->ao_x_deflection = private_data->ao_y_deflection = 0;
 				device->private_data = private_data;
-				indigo_async((void *)(void *)indigo_attach_device, device);
+				indigo_attach_device(device);
 				devices[slot] = device;
 			}
 		}
