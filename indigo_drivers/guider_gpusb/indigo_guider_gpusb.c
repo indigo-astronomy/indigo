@@ -197,7 +197,7 @@ static void process_plug_event(libusb_device *dev) {
 		device->private_data = private_data;
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
-				indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+				indigo_attach_device(devices[j] = device);
 				break;
 			}
 		}
@@ -235,7 +235,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			INDIGO_ASYNC(process_unplug_event, dev);
+			process_unplug_event(dev);
 			break;
 		}
 	}
