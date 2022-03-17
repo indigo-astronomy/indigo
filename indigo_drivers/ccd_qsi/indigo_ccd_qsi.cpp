@@ -26,7 +26,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION    0x000B
+#define DRIVER_VERSION    0x000C
 #define DRIVER_NAME       "indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -373,7 +373,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			char name[32], label[128];
 
 			// Second connect is not allowed by the SDK, so handle this nicely
-			cam.put_Connected(isConnected);
+			cam.get_Connected(&isConnected);
 			if (isConnected) {
 				cam.get_SelectCamera(selectedCamera);
 				char message[INDIGO_VALUE_SIZE];
@@ -879,7 +879,7 @@ static void process_plug_event(indigo_device *unused) {
 		device->private_data = private_data;
 		for (int j = 0; j < QSICamera::MAXCAMERAS; j++) {
 			if (devices[j] == NULL) {
-				indigo_async((void *(*)(void *))indigo_attach_device, devices[j] = device);
+				indigo_attach_device(devices[j] = device);
 				break;
 			}
 		}
