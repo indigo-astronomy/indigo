@@ -23,7 +23,7 @@
  \file indigo_guider_gpusb.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_guider_gpusb"
 
 #include <stdlib.h>
@@ -175,8 +175,9 @@ static indigo_result guider_detach(indigo_device *device) {
 #define MAX_DEVICES                   3
 
 static indigo_device *devices[MAX_DEVICES];
+static pthread_mutex_t hotplug_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
+static void process_plug_event(libusb_device *dev) {
 	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
 		"GPUSB Guider",
 		guider_attach,
@@ -185,44 +186,56 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		NULL,
 		guider_detach
 	);
+	pthread_mutex_lock(&hotplug_mutex);
+	const char *name;
+	if (libgpusb_guider(dev, &name)) {
+		gpusb_private_data *private_data = indigo_safe_malloc(sizeof(gpusb_private_data));
+		private_data->dev = dev;
+		libusb_ref_device(dev);
+		indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+		indigo_copy_name(device->name, name);
+		device->private_data = private_data;
+		for (int j = 0; j < MAX_DEVICES; j++) {
+			if (devices[j] == NULL) {
+				indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
+				break;
+			}
+		}
+	}
+	pthread_mutex_unlock(&hotplug_mutex);
+}
 
+
+static void process_unplug_event(libusb_device *dev) {
+	gpusb_private_data *private_data = NULL;
+	pthread_mutex_lock(&hotplug_mutex);
+	for (int j = 0; j < MAX_DEVICES; j++) {
+		if (devices[j] != NULL) {
+			indigo_device *device = devices[j];
+			if (PRIVATE_DATA->dev == dev) {
+				private_data = PRIVATE_DATA;
+				indigo_detach_device(device);
+				free(device);
+				devices[j] = NULL;
+				break;
+			}
+		}
+	}
+	if (private_data != NULL) {
+		libusb_unref_device(dev);
+		free(private_data);
+	}
+	pthread_mutex_unlock(&hotplug_mutex);
+}
+
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
-			const char *name;
-      if (libgpusb_guider(dev, &name)) {
-        gpusb_private_data *private_data = indigo_safe_malloc(sizeof(gpusb_private_data));
-        private_data->dev = dev;
-        libusb_ref_device(dev);
-        indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-        indigo_copy_name(device->name, name);
-        device->private_data = private_data;
-        for (int j = 0; j < MAX_DEVICES; j++) {
-          if (devices[j] == NULL) {
-            indigo_async((void *)(void *)indigo_attach_device, devices[j] = device);
-            break;
-          }
-        }
-      }
+			INDIGO_ASYNC(process_plug_event, dev);
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			gpusb_private_data *private_data = NULL;
-			for (int j = 0; j < MAX_DEVICES; j++) {
-				if (devices[j] != NULL) {
-					indigo_device *device = devices[j];
-					if (PRIVATE_DATA->dev == dev) {
-						private_data = PRIVATE_DATA;
-						indigo_detach_device(device);
-						free(device);
-						devices[j] = NULL;
-						break;
-					}
-				}
-			}
-			if (private_data != NULL) {
-				libusb_unref_device(dev);
-				free(private_data);
-			}
+			INDIGO_ASYNC(process_unplug_event, dev);
 			break;
 		}
 	}
