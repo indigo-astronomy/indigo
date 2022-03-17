@@ -394,7 +394,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					double remaining = CCD_EXPOSURE_ITEM->number.target - (time(NULL) - start);
 					if (res == SVB_SUCCESS) {
-						if (remaining > 0) {
+						if (remaining > 0 && CCD_EXPOSURE_ITEM->number.target > 1) {
 							if (PRIVATE_DATA->retry == 0) {
 								indigo_send_message(device, "Exposure was retried %d times, failed", RETRY_COUNT);
 								CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -503,7 +503,7 @@ static void streaming_timer_callback(indigo_device *device) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					double remaining = CCD_STREAMING_EXPOSURE_ITEM->number.target - (time(NULL) - start);
 					if (res == SVB_SUCCESS) {
-						if (remaining > 0) {
+						if (remaining > 0 && CCD_STREAMING_EXPOSURE_ITEM->number.target) {
 							if (PRIVATE_DATA->retry == 0) {
 								indigo_send_message(device, "Exposure was retried %d times, failed", RETRY_COUNT);
 								CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
