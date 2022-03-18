@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0020
+#define DRIVER_VERSION 0x0021
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -1953,10 +1953,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
+		bool parked = MOUNT_PARK_PARKED_ITEM->sw.value;
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
-		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-		indigo_set_timer(device, 0, mount_park_callback, NULL);
+		if (parked != MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			indigo_set_timer(device, 0, mount_park_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_HOME
