@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0020
+#define DRIVER_VERSION 0x0021
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -83,7 +83,7 @@
 
 #define AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY	(DEVICE_PRIVATE_DATA->agent_imager_download_files_property)
 #define AGENT_IMAGER_DOWNLOAD_FILES_REFRESH_ITEM    (AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items+0)
-#define DOWNLOAD_MAX_COUNT										128
+#define DOWNLOAD_MAX_COUNT										5
 
 #define AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY	(DEVICE_PRIVATE_DATA->agent_imager_download_image_property)
 #define AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM    	(AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->items+0)
@@ -1733,22 +1733,23 @@ static void abort_process(indigo_device *device) {
 	}
 }
 
+static int image_filter(const struct dirent *entry) {
+	return strstr(entry->d_name, ".fits") || strstr(entry->d_name, ".xisf") || strstr(entry->d_name, ".raw") || strstr(entry->d_name, ".jpeg") || strstr(entry->d_name, ".tiff") || strstr(entry->d_name, ".avi") || strstr(entry->d_name, ".ser") || strstr(entry->d_name, ".nef") || strstr(entry->d_name, ".cr") || strstr(entry->d_name, ".sr") || strstr(entry->d_name, ".arw") || strstr(entry->d_name, ".raf");
+}
+
 static void setup_download(indigo_device *device) {
 	if (*DEVICE_PRIVATE_DATA->current_folder) {
 		indigo_delete_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
-		DIR *folder;
-		struct dirent *entry;
-		folder = opendir(DEVICE_PRIVATE_DATA->current_folder);
-		if (folder) {
-			int index = 1;
-			while ((entry = readdir(folder)) != NULL && index <= DOWNLOAD_MAX_COUNT) {
-				if (strstr(entry->d_name, ".fits") || strstr(entry->d_name, ".xisf") || strstr(entry->d_name, ".raw") || strstr(entry->d_name, ".jpeg") || strstr(entry->d_name, ".tiff") || strstr(entry->d_name, ".avi") || strstr(entry->d_name, ".ser") || strstr(entry->d_name, ".nef") || strstr(entry->d_name, ".cr") || strstr(entry->d_name, ".sr") || strstr(entry->d_name, ".arw") || strstr(entry->d_name, ".raf")) {
-					indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + index, entry->d_name, entry->d_name, false);
-					index++;
-				}
+		struct dirent **entries;
+		int count = scandir(DEVICE_PRIVATE_DATA->current_folder, &entries, image_filter, alphasort);
+		if (count > DOWNLOAD_MAX_COUNT)
+			count = DOWNLOAD_MAX_COUNT;
+		if (count >= 0) {
+			int i;
+			for (i = 0; i < count && i < DOWNLOAD_MAX_COUNT; i++) {
+				indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + i + 1, entries[i]->d_name,  entries[i]->d_name, false);
 			}
-			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count = index;
-			closedir(folder);
+			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count = i + 1;
 		}
 		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
