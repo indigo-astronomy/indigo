@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -43,6 +43,7 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_align.h>
 
 #include "indigo_mount_lx200.h"
 
@@ -320,6 +321,7 @@ static void meade_close(indigo_device *device) {
 
 static void meade_get_coords(indigo_device *device) {
 	char response[128];
+	double ra = 0, dec = 0;
 	if (meade_command(device, ":GR#", response, sizeof(response), 0)) {
 		if (strlen(response) < 8) {
 			if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
@@ -333,11 +335,15 @@ static void meade_get_coords(indigo_device *device) {
 				meade_command(device, ":GR#", response, sizeof(response), 0);
 			}
 		}
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_stod(response);
+		ra = indigo_stod(response);
 	}
 	if (meade_command(device, ":GD#", response, sizeof(response), 0)) {
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = indigo_stod(response);
+		dec = indigo_stod(response);
 	}
+	indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 		if (meade_command(device, ":D#", response, sizeof(response), 0))
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = *response ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
@@ -484,6 +490,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_EPOCH
+		MOUNT_EPOCH_PROPERTY->perm = INDIGO_RW_PERM;
 		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
 		ALIGNMENT_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, ALIGNMENT_MODE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Alignment mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (ALIGNMENT_MODE_PROPERTY == NULL)
@@ -931,6 +939,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->motioned = false;
 			indigo_property_copy_targets(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+			double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+			indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 				if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'q') {
 					if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
@@ -960,12 +971,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					PRIVATE_DATA->lastTrackRate = 'l';
 				}
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
+				sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
+					sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -977,12 +988,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					}
 				}
 			} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-				sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
+				sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
+					sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
 					if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 						MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1375,6 +1386,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, ALIGNMENT_MODE_PROPERTY);
 			indigo_save_property(device, NULL, FORCE_FLIP_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_TYPE_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_EPOCH_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
