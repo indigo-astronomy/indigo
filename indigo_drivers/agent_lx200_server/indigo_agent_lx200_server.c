@@ -23,7 +23,7 @@
  \file indigo_agent_lx200_server.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_agent_lx200_server"
 
 #include <stdio.h>
@@ -43,6 +43,7 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_align.h>
 
 #include "indigo_agent_lx200_server.h"
 
@@ -55,6 +56,7 @@
 
 #define LX200_CONFIGURATION_PROPERTY					(DEVICE_PRIVATE_DATA->lx200_configuration_property)
 #define LX200_CONFIGURATION_PORT_ITEM					(LX200_CONFIGURATION_PROPERTY->items+0)
+#define LX200_CONFIGURATION_EPOCH_ITEM				(LX200_CONFIGURATION_PROPERTY->items+1)
 
 #define LX200_SERVER_PROPERTY									(DEVICE_PRIVATE_DATA->lx200_server_property)
 #define LX200_SERVER_STARTED_ITEM							(LX200_SERVER_PROPERTY->items+0)
@@ -104,6 +106,7 @@ typedef struct {
 	indigo_client *client;
 	bool unparked;
 	double ra, dec;
+	double target_ra, target_dec;
 	int server_socket;
 } agent_private_data;
 
@@ -192,18 +195,24 @@ static void start_worker_thread(handler_data *data) {
 			if (strcmp(buffer_in, "GVP") == 0) {
 				strcpy(buffer_out, "indigo#");
 			} else if (strcmp(buffer_in, "GR") == 0) {
-				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->ra, "%02d:%02d:%02d#"));
+				double ra = DEVICE_PRIVATE_DATA->ra;
+				double dec = DEVICE_PRIVATE_DATA->dec;
+				indigo_j2k_to_eq(LX200_CONFIGURATION_EPOCH_ITEM->number.value, &ra, &dec);
+				strcpy(buffer_out, doubleToSexa(ra, "%02d:%02d:%02d#"));
 			} else if (strcmp(buffer_in, "GD") == 0) {
-				strcpy(buffer_out, doubleToSexa(DEVICE_PRIVATE_DATA->dec, "%+03d*%02d'%02d#"));
+				double ra = DEVICE_PRIVATE_DATA->ra;
+				double dec = DEVICE_PRIVATE_DATA->dec;
+				indigo_j2k_to_eq(LX200_CONFIGURATION_EPOCH_ITEM->number.value, &ra, &dec);
+				strcpy(buffer_out, doubleToSexa(dec, "%+03d*%02d'%02d#"));
 			} else if (strncmp(buffer_in, "Sr", 2) == 0) {
 				int h = 0, m = 0;
 				double s = 0;
 				char c;
 				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &h, &c, &m, &c, &s) == 5) {
-					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = h + m/60.0 + s/3600.0;
+					DEVICE_PRIVATE_DATA->target_ra = h + m/60.0 + s/3600.0;
 					strcpy(buffer_out, "1");
 				} else if (sscanf(buffer_in + 2, "%d%c%d", &h, &c, &m) == 3) {
-					MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = h + m/60.0;
+					DEVICE_PRIVATE_DATA->target_ra = h + m/60.0;
 					strcpy(buffer_out, "1");
 				} else {
 					strcpy(buffer_out, "0");
@@ -213,10 +222,10 @@ static void start_worker_thread(handler_data *data) {
 				double s = 0;
 				char c;
 				if (sscanf(buffer_in + 2, "%d%c%d%c%lf", &d, &c, &m, &c, &s) == 5) {
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = d > 0 ? d + m/60.0 + s/3600.0 : d - m/60.0 - s/3600.0;
+					DEVICE_PRIVATE_DATA->target_dec = d > 0 ? d + m/60.0 + s/3600.0 : d - m/60.0 - s/3600.0;
 					strcpy(buffer_out, "1");
 				} else if (sscanf(buffer_in + 2, "%d%c%d", &d, &c, &m) == 3) {
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = d > 0 ? d + m/60.0 : d - m/60.0;
+					DEVICE_PRIVATE_DATA->target_dec = d > 0 ? d + m/60.0 : d - m/60.0;
 					strcpy(buffer_out, "1");
 				} else {
 					strcpy(buffer_out, "0");
@@ -227,6 +236,11 @@ static void start_worker_thread(handler_data *data) {
 				MOUNT_ON_COORDINATES_SET_PROPERTY->access_token = indigo_get_device_or_master_token(MOUNT_ON_COORDINATES_SET_PROPERTY->device);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->access_token = MOUNT_ON_COORDINATES_SET_PROPERTY->access_token;
 				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_ON_COORDINATES_SET_PROPERTY);
+				double ra = DEVICE_PRIVATE_DATA->target_ra;
+				double dec = DEVICE_PRIVATE_DATA->target_dec;
+				indigo_eq_to_j2k(LX200_CONFIGURATION_EPOCH_ITEM->number.value, &ra, &dec);
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
 				strcpy(buffer_out, "0");
 			} else if (strncmp(buffer_in, "CM", 2) == 0) {
@@ -235,6 +249,11 @@ static void start_worker_thread(handler_data *data) {
 				MOUNT_ON_COORDINATES_SET_PROPERTY->access_token = indigo_get_device_or_master_token(MOUNT_ON_COORDINATES_SET_PROPERTY->device);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->access_token = MOUNT_ON_COORDINATES_SET_PROPERTY->access_token;
 				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_ON_COORDINATES_SET_PROPERTY);
+				double ra = DEVICE_PRIVATE_DATA->target_ra;
+				double dec = DEVICE_PRIVATE_DATA->target_dec;
+				indigo_eq_to_j2k(LX200_CONFIGURATION_EPOCH_ITEM->number.value, &ra, &dec);
+				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+				MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 				indigo_change_property(DEVICE_PRIVATE_DATA->client, MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
 				strcpy(buffer_out, "OK#");
 			} else if (strcmp(buffer_in, "RG") == 0) {
@@ -437,10 +456,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_text_item(LX200_DEVICES_MOUNT_ITEM, LX200_DEVICES_MOUNT_ITEM_NAME, "Mount", "");
 		indigo_init_text_item(LX200_DEVICES_GUIDER_ITEM, LX200_DEVICES_GUIDER_ITEM_NAME, "Guider", "");
-		LX200_CONFIGURATION_PROPERTY = indigo_init_number_property(NULL, device->name, LX200_CONFIGURATION_PROPERTY_NAME, MAIN_GROUP, "Configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		LX200_CONFIGURATION_PROPERTY = indigo_init_number_property(NULL, device->name, LX200_CONFIGURATION_PROPERTY_NAME, MAIN_GROUP, "Configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (LX200_CONFIGURATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(LX200_CONFIGURATION_PORT_ITEM, LX200_CONFIGURATION_PORT_ITEM_NAME, "Server port", 0, 0xFFFF, 0, 4030);
+		indigo_init_number_item(LX200_CONFIGURATION_EPOCH_ITEM, LX200_CONFIGURATION_EPOCH_ITEM_NAME, "Epoch (0 = JNow)", 0, 2050, 0, 0);
 		LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, LX200_SERVER_PROPERTY_NAME, MAIN_GROUP, "Server", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (LX200_SERVER_PROPERTY == NULL)
 			return INDIGO_FAILED;
