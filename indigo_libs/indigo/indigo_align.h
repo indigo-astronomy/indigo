@@ -72,6 +72,20 @@ typedef struct {
  */
 indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1);
 
+/** Convenience wrapper for indigo_precess(...)
+ 
+	*ra - Right Ascension (hours)
+	*dec - Declination (degrees)
+ */
+extern void indigo_jnow_to_j2k(double *ra, double *dec);
+
+/** Convenience wrapper for indigo_precess(...)
+ 
+	*ra - Right Ascension (hours)
+	*dec - Declination (degrees)
+ */
+extern void indigo_j2k_to_jnow(double *ra, double *dec);
+
 /** convert ha dec to az alt in radians
  */
 extern void indigo_equatorial_to_hotizontal(const indigo_spherical_point_t *eq_point, const double latitude, indigo_spherical_point_t *h_point);

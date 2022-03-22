@@ -41,6 +41,30 @@ static void print_spherical(char *caption, char *name, indigo_spherical_point_t 
 */
 
 /*
+	Convenience wrappers for indigo_precess(...)
+	 *ra - Right Ascension (hours)
+	 *dec - Declination (degrees)
+ */
+
+static double jnow() {
+	return 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
+}
+
+void indigo_jnow_to_j2k(double *ra, double *dec) {
+	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
+	coordinates = indigo_precess(&coordinates, jnow(), 2000.0);
+	*ra = coordinates.a * RAD2DEG / 15;
+	*dec = coordinates.d * RAD2DEG;
+}
+
+void indigo_j2k_to_jnow(double *ra, double *dec) {
+	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
+	coordinates = indigo_precess(&coordinates, 2000.0, jnow());
+	*ra = coordinates.a * RAD2DEG / 15;
+	*dec = coordinates.d * RAD2DEG;
+}
+
+/*
  Precesses c0 from eq0 to eq1
 
  c0.a - Right Ascension (radians)
