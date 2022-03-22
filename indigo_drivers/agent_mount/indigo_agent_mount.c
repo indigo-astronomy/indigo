@@ -631,7 +631,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_LX200_CONFIGURATION_PROPERTY, property, false);
 		AGENT_LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
-		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
+		indigo_update_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_LIMITS
