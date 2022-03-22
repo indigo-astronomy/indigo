@@ -57,9 +57,23 @@ void indigo_jnow_to_j2k(double *ra, double *dec) {
 	*dec = coordinates.d * RAD2DEG;
 }
 
+void indigo_eq_to_j2k(const double eq, double *ra, double *dec) {
+	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
+	coordinates = indigo_precess(&coordinates, eq != 0 ? eq : jnow(), 2000.0);
+	*ra = coordinates.a * RAD2DEG / 15;
+	*dec = coordinates.d * RAD2DEG;
+}
+
 void indigo_j2k_to_jnow(double *ra, double *dec) {
 	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
 	coordinates = indigo_precess(&coordinates, 2000.0, jnow());
+	*ra = coordinates.a * RAD2DEG / 15;
+	*dec = coordinates.d * RAD2DEG;
+}
+
+void indigo_j2k_to_eq(const double eq, double *ra, double *dec) {
+	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
+	coordinates = indigo_precess(&coordinates, 2000.0, eq != 0 ? eq : jnow());
 	*ra = coordinates.a * RAD2DEG / 15;
 	*dec = coordinates.d * RAD2DEG;
 }
