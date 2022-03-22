@@ -80,11 +80,27 @@ indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, cons
 extern void indigo_jnow_to_j2k(double *ra, double *dec);
 
 /** Convenience wrapper for indigo_precess(...)
+
+	eq - 0 for JNow or old equinox
+	*ra - Right Ascension (hours)
+	*dec - Declination (degrees)
+ */
+extern void indigo_eq_to_j2k(const double eq, double *ra, double *dec);
+
+/** Convenience wrapper for indigo_precess(...)
  
 	*ra - Right Ascension (hours)
 	*dec - Declination (degrees)
  */
 extern void indigo_j2k_to_jnow(double *ra, double *dec);
+
+/** Convenience wrapper for indigo_precess(...)
+
+	eq - 0 for JNow or new equinox
+	*ra - Right Ascension (hours)
+	*dec - Declination (degrees)
+ */
+extern void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
 
 /** convert ha dec to az alt in radians
  */
