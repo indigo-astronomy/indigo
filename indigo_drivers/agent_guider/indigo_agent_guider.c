@@ -936,10 +936,11 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				}
 				if (DEVICE_PRIVATE_DATA->phase == MOVE_SOUTH) {
-					/* allow 10% measurement error  */
-					if (DEVICE_PRIVATE_DATA->drift < last_drift * 1.1) {
+					/* allow for 1 step measurement error  */
+					if (DEVICE_PRIVATE_DATA->drift < last_drift + last_drift / last_count) {
 						double backlash = round(1000 * (last_drift - DEVICE_PRIVATE_DATA->drift)) / 1000;
 						if (backlash < 0) {
+							indigo_error("Warning: Negative backlash %.3fpx, set to 0", backlash);
 							backlash = 0;
 						}
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = backlash;
