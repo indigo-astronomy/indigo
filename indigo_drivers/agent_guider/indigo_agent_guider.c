@@ -928,7 +928,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving south");
-				for (int i = 0; i < last_count; i++) {
+				for (int i = 0; i <= last_count; i++) {
 					if (!guide_and_capture_frame(device, 0, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) {
 						DEVICE_PRIVATE_DATA->phase = FAILED;
 						break;
@@ -936,8 +936,13 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				}
 				if (DEVICE_PRIVATE_DATA->phase == MOVE_SOUTH) {
-					if (DEVICE_PRIVATE_DATA->drift < last_drift) {
-						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = round(1000 * (last_drift - DEVICE_PRIVATE_DATA->drift)) / 1000;
+					/* allow 10% measurement error  */
+					if (DEVICE_PRIVATE_DATA->drift < last_drift * 1.1) {
+						double backlash = round(1000 * (last_drift - DEVICE_PRIVATE_DATA->drift)) / 1000;
+						if (backlash < 0) {
+							backlash = 0;
+						}
+						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = backlash;
 					} else {
 						AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
 						indigo_send_message(device, "Warning: Inconsitent backlash");
@@ -1001,7 +1006,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving east");
-				for (int i = 0; i < last_count; i++) {
+				for (int i = 0; i <= last_count; i++) {
 					if (!guide_and_capture_frame(device, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0)) {
 						DEVICE_PRIVATE_DATA->phase = FAILED;
 						break;
