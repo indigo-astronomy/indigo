@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -56,6 +56,10 @@
 #define AGENT_GUIDER_DEC_MODE_NORTH_ITEM    	(AGENT_GUIDER_DEC_MODE_PROPERTY->items+1)
 #define AGENT_GUIDER_DEC_MODE_SOUTH_ITEM    	(AGENT_GUIDER_DEC_MODE_PROPERTY->items+2)
 #define AGENT_GUIDER_DEC_MODE_NONE_ITEM    		(AGENT_GUIDER_DEC_MODE_PROPERTY->items+3)
+
+#define AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_apply_dec_backlash_property)
+#define AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM    		(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY->items+0)
+#define AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM    		(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY->items+1)
 
 #define AGENT_START_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_start_process_property)
 #define AGENT_GUIDER_START_PREVIEW_ITEM  			(AGENT_START_PROCESS_PROPERTY->items+0)
@@ -128,6 +132,7 @@
 typedef struct {
 	indigo_property *agent_guider_detection_mode_property;
 	indigo_property *agent_guider_dec_mode_property;
+	indigo_property *agent_guider_apply_dec_backlash_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_settings_property;
@@ -160,6 +165,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
 		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 4, (const char **)selection_property_items);
@@ -1062,6 +1068,7 @@ static void calibrate_and_guide_process(indigo_device *device) {
 }
 
 static void guide_process(indigo_device *device) {
+	double prev_correction_dec = 0;
 	if (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
@@ -1166,6 +1173,29 @@ static void guide_process(indigo_device *device) {
 				correction_dec = 0;
 			AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = round(1000 * correction_ra) / 1000;
 			AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = round(1000 * correction_dec) / 1000;
+
+			/* Apply DEC backlash. It is after AGENT_GUIDER_STATS_CORR_DEC_ITEM asignment, so that it will not show on the correction graph. */
+			if (AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM->sw.value) {
+				if ((prev_correction_dec <= 0 && correction_dec <= 0) || (prev_correction_dec >= 0 && correction_dec >= 0)) {
+					indigo_error("(-) No Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs", prev_correction_dec, correction_dec);
+				} else {
+					double backlash = fabs(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
+					indigo_error("(+) Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs, backlash = %.3fs", prev_correction_dec, correction_dec, backlash);
+					/* apply backlash only if correction_dec != 0 (+0 or -0 are excluded too) */
+					if (correction_dec > 0) {
+						correction_dec += backlash;
+					} else if (correction_dec < 0) {
+						correction_dec -= backlash;
+					}
+					indigo_error("(+) correction_dec with backlash = %.3fs", correction_dec);
+				}
+			}
+			/* save current dec corrction as previous dec correction only if it will be aplied */
+			/* It is saved regardless if BL is apllied or not because we need to be able to turn BL on and off any time */
+			if (fabs(correction_dec) > 0) {
+				prev_correction_dec = correction_dec;
+			}
+
 			if (pulse_guide(device, correction_ra, correction_dec) != INDIGO_OK_STATE) {
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				break;
@@ -1303,6 +1333,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_DETECTION_DONUTS_ITEM, AGENT_GUIDER_DETECTION_DONUTS_ITEM_NAME, "Donuts", true);
 		indigo_init_switch_item(AGENT_GUIDER_DETECTION_SELECTION_ITEM, AGENT_GUIDER_DETECTION_SELECTION_ITEM_NAME, "Selection", false);
 		indigo_init_switch_item(AGENT_GUIDER_DETECTION_CENTROID_ITEM, AGENT_GUIDER_DETECTION_CENTROID_ITEM_NAME, "Centroid", false);
+
 		AGENT_GUIDER_DEC_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DEC_MODE_PROPERTY_NAME, "Agent", "Dec guiding mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AGENT_GUIDER_DEC_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -1310,6 +1341,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_NORTH_ITEM, AGENT_GUIDER_DEC_MODE_NORTH_ITEM_NAME, "North only", false);
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_SOUTH_ITEM, AGENT_GUIDER_DEC_MODE_SOUTH_ITEM_NAME, "South only", false);
 		indigo_init_switch_item(AGENT_GUIDER_DEC_MODE_NONE_ITEM, AGENT_GUIDER_DEC_MODE_NONE_ITEM_NAME, "None", false);
+
+		AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY = indigo_init_switch_property(NULL, device->name,AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY_NAME, "Agent", "Apply Dec backlash", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM_NAME, "Disabled", true);
+		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM_NAME, "Enabled", false);
+
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -1317,10 +1355,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_ITEM, AGENT_GUIDER_START_CALIBRATION_ITEM_NAME, "Start calibration", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM, AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM_NAME, "Start calibration and guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_GUIDING_ITEM, AGENT_GUIDER_START_GUIDING_ITEM_NAME, "Start guiding", false);
+
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
+
 		// -------------------------------------------------------------------------------- Guiding settings
 		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
@@ -1418,6 +1458,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_DEC_MODE_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
 		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
@@ -1472,6 +1514,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_GUIDER_DEC_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+	} else if (indigo_property_match(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_APPLY_DEC_BACKLASH
+		indigo_property_copy_values(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property, false);
+		AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
 		double dith_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
@@ -1616,6 +1664,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_SELECTION_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_STATS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DEC_MODE_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
 	for (int i = 0; i <= MAX_MULTISTAR_COUNT; i++)
 		indigo_delete_frame_digest(DEVICE_PRIVATE_DATA->reference + i);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
