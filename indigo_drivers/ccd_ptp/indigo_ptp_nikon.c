@@ -1060,6 +1060,13 @@ bool ptp_nikon_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_nikon_exposure(indigo_device *device) {
+	if (ptp_property_supported(device, ptp_property_nikon_SaveMedia)) {
+		uint8_t value = 0;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_SaveMedia, &value, sizeof(uint8_t))) {
+			indigo_error("Can't set ptp_property_nikon_SaveMedia to CARD");
+			return false;
+		}
+	}
 	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_ExposureDelayMode);
 	bool result = true;
 	if (property) {
@@ -1119,6 +1126,13 @@ bool ptp_nikon_exposure(indigo_device *device) {
 }
 
 bool ptp_nikon_liveview(indigo_device *device) {
+	if (ptp_property_supported(device, ptp_property_nikon_SaveMedia)) {
+		uint8_t value = 1;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_SaveMedia, &value, sizeof(uint8_t))) {
+			indigo_error("Can't set ptp_property_nikon_SaveMedia to SDRAM");
+			return false;
+		}
+	}
 	if (ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
 		uint8_t *buffer = NULL;
 		uint32_t size;
