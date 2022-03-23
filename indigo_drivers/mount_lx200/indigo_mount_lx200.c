@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -744,6 +744,9 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_PARK_PROPERTY->count = 1;
 				MOUNT_PARK_PARKED_ITEM->sw.value = false;
 				PRIVATE_DATA->parked = false;
+				MOUNT_PARK_SET_PROPERTY->hidden = false;
+				MOUNT_PARK_SET_PROPERTY->count = 1;
+				MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
 				strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "On-Step");
 				if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
@@ -906,6 +909,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Unparked");
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_PARK_SET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PARK_SET
+			indigo_property_copy_values(MOUNT_PARK_SET_PROPERTY, property, false);
+			if (MOUNT_PARK_SET_CURRENT_ITEM->sw.value) {
+				MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
+				if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+					if (!meade_command(device, ":hQ#", response, 1, 0) || *response != '1') {
+						MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Setting current park position failed");
+						return INDIGO_OK;
+					}
+				}
+				MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Current park position set");
+			}
+			return INDIGO_OK;
 	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
 		if (IS_CONNECTED) {
