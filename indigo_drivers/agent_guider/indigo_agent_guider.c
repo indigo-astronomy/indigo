@@ -1183,17 +1183,17 @@ static void guide_process(indigo_device *device) {
 			/* Apply DEC backlash. It is after AGENT_GUIDER_STATS_CORR_DEC_ITEM asignment, so that it will not show on the correction graph. */
 			if (AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM->sw.value) {
 				if ((prev_correction_dec <= 0 && correction_dec <= 0) || (prev_correction_dec >= 0 && correction_dec >= 0)) {
-					indigo_error("(-) No Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs", prev_correction_dec, correction_dec);
+					indigo_debug("(-) No Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs", prev_correction_dec, correction_dec);
 				} else {
 					double backlash = fabs(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
-					indigo_error("(+) Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs, backlash = %.3fs", prev_correction_dec, correction_dec, backlash);
+					indigo_debug("(+) Dec backlash appled: prev_correction_dec = %.3fs, correction_dec = %.3fs, backlash = %.3fs", prev_correction_dec, correction_dec, backlash);
 					/* apply backlash only if correction_dec != 0 (+0 or -0 are excluded too) */
 					if (correction_dec > 0) {
 						correction_dec += backlash;
 					} else if (correction_dec < 0) {
 						correction_dec -= backlash;
 					}
-					indigo_error("(+) correction_dec with backlash = %.3fs", correction_dec);
+					indigo_debug("(+) correction_dec + backlash = %.3fs", correction_dec);
 				}
 			}
 			/* save current dec corrction as previous dec correction only if it will be aplied */
