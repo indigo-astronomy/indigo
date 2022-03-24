@@ -338,6 +338,25 @@ static bool asi_setup_exposure(indigo_device *device, double exposure, int frame
 static bool asi_start_exposure(indigo_device *device, double exposure, bool dark, int frame_left, int frame_top, int frame_width, int frame_height, int horizontal_bin, int vertical_bin) {
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
+
+	ASI_EXPOSURE_STATUS status;
+	int wait_cycles = 3000;    /* 3000*2000us = 6s */
+	status = ASI_EXP_WORKING;
+	/* According to ASI's recommendation we check if the previous exposure is still in progress and wait for it to complete */
+	ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetExpStatus(%d) -> status = %d", PRIVATE_DATA->dev_id, status);
+	while((status == ASI_EXP_WORKING) && wait_cycles--) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		indigo_usleep(2000);
+	}
+	if (status == ASI_EXP_WORKING) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: previous exposure did not finish within the timeout - ASIGetExpStatus(%d) -> status = %d", PRIVATE_DATA->dev_id, status);
+		indigo_send_message(device, "Error: previous exposure did not finish, can not start new one.");
+		return false;
+	}
+
 	if (!asi_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
 		return false;
 	}
