@@ -494,6 +494,20 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 				property->value.sw.values[0] = property->value.sw.value;
 				property->writable = false;
 			} else {
+				// enumeration succeed
+				// search bulb property
+				bool has_bulb = false;
+				for (int i=0; i < property->count; ++i) {
+					if (property->value.sw.values[i] == 0xffffffff) {
+						has_bulb = true;
+						break;
+					}
+				}
+				if (!has_bulb) {
+					// some model (e.g. X-T4) does not enumerate Bulb
+					property->value.sw.values[property->count] = 0xffffffff;
+					property->count += 1;
+				}
 				property->writable = true;
 			}
 			return true;
@@ -504,7 +518,13 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 				property->value.sw.values[0] = property->value.sw.value;
 				property->writable = false;
 			} else {
-				property->writable = true;
+				// detect no lens
+				if (property->value.sw.value == 0) {
+					property->count = 0;
+					property->writable = false;
+				} else {
+					property->writable = true;
+				}
 			}
 			return true;
 		}
