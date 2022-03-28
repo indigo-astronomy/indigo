@@ -2,6 +2,90 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-172] - 29 Mar Tue 2022
+### Overall
+- indigo_query_slave_devices() signature changed
+- indigo_stop() fixed
+- indigo_detach_device()/indigo_detach_client() return value fixed
+- auto save of the port property is disabled (it is saved with the profile)
+- indigo_try_global_lock() fixed
+- many warnings silenced and unused variables removed
+- Astro-TIFF image format support added
+- device name added to message
+- libusb updated to 1.0.25
+- convenience wrappers for indigo_precess() added
+
+- all lx200 mount drivers:
+	- any coordinate epoch can be used for driver-device communication
+
+- indigo_platesolver:
+	- AGENT_PLATESOLVER_PA_STATE is never Idle
+
+- all focuser drivers:
+	- fix race in which STEPS/POSITION may not become busy during move
+
+- all drivers:
+	- support for multiple devices added
+	- fix BUSY status handling
+	- fix race in deivce attach
+
+### Driver fixes
+- indigo_agent_imager:
+	- AGENT_IMAGER_BREAKPOINT, AGENT_IMAGER_RESUME_CONDITION and AGENT_IMAGER_BARRIER_STATE properties added for inter-agent synchronization
+	- documentation fixed
+	- disable temp compensation when focusing is started
+	- process state fixed
+	- filter names snooping fixed
+	- change some messages to match 'warning' and 'complete'
+	- AGENT_IMAGER_DOWNLOAD_FILES is sorted
+	- DOWNLOAD_MAX_COUNT reset back to 127
+
+- indigo_agent_guider:
+	- change some messages to match 'warning' and 'complete'
+	- fix backlash calculation
+	- Declination backlash can be corrected
+
+- indigo_agent_mount:
+	- HA and local time limits are evaluated even if MOUNT_PARK_UNPARKED_ITEM is not defined
+	- EPOCH added to lx200 server configuration properties
+	- initialization fixed
+
+- indigo_mount_lx200:
+	- custom parking position enabled for OnStep
+
+- indigo_agent_lx200:
+	- EPOCH added to server configuration properties
+
+- indigo_ccd_asi:
+	- update SDK v.1.22
+	- add message to streaming failure
+	- make sure there is no exposure in progress before we start another one
+
+- ccd_ptp:
+	- add Canon EOS R3
+	- add Nikon Z9
+	- media set explicitly for exposure and live view on Nikons
+	- update ptp_fuji_fix_property
+
+- indigo_focuser_dsd:
+	- fix handle initialization
+	- check if connected for some property changes
+
+- indigo_focuser_lunatico / indigo_rotator_lunatico:
+	- check if connected for some property changes
+
+- indigo_ccd_simulator
+	- superfluous locking removed
+
+- indigo_ccd_svb:
+	- better handling of failed exposures
+
+- mount_ioptron:
+	- park/unpark ignored for parked/unparked mount
+
+- mount_simulator:
+	- superfluous park/unpark fixed
+
 ## [2.0-170] - 05 Mar Sat 2022
 ### Overall
 - indigo_platesolver: do not fail the whole process if platesolve during recalculate fails
