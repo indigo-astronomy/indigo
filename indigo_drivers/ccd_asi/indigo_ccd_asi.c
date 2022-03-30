@@ -339,24 +339,6 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 	int id = PRIVATE_DATA->dev_id;
 	ASI_ERROR_CODE res;
 
-	ASI_EXPOSURE_STATUS status;
-	int wait_cycles = 3000;    /* 3000*2000us = 6s */
-	status = ASI_EXP_WORKING;
-	/* According to ASI's recommendation we check if the previous exposure is still in progress and wait for it to complete */
-	ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetExpStatus(%d) -> status = %d", PRIVATE_DATA->dev_id, status);
-	while((status == ASI_EXP_WORKING) && wait_cycles--) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		ASIGetExpStatus(PRIVATE_DATA->dev_id, &status);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		indigo_usleep(2000);
-	}
-	if (status == ASI_EXP_WORKING) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: previous exposure did not finish within the timeout - ASIGetExpStatus(%d) -> status = %d", PRIVATE_DATA->dev_id, status);
-		indigo_send_message(device, "Error: previous exposure did not finish, can not start new one.");
-		return false;
-	}
-
 	if (!asi_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
 		return false;
 	}
@@ -401,6 +383,7 @@ static bool asi_read_pixels(indigo_device *device) {
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
+	return false;
 }
 
 static bool asi_abort_exposure(indigo_device *device) {
@@ -498,6 +481,14 @@ static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
+	static bool already_in = false;
+	if (already_in) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s() Already in function. Returning cleanly.", __FUNCTION__);
+		return;
+	}
+	already_in = true;
+	PRIVATE_DATA->can_check_temperature = false;
+
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -526,6 +517,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		}
 	}
 	PRIVATE_DATA->can_check_temperature = true;
+	already_in = false;
 }
 
 static void streaming_timer_callback(indigo_device *device) {
@@ -591,17 +583,6 @@ static void streaming_timer_callback(indigo_device *device) {
 	} else {
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-	}
-}
-
-// callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
-static void clear_reg_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->can_check_temperature = false;
-		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else {
-		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 
@@ -1089,12 +1070,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		if (CCD_EXPOSURE_ITEM->number.target > 4)
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
-		else {
-			PRIVATE_DATA->can_check_temperature = false;
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-		}
+		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
