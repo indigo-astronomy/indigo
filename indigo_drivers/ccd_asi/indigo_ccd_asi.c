@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x001E
+#define DRIVER_VERSION 0x001F
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
