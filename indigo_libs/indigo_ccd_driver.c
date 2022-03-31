@@ -500,6 +500,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_cancel_timer(device, &CCD_CONTEXT->countdown_timer);
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
