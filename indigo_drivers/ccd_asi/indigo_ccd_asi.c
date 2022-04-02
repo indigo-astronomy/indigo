@@ -106,6 +106,7 @@ typedef struct {
 	pthread_mutex_t usb_mutex;
 	long is_asi120;
 	bool can_check_temperature, has_temperature_sensor;
+	bool in_exposure_callback;
 	ASI_CAMERA_INFO info;
 	int gain_highest_dr;
 	int offset_highest_dr;
@@ -481,12 +482,11 @@ static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
-	static bool already_in = false;
-	if (already_in) {
+	if (PRIVATE_DATA->in_exposure_callback) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s() Already in function. Returning cleanly.", __FUNCTION__);
 		return;
 	}
-	already_in = true;
+	PRIVATE_DATA->in_exposure_callback = true;
 	PRIVATE_DATA->can_check_temperature = false;
 
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -517,7 +517,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		}
 	}
 	PRIVATE_DATA->can_check_temperature = true;
-	already_in = false;
+	PRIVATE_DATA->in_exposure_callback = false;
 }
 
 static void streaming_timer_callback(indigo_device *device) {
@@ -1007,6 +1007,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				indigo_define_property(device, ASI_PRESETS_PROPERTY, NULL);
 
 				device->is_connected = true;
+				PRIVATE_DATA->in_exposure_callback = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->has_temperature_sensor) {
 					indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
