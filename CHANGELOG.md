@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-174] - 29 Mar Tue 2022
+## [2.0-174] - 04 Apr Mon 2022
 ### Overall
 - indigo_ccd_driver: fix exposure timer counter stall if you abort and start new exposure before the previous timer is hit
 
