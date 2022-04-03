@@ -28,7 +28,7 @@
 
 /** INDIGO Build number
  */
-#define INDIGO_BUILD "174"
+#define INDIGO_BUILD "175"
 
 /** Conditional compilation wrapper for TRACE log level
  */
