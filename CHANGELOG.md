@@ -2,6 +2,13 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-174] - 29 Mar Tue 2022
+### Overall
+- indigo_ccd_driver: fix exposure timer counter stall if you abort and start new exposure before the previous timer is hit
+
+### Driver fixes
+- indigo_ccd_asi: fix race condition in exposure timer handler
+
 ## [2.0-172] - 29 Mar Tue 2022
 ### Overall
 - indigo_query_slave_devices() signature changed
