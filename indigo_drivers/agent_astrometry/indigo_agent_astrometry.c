@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -378,7 +378,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = ((indigo_raw_header *)image)->width;
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = ((indigo_raw_header *)image)->height;
 				image = image + sizeof(indigo_raw_header);
-			} else if (!strncmp("JFIF", (const char *)(image + 6), 4)) {
+			} else if (((uint8_t *)image)[0] == 0xFF && ((uint8_t *)image)[1] == 0xD8 && ((uint8_t *)image)[2] == 0xFF) {
 				// JPEG
 				struct indigo_jpeg_decompress_struct cinfo;
 				struct jpeg_error_mgr jerr;
