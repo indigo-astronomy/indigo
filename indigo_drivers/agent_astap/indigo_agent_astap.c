@@ -23,7 +23,7 @@
  \file indigo_agent_astap.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_agent_astap"
 
 #include <stdio.h>
@@ -412,7 +412,7 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 						break;
 				header += 80;
 			}
-		} else if (!strncmp("JFIF", (const char *)(image + 6), 4)) {
+		} else if (((uint8_t *)image)[0] == 0xFF && ((uint8_t *)image)[1] == 0xD8 && ((uint8_t *)image)[2] == 0xFF) {
 			ext = "jpeg";
 			ASTAP_DEVICE_PRIVATE_DATA->frame_width = ASTAP_DEVICE_PRIVATE_DATA->frame_height = 0;
 		} else if (!strncmp("RAW", (const char *)(image), 3)) {
