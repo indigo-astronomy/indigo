@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -115,16 +115,16 @@ static void rainbow_reader(indigo_device *device) {
 	char response[128], c;
 	struct timeval tv;
 	fd_set readout;
-	FD_ZERO(&readout);
-	FD_SET(PRIVATE_DATA->handle, &readout);
-	tv.tv_sec = 0;
-	tv.tv_usec = 100000;
 	while (PRIVATE_DATA->handle > 0) {
 		int i = 0;
 		while (true) {
 			response[i] = 0;
 			if (i == sizeof(response) - 1)
 				break;
+			FD_ZERO(&readout);
+			FD_SET(PRIVATE_DATA->handle, &readout);
+			tv.tv_sec = 0;
+			tv.tv_usec = 100000;
 			if (select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv) <= 0)
 				break;
 			if (read(PRIVATE_DATA->handle, &c, 1) < 1)
