@@ -24,7 +24,7 @@
  \file indigo_ccd_apogee.cpp
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	   "indigo_ccd_apogee"
 
 #include <stdlib.h>
@@ -605,6 +605,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
+	PRIVATE_DATA->can_check_temperature = false;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -618,18 +619,6 @@ static void exposure_timer_callback(indigo_device *device) {
 		}
 	}
 	PRIVATE_DATA->can_check_temperature = true;
-}
-
-
-// callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
-static void clear_reg_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->can_check_temperature = false;
-		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else {
-		PRIVATE_DATA->exposure_timer = NULL;
-	}
 }
 
 
@@ -877,7 +866,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		apogee_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		
+
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
@@ -886,12 +875,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		if (CCD_EXPOSURE_ITEM->number.target > 4)
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
-		else {
-			PRIVATE_DATA->can_check_temperature = false;
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-		}
+
+		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (PRIVATE_DATA->abort_in_progress)
