@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 49.18587.20210306 */
+/* Version: 50.19561.20210912 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -127,7 +127,7 @@ typedef struct {
 /*                                                                              */
 /* Please note that the return value >= 0 means success                         */
 /* (especially S_FALSE is also successful, indicating that the internal value and the value set by the user is equivalent, which means "no operation"). */
-/* Therefore, the SUCCEEDEDand FAILED macros should generally be used to determine whether the return value is successful or failed. */
+/* Therefore, the SUCCEEDED and FAILED macros should generally be used to determine whether the return value is successful or failed. */
 /* (Unless there are special needs, do not use "==S_OK" or "==0" to judge the return value) */
 /*                                                                              */
 /* #define SUCCEEDED(hr)   (((HRESULT)(hr)) >= 0)                               */
@@ -138,7 +138,7 @@ typedef struct {
 /* handle */
 typedef struct AltaircamT { int unused; } *HAltaircam;
 
-#define ALTAIRCAM_MAX                      16
+#define ALTAIRCAM_MAX                      128
                                          
 #define ALTAIRCAM_FLAG_CMOS                0x00000001  /* cmos sensor */
 #define ALTAIRCAM_FLAG_CCD_PROGRESSIVE     0x00000002  /* progressive ccd sensor */
@@ -234,6 +234,9 @@ typedef struct AltaircamT { int unused; } *HAltaircam;
 #define ALTAIRCAM_DENOISE_DEF              0       /* denoise */
 #define ALTAIRCAM_DENOISE_MIN              0       /* denoise */
 #define ALTAIRCAM_DENOISE_MAX              100     /* denoise */
+#define ALTAIRCAM_TEC_TARGET_MIN           (-300)  /* TEC target: -30.0 degrees Celsius */
+#define ALTAIRCAM_TEC_TARGET_DEF           0       /* 0.0 degrees Celsius */
+#define ALTAIRCAM_TEC_TARGET_MAX           300     /* TEC target: 30.0 degrees Celsius */
 
 typedef struct{
     unsigned    width;
@@ -257,22 +260,22 @@ typedef struct {
     unsigned            ioctrol;     /* number of input/output control */
     float               xpixsz;      /* physical pixel size */
     float               ypixsz;      /* physical pixel size */
-    AltaircamResolution   res[ALTAIRCAM_MAX];
+    AltaircamResolution   res[16];
 }AltaircamModelV2; /* camera model v2 */
 
 typedef struct {
 #ifdef _WIN32
-    wchar_t               displayname[64];    /* display name */
-    wchar_t               id[64];             /* unique and opaque id of a connected camera, for Altaircam_Open */
+    wchar_t             displayname[64];    /* display name */
+    wchar_t             id[64];             /* unique and opaque id of a connected camera, for Altaircam_Open */
 #else
-    char                  displayname[64];    /* display name */
-    char                  id[64];             /* unique and opaque id of a connected camera, for Altaircam_Open */
+    char                displayname[64];    /* display name */
+    char                id[64];             /* unique and opaque id of a connected camera, for Altaircam_Open */
 #endif
     const AltaircamModelV2* model;
 }AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 49.18587.20210306
+    get the version of this dll/so/dylib, which is: 50.19561.20210912
 */
 #ifdef _WIN32
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -480,6 +483,7 @@ typedef void (__stdcall* PIALTAIRCAM_BLACKBALANCE_CALLBACK)(const unsigned short
 typedef void (__stdcall* PIALTAIRCAM_TEMPTINT_CALLBACK)(const int nTemp, const int nTint, void* pCtx);   /* once white balance, Temp/Tint Mode */
 typedef void (__stdcall* PIALTAIRCAM_HISTOGRAM_CALLBACK)(const float aHistY[256], const float aHistR[256], const float aHistG[256], const float aHistB[256], void* pCtx);
 typedef void (__stdcall* PIALTAIRCAM_CHROME_CALLBACK)(void* pCtx);
+typedef void (__stdcall* PIALTAIRCAM_PROGRESS)(int percent, void* pCtx);
 #endif
 
 ALTAIRCAM_API(HRESULT)  Altaircam_get_AutoExpoEnable(HAltaircam h, int* bAutoExposure);
@@ -694,16 +698,13 @@ ALTAIRCAM_API(HRESULT)  Altaircam_read_EEPROM(HAltaircam h, unsigned addr, unsig
 ALTAIRCAM_API(HRESULT)  Altaircam_read_Pipe(HAltaircam h, unsigned pipeNum, void* pBuffer, unsigned nBufferLen);
 ALTAIRCAM_API(HRESULT)  Altaircam_write_Pipe(HAltaircam h, unsigned pipeNum, const void* pBuffer, unsigned nBufferLen);
 ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeNum);
-
-#define ALTAIRCAM_TEC_TARGET_MIN               (-300)     /* -30.0 degrees Celsius */
-#define ALTAIRCAM_TEC_TARGET_DEF               0          /* 0.0 degrees Celsius */
-#define ALTAIRCAM_TEC_TARGET_MAX               300        /* 30.0 degrees Celsius */
                                              
 #define ALTAIRCAM_OPTION_NOFRAME_TIMEOUT       0x01       /* no frame timeout: 1 = enable; 0 = disable. default: disable */
-#define ALTAIRCAM_OPTION_THREAD_PRIORITY       0x02       /* set the priority of the internal thread which grab data from the usb device. iValue: 0 = THREAD_PRIORITY_NORMAL; 1 = THREAD_PRIORITY_ABOVE_NORMAL; 2 = THREAD_PRIORITY_HIGHEST; default: 0; see: msdn SetThreadPriority */
-#define ALTAIRCAM_OPTION_PROCESSMODE           0x03       /* 0 = better image quality, more cpu usage. this is the default value
-                                                           1 = lower image quality, less cpu usage
+#define ALTAIRCAM_OPTION_THREAD_PRIORITY       0x02       /* set the priority of the internal thread which grab data from the usb device.
+                                                            Win: iValue: 0 = THREAD_PRIORITY_NORMAL; 1 = THREAD_PRIORITY_ABOVE_NORMAL; 2 = THREAD_PRIORITY_HIGHEST; 3 = THREAD_PRIORITY_TIME_CRITICAL; default: 1; see: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority
+                                                            Linux & macOS: The high 16 bits for the scheduling policy, and the low 16 bits for the priority; see: https://linux.die.net/man/3/pthread_setschedparam
                                                         */
+#define ALTAIRCAM_OPTION_PROCESSMODE           0x03       /* obsolete & useless. 0 = better image quality, more cpu usage. this is the default value; 1 = lower image quality, less cpu usage */
 #define ALTAIRCAM_OPTION_RAW                   0x04       /* raw data mode, read the sensor "raw" data. This can be set only BEFORE Altaircam_StartXXX(). 0 = rgb, 1 = raw, default value: 0 */
 #define ALTAIRCAM_OPTION_HISTOGRAM             0x05       /* 0 = only one, 1 = continue mode */
 #define ALTAIRCAM_OPTION_BITDEPTH              0x06       /* 0 = 8 bits mode, 1 = 16 bits mode, subset of ALTAIRCAM_OPTION_PIXEL_FORMAT */
@@ -724,7 +725,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeNum);
                                                             default value: 1
                                                         */
 #define ALTAIRCAM_OPTION_FRAMERATE             0x11       /* limit the frame rate, range=[0, 63], the default value 0 means no limit */
-#define ALTAIRCAM_OPTION_DEMOSAIC              0x12       /* demosaic method for both video and still image: BILINEAR = 0, VNG(Variable Number of Gradients interpolation) = 1, PPG(Patterned Pixel Grouping interpolation) = 2, AHD(Adaptive Homogeneity-Directed interpolation) = 3, see https://en.wikipedia.org/wiki/Demosaicing, default value: 0 */
+#define ALTAIRCAM_OPTION_DEMOSAIC              0x12       /* demosaic method for both video and still image: BILINEAR = 0, VNG(Variable Number of Gradients) = 1, PPG(Patterned Pixel Grouping) = 2, AHD(Adaptive Homogeneity Directed) = 3, EA(Edge Aware) = 4, see https://en.wikipedia.org/wiki/Demosaicing, default value: 0 */
 #define ALTAIRCAM_OPTION_DEMOSAIC_VIDEO        0x13       /* demosaic method for video */
 #define ALTAIRCAM_OPTION_DEMOSAIC_STILL        0x14       /* demosaic method for still image */
 #define ALTAIRCAM_OPTION_BLACKLEVEL            0x15       /* black level */
@@ -795,7 +796,8 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeNum);
 #define ALTAIRCAM_OPTION_BANDWIDTH             0x2e       /* bandwidth, [1-100]% */
 #define ALTAIRCAM_OPTION_RELOAD                0x2f       /* reload the last frame in trigger mode */
 #define ALTAIRCAM_OPTION_CALLBACK_THREAD       0x30       /* dedicated thread for callback */
-#define ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH    0x31       /* frame buffer deque length, range: [2, 1024], default: 3 */
+#define ALTAIRCAM_OPTION_FRONTEND_DEQUE_LENGTH 0x31       /* frontend frame buffer deque length, range: [2, 1024], default: 3 */
+#define ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH    0x31       /* alias of ALTAIRCAM_OPTION_FRONTEND_DEQUE_LENGTH */
 #define ALTAIRCAM_OPTION_MIN_PRECISE_FRAMERATE 0x32       /* precise frame rate minimum value in 0.1 fps, such as 15 means 1.5 fps */
 #define ALTAIRCAM_OPTION_SEQUENCER_ONOFF       0x33       /* sequencer trigger: on/off */
 #define ALTAIRCAM_OPTION_SEQUENCER_NUMBER      0x34       /* sequencer trigger: number, range = [1, 255] */
@@ -816,7 +818,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeNum);
                                                              if the image is wrong, this indicates that the hardware platform does not support this feature, please disable it when the program starts:
                                                                Altaircam_put_Option((this is a global option, the camera handle parameter is not required, use nullptr), ALTAIRCAM_OPTION_LINUX_USB_ZEROCOPY, 0)
                                                              default value:
-                                                               disable(0): android or arm32
+                                                               disable(0): android or arm
                                                                enable(1):  others
                                                         */
 #define ALTAIRCAM_OPTION_FLUSH                 0x3d       /* 1 = hard flush, discard frames cached by camera DDR (if any)
@@ -824,6 +826,10 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeNum);
                                                            3 = both flush
                                                            Altaircam_Flush means 'both flush'
                                                         */
+#define ALTAIRCAM_OPTION_NUMBER_DROP_FRAME     0x3e       /* get the number of frames that have been grabbed from the USB but dropped by the software */
+#define ALTAIRCAM_OPTION_DUMP_CFG              0x3f       /* explicitly dump configuration to ini, json, or EEPROM. when camera is closed, it will dump configuration automatically */
+#define ALTAIRCAM_OPTION_DEFECT_PIXEL          0x40       /* Defect Pixel Correction: 0 => disable, 1 => enable; default: 1 */
+#define ALTAIRCAM_OPTION_BACKEND_DEQUE_LENGTH  0x41       /* backend frame buffer deque length (Only available in pull mode), range: [2, 1024], default: 3 */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8             0x00
@@ -945,10 +951,30 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_AfParam(HAltaircam h, AltaircamAfParam* pA
 
 #define ALTAIRCAM_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
-ALTAIRCAM_API(HRESULT)  Altaircam_IoControl(HAltaircam h, unsigned index, unsigned nType, int outVal, int* inVal);
+/*
+  ioLineNumber:
+    0-> Opto-isolated input
+    1-> Opto-isolated output
+    2-> GPIO0
+    3-> GPIO1
+*/
+ALTAIRCAM_API(HRESULT)  Altaircam_IoControl(HAltaircam h, unsigned ioLineNumber, unsigned nType, int outVal, int* inVal);
 
 ALTAIRCAM_API(HRESULT)  Altaircam_write_UART(HAltaircam h, const unsigned char* pData, unsigned nDataLen);
 ALTAIRCAM_API(HRESULT)  Altaircam_read_UART(HAltaircam h, unsigned char* pBuffer, unsigned nBufferLen);
+
+/* firmware update:
+    camId: camera ID
+    filePath: ufw file full path
+    pFun, pCtx: progress percent callback
+Please do not unplug the camera or lost power during the upgrade process, this is very very important.
+Once an unplugging or power outage occurs during the upgrade process, the camera will no longer be available and can only be returned to the factory for repair.
+*/
+#ifdef _WIN32
+ALTAIRCAM_API(HRESULT)  Altaircam_Update(const wchar_t* camId, const wchar_t* filePath, PIALTAIRCAM_PROGRESS pFun, void* pCtx);
+#else
+ALTAIRCAM_API(HRESULT)  Altaircam_Update(const char* camId, const char* filePath, PIALTAIRCAM_PROGRESS pFun, void* pCtx);
+#endif
 
 ALTAIRCAM_API(HRESULT)  Altaircam_put_Linear(HAltaircam h, const unsigned char* v8, const unsigned short* v16);
 ALTAIRCAM_API(HRESULT)  Altaircam_put_Curve(HAltaircam h, const unsigned char* v8, const unsigned short* v16);
@@ -1013,7 +1039,7 @@ typedef struct {
     unsigned            maxspeed;   /* number of speed level, same as Altaircam_get_MaxSpeed(), the speed range = [0, maxspeed], closed interval */
     unsigned            preview;    /* number of preview resolution, same as Altaircam_get_ResolutionNumber() */
     unsigned            still;      /* number of still resolution, same as Altaircam_get_StillResolutionNumber() */
-    AltaircamResolution   res[ALTAIRCAM_MAX];
+    AltaircamResolution   res[16];
 }AltaircamModel; /* camera model */
 
 /*
@@ -1089,16 +1115,12 @@ ALTAIRCAM_API(HRESULT)  Altaircam_Start(HAltaircam h, PALTAIRCAM_DATA_CALLBACK p
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_put_TempTintInit(HAltaircam h, PIALTAIRCAM_TEMPTINT_CALLBACK fnTTProc, void* pTTCtx);
 
-/*
-    obsolete, please use Altaircam_put_Option or Altaircam_get_Option to set or get the process mode: ALTAIRCAM_PROCESSMODE_FULL or ALTAIRCAM_PROCESSMODE_FAST.
-    default is ALTAIRCAM_PROCESSMODE_FULL.
-*/
+/* ProcessMode: obsolete & useless */
 #ifndef __ALTAIRCAM_PROCESSMODE_DEFINED__
 #define __ALTAIRCAM_PROCESSMODE_DEFINED__
 #define ALTAIRCAM_PROCESSMODE_FULL        0x00    /* better image quality, more cpu usage. this is the default value */
 #define ALTAIRCAM_PROCESSMODE_FAST        0x01    /* lower image quality, less cpu usage */
 #endif
-
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_put_ProcessMode(HAltaircam h, unsigned nProcessMode);
 ALTAIRCAM_DEPRECATED
