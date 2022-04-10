@@ -6,10 +6,8 @@
 </head>
 <body>
 <h1 align="center">Altaircam API Manual</h1>
-<hr/>
-<h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/>
-<ul><li>Version: 49.18587.20210306</li></ul>
+<hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
+<hr/><ul><li>Version: 50.19561.20210912</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -36,9 +34,7 @@
     </ul>
   </li>
 </ul>
-<hr/>
-<h1><font color="#0000FF">2. Introduction</font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF">2. Introduction</font></h1><hr/>
 <p>Altaircam cameras support various kinds of APIs (Application Program Interface), namely
  Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/dd375454(v=vs.85).aspx">DirectShow</a>, <a href="http://twain.org/">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
@@ -83,30 +79,16 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		These dll files are compatible with Windows Runtime, and can be consumed from a Universal Windows Platform app.<br/>
 		If use C# to develop the UWP, altaircam.cs wrapper class can be used to P/Invoke into altaircam.dll.<br/>
 		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://msdn.microsoft.com/en-us/library/windows/hardware/dn303351(v=vs.85).aspx">How to add USB device capabilities to the app manifest</a>. (It seems that microsoft limits the number of Device items to 100)</blockquote>
-		demouwp.zip is a simple demo, before build and run this demo, please change the value of vidpid in file Package.appxmanifest<br/>
 		</blockquote>
 	</li>
      <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, it's no longer need to install driver in Windows8 and above versions</b>)
        <ol>
          <li>x86 folder contains the kernel mode drivers for x86, including altaircam.cat, altaircam.inf and altaircam.sys.</li>
          <li>x64 folder contains the kennel mode driver for x64, including altaircam.cat, altaircam.inf and altaircam.sys.</li>
-		 It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
-			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table>
+		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
        </ol>
      </li>
-     <li>samples
-       <ol>
-         <li>democpp, C++ sample. It demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></li>
-         <li>AutoTestTool, auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</li>
-         <li>demopush, C++ sample, this sample use Push Mode, StartPushModeV3</li>
-		 <li>demomfc, a simple C++ sample. It use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode.</li>
-         <li>demomono, a simple C++ sample. It demonstrates to use mono camera with 8 or 16 bits.</li>
-		 <li>demowinformcs1, C# winform sample. This sample use Pull Mode, StartPullModeWithWndMsg.</li>
-         <li>demowinformcs2, C# winform sample. This sample use Pull Mode, StartPullModeWithCallback.</li>
-         <li>demowinformcs3, C# winform sample. This sample use Push Mode, StartPushModeV3.</li>
-         <li>demowinformvb, VB.NET winform sample. This sample use Pull Mode.</li>
-       </ol>
-      </li>
    </ul>
 </li>
 </ul>
@@ -123,15 +105,9 @@ The SDK zip file contains all of the necessary resources and information:</p>
  	</li></ul>
  <ul><li>android: libaltaircam.so for Android on arm, arm64, x86 and x64</li></ul>
  <ul><li>mac: For macOS</li></ul> 
- <ul><li>python: altaircam.py and sample code (Console and pyQt)</li></ul>
- <ul><li>java: altaircam.java and sample code (Console and Swing)</li></ul>
+ <ul><li>python: altaircam.py and sample code</li></ul>
+ <ul><li>java: altaircam.java and sample code</li></ul>
  <ul><li>doc: User manuals in English and Simplified Chinese</li></ul>
- <ul><li>sample
-	<ul>
-	<li>demosimplest: a simplest sample, about 60 lines of code</li>
-	<li>demoraw: raw data and snap still image, about 120 lines of code</li>
-	</ul>
-	</li></ul>
  <ul>
      <li>extras
        <ul>
@@ -141,9 +117,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		 <li>matlab: MatLab demo</li>
        </ul>
      </li></ul>
- <hr/>
-<h1><font color="#0000FF">3. Concepts and terminology</font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF">3. Concepts and terminology</font></h1><hr/>
 <h2><font color="#0000FF">a. Modes for accessing image data: "Pull Mode" vs "Push Mode"</font></h2>
 <p>Altaircam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
 <ul>
@@ -300,7 +274,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 #define ALTAIRCAM_FLAG_TRIGGER_SINGLE     0x00200000  /* only support trigger single: one trigger, one image */</pre></td></tr></table></blockquote>
 		Function Altaircam_put_Option(HAltaircam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign ALTAIRCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
 			<blockquote>
-<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define ALTAIRCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, 3 = external + software trigger, default value =  0 */</pre></td></tr></table>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define ALTAIRCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, 3 = external + software trigger, default value = 0 */</pre></td></tr></table>
 			</blockquote>
 		Function Altaircam_get_Option(HAltaircam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
 	</blockquote>
@@ -318,9 +292,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 	<blockquote>
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
-<hr/>
-<h1><font color="#0000FF">4. Functions</font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF">4. Functions</font></h1><hr/>
 <ul><li><h2><font color="#0000FF">HRESULT return value</font></h2>
 	<p>HRESULT is not uncommon on the Windows platform. It's borrowed to macOS and Linux, see the table:</p>
 	<p><strong>Please note that the return value >=0 means success (especially S_FALSE is also successful, indicating that the internal value and the value set by the user is equivalent, which means "no operation"). Therefore, the SUCCEEDED and FAILED macros should generally be used to determine whether the return value is successful or failed.<br/>
@@ -1294,8 +1266,14 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 		<td>No</td>
       </tr>
 	  <tr>
-        <td>ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH</td>
-        <td>frame deque length, range: [2, 1024]</td>
+        <td>ALTAIRCAM_OPTION_FRONTEND_DEQUE_LENGTH<br/>or<br/>ALTAIRCAM_OPTION_FRAME_DEQUE_LENGTH</td>
+        <td>frontend frame deque length, range: [2, 1024]</td>
+		<td>3</td>
+		<td>No</td>
+      </tr>
+	  <tr>
+        <td>ALTAIRCAM_OPTION_BACKEND_DEQUE_LENGTH</td>
+        <td>backend frame deque length (Only available in pull mode), range: [2, 1024]</td>
 		<td>3</td>
 		<td>No</td>
       </tr>
@@ -1351,10 +1329,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 		<td>Yes</td>
       </tr>
       <tr>
+        <td>ALTAIRCAM_OPTION_DEFECT_PIXEL</td>
+        <td>Defect Pixel Correction<br/>0 => disable, 1 => enable</td>
+		<td>enable (1)</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td>ALTAIRCAM_OPTION_THREAD_PRIORITY</td>
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
-          0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms686277(v=vs.85).aspx">SetThreadPriority</a><br/>This option is not available at Linux and macOS.</td>
-        <td>1</td>
+          Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority">SetThreadPriority</a></blockquote>
+		  Linux &amp; macOS: <blockquote>The high 16 bits for the scheduling policy, and the low 16 bits for the priority.<br/>
+		  Please refer to <a href="https://linux.die.net/man/3/pthread_setschedparam">pthread_setschedparam</a>
+		  </blockquote></td>
+        <td>Win: 1<br/>Linux / macOS: NA</td>
         <td>Yes</td>
       </tr>
 	  <tr>
@@ -1390,9 +1377,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td width="28%"><a id="demosaic">ALTAIRCAM_OPTION_DEMOSAIC</a></td>
       	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
       			0 = BILINEAR<br/>
-      			1 = VNG(Variable Number of Gradients interpolation)(Temporarily unavailable)<br/>
-      			2 = PPG(Patterned Pixel Grouping interpolation)<br/>
-      			3 = AHD(Adaptive Homogeneity-Directed interpolation)<br/>
+      			1 = VNG(Variable Number of Gradients)<br/>
+      			2 = PPG(Patterned Pixel Grouping)<br/>
+      			3 = AHD(Adaptive Homogeneity Directed)<br/>
+				4 = EA(Edge Aware)<br/>
       			Always return E_NOTIMPL for monochromatic camera.</td>
       	<td>0</td>
       	<td>Yes</td>
@@ -1410,13 +1398,13 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>Yes</td>
       </tr>
       <tr>
-      	<td><a id="blacklevel">ALTAIRCAM_OPTION_OPEN_USB_ERRORCODE</a></td>
+      	<td>ALTAIRCAM_OPTION_OPEN_USB_ERRORCODE</td>
       	<td>open usb error code. get only</td>
       	<td>NA</td>
       	<td>NA</td>
       </tr>
       <tr>
-      	<td><a id="blacklevel">ALTAIRCAM_OPTION_FLUSH</a></td>
+      	<td>ALTAIRCAM_OPTION_FLUSH</td>
       	<td>1: hard flush, discard frames cached by camera DDR (if any)<br/>
 		2: soft flush, discard frames cached by altaircam.dll (if any)<br/>
 		3: both<br/>
@@ -1425,12 +1413,24 @@ for (unsigned i = 0; i &lt; cnt; ++i)
       	<td>NA</td>
       </tr>
       <tr>
-      	<td><a id="blacklevel">ALTAIRCAM_OPTION_LINUX_USB_ZEROCOPY</a></td>
+      	<td>ALTAIRCAM_OPTION_NUMBER_DROP_FRAME</td>
+      	<td>get the number of frames that have been grabbed from the USB but dropped by the software</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>ALTAIRCAM_OPTION_DUMP_CFG</td>
+      	<td>explicitly dump configuration to ini, json, or EEPROM. when camera is closed, it will dump configuration automatically</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>ALTAIRCAM_OPTION_LINUX_USB_ZEROCOPY</td>
       	<td>global option for linux platform:<br/>
 		enable or disable usb zerocopy (helps to reduce memory copy and improve efficiency. Requires kernel version >= 4.6 and hardware platform support).<br/>
 		if the image is wrong, this indicates that the hardware platform does not support this feature, please disable it when the program starts:<br/>
 		&nbsp;&nbsp;Altaircam_put_Option((this is a global option, the camera handle parameter is not required, use nullptr), ALTAIRCAM_OPTION_LINUX_USB_ZEROCOPY, 0)</td>
-      	<td>disable(0): android or arm32<br/>
+      	<td>disable(0): android or arm<br/>
 		enable(1):  others</td>
       	<td>No<br/>(Must be set before open camera (Altaircam_Open))</td>
       </tr>
@@ -1694,7 +1694,11 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HAltaircam h: camera instance handle</p>
-    <p>unsigned index: IO port index</p>
+    <p>unsigned ioLineNumber:<br/>
+	<blockquote><blockquote>0-> Opto-isolated input<br/>
+    1-> Opto-isolated output<br/>
+    2-> GPIO0<br/>
+    3-> GPIO1</blockquote></blockquote></p>
     <p>unsigned nType: type of control</p>
     <p>int outVal: output control value</p>
 	<p>int* inVal: input control value</p>
@@ -1949,6 +1953,16 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     </blockquote>
     <p><strong>Remarks:</strong> level range related.</p>
 </li></ul>
+<ul><li><h2><font color="#0000FF">Altaircam_Update</font></h2>
+    <p><strong>Return value:</strong> HRESULT type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>camId: camera ID</p>
+      <p>filePath: ufw file full path</p>
+      <p>pFun, pCtx: progress percent callback</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> firmware update. Please do not unplug the camera or lost power during the upgrade process, this is very very important. Once an unplugging or power outage occurs during the upgrade process, the camera will no longer be available and can only be returned to the factory for repair.</p>
+</li></ul>
 <ul><li><h2><font color="#0000FF">Altaircam_GetHistogram</font></h2>
       <p><strong>Return value:</strong> HRESULT type means success or failure</p>
       <p><strong>Parameters:</strong></p>
@@ -2104,13 +2118,19 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 	<td>&nbsp;</td>
 	<td>100</td>
     </tr>
+      <tr>
+        <td colspan="3">TEC Target</td>
+        <td width="15%">-300 ~ 300<br/>-30℃ ~ 30℃</td>
+        <td width="9%">0</td>
+        <td width="19%">ALTAIRCAM_OPTION_TECTARGET</td>
+        <td width="17%">ALTAIRCAM_OPTION_TECTARGET</td>
+        <td width="15%">&nbsp;</td>
+      </tr>
  </table>
 </div>
 </blockquote>
 </li></ul>
-<hr/>
-<h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1><hr/>
 <p>Altaircam does support .NET development environment (C# and VB.NET).</p>
 <p>altaircam.cs use P/Invoke to call into altaircam.dll. Copy altaircam.cs to your C# project, please reference demowinformcs1, demowinformcs2 and demowinformcs3 in the samples directory.</p>
 <p>Please pay attation to that <strong>the object of the C# class Altaircam. Altaircam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new Altaircam</strong> (The constructor is private on purpose).</p>
@@ -2126,25 +2146,157 @@ public bool Snap(uint nResolutionIndex)
     return (Altaircam_Snap(_handle, nResolutionIndex) &gt;= 0);
 }</pre></td></tr></table>
 <p>VB.NET is similar with C#, not otherwise specified.</p>
-<hr/>
-<h1><font color="#0000FF"><a id="python">6. Python</a></font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF"><a id="python">6. Python</a></font></h1><hr/>
 <p>Altaircam does support Python (version 3.0 or above), please import altaircam to use altaircam.py and reference the sample code simplest.py and qt.py.</p>
 <p>Please pay attation to that <strong>the object of the python class altaircam.Altaircam must be obtained by classmethod Open or OpenByIndex, it cannot be obtained by obj = altaircam.Altaircam()</strong></p>
 <p>Most methods of the Altaircam class use ctypes to call into the corresponding Altaircam_xxxx functions of altaircam.dll/so/dylib. So, the descriptions of the Altaircam_xxxx function are also applicable for the corresponding python methods.</p>
 <p>Please reference __errcheck in altaircam.py, the original HRESULT return code is mapped to HRESULTException exception (in win32 it's inherited from OSError).</p>
 <p>Please make sure the altaircam dll/so/dylib library file is in the same directory with altaircam.py.</p>
-<h1><font color="#0000FF"><a id="java">7. Java</a></font></h1>
-<hr/>
+<hr/><h1><font color="#0000FF"><a id="java">7. Java</a></font></h1><hr/>
 <p>Altaircam does support Java, altaircam.java use <a href="https://github.com/java-native-access/jna">JNA (https://github.com/java-native-access/jna)</a> to call into altaircam.dll/so/dylib. Copy altaircam.java to your java project, please reference the sample code simplest.java (Console), javafx.java, swing.java.</p>
 <p>Please pay attation to that <strong>the object of the java class altaircam must be obtained by static method Open or OpenByIndex, it cannot be obtained by obj = new altaircam()</strong>(The constructor is private on purpose).</p>
 <p>Most methods of the altaircam class use <a href="https://github.com/java-native-access/jna">JNA</a> to call into the corresponding Altaircam_xxxx functions of altaircam.dll/so/dylib. So, the descriptions of the Altaircam_xxxx function are also applicable for the corresponding java methods.</p>
 <p>Please reference errcheck in altaircam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
 <p>Remark: (1) Download jna-*.jar from github; (2) Make sure altaircam.dll/so/dylib is placed in the correct directory.</p>
-<hr/>
-<h1><font color="#0000FF">8. Changelog</font></h1>
-<hr/>
-<p>v49: Add support to save & load configuration. Please see <a href="#cfg">here</a></p>
+<hr/><h1><font color="#0000ff">8. Samples</font></h1><hr/>
+<div align="center">
+    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+	  <tr>
+        <td width="10%" colspan="2">Name</td>
+        <td width="10%">Platform</td>
+        <td width="10%">Language</td>
+        <td width="10%">Dependency</td>
+        <td width="10%">UI</td>
+        <td width="50%">Description</td>
+      </tr>
+	  <tr>
+		<td colspan="2">demosimplest</td>
+		<td rowspan="2">Win32, Linux, macOS, Android</td>
+		<td rowspan="9">C++</td>
+		<td rowspan="2">&nbsp;</td>
+		<td rowspan="2">console</td>
+		<td>simplest sample, about 60 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demoraw</td>
+		<td>raw data and snap still image, about 120 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demoqt</td>
+		<td>Win32, Linux, macOS</td>
+		<td>Qt</td>
+		<td rowspan="13">GUI</td>
+		<td>Qt sample</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">democpp</td>
+		<td rowspan="6">Win32</td>
+		<td rowspan="4">ATL/WTL</td>
+		<td>demonstrates to enumerate device, open device, video preview, image capture, set the preview resolution, trigger, multi-format image saving (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control and so on. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl/">http://sourceforge.net/projects/wtl</a></td>
+	  </tr>
+	  <tr>
+		<td colspan="2">democallback</td>
+		<td>use Pull Mode, StartPullModeWithCallback</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demopush</td>
+		<td>use Push Mode, StartPushModeV3</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demomono</td>
+		<td>demonstrates to use mono camera with 8 or 16 bits</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demomfc</td>
+		<td rowspan="2">MFC</td>
+		<td>use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">AutoTestTool</td>
+		<td>auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformcs1</td>
+		<td rowspan="4">.NET</td>
+		<td rowspan="3">C#</td>
+		<td rowspan="6">&nbsp;</td>
+		<td>winform sample. This sample use Pull Mode, StartPullModeWithWndMsg</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformcs2</td>
+		<td>winform sample. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformcs3</td>
+		<td>winform sample. This sample use Push Mode, StartPushModeV3</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demowinformvb</td>
+		<td>VB.NET</td>
+		<td>winform sample. This sample use Pull Mode</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demouwp</td>
+		<td>WinRT</td>
+		<td>C#</td>
+		<td>Universal Windows Platform simple demo, before build and run this demo, please change the value of vidpid in file Package.appxmanifest</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demoandroid</td>
+		<td>Android</td>
+		<td>C++, Java</td>
+		<td>Android sample</td>
+	  </tr>
+	  <tr>
+		<td rowspan="3">demojava</td>
+		<td>simplest</td>
+		<td rowspan="5">Win32, Linux, macOS</td>
+		<td rowspan="3">Java</td>
+		<td rowspan="3">jna</td>
+		<td>console</td>
+		<td>simplest java sample</td>
+	  </tr>
+	  <tr>
+		<td>javafx</td>
+		<td rowspan="2">GUI</td>
+		<td>javafx sample</td>
+	  </tr>
+	  <tr>
+		<td>swing</td>
+		<td>swing sample</td>
+	  </tr>
+	  <tr>
+		<td rowspan="2">demopython</td>
+		<td>simplest</td>
+		<td rowspan="2">Python</td>
+		<td>&nbsp;</td>
+		<td>console</td>
+		<td>simplest python sample</td>
+	  </tr>
+	  <tr>
+		<td>qt</td>
+		<td>PyQt</td>
+		<td rowspan="3">GUI</td>
+		<td>PyQt sample</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demodshow</td>
+		<td rowspan="2">Win32 DirectShow</td>
+		<td rowspan="2">C++</td>
+		<td>MFC</td>
+		<td>DirectShow sample</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">amcap</td>
+		<td>&nbsp;</td>
+		<td>copy from Microsoft DirectShow SDK</td>
+	  </tr>
+	</table>
+</div>
+<hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v50: SIMD optimize in Windows(x86/x64) and Linux(x64)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;frontend and backend deque length: ALTAIRCAM_OPTION_FRONTEND_DEQUE_LENGTH, ALTAIRCAM_OPTION_BACKEND_DEQUE_LENGTH</p>
+<p>v49: Add support to save &amp; load configuration. Please see <a href="#cfg">here</a></p>
 <p>v48: hardware event. Please see <a href="#hwevent">here</a></p>
 <p>v47: hardware level range. Please see <a href="#hwlevelrange">here</a> and <a href="#levelrangev2">here</a></p>
 <p>v46: Add support denose. Please see <a href="#denoise">here</a></p>
