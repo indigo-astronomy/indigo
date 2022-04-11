@@ -444,6 +444,7 @@ static void exposure_timer_callback(indigo_device *device) {
 							indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
 						}
 					}
+					PRIVATE_DATA->retry = RETRY_COUNT;
 				}
 			}
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
