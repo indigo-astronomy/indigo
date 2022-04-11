@@ -150,6 +150,7 @@
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #include "ccd_svb/indigo_ccd_svb.h"
 #include "agent_astap/indigo_agent_astap.h"
+#include "rotator_optec/indigo_rotator_optec.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -285,6 +286,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_synscan,
 	indigo_mount_temma,
 	indigo_rotator_lunatico,
+	indigo_rotator_optec,
 	indigo_rotator_simulator,
 	indigo_wheel_asi,
 	indigo_wheel_atik,

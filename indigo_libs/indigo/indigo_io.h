@@ -102,6 +102,11 @@ extern bool indigo_printf(int handle, const char *format, ...);
 
 extern int indigo_scanf(int handle, const char *format, ...);
 
+/** Wait for data available.
+ */
+
+extern int indigo_select(int handle, long usec);
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 /** Compress with gzip.

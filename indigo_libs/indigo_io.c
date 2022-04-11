@@ -489,6 +489,16 @@ int indigo_scanf(int handle, const char *format, ...) {
 	return count;
 }
 
+int indigo_select(int handle, long usec) {
+	struct timeval tv;
+	fd_set readout;
+	FD_ZERO(&readout);
+	FD_SET(handle, &readout);
+	tv.tv_sec = (int)(usec / 1000000);
+	tv.tv_usec = (int)(usec % 1000000);
+	return select(handle + 1, &readout, NULL, NULL, &tv);
+}
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 void indigo_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
