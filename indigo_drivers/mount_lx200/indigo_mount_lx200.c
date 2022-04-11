@@ -1200,7 +1200,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					sprintf(command, ":SH%d#", tm.tm_isdst);
 					meade_command(device, command, NULL, 0, 0);
 				}
-				sprintf(command, ":SG%+03ld#", -(tm.tm_gmtoff / 3600 + tm.tm_isdst));
+				sprintf(command, ":SG%+03ld#", -(tm.tm_gmtoff / 3600));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
@@ -1245,7 +1245,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 					sprintf(command, ":SH%d#", tm.tm_isdst);
 					meade_command(device, command, NULL, 0, 0);
 				}
-				sprintf(command, ":SG%+03ld#", -(tm.tm_gmtoff / 3600 + tm.tm_isdst));
+				sprintf(command, ":SG%+03ld#", -(tm.tm_gmtoff / 3600));
 				if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
