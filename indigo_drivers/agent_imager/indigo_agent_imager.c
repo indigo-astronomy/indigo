@@ -1774,6 +1774,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_WHEEL_LIST_PROPERTY->hidden = false;
 		FILTER_FOCUSER_LIST_PROPERTY->hidden = false;
+		FILTER_ROTATOR_LIST_PROPERTY->hidden = false;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_1_LIST_PROPERTY->hidden = false;
 		strcpy(FILTER_AUX_1_LIST_PROPERTY->label, "External shutter list");
