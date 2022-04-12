@@ -24,7 +24,8 @@
 
 bool is_sleeping = false;
 int current = 0;
-int direction = 1;
+int direction = 0;
+int rate = 8;
 
 void setup() {
   Serial.begin(19200);
@@ -33,22 +34,35 @@ void setup() {
     ;
 }
 
+void go(int target) {
+  while (current != target) { 
+    current = current > target ? current - 1 : current + 1;
+    Serial.print("!");
+    delay(rate);
+  }
+  Serial.print("F");
+}
+
 void loop() {
-  String command = Serial.readStringUntil('\n');
-  command = command.substring(0, command.length() - 1);
+  char command[7];
+  int count = Serial.readBytes(command, 6);
+  command[count] = 0;
   if (is_sleeping) {
-    if (command.equals("CWAKUP")) {
+    if (!strcmp(command, "CWAKUP")) {
       is_sleeping = false;
       Serial.println("!");
     }
   } else {
-    if (command.equals("CSLEEP")) {
+    if (!strcmp(command, "CSLEEP")) {
       is_sleeping = true;
-    } else if (command.equals("CCLINK")) {
+    } else if (!strcmp(command, "CCLINK")) {
       Serial.println("!");
-    } else if (command.startsWith("CMREAD")) {
-      Serial.println(direction == 1 ? "0" : "1");
-    } else if (command.startsWith("CGETPA")) {
+    } else if (!strcmp(command, "CHOMES")) {
+//      Serial.println("ER=1");        
+      go(0);
+    } else if (!strcmp(command, "CMREAD")) {
+      Serial.println(direction);
+    } else if (!strcmp(command, "CGETPA")) {
       if (current < 10) {
         Serial.print("00");
         Serial.println(current);
@@ -58,22 +72,23 @@ void loop() {
       } else {
         Serial.println(current);
       }
-    } else if (command.startsWith("CD0")) {
+    } else if (!strncmp(command, "CD0", 3)) {
+      direction = 0;
+    } else if (!strncmp(command, "CD1", 3)) {
       direction = 1;
-    } else if (command.startsWith("CD1")) {
-      direction = -1;
-    } else if (command.startsWith("CPA")) {
-      int target = atoi(command.substring(3).c_str());
-      if (current == target) {
+    } else if (!strncmp(command, "CPA", 3)) {
+      int target = atoi(command + 3);
+      if (target >= 360)
+        Serial.println("ER=3");        
+      else if (current == target)
         Serial.println("ER=2");        
-      } else {
-        while (current != target) { 
-          current = (current + direction + 360) % 360;
-          Serial.print("!");
-          delay(10);
-        }
-        Serial.print("F");
-      }
+      else
+        go(target);
+    } else if (!strncmp(command, "CT", 2)) {
+      rate = atoi(command + 4);
+      Serial.print("!");
+    } else if (!strncmp(command, "CX", 2)) {
+      Serial.print("!");
     }
   }
 }
