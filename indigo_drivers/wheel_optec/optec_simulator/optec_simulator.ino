@@ -36,18 +36,18 @@ void setup() {
 }
 
 void loop() {
-  String command = Serial.readStringUntil('\n');
-  command = command.substring(0, command.length() - 1);
-  if (command.equals("WSMODE")) {
+  char command[7] = { 0 };
+  Serial.readBytes(command, 6);
+  if (!strcmp(command, "WSMODE")) {
     is_ready = true;
     Serial.println("!");
-  } else if (is_ready && command.equals("WEXITS")) {
+  } else if (is_ready && !strcmp(command, "WEXITS")) {
     is_ready = false;
     Serial.println("END");
-  } else if (is_ready && command.equals("WFILTR")) {
+  } else if (is_ready && !strcmp(command, "WFILTR")) {
     Serial.println(current_filter);
-  } else if (is_ready && command.startsWith("WGOTO")) {
-    char new_filter = command.charAt(5);
+  } else if (is_ready && !strncmp(command, "WGOTO", 5)) {
+    char new_filter = command[5];
     if (new_filter >= '1' && new_filter <= last_filter) {
       if (goto_err) {
         Serial.println("ERR=4");
