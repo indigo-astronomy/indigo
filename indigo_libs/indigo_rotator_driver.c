@@ -182,7 +182,6 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
-			indigo_save_property(device, NULL, ROTATOR_DIRECTION_PROPERTY);
 			indigo_save_property(device, NULL, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY);
 			indigo_save_property(device, NULL, ROTATOR_BACKLASH_PROPERTY);
 			indigo_save_property(device, NULL, ROTATOR_LIMITS_PROPERTY);
