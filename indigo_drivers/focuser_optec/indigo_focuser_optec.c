@@ -23,7 +23,7 @@
  \file indigo_focuser_optec.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_focuser_optec"
 
 #include <stdlib.h>
@@ -58,28 +58,28 @@ static bool optec_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
 		char reply;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		if (indigo_printf(PRIVATE_DATA->handle, "FMMODE\r\n") && indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &reply) == 1 && reply == '!') {
+		if (indigo_printf(PRIVATE_DATA->handle, "FMMODE") && indigo_scanf(PRIVATE_DATA->handle, "%c", &reply) == 1 && reply == '!') {
 			double value;
-			indigo_printf(PRIVATE_DATA->handle, "FPOSRO\r\n");
-			if (indigo_scanf(PRIVATE_DATA->handle, "P=%lf\r\n", &value) == 1) {
+			indigo_printf(PRIVATE_DATA->handle, "FPOSRO");
+			if (indigo_scanf(PRIVATE_DATA->handle, "P=%lf", &value) == 1) {
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = value;
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current position");
 			}
-			indigo_printf(PRIVATE_DATA->handle, "FTMPRO\r\n");
-			if (indigo_scanf(PRIVATE_DATA->handle, "T=%lf\r\n", &value) == 1) {
+			indigo_printf(PRIVATE_DATA->handle, "FTMPRO");
+			if (indigo_scanf(PRIVATE_DATA->handle, "T=%lf", &value) == 1) {
 				FOCUSER_TEMPERATURE_ITEM->number.value = value;
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current temperature");
 			}
-			indigo_printf(PRIVATE_DATA->handle, "FREADA\r\n");
-			if (indigo_scanf(PRIVATE_DATA->handle, "A=%lf\r\n", &value) == 1) {
+			indigo_printf(PRIVATE_DATA->handle, "FREADA");
+			if (indigo_scanf(PRIVATE_DATA->handle, "A=%lf", &value) == 1) {
 				FOCUSER_COMPENSATION_ITEM->number.value = value;
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read current compensation");
 			}
-			indigo_printf(PRIVATE_DATA->handle, "FTxxxA\r\n");
-			if (indigo_scanf(PRIVATE_DATA->handle, "A=%lf\r\n", &value) == 1) {
+			indigo_printf(PRIVATE_DATA->handle, "FTxxxA");
+			if (indigo_scanf(PRIVATE_DATA->handle, "A=%lf", &value) == 1) {
 				if (value == 1)
 					FOCUSER_COMPENSATION_ITEM->number.value = -FOCUSER_COMPENSATION_ITEM->number.value;
 			} else {
@@ -89,6 +89,8 @@ static bool optec_open(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize");
 		}
+		close(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = 0;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
@@ -97,7 +99,7 @@ static bool optec_open(indigo_device *device) {
 
 static void optec_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
-		indigo_printf(PRIVATE_DATA->handle, "FFMODE\r\n");
+		indigo_printf(PRIVATE_DATA->handle, "FFMODE");
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
@@ -159,15 +161,15 @@ static void focuser_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	double value;
 	if (FOCUSER_MODE_PROPERTY->state == INDIGO_OK_STATE && FOCUSER_MODE_MANUAL_ITEM->sw.value) {
-		indigo_printf(PRIVATE_DATA->handle, "FPOSRO\r\n");
-		if (indigo_scanf(PRIVATE_DATA->handle, "P=%lf\r\n", &value) == 1) {
+		indigo_printf(PRIVATE_DATA->handle, "FPOSRO");
+		if (indigo_scanf(PRIVATE_DATA->handle, "P=%lf", &value) == 1) {
 			FOCUSER_POSITION_ITEM->number.value = value;
 			FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = FOCUSER_POSITION_ITEM->number.value == FOCUSER_POSITION_ITEM->number.target ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
-		indigo_printf(PRIVATE_DATA->handle, "FTMPRO\r\n");
-		if (indigo_scanf(PRIVATE_DATA->handle, "T=%lf\r\n", &value) == 1) {
+		indigo_printf(PRIVATE_DATA->handle, "FTMPRO");
+		if (indigo_scanf(PRIVATE_DATA->handle, "T=%lf", &value) == 1) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = value;
 			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
@@ -203,7 +205,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[16];
 	int direction = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ^ FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value ? 'I' : 'O';
-	if (indigo_printf(PRIVATE_DATA->handle, "F%c%04d\r\n", direction, (int)FOCUSER_STEPS_ITEM->number.value) && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "*") == 0) {
+	if (indigo_printf(PRIVATE_DATA->handle, "F%c%04d", direction, (int)FOCUSER_STEPS_ITEM->number.value) && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "*") == 0) {
 		FOCUSER_POSITION_ITEM->number.target += (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -FOCUSER_STEPS_ITEM->number.value : FOCUSER_STEPS_ITEM->number.value);
 		FOCUSER_STEPS_PROPERTY->state = FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -219,8 +221,8 @@ static void focuser_mode_handler(indigo_device *device) {
 	char response[16];
 	FOCUSER_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-		if (indigo_printf(PRIVATE_DATA->handle, "FQUIT1\r\n") && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "DONE") == 0) {
-			if (indigo_printf(PRIVATE_DATA->handle, "FAMODE\r\n")) {
+		if (indigo_printf(PRIVATE_DATA->handle, "FQUIT1") && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "DONE") == 0) {
+			if (indigo_printf(PRIVATE_DATA->handle, "FAMODE")) {
 				FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
@@ -229,7 +231,7 @@ static void focuser_mode_handler(indigo_device *device) {
 		}
 	} else {
 		for (int i = 0; i < 10; i++) {
-			if (indigo_printf(PRIVATE_DATA->handle, "FMMODE\r\n") && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "!") == 0) {
+			if (indigo_printf(PRIVATE_DATA->handle, "FMMODE") && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "!") == 0) {
 				FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
@@ -247,8 +249,8 @@ static void focuser_compensation_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[16];
 	FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (indigo_printf(PRIVATE_DATA->handle, "FLA%04d\r\n", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value)) && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "DONE") == 0) {
-		if (indigo_printf(PRIVATE_DATA->handle, "FZAxx%c\r\n", FOCUSER_COMPENSATION_ITEM->number.value >= 0 ? '0' : '1') && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "DONE") == 0) {
+	if (indigo_printf(PRIVATE_DATA->handle, "FLA%04d", (int)fabs(FOCUSER_COMPENSATION_ITEM->number.value)) && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "DONE") == 0) {
+		if (indigo_printf(PRIVATE_DATA->handle, "FZAxx%c", FOCUSER_COMPENSATION_ITEM->number.value >= 0 ? '0' : '1') && indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response)) > 0 && strcmp(response, "DONE") == 0) {
 			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}

@@ -42,68 +42,69 @@ void setup() {
 
 void loop() {
   char buffer[8];
+  char command[7] = { 0 };
   if (Serial.available()) {
-    String command = Serial.readStringUntil('\n');
-    if (command.startsWith("FMMODE")) {
+    Serial.readBytes(command, 6);
+    if (!strcmp(command, "FMMODE")) {
       mode_a = false;
       mode_b = false;
       Serial.println("!");
-    } else if (command.startsWith("FFMODE")) {
+    } else if (!strcmp(command, "FFMODE")) {
       mode_a = false;
       mode_b = false;
       Serial.println("END");
-    } else if (command.startsWith("FAMODE")) {
+    } else if (!strcmp(command, "FAMODE")) {
       mode_a = true;
       mode_b = false;
-    } else if (command.startsWith("FBMODE")) {
+    } else if (!strcmp(command, "FBMODE")) {
       mode_a = false;
       mode_b = true;
-    } else if (command.startsWith("FQUIT0")) {
+    } else if (!strcmp(command, "FQUIT0")) {
       quiet = false;
       Serial.println("DONE");
-    } else if (command.startsWith("FQUIT1")) {
+    } else if (!strcmp(command, "FQUIT1")) {
       quiet = true;
       Serial.println("DONE");
-    } else if (command.startsWith("FSLEEP")) {
+    } else if (!strcmp(command, "FSLEEP")) {
       Serial.println("ZZZ");
-    } else if (command.startsWith("FWAKUP")) {
+    } else if (!strcmp(command, "FWAKUP")) {
       Serial.println("WAKE");
-    } else if (command.startsWith("FPOSRO")) {
+    } else if (!strcmp(command, "FPOSRO")) {
       sprintf(buffer, "P=%04u", position);
       Serial.println(buffer);
-    } else if (command.startsWith("FCENTR")) {
+    } else if (!strcmp(command, "FCENTR")) {
       position = target = 5000;
       Serial.println("CENTER");
-    } else if (command.startsWith("FI")) {
-      target = position - atoi(command.substring(2).c_str());
+    } else if (!strncmp(command, "FI", 2)) {
+      target = position - atoi(command + 2);
       Serial.println("*");
-    } else if (command.startsWith("FO")) {
-      target = position + atoi(command.substring(2).c_str());
+    } else if (!strncmp(command, "FO", 2)) {
+      target = position + atoi(command + 2);
       Serial.println("*");
-    } else if (command.startsWith("FTMPRO")) {
+    } else if (!strcmp(command, "FTMPRO")) {
       Serial.println("T=+24.5");
-    } else if (command.startsWith("FREADA")) {
+    } else if (!strcmp(command, "FREADA")) {
       sprintf(buffer, "A=%04u", slope_a);
       Serial.println(buffer);
-    } else if (command.startsWith("FREADB")) {
+    } else if (!strcmp(command, "FREADB")) {
       sprintf(buffer, "B=%04u", slope_b);
       Serial.println(buffer);
-    } else if (command.startsWith("FLA")) {
-      slope_a = atoi(command.substring(3).c_str());
+    } else if (!strncmp(command, "FLA", 3)) {
+      slope_a = atoi(command + 3);
       Serial.println("DONE");
-    } else if (command.startsWith("FLB")) {
-      slope_b = atoi(command.substring(3).c_str());
+    } else if (!strncmp(command, "FLB", 3)) {
+      slope_b = atoi(command + 3);
       Serial.println("DONE");
-    } else if (command.startsWith("FZAxx")) {
-      slope_a_sign = command.charAt(5);
+    } else if (!strncmp(command, "FZAxx", 5)) {
+      slope_a_sign = command[5];
       Serial.println("DONE");
-    } else if (command.startsWith("FZBxx")) {
-      slope_b_sign = command.charAt(5);
+    } else if (!strncmp(command, "FZBxx", 5)) {
+      slope_b_sign = command[5];
       Serial.println("DONE");
-    } else if (command.startsWith("FTxxxA")) {
+    } else if (!strcmp(command, "FTxxxA")) {
       sprintf(buffer, "A=%c", slope_a_sign);
       Serial.println(buffer);
-    } else if (command.startsWith("FTxxxB")) {
+    } else if (!strcmp(command, "FTxxxB")) {
       sprintf(buffer, "B=%c", slope_b_sign);
       Serial.println(buffer);
     }
