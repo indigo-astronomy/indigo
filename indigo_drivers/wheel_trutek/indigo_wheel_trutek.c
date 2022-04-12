@@ -62,6 +62,8 @@ static bool trutek_open(indigo_device *device) {
 				}
 			}
 		}
+		close(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = 0;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
