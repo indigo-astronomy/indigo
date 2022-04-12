@@ -67,7 +67,7 @@ static bool optec_wakeup(indigo_device *device) {
 	char response;
 	if (indigo_printf(PRIVATE_DATA->handle, "CWAKUP")) {
 		if (indigo_select(PRIVATE_DATA->handle, 100000) > 0) {
-			if (indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &response) != 1 || response != '!') {
+			if (indigo_scanf(PRIVATE_DATA->handle, "%c", &response) != 1 || response != '!') {
 				tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to wake up");
 				return false;
@@ -85,7 +85,7 @@ static bool optec_open(indigo_device *device) {
 		char response;
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		if (optec_wakeup(device)) {
-			if (indigo_printf(PRIVATE_DATA->handle, "CCLINK") && indigo_scanf(PRIVATE_DATA->handle, "%c\r\n", &response) == 1 && response == '!') {
+			if (indigo_printf(PRIVATE_DATA->handle, "CCLINK") && indigo_scanf(PRIVATE_DATA->handle, "%c", &response) == 1 && response == '!') {
 				tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 				return true;
 			}
@@ -168,13 +168,13 @@ static void rotator_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (optec_open(device)) {
-			if (indigo_printf(PRIVATE_DATA->handle, "CMREAD") && indigo_scanf(PRIVATE_DATA->handle, "%d\r\n", &value) == 1) {
+			if (indigo_printf(PRIVATE_DATA->handle, "CMREAD") && indigo_scanf(PRIVATE_DATA->handle, "%d", &value) == 1) {
 				indigo_set_switch(ROTATOR_DIRECTION_PROPERTY, value == 0 ? ROTATOR_DIRECTION_NORMAL_ITEM : ROTATOR_DIRECTION_REVERSED_ITEM, 1);
 				ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				ROTATOR_DIRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			if (indigo_printf(PRIVATE_DATA->handle, "CGETPA") && indigo_scanf(PRIVATE_DATA->handle, "%d\r\n", &value) == 1) {
+			if (indigo_printf(PRIVATE_DATA->handle, "CGETPA") && indigo_scanf(PRIVATE_DATA->handle, "%d", &value) == 1) {
 				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = value;
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
