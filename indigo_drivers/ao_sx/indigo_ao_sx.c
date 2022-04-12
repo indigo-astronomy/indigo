@@ -122,6 +122,8 @@ static bool sx_open(indigo_device *device) {
 				}
 			}
 		}
+		close(PRIVATE_DATA->handle);
+		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed on %s", name);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
