@@ -33,22 +33,23 @@
 extern "C" {
 #endif
 
-#define INDIGO_FILTER_LIST_COUNT							12
+#define INDIGO_FILTER_LIST_COUNT							13
 #define INDIGO_FILTER_MAX_DEVICES							32
 #define INDIGO_FILTER_MAX_CACHED_PROPERTIES		256
 	
 #define INDIGO_FILTER_CCD_INDEX								0
 #define INDIGO_FILTER_WHEEL_INDEX							1
 #define INDIGO_FILTER_FOCUSER_INDEX						2
-#define INDIGO_FILTER_MOUNT_INDEX							3
-#define INDIGO_FILTER_GUIDER_INDEX						4
-#define INDIGO_FILTER_DOME_INDEX							5
-#define INDIGO_FILTER_GPS_INDEX								6
-#define INDIGO_FILTER_JOYSTICK_INDEX					7
-#define INDIGO_FILTER_AUX_1_INDEX							8
-#define INDIGO_FILTER_AUX_2_INDEX							9
-#define INDIGO_FILTER_AUX_3_INDEX							10
-#define INDIGO_FILTER_AUX_4_INDEX							11
+#define INDIGO_FILTER_ROTATOR_INDEX						3
+#define INDIGO_FILTER_MOUNT_INDEX							4
+#define INDIGO_FILTER_GUIDER_INDEX						5
+#define INDIGO_FILTER_DOME_INDEX							6
+#define INDIGO_FILTER_GPS_INDEX								7
+#define INDIGO_FILTER_JOYSTICK_INDEX					8
+#define INDIGO_FILTER_AUX_1_INDEX							9
+#define INDIGO_FILTER_AUX_2_INDEX							10
+#define INDIGO_FILTER_AUX_3_INDEX							11
+#define INDIGO_FILTER_AUX_4_INDEX							12
 
 /** Device context pointer.
  */
@@ -70,6 +71,10 @@ extern "C" {
 /** Focuser list switch property.
 */
 #define FILTER_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_FOCUSER_INDEX])
+
+/** Rotator list switch property.
+*/
+#define FILTER_ROTATOR_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_device_list_properties[INDIGO_FILTER_ROTATOR_INDEX])
 
 /** Mount list switch property.
 */
@@ -118,6 +123,10 @@ extern "C" {
 /** Related focuser list switch property.
 */
 #define FILTER_RELATED_FOCUSER_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_FOCUSER_INDEX])
+
+/** Related rotator list switch property.
+*/
+#define FILTER_RELATED_ROTATOR_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[INDIGO_FILTER_ROTATOR_INDEX])
 
 /** Related mount list switch property.
 */
