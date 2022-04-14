@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x001F
+#define DRIVER_VERSION 0x0020
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -343,6 +343,9 @@ static bool asi_start_exposure(indigo_device *device, double exposure, bool dark
 	if (!asi_setup_exposure(device, exposure, frame_left, frame_top, frame_width, frame_height, horizontal_bin, vertical_bin)) {
 		return false;
 	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "startting esposure: dev_id = %d, exposure = %f", PRIVATE_DATA->dev_id, exposure);
+
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = ASIStartExposure(id, dark);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -360,6 +363,8 @@ static bool asi_read_pixels(indigo_device *device) {
 	int wait_cycles = 30000;    /* 30000*2000us = 1min */
 	status = ASI_EXP_WORKING;
 
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "start chekcing exposure status: dev_id = %d, wait_cycles = %d", PRIVATE_DATA->dev_id, wait_cycles);
+
 	/* wait for the exposure to complete */
 	while((status == ASI_EXP_WORKING) && wait_cycles--) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -367,6 +372,9 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_usleep(2000);
 	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "stopped chekcing exposure status: dev_id = %d, wait_cycles = %d, status = %d", PRIVATE_DATA->dev_id, wait_cycles, status);
+
 	if (status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size);
