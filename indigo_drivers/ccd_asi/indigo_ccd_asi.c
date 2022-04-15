@@ -447,12 +447,23 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
 		else
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetControlValue(%d, ASI_COOLER_ON) = %d", id, res);
-	} else if(status) {
-		res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
-		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
-		else
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+	} else if (status) {
+		long current_target = 0;
+		res = ASIGetControlValue(id, ASI_TARGET_TEMP, &current_target, &unused);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temperature control: current_target = %d, new_target = %d", current_target, (long)target);
+		if ((long)target != current_target) {
+			res = ASISetControlValue(id, ASI_TARGET_TEMP, (long)target, false);
+			if (res) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+			}
+		}
 	}
 
 	res = ASIGetControlValue(id, ASI_COOLER_POWER_PERC, cooler_power, &unused);
