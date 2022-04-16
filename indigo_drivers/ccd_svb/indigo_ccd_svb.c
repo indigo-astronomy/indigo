@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -314,11 +314,22 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 		else
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_COOLER_ENABLE) = %d", id, res);
 	} else if (status) {
-		res = SVBSetControlValue(id, SVB_TARGET_TEMPERATURE, (long)target, false);
-		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE) = %d", id, res);
-		else
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE) = %d", id, res);
+		long current_target = 0;
+		res = SVBGetControlValue(id, SVB_TARGET_TEMPERATURE, &current_target, &unused);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_TARGET_TEMP) = %d", id, res);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, ASI_TARGET_TEMP) = %d", id, res);
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Temperature control: current_target = %d, new_target = %d", current_target, (long)target);
+		if ((long)target != current_target) {
+			res = SVBSetControlValue(id, SVB_TARGET_TEMPERATURE, (long)target, false);
+			if (res) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE) = %d", id, res);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE) = %d", id, res);
+			}
+		}
 	}
 
 	res = SVBGetControlValue(id, SVB_COOLER_POWER, cooler_power, &unused);
