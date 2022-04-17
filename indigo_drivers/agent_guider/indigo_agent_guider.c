@@ -1534,17 +1534,20 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		double dith_y = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
 		if (!AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
-			/* If Dec guiding is not full do not dither in dec,
-			   however if cos(angle) == 0 there is no solution,
-			   unless DITH_X = 0 but this effectively disables
-			   the dithering.*/
+			/* If Dec guiding is not "North and South" do not dither in Dec, however if cos(angle) == 0 we end up in devision by 0.
+			   In this case we set the limits -> DITH_X = 0 and DITH_Y = dith_total.
+			*/
 			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
-			double sin_angle = sin(angle);
-			if (cos(angle) != 0) {
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value * tan(angle);
+			double sign = copysign(1.0, AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value) * copysign(1.0, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value);
+			double dith_total = sign * sqrt(AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value * AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value * AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value);
+			double cos_angle = cos(angle);
+			if (cos_angle != 0) {
+				double tan_angle = tan(angle);
+				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = dith_total / (cos_angle + tan_angle);
+				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value * tan_angle;
 			} else {
 				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = 0;
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = 0;
+				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = dith_total;
 			}
 		}
 		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
