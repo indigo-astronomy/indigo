@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -1226,16 +1226,18 @@ static void guide_process(indigo_device *device) {
 			AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = round(1000 * sqrt(DEVICE_PRIVATE_DATA->rmse_dec_sum / DEVICE_PRIVATE_DATA->rmse_count)) / 1000;
 			if (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0) {
 				bool dithering_finished = false;
-				if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
-					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0)
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
-					else
-						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
-				} else {
-					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0)
+				if (AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
+					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0 && DEVICE_PRIVATE_DATA->rmse_dec_threshold > 0) {
 						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold && AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_dec_threshold;
-					else
+					} else {
 						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
+					}
+				} else {
+					if (DEVICE_PRIVATE_DATA->rmse_ra_threshold > 0) {
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value && AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value < DEVICE_PRIVATE_DATA->rmse_ra_threshold;
+					} else {
+						dithering_finished = DEVICE_PRIVATE_DATA->rmse_count >= AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value;
+					}
 				}
 				if (dithering_finished) {
 					AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
@@ -1531,6 +1533,20 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		double dith_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
 		double dith_y = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
+		if (!AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
+			/* If Dec guiding is not full do not dither in dec,
+			   however if cos(angle) == 0 there is no solution,
+			   unless DITH_X = 0 but this effectively disables
+			   the dithering.*/
+			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
+			double sin_angle = sin(angle);
+			if (cos(angle) != 0) {
+				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value * tan(angle);
+			} else {
+				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = 0;
+				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = 0;
+			}
+		}
 		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		bool update_stats = false;
 		if (DEVICE_PRIVATE_DATA->reference->algorithm == centroid) {
