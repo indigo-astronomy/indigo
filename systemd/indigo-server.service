@@ -1,0 +1,12 @@
+[Unit]
+Description=INDIGO Server
+
+[Service]
+User=indigo
+PAMName=login
+ExecStart=/usr/bin/indigo_server
+StandardOutput=file:/home/indigo/indigo.log
+StandardError=file:/home/indigo/indigo.log
+
+[Install]
+WantedBy=multi-user.target

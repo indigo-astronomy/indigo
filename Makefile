@@ -254,6 +254,7 @@ endif
 	install -m 0755 systemd/indigo-environment $(INSTALL_ROOT)/usr/bin
 	install -d $(INSTALL_ROOT)/lib/systemd/system
 	install -m 0644 systemd/indigo-environment.service $(INSTALL_ROOT)/lib/systemd/system
+	install -m 0644 systemd/indigo-server.service $(INSTALL_ROOT)/lib/systemd/system
 	install -d $(INSTALL_ROOT)/DEBIAN
 	printf "Package: indigo\n" > $(INSTALL_ROOT)/DEBIAN/control
 	printf "Version: $(INDIGO_VERSION)-$(INDIGO_BUILD)\n" >> $(INSTALL_ROOT)/DEBIAN/control
@@ -282,6 +283,7 @@ endif
 	echo "# Configure INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl enable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
 	echo "systemctl start indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/postinst
+	echo "id -u indigo &>/dev/null || useradd indigo -G dialout,plugdev -m" >>$(INSTALL_ROOT)/DEBIAN/postinst
 ifeq ($(ARCH_DETECTED),$(filter $(ARCH_DETECTED),arm arm64))
 	tail -n +2 tools/rpi_ctrl_fix.sh >> $(INSTALL_ROOT)/DEBIAN/postinst
 else
@@ -294,6 +296,8 @@ endif
 	echo "# Disable INDIGO environment setvice" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "systemctl stop indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	echo "systemctl disable indigo-environment" >>$(INSTALL_ROOT)/DEBIAN/prerm
+	echo "systemctl stop indigo-server" >>$(INSTALL_ROOT)/DEBIAN/prerm
+	echo "systemctl disable indigo-server" >>$(INSTALL_ROOT)/DEBIAN/prerm
 	chmod a+x $(INSTALL_ROOT)/DEBIAN/prerm
 
 	rm -f $(INSTALL_ROOT).deb
