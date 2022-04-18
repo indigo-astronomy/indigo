@@ -1,6 +1,6 @@
 # INDIGO Astrometry / ASTAP Agent - Polar Alignment Guide
 
-Revision: 02.23.2022 (draft)
+Revision: 04.18.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -10,7 +10,7 @@ e-mail: *rumen@skyarchive.org*
 
 Equatorial mounts have two axis - Right Ascension / Polar axis and Declination axis. The good polar alignment is critical for these mounts for accurate tracking. This means that the RA / Polar axis should be parallel to earth's rotation axis.
 
-INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived from the drift alignment method and it does not require a celestial pole view. It relays on the mount GOTO functionality and plate solving. 3PPA method will move the telescope twice in Hour Angle with a specified amount and will take one exposure at start, one in the middle and one at the end. Then it will calculate the polar error based on the drift in Declination and will give clear instructions how to correct it. Currently Atmospheric refraction is not taken in to account and for better results the mount should be trained above 35-40 degrees in altitude. A good starting point is 45-50 degrees in Altitude, just passed the meridian. It is not mandatory but this way meridian flip will be avoided and usually the mount can safely move the required distance in Hour Angle.
+INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived from the drift alignment method and it does not require a celestial pole view (in fact 3PPA will not work if the telescope is pointed close to the pole). It relays on the mount GOTO functionality and plate solving. 3PPA method will move the telescope twice in Hour Angle with a specified amount and will take one exposure at start, one in the middle and one at the end. Then it will calculate the polar error based on the drift in Declination and will give clear instructions how to correct it. If the atmospheric refraction correction is off for better results the mount should be trained above 35-40 degrees in altitude. A good starting point is 45-50 degrees in Altitude, just passed the meridian. It is not mandatory but this way meridian flip will be avoided and usually the mount can safely move the required distance in Hour Angle.
 
 ## Configuration
 - **Exposure time** - This is the exposure time in seconds used for the frame acquisition. Usually several seconds is enough.
@@ -72,7 +72,7 @@ INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived fro
 2. If the initial error is more than 3 degrees it is recommended to repeat the alignment process for better accuracy.
 3. It is recommended that the mount is above 35-40 degrees in altitude at its lowest during the polar alignment process. This will minimize the effect of Atmospheric Refraction. Alternatively you may want to turn on the atmospheric refraction compensation.
 4. Do not change **Compensate refraction** during the polar alignment process. If you do so, the alignment will not be accurate. In this case you should restart the polar alignment process.
-5. Polar alignment end position should not be close to 90 (due East) and 270 (due West) degrees in azimuth. Close to these azimuths estimation or the polar error is inaccurate and turning the altitude knob will mostly change the azimuth and not the altitude.
+5. Polar alignment end position should not be close to 90 (due East) and 270 (due West) degrees in azimuth. Close to these azimuths estimation or the polar error is inaccurate and turning the altitude knob will mostly change the azimuth and not the altitude. Another point where this method **will not work is close to the celestial pole**.
 6. The polar error estimate may vary between different runs with several arc minutes. There are many reasons for that - cone error, periodic error, backlash, camera pixel scale etc. Do not be too picky on that.
 7. Polar error of several arc minutes (even up to 10') is ok for most of the cases.
 
