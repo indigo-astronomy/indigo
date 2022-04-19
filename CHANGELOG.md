@@ -2,6 +2,75 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-176] - 20 Apr Wed 2022
+### Overall
+- Rotator lists added to filter agent base code
+- POLAR_ALIGNMENT: add notes that 3PPA will not work when looking at the pole
+- deb_package: added indigo-server.service and create indigo user on install
+
+### New drivers
+- indigo_rotator_optec:
+	- Optec Pyxis rotator driver created
+
+### Driver fixes
+- indigo_agent_imager:
+	- rotator support added
+
+- indigo_agent_guider:
+	- disable dithering in Dec when Dec guiding is not 'North and South'
+	- changing declination guiding to/from 'Notrh and South' while guiding is prohibited
+
+- indigo_agent_astrometry:
+	- JPEG detection fixed
+
+- indigo_agent_astap:
+	- JPEG detection fixed
+
+- indigo_mount_rainbow:
+	- reader thread fixed
+
+- indigo_mount_rainbow:
+	- reader thread fixed
+
+- indigo_ccd_altair:
+	- SDK updated to 20210912_50.19561
+
+- indigo_ccd_svb:
+	- fix udev rules
+	- retry counter reset after processed image for streaming
+	- do not update target temperature if not needed
+
+- indigo_ccd_andor:
+	- remove clear_reg_timer_callback()
+
+- indigo_ccd_apogee:
+	- remove clear_reg_timer_callback()
+
+- indigo_rotator_lunatico:
+	- ROTATOR_DIRECTION_PROPERTY made persistent in driver instead of base code
+
+- indigo_ao_sx:
+	- port closed on unsuccessful handshake
+
+- indigo_wheel_trutek:
+	- port closed on unsuccessful handshake
+
+- indigo_wheel_xagyl:
+	- port closed on unsuccessful handshake
+
+- indigo_focuser_optec:
+	- CRLF handling fixed
+
+- indigo_wheel_optec:
+	- CRLF handling fixed
+
+- indigo_ccd_asi:
+	- add some debug messages
+	- do not update target temperature if not needed
+
+- mount_pmc8:
+	- slew to target fixed
+
 ## [2.0-174] - 04 Apr Mon 2022
 ### Overall
 - indigo_ccd_driver: fix exposure timer counter stall if you abort and start new exposure before the previous timer is hit
