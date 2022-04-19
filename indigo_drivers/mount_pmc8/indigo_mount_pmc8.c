@@ -23,7 +23,7 @@
  \file indigo_mount_pmc8.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_mount_pmc8"
 
 #include <stdlib.h>
@@ -341,6 +341,14 @@ static bool pmc8_set_tracking_rate(indigo_device *device, int offset) {
 	return false;
 }
 
+static bool pmc8_stop_tracking(indigo_device *device) {
+	char response[32];
+	if (pmc8_command(device, "ESTr0000!", response, sizeof(response), 0)) {
+		return true;
+	}
+	return false;
+}
+
 static bool pmc8_point(indigo_device *device, int32_t ha, int32_t dec) {
 	char command[32], response[32];
 	sprintf(command, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? "ESSp0%06X!" : "ESPt0%06X!", ha & 0xFFFFFF);
@@ -367,6 +375,18 @@ static bool pmc8_get_position(indigo_device *device, int32_t *ha, int32_t *dec) 
 				raw_dec |= 0xFF000000;
 			*ha = raw_ha;
 			*dec = raw_dec;
+			return true;
+		}
+	}
+	return false;
+}
+
+static bool pmc8_get_rate(indigo_device *device, int32_t *ra, int32_t *dec) {
+	char response[32];
+	if (pmc8_command(device, "ESGr0!", response, sizeof(response), 0)) {
+		*ra = (int)strtol(response + 5, NULL, 16);
+		if (pmc8_command(device, "ESGr1!", response, sizeof(response), 0)) {
+			*dec = (int)strtol(response + 5, NULL, 16);
 			return true;
 		}
 	}
@@ -469,7 +489,7 @@ static void position_timer_callback(indigo_device *device) {
 			double dec_angle = ((double)raw_dec / dec_count) * 360;
 			double ha;
 			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
-				if (raw_dec >= 0) {
+				if (raw_dec >= -1) {
 					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 - dec_angle;
 					ha = ha_angle - 6;
 					side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
@@ -479,7 +499,7 @@ static void position_timer_callback(indigo_device *device) {
 					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
 				}
 			} else {
-				if (raw_dec >= 0) {
+				if (raw_dec >= -1) {
 					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 + dec_angle;
 					ha = -(ha_angle - 6);
 					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
@@ -539,6 +559,8 @@ static void mount_connect_handler(indigo_device *device) {
 }
 
 static void mount_equatorial_coordinates_handler(indigo_device *device) {
+	pmc8_stop_tracking(device);
+	indigo_usleep(200000);
 	for (int i = 0; i < 3 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
 		double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 		double ha_angle = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
@@ -573,20 +595,17 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value)
-			break;
-		raw_ha &= ~0xFFF;
-		raw_dec &= ~0xFFF;
+			break;		
+		indigo_usleep(1000000);
 		while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
-			int32_t current_raw_ha = 0, current_raw_dec = 0;
-			if (pmc8_get_position(device, &current_raw_ha, &current_raw_dec)) {
-				current_raw_ha &= ~0xFFF;
-				current_raw_dec &= ~0xFFF;
-				if (current_raw_ha == raw_ha && current_raw_dec == raw_dec)
+			int32_t ra_rate, dec_rate;
+			if (pmc8_get_rate(device, &ra_rate, &dec_rate)) {
+				if (ra_rate <= PRIVATE_DATA->rate[2] && dec_rate == 0)
 					break;
 			} else {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			indigo_usleep(100000);
+			indigo_usleep(200000);
 		}
 		indigo_usleep(500000);
 	}
