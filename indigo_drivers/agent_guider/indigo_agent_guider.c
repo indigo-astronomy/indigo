@@ -1509,7 +1509,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_w(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DETECTION_MODE
 		if (FILTER_DEVICE_CONTEXT->running_process) {
-			indigo_update_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, "Detection mode can not be changed while process is running!");
+			indigo_update_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, "Warning: Detection mode can not be changed while process is running!");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property, false);
@@ -1518,10 +1518,20 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_DEC_MODE_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DEC_MODE
-		indigo_property_copy_values(AGENT_GUIDER_DEC_MODE_PROPERTY, property, false);
-		AGENT_GUIDER_DEC_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		save_config(device);
-		indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+		bool is_current_dec_guiding_both = AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value;
+		bool is_requested_dec_guiding_both = indigo_get_switch(property, AGENT_GUIDER_DEC_MODE_BOTH_ITEM_NAME);
+		if (
+			(!FILTER_DEVICE_CONTEXT->running_process) ||
+			(FILTER_DEVICE_CONTEXT->running_process && !AGENT_GUIDER_START_GUIDING_ITEM->sw.value) ||
+			(FILTER_DEVICE_CONTEXT->running_process && AGENT_GUIDER_START_GUIDING_ITEM->sw.value && !(is_current_dec_guiding_both || is_requested_dec_guiding_both))
+		) {
+			indigo_property_copy_values(AGENT_GUIDER_DEC_MODE_PROPERTY, property, false);
+			AGENT_GUIDER_DEC_MODE_PROPERTY->state = INDIGO_OK_STATE;
+			save_config(device);
+			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
+		} else {
+			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, "Warning: Can not change declination guiding method to/from 'Notrh and South' while guiding!");
+		}
 	} else if (indigo_property_match(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_APPLY_DEC_BACKLASH
 		indigo_property_copy_values(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property, false);
@@ -1605,7 +1615,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (FILTER_DEVICE_CONTEXT->running_process) {
 			indigo_item *item = indigo_get_item(property, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME);
 			if (item && AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value != item->number.value) {
-				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Edge clipping can not be changed while process is running!");
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Edge clipping can not be changed while process is running!");
 				return INDIGO_OK;
 			}
 		}
