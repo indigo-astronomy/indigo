@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 23.07.2020 (draft)
+Revision: 28.04.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -359,7 +359,7 @@ In case your device needs custom properties there are many device drivers that u
 
 Timers in INDIGO are managed with several calls:
 
-- *indigo_set_timer()* - schedule callback to be called after a certain amount of time (prototype changed in INDIGO 2.0-122).
+- *indigo_set_timer()* - schedule callback to be called after a certain amount of time. The callback will be executed in a separate thread (prototype changed in INDIGO 2.0-122).
 - *indigo_reschedule_timer()* - reschedule already scheduled timer, can be used for recurring operations.
 - *indigo_cancel_timer()* - request cancellation of a scheduled timer and return, the timer may finish after the function returned.
 - *indigo_cancel_timer_sync()* - request cancellation of a scheduled timer and wait until canceled (introduced in INDIGO 2.0-122).
@@ -427,6 +427,11 @@ indigo_cancel_timer(device, &wheel_timer);
 Rather than using a global timer objects, as shown above, it is a good idea to store them in the device private data. Good example for this is [indigo_wheel_asi.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/wheel_asi/indigo_wheel_asi.c).
 
 As of INDIGO 2.0-122 new call is introduced -  *indigo_cancel_timer_sync()*. This call is useful in an event of device disconnect and device detach to prevent releasing of the device resources before the timer is canceled. It should not be called directly in the **change property** callback, as it may deadlock this thread. So if some timers need to be canceled at disconnect it is a good idea to handle the connection property asynchronously with *indigo_async()*, *indigo_handle_property_async()* or *indigo_set_timer()* (with 0 time delay). There are examples of this in almost every driver.
+
+Blocking or timely operations executed in the driver main thread may block the whole INDIGO framework. Because of this they should be executed asynchronously in a separate thread. Asynchronous operations can be executed with:
+
+- *indigo_async()* - execute a function asynchronously in a separate thread.
+- *indigo_handle_property_async()* - utility function that provides a convenient way to execute timely or blocking property change operations in a separate thread. The callback function accepts the same parameters as the driver's **change property** callback.
 
 ### Communication with the Hardware
 
