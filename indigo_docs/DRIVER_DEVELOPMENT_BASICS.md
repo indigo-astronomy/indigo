@@ -1,5 +1,5 @@
 # Basics of INDIGO Driver Development
-Revision: 28.04.2022 (draft)
+Revision: 01.05.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -226,9 +226,9 @@ indigo_result indigo_wheel_atik(indigo_driver_action action,
 	return INDIGO_OK;
 }
 ```
-One of the few synchronous parts of INDIGO are the driver entry points. They are executed synchronously and if they block or take too long to return, this will block or slowdown the entire INDIGO **bus**. For that reason the driver entry point functions must return immediately. If a timely operation should be performed, it must be started in a background thread or process. The easiest way to achieve this is via *indigo_async()* call.
+One of the few synchronous parts of INDIGO are the driver entry points. They are executed synchronously and if they block or take too long to return, this will block or slowdown the entire INDIGO **bus**. For that reason the driver entry point functions must return immediately. If a prolonged operation should be performed, it must be started in a background thread or process. The easiest way to achieve this is via *indigo_async()* call.
 
-The main function for the **executable driver** is pretty much a boiler plate code that connects to the INDIGO **bus** and calls the driver entrypoint with *INDIGO_DRIVER_INIT* and when done it calls it again with *INDIGO_DRIVER_SHUTDOWN*:
+The main function for the **executable driver** is pretty much a boiler plate code that connects to the INDIGO **bus** and calls the driver entry point with *INDIGO_DRIVER_INIT* and when done it calls it again with *INDIGO_DRIVER_SHUTDOWN*:
 
 ```C
 int main(int argc, const char * argv[]) {
@@ -355,7 +355,7 @@ There is one important note, in order to use the property macros like *CONNECTIO
 
 In case your device needs custom properties there are many device drivers that use such. A good and simple example for this is [indigo_aux_rts](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/aux_rts) driver.
 
-### Timers and Timely Operations
+### Timers and Prolonged Operations
 
 Timers in INDIGO are managed with several calls:
 
@@ -428,10 +428,10 @@ Rather than using a global timer objects, as shown above, it is a good idea to s
 
 As of INDIGO 2.0-122 new call is introduced -  *indigo_cancel_timer_sync()*. This call is useful in an event of device disconnect and device detach to prevent releasing of the device resources before the timer is canceled. It should not be called directly in the **change property** callback, as it may deadlock this thread. So if some timers need to be canceled at disconnect it is a good idea to handle the connection property asynchronously with *indigo_async()*, *indigo_handle_property_async()* or *indigo_set_timer()* (with 0 time delay). There are examples of this in almost every driver.
 
-Blocking or timely operations executed in the driver main thread may block the whole INDIGO framework. Because of this they should be executed asynchronously in a separate thread. Asynchronous operations can be executed with:
+Blocking or prolonged operations executed in the driver main thread may block the whole INDIGO framework. Because of this they should be executed asynchronously in a separate thread. Asynchronous operations can be executed with:
 
 - *indigo_async()* - execute a function asynchronously in a separate thread.
-- *indigo_handle_property_async()* - utility function that provides a convenient way to execute timely or blocking property change operations in a separate thread. The callback function accepts the same parameters as the driver's **change property** callback.
+- *indigo_handle_property_async()* - utility function that provides a convenient way to execute prolonged or blocking property change operations in a separate thread. The callback function accepts the same parameters as the driver's **change property** callback.
 
 ### Communication with the Hardware
 
