@@ -72,9 +72,10 @@ INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived fro
 2. If the initial error is more than 3 degrees it is recommended to repeat the alignment process for better accuracy.
 3. It is recommended that the mount is above 35-40 degrees in altitude at its lowest during the polar alignment process. This will minimize the effect of Atmospheric Refraction. Alternatively you may want to turn on the atmospheric refraction compensation.
 4. Do not change **Compensate refraction** during the polar alignment process. If you do so, the alignment will not be accurate. In this case you should restart the polar alignment process.
-5. Polar alignment end position should not be close to 90 (due East) and 270 (due West) degrees in azimuth. Close to these azimuths estimation or the polar error is inaccurate and turning the altitude knob will mostly change the azimuth and not the altitude. Another point where this method **will not work is close to the celestial pole**.
-6. The polar error estimate may vary between different runs with several arc minutes. There are many reasons for that - cone error, periodic error, backlash, camera pixel scale etc. Do not be too picky on that.
-7. Polar error of several arc minutes (even up to 10') is okay for most of the setups.
+5. Polar alignment end position should not be close to 90 degrees (due East) and 270 degrees (due West) in azimuth. Close to these azimuths turning the altitude knob is translated to azimuth move of the telescope tube and there is no way to move it in altitude. This makes it impossible to correct the polar error while looking through the telescope. For similar reasons even the calculation of the polar error at these azimuths is not precise.
+6. This method will not work close to the celestial pole. In this case moving the telescope in right ascension will result in very small moves in azimuth and altitude which will lead to a large error in the estimated polar error.
+7. The polar error estimate may vary between different runs with several arc minutes. There are many reasons for that - cone error, periodic error, backlash, camera pixel scale etc. Do not be too picky on that.
+8. Polar error of several arc minutes (even up to 10') is okay for most of the setups.
 
 ## *Safety Note*
 *Please make sure the mount has enough room to move twice the **Hour angle move** in the specified direction. The mount will move automatically and it may hit something which may result in damage. So, if you are in the northern hemisphere and the **Hour angle move** is set to -20 degrees, make sure the mount can safely move 40 degrees counterclockwise.*
