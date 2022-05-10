@@ -49,7 +49,7 @@ endif
 
 .PHONY: all clean
 
-all:	status libindigo
+all:	status libindigo libraw
 
 status:
 	@printf "\nindigo_libs -------------------------\n\n"
@@ -104,6 +104,19 @@ version: indigo_config.h
 indigo_config.h:	../Makefile.inc
 	cp indigo/indigo_config.h indigo/indigo_config.h.orig
 	sed 's/INDIGO_BUILD.*/INDIGO_BUILD "$(INDIGO_BUILD)"/' indigo/indigo_config.h.orig >indigo/indigo_config.h
+
+#---------------------------------------------------------------------
+#
+#	Build libraw
+#
+#---------------------------------------------------------------------
+
+libraw: $(BUILD_LIB)/libraw.a
+
+$(BUILD_LIB)/libraw.a:
+	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; cd externals/libraw; install -d lib; make -f Makefile.mingw library
+	cp externals/libraw/lib/libraw.a $(BUILD_LIB)
+	cp externals/libraw/libraw/* $(BUILD_INCLUDE)
 
 #---------------------------------------------------------------------
 #
@@ -203,4 +216,4 @@ ifeq ($(ARCH_DETECTED),x64)
 	rm -rf /tmp/libftd2xx-x86_64-1.4.6.tgz /tmp/release
 endif
 endif
-	ar -d $(BUILD_LIB)/libftd2xx.a core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o poll_posix.o threads_posix.o 
+	ar -d $(BUILD_LIB)/libftd2xx.a core.o descriptor.o io.o hotplug.o sync.o darwin_usb.o poll_posix.o threads_posix.o
