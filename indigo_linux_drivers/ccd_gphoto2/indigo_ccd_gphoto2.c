@@ -42,7 +42,7 @@
 #include <gphoto2/gphoto2-version.h>
 #include <gphoto2/gphoto2-list.h>
 #include <libusb-1.0/libusb.h>
-#include <libraw/libraw.h>
+#include <libraw.h>
 
 #include "indigo_ccd_gphoto2.h"
 #include "dslr_model_info.h"
@@ -575,10 +575,10 @@ static int process_dslr_image_debayer(indigo_device *device,
 		goto cleanup;
 
 	float cam_sensor_temperature = -273.15f;
-	if (raw_data->other.SensorTemperature > -273.15f)
-		cam_sensor_temperature = raw_data->other.SensorTemperature;
-	else if (raw_data->other.CameraTemperature > -273.15f)
-		cam_sensor_temperature = raw_data->other.CameraTemperature;
+	if (raw_data->makernotes.common.SensorTemperature > -273.15f)
+		cam_sensor_temperature = raw_data->makernotes.common.SensorTemperature;
+	else if (raw_data->makernotes.common.CameraTemperature > -273.15f)
+		cam_sensor_temperature = raw_data->makernotes.common.CameraTemperature;
 
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_NUMBER, "ISOSPEED",
