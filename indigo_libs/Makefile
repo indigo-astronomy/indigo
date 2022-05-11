@@ -114,7 +114,7 @@ indigo_config.h:	../Makefile.inc
 libraw: $(BUILD_LIB)/libraw.a
 
 $(BUILD_LIB)/libraw.a:
-	cd externals/libraw; install -d lib; make -f Makefile.indigo library
+	export CC=$(CC); export CXX=$(CC); export CXXFLAGS="$(CXXFLAGS)"; cd externals/libraw; install -d lib; make -f Makefile.indigo library
 	cp externals/libraw/lib/libraw.a $(BUILD_LIB)
 	cp externals/libraw/libraw/* $(BUILD_INCLUDE)
 

@@ -1,8 +1,8 @@
 all: library all_samples
 
-CFLAGS=-O3  -I. -w -fPIC
-CC=gcc
-CXX=g++
+CFLAGS = $(CXXFLAGS) -I.
+#CC=gcc
+#CXX=g++
 
 # OpenMP support
 #CFLAGS+=-fopenmp
