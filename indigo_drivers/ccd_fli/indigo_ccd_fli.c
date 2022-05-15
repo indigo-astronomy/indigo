@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -736,7 +736,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
 				CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
-				CCD_TEMPERATURE_ITEM->number.step = 0;
+				CCD_TEMPERATURE_ITEM->number.step = 1;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = FLIGetTemperature(id,&(CCD_TEMPERATURE_ITEM->number.value));
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
