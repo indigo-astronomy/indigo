@@ -519,7 +519,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_RBI_FLUSH_EXPOSURE_ITEM->number.value = CCD_RBI_FLUSH_EXPOSURE_ITEM->number.target = DEFAULT_NIR_FLOOD;
 		CCD_RBI_FLUSH_COUNT_ITEM->number.min = MIN_FLUSH_COUNT;
 		CCD_RBI_FLUSH_COUNT_ITEM->number.max = MAX_FLUSH_COUNT;
-		CCD_RBI_FLUSH_COUNT_ITEM->number.value = CCD_RBI_FLUSH_EXPOSURE_ITEM->number.target = DEFAULT_FLUSH_COUNT;
+		CCD_RBI_FLUSH_COUNT_ITEM->number.value = CCD_RBI_FLUSH_COUNT_ITEM->number.target = DEFAULT_FLUSH_COUNT;
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
 		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", FLI_ADVANCED_GROUP, "Flush CCD", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (FLI_NFLUSHES_PROPERTY == NULL)
