@@ -71,8 +71,6 @@
 
 #define PRIVATE_DATA             ((apogee_private_data *)device->private_data)
 
-#define APG_ADVANCED_GROUP       "Advanced"
-
 #define APG_ADC_SPEED_PROPERTY   (PRIVATE_DATA->apg_adc_speed_property)
 #define APG_FAN_SPEED_PROPERTY   (PRIVATE_DATA->apg_fan_speed_property)
 #define APG_GAIN_PROPERTY        (PRIVATE_DATA->apg_gain_property)
@@ -658,7 +656,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, GetModelName(PRIVATE_DATA->discovery_string).c_str());
 
 		// ---------------------------------------------------------------------------------
-		APG_ADC_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_ADC_SPEED", APG_ADVANCED_GROUP, "ADC speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		APG_ADC_SPEED_PROPERTY = indigo_init_switch_property(NULL, device->name, "APG_ADC_SPEED", CCD_ADVANCED_GROUP, "ADC speed", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (APG_ADC_SPEED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 			/* will be populated on connect */
@@ -668,12 +666,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
-		APG_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, "APG_GAIN", APG_ADVANCED_GROUP, "Gain", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
+		APG_GAIN_PROPERTY = indigo_init_number_property(NULL, device->name, "APG_GAIN", CCD_ADVANCED_GROUP, "Gain", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 		if (APG_GAIN_PROPERTY == NULL)
 			return INDIGO_FAILED;
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
-		APG_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, "APG_OFFSET", APG_ADVANCED_GROUP, "Offset", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
+		APG_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, "APG_OFFSET", CCD_ADVANCED_GROUP, "Offset", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 		if (APG_OFFSET_PROPERTY == NULL)
 			return INDIGO_FAILED;
 			/* will be populated on connect */

@@ -72,7 +72,6 @@
 #define QHY_VENDOR_ID4             0x04b4
 #define QHY_VENDOR_ID5             0x0547
 
-#define CCD_ADVANCED_GROUP         "Advanced"
 #define USBTRAFFIC_NAME            "USBTRAFFIC"
 #define USBTRAFFIC_DESC            "USB Traffic"
 #define USBSPEED_NAME              "USBSPEED"

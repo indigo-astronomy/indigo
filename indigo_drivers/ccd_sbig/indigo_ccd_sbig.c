@@ -85,8 +85,6 @@
 #define PRIVATE_DATA               ((sbig_private_data *)device->private_data)
 #define EXTERNAL_GUIDE_HEAD        (PRIVATE_DATA->guider_ccd_extended_info4.capabilitiesBits & CB_CCD_EXT_TRACKER_YES)
 
-#define SBIG_ADVANCED_GROUP              "Advanced"
-
 #define SBIG_FREEZE_TEC_PROPERTY         (PRIVATE_DATA->sbig_freeze_tec_property)
 #define SBIG_FREEZE_TEC_ENABLED_ITEM     (SBIG_FREEZE_TEC_PROPERTY->items + 0)
 #define SBIG_FREEZE_TEC_DISABLED_ITEM    (SBIG_FREEZE_TEC_PROPERTY->items + 1)
@@ -971,7 +969,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 	if (PRIMARY_CCD && (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK)) {
 		INFO_PROPERTY->count = 8; 	/* Use all info property fields */
 
-		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", SBIG_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		SBIG_FREEZE_TEC_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_FREEZE_TEC", CCD_ADVANCED_GROUP,"Freeze TEC during readout", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SBIG_FREEZE_TEC_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -980,7 +978,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(SBIG_FREEZE_TEC_ENABLED_ITEM, "SBIG_FREEZE_TEC_ENABLED", "Enabled", false);
 		indigo_init_switch_item(SBIG_FREEZE_TEC_DISABLED_ITEM, "SBIG_FREEZE_TEC_DISABLED", "Disabled", true);
 
-		SBIG_ABG_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_ABG_STATE", SBIG_ADVANCED_GROUP,"ABG State", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		SBIG_ABG_PROPERTY = indigo_init_switch_property(NULL, device->name, "SBIG_ABG_STATE", CCD_ADVANCED_GROUP,"ABG State", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (SBIG_ABG_PROPERTY == NULL) {
 			return INDIGO_FAILED;
 		}
@@ -2727,7 +2725,7 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-	
+
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
