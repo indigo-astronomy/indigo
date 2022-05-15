@@ -59,8 +59,6 @@
 
 #define ASI_VENDOR_ID              0x03c3
 
-#define CCD_ADVANCED_GROUP         "Advanced"
-
 #define PRIVATE_DATA               ((asi_private_data *)device->private_data)
 
 #define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)

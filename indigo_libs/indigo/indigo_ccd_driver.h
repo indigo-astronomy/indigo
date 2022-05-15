@@ -46,6 +46,10 @@ extern "C" {
  */
 #define CCD_COOLER_GROUP                  "Cooler"
 
+/** CCD Advanced group name string.
+ */
+#define CCD_ADVANCED_GROUP                "Advanced"
+
 /** Device context pointer.
  */
 #define CCD_CONTEXT                ((indigo_ccd_context *)device->device_context)

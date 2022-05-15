@@ -58,8 +58,6 @@
 
 #define SVB_VENDOR_ID              0xf266
 
-#define CCD_ADVANCED_GROUP         "Advanced"
-
 #define PRIVATE_DATA               ((svb_private_data *)device->private_data)
 
 #define PIXEL_FORMAT_PROPERTY      (PRIVATE_DATA->pixel_format_property)

@@ -80,8 +80,6 @@
 
 #define PRIVATE_DATA               ((fli_private_data *)device->private_data)
 
-#define FLI_ADVANCED_GROUP              "Advanced"
-
 #define FLI_NFLUSHES_PROPERTY           (PRIVATE_DATA->fli_nflushes_property)
 #define FLI_NFLUSHES_PROPERTY_ITEM      (FLI_NFLUSHES_PROPERTY->items + 0)
 
@@ -521,14 +519,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_RBI_FLUSH_COUNT_ITEM->number.max = MAX_FLUSH_COUNT;
 		CCD_RBI_FLUSH_COUNT_ITEM->number.value = CCD_RBI_FLUSH_COUNT_ITEM->number.target = DEFAULT_FLUSH_COUNT;
 		// -------------------------------------------------------------------------------- FLI_NFLUSHES
-		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", FLI_ADVANCED_GROUP, "Flush CCD", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		FLI_NFLUSHES_PROPERTY = indigo_init_number_property(NULL, device->name, "FLI_NFLUSHES", CCD_ADVANCED_GROUP, "Flush CCD", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (FLI_NFLUSHES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_number_item(FLI_NFLUSHES_PROPERTY_ITEM, "FLI_NFLUSHES", "Times (before exposure)", MIN_N_FLUSHES, MAX_N_FLUSHES, 1, DEFAULT_N_FLUSHES);
 
 		// -------------------------------------------------------------------------------- FLI_CAMERA_MODE
-		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", FLI_ADVANCED_GROUP, "Camera mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
+		FLI_CAMERA_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "FLI_CAMERA_MODE", CCD_ADVANCED_GROUP, "Camera mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_MODES);
 				if (FLI_CAMERA_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 				/* will be populated on connect */

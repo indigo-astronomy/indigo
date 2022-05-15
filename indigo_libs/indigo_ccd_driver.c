@@ -280,14 +280,14 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM_NAME, "Black point treshold (%iles)", 0, 10, 0, 0.01);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME, "White point treshold (%iles)", 0, 5, 0, 0.2);
 			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
-			CCD_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_RBI_FLUSH_ENABLE_PROPERTY_NAME, CCD_MAIN_GROUP, "RBI flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			CCD_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_RBI_FLUSH_ENABLE_PROPERTY_NAME, CCD_ADVANCED_GROUP, "RBI flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_RBI_FLUSH_ENABLE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_RBI_FLUSH_ENABLE_PROPERTY->hidden = true;
 			indigo_init_switch_item(CCD_RBI_FLUSH_ENABLED_ITEM, CCD_RBI_FLUSH_ENABLED_ITEM_NAME, "Enabled", false);
 			indigo_init_switch_item(CCD_RBI_FLUSH_DISABLED_ITEM, CCD_RBI_FLUSH_DISABLED_ITEM_NAME, "Disabled", true);
 			// -------------------------------------------------------------------------------- FLI_RBI_FLUSH
-			CCD_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_RBI_FLUSH_PROPERTY_NAME, CCD_MAIN_GROUP, "RBI flush params", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			CCD_RBI_FLUSH_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_RBI_FLUSH_PROPERTY_NAME, CCD_ADVANCED_GROUP, "RBI flush params", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_RBI_FLUSH_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			CCD_RBI_FLUSH_PROPERTY->hidden = true;
