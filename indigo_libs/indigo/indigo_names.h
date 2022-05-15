@@ -607,7 +607,7 @@
 
 /** CCD_RBI_FLUSH_ENABLE property name.
  */
-#define CCD_RBI_FLUSH_PROPERTY_NAME          "CCD_RBI_FLUSH_ENABLE"
+#define CCD_RBI_FLUSH_PROPERTY_NAME          "CCD_RBI_FLUSH"
 
 /** CCD_RBI_FLUSH.EXPOSURE property item pointer.
  */
