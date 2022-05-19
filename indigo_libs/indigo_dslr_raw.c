@@ -25,9 +25,9 @@
 #include <stdbool.h>
 #include <errno.h>
 #include <indigo/indigo_bus.h>
-#include "dslr_raw.h"
+#include <indigo/indigo_dslr_raw.h>
 
-static int image_debayered_data(libraw_data_t *raw_data, dslr_raw_image_s *outout_image) {
+static int image_debayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *outout_image) {
 	int rc;
 	libraw_processed_image_t *processed_image = NULL;
 
@@ -89,7 +89,7 @@ cleanup:
 	return rc;
 }
 
-static int image_bayered_data(libraw_data_t *raw_data, dslr_raw_image_s *outout_image, const bool binning) {
+static int image_bayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *outout_image, const bool binning) {
 	uint16_t *data;
 	uint16_t width, height, raw_width;
 	uint32_t npixels;
@@ -150,7 +150,7 @@ static int image_bayered_data(libraw_data_t *raw_data, dslr_raw_image_s *outout_
 	return 0;
 }
 
-int dslr_raw_process_image(void *buffer, size_t buffer_size, dslr_raw_image_s *outout_image) {
+int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_raw_image_s *outout_image) {
 	int rc;
 	libraw_data_t *raw_data;
 
@@ -248,7 +248,7 @@ cleanup:
 	return rc;
 }
 
-int dslr_raw_image_info(void *buffer, size_t buffer_size, dslr_raw_image_info_s *image_info) {
+int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw_image_info_s *image_info) {
 	int rc;
 	libraw_data_t *raw_data;
 

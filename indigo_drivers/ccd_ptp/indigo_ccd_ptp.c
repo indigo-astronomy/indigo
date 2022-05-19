@@ -40,7 +40,6 @@
 #include "indigo_ptp_sony.h"
 #include "indigo_ptp_fuji.h"
 #include "indigo_ccd_ptp.h"
-#include "dslr_raw.h"
 
 #define MAX_DEVICES    	4
 

@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Rumen Bogdanovski <rumen@skyarchive.org>
 
-#ifndef _DSLR_RAW_H
-#define _DSLR_RAW_H
+#ifndef _INDIGO_DSLR_RAW_H
+#define _INDIGO_DSLR_RAW_H
 
 #include <libraw.h>
 #include <stdbool.h>
@@ -34,7 +34,7 @@ typedef struct {
 	uint8_t colors;
 	bool debayered;
 	char bayer_pattern[5];
-} dslr_raw_image_s;
+} indigo_dslr_raw_image_s;
 
 typedef struct {
 	char camera_make[64];
@@ -57,7 +57,7 @@ typedef struct {
 	time_t timestamp;
 	char desc[512];
 	char artist[64];
-} dslr_raw_image_info_s;
+} indigo_dslr_raw_image_info_s;
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,11 +65,11 @@ extern "C" {
 
 #define FIT_FORMAT_AMATEUR_CCD
 
-int dslr_raw_process_image(void *buffer, size_t buffer_size, dslr_raw_image_s *output_image);
-int dslr_raw_image_info(void *buffer, size_t buffer_size, dslr_raw_image_info_s *image_info);
+int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_raw_image_s *output_image);
+int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw_image_info_s *image_info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* _DSLR_RAW_H */
+#endif /* _INDIGO_DSLR_RAW_H */
