@@ -49,7 +49,7 @@ endif
 
 .PHONY: all clean
 
-all:	status libindigo libraw
+all:	status libindigo
 
 status:
 	@printf "\nindigo_libs -------------------------\n\n"
@@ -85,7 +85,7 @@ clean-all: status
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb libhidapi libjpeg libtiff libnovas libftd2xx $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: version libusb libhidapi libjpeg libtiff libnovas libftd2xx libraw $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
