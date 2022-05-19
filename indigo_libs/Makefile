@@ -91,7 +91,7 @@ $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(LIBINDIGO_FILES) $(BUILD_LIB)/libnovas.a
-	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl -lusb-1.0 -lz
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a $(FORCE_ALL_ON) $(LIBHIDAPI) $(FORCE_ALL_OFF) -ldl -lusb-1.0 -lz -lstdc++
 
 #---------------------------------------------------------------------
 #

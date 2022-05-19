@@ -42,6 +42,7 @@
 #include <indigo/indigo_tiff.h>
 #include <indigo/indigo_avi.h>
 #include <indigo/indigo_ser.h>
+#include <indigo/indigo_dslr_raw.h>
 
 struct indigo_jpeg_compress_struct {
 	struct jpeg_compress_struct pub;
