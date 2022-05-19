@@ -173,7 +173,7 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 	/* Linear 16-bit output. */
 	raw_data->params.output_bps = 16;
 	/* Use simple interpolation (0) to debayer. > 20 will not debyer */
-	raw_data->params.user_qual = 0;
+	raw_data->params.user_qual = 21;
 	/* Disable four color space. */
 	raw_data->params.four_color_rgb = 0;
 	/* Disable LibRaw's default histogram transformation. */

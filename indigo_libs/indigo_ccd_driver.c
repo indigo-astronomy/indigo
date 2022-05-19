@@ -1894,7 +1894,34 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			free(image);
 			return;
 		}
-	}
+	} /* else if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
+		void *image = NULL;
+		indigo_dslr_raw_image_s output_image;
+		int rc;
+
+		//indigo_dslr_raw_image_info_s image_info;
+		//int rc = indigo_dslr_raw_image_info((void *)data, data_size, &image_info);
+		//if (rc != LIBRAW_SUCCESS) {
+		//	return;
+		//}
+
+		rc = indigo_dslr_raw_process_image((void *)data, data_size, &output_image);
+		if (rc != LIBRAW_SUCCESS) {
+			if (output_image.data != NULL) free(output_image.data);
+			// someting needs to be done here !!!! otherwise exposure stays busy
+			return;
+		}
+		indigo_fits_keyword keywords[] = {
+			{INDIGO_FITS_STRING, "BAYERPAT", .string = output_image.bayer_pattern, "bayer color pattern"},
+			{0}
+		};
+		image = indigo_safe_malloc(output_image.size + 2*FITS_HEADER_SIZE);
+		memcpy(image + FITS_HEADER_SIZE, output_image.data, output_image.size);
+		free(output_image.data);
+		indigo_process_image(device, image, output_image.width, output_image.height, output_image.bits, true, true, keywords, streaming);
+		free(image);
+		return;
+	} */
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		bool use_avi = false;
 		int handle = 0;
