@@ -1896,28 +1896,34 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		}
 	} else if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value || CCD_IMAGE_FORMAT_XISF_ITEM->sw.value || CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 		void *image = NULL;
-		indigo_dslr_raw_image_s output_image;
+		indigo_dslr_raw_image_s output_image = {0};
+		indigo_dslr_raw_image_info_s image_info;
 		int rc;
 
-		//indigo_dslr_raw_image_info_s image_info;
-		//int rc = indigo_dslr_raw_image_info((void *)data, data_size, &image_info);
-		//if (rc != LIBRAW_SUCCESS) {
-		//	return;
-		//}
-
-		rc = indigo_dslr_raw_process_image((void *)data, data_size, &output_image);
+		rc = indigo_dslr_raw_image_info((void *)data, data_size, &image_info);
+		if (rc == LIBRAW_SUCCESS) {
+			rc = indigo_dslr_raw_process_image((void *)data, data_size, &output_image);
+		}
 		if (rc != LIBRAW_SUCCESS) {
 			if (output_image.data != NULL) free(output_image.data);
-			INDIGO_ERROR(indigo_error("Image decoding failed failed"));
+			INDIGO_ERROR(indigo_error("Selected source format cannot be converted"));
 			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, "Image decoding failed");
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, "Selected source format cannot be converted. Plese use camera RAW as a source.");
 			return;
-			//goto send_as_is;
 		}
 		indigo_fits_keyword keywords[] = {
-			{INDIGO_FITS_STRING, "BAYERPAT", .string = output_image.bayer_pattern, "bayer color pattern"},
-			{0}
+			{ INDIGO_FITS_STRING, "BAYERPAT", .string = output_image.bayer_pattern, "Bayer color pattern" },
+			{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" }, /* index 1 */
+			{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+			{ INDIGO_FITS_NUMBER, "ISOSPEED", .number = image_info.iso_speed, "ISO camera setting" },
+			{ 0 }, //Placeholder for trmerature
+			{ 0 }
 		};
+		int index = 4;
+		if (image_info.temperature > -273.15f) {
+			keywords[index++] = (indigo_fits_keyword) { INDIGO_FITS_NUMBER, "CCD-TEMP", .number = image_info.temperature, "CCD temperature [celcius]"};
+		}
+
 		image = indigo_safe_malloc(output_image.size + 2*FITS_HEADER_SIZE);
 		memcpy(image + FITS_HEADER_SIZE, output_image.data, output_image.size);
 		free(output_image.data);
@@ -1925,7 +1931,6 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		free(image);
 		return;
 	}
-	//send_as_is:
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		bool use_avi = false;
 		int handle = 0;
