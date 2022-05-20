@@ -1908,7 +1908,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			if (output_image.data != NULL) free(output_image.data);
 			INDIGO_ERROR(indigo_error("Selected source format cannot be converted"));
 			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, "Selected source format cannot be converted. Plese use camera RAW as a source.");
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, "Selected source format cannot be converted, please use camera RAW as a source");
 			return;
 		}
 		indigo_fits_keyword keywords[] = {
