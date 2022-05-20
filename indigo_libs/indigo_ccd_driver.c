@@ -1894,7 +1894,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			free(image);
 			return;
 		}
-	} /* else if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
+	} else if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value || CCD_IMAGE_FORMAT_XISF_ITEM->sw.value || CCD_IMAGE_FORMAT_RAW_ITEM->sw.value) {
 		void *image = NULL;
 		indigo_dslr_raw_image_s output_image;
 		int rc;
@@ -1908,8 +1908,11 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		rc = indigo_dslr_raw_process_image((void *)data, data_size, &output_image);
 		if (rc != LIBRAW_SUCCESS) {
 			if (output_image.data != NULL) free(output_image.data);
-			// someting needs to be done here !!!! otherwise exposure stays busy
+			INDIGO_ERROR(indigo_error("Image decoding failed failed"));
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, "Image decoding failed");
 			return;
+			//goto send_as_is;
 		}
 		indigo_fits_keyword keywords[] = {
 			{INDIGO_FITS_STRING, "BAYERPAT", .string = output_image.bayer_pattern, "bayer color pattern"},
@@ -1921,7 +1924,8 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		indigo_process_image(device, image, output_image.width, output_image.height, output_image.bits, true, true, keywords, streaming);
 		free(image);
 		return;
-	} */
+	}
+	//send_as_is:
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		bool use_avi = false;
 		int handle = 0;
