@@ -53,7 +53,7 @@ typedef struct {
 	float shutter;
 	float aperture;
 	float focal_len;
-	float temperture;
+	float temperature;
 	time_t timestamp;
 	char desc[512];
 	char artist[64];
