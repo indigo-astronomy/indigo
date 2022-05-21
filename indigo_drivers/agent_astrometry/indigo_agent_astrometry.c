@@ -50,6 +50,7 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_novas.h>
 #include <indigo/indigo_platesolver.h>
+#include <indigo/indigo_dslr_raw.h>
 
 #include "indigo_agent_astrometry.h"
 
@@ -414,7 +415,17 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 				jpeg_finish_decompress(&cinfo.pub);
 				jpeg_destroy_decompress(&cinfo.pub);
 			} else {
-				image = NULL;
+				indigo_dslr_raw_image_s output_image = {0};
+				int rc = indigo_dslr_raw_process_image((void *)image, image_size, &output_image);
+				if (rc != LIBRAW_SUCCESS) {
+					if (output_image.data != NULL) free(output_image.data);
+					image = NULL;
+				}
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = output_image.width;
+				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height = output_image.height;
+				byte_per_pixel = 2;
+				components = 1;
+				image = intermediate_image = output_image.data;
 			}
 			if (image == NULL) {
 				AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_ALERT_STATE;
