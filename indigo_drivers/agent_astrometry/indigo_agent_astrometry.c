@@ -489,7 +489,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 				}
 			}
 			indigo_write(handle, buffer, image_size);
-			free(buffer);
+			indigo_safe_free(buffer);
 			indigo_safe_free(intermediate_image);
 		}
 		close(handle);
