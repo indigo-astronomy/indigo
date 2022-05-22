@@ -606,7 +606,13 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 			}
 		}
 		if (add) {
-			indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, item->name, item->label, true);
+			char long_label[INDIGO_VALUE_SIZE];
+			if (!strcmp(property->name, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY_NAME)) {
+				snprintf(long_label, INDIGO_VALUE_SIZE, "Tycho-2 %s", item->label);
+			} else {
+				snprintf(long_label, INDIGO_VALUE_SIZE, "2MASS %s", item->label);
+			}
+			indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, item->name, long_label, true);
 		}
 		if (remove) {
 			for (int j = 0; j < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; j++) {
@@ -664,9 +670,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		for (int i = 19; i >=7; i--) {
 			sprintf(name, "41%02d", i);
 			if (index_diameters[i][0] > 60)
-				sprintf(label, "Tycho-2 Index 41%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][0]);
+				sprintf(label, "Index 41%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][0]);
 			else
-				sprintf(label, "Tycho-2 Index 41%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][0]);
+				sprintf(label, "Index 41%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][0]);
 			present = true;
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
@@ -679,8 +685,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				}
 			}
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->items - (i - 19), name, label, present);
-			if (present)
-				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, false);
+			if (present) {
+				char long_label[INDIGO_VALUE_SIZE];
+				snprintf(long_label, INDIGO_VALUE_SIZE, "Tycho-2 %s", label);
+				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, long_label, false);
+			}
 		}
 		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY_NAME, "Index managememt", "Installed 2MASS catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 20);
 		if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY == NULL)
@@ -688,9 +697,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		for (int i = 19; i >=0; i--) {
 			sprintf(name, "42%02d", i);
 			if (index_diameters[i][0] > 60)
-				sprintf(label, "2MASS Index 42%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][1]);
+				sprintf(label, "Index 42%02d (%.0f-%.0f°, %sB)", i, index_diameters[i][0] / 60, index_diameters[i][1] / 60, index_size[i][1]);
 			else
-				sprintf(label, "2MASS Index 42%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][1]);
+				sprintf(label, "Index 42%02d (%.0f-%.0f\', %sB)", i, index_diameters[i][0], index_diameters[i][1], index_size[i][1]);
 			present = true;
 			for (int j = 0; index_files[j]; j++) {
 				char *file_name = index_files[j];
@@ -703,8 +712,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				}
 			}
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items - (i - 19), name, label, present);
-			if (present)
-				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, false);
+			if (present) {
+				char long_label[INDIGO_VALUE_SIZE];
+				snprintf(long_label, INDIGO_VALUE_SIZE, "2MASS %s", label);
+				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, long_label, false);
+			}
 		}
 		// --------------------------------------------------------------------------------
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.save_config = astrometry_save_config;
