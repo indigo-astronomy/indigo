@@ -1924,7 +1924,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			keywords[index++] = (indigo_fits_keyword) { INDIGO_FITS_NUMBER, "CCD-TEMP", .number = image_info.temperature, "CCD temperature [celcius]"};
 		}
 
-		image = indigo_safe_malloc(output_image.size + 2*FITS_HEADER_SIZE);
+		image = indigo_alloc_blob_buffer(output_image.size + FITS_HEADER_SIZE);
 		memcpy(image + FITS_HEADER_SIZE, output_image.data, output_image.size);
 		free(output_image.data);
 		indigo_process_image(device, image, output_image.width, output_image.height, output_image.bits, true, true, keywords, streaming);
