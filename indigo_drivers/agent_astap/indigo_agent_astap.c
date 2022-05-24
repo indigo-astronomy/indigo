@@ -402,6 +402,7 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = SOLVER_WCS_SOLVING;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		if (!strncmp("SIMPLE", (const char *)image, 6)) {
 			ext = "fits";
