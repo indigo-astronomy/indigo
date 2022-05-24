@@ -331,6 +331,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
+		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = SOLVER_WCS_SOLVING;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
