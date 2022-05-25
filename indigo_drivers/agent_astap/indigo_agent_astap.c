@@ -629,6 +629,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, label, false);
 			AGENT_ASTAP_INDEX_PROPERTY->count++;
 		}
+		indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
 		// --------------------------------------------------------------------------------
 		ASTAP_DEVICE_PRIVATE_DATA->platesolver.save_config = astap_save_config;
 		ASTAP_DEVICE_PRIVATE_DATA->platesolver.solve = astap_solve;

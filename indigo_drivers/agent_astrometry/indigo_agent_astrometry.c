@@ -719,6 +719,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				indigo_init_switch_item(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count++, name, long_label, false);
 			}
 		}
+		indigo_property_sort_items(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, 0);
 		// --------------------------------------------------------------------------------
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.save_config = astrometry_save_config;
 		ASTROMETRY_DEVICE_PRIVATE_DATA->platesolver.solve = astrometry_solve;
