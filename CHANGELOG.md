@@ -2,6 +2,41 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-178] - XX May XX 2022
+### Overall
+- DRIVER_DEVELOPMENT_BASICS: documentation updates
+- POLAR_ALIGNMENT: documentation updates
+- add libraw to externals
+- indigo_names: fix CCD_RBI_FLUSH_PROPERTY_NAME
+- indigo_ccd_driver: add CCD_ADVANCED_GROUP and use it in drivers, moved RBI properties to CCD_ADVANCED_GROUP
+- indigo_platesolver: fix memory leaks
+- indigo_platesolver: add WCS state to be used by clients (WAITING_FOR IMAGE, SOLVING, SYNCING etc)
+- rotator property names mapped for legacy protocol
+
+### Driver fixes
+- indigo_ccd_touptek: SDK updated to 20220424
+- indigo_ccd_altair: SDK updated to 20220424
+- indigo_ccd_gphoto2: make it compile against the global libraw
+- indig_ccd_ptp:
+	- add XISF conversion
+	- add FITS conversion
+	- add indigo RAW conversion
+
+- indigo_ccd_fli:
+	- fix CCD_TEMPERATURE_ITEM step
+	- fix CCD_RBI_FLUSH_COUNT_ITEM defaults
+
+- indigo_ccd_asi:
+	- if bin_x != bin_y exposure fails, so force bin_x = bin_y
+
+- indigo_agent_astrometry:
+	- solve camera raw images
+	- use catalog name in index labels in USE_INDEX property
+	- USE_INDEX property items are sorted
+
+- indigo_agent_astap:
+	- USE_INDEX property items are sorted
+
 ## [2.0-176] - 20 Apr Wed 2022
 ### Overall
 - Rotator lists added to filter agent base code
