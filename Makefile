@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 176
+INDIGO_BUILD = 177
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
@@ -72,7 +72,7 @@ else
 		CC = /usr/bin/clang
 		AR = /usr/bin/libtool
 		INDIGO_CUDA =
-		ifeq ($(findstring arm64e,$(shell file $(CC) | head -1)),arm64e)
+		ifeq ($(findstring arm64e,$(shell file $(CC))),arm64e)
 			MAC_ARCH = -arch x86_64 -arch arm64
 		else
 			MAC_ARCH = -arch x86_64
@@ -140,7 +140,6 @@ else
 		endif
 		ARFLAGS = -rv
 		SOEXT = so
-		LIBHIDAPI = $(BUILD_LIB)/libhidapi-libusb.a
 	endif
 endif
 
@@ -367,7 +366,6 @@ Makefile.inc: Makefile
 	@printf "LDFLAGS = $(LDFLAGS)\n" >> Makefile.inc
 	@printf "ARFLAGS = $(ARFLAGS)\n" >> Makefile.inc
 	@printf "SOEXT = $(SOEXT)\n" >> Makefile.inc
-	@printf "LIBHIDAPI = $(LIBHIDAPI)\n\n" >> Makefile.inc
 	@printf "INSTALL_ROOT = $(INSTALL_ROOT)\n" >> Makefile.inc
 	@printf "INSTALL_BIN = $(INSTALL_BIN)\n" >> Makefile.inc
 	@printf "INSTALL_LIB = $(INSTALL_LIB)\n" >> Makefile.inc
