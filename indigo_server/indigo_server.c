@@ -884,7 +884,7 @@ static indigo_result attach(indigo_device *device) {
 			free(line);
 		}
 		SERVER_WIFI_CHANNEL_PROPERTY = indigo_init_number_property(NULL, server_device.name, SERVER_WIFI_CHANNEL_PROPERTY_NAME, MAIN_GROUP, "WiFi channel", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		indigo_init_number_item(SERVER_WIFI_CHANNEL_ITEM, SERVER_WIFI_CHANNEL_ITEM_NAME, "Channel (0 = auto)", 0, 13, 1, 0);
+		indigo_init_number_item(SERVER_WIFI_CHANNEL_ITEM, SERVER_WIFI_CHANNEL_ITEM_NAME, "Channel (0 = auto, [0-13] = 2.4G, [36-116] = 5G)", 0, 116, 1, 0);
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
 		if (line) {
 			SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = atoi(line);
