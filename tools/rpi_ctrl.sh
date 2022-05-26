@@ -46,7 +46,7 @@
 # static ip_address=192.168.235.1/24
 # nohook wpa_supplicant
 
-VERSION=0.23
+VERSION=0.24
 
 # Setup RPi as access point server.
 WIFI_AP_SSID=""
@@ -55,6 +55,7 @@ OPT_WIFI_AP_SET=0
 OPT_WIFI_AP_GET=0
 
 WIFI_AP_CH=6
+WIFI_HW_MODE="g"
 OPT_WIFI_CH_SET=0
 OPT_WIFI_CH_GET=0
 
@@ -100,6 +101,9 @@ OPT_WIFI_AP_RESET=0
 # Verbose ALERT messages.
 OPT_VERBOSE=0
 
+# Valid WIFI channels
+WIFI_CHANNELS=('1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '36' '40' '44' '48' '56' '60' '64' '100' '104' '108' '112' '116')
+
 # Required config files.
 CONF_HOSTAPD="/etc/hostapd/hostapd.conf"
 CONF_WPA_SUPPLICANT="/etc/wpa_supplicant/wpa_supplicant.conf"
@@ -131,7 +135,7 @@ __usage() {
 	 "\t--get-wifi-server\n" \
 	 "\t--set-wifi-server <ssid> <password>\n" \
 	 "\t--get-wifi-channel\n" \
-	 "\t--set-wifi-channel <channel> (0-13, 0 = auto, if supported)\n" \
+	 "\t--set-wifi-channel <channel> (0 = auto or ${WIFI_CHANNELS[*]})\n" \
 	 "\t--get-wifi-client\n" \
 	 "\t--set-wifi-client <ssid> <password>\n" \
 	 "\t--reset-wifi-server\n" \
@@ -150,6 +154,19 @@ __usage() {
     echo "and Rumen G.Bogdanovski <rumen@skyarchive.oer>"
     exit 1
 }
+
+###############################################
+# Return 1 of channel is a valid WIFI channel
+###############################################
+__validate_channel() {
+    local IFS=$'\n';
+    if [ "$1" == "$(compgen -W "${WIFI_CHANNELS[*]}" "$1" | head -1)" ] ; then
+        return 1
+    else
+        return 0
+    fi
+}
+
 
 ###############################################
 # Output to stdout "OK" and exit with 0.
@@ -283,7 +300,9 @@ __set-wifi-server() {
 
     [[ ${#WIFI_AP_PW} -lt 8 ]] && __ALERT "WIFI_AP_PW length < 8"
     [[ ${#WIFI_AP_PW} -gt 63 ]] && __ALERT "WIFI_AP_PW length > 63"
-    [[ ${WIFI_AP_CH} -gt 13 || ${WIFI_AP_CH} -lt 0 ]] && __ALERT "WIFI_AP_CH is out or range (0-13)"
+    __validate_channel ${WIFI_AP_CH}
+    local channel_valid=$?
+    [[ ${channel_valid} -eq 0 ]] && __ALERT "WIFI_AP_CH not in list (${WIFI_CHANNELS[*]})"
     [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "Auto Channel Selection is not available"
 
     ${CP_EXE} "${CONF_HOSTAPD}" "${CONF_HOSTAPD}.backup"
@@ -296,8 +315,12 @@ __set-wifi-server() {
 interface=wlan0
 driver=nl80211
 ssid=${WIFI_AP_SSID}
-hw_mode=g
+hw_mode=${WIFI_HW_MODE}
 channel=${WIFI_AP_CH}
+country_code=UK
+ieee80211d=1
+ieee80211n=1
+ieee80211ac=1
 wmm_enabled=0
 macaddr_acl=0
 auth_algs=1
@@ -374,7 +397,13 @@ __get-wifi-channel() {
 __set-wifi-channel() {
     local mode=$(__get-wifi-mode)
 
-    [[ ${WIFI_AP_CH} -gt 13 || ${WIFI_AP_CH} -lt 0 ]] && __ALERT "WiFi channel is out or range (0-13)"
+    __validate_channel ${WIFI_AP_CH}
+    local channel_valid=$?
+    [[ ${channel_valid} -eq 0 ]] && __ALERT "WiFi channel ${WIFI_AP_CH} is not in list (${WIFI_CHANNELS[*]})"
+
+    if [[ ${WIFI_AP_CH} -gt 30 ]]; then
+        WIFI_HW_MODE="a"
+    fi
 
     if [[ ${WIFI_AP_CH} -eq 0 ]]; then
         WIFI_AP_CH=$($WIFI_CH_SELECT_EXE);
@@ -382,6 +411,7 @@ __set-wifi-channel() {
     fi
 
     __set "channel" ${WIFI_AP_CH} ${CONF_HOSTAPD} >/dev/null 2>&1
+    __set "hw_mode" ${WIFI_HW_MODE} ${CONF_HOSTAPD} >/dev/null 2>&1
     echo 1 2>/dev/null >${PROC_FORWARD}
     [[ $? -ne 0 ]] && { __ALERT "cannot change WiFi channel"; }
 
