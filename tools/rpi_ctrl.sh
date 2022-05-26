@@ -303,6 +303,11 @@ __set-wifi-server() {
     __validate_channel ${WIFI_AP_CH}
     local channel_valid=$?
     [[ ${channel_valid} -eq 0 ]] && __ALERT "WIFI_AP_CH not in list (${WIFI_CHANNELS[*]})"
+
+    if [[ ${WIFI_AP_CH} -gt 30 ]]; then
+        WIFI_HW_MODE="a"
+    fi
+
     [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "Auto Channel Selection is not available"
 
     ${CP_EXE} "${CONF_HOSTAPD}" "${CONF_HOSTAPD}.backup"
