@@ -102,7 +102,7 @@ OPT_WIFI_AP_RESET=0
 OPT_VERBOSE=0
 
 # Valid WIFI channels
-WIFI_CHANNELS=('1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '36' '40' '44' '48' '56' '60' '64' '100' '104' '108' '112' '116')
+WIFI_CHANNELS=('0' '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '36' '40' '44' '48' '56' '60' '64' '100' '104' '108' '112' '116')
 
 # Required config files.
 CONF_HOSTAPD="/etc/hostapd/hostapd.conf"
@@ -135,7 +135,7 @@ __usage() {
 	 "\t--get-wifi-server\n" \
 	 "\t--set-wifi-server <ssid> <password>\n" \
 	 "\t--get-wifi-channel\n" \
-	 "\t--set-wifi-channel <channel> (0 = auto or ${WIFI_CHANNELS[*]})\n" \
+	 "\t--set-wifi-channel <channel> (${WIFI_CHANNELS[*]}, 0 = auto)\n" \
 	 "\t--get-wifi-client\n" \
 	 "\t--set-wifi-client <ssid> <password>\n" \
 	 "\t--reset-wifi-server\n" \
