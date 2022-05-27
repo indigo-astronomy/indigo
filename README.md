@@ -118,6 +118,11 @@ This is the list of requirements taken into the consideration:
 88. ASTROMECHANICS focuser driver
 89. Nexdome Beaver dome driver
 90. ASTROMECHANICS Light Pollution Meter PRO driver
+91. Optec Pyxis rotator driver
+92. SvBony camera driver
+93. Geoptik flat field generator driver
+94. Talon 6 dome driver
+95. Interactive Astronomy SkyAlert driver
 
 ## This is under development
 1. a-Box Adaptive optics driver

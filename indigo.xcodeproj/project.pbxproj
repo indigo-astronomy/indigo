@@ -608,6 +608,10 @@
 		59D138A3283E5A9C00FCC514 /* libraw.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D138A1283E5A6C00FCC514 /* libraw.a */; };
 		59D138A5283E6BAA00FCC514 /* indigo_dslr_raw.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D138A4283E6BAA00FCC514 /* indigo_dslr_raw.c */; };
 		59D138A6283E6BAA00FCC514 /* indigo_dslr_raw.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D138A4283E6BAA00FCC514 /* indigo_dslr_raw.c */; };
+		59D29A172841469D00D5E7F7 /* indigo_mount_starbook.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D29A132841469D00D5E7F7 /* indigo_mount_starbook.h */; };
+		59D29A182841469D00D5E7F7 /* indigo_mount_starbook.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D29A132841469D00D5E7F7 /* indigo_mount_starbook.h */; };
+		59D29A1B2841469D00D5E7F7 /* indigo_mount_starbook.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D29A162841469D00D5E7F7 /* indigo_mount_starbook.c */; };
+		59D29A1C2841469D00D5E7F7 /* indigo_mount_starbook.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D29A162841469D00D5E7F7 /* indigo_mount_starbook.c */; };
 		59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */; };
 		59D6718E22FDBB7500D08A2A /* indigo_ptp_nikon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D6718C22FDBB7500D08A2A /* indigo_ptp_nikon.c */; };
 		59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D6718D22FDBB7500D08A2A /* indigo_ptp_nikon.h */; };
@@ -2546,6 +2550,10 @@
 		59D138A1283E5A6C00FCC514 /* libraw.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libraw.a; path = build/lib/libraw.a; sourceTree = "<group>"; };
 		59D138A4283E6BAA00FCC514 /* indigo_dslr_raw.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_dslr_raw.c; sourceTree = "<group>"; };
 		59D1EA032190B907001901BE /* indigo_dome_azimuth.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dome_azimuth.h; sourceTree = "<group>"; };
+		59D29A132841469D00D5E7F7 /* indigo_mount_starbook.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_starbook.h; sourceTree = "<group>"; };
+		59D29A142841469D00D5E7F7 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59D29A152841469D00D5E7F7 /* indigo_mount_starbook_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_starbook_main.c; sourceTree = "<group>"; };
+		59D29A162841469D00D5E7F7 /* indigo_mount_starbook.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_starbook.c; sourceTree = "<group>"; };
 		59D381A71D95926E00E87393 /* indigo_bus.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = indigo_bus.h; path = indigo_libs/indigo/indigo_bus.h; sourceTree = SOURCE_ROOT; wrapsLines = 0; };
 		59D381A81D9592A400E87393 /* indigo_bus.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; name = indigo_bus.c; path = indigo_libs/indigo_bus.c; sourceTree = SOURCE_ROOT; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_simulator.c; sourceTree = "<group>"; wrapsLines = 0; };
@@ -8399,6 +8407,17 @@
 			path = gps_simulator;
 			sourceTree = "<group>";
 		};
+		59D29A122841469D00D5E7F7 /* mount_starbook */ = {
+			isa = PBXGroup;
+			children = (
+				59D29A142841469D00D5E7F7 /* README.md */,
+				59D29A132841469D00D5E7F7 /* indigo_mount_starbook.h */,
+				59D29A162841469D00D5E7F7 /* indigo_mount_starbook.c */,
+				59D29A152841469D00D5E7F7 /* indigo_mount_starbook_main.c */,
+			);
+			path = mount_starbook;
+			sourceTree = "<group>";
+		};
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
@@ -8554,6 +8573,7 @@
 				595567CF24BA00DA00DF303D /* mount_pmc8 */,
 				59E5A29423C1238400E8BBBF /* mount_rainbow */,
 				59D7076B1DC52BED00DEF566 /* mount_simulator */,
+				59D29A122841469D00D5E7F7 /* mount_starbook */,
 				9DAD521721246C17002FCC79 /* mount_synscan */,
 				590B59CE1F7853F400086FD2 /* mount_temma */,
 				593287A12409ACC700ED61C0 /* rotator_lunatico */,
@@ -12486,6 +12506,7 @@
 				598A1C4D259BA94A00C0B34C /* indigo_ptp_fuji.h in Headers */,
 				598A1C4E259BA94A00C0B34C /* indigo_ica_ptp_nikon.h in Headers */,
 				598A1C4F259BA94A00C0B34C /* indigo_aux_sqm.h in Headers */,
+				59D29A182841469D00D5E7F7 /* indigo_mount_starbook.h in Headers */,
 				598A1C50259BA94A00C0B34C /* indigo_focuser_steeldrive2.h in Headers */,
 				598A1C51259BA94A00C0B34C /* indigo_agent.h in Headers */,
 				598A1C52259BA94A00C0B34C /* nexstar_pec.h in Headers */,
@@ -12628,6 +12649,7 @@
 				59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */,
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
 				59C76F14237872570091B966 /* nexstar_pec.h in Headers */,
+				59D29A172841469D00D5E7F7 /* indigo_mount_starbook.h in Headers */,
 				9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */,
 				9DAD52502126E88B002FCC79 /* indigo_wheel_trutek.h in Headers */,
 				59A3217621D52C4700EC0F4A /* indigo_focuser_asi.h in Headers */,
@@ -13135,6 +13157,7 @@
 				598A1BD6259BA94A00C0B34C /* indigo_mount_nexstar.c in Sources */,
 				59A68E1F277DC3D0000439CC /* indigo_ccd_svb.c in Sources */,
 				598A1BD7259BA94A00C0B34C /* indigo_ccd_fli.c in Sources */,
+				59D29A1C2841469D00D5E7F7 /* indigo_mount_starbook.c in Sources */,
 				598A1BD8259BA94A00C0B34C /* indigo_ccd_apogee.cpp in Sources */,
 				598A1BD9259BA94A00C0B34C /* indigo_mount_nexstaraux.c in Sources */,
 				598A1BDA259BA94A00C0B34C /* indigo_aux_flatmaster.c in Sources */,
@@ -13201,6 +13224,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59D29A1B2841469D00D5E7F7 /* indigo_mount_starbook.c in Sources */,
 				9D73E61B21FF37F9003CEC15 /* libuvc_misc.c in Sources */,
 				595567CE24B88F5B00DF303D /* indigo_ccd_qhy.cpp in Sources */,
 				59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */,
