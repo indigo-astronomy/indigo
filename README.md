@@ -123,6 +123,7 @@ This is the list of requirements taken into the consideration:
 93. Geoptik flat field generator driver
 94. Talon 6 dome driver
 95. Interactive Astronomy SkyAlert driver
+96. Vixen StarBook mount driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
