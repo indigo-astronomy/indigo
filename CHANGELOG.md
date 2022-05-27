@@ -13,6 +13,10 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_platesolver: add WCS state to be used by clients (WAITING_FOR IMAGE, SOLVING, SYNCING etc)
 - rotator property names mapped for legacy protocol
 
+### New drivers
+- indigo_mount_starbook:
+	- Vixen StarBook mount controller driver added
+
 ### Driver fixes
 - indigo_ccd_touptek: SDK updated to 20220424
 - indigo_ccd_altair: SDK updated to 20220424

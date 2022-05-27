@@ -151,6 +151,7 @@
 #include "ccd_svb/indigo_ccd_svb.h"
 #include "agent_astap/indigo_agent_astap.h"
 #include "rotator_optec/indigo_rotator_optec.h"
+#include "mount_starbook/indigo_mount_starbook.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -282,7 +283,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_pmc8,
 	indigo_mount_rainbow,
 	indigo_mount_simulator,
-	indigo_mount_synscan,
+	indigo_mount_starbook,
 	indigo_mount_synscan,
 	indigo_mount_temma,
 	indigo_rotator_lunatico,
