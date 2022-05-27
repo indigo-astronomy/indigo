@@ -103,6 +103,10 @@ OPT_VERBOSE=0
 
 # Valid WIFI channels
 WIFI_CHANNELS=('0' '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '36' '40' '44' '48' '56' '60' '64' '100' '104' '108' '112' '116')
+HT_CAPAB=0
+REQUIRE_HT=0
+
+HT_CAPAB_HT40='[HT40-][SHORT-GI-20][SHORT-GI-40]'
 
 # Required config files.
 CONF_HOSTAPD="/etc/hostapd/hostapd.conf"
@@ -306,6 +310,8 @@ __set-wifi-server() {
 
     if [[ ${WIFI_AP_CH} -gt 30 ]]; then
         WIFI_HW_MODE="a"
+        REQUIRE_HT=1
+        HT_CAPAB=${HT_CAPAB_HT40}
     fi
 
     [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "Auto Channel Selection is not available"
@@ -327,6 +333,8 @@ ieee80211d=1
 ieee80211n=1
 ieee80211ac=1
 wmm_enabled=1
+require_ht=${REQUIRE_HT}
+ht_capab=${HT_CAPAB}
 macaddr_acl=0
 auth_algs=1
 ignore_broadcast_ssid=0
@@ -408,6 +416,8 @@ __set-wifi-channel() {
 
     if [[ ${WIFI_AP_CH} -gt 30 ]]; then
         WIFI_HW_MODE="a"
+        REQUIRE_HT=1
+        HT_CAPAB=${HT_CAPAB_HT40}
     fi
 
     if [[ ${WIFI_AP_CH} -eq 0 ]]; then
@@ -417,6 +427,8 @@ __set-wifi-channel() {
 
     __set "channel" ${WIFI_AP_CH} ${CONF_HOSTAPD} >/dev/null 2>&1
     __set "hw_mode" ${WIFI_HW_MODE} ${CONF_HOSTAPD} >/dev/null 2>&1
+    __set "require_ht" ${REQUIRE_HT} ${CONF_HOSTAPD} >/dev/null 2>&1
+    __set "ht_capab" ${HT_CAPAB} ${CONF_HOSTAPD} >/dev/null 2>&1
     echo 1 2>/dev/null >${PROC_FORWARD}
     [[ $? -ne 0 ]] && { __ALERT "cannot change WiFi channel"; }
 
