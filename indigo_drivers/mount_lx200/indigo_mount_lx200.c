@@ -354,8 +354,23 @@ static void meade_get_coords(indigo_device *device) {
 		if (meade_command(device, ":X34#", response, sizeof(response), 0))
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = (response[1] == '5' || response[2] == '5') ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
-		if (meade_command(device, ":GU#", response, sizeof(response), 0))
+		if (meade_command(device, ":GU#", response, sizeof(response), 0)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strchr(response, 'N') ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+			bool prev_tracking = MOUNT_TRACKING_ON_ITEM->sw.value;
+			if(strchr(response, 'n')) {
+				MOUNT_TRACKING_ON_ITEM->sw.value = false;
+				MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+			} else {
+				MOUNT_TRACKING_ON_ITEM->sw.value = true;
+				MOUNT_TRACKING_OFF_ITEM->sw.value = false;
+			}
+			if (prev_tracking != MOUNT_TRACKING_ON_ITEM->sw.value) {
+				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+			}
+		}
+		if (meade_command(device, ":GT#", response, sizeof(response), 0)) {
+			
+		}
 	} else {
 		if (PRIVATE_DATA->motioned) {
 			// After Motion NS or EW
@@ -551,7 +566,7 @@ static void mount_connect_callback(indigo_device *device) {
 		if (result) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				if (meade_command(device, ":GVP#", response, sizeof(response), 0)) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s", response);
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Product: '%s'", response);
 					strncpy(PRIVATE_DATA->product, response, 64);
 				}
 				if (!strncmp(PRIVATE_DATA->product, "LX", 2) || !strncmp(PRIVATE_DATA->product, "Autostar", 8)) {
@@ -566,7 +581,7 @@ static void mount_connect_callback(indigo_device *device) {
 					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_AVALON_ITEM, true);
 				} else if (!strncmp(PRIVATE_DATA->product, "On-Step", 7)) {
 					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ON_STEP_ITEM, true);
-				} else if (!strncmp(PRIVATE_DATA->product, "AM", 2) && !isdigit(PRIVATE_DATA->product[2])) {
+				} else if (!strncmp(PRIVATE_DATA->product, "AM", 2) && isdigit(PRIVATE_DATA->product[2])) {
 					indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ZWO_ITEM, true);
 				}
 			}
