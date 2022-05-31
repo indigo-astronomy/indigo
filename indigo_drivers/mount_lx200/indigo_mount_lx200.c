@@ -428,6 +428,21 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 	return true;
 }
 
+static bool meade_get_siderial_time(indigo_device *device, double *siderial_time) {
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		int h, m, s;
+		char response[128];
+		char separator[2];
+
+		if (meade_command(device, ":GS#", response, sizeof(response), 0) && sscanf(response, "%d%c%d%c%d", &h, separator, &m, separator, &s) == 5) {
+			*siderial_time = (double)h + m/60.0 + s/3600.0;
+		} else {
+			return false;
+		}
+	}
+	return true;
+}
+
 static void meade_get_site(indigo_device *device, double *latitude, double *longitude) {
 	char response[128];
 	if (meade_command(device, ":Gt#", response, sizeof(response), 0)) {
@@ -497,16 +512,25 @@ static void meade_update_mount_state(indigo_device *device) {
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		if (meade_command(device, ":GU#", response, sizeof(response), 0)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strchr(response, 'N') ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+
 			bool prev_tracking = MOUNT_TRACKING_ON_ITEM->sw.value;
 			if(strchr(response, 'n')) {
-				MOUNT_TRACKING_ON_ITEM->sw.value = false;
-				MOUNT_TRACKING_OFF_ITEM->sw.value = true;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 			} else {
-				MOUNT_TRACKING_ON_ITEM->sw.value = true;
-				MOUNT_TRACKING_OFF_ITEM->sw.value = false;
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 			}
 			if (prev_tracking != MOUNT_TRACKING_ON_ITEM->sw.value) {
 				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+			}
+
+			bool prev_park = MOUNT_PARK_PARKED_ITEM->sw.value;
+			if(strchr(response, 'H')) {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+			} else {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, false);
+			}
+			if (prev_park != MOUNT_PARK_PARKED_ITEM->sw.value) {
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 			}
 		}
 		if (meade_command(device, ":GT#", response, sizeof(response), 0)) {
