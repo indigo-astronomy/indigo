@@ -66,10 +66,10 @@ static char __buffer__[32];
 #define DEC_PER_SEC 1440
 #define RA_PER_SEC 96
 
-bool is_meade = true;
+bool is_meade = false;
 bool is_10micron = false;
 bool is_gemini = false;
-bool is_avalon = false;
+bool is_avalon = true;
 bool is_onstep = false;
 bool is_zwo = false;
 
@@ -131,8 +131,10 @@ void update_state() {
     } else {
       dec = dec + (diff > 0 ? DEC_PER_SEC : -DEC_PER_SEC) * lapse;
     }
-    if (ra == target_ra && dec == target_dec)
+    if (ra == target_ra && dec == target_dec) {
       is_slewing = false;
+      is_tracking = !is_parked;
+    }
   } else if (!is_tracking) {
     ra = (ra + lapse) % (24L * 60L * 60L);
   }
@@ -359,9 +361,11 @@ void loop() {
       } else if (!strcmp(buffer, "CM")) {
         ra = target_ra;
         dec = target_dec;
+        is_parked = false;
         Serial.print("M31 EX GAL MAG 3.5 SZ178.0'#");
       } else if (!strcmp(buffer, "MS")) {
         is_slewing = true;
+        is_parked = false;
 				Serial.print("0");
       } else if (!strcmp(buffer, "D")) {
         if (is_slewing)
@@ -408,6 +412,15 @@ void loop() {
           Serial.print("m11#");
         else
           Serial.print("m00#");
+      } else if (!strcmp(buffer, "X38")) {
+        if (is_parked) {
+          if (is_slewing)
+            Serial.print("pB#");
+          else
+            Serial.print("p2#");
+        } else {
+          Serial.print("p0#");
+        }
       } else if (!strcmp(buffer, "hP") || !strcmp(buffer, "hC") || !strcmp(buffer, "X362") || !strcmp(buffer, "Ch") || !strcmp(buffer, "KA")) {
         target_ra = 0;
         target_dec = 90L * 360000L;
@@ -418,6 +431,15 @@ void loop() {
         is_tracking = true;
         is_slewing = false;
         is_parked = false;
+      } else if (!strcmp(buffer, "h?")) {
+        if (is_parked) {
+          if (is_slewing)
+            Serial.print("2");
+          else
+            Serial.print("1");
+        } else {
+          Serial.print("0");
+        }
       } else if (!strcmp(buffer, "TQ") || !strncmp(buffer, "130:131", 7)) {
         tracking_rate = 'Q';
       } else if (!strcmp(buffer, "TS") || !strcmp(buffer, "TSOLAR") || !strncmp(buffer, "130:134", 7)) {

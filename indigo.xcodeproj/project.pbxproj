@@ -4340,7 +4340,7 @@
 		9DB4FF1A20D00000004A8B5A /* indigo_focuser_wemacro.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_focuser_wemacro.rules; sourceTree = "<group>"; };
 		9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; path = dmfc_simulator.ino; sourceTree = "<group>"; };
 		9DB917FF1DF8546800678721 /* indigo_mount_lx200_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200_main.c; sourceTree = "<group>"; };
-		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; };
+		9DB918001DF8546800678721 /* indigo_mount_lx200.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_lx200.c; sourceTree = "<group>"; wrapsLines = 0; };
 		9DB918011DF8546800678721 /* indigo_mount_lx200.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_lx200.h; sourceTree = "<group>"; };
 		9DB918051DF8647800678721 /* Meade-2010.10.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Meade-2010.10.pdf"; sourceTree = "<group>"; };
 		9DB918061DFEA42E00678721 /* indigo_io.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_io.c; sourceTree = "<group>"; };
