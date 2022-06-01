@@ -1761,6 +1761,7 @@
 		598A1CB8259BA95500C0B34C /* indigo_server_m1 */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_server_m1; sourceTree = BUILT_PRODUCTS_DIR; };
 		598A1CE5259BAD6500C0B34C /* build */ = {isa = PBXFileReference; lastKnownFileType = folder; path = build; sourceTree = "<group>"; };
 		598A1CFA259BADCE00C0B34C /* libgps.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libgps.a; path = indigo_drivers/gps_gpsd/externals/libgps/libgps.a; sourceTree = "<group>"; };
+		598B919E2847D95B0094EB74 /* OnStep.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = OnStep.pdf; sourceTree = "<group>"; };
 		598C57E321A75B1A001CA8C0 /* libnexstar.man */ = {isa = PBXFileReference; lastKnownFileType = text; path = libnexstar.man; sourceTree = "<group>"; };
 		598C57E521A75B1A001CA8C0 /* install-sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = "install-sh"; sourceTree = "<group>"; };
 		598C57EA21A75B1A001CA8C0 /* ltmain.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = ltmain.sh; sourceTree = "<group>"; };
@@ -12092,6 +12093,7 @@
 				5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */,
 				5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */,
 				5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */,
+				598B919E2847D95B0094EB74 /* OnStep.pdf */,
 				591E1142215AEC3900ABADA6 /* lx200_simulator */,
 			);
 			path = mount_lx200;
