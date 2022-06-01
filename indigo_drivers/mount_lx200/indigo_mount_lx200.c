@@ -1655,7 +1655,7 @@ static void mount_home_callback(indigo_device *device) {
 static void mount_home_set_callback(indigo_device *device) {
 	if (MOUNT_HOME_SET_CURRENT_ITEM->sw.value) {
 		MOUNT_HOME_SET_CURRENT_ITEM->sw.value = false;
-		if (meade_park_set(device)) {
+		if (meade_home_set(device)) {
 			MOUNT_HOME_SET_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, "Current home position set");
 		} else {
@@ -1791,7 +1791,7 @@ static void mount_force_flip_callback(indigo_device *device) {
 }
 
 static void mount_pec_callback(indigo_device *device) {
-	if (meade_force_flip(device, MOUNT_PEC_ENABLED_ITEM->sw.value))
+	if (meade_pec(device, MOUNT_PEC_ENABLED_ITEM->sw.value))
 		MOUNT_PEC_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		MOUNT_PEC_PROPERTY->state = INDIGO_ALERT_STATE;
