@@ -2144,6 +2144,7 @@ static indigo_result mount_detach(indigo_device *device) {
 static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
+
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
@@ -2159,6 +2160,17 @@ static void guider_connect_callback(indigo_device *device) {
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			char response[128];
+			if (meade_command(device, ":GVP#", response, sizeof(response), 0)) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Product: '%s'", response);
+				strncpy(PRIVATE_DATA->product, response, 64);
+				if (!strncmp(PRIVATE_DATA->product, "AM", 2) && isdigit(PRIVATE_DATA->product[2])) {
+					GUIDER_GUIDE_NORTH_ITEM->number.max =
+					GUIDER_GUIDE_SOUTH_ITEM->number.max =
+					GUIDER_GUIDE_EAST_ITEM->number.max =
+					GUIDER_GUIDE_WEST_ITEM->number.max = 3000;
+				}
+			}
 		} else {
 			PRIVATE_DATA->device_count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
