@@ -1119,6 +1119,7 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_TRACK_RATE_PROPERTY->hidden = false;
 	MOUNT_MODE_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	FORCE_FLIP_PROPERTY->hidden = true;
 	if (meade_command(device, ":GV#", response, sizeof(response), 0)) {
 		MOUNT_INFO_PROPERTY->count = 3;
