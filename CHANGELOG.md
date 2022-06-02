@@ -12,15 +12,27 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_platesolver: fix memory leaks
 - indigo_platesolver: add WCS state to be used by clients (WAITING_FOR IMAGE, SOLVING, SYNCING etc)
 - rotator property names mapped for legacy protocol
+- indigosky: can now work at 5GHz Wifi up to 200Mbit/s
 
 ### New drivers
 - indigo_mount_starbook:
 	- Vixen StarBook mount controller driver added
 
 ### Driver fixes
-- indigo_ccd_touptek: SDK updated to 20220424
-- indigo_ccd_altair: SDK updated to 20220424
-- indigo_ccd_gphoto2: make it compile against the global libraw
+- indigo_mount_lx200:
+	- code refacored, made asynchronous
+	- ZWO AM5 support completed and tested
+	- added udev rules to give adequate names to some mounts on linux
+
+- indigo_ccd_touptek:
+	- SDK updated to 20220424
+
+- indigo_ccd_altair:
+	- SDK updated to 20220424
+
+- indigo_ccd_gphoto2:
+	- make it compile against the global libraw
+
 - indig_ccd_ptp:
 	- add XISF conversion
 	- add FITS conversion
