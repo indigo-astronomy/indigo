@@ -568,11 +568,17 @@ static bool meade_pec(indigo_device *device, bool on) {
 static bool meade_guide_rate(indigo_device *device, int ra, int dec) {
 	char command[128];
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
-		sprintf(command, ":X20%02d#", (int)(MOUNT_GUIDE_RATE_RA_ITEM->number.target));
+		sprintf(command, ":X20%02d#", ra);
 		if (meade_command(device, command, NULL, 0, 0)) {
-			sprintf(command, ":X21%02d#", (int)(MOUNT_GUIDE_RATE_DEC_ITEM->number.target));
+			sprintf(command, ":X21%02d#", dec);
 			return meade_command(device, command, NULL, 0, 0);
 		}
+	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		if (ra < 10) ra = 10;
+		if (dec > 90) ra = 90;
+		float rate = ra / 100.0 * 15;
+		sprintf(command, ":Rg%.1f#", rate);
+		return (meade_command(device, command, NULL, 0, 0));
 	}
 	return false;
 }
@@ -1103,7 +1109,7 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = false;
 	MOUNT_TRACKING_PROPERTY->hidden = false;
-	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+	MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 	MOUNT_PARK_PROPERTY->hidden = true;
 	MOUNT_HOME_PROPERTY->hidden = false;
 	MOUNT_MOTION_RA_PROPERTY->hidden = false;
@@ -1119,6 +1125,13 @@ static void meade_init_zwo_mount(indigo_device *device) {
 		strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "AM5");
 		strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
+
+	MOUNT_GUIDE_RATE_DEC_ITEM->number.min =
+	MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
+	MOUNT_GUIDE_RATE_DEC_ITEM->number.max =
+	MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
+	meade_guide_rate(device, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target);
+
 	if (meade_command(device, ":GU#", response, sizeof(response), 0)) {
 		if (strchr(response, 'G'))
 			indigo_set_switch(MOUNT_MODE_PROPERTY, EQUATORIAL_ITEM, true);
@@ -1855,7 +1868,12 @@ static void mount_pec_callback(indigo_device *device) {
 }
 
 static void mount_guide_rate_callback(indigo_device *device) {
-	if (meade_guide_rate(device, MOUNT_GUIDE_RATE_RA_ITEM->number.target, MOUNT_GUIDE_RATE_DEC_ITEM->number.target))
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.value =
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.target =
+		MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target;
+	}
+	if (meade_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target))
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
