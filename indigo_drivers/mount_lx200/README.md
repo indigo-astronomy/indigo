@@ -9,6 +9,7 @@
 * EQMac
 * Astro-Physics GTO mounts
 * OnStep controllers (http://www.stellarjourney.com/index.php?r=site/software_telescope)
+* ZWO AM5 mount (https://astronomy-imaging-camera.com/)
 
 Connection over serial port or network.
 
@@ -40,4 +41,5 @@ Driver is developed and tested with:
 * Meade ETX-125
 * LX200GPS
 * EQMac
+* ZWO AM5
 * Simulators
