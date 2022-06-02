@@ -1,0 +1,2 @@
+SUBSYSTEM=="tty", ATTRS{idVendor}=="03c3", ATTRS{idProduct}=="4001", SYMLINK+="ZWO_AM5",  MODE="0666"
+
