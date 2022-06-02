@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-178] - XX May XX 2022
+## [2.0-178] - 02 Jun Thu 2022
 ### Overall
 - DRIVER_DEVELOPMENT_BASICS: documentation updates
 - POLAR_ALIGNMENT: documentation updates

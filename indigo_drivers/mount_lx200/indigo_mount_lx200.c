@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
