@@ -89,6 +89,16 @@
 #define MOUNT_TYPE_AGOTINO_ITEM_NAME		"AGOTINO"
 #define MOUNT_TYPE_ZWO_ITEM_NAME				"ZWO_AM"
 
+#define ZWO_BUZZER_PROPERTY				(PRIVATE_DATA->zwo_buzzer_property)
+#define ZWO_BUZZER_OFF_ITEM				(ZWO_BUZZER_PROPERTY->items+0)
+#define ZWO_BUZZER_LOW_ITEM				(ZWO_BUZZER_PROPERTY->items+1)
+#define ZWO_BUZZER_HIGH_ITEM			(ZWO_BUZZER_PROPERTY->items+2)
+
+#define ZWO_BUZZER_PROPERTY_NAME		"X_ZWO_BUZZER"
+#define ZWO_BUZZER_OFF_ITEM_NAME		"OFF"
+#define ZWO_BUZZER_LOW_ITEM_NAME		"LOW"
+#define ZWO_BUZZER_HIGH_ITEM_NAME		"HIGH"
+
 #define IS_PARKED (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
 
 typedef struct {
@@ -104,6 +114,7 @@ typedef struct {
 	indigo_property *alignment_mode_property;
 	indigo_property *force_flip_property;
 	indigo_property *mount_type_property;
+	indigo_property *zwo_buzzer_property;
 	indigo_timer *focuser_timer;
 	bool use_dst_commands;
 	bool park_changed;
@@ -1121,10 +1132,11 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	FORCE_FLIP_PROPERTY->hidden = true;
+	ZWO_BUZZER_PROPERTY->hidden = false;
 	if (meade_command(device, ":GV#", response, sizeof(response), 0)) {
 		MOUNT_INFO_PROPERTY->count = 3;
 		strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "ZWO");
-		strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "AM5");
+		strcpy(MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product);
 		strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
 
@@ -1163,6 +1175,17 @@ static void meade_init_zwo_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
 		}
 	}
+	/* Buzzer volume */
+	if (meade_command(device, ":GBu#", response, sizeof(response), 0)) {
+		if (strchr(response, '0')) {
+			indigo_set_switch(ZWO_BUZZER_PROPERTY, ZWO_BUZZER_OFF_ITEM, true);
+		} else if (strchr(response, '1')) {
+			indigo_set_switch(ZWO_BUZZER_PROPERTY, ZWO_BUZZER_LOW_ITEM, true);
+		} else if (strchr(response, '2')) {
+			indigo_set_switch(ZWO_BUZZER_PROPERTY, ZWO_BUZZER_HIGH_ITEM, true);
+		}
+	}
+	indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
 	meade_update_mount_state(device);
 }
 
@@ -1653,6 +1676,7 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, FORCE_FLIP_PROPERTY, NULL);
+		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
@@ -1882,6 +1906,18 @@ static void mount_guide_rate_callback(indigo_device *device) {
 	indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 }
 
+static void zwo_buzzer_callback(indigo_device *device) {
+	if (ZWO_BUZZER_OFF_ITEM->sw.value) {
+		meade_command(device, ":SBu0#", NULL, 0, 0);
+	} else if (ZWO_BUZZER_LOW_ITEM->sw.value) {
+		meade_command(device, ":SBu1#", NULL, 0, 0);
+	} else if (ZWO_BUZZER_HIGH_ITEM->sw.value) {
+		meade_command(device, ":SBu2#", NULL, 0, 0);
+	}
+	ZWO_BUZZER_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
+}
+
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result mount_attach(indigo_device *device) {
@@ -1926,6 +1962,14 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_ON_STEP_ITEM, MOUNT_TYPE_ON_STEP_ITEM_NAME, "OnStep", false);
 		indigo_init_switch_item(MOUNT_TYPE_AGOTINO_ITEM, MOUNT_TYPE_AGOTINO_ITEM_NAME, "aGotino", false);
 		indigo_init_switch_item(MOUNT_TYPE_ZWO_ITEM, MOUNT_TYPE_ZWO_ITEM_NAME, "ZWO AM", false);
+		// ---------------------------------------------------------------------------- ZWO_BUZZER
+		ZWO_BUZZER_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_BUZZER_PROPERTY_NAME, "Advanced", "Buzzer volume", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (ZWO_BUZZER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(ZWO_BUZZER_OFF_ITEM, ZWO_BUZZER_OFF_ITEM_NAME, "Off", false);
+		indigo_init_switch_item(ZWO_BUZZER_LOW_ITEM, ZWO_BUZZER_LOW_ITEM_NAME, "Low", false);
+		indigo_init_switch_item(ZWO_BUZZER_HIGH_ITEM, ZWO_BUZZER_HIGH_ITEM_NAME, "High", false);
+		ZWO_BUZZER_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
@@ -1943,6 +1987,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, MOUNT_MODE_PROPERTY, NULL);
 		if (indigo_property_match(FORCE_FLIP_PROPERTY, property))
 			indigo_define_property(device, FORCE_FLIP_PROPERTY, NULL);
+		if (indigo_property_match(ZWO_BUZZER_PROPERTY, property))
+			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -2140,6 +2186,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(ZWO_BUZZER_PROPERTY, property)) {
+			// -------------------------------------------------------------------------------- FORCE_FLIP
+			if (!IS_CONNECTED) return INDIGO_OK;
+			indigo_property_copy_values(ZWO_BUZZER_PROPERTY, property, false);
+			ZWO_BUZZER_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
+			indigo_set_timer(device, 0, zwo_buzzer_callback, NULL);
+			return INDIGO_OK;
 	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -2160,6 +2214,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	}
 	indigo_release_property(MOUNT_MODE_PROPERTY);
 	indigo_release_property(FORCE_FLIP_PROPERTY);
+	indigo_release_property(ZWO_BUZZER_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
