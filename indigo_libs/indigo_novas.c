@@ -30,9 +30,8 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_novas.h>
 
-#define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
-double DELTA_T = 34+32.184+0.477677;
-double DELTA_UTC_UT1 = -0.477677/86400.0;
+const double DELTA_T = 34+32.184+0.477677;
+const double DELTA_UTC_UT1 = -0.477677/86400.0;
 
 static void init() {
 	static int do_init = 1;
@@ -47,9 +46,16 @@ static void init() {
 	}
 }
 
-double indigo_mean_gst(double jd) {
+double indigo_mean_gst(time_t *utc) {
 	long double gst;
 	long double t;
+	double jd;
+
+	if (utc)
+		jd = UT2JD(*utc);
+	else
+		jd = UT2JD(time(NULL));
+
 	t = (jd - 2451545.0) / 36525.0;
 	gst = 280.46061837 + (360.98564736629 * (jd - 2451545.0)) + (0.000387933 * t * t) - (t * t * t / 38710000.0);
 	gst = fmod(gst + 360.0, 360.0);
@@ -58,14 +64,7 @@ double indigo_mean_gst(double jd) {
 }
 
 double indigo_lst(time_t *utc, double longitude) {
-	double ut1;
-	if (utc)
-		ut1 = UT2JD(*utc);
-	else
-		ut1 = UT2JD(time(NULL));
-
-	double gst;
-	gst = indigo_mean_gst(ut1);
+	double gst = indigo_mean_gst(utc);
 	return fmod(gst + longitude/15.0 + 24.0, 24.0);
 }
 
