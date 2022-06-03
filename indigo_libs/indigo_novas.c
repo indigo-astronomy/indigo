@@ -47,6 +47,16 @@ static void init() {
 	}
 }
 
+double indigo_mean_gst(double jd) {
+	long double gst;
+	long double t;
+	t = (jd - 2451545.0) / 36525.0;
+	gst = 280.46061837 + (360.98564736629 * (jd - 2451545.0)) + (0.000387933 * t * t) - (t * t * t / 38710000.0);
+	gst = fmod(gst + 360.0, 360.0);
+	gst *= 24.0 / 360.0;
+	return gst;
+}
+
 double indigo_lst(time_t *utc, double longitude) {
 	double ut1;
 	if (utc)
@@ -55,11 +65,7 @@ double indigo_lst(time_t *utc, double longitude) {
 		ut1 = UT2JD(time(NULL));
 
 	double gst;
-	int error = sidereal_time(ut1, 0.0, DELTA_T, 0, 0, 0, &gst);
-	if (error != 0) {
-		indigo_error("sidereal_time() -> %d", error);
-		return 0;
-	}
+	gst = indigo_mean_gst(ut1);
 	return fmod(gst + longitude/15.0 + 24.0, 24.0);
 }
 
