@@ -40,6 +40,7 @@ extern "C" {
 extern double DELTA_T;
 extern double DELTA_UTC_UT1;
 
+extern double indigo_mean_gst(double jd);
 extern double indigo_lst(time_t *utc, double longitude);
 extern void indigo_eq2hor(time_t *utc, double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az);
 extern void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec);
