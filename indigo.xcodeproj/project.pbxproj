@@ -46,7 +46,6 @@
 		59413562232404D100ED5FF4 /* indigo_focuser_efa.h in Headers */ = {isa = PBXBuildFile; fileRef = 59413561232404D100ED5FF4 /* indigo_focuser_efa.h */; };
 		59413566232404D700ED5FF4 /* indigo_focuser_efa.c in Sources */ = {isa = PBXBuildFile; fileRef = 59413564232404D700ED5FF4 /* indigo_focuser_efa.c */; };
 		5942229F22E34AA9009DAD5C /* libdc1394.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5942229E22E34AA9009DAD5C /* libdc1394.dylib */; };
-		594222A322E34C99009DAD5C /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC1D21EE39B300657C8F /* libnovas.a */; };
 		59463C1920DE6781004950F2 /* indigo_focuser_wemacro_bt.h in Headers */ = {isa = PBXBuildFile; fileRef = 59463C1520DE6781004950F2 /* indigo_focuser_wemacro_bt.h */; };
 		59463C1B20DE6781004950F2 /* indigo_focuser_wemacro_bt.m in Sources */ = {isa = PBXBuildFile; fileRef = 59463C1820DE6781004950F2 /* indigo_focuser_wemacro_bt.m */; };
 		59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */; };
@@ -319,7 +318,6 @@
 		598A1BEA259BA94A00C0B34C /* DDHidEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F28FD211E211100380EF4 /* DDHidEvent.m */; };
 		598A1BEB259BA94A00C0B34C /* indigo_guider_eqmac.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */; };
 		598A1BEC259BA94A00C0B34C /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
-		598A1BED259BA94A00C0B34C /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		598A1BEE259BA94A00C0B34C /* indigo_focuser_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */; };
 		598A1BEF259BA94A00C0B34C /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
 		598A1BF0259BA94A00C0B34C /* indigo_mount_synscan_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD521E21246C17002FCC79 /* indigo_mount_synscan_driver.c */; };
@@ -346,7 +344,6 @@
 		598A1C0C259BA94A00C0B34C /* libtiffxx.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598786472540C69E00CE8B48 /* libtiffxx.a */; };
 		598A1C0D259BA94A00C0B34C /* libdsusb.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9683821A2FFBC0069A64C /* libdsusb.a */; };
 		598A1C0F259BA94A00C0B34C /* libhidapi.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0121EE35A000657C8F /* libhidapi.a */; };
-		598A1C10259BA94A00C0B34C /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC1D21EE39B300657C8F /* libnovas.a */; };
 		598A1C11259BA94A00C0B34C /* libapogee.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598000FC22E4E6BD00021D67 /* libapogee.a */; };
 		598A1C13259BA94A00C0B34C /* libdc1394.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5942229E22E34AA9009DAD5C /* libdc1394.dylib */; };
 		598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 59292E5620D4224F0042E939 /* libcurl.tbd */; };
@@ -523,7 +520,6 @@
 		599C9A531DA022E3008BBCC1 /* indigo_server_tcp.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F8061D9A89ED00582EAF /* indigo_server_tcp.c */; };
 		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
 		59A21E7D25BD849F00005965 /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC1D21EE39B300657C8F /* libnovas.a */; };
-		59A21E8525BDA6A700005965 /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		59A242DA22A2C6AE001C38F8 /* indigo_system_ascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */; };
 		59A242E322A2C6CE001C38F8 /* libascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F921A6FCC7009859FD /* libascol.c */; };
 		59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */; };
@@ -753,7 +749,6 @@
 		9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4969A22C39A170052AB3E /* indigo_aux_sqm.c */; };
 		9DCBF26627E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
 		9DCBF26727E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
-		9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
 		9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBAE171E2D2099004FE70F /* indigo_timer.c */; };
 		9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDBAE181E2D2099004FE70F /* indigo_timer.h */; };
@@ -2489,21 +2484,6 @@
 		59BBED22278493E400BA9CD6 /* indigo_agent_astap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_astap.h; sourceTree = "<group>"; };
 		59BBED23278493E400BA9CD6 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59BBED24278493E400BA9CD6 /* indigo_agent_astap.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_astap.c; sourceTree = "<group>"; };
-		59BCB63127BA53A800EAD0A2 /* readeph0.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = readeph0.c; path = externals/novas/readeph0.c; sourceTree = "<group>"; };
-		59BCB63227BA53A800EAD0A2 /* novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = novas.c; path = externals/novas/novas.c; sourceTree = "<group>"; };
-		59BCB63327BA53A800EAD0A2 /* nutation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = nutation.h; path = externals/novas/nutation.h; sourceTree = "<group>"; };
-		59BCB63427BA53A900EAD0A2 /* eph_manager.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = eph_manager.h; path = externals/novas/eph_manager.h; sourceTree = "<group>"; };
-		59BCB63627BA53A900EAD0A2 /* solarsystem.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = solarsystem.h; path = externals/novas/solarsystem.h; sourceTree = "<group>"; };
-		59BCB63727BA53A900EAD0A2 /* novascon.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = novascon.c; path = externals/novas/novascon.c; sourceTree = "<group>"; };
-		59BCB63827BA53A900EAD0A2 /* NOVAS_C3.1_Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = NOVAS_C3.1_Guide.pdf; path = externals/novas/NOVAS_C3.1_Guide.pdf; sourceTree = "<group>"; };
-		59BCB63927BA53A900EAD0A2 /* novascon.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = novascon.h; path = externals/novas/novascon.h; sourceTree = "<group>"; };
-		59BCB63A27BA53A900EAD0A2 /* novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = novas.h; path = externals/novas/novas.h; sourceTree = "<group>"; };
-		59BCB63B27BA53A900EAD0A2 /* solsys1.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = solsys1.c; path = externals/novas/solsys1.c; sourceTree = "<group>"; };
-		59BCB63C27BA53A900EAD0A2 /* nutation.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = nutation.c; path = externals/novas/nutation.c; sourceTree = "<group>"; };
-		59BCB63D27BA53A900EAD0A2 /* eph_manager.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = eph_manager.c; path = externals/novas/eph_manager.c; sourceTree = "<group>"; };
-		59BCB63E27BA53D900EAD0A2 /* README.txt */ = {isa = PBXFileReference; lastKnownFileType = text; name = README.txt; path = externals/novas/README.txt; sourceTree = "<group>"; };
-		59BCB63F27BA5B1B00EAD0A2 /* solsys2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = solsys2.c; path = externals/novas/solsys2.c; sourceTree = "<group>"; };
-		59BCB64027BA5B1B00EAD0A2 /* solsys3.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; name = solsys3.c; path = externals/novas/solsys3.c; sourceTree = "<group>"; };
 		59C0C74F2564652D00916E8D /* indigo_aux_rpio.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_rpio.h; sourceTree = "<group>"; };
 		59C0C7502564652D00916E8D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59C0C7512564652D00916E8D /* indigo_aux_rpio.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_rpio.c; sourceTree = "<group>"; };
@@ -4400,7 +4380,6 @@
 		9DCB036622E9D8D600A7A2E5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DCB036722E9D8D600A7A2E5 /* indigo_windows.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_windows.sln; sourceTree = "<group>"; };
 		9DCBF26527E9CC6C00746580 /* indigo_fits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_fits.h; sourceTree = "<group>"; };
-		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9DDBAE181E2D2099004FE70F /* indigo_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_timer.h; sourceTree = "<group>"; };
@@ -4468,7 +4447,6 @@
 				59F871BF26A871B6007DF91C /* libgxccd.a in Frameworks */,
 				598A1C0D259BA94A00C0B34C /* libdsusb.a in Frameworks */,
 				598A1C0F259BA94A00C0B34C /* libhidapi.a in Frameworks */,
-				598A1C10259BA94A00C0B34C /* libnovas.a in Frameworks */,
 				598A1C11259BA94A00C0B34C /* libapogee.a in Frameworks */,
 				598A1C13259BA94A00C0B34C /* libdc1394.dylib in Frameworks */,
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
@@ -4506,7 +4484,6 @@
 				59A68E36277DF089000439CC /* libjpeg.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
-				594222A322E34C99009DAD5C /* libnovas.a in Frameworks */,
 				59A68E34277DE658000439CC /* libASICamera2.a in Frameworks */,
 				5980010A22E4E76700021D67 /* libapogee.a in Frameworks */,
 				598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */,
@@ -8292,28 +8269,6 @@
 			path = agent_astap;
 			sourceTree = "<group>";
 		};
-		59BCB62E27BA533900EAD0A2 /* libnovas */ = {
-			isa = PBXGroup;
-			children = (
-				59BCB63E27BA53D900EAD0A2 /* README.txt */,
-				59BCB63827BA53A900EAD0A2 /* NOVAS_C3.1_Guide.pdf */,
-				59BCB63427BA53A900EAD0A2 /* eph_manager.h */,
-				59BCB63D27BA53A900EAD0A2 /* eph_manager.c */,
-				59BCB63A27BA53A900EAD0A2 /* novas.h */,
-				59BCB63227BA53A800EAD0A2 /* novas.c */,
-				59BCB63727BA53A900EAD0A2 /* novascon.c */,
-				59BCB63927BA53A900EAD0A2 /* novascon.h */,
-				59BCB63C27BA53A900EAD0A2 /* nutation.c */,
-				59BCB63327BA53A800EAD0A2 /* nutation.h */,
-				59BCB63127BA53A800EAD0A2 /* readeph0.c */,
-				59BCB63627BA53A900EAD0A2 /* solarsystem.h */,
-				59BCB63B27BA53A900EAD0A2 /* solsys1.c */,
-				59BCB63F27BA5B1B00EAD0A2 /* solsys2.c */,
-				59BCB64027BA5B1B00EAD0A2 /* solsys3.c */,
-			);
-			name = libnovas;
-			sourceTree = "<group>";
-		};
 		59C0C74E2564652D00916E8D /* aux_rpio */ = {
 			isa = PBXGroup;
 			children = (
@@ -8422,7 +8377,6 @@
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
-				59BCB62E27BA533900EAD0A2 /* libnovas */,
 				9DCB034622E9B9DE00A7A2E5 /* indigo */,
 				59E2DA0D263837BB00D3D4B5 /* libjpeg */,
 				59D967EE21A2EA930069A64C /* Makefile */,
@@ -8453,7 +8407,6 @@
 				595AA1D01FC5EEFE00350E7B /* indigo_agent.c */,
 				593A357B219DB4BA00EDF481 /* indigo_filter.c */,
 				594122A01FD2DE5900D792FF /* indigo_dome_azimuth.c */,
-				9DDA7FD01F791F7D0094D65D /* indigo_novas.c */,
 				59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */,
 				5911B6C922630FE900D6B9EC /* indigo_raw_utils.c */,
 				5979C860254710B0005395BE /* indigo_tiff.c */,
@@ -12992,7 +12945,6 @@
 				5903565225AB0C33001DC5DB /* solver_test.c in Sources */,
 				5995A90D25AB3563003987F1 /* indigo_token.c in Sources */,
 				5995A91525AB3566003987F1 /* indigo_io.c in Sources */,
-				59A21E8525BDA6A700005965 /* indigo_novas.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -13186,7 +13138,6 @@
 				598A1BEA259BA94A00C0B34C /* DDHidEvent.m in Sources */,
 				598A1BEB259BA94A00C0B34C /* indigo_guider_eqmac.c in Sources */,
 				598A1BEC259BA94A00C0B34C /* indigo_ccd_dsi.c in Sources */,
-				598A1BED259BA94A00C0B34C /* indigo_novas.c in Sources */,
 				598A1BEE259BA94A00C0B34C /* indigo_focuser_driver.c in Sources */,
 				598A1BEF259BA94A00C0B34C /* indigo_io.c in Sources */,
 				598A1BF0259BA94A00C0B34C /* indigo_mount_synscan_driver.c in Sources */,
@@ -13404,7 +13355,6 @@
 				595F291A211E211100380EF4 /* DDHidEvent.m in Sources */,
 				9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */,
 				5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */,
-				9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				9DAD522621246C18002FCC79 /* indigo_mount_synscan_driver.c in Sources */,
@@ -13725,7 +13675,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
 			};
 			name = Debug;
 		};
@@ -13777,7 +13727,7 @@
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
 			};
 			name = Release;
 		};
@@ -13887,7 +13837,7 @@
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
 			};
 			name = Debug;
 		};
@@ -13931,7 +13881,7 @@
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers indigo_libs/externals/novas";
+				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
 			};
 			name = Release;
 		};
