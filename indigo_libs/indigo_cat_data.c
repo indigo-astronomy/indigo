@@ -27,7 +27,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 #include <indigo/indigo_cat_data.h>
 
 static bool star_data_updated = false;
@@ -53403,7 +53403,7 @@ indigo_star_entry *indigo_get_star_data(void) {
 		for (int i = 0; indigo_star_data[i].hip; i++) {
 			double ra = indigo_star_data[i].ra;
 			double dec = indigo_star_data[i].dec;
-			indigo_app_star(indigo_star_data[i].promora, indigo_star_data[i].promodec, indigo_star_data[i].px, indigo_star_data[i].rv, &ra, &dec);
+			indigo_j2k_to_jnow(&ra, &dec);
 			indigo_star_data[i].ra_now = ra;
 			indigo_star_data[i].dec_now = dec;
 		}
@@ -53417,7 +53417,7 @@ indigo_dso_entry *indigo_get_dso_data(void) {
 		for (int i = 0; indigo_dso_data[i].id; i++) {
 			double ra = indigo_dso_data[i].ra;
 			double dec = indigo_dso_data[i].dec;
-			indigo_app_star(0, 0, 0, 0, &ra, &dec);
+			indigo_j2k_to_jnow(&ra, &dec);
 			indigo_dso_data[i].ra_now = ra;
 			indigo_dso_data[i].dec_now = dec;
 		}

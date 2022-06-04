@@ -43,9 +43,7 @@ extern const double DELTA_UTC_UT1;
 extern double indigo_mean_gst(time_t *utc);
 extern double indigo_lst(time_t *utc, double longitude);
 extern void indigo_eq2hor(time_t *utc, double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az);
-extern void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec);
-extern void indigo_topo_star(double latitude, double longitude, double elevation, double promora, double promodec, double parallax, double rv, double *ra, double *dec);
-extern void indigo_topo_planet(double latitude, double longitude, double elevation, int id, double *ra_j2k, double *dec_j2k, double *ra, double *dec);
+//extern void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec);
 
 #ifdef __cplusplus
 }
