@@ -74,7 +74,7 @@ endif
 	rm -rf $(INSTALL_INCLUDE)/indigo
 
 clean: status
-	rm -f *.o *.orig $(BUILD_LIB)/libindigo.* $(BUILD_LIB)/libraw.* $(BUILD_LIB)/libjpeg.* $(BUILD_LIB)/libtiff.* $(BUILD_LIB)/libtiffxx.* $(BUILD_LIB)/libnovas.* $(BUILD_LIB)/libusb-1.0.* $(LIBHIDAPI).* $(BUILD_LIB)/libftd2xx.*
+	rm -f *.o *.orig $(BUILD_LIB)/libindigo.* $(BUILD_LIB)/libraw.* $(BUILD_LIB)/libjpeg.* $(BUILD_LIB)/libtiff.* $(BUILD_LIB)/libtiffxx.* $(BUILD_LIB)/libusb-1.0.* $(LIBHIDAPI).* $(BUILD_LIB)/libftd2xx.*
 
 clean-all: status
 	git clean -dfx
@@ -85,12 +85,12 @@ clean-all: status
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb libhidapi libjpeg libtiff libnovas libftd2xx libraw $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: version libusb libhidapi libjpeg libtiff libftd2xx libraw $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
 
-$(BUILD_LIB)/libindigo.$(SOEXT): $(LIBINDIGO_FILES) $(BUILD_LIB)/libnovas.a
+$(BUILD_LIB)/libindigo.$(SOEXT): $(LIBINDIGO_FILES)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a $(FORCE_ALL_ON) $(LIBHIDAPI).a $(FORCE_ALL_OFF) -ldl -lusb-1.0 -lz -lstdc++
 
 #---------------------------------------------------------------------
@@ -139,17 +139,6 @@ libtiff: $(BUILD_LIB)/libtiff.a
 
 $(BUILD_LIB)/libtiff.a:
 	export CC=$(CC); export CXX=$(CC); export CFLAGS="$(CFLAGS)"; export CXXFLAGS="$(CXXFLAGS)"; export LDFLAGS="$(LDFLAGS)"; cd externals/libtiff; ./configure --disable-ccitt --disable-packbits --disable-thunder --disable-next --disable-logluv --disable-mdi --disable-zlib --disable-pixarlog --disable-jpeg --disable-old-jpeg --disable-jbig --disable-lzma --disable-zstd --disable-webp --enable-shared=no --enable-static=yes --prefix=$(BUILD_ROOT) --libdir=$(BUILD_LIB) CFLAGS="$(CFLAGS)"; make install
-
-#---------------------------------------------------------------------
-#
-#	Build libnovas
-#
-#---------------------------------------------------------------------
-
-libnovas: $(BUILD_LIB)/libnovas.a
-
-$(BUILD_LIB)/libnovas.a: externals/novas/novas.c externals/novas/eph_manager.c externals/novas/novascon.c externals/novas/nutation.c externals/novas/readeph0.c externals/novas/solsys1.c
-	cd externals/novas; rm -f *.o; $(CC) -c $(CFLAGS) novas.c eph_manager.c novascon.c nutation.c readeph0.c solsys1.c; $(AR) $(ARFLAGS) $@ *.o; install *.h $(BUILD_INCLUDE);
 
 #---------------------------------------------------------------------
 #

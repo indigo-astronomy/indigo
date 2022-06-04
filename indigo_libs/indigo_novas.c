@@ -24,27 +24,16 @@
  */
 
 //#include <time.h>
-#include <novas.h>
-#include <eph_manager.h>
+//#include <novas.h>
+//#include <eph_manager.h>
 
+#include <math.h>
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 
 const double DELTA_T = 34+32.184+0.477677;
 const double DELTA_UTC_UT1 = -0.477677/86400.0;
-
-static void init() {
-	static int do_init = 1;
-	if (do_init) {
-		double jd_begin, jd_end;
-		short de_number;
-		int error = ephem_open("JPLEPH.421", &jd_begin, &jd_end, &de_number);
-		if (error != 0) {
-			indigo_error("ephem_open() -> %d", error);
-		}
-		do_init = 0;
-	}
-}
 
 double indigo_mean_gst(time_t *utc) {
 	long double gst;
@@ -69,59 +58,12 @@ double indigo_lst(time_t *utc, double longitude) {
 }
 
 void indigo_eq2hor(time_t *utc, double latitude, double longitude, double elevation, double ra, double dec, double *alt, double *az) {
-	double ut1;
-	if (utc)
-		ut1 = UT2JD(*utc);
-	else
-		ut1 = UT2JD(time(NULL));
+	indigo_spherical_point_t eq_point;
+	indigo_spherical_point_t h_point;
+	double lst = indigo_lst(utc, longitude);
 
-	on_surface position = { latitude, longitude, elevation, 0.0, 0.0 };
-	equ2hor(ut1, DELTA_T, 1, 0.0, 0.0, &position, ra, dec, 0, alt, az, &ra, &dec);
-	*alt = 90 - *alt;
-}
-
-void indigo_app_star(double promora, double promodec, double parallax, double rv, double *ra, double *dec) {
-	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
-	double tt_now = ut1_now + DELTA_T / 86400.0;
-	cat_entry star;
-	init();
-	make_cat_entry("HIP 1", "HP2", 1, *ra, *dec, promora, promodec, parallax, rv, &star);
-	int error = app_star(tt_now, &star, 1, ra, dec);
-	if (error != 0) {
-		indigo_error("app_star() -> %d", error);
-	}
-}
-
-void indigo_topo_star(double latitude, double longitude, double elevation, double promora, double promodec, double parallax, double rv, double *ra, double *dec) {
-	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
-	double tt_now = ut1_now + DELTA_T / 86400.0;
-	cat_entry star;
-	init();
-	make_cat_entry("HIP1", "HP2", 1, *ra, *dec, promora, promodec, parallax, rv, &star);
-	on_surface position = { latitude, longitude, elevation, 0.0, 0.0 };
-	int error = topo_star(tt_now, DELTA_T, &star, &position, 1, ra, dec);
-	if (error != 0) {
-		indigo_error("topo_star() -> %d", error);
-	}
-}
-
-void indigo_topo_planet(double latitude, double longitude, double elevation, int id, double *ra_j2k, double *dec_j2k, double *ra, double *dec) {
-	cat_entry DUMMY_STAR;
-	object solarSystem;
-	double distance;
-	double ut1_now = time(NULL) / 86400.0 + 2440587.5 + DELTA_UTC_UT1;
-	double pos[3], j2k_pos[3];
-	on_surface position = { latitude, longitude, elevation, 0.0, 0.0 };
-	init();
-	make_object(0, id, "Dummy", &DUMMY_STAR, &solarSystem);
-	int error = topo_planet(ut1_now, &solarSystem, DELTA_T, &position, 1, ra, dec, &distance);
-	if (error != 0) {
-		indigo_error("topo_planet() -> %d", error);
-	}
-	radec2vector(*ra, *dec, distance, pos);
-	error = precession(ut1_now, pos, 2451545.0, j2k_pos);
-	if (error != 0) {
-		indigo_error("precession() -> %d", error);
-	}
-	vector2radec(j2k_pos, ra_j2k, dec_j2k);
+	indigo_ra_dec_to_point(ra, dec, lst, &eq_point);
+	indigo_equatorial_to_hotizontal(&eq_point, latitude * DEG2RAD, &h_point);
+	*az = h_point.a * RAD2DEG;
+	*alt = h_point.d *RAD2DEG;
 }

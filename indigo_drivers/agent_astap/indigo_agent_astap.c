@@ -280,7 +280,7 @@ static void parse_line(indigo_device *device, char *line) {
 	} else if ((s = strstr(line, "CRVAL2="))) {
 		AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value = atof(s + 7);
 		if (AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target == 0) {
-			indigo_app_star(0, 0, 0, 0, &AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, &AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value);
+			indigo_j2k_to_jnow(&AGENT_PLATESOLVER_WCS_RA_ITEM->number.value, &AGENT_PLATESOLVER_WCS_DEC_ITEM->number.value);
 			AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 0;
 		} else {
 			AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value = 2000;

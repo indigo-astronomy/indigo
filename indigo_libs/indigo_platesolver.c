@@ -299,7 +299,7 @@ static void populate_pa_state(indigo_device * device) {
 static void to_jnow_if_not(indigo_device *device, double *ra, double *dec) {
 	/* if coordinates are in J2000 precess transform to JNow */
 	if (AGENT_PLATESOLVER_WCS_EPOCH_ITEM->number.value != 0) {
-		indigo_app_star(0, 0, 0, 0, ra, dec);
+		indigo_j2k_to_jnow(ra, dec);
 	}
 }
 
