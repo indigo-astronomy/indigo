@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_agent.h>
 #include <indigo/indigo_filter.h>
-#include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 #include <indigo/indigo_platesolver.h>
 
 // -------------------------------------------------------------------------------- INDIGO agent device implementation

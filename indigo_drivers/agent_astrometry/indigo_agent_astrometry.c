@@ -48,7 +48,7 @@
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_io.h>
-#include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 #include <indigo/indigo_platesolver.h>
 #include <indigo/indigo_dslr_raw.h>
 

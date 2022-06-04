@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_dome_driver.h>
 #include <indigo/indigo_agent.h>
-#include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 
 #define SYNC_INTERAL 15.0  /* in seconds */
 

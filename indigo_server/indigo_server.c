@@ -49,7 +49,7 @@
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_token.h>
-#include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 #include <indigo/indigo_cat_data.h>
 
 #include "ccd_simulator/indigo_ccd_simulator.h"

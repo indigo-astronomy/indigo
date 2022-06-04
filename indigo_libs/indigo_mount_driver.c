@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_io.h>
-#include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 #include <indigo/indigo_agent.h>
 
 # define DEG2RAD (M_PI/180.0)
@@ -411,7 +411,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			indigo_j2k_to_jnow(&ra, &dec);
-			indigo_eq2hor(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
+			indigo_radec_to_altaz(ra, dec, NULL, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 			indigo_define_property(device, MOUNT_INFO_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
@@ -1204,7 +1204,7 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 		double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 		double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		indigo_j2k_to_jnow(&ra, &dec);
-		indigo_eq2hor(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, ra, dec, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
+		indigo_radec_to_altaz(ra, dec, &utc, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_ALT_ITEM->number.value, &MOUNT_HORIZONTAL_COORDINATES_AZ_ITEM->number.value);
 		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
 		if (IS_CONNECTED)
 			indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
