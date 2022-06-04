@@ -35,6 +35,7 @@
 
 #include <stdio.h>
 #include <math.h>
+#include <time.h>
 #include <string.h>
 #include <stdbool.h>
 
@@ -44,6 +45,13 @@ extern "C" {
 
 #define DEG2RAD (M_PI / 180.0)
 #define RAD2DEG (180.0 / M_PI)
+
+#define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
+#define JD UT2JD(time(NULL))
+#define JD2000       2451545.0
+
+extern const double DELTA_T;
+extern const double DELTA_UTC_UT1;
 
 /** Cartesian point
  */
@@ -73,7 +81,7 @@ typedef struct {
 indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1);
 
 /** Convenience wrapper for indigo_precess(...)
- 
+
 	*ra - Right Ascension (hours)
 	*dec - Declination (degrees)
  */
@@ -88,7 +96,7 @@ extern void indigo_jnow_to_j2k(double *ra, double *dec);
 extern void indigo_eq_to_j2k(const double eq, double *ra, double *dec);
 
 /** Convenience wrapper for indigo_precess(...)
- 
+
 	*ra - Right Ascension (hours)
 	*dec - Declination (degrees)
  */
@@ -101,6 +109,18 @@ extern void indigo_j2k_to_jnow(double *ra, double *dec);
 	*dec - Declination (degrees)
  */
 extern void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
+
+/** Greenwitch mean sidereal time
+ */
+extern double indigo_mean_gst(const time_t *utc);
+
+/** Local mean sidereal time (in degrees)
+ */
+extern double indigo_lst(const time_t *utc, const double longitude);
+
+/** ra/dec to alt/az (in degrees)
+ */
+extern void indigo_radec_to_altaz(const double ra, const double dec, const time_t *utc, const double latitude, const double longitude, const double elevation, double *alt, double *az);
 
 /** convert ha dec to az alt in radians
  */

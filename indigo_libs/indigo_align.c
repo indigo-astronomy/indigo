@@ -82,6 +82,42 @@ void indigo_j2k_to_eq(const double eq, double *ra, double *dec) {
 	}
 }
 
+const double DELTA_T = 34+32.184+0.477677;
+const double DELTA_UTC_UT1 = -0.477677/86400.0;
+
+double indigo_mean_gst(const time_t *utc) {
+	long double gst;
+	long double t;
+	double jd;
+
+	if (utc)
+		jd = UT2JD(*utc);
+	else
+		jd = UT2JD(time(NULL));
+
+	t = (jd - 2451545.0) / 36525.0;
+	gst = 280.46061837 + (360.98564736629 * (jd - 2451545.0)) + (0.000387933 * t * t) - (t * t * t / 38710000.0);
+	gst = fmod(gst + 360.0, 360.0);
+	gst *= 24.0 / 360.0;
+	return gst;
+}
+
+double indigo_lst(const time_t *utc, const double longitude) {
+	double gst = indigo_mean_gst(utc);
+	return fmod(gst + longitude/15.0 + 24.0, 24.0);
+}
+
+void indigo_radec_to_altaz(const double ra, const double dec, const time_t *utc, const double latitude, const double longitude, const double elevation, double *alt, double *az) {
+	indigo_spherical_point_t eq_point;
+	indigo_spherical_point_t h_point;
+	double lst = indigo_lst(utc, longitude);
+
+	indigo_ra_dec_to_point(ra, dec, lst, &eq_point);
+	indigo_equatorial_to_hotizontal(&eq_point, latitude * DEG2RAD, &h_point);
+	*az = h_point.a * RAD2DEG;
+	*alt = h_point.d *RAD2DEG;
+}
+
 /*
  Precesses c0 from eq0 to eq1
 

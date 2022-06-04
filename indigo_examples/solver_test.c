@@ -7,7 +7,7 @@
 //
 
 // link with solver_test_image.c, indigo_bus.c, indigo_raw_utils.c,
-// indigo_cat_data.c, indigo_token.c, indigo_io.c, indigo_novas.c and libnovas.a
+// indigo_cat_data.c, indigo_token.c, indigo_io.c, indigo_align.c
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -17,7 +17,7 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_raw_utils.h>
-#include <indigo/indigo_novas.h>
+#include <indigo/indigo_align.h>
 
 #include "indigo_cat_data.h"
 
