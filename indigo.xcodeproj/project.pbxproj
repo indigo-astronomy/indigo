@@ -363,7 +363,6 @@
 		598A1C26259BA94A00C0B34C /* indigo_focuser_wemacro_bt.h in Headers */ = {isa = PBXBuildFile; fileRef = 59463C1520DE6781004950F2 /* indigo_focuser_wemacro_bt.h */; };
 		598A1C27259BA94A00C0B34C /* indigo_ica_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C499E31EFADFE000E750AA /* indigo_ica_ptp.h */; };
 		598A1C28259BA94A00C0B34C /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
-		598A1C29259BA94A00C0B34C /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
 		598A1C2A259BA94A00C0B34C /* indigo_agent_snoop.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */; };
 		598A1C2B259BA94A00C0B34C /* indigo_agent_auxiliary.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DC4967D22BA7B810052AB3E /* indigo_agent_auxiliary.h */; };
 		598A1C2C259BA94A00C0B34C /* indigo_wheel_xagyl.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DAD52532126FFC2002FCC79 /* indigo_wheel_xagyl.h */; };
@@ -749,7 +748,6 @@
 		9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4969A22C39A170052AB3E /* indigo_aux_sqm.c */; };
 		9DCBF26627E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
 		9DCBF26727E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
-		9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
 		9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBAE171E2D2099004FE70F /* indigo_timer.c */; };
 		9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDBAE181E2D2099004FE70F /* indigo_timer.h */; };
 		9DDEFBF121EE346700657C8F /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
@@ -4380,7 +4378,6 @@
 		9DCB036622E9D8D600A7A2E5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DCB036722E9D8D600A7A2E5 /* indigo_windows.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_windows.sln; sourceTree = "<group>"; };
 		9DCBF26527E9CC6C00746580 /* indigo_fits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_fits.h; sourceTree = "<group>"; };
-		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9DDBAE181E2D2099004FE70F /* indigo_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_timer.h; sourceTree = "<group>"; };
 		9DDEFC0121EE35A000657C8F /* libhidapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhidapi.a; path = build/lib/libhidapi.a; sourceTree = "<group>"; };
@@ -12197,7 +12194,6 @@
 				59D1EA032190B907001901BE /* indigo_dome_azimuth.h */,
 				595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */,
 				593A357A219DB4BA00EDF481 /* indigo_filter.h */,
-				9DDA7FD11F791F7D0094D65D /* indigo_novas.h */,
 				59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */,
 				5911B6C822630FE900D6B9EC /* indigo_raw_utils.h */,
 				5979C85F254710B0005395BE /* indigo_tiff.h */,
@@ -12418,7 +12414,6 @@
 				598A1C27259BA94A00C0B34C /* indigo_ica_ptp.h in Headers */,
 				59A68E1D277DC3D0000439CC /* indigo_ccd_svb.h in Headers */,
 				598A1C28259BA94A00C0B34C /* indigo_usb_utils.h in Headers */,
-				598A1C29259BA94A00C0B34C /* indigo_novas.h in Headers */,
 				598A1C2A259BA94A00C0B34C /* indigo_agent_snoop.h in Headers */,
 				59540AD826D00D3C000C2A1B /* indigo_aux_geoptikflat.h in Headers */,
 				598A1C2B259BA94A00C0B34C /* indigo_agent_auxiliary.h in Headers */,
@@ -12559,7 +12554,6 @@
 				59463C1920DE6781004950F2 /* indigo_focuser_wemacro_bt.h in Headers */,
 				59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */,
 				59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */,
-				9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */,
 				595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */,
 				9DC4968822BA7B810052AB3E /* indigo_agent_auxiliary.h in Headers */,
 				9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */,
