@@ -219,8 +219,8 @@ typedef struct {/* there is no .name =  because of g++ C99 bug affecting string 
 		 */
 		struct {
 			char value[INDIGO_VALUE_SIZE];  ///< item value (for text properties)
-			char *long_value;							///< item value, set if text is longer than NDIGO_VALUE_SIZE
-			long length;								///< text length (including terminating 0)
+			char *long_value;								///< item value, set if text is longer than NDIGO_VALUE_SIZE
+			long length;										///< text length (including terminating 0)
 		} text;
 		/** Number property item specific fields.
 		 */
@@ -265,9 +265,10 @@ typedef struct {
 	indigo_property_type type;          ///< property type
 	indigo_property_perm perm;          ///< property access permission
 	indigo_rule rule;                   ///< switch behaviour rule (for switch properties)
-	indigo_token access_token;	///< allow change request on locked device
+	indigo_token access_token;					///< allow change request on locked device
 	short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
 	bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
+	bool defined;												///< property is defined
 	int count;                          ///< number of property items
 	indigo_item items[];                ///< property items
 } indigo_property;
@@ -284,7 +285,7 @@ typedef struct indigo_device {
 	indigo_device *master_device;       ///< if the device provides many logical devices, this must point to one of the locical devices, otherwise is safe to be NULL
 	indigo_result last_result;          ///< result of last bus operation
 	indigo_version version;             ///< device version
-	indigo_token access_token;	///< allow change request with correct access token only
+	indigo_token access_token;					///< allow change request with correct access token only
 
 	/** callback called when device is attached to bus
 	 */
@@ -540,9 +541,13 @@ extern bool indigo_upload_http_blob_item(indigo_item *blob_item);
  */
 extern bool indigo_property_match(indigo_property *property, indigo_property *other);
 
-/** Test, if property matches other property and is RW.
+/** Test, if property matches other property and is defined.
  */
-extern bool indigo_property_match_w(indigo_property *property, indigo_property *other);
+extern bool indigo_property_match_defined(indigo_property *property, indigo_property *other);
+
+/** Test, if property matches other property and is defined and RW.
+ */
+extern bool indigo_property_match_writable(indigo_property *property, indigo_property *other);
 
 /** Test, if switch item matches other switch item.
  */

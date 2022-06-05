@@ -123,7 +123,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -143,7 +143,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			}
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		OSErr err = 0;
@@ -169,7 +169,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		OSErr err = 0;

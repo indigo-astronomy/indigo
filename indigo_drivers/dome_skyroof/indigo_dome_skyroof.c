@@ -315,7 +315,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -325,7 +325,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_set_timer(device, 0, dome_connect_handler, NULL);
 		return INDIGO_OK;
 
-	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 		if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -339,7 +339,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
@@ -355,7 +355,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_HEATER_CONTROL_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_HEATER_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_HEATER_CONTROL
 		indigo_property_copy_values(X_HEATER_CONTROL_PROPERTY, property, false);
 		X_HEATER_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;

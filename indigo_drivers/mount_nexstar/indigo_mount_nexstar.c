@@ -201,11 +201,9 @@ static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->gps) {
 		nexstar_private_data *private_data = PRIVATE_DATA;
 		indigo_device *device = private_data->gps;
-		if (IS_CONNECTED) {
-			char response[3];
-			if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0x37, 0, 0, 0, 1, response) == RC_OK) {
-				linked = response[0] > 0;
-			}
+		char response[3];
+		if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0x37, 0, 0, 0, 1, response) == RC_OK) {
+			linked = response[0] > 0;
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -233,27 +231,25 @@ static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->gps) {
 		nexstar_private_data *private_data = PRIVATE_DATA;
 		indigo_device *device = private_data->gps;
-		if (IS_CONNECTED) {
-			if (linked) {
-				if (GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
-					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
-					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
-				}
-				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-				indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-				indigo_timetoisolocal(ttime - ((tz + dst) * 3600), GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-				snprintf(GPS_UTC_OFFEST_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
-				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-			} else {
-				if (GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
-					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
-				}
+		if (linked) {
+			if (GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+			}
+			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+			indigo_timetoisolocal(ttime - ((tz + dst) * 3600), GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+			snprintf(GPS_UTC_OFFEST_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+			indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+		} else {
+			if (GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
+				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
 			}
 		}
 	}
@@ -823,7 +819,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -831,7 +827,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_connect, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		if (PRIVATE_DATA->park_in_progress) {
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, WARN_PARKING_PROGRESS_MSG);
@@ -842,27 +838,23 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_park, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPTHIC_COORDINATES
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-			if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
-				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_handle_geo_coordinates, NULL);
-		}
+		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_handle_geo_coordinates, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_SET_HOST_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SET_HOST_TIME_PROPERTY
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
-			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_handle_set_utc_from_host, NULL);
-		}
+		indigo_property_copy_values(MOUNT_SET_HOST_TIME_PROPERTY, property, false);
+		MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_handle_set_utc_from_host, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		if (PRIVATE_DATA->parked) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -878,14 +870,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_eq_coordinates, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_UTC_TIME_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_UTC_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_UTC_TIME_PROPERTY
 		indigo_property_copy_values(MOUNT_UTC_TIME_PROPERTY, property, false);
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_utc, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		if (PRIVATE_DATA->parked) {
 			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -897,7 +889,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_tracking, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(TRACKING_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(TRACKING_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- TRACKING_MODE
 		if (IS_CONNECTED && !TRACKING_MODE_PROPERTY->hidden) { // TBD - I don't understand how it works!!?!?
 			indigo_property_copy_values(TRACKING_MODE_PROPERTY, property, false);
@@ -909,25 +901,21 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_set_timer(device, 0, mount_handle_tracking, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_GUIDE_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_GUIDE_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GUIDE_RATE
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
-			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_handle_st4_guiding_rate, NULL);
-		}
+		indigo_property_copy_values(MOUNT_GUIDE_RATE_PROPERTY, property, false);
+		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_handle_st4_guiding_rate, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
-			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_handle_slew_rate, NULL);
-		}
+		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
+		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_handle_slew_rate, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		if (PRIVATE_DATA->parked) {
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -939,7 +927,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_motion_ns, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
 		if(PRIVATE_DATA->parked) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -951,14 +939,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_handle_motion_ne, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_cancel_slew, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, TRACKING_MODE_PROPERTY);
@@ -1170,7 +1158,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -1178,7 +1166,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guider_handle_connect, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		if (GUIDER_GUIDE_DEC_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
@@ -1187,7 +1175,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_set_timer(device, 0, guider_handle_dec, &PRIVATE_DATA->guider_timer_dec);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		if (GUIDER_GUIDE_RA_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
@@ -1196,7 +1184,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_set_timer(device, 0, guider_handle_ra, &PRIVATE_DATA->guider_timer_ra);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(COMMAND_GUIDE_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(COMMAND_GUIDE_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- COMMAND_GUIDE_RATE
 		indigo_property_copy_values(COMMAND_GUIDE_RATE_PROPERTY, property, false);
 		if (GUIDE_50_ITEM->sw.value) {
@@ -1272,7 +1260,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);

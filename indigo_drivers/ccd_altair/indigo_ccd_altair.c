@@ -543,7 +543,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	HRESULT result;
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -552,7 +552,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_MODE
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
 		PRIVATE_DATA->mode = PRIVATE_DATA->left = PRIVATE_DATA->top = PRIVATE_DATA->width = PRIVATE_DATA->height = -1;
@@ -571,13 +571,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				break;
 			}
 		}
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_w(CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_writable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		PRIVATE_DATA->mode = PRIVATE_DATA->left = PRIVATE_DATA->top = PRIVATE_DATA->width = PRIVATE_DATA->height = -1;
@@ -597,10 +595,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 								indigo_set_switch(CCD_MODE_PROPERTY, item, true);
 								CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 								CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
-								if (IS_CONNECTED) {
-									indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-									indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-								}
+								indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+								indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 								return INDIGO_OK;
 							}
 						}
@@ -610,12 +606,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
 		CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_w(CCD_FRAME_PROPERTY, property)) {
+	} else if (indigo_property_match_writable(CCD_FRAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		char name[INDIGO_NAME_SIZE];
@@ -631,20 +625,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					if (!strcmp(name, item->name)) {
 						indigo_set_switch(CCD_MODE_PROPERTY, item, true);
 						CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-						if (IS_CONNECTED) {
-							indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-						}
+						indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 						return indigo_ccd_change_property(device, client, property);
 					}
 				}
 			}
 		}
 		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -667,7 +657,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		result = Altaircam_Trigger(PRIVATE_DATA->handle, 1);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Trigger(1) -> %08x", result);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -690,7 +680,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		result = Altaircam_Trigger(PRIVATE_DATA->handle, (int)CCD_STREAMING_COUNT_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Trigger(%d) -> %08x", (int)CCD_STREAMING_COUNT_ITEM->number.value);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
@@ -700,7 +690,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Trigger(0) -> %08x", result);
 			PRIVATE_DATA->aborting = true;
 		}
-	} else if (indigo_property_match(CCD_COOLER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_TEC, CCD_COOLER_ON_ITEM->sw.value ? 1 : 0);
@@ -713,7 +703,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_w(CCD_TEMPERATURE_PROPERTY, property)) {
+	} else if (indigo_property_match_writable(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		result = Altaircam_put_Temperature(PRIVATE_DATA->handle, (short)(CCD_TEMPERATURE_ITEM->number.target * 10));
@@ -737,73 +727,69 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-			result = Altaircam_put_ExpoAGain(PRIVATE_DATA->handle, (int)CCD_GAIN_ITEM->number.value);
-			if (result < 0) {
-				CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
-				indigo_update_property(device, CCD_GAIN_PROPERTY, "Analog gain setting is not supported");
-			} else {
-				CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
-				indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
-			}
+		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
+		result = Altaircam_put_ExpoAGain(PRIVATE_DATA->handle, (int)CCD_GAIN_ITEM->number.value);
+		if (result < 0) {
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
+			indigo_update_property(device, CCD_GAIN_PROPERTY, "Analog gain setting is not supported");
+		} else {
+			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
+			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		}
-	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match(X_CCD_ADVANCED_PROPERTY, property)) {
+	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match_defined(X_CCD_ADVANCED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CCD_ADVANCED
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-			result = Altaircam_put_Contrast(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
-			if (result < 0) {
-				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
-			}
-			result = Altaircam_put_Hue(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
-			if (result < 0) {
-				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
-			}
-			result = Altaircam_put_Saturation(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
-			if (result < 0) {
-				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
-			}
-			result = Altaircam_put_Brightness(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
-			if (result < 0) {
-				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
-			}
-			result = Altaircam_put_Gamma(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
-			if (result < 0) {
-				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
-			}
-			int gain[3] = { (int)X_CCD_R_GAIN_ITEM->number.value, (int)X_CCD_G_GAIN_ITEM->number.value, (int)X_CCD_B_GAIN_ITEM->number.value };
-			result = Altaircam_put_WhiteBalanceGain(PRIVATE_DATA->handle, gain);
-			if (result < 0) {
-				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
-			}
-			indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
+		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
+		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
+		result = Altaircam_put_Contrast(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
+		if (result < 0) {
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
 		}
+		result = Altaircam_put_Hue(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
+		if (result < 0) {
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+		}
+		result = Altaircam_put_Saturation(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
+		if (result < 0) {
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+		}
+		result = Altaircam_put_Brightness(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
+		if (result < 0) {
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+		}
+		result = Altaircam_put_Gamma(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
+		if (result < 0) {
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+		}
+		int gain[3] = { (int)X_CCD_R_GAIN_ITEM->number.value, (int)X_CCD_G_GAIN_ITEM->number.value, (int)X_CCD_B_GAIN_ITEM->number.value };
+		result = Altaircam_put_WhiteBalanceGain(PRIVATE_DATA->handle, gain);
+		if (result < 0) {
+			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+		}
+		indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (X_CCD_FAN_PROPERTY && indigo_property_match(X_CCD_FAN_PROPERTY, property)) {
+	} else if (X_CCD_FAN_PROPERTY && indigo_property_match_defined(X_CCD_FAN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CCD_FAN
 		indigo_property_copy_values(X_CCD_FAN_PROPERTY, property, false);
 		X_CCD_FAN_PROPERTY->state = INDIGO_OK_STATE;
@@ -818,7 +804,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_CCD_ADVANCED_PROPERTY);
 		}
@@ -906,7 +892,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -915,7 +901,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guider_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		HRESULT result = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
@@ -926,7 +912,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_DEC_PROPERTY->state = SUCCEEDED(result) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		HRESULT result = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);

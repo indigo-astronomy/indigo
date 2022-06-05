@@ -443,7 +443,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -452,46 +452,42 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connection_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_steps_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
 		FOCUSER_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_mode_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
-	} else if (indigo_property_match(FOCUSER_BACKLASH_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_BACKLASH_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_backlash_handler, NULL);
-		}
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_backlash_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
-	} else if (indigo_property_match(FOCUSER_COMPENSATION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, focuser_compensation_handler, NULL);
-		}
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_compensation_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_FOCUSER_ACTIVE_SLOPE
-	} else if (indigo_property_match(X_FOCUSER_ACTIVE_SLOPE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_FOCUSER_ACTIVE_SLOPE_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_ACTIVE_SLOPE_PROPERTY, property, false);
 		X_FOCUSER_ACTIVE_SLOPE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_FOCUSER_ACTIVE_SLOPE_PROPERTY, NULL);

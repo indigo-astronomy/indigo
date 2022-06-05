@@ -281,7 +281,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	long res;
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -290,7 +290,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		res = 0;
@@ -346,7 +346,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_w(FOCUSER_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_writable(FOCUSER_POSITION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		res = 0;
@@ -385,7 +385,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, POLL_TIME, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
@@ -403,7 +403,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match(FOCUSER_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
 		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
 			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);

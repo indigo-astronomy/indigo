@@ -993,7 +993,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -1002,7 +1002,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, handle_ccd_connect_property, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-	} else if (indigo_property_match_w(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_writable(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
@@ -1020,7 +1020,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PRIVATE_DATA->retry = RETRY_COUNT;
 		indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -1040,7 +1040,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-//	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+//	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 //		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
 //			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 //			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
@@ -1050,7 +1050,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 //		}
 //		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		// -------------------------------------------------------------------------------- CCD_COOLER
-	} else if (indigo_property_match_w(CCD_COOLER_PROPERTY, property)) {
+	} else if (indigo_property_match_writable(CCD_COOLER_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1058,7 +1058,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
-	} else if (indigo_property_match_w(CCD_TEMPERATURE_PROPERTY, property)) {
+	} else if (indigo_property_match_writable(CCD_TEMPERATURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -1068,12 +1068,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_GAMMA
-	} else if (indigo_property_match_w(CCD_GAMMA_PROPERTY, property)) {
-		if (!IS_CONNECTED)
-			return INDIGO_OK;
+	} else if (indigo_property_match_writable(CCD_GAMMA_PROPERTY, property)) {
 		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
-
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		SVB_ERROR_CODE res = SVBSetControlValue(PRIVATE_DATA->dev_id, SVB_GAMMA, (long)(CCD_GAMMA_ITEM->number.value), SVB_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1086,11 +1083,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_GAMMA_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_OFFSET
-	} else if (indigo_property_match_w(CCD_OFFSET_PROPERTY, property)) {
-		if (!IS_CONNECTED) return INDIGO_OK;
+	} else if (indigo_property_match_writable(CCD_OFFSET_PROPERTY, property)) {
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
-
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		SVB_ERROR_CODE res = SVBSetControlValue(PRIVATE_DATA->dev_id, SVB_BLACK_LEVEL, (long)(CCD_OFFSET_ITEM->number.value), SVB_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1103,11 +1098,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_GAIN
-	} else if (indigo_property_match_w(CCD_GAIN_PROPERTY, property)) {
-		if (!IS_CONNECTED) return INDIGO_OK;
+	} else if (indigo_property_match_writable(CCD_GAIN_PROPERTY, property)) {
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		SVB_ERROR_CODE res = SVBSetControlValue(PRIVATE_DATA->dev_id, SVB_GAIN, (long)(CCD_GAIN_ITEM->number.value), SVB_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1120,7 +1113,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_FRAME
-	} else if (indigo_property_match(CCD_FRAME_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
@@ -1129,7 +1122,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_FRAME_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value < 64)
 			CCD_FRAME_HEIGHT_ITEM->number.value = 64 * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-
 		if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 12) {
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
 		} else if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value < 20) {
@@ -1137,7 +1129,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 24;
 		}
-
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		char name[32] = "";
@@ -1164,14 +1155,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = get_pixel_depth(device);
 		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- PIXEL_FORMAT
-	} else if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(PIXEL_FORMAT_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			PIXEL_FORMAT_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, "Exposure in progress, pixel format can not be changed.");
@@ -1198,15 +1187,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			item->sw.value = !strcmp(item->name, name);
 		}
 		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADVANCED
-	} else if (indigo_property_match(SVB_ADVANCED_PROPERTY, property)) {
-		if (!IS_CONNECTED) return INDIGO_OK;
+	} else if (indigo_property_match_defined(SVB_ADVANCED_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			SVB_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, SVB_ADVANCED_PROPERTY, "Exposure in progress, advanced settings can not be changed.");
@@ -1218,7 +1204,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, SVB_ADVANCED_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_MODE
-	} else if (indigo_property_match(CCD_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
 		char name[32] = "";
 		int h, v;
@@ -1239,18 +1225,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		}
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = get_pixel_depth(device);
-		if (IS_CONNECTED) {
-			PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-			CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-			CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-			CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-		}
+		PIXEL_FORMAT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+		CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
+		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
@@ -1268,12 +1252,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			item->sw.value = !strcmp(item->name, name);
 		}
 		CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED) {
-			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-			indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-		}
+		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, PIXEL_FORMAT_PROPERTY);
@@ -1285,7 +1267,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		handle_ccd_connect_property(device);
 	}
@@ -1348,7 +1330,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	SVB_ERROR_CODE res;
 	int id = PRIVATE_DATA->dev_id;
 
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1357,7 +1339,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_guider_connection_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
@@ -1385,7 +1367,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		}
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
@@ -1420,7 +1402,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
-	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	if (IS_CONNECTED) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		handle_guider_connection_property(device);
 	}

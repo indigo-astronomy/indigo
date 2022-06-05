@@ -456,7 +456,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -465,7 +465,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
@@ -490,20 +490,18 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-			if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
-				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
-			temma_set_latitude(device);
-			temma_set_lst(device);
-			temma_command(device, TEMMA_GET_POSITION, true);
-			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-		}
+		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
+		if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
+			MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
+		temma_set_latitude(device);
+		temma_set_lst(device);
+		temma_command(device, TEMMA_GET_POSITION, true);
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		char buffer[128];
@@ -536,7 +534,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_coordinates(device, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
@@ -552,26 +550,24 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_TRACK_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_TRACK_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
-			if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
-				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				temma_command(device, TEMMA_SET_SOLAR_RATE, false);
-			} else if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
-				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				temma_command(device, TEMMA_SET_STELLAR_RATE, false);
-			} else {
-				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-				temma_command(device, TEMMA_SET_STELLAR_RATE, false);
-				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-			}
-			temma_command(device, TEMMA_MOTOR_ON, true);
-			indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
+		if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			temma_command(device, TEMMA_SET_SOLAR_RATE, false);
+		} else if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
+			temma_command(device, TEMMA_SET_STELLAR_RATE, false);
+		} else {
+			MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+			temma_command(device, TEMMA_SET_STELLAR_RATE, false);
+			indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
 		}
+		temma_command(device, TEMMA_MOTOR_ON, true);
+		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		indigo_property_copy_values(MOUNT_TRACKING_PROPERTY, property, false);
 		if (MOUNT_TRACKING_ON_ITEM->sw.value) {
@@ -582,7 +578,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 		if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
@@ -611,7 +607,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
 		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 		if (MOUNT_MOTION_WEST_ITEM->sw.value) {
@@ -640,83 +636,75 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_SIDE_OF_PIER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SIDE_OF_PIER
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_SIDE_OF_PIER_PROPERTY, property, false);
-			if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
-				if (PRIVATE_DATA->telescopeSide == 'E') {
-					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : West -> East");
-				}
-			} else if (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
-				if (PRIVATE_DATA->telescopeSide == 'W') {
-					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : East -> West");
-				}
+		indigo_property_copy_values(MOUNT_SIDE_OF_PIER_PROPERTY, property, false);
+		if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+			if (PRIVATE_DATA->telescopeSide == 'E') {
+				temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : West -> East");
 			}
+		} else if (MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+			if (PRIVATE_DATA->telescopeSide == 'W') {
+				temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, true);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Side of telescope switched : East -> West");
+			}
+		}
+		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_defined(CORRECTION_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CORRECTION_SPEED
+		indigo_property_copy_values(CORRECTION_SPEED_PROPERTY, property, false);
+		char buffer[128];
+		sprintf(buffer, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value);
+		temma_command(device, buffer, false);
+		sprintf(buffer, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
+		temma_command(device, buffer, false);
+		CORRECTION_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CORRECTION_SPEED_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_defined(HIGH_SPEED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- HIGH_SPEED
+		indigo_property_copy_values(HIGH_SPEED_PROPERTY, property, false);
+		if (HIGH_SPEED_LOW_ITEM->sw.value || HIGH_SPEED_HIGH_ITEM->sw.value) {
+			// show busy
+			HIGH_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
+			if (HIGH_SPEED_LOW_ITEM->sw.value) {
+				temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
+			} else if (HIGH_SPEED_HIGH_ITEM->sw.value) {
+				temma_command(device, TEMMA_SET_VOLTAGE_24V_OR_HIGH_SPEED, false);
+			}
+			// show ok
+			HIGH_SPEED_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_defined(ZENITH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ZENITH
+		indigo_property_copy_values(ZENITH_PROPERTY, property, false);
+		if (ZENITH_EAST_ITEM->sw.value || ZENITH_WEST_ITEM->sw.value) {
+			// show busy
+			ZENITH_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, ZENITH_PROPERTY, NULL);
+			// check side of pier
+			if ((ZENITH_EAST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'W') ||
+					(ZENITH_WEST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'E')) {
+				// update side of pier
+				temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, false);
+			}
+			// send zenith
+			temma_set_lst(device);
+			temma_command(device, TEMMA_ZENITH, false);
+			ZENITH_EAST_ITEM->sw.value = false;
+			ZENITH_WEST_ITEM->sw.value = false;
+			// show ok
+			ZENITH_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, ZENITH_PROPERTY, NULL);
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CORRECTION_SPEED
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(CORRECTION_SPEED_PROPERTY, property, false);
-			char buffer[128];
-			sprintf(buffer, "LA%02d", (int)CORRECTION_SPEED_RA_ITEM->number.value);
-			temma_command(device, buffer, false);
-			sprintf(buffer, "LB%02d", (int)CORRECTION_SPEED_DEC_ITEM->number.value);
-			temma_command(device, buffer, false);
-			CORRECTION_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(HIGH_SPEED_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- HIGH_SPEED
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(HIGH_SPEED_PROPERTY, property, false);
-			if (HIGH_SPEED_LOW_ITEM->sw.value || HIGH_SPEED_HIGH_ITEM->sw.value) {
-				// show busy
-				HIGH_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
-				if (HIGH_SPEED_LOW_ITEM->sw.value) {
-					temma_command(device, TEMMA_SET_VOLTAGE_12V_OR_LOW_SPEED, false);
-				} else if (HIGH_SPEED_HIGH_ITEM->sw.value) {
-					temma_command(device, TEMMA_SET_VOLTAGE_24V_OR_HIGH_SPEED, false);
-				}
-				// show ok
-				HIGH_SPEED_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, HIGH_SPEED_PROPERTY, NULL);
-			}
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(ZENITH_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ZENITH
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(ZENITH_PROPERTY, property, false);
-			if (ZENITH_EAST_ITEM->sw.value || ZENITH_WEST_ITEM->sw.value) {
-				// show busy
-				ZENITH_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, ZENITH_PROPERTY, NULL);
-				// check side of pier
-				if ((ZENITH_EAST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'W') ||
-				    (ZENITH_WEST_ITEM->sw.value && PRIVATE_DATA->telescopeSide == 'E')) {
-					// update side of pier
-					temma_command(device, TEMMA_SWITCH_SIDE_OF_MOUNT, false);
-				}
-				// send zenith
-				temma_set_lst(device);
-				temma_command(device, TEMMA_ZENITH, false);
-				ZENITH_EAST_ITEM->sw.value = false;
-				ZENITH_WEST_ITEM->sw.value = false;
-				// show ok
-				ZENITH_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, ZENITH_PROPERTY, NULL);
-				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-			}
-		}
-		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, CORRECTION_SPEED_PROPERTY);
@@ -776,7 +764,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -785,7 +773,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guider_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -802,7 +790,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;

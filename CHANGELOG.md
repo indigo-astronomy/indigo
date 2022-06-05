@@ -911,7 +911,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - Optional double buffering support added in INDIGO server for BLOB requests
 - DEVICE_DRIVER added to INFO property (issue #132)
 - DARKFLAT added to CCD_IMAGE_FORMAT property (issue #387)
-- indigo_property_match_w() added
+- indigo_property_match_writable() added
 - fixed read only property handling in core library
 
 ### Driver Fixes:

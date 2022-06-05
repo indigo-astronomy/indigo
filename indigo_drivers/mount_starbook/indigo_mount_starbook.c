@@ -1285,7 +1285,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1294,7 +1294,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
@@ -1304,35 +1304,33 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_GEOGRAPHIC_COORDINATES
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
-			double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-			double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
-			int timezone = TIMEZONE_VALUE_ITEM->number.value;
-			if (starbook_set_place(device, lng, lat, timezone)) {
-				if (starbook_get_place(device, &lng, &lat, &timezone)) {
-					MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lng;
-					MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-					TIMEZONE_VALUE_ITEM->number.value = timezone;
-					MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-					TIMEZONE_PROPERTY->state = INDIGO_OK_STATE;
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "GETPLACE failed.");
-					MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-					TIMEZONE_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
+		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
+		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+		double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+		int timezone = TIMEZONE_VALUE_ITEM->number.value;
+		if (starbook_set_place(device, lng, lat, timezone)) {
+			if (starbook_get_place(device, &lng, &lat, &timezone)) {
+				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lng;
+				MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+				TIMEZONE_VALUE_ITEM->number.value = timezone;
+				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				TIMEZONE_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SETPLACE failed. (%f, %f, %d)", lng, lat, timezone);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "GETPLACE failed.");
 				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				TIMEZONE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-			indigo_update_property(device, TIMEZONE_PROPERTY, NULL);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SETPLACE failed. (%f, %f, %d)", lng, lat, timezone);
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			TIMEZONE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		indigo_update_property(device, TIMEZONE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		char buffer[128];
@@ -1360,7 +1358,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			indigo_update_coordinates(device, starbook_error_text(error));
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
 		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
 		if (MOUNT_ABORT_MOTION_ITEM->sw.value) {
@@ -1377,7 +1375,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			}
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_NS
 		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 		bool north = MOUNT_MOTION_NORTH_ITEM->sw.value;
@@ -1392,7 +1390,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
 		indigo_property_copy_values(MOUNT_MOTION_RA_PROPERTY, property, false);
 		bool north = MOUNT_MOTION_NORTH_ITEM->sw.value;
@@ -1407,7 +1405,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
 		indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
 		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1422,49 +1420,43 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		} else {
 			MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (IS_CONNECTED) {
-			indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+		// TODO:
+	} else if (indigo_property_match_defined(TIMEZONE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- TIMEZONE
+		indigo_property_copy_values(TIMEZONE_PROPERTY, property, false);
+		MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		TIMEZONE_PROPERTY->state = INDIGO_OK_STATE;
+		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
+		double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+		int timezone = TIMEZONE_VALUE_ITEM->number.value;
+		if (!starbook_set_place(device, lng, lat, timezone)) {
+			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+			TIMEZONE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+			indigo_update_property(device, TIMEZONE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
-		// TODO:
-	} else if (indigo_property_match(TIMEZONE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- TIMEZONE
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(TIMEZONE_PROPERTY, property, false);
-			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-			TIMEZONE_PROPERTY->state = INDIGO_OK_STATE;
-			double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
-			double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
-			int timezone = TIMEZONE_VALUE_ITEM->number.value;
-			if (!starbook_set_place(device, lng, lat, timezone)) {
-				MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
-				TIMEZONE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-				indigo_update_property(device, TIMEZONE_PROPERTY, NULL);
-			}
-			return INDIGO_OK;
-		}
-	} else if (indigo_property_match(RESET_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(RESET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- RESET
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(RESET_PROPERTY, property, false);
-			RESET_PROPERTY->state = INDIGO_OK_STATE;
-			if (RESET_CTRL_ITEM->sw.value) {
-				RESET_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, RESET_PROPERTY, NULL);
-				PRIVATE_DATA->resetWaiting = true;
-				if (starbook_reset(device)) {
-					RESET_PROPERTY->state = INDIGO_OK_STATE;
-				} else {
-					RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
-				indigo_usleep(1000 * 1000);  // 1sec
-				RESET_CTRL_ITEM->sw.value = false;
-				indigo_update_property(device, RESET_PROPERTY, NULL);
+		indigo_property_copy_values(RESET_PROPERTY, property, false);
+		RESET_PROPERTY->state = INDIGO_OK_STATE;
+		if (RESET_CTRL_ITEM->sw.value) {
+			RESET_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, RESET_PROPERTY, NULL);
+			PRIVATE_DATA->resetWaiting = true;
+			if (starbook_reset(device)) {
+				RESET_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				RESET_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
-			return INDIGO_OK;
+			indigo_usleep(1000 * 1000);  // 1sec
+			RESET_CTRL_ITEM->sw.value = false;
+			indigo_update_property(device, RESET_PROPERTY, NULL);
 		}
+		return INDIGO_OK;
 	}
 	return indigo_mount_change_property(device, client, property);
 }
@@ -1522,7 +1514,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1531,7 +1523,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guider_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1547,7 +1539,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;

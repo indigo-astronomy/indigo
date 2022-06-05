@@ -1749,7 +1749,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1758,7 +1758,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		if (DEVICE_CONNECTED) {
@@ -1771,7 +1771,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
@@ -1790,66 +1790,66 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Open/Close switch failed");
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_SKY_CORRECTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_SKY_CORRECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SKY_CORRECTION
 		indigo_property_copy_values(X_SKY_CORRECTION_PROPERTY, property, false);
 		X_SKY_CORRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_DEW_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_THRESHOLD
 		indigo_property_copy_values(AUX_DEW_THRESHOLD_PROPERTY, property, false);
 		AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_RAIN_THRESHOLD_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_RAIN_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_RAIN_THRESHOLD
 		indigo_property_copy_values(AUX_RAIN_THRESHOLD_PROPERTY, property, false);
 		AUX_RAIN_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_RAIN_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_WIND_THRESHOLD_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_WIND_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_WIND_THRESHOLD
 		indigo_property_copy_values(AUX_WIND_THRESHOLD_PROPERTY, property, false);
 		AUX_WIND_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_WIND_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_CONSTANTS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_CONSTANTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CONSTANTS
 		indigo_property_copy_values(X_CONSTANTS_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_HUMIDITY_THRESHOLDS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_HUMIDITY_THRESHOLDS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_HUMIDITY_THRESHOLDS
 		indigo_property_copy_values(AUX_HUMIDITY_THRESHOLDS_PROPERTY, property, false);
 		AUX_HUMIDITY_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_HUMIDITY_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_WIND_THRESHOLDS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_WIND_THRESHOLDS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_WIND_THRESHOLDS
 		indigo_property_copy_values(AUX_WIND_THRESHOLDS_PROPERTY, property, false);
 		AUX_WIND_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_WIND_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_RAIN_THRESHOLDS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_RAIN_THRESHOLDS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_RAIN_THRESHOLDS
 		indigo_property_copy_values(AUX_RAIN_THRESHOLDS_PROPERTY, property, false);
 		AUX_RAIN_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_RAIN_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_CLOUD_THRESHOLDS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_CLOUD_THRESHOLDS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_CLOUD_THRESHOLDS
 		indigo_property_copy_values(AUX_CLOUD_THRESHOLDS_PROPERTY, property, false);
 		AUX_CLOUD_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_CLOUD_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_SKY_THRESHOLDS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_SKY_THRESHOLDS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SKY_THRESHOLDS
 		indigo_property_copy_values(AUX_SKY_THRESHOLDS_PROPERTY, property, false);
 		AUX_SKY_THRESHOLDS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_SKY_THRESHOLDS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_ANEMOMETER_TYPE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_ANEMOMETER_TYPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_ANEMOMETER_TYPE
 		indigo_property_copy_values(X_ANEMOMETER_TYPE_PROPERTY, property, false);
 		X_ANEMOMETER_TYPE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1860,13 +1860,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, X_ANEMOMETER_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RAIN_SENSOR_HEATER_SETUP
 		indigo_property_copy_values(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, property, false);
 		X_RAIN_SENSOR_HEATER_SETUP_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);

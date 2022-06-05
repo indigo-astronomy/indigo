@@ -650,7 +650,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -660,7 +660,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_set_timer(device, 0, dome_connect_handler, NULL);
 		return INDIGO_OK;
 
-	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 		if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -673,7 +673,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		if (DOME_SHUTTER_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
@@ -688,7 +688,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			}
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_MOTOR_CONF_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_MOTOR_CONF_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_MOTOR_CONF
 		if (X_MOTOR_CONF_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(X_MOTOR_CONF_PROPERTY, property, false);
@@ -707,7 +707,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_set_timer(device, 0, write_configuration_handler, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_DELAY_CONF_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_DELAY_CONF_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_DELAY_CONF
 		if (X_DELAY_CONF_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(X_DELAY_CONF_PROPERTY, property, false);
@@ -720,7 +720,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_set_timer(device, 0, write_configuration_handler, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_CLOSE_COND_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_CLOSE_COND_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CLOSE_COND
 		if (X_CLOSE_COND_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(X_CLOSE_COND_PROPERTY, property, false);

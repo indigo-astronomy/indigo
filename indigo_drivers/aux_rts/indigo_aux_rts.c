@@ -192,7 +192,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -202,14 +202,14 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_CCD_EXPOSURE
-	} else if (indigo_property_match(X_CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_EXPOSURE_PROPERTY, property, false);
 		X_CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_CCD_EXPOSURE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_exposure_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_CCD_ABORT_EXPOSURE
-	} else if (indigo_property_match(X_CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(X_CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		X_CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_CCD_ABORT_EXPOSURE_PROPERTY, NULL);
