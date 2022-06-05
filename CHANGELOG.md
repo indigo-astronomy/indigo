@@ -2,6 +2,12 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-180] - 06 Jun Mon 2022
+### Overall
+- Remove novas dependency
+- fix 11sec offset in LST
+- indigo_mount_driver: alt and az are now computed for the current epoch
+
 ## [2.0-178] - 02 Jun Thu 2022
 ### Overall
 - DRIVER_DEVELOPMENT_BASICS: documentation updates
