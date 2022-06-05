@@ -53398,11 +53398,21 @@ static indigo_dso_entry indigo_dso_data[] = {
 	{ NULL }
 };
 
+static void indigo_apply_proper_motion(double pmra, double pmdec, double from_JD, double to_JD, double *ra, double *dec) {
+	double t = (to_JD - from_JD) / 365.25;
+	/* pmra / (60000 * 15) - as RA proper motion is in milli-arc-minutes/year and RA is in hours
+	   pmdec / 60000 - as Dec proper motion is in milli-arc-minutes/year */
+	*ra = *ra + t * pmra / (60000 * 15);
+	*dec = *dec + t * pmdec / 60000;
+	*ra = fmod(*ra + 24.0, 24.0);
+}
+
 indigo_star_entry *indigo_get_star_data(void) {
 	if (!star_data_updated) {
 		for (int i = 0; indigo_star_data[i].hip; i++) {
 			double ra = indigo_star_data[i].ra;
 			double dec = indigo_star_data[i].dec;
+			indigo_apply_proper_motion(indigo_star_data[i].promora, indigo_star_data[i].promodec, JD2000, JD, &ra, &dec);
 			indigo_j2k_to_jnow(&ra, &dec);
 			indigo_star_data[i].ra_now = ra;
 			indigo_star_data[i].dec_now = dec;
