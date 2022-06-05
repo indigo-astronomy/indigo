@@ -330,7 +330,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -339,49 +339,49 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_connection, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DSLR_DELETE_IMAGE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE_PROPERTY
 		indigo_property_copy_values(DSLR_DELETE_IMAGE_PROPERTY, property, false);
 		DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_MIRROR_LOCKUP
 		indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
 		DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
 		indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
 		indigo_set_timer(device, 0, handle_zoom, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_LOCK_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DSLR_LOCK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_LOCK
 		indigo_property_copy_values(DSLR_LOCK_PROPERTY, property, false);
 		indigo_set_timer(device, 0, handle_lock, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_AF_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DSLR_AF_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_AF
 		indigo_property_copy_values(DSLR_AF_PROPERTY, property, false);
 		indigo_set_timer(device, 0, handle_af, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DSLR_SET_HOST_TIME_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DSLR_SET_HOST_TIME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DSLR_AF
 		indigo_property_copy_values(DSLR_SET_HOST_TIME_PROPERTY, property, false);
 		indigo_set_timer(device, 0, handle_set_host_time, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
-	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_set_timer(device, 0, handle_exposure, NULL);
 		// -------------------------------------------------------------------------------- CCD_STREAMING
-	} else if (indigo_property_match(CCD_STREAMING_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_STREAMING_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		PRIVATE_DATA->abort_capture = false;
 		indigo_set_timer(device, 0, handle_streaming, NULL);
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
 			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
@@ -389,25 +389,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(CCD_PREVIEW_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_PREVIEW_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_PREVIEW
 		indigo_property_copy_values(CCD_PREVIEW_PROPERTY, property, false);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
 			if (CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
 				CCD_PREVIEW_IMAGE_PROPERTY->hidden = false;
-				if (IS_CONNECTED)
-					indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+				indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 			}
 		} else {
 			if (!CCD_PREVIEW_IMAGE_PROPERTY->hidden) {
-				if (IS_CONNECTED)
-					indigo_delete_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+				indigo_delete_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 				CCD_PREVIEW_IMAGE_PROPERTY->hidden = true;
 			}
 		}
 		CCD_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
-		if (IS_CONNECTED)
-			indigo_update_property(device, CCD_PREVIEW_PROPERTY, NULL);
+		indigo_update_property(device, CCD_PREVIEW_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else {
 		for (int i = 0; i < PRIVATE_DATA->info_properties_supported[i]; i++) {
@@ -467,12 +464,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
-	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {
 			FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
@@ -481,7 +478,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
-	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		indigo_set_timer(device, 0, handle_focus, NULL);
 	}

@@ -2404,7 +2404,7 @@ static indigo_result ccd_change_property(indigo_device *device,
 	assert(property != NULL);
 
 	/*------------------------ CONNECTION --------------------------*/
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);

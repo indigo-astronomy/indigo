@@ -531,7 +531,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == DEVICE_PRIVATE_DATA->client)
 		return INDIGO_OK;
-	if (indigo_property_match(LX200_DEVICES_PROPERTY, property)) {
+	if (indigo_property_match_defined(LX200_DEVICES_PROPERTY, property)) {
 		indigo_property_copy_values(LX200_DEVICES_PROPERTY, property, false);
 		indigo_copy_name(MOUNT_EQUATORIAL_COORDINATES_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
 		indigo_copy_name(MOUNT_ON_COORDINATES_SET_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
@@ -542,11 +542,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_copy_name(MOUNT_PARK_PROPERTY->device, LX200_DEVICES_MOUNT_ITEM->text.value);
 		LX200_DEVICES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, LX200_DEVICES_PROPERTY, NULL);
-	} else if (indigo_property_match(LX200_CONFIGURATION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(LX200_CONFIGURATION_PROPERTY, property)) {
 		indigo_property_copy_values(LX200_CONFIGURATION_PROPERTY, property, false);
 		LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, LX200_CONFIGURATION_PROPERTY, NULL);
-	} else if (indigo_property_match(LX200_SERVER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(LX200_SERVER_PROPERTY, property)) {
 		indigo_property_copy_values(LX200_SERVER_PROPERTY, property, false);
 		if (LX200_SERVER_STARTED_ITEM->sw.value && DEVICE_PRIVATE_DATA->server_socket == 0) {
 			LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -558,7 +558,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, LX200_SERVER_PROPERTY, NULL);
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, LX200_DEVICES_PROPERTY);
 			indigo_save_property(device, NULL, LX200_CONFIGURATION_PROPERTY);

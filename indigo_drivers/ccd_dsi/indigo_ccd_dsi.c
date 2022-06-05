@@ -425,7 +425,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -434,24 +434,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
-	} else if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			indigo_use_shortest_exposure_if_bias(device);
-			handle_exposure_property(device, property);
-		}
+		indigo_use_shortest_exposure_if_bias(device);
+		handle_exposure_property(device, property);
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-	} else if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			camera_abort_exposure(device);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	// ------------------------------------------------------------------------------- GAIN
-	} else if (indigo_property_match(CCD_GAIN_PROPERTY, property)) {
-		if (!IS_CONNECTED) return INDIGO_OK;
+	} else if (indigo_property_match_defined(CCD_GAIN_PROPERTY, property)) {
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 
@@ -463,8 +460,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_BIN
-	} else if (indigo_property_match_w(CCD_BIN_PROPERTY, property)) {
-		if (!IS_CONNECTED) return INDIGO_OK;
+	} else if (indigo_property_match_writable(CCD_BIN_PROPERTY, property)) {
 		int prev_bin_x = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int prev_bin_y = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 
@@ -479,8 +475,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		/* let the base base class handle the rest with the manipulated property values */
 		return indigo_ccd_change_property(device, client, CCD_BIN_PROPERTY);
 	// ------------------------------------------------------------------------------- CCD_OFFSET
-	} else if (indigo_property_match(CCD_OFFSET_PROPERTY, property)) {
-		if (!IS_CONNECTED) return INDIGO_OK;
+	} else if (indigo_property_match_defined(CCD_OFFSET_PROPERTY, property)) {
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 

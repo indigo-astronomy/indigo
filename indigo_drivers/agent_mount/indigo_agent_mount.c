@@ -588,7 +588,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match(AGENT_SITE_DATA_SOURCE_PROPERTY, property)) {
+	if (indigo_property_match_defined(AGENT_SITE_DATA_SOURCE_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- AGENT_SITE_DATA_SOURCE
 			indigo_property_copy_values(AGENT_SITE_DATA_SOURCE_PROPERTY, property, false);
 			set_site_coordinates(device);
@@ -596,7 +596,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			save_config(device);
 			indigo_update_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
 			return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AGENT_SET_HOST_TIME_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
 		indigo_property_copy_values(AGENT_SET_HOST_TIME_PROPERTY, property, false);
 		if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value && *FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])
@@ -607,7 +607,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
-	 } else if (indigo_property_match(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+	 } else if (indigo_property_match_defined(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_GEOGRAPHIC_COORDINATES
 		indigo_property_copy_values(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		set_site_coordinates(device);
@@ -615,7 +615,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_LX200_SERVER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AGENT_LX200_SERVER_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- LX200_SERVER
 		indigo_property_copy_values(AGENT_LX200_SERVER_PROPERTY, property, false);
 		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -626,21 +626,21 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AGENT_LX200_CONFIGURATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_LX200_CONFIGURATION
 		indigo_property_copy_values(AGENT_LX200_CONFIGURATION_PROPERTY, property, false);
 		AGENT_LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_LIMITS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AGENT_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_LIMITS
 		indigo_property_copy_values(AGENT_LIMITS_PROPERTY, property, false);
 		AGENT_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_MOUNT_FOV_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AGENT_MOUNT_FOV_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_FOV
 		indigo_property_copy_values(AGENT_MOUNT_FOV_PROPERTY, property, false);
 		AGENT_MOUNT_FOV_PROPERTY->state = INDIGO_OK_STATE;
@@ -648,7 +648,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_MOUNT_FOV_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
-	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
 			save_config(device);
 		}

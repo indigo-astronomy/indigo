@@ -331,7 +331,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -343,16 +343,14 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			[delegate disconnect];
 		}
-	} else if (indigo_property_match(FOCUSER_SPEED_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
-		if (IS_CONNECTED) {
-			indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			[delegate command:CMD_SSPD index:0 value:FOCUSER_SPEED_ITEM->number.value];
-		}
+		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
+		FOCUSER_SPEED_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		[delegate command:CMD_SSPD index:0 value:FOCUSER_SPEED_ITEM->number.value];
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -366,7 +364,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		[delegate command:CMD_SPOS index:0 value:FOCUSER_POSITION_ITEM->number.target];
 		[delegate command:CMD_GPOS index:0 value:0];
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -374,7 +372,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		[delegate command:CMD_SPOS index:0 value:FOCUSER_POSITION_ITEM->number.target];
 		[delegate command:CMD_GPOS index:0 value:0];
 		return INDIGO_OK;
-	} else if (indigo_property_match(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		if (FOCUSER_ABORT_MOTION_ITEM->sw.value) {

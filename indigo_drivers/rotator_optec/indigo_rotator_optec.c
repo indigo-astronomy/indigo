@@ -324,7 +324,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -333,14 +333,14 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, rotator_connect_callback, NULL);
 		return INDIGO_OK;		
-	} else if (indigo_property_match(ROTATOR_DIRECTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(ROTATOR_DIRECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_DIRECTION
 		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, rotator_direction_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(ROTATOR_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
 		int current = ROTATOR_POSITION_ITEM->number.value;
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
@@ -350,7 +350,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, 0, rotator_position_callback, &PRIVATE_DATA->position_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_HOME_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_HOME
 		indigo_property_copy_values(X_HOME_PROPERTY, property, false);
 		if (X_HOME_ITEM->sw.value) {
@@ -361,16 +361,14 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, X_HOME_PROPERTY, NULL);
 			indigo_set_timer(device, 0, rotator_home_callback, &PRIVATE_DATA->home_timer);
 		}
-	} else if (indigo_property_match(X_RATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_RATE
 		indigo_property_copy_values(X_RATE_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			X_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_RATE_PROPERTY, NULL);
-			indigo_set_timer(device, 0, rotator_rate_callback, NULL);
-		}
+		X_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_RATE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, rotator_rate_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_ROTATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_ROTATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_ROTATE
 		indigo_property_copy_values(X_ROTATE_PROPERTY, property, false);
 		if (X_ROTATE_ITEM->number.value) {
@@ -379,7 +377,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, 0, rotator_rotate_callback, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_RATE_PROPERTY);

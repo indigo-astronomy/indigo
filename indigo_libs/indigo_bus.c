@@ -549,6 +549,7 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 		pthread_mutex_lock(&client_mutex);
 	if (!property->hidden) {
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property definition", property, true, true));
+		property->defined = true;
 		char message[INDIGO_VALUE_SIZE];
 		if (format != NULL) {
 			va_list args;
@@ -680,8 +681,9 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&client_mutex);
 	if (!property->hidden) {
-		char message[INDIGO_VALUE_SIZE];
 		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property removal", property, false, false));
+		property->defined = false;
+		char message[INDIGO_VALUE_SIZE];
 		if (format != NULL) {
 			va_list args;
 			va_start(args, format);
@@ -1216,8 +1218,18 @@ bool indigo_property_match(indigo_property *property, indigo_property *other) {
 	return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));
 }
 
-bool indigo_property_match_w(indigo_property *property, indigo_property *other) {
+bool indigo_property_match_defined(indigo_property *property, indigo_property *other) {
 	if (property == NULL)
+		return false;
+	if (!property->defined)
+		return false;
+	return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));
+}
+
+bool indigo_property_match_writable(indigo_property *property, indigo_property *other) {
+	if (property == NULL)
+		return false;
+	if (!property->defined)
 		return false;
 	if (property->perm == INDIGO_RO_PERM)
 		return false;

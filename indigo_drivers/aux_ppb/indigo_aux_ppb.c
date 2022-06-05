@@ -597,7 +597,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -606,7 +606,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		snprintf(AUX_HEATER_OUTLET_1_ITEM->label, INDIGO_NAME_SIZE, "%s [%%]", AUX_HEATER_OUTLET_NAME_1_ITEM->text.value);
@@ -620,53 +620,43 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_POWER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
 		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_power_outlet_handler, NULL);
-		}
+		AUX_POWER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_power_outlet_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_DSLR_POWER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_DSLR_POWER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DSLR_POWER_PROPERTY
 		indigo_property_copy_values(AUX_DSLR_POWER_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			AUX_DSLR_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_dslr_power_handler, NULL);
-		}
+		AUX_DSLR_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_DSLR_POWER_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_dslr_power_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_HEATER_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_HEATER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
 		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
-		}
+		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(AUX_DEW_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
 		indigo_property_copy_values(AUX_DEW_CONTROL_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			AUX_DEW_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
-		}
+		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_AUX_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_REBOOT
 		indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
-		if (IS_CONNECTED) {
-			X_AUX_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
-			indigo_set_timer(device, 0, aux_reboot_handler, NULL);
-		}
+		X_AUX_REBOOT_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_AUX_REBOOT_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_reboot_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
 		}

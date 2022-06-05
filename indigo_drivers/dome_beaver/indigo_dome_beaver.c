@@ -1254,7 +1254,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	beaver_rc_t rc;
-	if (indigo_property_match(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1263,7 +1263,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, dome_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		if (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
@@ -1271,25 +1271,22 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_steps_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is moving: request can not be completed");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_horizontal_coordinates_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
 			DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1299,10 +1296,9 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		if ((rc = beaver_abort(device)) != BD_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "beaver_abort(%d): returned error %d", PRIVATE_DATA->handle, rc);
@@ -1326,28 +1322,25 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_SHUTTER_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is moving: request can not be completed");
 			return INDIGO_OK;
 		 }
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_shutter_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_park_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_PARK_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_PARK_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK_POSITION
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		beaver_rc_t rc;
 		if ((rc = beaver_set_park(device)) != BD_SUCCESS) {
@@ -1368,17 +1361,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_PARK_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_PARK_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(DOME_HOME_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(DOME_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HOME
 		indigo_property_copy_values(DOME_HOME_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_gohome_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_CLEAR_FAILURE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_CLEAR_FAILURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CLEAR_FAILURE
 		indigo_property_copy_values(X_CLEAR_FAILURE_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		if (X_CLEAR_FAILURE_ITEM->sw.value) {
 			X_CLEAR_FAILURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1388,17 +1379,15 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
 
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_ROTATOR_CALIBRATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_ROTATOR_CALIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_ROTATOR_CALIBRATE
 		indigo_property_copy_values(X_ROTATOR_CALIBRATE_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_calibrate_rotator_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(X_SHUTTER_CALIBRATE_PROPERTY, property)) {
+	} else if (indigo_property_match_defined(X_SHUTTER_CALIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SHUTTER_CALIBRATE
 		indigo_property_copy_values(X_SHUTTER_CALIBRATE_PROPERTY, property, false);
-		if (!IS_CONNECTED) return INDIGO_OK;
 
 		indigo_set_timer(device, 0, dome_calibrate_shutter_callback, NULL);
 		return INDIGO_OK;
