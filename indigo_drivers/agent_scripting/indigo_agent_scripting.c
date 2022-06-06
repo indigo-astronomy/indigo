@@ -987,7 +987,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else {
 		for (int i = 0; i < MAX_USER_SCRIPT_COUNT; i++) {
 			indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(i);
-			if (script_property && indigo_property_match(script_property, property)) {
+			if (script_property && indigo_property_match_defined(script_property, property)) {
 				indigo_property_copy_values(script_property, property, false);
 				script_property->state = INDIGO_OK_STATE;
 				if (strcmp(script_property->label, script_property->items[0].text.value)) {
