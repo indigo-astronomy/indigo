@@ -82,7 +82,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	indigo_property **alignment_properties = DEVICE_PRIVATE_DATA->alignment_point_properties;
 	if (alignment_properties) {
 		for (int i = 0; i < alignment_point_count; i++)
-			indigo_define_property(device, alignment_properties[i], NULL);
+			if (indigo_property_match(alignment_properties[i], property))
+				indigo_define_property(device, alignment_properties[i], NULL);
 	}
 	return indigo_filter_enumerate_properties(device, client, property);
 }
@@ -100,7 +101,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_alignment_point *alignment_points = ((indigo_mount_context *)(mount->device_context))->alignment_points;
 		for (int i = 0; i < alignment_point_count; i++) {
 			indigo_property *alignment_property = alignment_properties[i];
-			if (indigo_property_match(alignment_property, property)) {
+			if (indigo_property_match_defined(alignment_property, property)) {
 				indigo_property_copy_values(alignment_property, property, false);
 				alignment_points->ra = AGENT_ALIGNMENT_POINT_RA_ITEM(alignment_property)->number.value;
 				alignment_points->dec = AGENT_ALIGNMENT_POINT_DEC_ITEM(alignment_property)->number.value;

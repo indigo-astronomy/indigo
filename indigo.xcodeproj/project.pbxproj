@@ -874,7 +874,7 @@
 		5912C80823D2447400A48B75 /* CLIENT_DEVELOPMENT_BASICS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLIENT_DEVELOPMENT_BASICS.md; sourceTree = "<group>"; };
 		5912C80923D2447400A48B75 /* Introduction to INDIGO.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Introduction to INDIGO.pdf"; sourceTree = "<group>"; };
 		5912C80A23D2447400A48B75 /* PROPERTIES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROPERTIES.md; sourceTree = "<group>"; };
-		5912C80B23D2447400A48B75 /* DRIVER_DEVELOPMENT_BASICS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_DEVELOPMENT_BASICS.md; sourceTree = "<group>"; };
+		5912C80B23D2447400A48B75 /* DRIVER_DEVELOPMENT_BASICS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DRIVER_DEVELOPMENT_BASICS.md; sourceTree = "<group>"; wrapsLines = 1; };
 		5912C80C23D2447400A48B75 /* INDI-COMPARISON.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "INDI-COMPARISON.md"; sourceTree = "<group>"; };
 		5912C80D23D2447400A48B75 /* DEVELOPMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEVELOPMENT.md; sourceTree = "<group>"; };
 		5912C80E23D2447400A48B75 /* PROTOCOLS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOLS.md; sourceTree = "<group>"; };

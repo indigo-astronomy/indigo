@@ -408,7 +408,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else {
 		for (int i = 0; i < PRIVATE_DATA->info_properties_supported[i]; i++) {
-			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property)) {
+			if (indigo_property_match_defined(PRIVATE_DATA->properties[i].property, property)) {
 				indigo_property *definition = PRIVATE_DATA->properties[i].property;
 				indigo_property_copy_values(definition, property, false);
 				PRIVATE_DATA->message_property_index = i;
