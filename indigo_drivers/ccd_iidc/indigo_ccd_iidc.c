@@ -459,7 +459,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -468,10 +468,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_MODE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -516,7 +516,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_FRAME_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
 		iidc_mode_data *mode_data = &PRIVATE_DATA->mode_data[PRIVATE_DATA->mode_data_ix];
 		dc1394video_mode_t mode = mode_data->mode;
@@ -537,7 +537,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_FRAME_PROPERTY, "Can't set frame size in legacy mode");
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -554,7 +554,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else if (indigo_property_match_defined(CCD_STREAMING_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -572,7 +572,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {

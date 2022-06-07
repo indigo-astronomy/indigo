@@ -791,35 +791,35 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 	assert(property != NULL);
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match_defined(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, property)) {
+	if (indigo_property_match_changeable(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_USE_INDEX
 		indigo_property_copy_values(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, property, false);
 		AGENT_PLATESOLVER_USE_INDEX_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AGENT_PLATESOLVER_HINTS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AGENT_PLATESOLVER_HINTS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_HINTS
 		indigo_property_copy_values(AGENT_PLATESOLVER_HINTS_PROPERTY, property, false);
 		AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_PA_SETTINGS
 		indigo_property_copy_values(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property, false);
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AGENT_PLATESOLVER_SYNC_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AGENT_PLATESOLVER_SYNC_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_SYNC
 		indigo_property_copy_values(AGENT_PLATESOLVER_SYNC_PROPERTY, property, false);
 		AGENT_PLATESOLVER_SYNC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AGENT_START_PROCESS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AGENT_START_PROCESS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PLATESOLVER_WCS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -829,7 +829,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			indigo_set_timer(device, 0, start_process, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AGENT_PLATESOLVER_IMAGE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AGENT_PLATESOLVER_IMAGE_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE
 		indigo_property_copy_values(AGENT_PLATESOLVER_IMAGE_PROPERTY, property, false);
 		if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.size > 0 && AGENT_PLATESOLVER_IMAGE_ITEM->blob.value) {
@@ -843,7 +843,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		}
 		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AGENT_PLATESOLVER_ABORT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AGENT_PLATESOLVER_ABORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_ABORT
 		indigo_property_copy_values(AGENT_PLATESOLVER_ABORT_PROPERTY, property, false);
 		if (AGENT_PLATESOLVER_ABORT_ITEM->sw.value) {

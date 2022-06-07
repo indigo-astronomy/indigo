@@ -244,7 +244,7 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -253,21 +253,21 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ao_connection_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AO_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AO_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_DEC
 		indigo_property_copy_values(AO_GUIDE_DEC_PROPERTY, property, false);
 		AO_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AO_GUIDE_DEC_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ao_guide_dec_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AO_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AO_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_GUIDE_RA
 		indigo_property_copy_values(AO_GUIDE_RA_PROPERTY, property, false);
 		AO_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AO_GUIDE_RA_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ao_guide_ra_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AO_RESET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AO_RESET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AO_RESET
 		indigo_property_copy_values(AO_RESET_PROPERTY, property, false);
 		AO_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -360,17 +360,17 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		indigo_set_timer(device, 0, guider_connection_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_set_timer(device, 0, guider_guide_dec_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		indigo_set_timer(device, 0, guider_guide_ra_handler, NULL);

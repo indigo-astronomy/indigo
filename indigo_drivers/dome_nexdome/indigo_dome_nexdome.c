@@ -871,7 +871,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -880,7 +880,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, dome_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -916,7 +916,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 		PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
@@ -951,7 +951,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -962,7 +962,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 
@@ -984,7 +984,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PRIVATE_DATA->abort_requested = true;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_SHUTTER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		bool success;
@@ -1001,7 +1001,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
 		if (DOME_PARK_UNPARKED_ITEM->sw.value) {
@@ -1026,7 +1026,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_REVERSED_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_REVERSED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_REVERED
 		indigo_property_copy_values(NEXDOME_REVERSED_PROPERTY, property, false);
 		NEXDOME_REVERSED_PROPERTY->state = INDIGO_OK_STATE;
@@ -1036,7 +1036,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_RESET_SHUTTER_COMM
 		indigo_property_copy_values(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property, false);
 		if (NEXDOME_RESET_SHUTTER_COMM_ITEM->sw.value) {
@@ -1054,7 +1054,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_FIND_HOME_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_FIND_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		indigo_property_copy_values(NEXDOME_FIND_HOME_PROPERTY, property, false);
 		if (NEXDOME_FIND_HOME_ITEM->sw.value) {
@@ -1069,7 +1069,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		}
 		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_CALLIBRATE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_CALLIBRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_CALLIBRATE
 		indigo_property_copy_values(NEXDOME_CALLIBRATE_PROPERTY, property, false);
 		if (NEXDOME_CALLIBRATE_ITEM->sw.value) {

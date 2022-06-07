@@ -226,7 +226,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -235,11 +235,11 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_MODEL_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_MODEL_PROPERTY, property)) {
 		indigo_property_copy_values(X_MODEL_PROPERTY, property, false);
 		indigo_update_property(device, X_MODEL_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(WHEEL_SLOT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		int slot = WHEEL_SLOT_ITEM->number.value;
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
@@ -253,7 +253,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_MODEL_PROPERTY);

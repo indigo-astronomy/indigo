@@ -840,7 +840,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -849,7 +849,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
-	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		if (PRIVATE_DATA->abort_in_progress) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Abort in progress.");
@@ -876,7 +876,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (PRIVATE_DATA->abort_in_progress)
 			return INDIGO_OK;
 
@@ -897,7 +897,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		}
 	// -------------------------------------------------------------------------------- CCD_COOLER
-	} else if (indigo_property_match_defined(CCD_COOLER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -905,7 +905,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_TEMPERATURE
-	} else if (indigo_property_match_writable(CCD_TEMPERATURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_TEMPERATURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
@@ -915,7 +915,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- OFFSET
-	} else if (indigo_property_match_defined(APG_OFFSET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(APG_OFFSET_PROPERTY, property)) {
 		indigo_property_copy_values(APG_OFFSET_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		APG_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
@@ -937,7 +937,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, APG_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- GAIN
-	} else if (indigo_property_match_defined(APG_GAIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(APG_GAIN_PROPERTY, property)) {
 		indigo_property_copy_values(APG_GAIN_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		APG_GAIN_PROPERTY->state = INDIGO_OK_STATE;
@@ -959,7 +959,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, APG_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	// ------------------------------------------------------------------------------- CCD_FRAME
-	} else if (indigo_property_match_defined(CCD_FRAME_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.target = 8 * (int)(CCD_FRAME_WIDTH_ITEM->number.value / 8);
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.target = 2 * (int)(CCD_FRAME_HEIGHT_ITEM->number.value / 2);
@@ -973,7 +973,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_BIN
-	} else if (indigo_property_match_defined(CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -989,7 +989,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- APG_ADC_SPEED
-	} else if (indigo_property_match_defined(APG_ADC_SPEED_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(APG_ADC_SPEED_PROPERTY, property)) {
 		indigo_property_copy_values(APG_ADC_SPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		for(int i = 0; i < APG_ADC_SPEED_PROPERTY->count; i++) {
@@ -1011,7 +1011,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, APG_ADC_SPEED_PROPERTY, NULL);
 	// -------------------------------------------------------------------------------- APG_FAN_SPEED
-	} else if (indigo_property_match_defined(APG_FAN_SPEED_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(APG_FAN_SPEED_PROPERTY, property)) {
 		indigo_property_copy_values(APG_FAN_SPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		for(int i = 0; i < APG_FAN_SPEED_PROPERTY->count; i++) {
@@ -1033,7 +1033,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, APG_FAN_SPEED_PROPERTY, NULL);
 	// -------------------------------------------------------------------------------- CONFIG
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, APG_ADC_SPEED_PROPERTY);
 			indigo_save_property(device, NULL, APG_FAN_SPEED_PROPERTY);
@@ -1130,7 +1130,7 @@ static indigo_result ethernet_change_property(indigo_device *device, indigo_clie
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);

@@ -365,7 +365,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -374,7 +374,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(ATIK_PRESETS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ATIK_PRESETS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ATIK_PRESETS
 		short lastPreset = 0, preset = 0;
 		if (ATIK_PRESETS_LOW_ITEM->sw.value) {
@@ -420,21 +420,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, ATIK_PRESETS_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_GAIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		uint16_t value = CCD_GAIN_ITEM->number.target;
 		CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_OFFSET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_OFFSET
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 		uint16_t value = CCD_OFFSET_ITEM->number.target;
 		CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -475,7 +475,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				return INDIGO_OK;
 			}
 		}
-	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -483,7 +483,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
-	} else if (indigo_property_match_defined(CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		char name[32];
@@ -495,7 +495,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_COOLER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
@@ -511,7 +511,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(ATIK_WINDOW_HEATER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ATIK_WINDOW_HEATER_PROPERTY, property)) {
 		// CCD Window heater
 		indigo_property_copy_values(ATIK_WINDOW_HEATER_PROPERTY, property, false);
 		int heaterPower = (int)(ATIK_WINDOW_HEATER_POWER_ITEM->number.target + 0.5);
@@ -521,7 +521,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		ATIK_WINDOW_HEATER_POWER_ITEM->number.value = heaterPower;
 		indigo_update_property(device, ATIK_WINDOW_HEATER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_writable(CCD_TEMPERATURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		double temperature = CCD_TEMPERATURE_ITEM->number.value;
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
@@ -625,7 +625,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -634,7 +634,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, guider_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(GUIDER_GUIDE_DEC_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
@@ -654,7 +654,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		GUIDER_GUIDE_DEC_PROPERTY->state = PRIVATE_DATA->relay_mask & (ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH) ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(GUIDER_GUIDE_RA_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
@@ -776,7 +776,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -785,7 +785,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(WHEEL_SLOT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		double slot = WHEEL_SLOT_ITEM->number.value;
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);

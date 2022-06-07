@@ -184,7 +184,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -193,7 +193,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, wheel_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(WHEEL_SLOT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		indigo_set_timer(device, 0, wheel_slot_callback, NULL);
@@ -618,7 +618,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	// -------------------------------------------------------------------------------- CONNECTION -> CCD_INFO, CCD_COOLER, CCD_TEMPERATURE
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
@@ -627,7 +627,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
-	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
@@ -635,7 +635,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, ccd_exposure_callback, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			try {
@@ -653,7 +653,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				return INDIGO_OK;
 			}
 		}
-	} else if (indigo_property_match_defined(CCD_COOLER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		try {
@@ -666,7 +666,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_COOLER_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_TEMPERATURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_TEMPERATURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		double temperature = CCD_TEMPERATURE_ITEM->number.value;
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
@@ -687,7 +687,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_GAIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		try {
@@ -701,7 +701,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_GAIN_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(QSI_READOUT_SPEED_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(QSI_READOUT_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_READOUT_SPEED
 		indigo_property_copy_values(QSI_READOUT_SPEED_PROPERTY, property, false);
 		QSICamera::ReadoutSpeed requestedSpeed = QSICamera::HighImageQuality;
@@ -721,7 +721,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, QSI_READOUT_SPEED_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(QSI_ANTI_BLOOM_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(QSI_ANTI_BLOOM_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_ANTI_BLOOM
 		indigo_property_copy_values(QSI_ANTI_BLOOM_PROPERTY, property, false);
 		QSICamera::AntiBloom requestedAntiBloom = QSICamera::AntiBloomNormal;
@@ -741,7 +741,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, QSI_ANTI_BLOOM_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_PRE_EXPOSURE_FLUSH
 		indigo_property_copy_values(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property, false);
 		QSICamera::PreExposureFlush requestedPEFlush = QSICamera::FlushNormal;
@@ -767,7 +767,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(QSI_FAN_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(QSI_FAN_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- QSI_FAN_MODE
 		indigo_property_copy_values(QSI_FAN_MODE_PROPERTY, property, false);
 		QSICamera::FanMode requestedFanMode = QSICamera::fanQuiet;
@@ -789,7 +789,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, QSI_FAN_MODE_PROPERTY, text.c_str());
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, QSI_READOUT_SPEED_PROPERTY);

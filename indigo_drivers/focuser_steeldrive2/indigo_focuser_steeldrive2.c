@@ -773,7 +773,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -782,7 +782,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connection_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		int value = FOCUSER_POSITION_ITEM->number.value;
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
@@ -791,42 +791,42 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_position_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_steps_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_abort_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_NAME_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_NAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_NAME
 		indigo_property_copy_values(X_NAME_PROPERTY, property, false);
 		X_NAME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_NAME_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_name_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_SAVED_VALUES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_SAVED_VALUES_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- X_SAVED_VALUES
 		indigo_property_copy_values(X_SAVED_VALUES_PROPERTY, property, false);
 		X_SAVED_VALUES_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_SAVED_VALUES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_saved_values_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
 		FOCUSER_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_mode_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_COMPENSATION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -834,35 +834,35 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_set_timer(device, 0, focuser_compensation_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
-	} else if (indigo_property_match_defined(FOCUSER_LIMITS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_limits_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_TC_SENSOR
-	} else if (indigo_property_match_defined(X_SELECT_TC_SENSOR_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_SELECT_TC_SENSOR_PROPERTY, property)) {
 		indigo_property_copy_values(X_SELECT_TC_SENSOR_PROPERTY, property, false);
 		X_SELECT_TC_SENSOR_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_tc_sensor_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_RESET
-	} else if (indigo_property_match_defined(X_RESET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_RESET_PROPERTY, property)) {
 		indigo_property_copy_values(X_RESET_PROPERTY, property, false);
 		X_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_RESET_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_reset_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_USE_ENDSTOP
-	} else if (indigo_property_match_defined(X_USE_ENDSTOP_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_USE_ENDSTOP_PROPERTY, property)) {
 		indigo_property_copy_values(X_USE_ENDSTOP_PROPERTY, property, false);
 		X_USE_ENDSTOP_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_use_endstop_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_START_ZEROING
-	} else if (indigo_property_match_defined(X_START_ZEROING_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_START_ZEROING_PROPERTY, property)) {
 		indigo_property_copy_values(X_START_ZEROING_PROPERTY, property, false);
 		X_START_ZEROING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_START_ZEROING_PROPERTY, NULL);
@@ -1174,7 +1174,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1184,42 +1184,42 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_HEATER_OUTLET
-	} else if (indigo_property_match_defined(AUX_HEATER_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
 		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_heater_outlet_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_DEW_CONTROL
-	} else if (indigo_property_match_defined(AUX_DEW_CONTROL_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_DEW_CONTROL_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_DEW_CONTROL_PROPERTY, property, false);
 		AUX_DEW_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_dew_control_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_USE_PID
-	} else if (indigo_property_match_defined(X_USE_PID_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_USE_PID_PROPERTY, property)) {
 		indigo_property_copy_values(X_USE_PID_PROPERTY, property, false);
 		X_USE_PID_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_USE_PID_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_use_pid_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_PID_SETTINGS
-	} else if (indigo_property_match_defined(X_PID_SETTINGS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_PID_SETTINGS_PROPERTY, property)) {
 		indigo_property_copy_values(X_PID_SETTINGS_PROPERTY, property, false);
 		X_PID_SETTINGS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_PID_SETTINGS_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_pid_settings_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_PID_SENSOR
-	} else if (indigo_property_match_defined(X_SELECT_PID_SENSOR_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_SELECT_PID_SENSOR_PROPERTY, property)) {
 		indigo_property_copy_values(X_SELECT_PID_SENSOR_PROPERTY, property, false);
 		X_SELECT_PID_SENSOR_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_SELECT_PID_SENSOR_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_select_pid_sensor_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- X_SELECT_AMB_SENSOR
-	} else if (indigo_property_match_defined(X_SELECT_AMB_SENSOR_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_SELECT_AMB_SENSOR_PROPERTY, property)) {
 		indigo_property_copy_values(X_SELECT_AMB_SENSOR_PROPERTY, property, false);
 		X_SELECT_AMB_SENSOR_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_SELECT_AMB_SENSOR_PROPERTY, NULL);

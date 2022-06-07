@@ -1017,28 +1017,28 @@ static void lunatico_delete_properties(indigo_device *device) {
 
 
 static indigo_result lunatico_common_update_property(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match_defined(LA_MODEL_PROPERTY, property)) {
+	if (indigo_property_match_changeable(LA_MODEL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_MODEL
 		indigo_property_copy_values(LA_MODEL_PROPERTY, property, false);
 		LA_MODEL_PROPERTY->state = INDIGO_OK_STATE;
 		INDIGO_ASYNC(configure_ports, device);
 		indigo_update_property(device, LA_MODEL_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_PORT_EXP_CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_PORT_EXP_CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_PORT_EXP_CONFIG_PROPERTY
 		indigo_property_copy_values(LA_PORT_EXP_CONFIG_PROPERTY, property, false);
 		LA_PORT_EXP_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		INDIGO_ASYNC(configure_ports, device);
 		indigo_update_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_PORT_THIRD_CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_PORT_THIRD_CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_PORT_THIRD_CONFIG_PROPERTY
 		indigo_property_copy_values(LA_PORT_THIRD_CONFIG_PROPERTY, property, false);
 		LA_PORT_THIRD_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 		INDIGO_ASYNC(configure_ports, device);
 		indigo_update_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_STEP_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_STEP_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_STEP_MODE_PROPERTY
 		indigo_property_copy_values(LA_STEP_MODE_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
@@ -1056,7 +1056,7 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		}
 		indigo_update_property(device, LA_STEP_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_POWER_CONTROL_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_POWER_CONTROL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_POWER_CONTROL_PROPERTY
 		indigo_property_copy_values(LA_POWER_CONTROL_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
@@ -1077,7 +1077,7 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 
 		indigo_update_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_TEMPERATURE_SENSOR_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_TEMPERATURE_SENSOR_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_TEMPERATURE_SENSOR
 		indigo_property_copy_values(LA_TEMPERATURE_SENSOR_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
@@ -1089,7 +1089,7 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		}
 		indigo_update_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_MOTOR_TYPE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_MOTOR_TYPE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
 		bool success = true;
 		indigo_property_copy_values(LA_MOTOR_TYPE_PROPERTY, property, false);
@@ -1113,7 +1113,7 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 		}
 		indigo_update_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			lunatico_save_properties(device);
@@ -1242,7 +1242,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1251,7 +1251,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_OUTLET_NAMES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		if (DEVICE_CONNECTED) {
@@ -1267,7 +1267,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_POWER_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_POWER_OUTLET
 		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
@@ -1279,7 +1279,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_SENSOR_NAMES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
 		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
 		if (DEVICE_CONNECTED) {
@@ -1502,7 +1502,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1511,7 +1511,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_rotator_connect_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(ROTATOR_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		double current_position = ROTATOR_POSITION_ITEM->number.value;
@@ -1578,7 +1578,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			}
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
@@ -1607,7 +1607,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(ROTATOR_DIRECTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_DIRECTION_PROPERTY
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
@@ -1635,7 +1635,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_WIRING_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_WIRING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);
@@ -1664,7 +1664,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, LA_WIRING_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_LIMITS_PROPERTY
-	} else if (indigo_property_match_defined(ROTATOR_LIMITS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_LIMITS_PROPERTY, property)) {
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(ROTATOR_LIMITS_PROPERTY, property, false);
 		ROTATOR_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1695,7 +1695,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ROTATOR_STEPS_PER_REVOLUTION
-	} else if (indigo_property_match_defined(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -1704,7 +1704,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 
 		indigo_update_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, ROTATOR_DIRECTION_PROPERTY);
@@ -1987,7 +1987,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -1996,7 +1996,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_focuser_connect_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
@@ -2024,7 +2024,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_writable(FOCUSER_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
@@ -2073,7 +2073,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_LIMITS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 		int success = true;
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
@@ -2098,7 +2098,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_SPEED_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
@@ -2111,7 +2111,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
@@ -2154,7 +2154,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PORT_DATA.focuser_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
@@ -2180,7 +2180,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_COMPENSATION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION_PROPERTY
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
@@ -2188,7 +2188,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_BACKLASH_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH_PROPERTY
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
@@ -2197,7 +2197,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match_defined(FOCUSER_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
 		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
 			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
@@ -2225,7 +2225,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(LA_WIRING_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(LA_WIRING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LA_WIRING_PROPERTY
 		bool success = true;
 		indigo_property_copy_values(LA_WIRING_PROPERTY, property, false);

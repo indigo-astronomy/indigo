@@ -320,7 +320,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -329,7 +329,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_MODE
 		indigo_property_copy_values(CCD_MODE_PROPERTY, property, false);
 		CCD_FRAME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -359,7 +359,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		uvc_error_t res;
@@ -397,7 +397,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_STREAMING_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
 		uvc_error_t res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value);
@@ -434,7 +434,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		return INDIGO_OK;
-//	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+//	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 //		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 //		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 //		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
@@ -447,13 +447,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 //			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 //		}
 //		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(CCD_GAIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_GAMMA_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_GAMMA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAMMA
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
 		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;

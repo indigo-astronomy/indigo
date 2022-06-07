@@ -119,7 +119,7 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
 			indigo_define_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
@@ -140,36 +140,36 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 			indigo_delete_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
 	// -------------------------------------------------------------------------------- ROTATOR_ON_POSITION_SET
-	} else if (indigo_property_match_defined(ROTATOR_ON_POSITION_SET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_ON_POSITION_SET_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_ON_POSITION_SET_PROPERTY, property, false);
 		ROTATOR_ON_POSITION_SET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_ON_POSITION_SET_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_DIRECTION
-	} else if (indigo_property_match_defined(ROTATOR_DIRECTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_STEPS_PER_REVOLUTION
-	} else if (indigo_property_match_defined(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property, false);
 		ROTATOR_STEPS_PER_REVOLUTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_BACKLASH
-	} else if (indigo_property_match_defined(ROTATOR_BACKLASH_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_BACKLASH_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_BACKLASH_PROPERTY, property, false);
 		ROTATOR_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_LIMITS_PROPERTY
-	} else if (indigo_property_match_writable(ROTATOR_LIMITS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_LIMITS_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_LIMITS_PROPERTY, property, false);
 		ROTATOR_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY);

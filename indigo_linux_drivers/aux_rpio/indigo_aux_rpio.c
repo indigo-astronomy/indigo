@@ -899,7 +899,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -908,7 +908,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_OUTLET_NAMES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		if (IS_CONNECTED) {
@@ -950,7 +950,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_GPIO_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
 		if (set_gpio_outlets(device) == true) {
@@ -961,13 +961,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, "Output operation failed, did you authorize?");
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
 		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
 		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		return INDIGO_OK;
 
-	} else if (indigo_property_match_defined(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET_FREQUENCIES
 		indigo_property_copy_values(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, property, false);
 		int period = 0, duty_cycle = 0;
@@ -989,7 +989,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_GPIO_OUTLET_DUTY_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_GPIO_OUTLET_DUTY_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET_DUTY_PROPERTY
 		indigo_property_copy_values(AUX_GPIO_OUTLET_DUTY_PROPERTY, property, false);
 		int period = 0, duty_cycle = 0;
@@ -1009,7 +1009,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 
 		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_SENSOR_NAMES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
 		indigo_property_copy_values(AUX_SENSOR_NAMES_PROPERTY, property, false);
 		if (IS_CONNECTED) {
@@ -1029,7 +1029,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);

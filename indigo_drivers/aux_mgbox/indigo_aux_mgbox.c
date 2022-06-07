@@ -607,7 +607,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -616,7 +616,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, gps_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_SEND_GPS_MOUNT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_SEND_GPS_MOUNT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SEND_GPS_DATA_TO_MOUNT
 		indigo_property_copy_values(X_SEND_GPS_MOUNT_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
@@ -632,7 +632,7 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		mg_send_command(PRIVATE_DATA->handle, command);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_REBOOT_GPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_REBOOT_GPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_REBOOT_GPS
 		indigo_property_copy_values(X_REBOOT_GPS_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
@@ -865,7 +865,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -874,7 +874,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, handle_aux_connect_property, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_OUTLET_NAMES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_OUTLET_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_OUTLET_NAMES
 		indigo_property_copy_values(AUX_OUTLET_NAMES_PROPERTY, property, false);
 		if (IS_CONNECTED) {
@@ -890,12 +890,12 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		AUX_OUTLET_NAMES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_OUTLET_PULSE_LENGTHS
 		indigo_property_copy_values(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property, false);
 		indigo_update_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_GPIO_OUTLET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_GPIO_OUTLET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_GPIO_OUTLET
 		indigo_property_copy_values(AUX_GPIO_OUTLET_PROPERTY, property, false);
 		if (!strchr(PRIVATE_DATA->device_type, 'P')) {
@@ -911,7 +911,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mg_pulse, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_CALIBRATION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_CALIBRATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CALIBRATION
 		indigo_property_copy_values(X_CALIBRATION_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
@@ -919,7 +919,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, X_CALIBRATION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mg_set_callibration, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_SEND_WEATHER_MOUNT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_SEND_WEATHER_MOUNT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_SEND_WEATHER_DATA_TO_MOUNT
 		indigo_property_copy_values(X_SEND_WEATHER_MOUNT_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
@@ -935,7 +935,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		mg_send_command(PRIVATE_DATA->handle, command);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(X_REBOOT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_REBOOT_DEVICE
 		indigo_property_copy_values(X_REBOOT_PROPERTY, property, false);
 		if (!device->is_connected) return INDIGO_OK;
@@ -943,13 +943,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, X_REBOOT_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mg_reset_device, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AUX_DEW_THRESHOLD_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_DEW_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_DEW_THRESHOLD
 		indigo_property_copy_values(AUX_DEW_THRESHOLD_PROPERTY, property, false);
 		AUX_DEW_THRESHOLD_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);

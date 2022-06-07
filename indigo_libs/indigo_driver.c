@@ -392,7 +392,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (CONNECTION_PROPERTY->state == INDIGO_ALERT_STATE)
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -407,12 +407,12 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			device->access_token = token;
 		}
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-	} else if (indigo_property_match_writable(SIMULATION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(SIMULATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
 		SIMULATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SIMULATION_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
 			if (indigo_load_properties(device, false) == INDIGO_OK)
@@ -442,12 +442,12 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			CONFIG_REMOVE_ITEM->sw.value = false;
 		}
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(PROFILE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(PROFILE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- PROFILE
 		indigo_property_copy_values(PROFILE_PROPERTY, property, false);
 		PROFILE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, PROFILE_PROPERTY, NULL);
-	} else if (indigo_property_match_writable(DEVICE_PORT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DEVICE_PORT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		indigo_property_copy_values(DEVICE_PORT_PROPERTY, property, false);
 		if (*DEVICE_PORT_ITEM->text.value == '/') {
@@ -464,13 +464,13 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		}
-	} else if (indigo_property_match_writable(DEVICE_BAUDRATE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DEVICE_BAUDRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
 		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(DEVICE_PORTS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		indigo_property_copy_values(DEVICE_PORTS_PROPERTY, property, false);
 		if (DEVICE_PORTS_PROPERTY->items->sw.value) {
@@ -495,12 +495,12 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		DEVICE_PORTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DEVICE_PORTS_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(AUTHENTICATION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUTHENTICATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUTHENTICATION
 		indigo_property_copy_values(AUTHENTICATION_PROPERTY, property, false);
 		PROFILE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUTHENTICATION_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		assert(DEVICE_CONTEXT->base_device == NULL);
 		indigo_device *slave_devices[MAX_SLAVE_DEVICES];

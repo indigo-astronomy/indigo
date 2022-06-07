@@ -246,7 +246,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -257,7 +257,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		return INDIGO_OK;
-  } else if (indigo_property_match_defined(DSLR_LOCK_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(DSLR_LOCK_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_LOCK
     indigo_property_copy_values(DSLR_LOCK_PROPERTY, property, false);
     DSLR_LOCK_PROPERTY->state = INDIGO_OK_STATE;
@@ -267,21 +267,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     else
       [camera unlock];
     return INDIGO_OK;
-  } else if (indigo_property_match_defined(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(DSLR_MIRROR_LOCKUP_PROPERTY, property)) {
       // -------------------------------------------------------------------------------- DSLR_MIRROR_LOCKUP
     indigo_property_copy_values(DSLR_MIRROR_LOCKUP_PROPERTY, property, false);
     camera.useMirrorLockup = DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value;
     DSLR_MIRROR_LOCKUP_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
     return INDIGO_OK;
-  } else if (indigo_property_match_defined(DSLR_AVOID_AF_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(DSLR_AVOID_AF_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_AVOID_AF
     indigo_property_copy_values(DSLR_AVOID_AF_PROPERTY, property, false);
     camera.avoidAF = DSLR_AVOID_AF_ON_ITEM->sw.value;
     DSLR_AVOID_AF_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
     return INDIGO_OK;
-  } else if (indigo_property_match_defined(DSLR_STREAMING_MODE_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(DSLR_STREAMING_MODE_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_STREAMING_MODE
     indigo_property_copy_values(DSLR_STREAMING_MODE_PROPERTY, property, false);
     PRIVATE_DATA->useLiveView = DSLR_STREAMING_LIVE_VIEW_ITEM->sw.value;
@@ -289,21 +289,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     DSLR_STREAMING_MODE_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
     return INDIGO_OK;
-  } else if (indigo_property_match_defined(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(DSLR_ZOOM_PREVIEW_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- DSLR_ZOOM_PREVIEW
     indigo_property_copy_values(DSLR_ZOOM_PREVIEW_PROPERTY, property, false);
     camera.zoomPreview = DSLR_ZOOM_PREVIEW_ON_ITEM->sw.value;
     DSLR_ZOOM_PREVIEW_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
     return INDIGO_OK;
-  } else if (indigo_property_match_defined(DSLR_DELETE_IMAGE_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(DSLR_DELETE_IMAGE_PROPERTY, property)) {
       // -------------------------------------------------------------------------------- DSLR_DELETE_IMAGE_PROPERTY
     indigo_property_copy_values(DSLR_DELETE_IMAGE_PROPERTY, property, false);
     camera.deleteDownloadedImage = DSLR_DELETE_IMAGE_ON_ITEM->sw.value;
     DSLR_DELETE_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
     indigo_update_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
     return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -321,7 +321,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
     if (PRIVATE_DATA->bulb)
       indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
     return indigo_ccd_change_property(device, client, property);
-	} else if (indigo_property_match_defined(CCD_STREAMING_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
     if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_OK;
@@ -340,7 +340,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
         [camera startBurst];
 		}
 		return INDIGO_OK;
-  } else if (indigo_property_match_defined(DSLR_AF_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(DSLR_AF_PROPERTY, property)) {
       // -------------------------------------------------------------------------------- DSLR_AF
     if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE || DSLR_AF_PROPERTY->state == INDIGO_BUSY_STATE)
       return INDIGO_OK;
@@ -351,7 +351,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
       [camera startAutofocus];
     }
     return INDIGO_OK;
-	} else if (indigo_property_match_defined(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE ) {
       indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
@@ -456,11 +456,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
   assert(DEVICE_CONTEXT != NULL);
   assert(property != NULL);
   PTPCamera *camera = (__bridge PTPCamera *)(PRIVATE_DATA->camera);
-  if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+  if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- CONNECTION
     indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
     CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
@@ -471,7 +471,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
-  } else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+  } else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
     // -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
     indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
     if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {

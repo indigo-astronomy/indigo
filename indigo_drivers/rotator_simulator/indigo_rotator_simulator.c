@@ -101,7 +101,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -110,7 +110,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, rotator_connect_callback, NULL);
 		return INDIGO_OK;		
-	} else if (indigo_property_match_defined(ROTATOR_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
 		if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value) {
@@ -126,7 +126,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, 0.2, rotator_timer_callback, &PRIVATE_DATA->rotator_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
 		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
 		if (ROTATOR_ABORT_MOTION_ITEM->sw.value && ROTATOR_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {

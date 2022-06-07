@@ -274,7 +274,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -310,17 +310,17 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	} else if (indigo_property_match_defined(JOYSTICK_MAPPING_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(JOYSTICK_MAPPING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- JOYSTICK_MAPPING
 		indigo_property_copy_values(JOYSTICK_MAPPING_PROPERTY, property, false);
 		JOYSTICK_MAPPING_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(JOYSTICK_OPTIONS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(JOYSTICK_OPTIONS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- JOYSTICK_OPTIONS
 		indigo_property_copy_values(JOYSTICK_OPTIONS_PROPERTY, property, false);
 		JOYSTICK_OPTIONS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, JOYSTICK_MAPPING_PROPERTY);
