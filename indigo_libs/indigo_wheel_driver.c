@@ -95,7 +95,7 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
 			indigo_define_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -108,18 +108,18 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
 		}
 		// -------------------------------------------------------------------------------- WHEEL_SLOT_NAME
-	} else if (indigo_property_match_defined(WHEEL_SLOT_NAME_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_NAME_PROPERTY, property)) {
 		indigo_property_copy_values(WHEEL_SLOT_NAME_PROPERTY, property, false);
 		WHEEL_SLOT_NAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- WHEEL_SLOT_OFFSET
-	} else if (indigo_property_match_defined(WHEEL_SLOT_OFFSET_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_OFFSET_PROPERTY, property)) {
 		indigo_property_copy_values(WHEEL_SLOT_OFFSET_PROPERTY, property, false);
 		WHEEL_SLOT_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, WHEEL_SLOT_NAME_PROPERTY);

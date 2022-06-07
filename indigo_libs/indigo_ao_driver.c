@@ -87,7 +87,7 @@ indigo_result indigo_ao_change_property(indigo_device *device, indigo_client *cl
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
 			indigo_define_property(device, AO_GUIDE_DEC_PROPERTY, NULL);

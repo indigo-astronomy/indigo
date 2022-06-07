@@ -127,7 +127,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -136,7 +136,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, dome_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -157,7 +157,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		double az;
@@ -191,7 +191,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -219,7 +219,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0.5, dome_timer_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 		if (DOME_ABORT_MOTION_ITEM->sw.value && DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -231,14 +231,14 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_ABORT_MOTION_ITEM->sw.value = false;
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_SHUTTER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_set_timer(device, 6, shutter_timer_callback, NULL);
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
 		if (DOME_PARK_UNPARKED_ITEM->sw.value) {

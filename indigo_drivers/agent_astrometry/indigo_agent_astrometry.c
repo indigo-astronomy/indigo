@@ -747,14 +747,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match_defined(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property)) {
+	if (indigo_property_match_changeable(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_41XX
 		indigo_property_copy_values(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property, false);
 		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
 		indigo_set_timer(device, 0, index_41xx_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTROMETRY_INDEX_42XX
 		indigo_property_copy_values(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property, false);
 		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->state = INDIGO_BUSY_STATE;

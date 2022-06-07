@@ -297,7 +297,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -307,21 +307,21 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_set_timer(device, 0, aux_connection_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_LIGHT_SWITCH
-	} else if (indigo_property_match_defined(AUX_LIGHT_SWITCH_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_LIGHT_SWITCH_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_LIGHT_SWITCH_PROPERTY, property, false);
 		AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_switch_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_LIGHT_INTENSITY
-	} else if (indigo_property_match_defined(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_LIGHT_INTENSITY_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_LIGHT_INTENSITY_PROPERTY, property, false);
 		AUX_LIGHT_INTENSITY_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_intensity_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AUX_COVER
-	} else if (indigo_property_match_defined(AUX_COVER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(AUX_COVER_PROPERTY, property)) {
 		indigo_property_copy_values(AUX_COVER_PROPERTY, property, false);
 		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AUX_COVER_PROPERTY, NULL);

@@ -679,7 +679,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	baader_rc_t rc;
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -688,7 +688,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, dome_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		if (DOME_STEPS_PROPERTY->state == INDIGO_BUSY_STATE || DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_STEPS_PROPERTY, "Dome is moving: request can not be completed");
@@ -734,7 +734,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HORIZONTAL_COORDINATES
 		if (DOME_HORIZONTAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, "Dome is moving: request can not be completed");
@@ -774,7 +774,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 
@@ -786,7 +786,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 
@@ -815,7 +815,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_SHUTTER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		if (DOME_SHUTTER_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Shutter is moving: request can not be completed");
@@ -845,7 +845,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, message);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_FLAP_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_FLAP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_FLAP
 		if (DOME_FLAP_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_update_property(device, DOME_FLAP_PROPERTY, "Flap is moving: request can not be completed");
@@ -878,7 +878,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_FLAP_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, DOME_FLAP_PROPERTY, message);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
 

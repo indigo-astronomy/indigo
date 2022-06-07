@@ -279,7 +279,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -288,19 +288,19 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_FOCUSER_STEP_SIZE_PROPERTY);
 		}
-	} else if (indigo_property_match_defined(FOCUSER_SPEED_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_SPEED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_SPEED
 		indigo_property_copy_values(FOCUSER_SPEED_PROPERTY, property, false);
 		usbv3_command(device, "SMO00%d", 10 - (int)(FOCUSER_SPEED_ITEM->number.value));
 		FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_STEPS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -322,7 +322,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, 0.2, focuser_position_callback, &PRIVATE_DATA->position_timer);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
 		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
@@ -337,7 +337,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION
-	} else if (indigo_property_match_defined(FOCUSER_COMPENSATION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
@@ -347,7 +347,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_MODE
-	} else if (indigo_property_match_defined(FOCUSER_MODE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
 		FOCUSER_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
@@ -359,7 +359,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_set_timer(device, 0, focuser_temperature_callback, &PRIVATE_DATA->temperature_timer);
 		}
 		// -------------------------------------------------------------------------------- X_FOCUSER_STEP_SIZE
-	} else if (indigo_property_match_defined(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_FOCUSER_STEP_SIZE_PROPERTY, property)) {
 		indigo_property_copy_values(X_FOCUSER_STEP_SIZE_PROPERTY, property, false);
 		if (X_FOCUSER_FULL_STEP_ITEM->sw.value) {
 			usbv3_command(device, "SMSTPF");

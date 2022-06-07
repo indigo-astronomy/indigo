@@ -1226,7 +1226,7 @@ bool indigo_property_match_defined(indigo_property *property, indigo_property *o
 	return other == NULL || ((other->type == 0 || property->type == other->type) && (*other->device == 0 || !strcmp(property->device, other->device)) && (*other->name == 0 || !strcmp(property->name, other->name)));
 }
 
-bool indigo_property_match_writable(indigo_property *property, indigo_property *other) {
+bool indigo_property_match_changeable(indigo_property *property, indigo_property *other) {
 	if (property == NULL)
 		return false;
 	if (!property->defined)

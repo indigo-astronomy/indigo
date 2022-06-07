@@ -547,7 +547,7 @@ extern bool indigo_property_match_defined(indigo_property *property, indigo_prop
 
 /** Test, if property matches other property and is defined and RW.
  */
-extern bool indigo_property_match_writable(indigo_property *property, indigo_property *other);
+extern bool indigo_property_match_changeable(indigo_property *property, indigo_property *other);
 
 /** Test, if switch item matches other switch item.
  */

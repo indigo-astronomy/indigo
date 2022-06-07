@@ -909,7 +909,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (indigo_ignore_connection_change(device, property))
 			return INDIGO_OK;
@@ -918,7 +918,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, dome_connect_callback, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_STEPS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_STEPS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_STEPS
 		indigo_property_copy_values(DOME_STEPS_PROPERTY, property, false);
 		if (DOME_PARK_PARKED_ITEM->sw.value) {
@@ -946,7 +946,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_set_timer(device, 3, dome_rotator_status_request, NULL);
 		indigo_update_property(device, DOME_STEPS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_HORIZONTAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_HRIZONTAL_COORDINATES
 		indigo_property_copy_values(DOME_HORIZONTAL_COORDINATES_PROPERTY, property, false);
 		double target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
@@ -979,7 +979,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, DOME_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_EQUATORIAL_COORDINATES
 		indigo_property_copy_values(DOME_EQUATORIAL_COORDINATES_PROPERTY, property, false);
 		/* Keep the dome in sync if needed */
@@ -1014,7 +1014,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		DOME_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_ABORT_MOTION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_ABORT_MOTION
 		indigo_property_copy_values(DOME_ABORT_MOTION_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1031,7 +1031,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, DOME_ABORT_MOTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_SHUTTER_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_SHUTTER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SHUTTER
 		indigo_property_copy_values(DOME_SHUTTER_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1046,7 +1046,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_set_timer(device, 3, dome_shutter_status_request, NULL);
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_PARK_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_PARK_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_PARK
 		indigo_property_copy_values(DOME_PARK_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1075,7 +1075,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_FIND_HOME_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_FIND_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_FIND_HOME
 		indigo_property_copy_values(NEXDOME_FIND_HOME_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1086,7 +1086,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_HOME_POSITION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_HOME_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_HOME_POSITION
 		indigo_property_copy_values(NEXDOME_HOME_POSITION_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1097,7 +1097,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_ACCELERATION_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_ACCELERATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_ACCELERATION
 		indigo_property_copy_values(NEXDOME_ACCELERATION_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1111,7 +1111,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_VELOCITY_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_VELOCITY_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_VELOCITY
 		indigo_property_copy_values(NEXDOME_VELOCITY_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1125,7 +1125,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_RANGE_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_RANGE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_RANGE
 		indigo_property_copy_values(NEXDOME_RANGE_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1139,7 +1139,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_RANGE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_MOVE_THRESHOLD_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_MOVE_THRESHOLD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_MOVE_THRESHOLD
 		indigo_property_copy_values(NEXDOME_MOVE_THRESHOLD_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1150,7 +1150,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		PROPERTY_UNLOCK();
 		indigo_update_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(DOME_SLAVING_PARAMETERS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DOME_SLAVING_PARAMETERS
 		indigo_property_copy_values(DOME_SLAVING_PARAMETERS_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1165,7 +1165,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			indigo_update_property(device, DOME_SLAVING_PARAMETERS_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_defined(NEXDOME_SETTINGS_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_SETTINGS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_SETTINGS
 		indigo_property_copy_values(NEXDOME_SETTINGS_PROPERTY, property, false);
 		PROPERTY_LOCK();
@@ -1193,7 +1193,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 		indigo_update_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
 #ifdef CMD_AID
-	} else if (indigo_property_match_defined(NEXDOME_COMMAND_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(NEXDOME_COMMAND_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- NEXDOME_COMMAND
 		indigo_property_copy_values(NEXDOME_COMMAND_PROPERTY, property, false);
 		PROPERTY_LOCK();

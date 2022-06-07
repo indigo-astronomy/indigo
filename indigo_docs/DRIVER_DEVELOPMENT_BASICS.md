@@ -274,7 +274,7 @@ static indigo_result atik_wheel_change_property(indigo_device *device,
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// ---------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -287,7 +287,7 @@ static indigo_result atik_wheel_change_property(indigo_device *device,
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		// do not return here, let the baseclass callback do its job...
-	} else if (indigo_property_match_defined(WHEEL_SLOT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// ---------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 
@@ -349,7 +349,7 @@ device = NULL;
 Attaching and detaching of the devices can be done either in the driver entry point for not hot-plug devices or in the hot-plug callback for hot-plug devices.
 There are many examples for that in the available INDIGO drivers.
 
-Please note, function *indigo_property_match()* is used to match properties against the requests. This function will match read only (RO), read/write (RW) and write only (WO) properties. However if the property changes its permissions, like in the case when two cameras are handled by the same driver and one has temperature control and second has only temperature sensor for the second camera CCD_TEMPERATURE property should be RO and for the first RW. It is driver's responsibility to enforce property permissions and for that case INDIGO 2.0-136 provides a second function that matches properties if they are not RO - *indigo_property_match_writable()*. Since INDIGO 2.0-180 there is also *indigo_property_match_defined()* which matches only already defined properties and *indigo_property_match_writable()* matches defined properties only too.
+Please note, function *indigo_property_match()* is used to match properties against the requests. This function will match read only (RO), read/write (RW) and write only (WO) properties. However if the property changes its permissions, like in the case when two cameras are handled by the same driver and one has temperature control and second has only temperature sensor for the second camera CCD_TEMPERATURE property should be RO and for the first RW. It is driver's responsibility to enforce property permissions and for that case INDIGO 2.0-136 provides a second function that matches properties if they are not RO - *indigo_property_match_changeable()*. Since INDIGO 2.0-180 there is also *indigo_property_match_writable()* which matches only writable properties changed since INDIGO 2.0-179 to *indigo_property_match_changeable()* which matches defined and writable properties.
 
 There is one important note, in order to use the property macros like *CONNECTION_PROPERTY*, *WHEEL_SLOT_PROPERTY* or items like *CONNECTION_CONNECTED_ITEM* the parameter names of the callbacks must be *device*, *client* and *property*. These macros are defined in the header files of the base classes for convenience.
 
@@ -655,7 +655,7 @@ static indigo_result wheel_change_property(indigo_device *device,
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_defined(CONNECTION_PROPERTY, property)) {
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// ---------------------------------------------------------- CONNECTION
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -692,7 +692,7 @@ static indigo_result wheel_change_property(indigo_device *device,
 			hid_close(PRIVATE_DATA->handle);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	} else if (indigo_property_match_defined(WHEEL_SLOT_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(WHEEL_SLOT_PROPERTY, property)) {
 		// ---------------------------------------------------------- WHEEL_SLOT
 		indigo_property_copy_values(WHEEL_SLOT_PROPERTY, property, false);
 		if (WHEEL_SLOT_ITEM->number.value < 1 ||
