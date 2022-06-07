@@ -1652,8 +1652,15 @@ static void mount_connect_callback(indigo_device *device) {
 			result = meade_open(device);
 		}
 		if (result) {
-			if (MOUNT_TYPE_DETECT_ITEM->sw.value)
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				meade_detect_mount(device);
+				if (MOUNT_TYPE_PROPERTY->state == INDIGO_ALERT_STATE) {
+					result = 0;
+					indigo_send_message(device, "Autodetection failed!");
+				}
+			}
+		}
+		if (result) {
 			meade_init_mount(device);
 			// initialize target
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
