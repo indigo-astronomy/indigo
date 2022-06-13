@@ -33,15 +33,15 @@ It is a general rule of thumb that the less index files are selected the faster 
 ## Hint configuration
 Some *Hints* can be provided to the solver engine to speed up the solving process as it may take a long time. Here are the parameters:
 - **Search Radius** - This is the radius in degrees around the given coordinates to search for a solution. *0* means "blind solve" or search the entire sky starting from the provided coordinates.
-- **Right Ascension** and **Declination** - approximate coordinates of the frame center to start the search. They can be entered manually or if a related mount agent is selected the mount coordinates will be used here. This may speedup the solution to less than a second in some cases.
+- **RA** and **Dec** - approximate coordinates (Right Ascension and Declination) of the frame center to start the search. They can be entered manually or if a related mount agent is selected the mount coordinates will be used here. This may speedup the solution to less than a second in some cases.
 - **J2000** - This is a flag indicating if the coordinates are in J2000 or JNow.
-- **Pixel Scale** - If the pixel scale of the system is known setting this parameter may speed up the process. It is in degrees/pixel. It is safe to leave it to 0.
+- **Pixel scale** - If the pixel scale of the system is known setting this parameter may speed up the process. It is in degrees/pixel. It is safe to leave it to 0.
 - **Parity** - positive (1) or negative(-1) if unknown (0). Flipping an image reverses its **parity**. If you use a refactor telescope, it probably has negative parity. If you use reflector, it probably has positive parity. Selecting the right parity will make the solving process run faster, but if in doubt use unknown.
 - **Downsample** - You can downsample your image by a given factor before performing the source (star) extraction. This speeds up the process but a large downsamle will reduce the accuracy. Default is 2 and we recommend to use it.
 - **Depth** - The solver works by looking at sources (stars) in your image, starting with the brightest. It searches for all *skymarks* that can be built from the *N* brightest stars before considering star *N+1*. When using several index files, it can be much faster to search for many *skymarks* in one index file before switching to the next one. This flag lets you control when the solver switches between index files. It also lets you control how much effort the solver puts in before giving up - by default (0) it looks at all the sources in your image.
 - **CPU limit** - CPU time limit in seconds before giving up. Default is 180s which is probably too much. Usually if it does not solve the image in several tens of seconds the configuration needs to be optimized.
 
-On a desktop computer for a properly configured solver the solution should be found in up to 10 seconds. For a Raspberry Pi up to 30-40 seconds should be enough, but it depends on many factors.: image size, image FOV, CPU performance, disk performance etc.
+On a desktop computer for a properly configured solver the solution should be found in up to 10 seconds. For a Raspberry Pi up to 30-40 seconds should be enough, but it depends on many factors like image size, image FOV, CPU performance, disk performance etc.
 
 ## Image sources
 INDIGO plate solver agents can solve images from two different sources:
