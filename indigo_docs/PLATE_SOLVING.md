@@ -54,4 +54,8 @@ Here is a view of the solver tab in Ain INDIGO Imager:
 
 ![](PLATE_SOLVING/M101_solved.png)
 
+Here is a view of the solver window in INDIGO A1:
+
+![](PLATE_SOLVING/A1_screenshot.png)
+
 Clear skies!  
