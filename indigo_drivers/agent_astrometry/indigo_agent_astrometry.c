@@ -510,7 +510,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
 			if (item->sw.value) {
 				for (int l = 0; index_files[l]; l++) {
-					if (!strncmp(item->name, index_files[l], 10)) {
+					if (!strncmp(item->name, index_files[l], 4)) {
 						snprintf(config, sizeof(config), "index index-%s\n", index_files[l]);
 						indigo_write(handle, config, strlen(config));
 					}
