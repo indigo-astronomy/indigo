@@ -319,7 +319,6 @@
 		598A1BEA259BA94A00C0B34C /* DDHidEvent.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F28FD211E211100380EF4 /* DDHidEvent.m */; };
 		598A1BEB259BA94A00C0B34C /* indigo_guider_eqmac.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4D64B020A9D946008ECE4B /* indigo_guider_eqmac.c */; };
 		598A1BEC259BA94A00C0B34C /* indigo_ccd_dsi.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911F7AD1F02E1330053F3CA /* indigo_ccd_dsi.c */; };
-		598A1BED259BA94A00C0B34C /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		598A1BEE259BA94A00C0B34C /* indigo_focuser_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAC59D11DC0A8AD00AE410D /* indigo_focuser_driver.c */; };
 		598A1BEF259BA94A00C0B34C /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
 		598A1BF0259BA94A00C0B34C /* indigo_mount_synscan_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD521E21246C17002FCC79 /* indigo_mount_synscan_driver.c */; };
@@ -523,7 +522,6 @@
 		599C9A531DA022E3008BBCC1 /* indigo_server_tcp.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F8061D9A89ED00582EAF /* indigo_server_tcp.c */; };
 		599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */ = {isa = PBXBuildFile; fileRef = 599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */; };
 		59A21E7D25BD849F00005965 /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC1D21EE39B300657C8F /* libnovas.a */; };
-		59A21E8525BDA6A700005965 /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		59A242DA22A2C6AE001C38F8 /* indigo_system_ascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F621A6FCC7009859FD /* indigo_system_ascol.c */; };
 		59A242E322A2C6CE001C38F8 /* libascol.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC782F921A6FCC7009859FD /* libascol.c */; };
 		59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */; };
@@ -753,7 +751,6 @@
 		9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4969A22C39A170052AB3E /* indigo_aux_sqm.c */; };
 		9DCBF26627E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
 		9DCBF26727E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
-		9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDA7FD01F791F7D0094D65D /* indigo_novas.c */; };
 		9DDA7FD31F791F7D0094D65D /* indigo_novas.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDA7FD11F791F7D0094D65D /* indigo_novas.h */; };
 		9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBAE171E2D2099004FE70F /* indigo_timer.c */; };
 		9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDBAE181E2D2099004FE70F /* indigo_timer.h */; };
@@ -4400,7 +4397,6 @@
 		9DCB036622E9D8D600A7A2E5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DCB036722E9D8D600A7A2E5 /* indigo_windows.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_windows.sln; sourceTree = "<group>"; };
 		9DCBF26527E9CC6C00746580 /* indigo_fits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_fits.h; sourceTree = "<group>"; };
-		9DDA7FD01F791F7D0094D65D /* indigo_novas.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_novas.c; sourceTree = "<group>"; };
 		9DDA7FD11F791F7D0094D65D /* indigo_novas.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_novas.h; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9DDBAE181E2D2099004FE70F /* indigo_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_timer.h; sourceTree = "<group>"; };
@@ -8453,7 +8449,6 @@
 				595AA1D01FC5EEFE00350E7B /* indigo_agent.c */,
 				593A357B219DB4BA00EDF481 /* indigo_filter.c */,
 				594122A01FD2DE5900D792FF /* indigo_dome_azimuth.c */,
-				9DDA7FD01F791F7D0094D65D /* indigo_novas.c */,
 				59B636AE20A74CD400EF2D52 /* indigo_usb_utils.c */,
 				5911B6C922630FE900D6B9EC /* indigo_raw_utils.c */,
 				5979C860254710B0005395BE /* indigo_tiff.c */,
@@ -12992,7 +12987,6 @@
 				5903565225AB0C33001DC5DB /* solver_test.c in Sources */,
 				5995A90D25AB3563003987F1 /* indigo_token.c in Sources */,
 				5995A91525AB3566003987F1 /* indigo_io.c in Sources */,
-				59A21E8525BDA6A700005965 /* indigo_novas.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -13186,7 +13180,6 @@
 				598A1BEA259BA94A00C0B34C /* DDHidEvent.m in Sources */,
 				598A1BEB259BA94A00C0B34C /* indigo_guider_eqmac.c in Sources */,
 				598A1BEC259BA94A00C0B34C /* indigo_ccd_dsi.c in Sources */,
-				598A1BED259BA94A00C0B34C /* indigo_novas.c in Sources */,
 				598A1BEE259BA94A00C0B34C /* indigo_focuser_driver.c in Sources */,
 				598A1BEF259BA94A00C0B34C /* indigo_io.c in Sources */,
 				598A1BF0259BA94A00C0B34C /* indigo_mount_synscan_driver.c in Sources */,
@@ -13404,7 +13397,6 @@
 				595F291A211E211100380EF4 /* DDHidEvent.m in Sources */,
 				9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */,
 				5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */,
-				9DDA7FD21F791F7D0094D65D /* indigo_novas.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				9DAD522621246C18002FCC79 /* indigo_mount_synscan_driver.c in Sources */,
