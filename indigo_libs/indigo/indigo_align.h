@@ -78,7 +78,19 @@ typedef struct {
  eq0 - Old Equinox (year+fraction)
  eq1 - New Equinox (year+fraction)
  */
-indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1);
+extern indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1);
+
+/**
+ Apply proper motion c0 from eq0 to eq1
+
+ c0.a - Right Ascension (radians)
+ c0.d - Declination (radians)
+ eq0 - Old Equinox (year+fraction)
+ eq1 - New Equinox (year+fraction)
+ */
+
+extern indigo_spherical_point_t indigo_apply_proper_motion(const indigo_spherical_point_t *c0, double pmra, double pmdec, double eq0, double eq1);
+
 
 /** Convenience wrapper for indigo_precess(...)
 
@@ -101,6 +113,13 @@ extern void indigo_eq_to_j2k(const double eq, double *ra, double *dec);
 	*dec - Declination (degrees)
  */
 extern void indigo_j2k_to_jnow(double *ra, double *dec);
+
+/** Convenience wrapper for indigo_precess(...) and indigo_apply_proper_motion(...)
+
+	*ra - Right Ascension (hours)
+	*dec - Declination (degrees)
+ */
+extern void indigo_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec);
 
 /** Convenience wrapper for indigo_precess(...)
 
@@ -132,7 +151,7 @@ extern indigo_cartesian_point_t indigo_spherical_to_cartesian(const indigo_spher
 
 /** convert spherical (in radians) to cartesian coordinates
  */
-extern indigo_spherical_point_t indigo_cartesian_to_sphercal(const indigo_cartesian_point_t *cpoint);
+extern indigo_spherical_point_t indigo_cartesian_to_spherical(const indigo_cartesian_point_t *cpoint);
 
 /** rotate cartesian coordinates around axes (angles in radians)
  */
