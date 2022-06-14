@@ -50,6 +50,19 @@ static double jnow() {
 	return 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
 }
 
+indigo_spherical_point_t indigo_apply_proper_motion(const indigo_spherical_point_t *c0, double pmra, double pmdec, double eq0, double eq1) {
+	indigo_spherical_point_t c1 = {0, 0, 1};
+	double t = eq1 - eq0;
+	/* pmra / (60000 * 15) - as RA proper motion is in milli-arc-minutes/year and RA is in hours
+		 pmdec / 60000 - as Dec proper motion is in milli-arc-minutes/year */
+	c1.a = c0->a + t * pmra / (60000 * 15);
+	c1.d = c0->d + t * pmdec / 60000;
+	c1.a = fmod(c1.a + 24.0, 24.0);
+	return c1;
+}
+
+
+
 void indigo_jnow_to_j2k(double *ra, double *dec) {
 	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
 	coordinates = indigo_precess(&coordinates, jnow(), 2000.0);
@@ -69,6 +82,15 @@ void indigo_eq_to_j2k(const double eq, double *ra, double *dec) {
 void indigo_j2k_to_jnow(double *ra, double *dec) {
 	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
 	coordinates = indigo_precess(&coordinates, 2000.0, jnow());
+	*ra = coordinates.a * RAD2DEG / 15;
+	*dec = coordinates.d * RAD2DEG;
+}
+
+void indigo_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec) {
+	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
+	double now = jnow();
+	coordinates = indigo_apply_proper_motion(&coordinates, pmra, pmdec, 2000.0, now);
+	coordinates = indigo_precess(&coordinates, 2000.0, now);
 	*ra = coordinates.a * RAD2DEG / 15;
 	*dec = coordinates.d * RAD2DEG;
 }
