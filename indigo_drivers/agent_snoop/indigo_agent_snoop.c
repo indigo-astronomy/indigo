@@ -175,7 +175,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == DEVICE_PRIVATE_DATA->client)
 		return INDIGO_OK;
-	if (indigo_property_match_changeable(SNOOP_ADD_RULE_PROPERTY, property)) {
+	if (indigo_property_match(SNOOP_ADD_RULE_PROPERTY, property)) {
 		indigo_property_copy_values(SNOOP_ADD_RULE_PROPERTY, property, false);
 		rule *r = DEVICE_PRIVATE_DATA->rules;
 		while (r) {
@@ -208,7 +208,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_enumerate_properties(DEVICE_PRIVATE_DATA->client, &INDIGO_ALL_PROPERTIES);
 		strcpy(INDIGO_ALL_PROPERTIES.device, r->target_device_name);
 		indigo_enumerate_properties(DEVICE_PRIVATE_DATA->client, &INDIGO_ALL_PROPERTIES);
-	} else if (indigo_property_match_changeable(SNOOP_REMOVE_RULE_PROPERTY, property)) {
+	} else if (indigo_property_match(SNOOP_REMOVE_RULE_PROPERTY, property)) {
 		indigo_property_copy_values(SNOOP_REMOVE_RULE_PROPERTY, property, false);
 		rule *r = DEVICE_PRIVATE_DATA->rules;
 		rule *rr = NULL;

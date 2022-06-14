@@ -431,13 +431,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == indigo_agent_alpaca_client)
 		return INDIGO_OK;
-	if (indigo_property_match_changeable(AGENT_DISCOVERY_PROPERTY, property)) {
+	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_DISCOVERY_PROPERTY, property, false);
 		shutdown_discovery_server();
 		indigo_set_timer(device, 0, start_discovery_server, &private_data->discovery_server_timer);
 		AGENT_DISCOVERY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
-	} else if (indigo_property_match_changeable(AGENT_DEVICES_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_DEVICES_PROPERTY, property)) {
 		int count = AGENT_DEVICES_PROPERTY->count;
 		AGENT_DEVICES_PROPERTY->count = INDIGO_MAX_ITEMS;
 		indigo_property_copy_values(AGENT_DEVICES_PROPERTY, property, false);

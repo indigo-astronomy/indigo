@@ -436,7 +436,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 	assert(property != NULL);
 	for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 		indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_device_list_properties[i];
-		if (indigo_property_match_changeable(device_list, property)) {
+		if (indigo_property_match(device_list, property)) {
 			if (FILTER_DEVICE_CONTEXT->running_process) {
 				indigo_update_property(device, device_list, "You can't change selection now!");
 				return INDIGO_OK;
@@ -444,10 +444,10 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			return update_device_list(device, client, device_list, property, FILTER_DEVICE_CONTEXT->device_name[i]);
 		}
 		device_list = FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i];
-		if (indigo_property_match_changeable(device_list, property))
+		if (indigo_property_match(device_list, property))
 			return update_related_device_list(device, device_list, property);
 	}
-	if (indigo_property_match_changeable(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
+	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
 		return update_related_agent_list(device, property);
 	indigo_property **agent_cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
@@ -472,7 +472,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			return INDIGO_OK;
 		}
 	}
-	if (indigo_property_match_changeable(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+	if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		assert(DEVICE_CONTEXT->base_device == NULL);
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
@@ -851,7 +851,7 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 				break;
 			}
 		}
-	}	
+	}
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		if (agent_cache[i])
