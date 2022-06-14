@@ -1996,14 +1996,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match_changeable(AGENT_IMAGER_BATCH_PROPERTY, property)) {
+	if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_IMAGER_BATCH
 		indigo_property_copy_values(AGENT_IMAGER_BATCH_PROPERTY, property, false);
 		AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_FOCUS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_FOCUS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_PROPERTY, property, false);
 		char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
@@ -2014,28 +2014,28 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_FOCUS_FAILURE_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_FOCUS_FAILURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS_FAILURE
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_FAILURE_PROPERTY, property, false);
 		AGENT_IMAGER_FOCUS_FAILURE_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_FOCUS_FAILURE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS_ESTIMATOR
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property, false);
 		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_DITHERING_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_DITHERING_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- AGENT_DITHERING
 		indigo_property_copy_values(AGENT_IMAGER_DITHERING_PROPERTY, property, false);
 		AGENT_IMAGER_DITHERING_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_DITHERING_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_STARS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_STARS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_IMAGER_STARS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_IMAGER_STARS_PROPERTY, property, false);
@@ -2058,7 +2058,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 		}
 		indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_SELECTION_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_SELECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_SELECTION
 		indigo_property_copy_values(AGENT_IMAGER_SELECTION_PROPERTY, property, false);
 		DEVICE_PRIVATE_DATA->stack_size = 0;
@@ -2067,7 +2067,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-	} else if (indigo_property_match_changeable(AGENT_START_PROCESS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
@@ -2115,7 +2115,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_PAUSE_PROCESS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_PAUSE_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_PAUSE_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_PAUSE_PROCESS_PROPERTY, property, false);
@@ -2131,7 +2131,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_PAUSE_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_ABORT_PROCESS_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_ABORT_PROCESS_PROPERTY, property, false);
@@ -2146,7 +2146,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DOWNLOAD_FILE
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_property_copy_values(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property, false);
 		AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2192,7 +2192,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DELETE_FILE
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_DELETE_FILE_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_DELETE_FILE_PROPERTY, property)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_property_copy_values(AGENT_IMAGER_DELETE_FILE_PROPERTY, property, false);
 		AGENT_IMAGER_DELETE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2220,7 +2220,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_IMAGER_DELETE_FILE_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DOWNLOAD_FILES
 		indigo_property_copy_values(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property, false);
 		if (AGENT_IMAGER_DOWNLOAD_FILES_REFRESH_ITEM->sw.value) {
@@ -2246,7 +2246,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- AGENT_WHEEL_FILTER
-	} else if (indigo_property_match_changeable(AGENT_WHEEL_FILTER_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_WHEEL_FILTER_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_WHEEL_FILTER_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
 			if (AGENT_WHEEL_FILTER_PROPERTY->items[i].sw.value) {
@@ -2258,14 +2258,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- AGENT_IMAGER_SEQUENCE
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_SEQUENCE_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_SEQUENCE_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_IMAGER_SEQUENCE_PROPERTY, property, false);
 		AGENT_IMAGER_SEQUENCE_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_BREAKPOINT
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_BREAKPOINT_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_BREAKPOINT_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_IMAGER_BREAKPOINT_PROPERTY, property, false);
 		if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 			// On related imager agents duplicate AGENT_IMAGER_BREAKPOINT_PROPERTY
@@ -2285,7 +2285,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_IMAGER_BREAKPOINT_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_RESUME_CONDITION
-	} else if (indigo_property_match_changeable(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property, false);
 		if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 			// On related imager agents reset AGENT_IMAGER_RESUME_CONDITION_PROPERTY to AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM
@@ -2301,7 +2301,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_IMAGER_RESUME_CONDITION_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
-	} else if (indigo_property_match_changeable(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
 			save_config(device);
 		}

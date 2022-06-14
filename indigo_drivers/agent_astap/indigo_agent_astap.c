@@ -655,7 +655,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(property != NULL);
 	if (client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match_changeable(AGENT_ASTAP_INDEX_PROPERTY, property)) {
+	if (indigo_property_match(AGENT_ASTAP_INDEX_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ASTAP_INDEX
 		indigo_property_copy_values(AGENT_ASTAP_INDEX_PROPERTY, property, false);
 		AGENT_ASTAP_INDEX_PROPERTY->state = INDIGO_BUSY_STATE;

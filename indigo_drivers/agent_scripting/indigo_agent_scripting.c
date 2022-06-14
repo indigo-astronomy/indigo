@@ -823,7 +823,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
 			indigo_device_change_property(device, client, property);
@@ -843,7 +843,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
-	} else if (indigo_property_match_changeable(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_ADD_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property, false);
 		if (AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value[0] == 0) {
@@ -903,7 +903,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, NULL);
 		save_config(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_EXECUTE_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property, false);
 		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -927,7 +927,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_DELETE_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count; i++) {
@@ -970,14 +970,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		save_config(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_ON_LOAD_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, property, false);
 		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
 		save_config(device);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_ON_UNLOAD_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, property, false);
 		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
