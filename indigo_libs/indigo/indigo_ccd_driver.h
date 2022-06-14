@@ -479,6 +479,10 @@ typedef struct {
 	indigo_property *ccd_rbi_flush_property;			///< CCD_RBI_FLUSH property pointer
 } indigo_ccd_context;
 
+/** Calculate pixel scale in arcsec/pixel
+ */
+extern double indigo_pixel_scale(double focal_length_mm, double pixel_size_um);
+
 /** Suspend countdown.
  */
 extern void indigo_ccd_suspend_countdown(indigo_device *device);

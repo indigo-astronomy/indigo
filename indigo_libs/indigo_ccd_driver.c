@@ -71,6 +71,14 @@ static void countdown_timer_callback(indigo_device *device) {
 	}
 }
 
+double indigo_pixel_scale(double focal_length_mm, double pixel_size_um) {
+	if (focal_length_mm > 0) {
+		return 206.265 * pixel_size_um / focal_length_mm;
+	} else {
+		return 0;
+	}
+}
+
 void indigo_ccd_suspend_countdown(indigo_device *device) {
 	CCD_CONTEXT->countdown_enabled = false;
 }
