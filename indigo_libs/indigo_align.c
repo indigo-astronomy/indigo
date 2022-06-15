@@ -53,10 +53,8 @@ static double jnow() {
 indigo_spherical_point_t indigo_apply_proper_motion(const indigo_spherical_point_t *c0, double pmra, double pmdec, double eq0, double eq1) {
 	indigo_spherical_point_t c1 = {0, 0, 1};
 	double t = eq1 - eq0;
-	/* pmra / (60000 * 15) - as RA proper motion is in milli-arc-minutes/year and RA is in hours
-		 pmdec / 60000 - as Dec proper motion is in milli-arc-minutes/year */
-	c1.a = c0->a + t * pmra / (60000 * 15);
-	c1.d = c0->d + t * pmdec / 60000;
+	c1.a = c0->a + t * pmra / (60 * 60 * 1000 * 15 * RAD2DEG);
+	c1.d = c0->d + t * pmdec / (60 * 60 * 1000 * RAD2DEG);
 	c1.a = fmod(c1.a + 24.0, 24.0);
 	return c1;
 }

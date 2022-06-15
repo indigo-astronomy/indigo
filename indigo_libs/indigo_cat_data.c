@@ -53406,6 +53406,9 @@ indigo_star_entry *indigo_get_star_data(void) {
 			indigo_j2k_to_jnow_pm(&ra, &dec, indigo_star_data[i].promora, indigo_star_data[i].promodec);
 			indigo_star_data[i].ra_now = ra;
 			indigo_star_data[i].dec_now = dec;
+//			if (indigo_star_data[i].hip == 24608) {
+//				printf("%g %g %g %g\n", indigo_star_data[i].ra, indigo_star_data[i].dec, indigo_star_data[i].ra_now, indigo_star_data[i].dec_now);
+//			}
 		}
 		star_data_updated = true;
 	}
