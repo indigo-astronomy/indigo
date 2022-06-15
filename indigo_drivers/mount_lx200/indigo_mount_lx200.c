@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -576,7 +576,7 @@ static bool meade_pec(indigo_device *device, bool on) {
 	return false;
 }
 
-static bool meade_guide_rate(indigo_device *device, int ra, int dec) {
+static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 	char command[128];
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
 		sprintf(command, ":X20%02d#", ra);
@@ -590,6 +590,20 @@ static bool meade_guide_rate(indigo_device *device, int ra, int dec) {
 		float rate = ra / 100.0 * 15;
 		sprintf(command, ":Rg%.1f#", rate);
 		return (meade_command(device, command, NULL, 0, 0));
+	}
+	return false;
+}
+
+static bool meade_get_guide_rate(indigo_device *device, int *ra, int *dec) {
+	char response[128] = {0};
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		bool res = meade_command(device, ":Ggr#", response, 0, 0);
+		if (!res) return false;
+		double rate = 0;
+		int parsed = sscanf(response, "%f#", &rate);
+		if (parsed !=1) return false;
+		*ra = *dec = rate / 15.0 * 100;
+		return true;
 	}
 	return false;
 }
@@ -898,8 +912,9 @@ static void meade_update_site_items(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
 }
 
-static void meade_detect_mount(indigo_device *device) {
+static bool meade_detect_mount(indigo_device *device) {
 	char response[128];
+	bool result = true;
 	if (meade_command(device, ":GVP#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Product: '%s'", response);
 		strncpy(PRIVATE_DATA->product, response, 64);
@@ -920,11 +935,14 @@ static void meade_detect_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ZWO_ITEM, true);
 		} else {
 			MOUNT_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
+			result = false;
 		}
 	} else {
 		MOUNT_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
+		result = false;
 	}
 	indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
+	return result;
 }
 
 static void meade_update_mount_state(indigo_device *device);
@@ -1144,7 +1162,15 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	MOUNT_GUIDE_RATE_RA_ITEM->number.min = 10;
 	MOUNT_GUIDE_RATE_DEC_ITEM->number.max =
 	MOUNT_GUIDE_RATE_RA_ITEM->number.max = 90;
-	meade_guide_rate(device, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target);
+	int ra_rate, dec_rate;
+	if (meade_get_guide_rate(device, &ra_rate, &dec_rate)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide rate read");
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.target = (double)ra_rate;
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.target = (double)dec_rate;
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide rate can not be read read, seting");
+		meade_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target);
+	}
 
 	if (meade_command(device, ":GU#", response, sizeof(response), 0)) {
 		if (strchr(response, 'G'))
@@ -1653,10 +1679,10 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 		if (result) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
-				meade_detect_mount(device);
-				if (MOUNT_TYPE_PROPERTY->state == INDIGO_ALERT_STATE) {
-					result = 0;
+				if (!meade_detect_mount(device)) {
+					result = false;
 					indigo_send_message(device, "Autodetection failed!");
+					meade_close(device);
 				}
 			}
 		}
@@ -1906,7 +1932,7 @@ static void mount_guide_rate_callback(indigo_device *device) {
 		MOUNT_GUIDE_RATE_DEC_ITEM->number.target =
 		MOUNT_GUIDE_RATE_RA_ITEM->number.value = MOUNT_GUIDE_RATE_RA_ITEM->number.target;
 	}
-	if (meade_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target))
+	if (meade_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_RA_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target))
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
