@@ -43,8 +43,9 @@
 extern "C" {
 #endif
 
-#define DEG2RAD (M_PI / 180.0)
-#define RAD2DEG (180.0 / M_PI)
+extern const double TWO_PI;
+extern const double DEG2RAD;
+extern const double RAD2DEG;
 
 #define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
 #define JD UT2JD(time(NULL))
@@ -85,6 +86,8 @@ extern indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c
 
  c0.a - Right Ascension (radians)
  c0.d - Declination (radians)
+ pmra - RA proper motion (mas/year)
+ pmdec - Dec proper motion (mas/year)
  eq0 - Old Equinox (year+fraction)
  eq1 - New Equinox (year+fraction)
  */
