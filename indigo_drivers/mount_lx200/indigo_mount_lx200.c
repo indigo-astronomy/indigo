@@ -600,7 +600,7 @@ static bool meade_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 		bool res = meade_command(device, ":Ggr#", response, 0, 0);
 		if (!res) return false;
 		double rate = 0;
-		int parsed = sscanf(response, "%f#", &rate);
+		int parsed = sscanf(response, "%lf#", &rate);
 		if (parsed !=1) return false;
 		*ra = *dec = rate / 15.0 * 100;
 		return true;
