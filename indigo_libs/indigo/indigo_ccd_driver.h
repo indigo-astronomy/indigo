@@ -481,7 +481,7 @@ typedef struct {
 
 /** Calculate pixel scale in arcsec/pixel
  */
-extern double indigo_pixel_scale(double focal_length_mm, double pixel_size_um);
+extern double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
 
 /** Suspend countdown.
  */
