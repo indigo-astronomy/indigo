@@ -553,7 +553,11 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		return false;
 	}
-	if (!meade_command(device, ":CM#", response, sizeof(response), 100000) || *response == '0' || *response == 'e') {
+	if (!meade_command(device, ":CM#", response, sizeof(response), 100000) || *response == 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
+		return false;
+	}
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value && *response == 'e') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		return false;
 	}
