@@ -525,20 +525,18 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 static bool meade_slew(indigo_device *device, double ra, double dec) {
 	char command[128], response[128];
 	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
-	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
+	if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		return false;
-	} else {
-		sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
-		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-			return false;
-		} else {
-			if (!meade_command(device, ":MS#", response, 1, 100000) || *response != '0') {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed");
-				return false;
-			}
-		}
+	}
+	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
+	if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
+		return false;
+	}
+	if (!meade_command(device, ":MS#", response, sizeof(response), 100000) || *response != '0') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed with response: %s", response);
+		return false;
 	}
 	return true;
 }
@@ -546,20 +544,18 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 static bool meade_sync(indigo_device *device, double ra, double dec) {
 	char command[128], response[128];
 	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
-	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
+	if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
 		return false;
-	} else {
-		sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
-		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-			return false;
-		} else {
-			if (!meade_command(device, ":CM#", response, sizeof(response), 100000) || *response == 0) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed");
-				return false;
-			}
-		}
+	}
+	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
+	if (!meade_command(device, command, response, sizeof(response), 0) || *response != '1') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
+		return false;
+	}
+	if (!meade_command(device, ":CM#", response, sizeof(response), 100000) || *response == '0' || *response == 'e') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
+		return false;
 	}
 	return true;
 }
