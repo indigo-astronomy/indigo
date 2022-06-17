@@ -578,7 +578,6 @@ static bool meade_pec(indigo_device *device, bool on) {
 
 static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 	char command[128];
-	char response[128];
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
 		sprintf(command, ":X20%02d#", ra);
 		if (meade_command(device, command, NULL, 0, 0)) {
