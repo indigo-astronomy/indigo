@@ -578,6 +578,7 @@ static bool meade_pec(indigo_device *device, bool on) {
 
 static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 	char command[128];
+	char response[128];
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
 		sprintf(command, ":X20%02d#", ra);
 		if (meade_command(device, command, NULL, 0, 0)) {
@@ -587,7 +588,7 @@ static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		if (ra < 10) ra = 10;
 		if (dec > 90) ra = 90;
-		float rate = ra / 100.0 * 15;
+		float rate = ra / 100.0;
 		sprintf(command, ":Rg%.1f#", rate);
 		return (meade_command(device, command, NULL, 0, 0));
 	}
@@ -597,12 +598,12 @@ static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 static bool meade_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	char response[128] = {0};
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
-		bool res = meade_command(device, ":Ggr#", response, 0, 0);
+		bool res = meade_command(device, ":Ggr#", response, sizeof(response), 0);
 		if (!res) return false;
-		double rate = 0;
-		int parsed = sscanf(response, "%lf#", &rate);
+		float rate = 0;
+		int parsed = sscanf(response, "%f", &rate);
 		if (parsed !=1) return false;
-		*ra = *dec = rate / 15.0 * 100;
+		*ra = *dec = rate * 100;
 		return true;
 	}
 	return false;
@@ -1165,8 +1166,8 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	int ra_rate, dec_rate;
 	if (meade_get_guide_rate(device, &ra_rate, &dec_rate)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide rate read");
-		MOUNT_GUIDE_RATE_DEC_ITEM->number.target = (double)ra_rate;
-		MOUNT_GUIDE_RATE_DEC_ITEM->number.target = (double)dec_rate;
+		MOUNT_GUIDE_RATE_RA_ITEM->number.target = MOUNT_GUIDE_RATE_RA_ITEM->number.value = (double)ra_rate;
+		MOUNT_GUIDE_RATE_DEC_ITEM->number.target = MOUNT_GUIDE_RATE_DEC_ITEM->number.value = (double)dec_rate;
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Guide rate can not be read read, seting");
 		meade_set_guide_rate(device, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target, (int)MOUNT_GUIDE_RATE_DEC_ITEM->number.target);
