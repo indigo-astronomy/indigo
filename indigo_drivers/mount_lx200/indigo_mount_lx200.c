@@ -126,6 +126,22 @@ typedef struct {
 	bool prev_home_state;
 } lx200_private_data;
 
+static char *meade_zwo_error_string(unsigned int code) {
+	const char *error_string[] = {
+		NULL,
+		"Prameters out of range",
+		"Format error",
+		"Mount not initialized",
+		"Mount is Moving",
+		"Target is below horizon",
+		"Target is beow the altitude limit",
+		"Time and location is not set",
+		"Unkonwn error"
+	};
+	if (code > 8) return NULL;
+	return (char *)error_string[code];
+}
+
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep);
 
 static bool meade_open(indigo_device *device) {
@@ -536,6 +552,14 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 	}
 	if (!meade_command(device, ":MS#", response, sizeof(response), 100000) || *response != '0') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed with response: %s", response);
+		if (MOUNT_TYPE_ZWO_ITEM->sw.value && *response == 'e') {
+			int error_code = 0;
+			int parsed = sscanf(response, "e%d", &error_code);
+			char *message = meade_zwo_error_string(error_code);
+			if (message) {
+				indigo_send_message(device, "Error: %s", message);
+			}
+		}
 		return false;
 	}
 	return true;
@@ -559,6 +583,12 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 	}
 	if (MOUNT_TYPE_ZWO_ITEM->sw.value && *response == 'e') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
+		int error_code = 0;
+		int parsed = sscanf(response, "e%d", &error_code);
+		char *message = meade_zwo_error_string(error_code);
+		if (message) {
+			indigo_send_message(device, "Error: %s", message);
+		}
 		return false;
 	}
 	return true;
@@ -1789,21 +1819,30 @@ static void mount_geo_coords_callback(indigo_device *device) {
 }
 
 static void mount_eq_coords_callback(indigo_device *device) {
+	char message[50] = {0};
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-		if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec))
+		if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
+		} else {
+			strcpy(message, "Slew failed");
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		if (meade_sync(device, ra, dec))
+		if (meade_sync(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		else
+		} else {
+			strcpy(message, "Sync failed");
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 	}
-	indigo_update_coordinates(device, NULL);
+	if (*message == '\0') {
+		indigo_update_coordinates(device, NULL);
+	} else {
+		indigo_update_coordinates(device, message);
+	}
 }
 
 static void mount_abort_callback(indigo_device *device) {
