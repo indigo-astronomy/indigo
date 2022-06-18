@@ -399,13 +399,23 @@ static bool asi_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	if (!res) return false;
 	float rate = 0;
 	int parsed = sscanf(response, "%f", &rate);
-	if (parsed !=1) return false;
+	if (parsed != 1) return false;
 	*ra = *dec = rate * 100;
 	return true;
 }
 
+/*
+static bool asi_get_tracking_status(indigo_device *device, bool *is_tracking, int *error_code) {
+	char response[128] = {0};
+	// Document seems to be wrong!!!
+	bool res = asi_command(device, ":GAT#", response, sizeof(response), 0);
+	if (!res) return false;
+	if (*response == '0')  return true;
+}
+*/
+
 static bool asi_set_tracking(indigo_device *device, bool on) {
-	if (on) { // TBD
+	if (on) {
 		return asi_command(device, ":Te#", NULL, 0, 0);
 	} else {
 		return asi_command(device, ":Td#", NULL, 0, 0);
@@ -488,7 +498,6 @@ static bool asi_motion_ra(indigo_device *device) {
 static bool asi_home(indigo_device *device) {
 		return asi_command(device, ":hC#", NULL, 0, 0);
 }
-
 
 static bool asi_stop(indigo_device *device) {
 	return asi_command(device, ":Q#", NULL, 0, 0);
@@ -740,12 +749,10 @@ static void mount_connect_callback(indigo_device *device) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			result = asi_open(device);
 		}
-		if (result) {
-			if (!asi_detect_mount(device)) {
-				result = false;
-				indigo_send_message(device, "Autodetection failed!");
-				asi_close(device);
-			}
+		if (result && !asi_detect_mount(device)) {
+			result = false;
+			indigo_send_message(device, "Handshake failed, not a ZWO AM mount");
+			asi_close(device);
 		}
 		if (result) {
 			asi_init_mount(device);
@@ -957,6 +964,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ZWO_AM5");
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_EPOCH
