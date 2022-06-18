@@ -465,21 +465,6 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 	return true;
 }
 
-static bool meade_get_siderial_time(indigo_device *device, double *siderial_time) {
-	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
-		int h, m, s;
-		char response[128];
-		char separator[2];
-
-		if (meade_command(device, ":GS#", response, sizeof(response), 0) && sscanf(response, "%d%c%d%c%d", &h, separator, &m, separator, &s) == 5) {
-			*siderial_time = (double)h + m/60.0 + s/3600.0;
-		} else {
-			return false;
-		}
-	}
-	return true;
-}
-
 static void meade_get_site(indigo_device *device, double *latitude, double *longitude) {
 	char response[128];
 	if (meade_command(device, ":Gt#", response, sizeof(response), 0)) {
@@ -1600,9 +1585,6 @@ static void meade_update_zwo_state(indigo_device *device) {
 			}
 			PRIVATE_DATA->prev_home_state = false;
 		}
-
-		double siderial_time;
-		meade_get_siderial_time(device, &siderial_time);
 
 		if (meade_command(device, ":Gm#", response, sizeof(response), 0)) {
 			if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
