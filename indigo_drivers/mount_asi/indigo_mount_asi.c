@@ -91,7 +91,7 @@ typedef struct {
 
 static char *asi_error_string(unsigned int code) {
 	const char *error_string[] = {
-		NULL,
+		"",
 		"Prameters out of range",
 		"Format error",
 		"Mount not initialized",
@@ -101,8 +101,15 @@ static char *asi_error_string(unsigned int code) {
 		"Time and location is not set",
 		"Unkonwn error"
 	};
-	if (code > 8) return NULL;
+	if (code > 8) code = 0;
 	return (char *)error_string[code];
+}
+
+static int asi_error_code(char *response) {
+	int error_code = 0;
+	int parsed = sscanf(response, "e%d", &error_code);
+	if (parsed == 1) return error_code;
+	return 0;
 }
 
 static bool asi_command(indigo_device *device, char *command, char *response, int max, int sleep);
@@ -333,53 +340,50 @@ static bool asi_get_coordinates(indigo_device *device, double *ra, double *dec) 
 	return false;
 }
 
-static bool asi_slew(indigo_device *device, double ra, double dec) {
+static bool asi_slew(indigo_device *device, double ra, double dec, int *error_code) {
 	char command[128], response[128];
 	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
+		*error_code = asi_error_code(response);
 		return false;
 	}
 	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
+		*error_code = asi_error_code(response);
 		return false;
 	}
 	if (!asi_command(device, ":MS#", response, sizeof(response), 100000) || *response != '0') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed with response: %s", response);
-		int error_code = 0;
-		int parsed = sscanf(response, "e%d", &error_code);
-		char *message = asi_error_string(error_code);
-		if (message) {
-			indigo_send_message(device, "Error: %s", message);
-		}
+		*error_code = asi_error_code(response);
 		return false;
 	}
+	*error_code = 0;
 	return true;
 }
 
-static bool asi_sync(indigo_device *device, double ra, double dec) {
+static bool asi_sync(indigo_device *device, double ra, double dec, int *error_code) {
 	char command[128], response[128];
+	bool success = true;
 	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
+		*error_code = asi_error_code(response);
 		return false;
 	}
 	sprintf(command, ":Sd%s#", indigo_dtos(dec, "%+03d*%02d:%02.0f"));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
+		*error_code = asi_error_code(response);
 		return false;
 	}
 	if (!asi_command(device, ":CM#", response, sizeof(response), 100000) || *response == 'e') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
-		int error_code = 0;
-		int parsed = sscanf(response, "e%d", &error_code);
-		char *message = asi_error_string(error_code);
-		if (message) {
-			indigo_send_message(device, "Error: %s", message);
-		}
+		*error_code = asi_error_code(response);
 		return false;
 	}
+	*error_code = 0;
 	return true;
 }
 
@@ -496,7 +500,7 @@ static bool asi_motion_ra(indigo_device *device) {
 }
 
 static bool asi_home(indigo_device *device) {
-		return asi_command(device, ":hC#", NULL, 0, 0);
+	return asi_command(device, ":hC#", NULL, 0, 0);
 }
 
 static bool asi_stop(indigo_device *device) {
@@ -763,21 +767,24 @@ static void mount_geo_coords_callback(indigo_device *device) {
 
 static void mount_eq_coords_callback(indigo_device *device) {
 	char message[50] = {0};
+	int error_code = 0;
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
 	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-		if (asi_set_tracking_rate(device) && asi_slew(device, ra, dec)) {
+		if (asi_set_tracking_rate(device) && asi_slew(device, ra, dec, &error_code)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			strcpy(message, "Slew failed");
+			strcpy(message, asi_error_string(error_code));
+			if (*message == '\0') strcpy(message, "Slew failed");
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		if (asi_sync(device, ra, dec)) {
+		if (asi_sync(device, ra, dec, &error_code)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			strcpy(message, "Sync failed");
+			strcpy(message, asi_error_string(error_code));
+			if (*message == '\0') strcpy(message, "Sync failed");
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
