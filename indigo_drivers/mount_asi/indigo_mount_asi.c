@@ -553,66 +553,64 @@ static bool asi_detect_mount(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 static void position_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
-		// read coordinates
+		char response[128];
+
+		// read coordinates and moving state
 		double ra = 0, dec = 0;
-		if (asi_get_coordinates(device, &ra, &dec)) {
+		bool success = false;
+		if (success = asi_get_coordinates(device, &ra, &dec)) {
 			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-			// check state
-			char response[128];
-			if (asi_command(device, ":GU#", response, sizeof(response), 0)) {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strchr(response, 'N') ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
-				if (strchr(response, 'n')) {
-					if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
-						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-					}
-				} else {
-					if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
-						indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-						indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-					}
-				}
-				if (strchr(response, 'H')) {
-					if (PRIVATE_DATA->prev_home_state == false) {
-						MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
-						indigo_update_property(device, MOUNT_HOME_PROPERTY, "At home");
-					}
-					PRIVATE_DATA->prev_home_state = true;
-				} else {
-					if (PRIVATE_DATA->prev_home_state == true) {
-						indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
-						indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
-					}
-					PRIVATE_DATA->prev_home_state = false;
-				}
-
-				double siderial_time;
-				asi_get_siderial_time(device, &siderial_time);
-
-				if (asi_command(device, ":Gm#", response, sizeof(response), 0)) {
-					if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
-						indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
-						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-					} else if (strchr(response, 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
-						indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-					} else if (strchr(response, 'N') && (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value || MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value)){
-						MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
-						MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
-						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-					}
+		}
+		if (success && (success = asi_command(device, ":GU#", response, sizeof(response), 0))) {
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strchr(response, 'N') ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+			if (strchr(response, 'n')) {
+				if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				}
 			} else {
-				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+				if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
 			}
-		} else {
+			if (strchr(response, 'H')) {
+				if (PRIVATE_DATA->prev_home_state == false) {
+					MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
+					indigo_update_property(device, MOUNT_HOME_PROPERTY, "At home");
+				}
+				PRIVATE_DATA->prev_home_state = true;
+			} else {
+				if (PRIVATE_DATA->prev_home_state == true) {
+					indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
+					indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+				}
+				PRIVATE_DATA->prev_home_state = false;
+			}
+		}
+		if (success && (success = asi_command(device, ":Gm#", response, sizeof(response), 0))) {
+			if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			} else if (strchr(response, 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			} else if (strchr(response, 'N') && (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value || MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value)){
+				MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
+				MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		}
+		if (!success) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		PRIVATE_DATA->lastRA = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 		PRIVATE_DATA->lastDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
+		indigo_update_coordinates(device, NULL);
+
 		// read time
 		int utc_offset;
 		time_t secs;
@@ -623,10 +621,8 @@ static void position_timer_callback(indigo_device *device) {
 		} else {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-
-		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 5, &PRIVATE_DATA->position_timer);
+		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, &PRIVATE_DATA->position_timer);
 	}
 }
 
