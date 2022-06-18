@@ -47,25 +47,25 @@
 
 #include "indigo_mount_asi.h"
 
-#define PRIVATE_DATA        ((asi_private_data *)device->private_data)
+#define PRIVATE_DATA                    ((asi_private_data *)device->private_data)
 
-#define MOUNT_MODE_PROPERTY					(PRIVATE_DATA->alignment_mode_property)
+#define MOUNT_MODE_PROPERTY             (PRIVATE_DATA->mode_property)
 #define EQUATORIAL_ITEM                 (MOUNT_MODE_PROPERTY->items+0)
 #define ALTAZ_MODE_ITEM                 (MOUNT_MODE_PROPERTY->items+1)
 
-#define MOUNT_MODE_PROPERTY_NAME		"X_MOUNT_MODE"
+#define MOUNT_MODE_PROPERTY_NAME        "X_MOUNT_MODE"
 #define EQUATORIAL_ITEM_NAME            "EQUATORIAL"
 #define ALTAZ_MODE_ITEM_NAME            "ALTAZ"
 
-#define ZWO_BUZZER_PROPERTY				(PRIVATE_DATA->zwo_buzzer_property)
-#define ZWO_BUZZER_OFF_ITEM				(ZWO_BUZZER_PROPERTY->items+0)
-#define ZWO_BUZZER_LOW_ITEM				(ZWO_BUZZER_PROPERTY->items+1)
-#define ZWO_BUZZER_HIGH_ITEM			(ZWO_BUZZER_PROPERTY->items+2)
+#define ZWO_BUZZER_PROPERTY             (PRIVATE_DATA->zwo_buzzer_property)
+#define ZWO_BUZZER_OFF_ITEM             (ZWO_BUZZER_PROPERTY->items+0)
+#define ZWO_BUZZER_LOW_ITEM             (ZWO_BUZZER_PROPERTY->items+1)
+#define ZWO_BUZZER_HIGH_ITEM            (ZWO_BUZZER_PROPERTY->items+2)
 
-#define ZWO_BUZZER_PROPERTY_NAME		"X_ZWO_BUZZER"
-#define ZWO_BUZZER_OFF_ITEM_NAME		"OFF"
-#define ZWO_BUZZER_LOW_ITEM_NAME		"LOW"
-#define ZWO_BUZZER_HIGH_ITEM_NAME		"HIGH"
+#define ZWO_BUZZER_PROPERTY_NAME        "X_ZWO_BUZZER"
+#define ZWO_BUZZER_OFF_ITEM_NAME        "OFF"
+#define ZWO_BUZZER_LOW_ITEM_NAME        "LOW"
+#define ZWO_BUZZER_HIGH_ITEM_NAME       "HIGH"
 
 typedef struct {
 	int handle;
@@ -77,7 +77,7 @@ typedef struct {
 	bool motioned;
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
-	indigo_property *alignment_mode_property;
+	indigo_property *mode_property;
 	indigo_property *zwo_buzzer_property;
 	indigo_timer *focuser_timer;
 	bool use_dst_commands;
@@ -89,7 +89,7 @@ typedef struct {
 	bool prev_home_state;
 } asi_private_data;
 
-static char *asi_zwo_error_string(unsigned int code) {
+static char *asi_error_string(unsigned int code) {
 	const char *error_string[] = {
 		NULL,
 		"Prameters out of range",
@@ -349,7 +349,7 @@ static bool asi_slew(indigo_device *device, double ra, double dec) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":MS# failed with response: %s", response);
 		int error_code = 0;
 		int parsed = sscanf(response, "e%d", &error_code);
-		char *message = asi_zwo_error_string(error_code);
+		char *message = asi_error_string(error_code);
 		if (message) {
 			indigo_send_message(device, "Error: %s", message);
 		}
@@ -374,7 +374,7 @@ static bool asi_sync(indigo_device *device, double ra, double dec) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		int error_code = 0;
 		int parsed = sscanf(response, "e%d", &error_code);
-		char *message = asi_zwo_error_string(error_code);
+		char *message = asi_error_string(error_code);
 		if (message) {
 			indigo_send_message(device, "Error: %s", message);
 		}
@@ -951,6 +951,8 @@ static indigo_result mount_attach(indigo_device *device) {
 	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- SIMULATION
 		SIMULATION_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- MOUNT_PARK
+		MOUNT_PARK_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
