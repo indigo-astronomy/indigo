@@ -440,7 +440,7 @@ static bool asi_set_slew_rate(indigo_device *device) {
 		PRIVATE_DATA->lastSlewRate = 's';
 		return asi_command(device, ":RS#", NULL, 0, 0);
 	}
-	return false;
+	return true;
 }
 
 static bool asi_motion_dec(indigo_device *device) {
@@ -543,7 +543,7 @@ static bool asi_detect_mount(indigo_device *device) {
 
 static void asi_update_mount_state(indigo_device *device);
 
-static void asi_init_zwo_mount(indigo_device *device) {
+static void asi_init_mount(indigo_device *device) {
 	char response[128];
 	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 	MOUNT_UTC_TIME_PROPERTY->hidden = false;
@@ -622,10 +622,6 @@ static void asi_init_zwo_mount(indigo_device *device) {
 	asi_update_mount_state(device);
 }
 
-
-static void asi_init_mount(indigo_device *device) {
-		asi_init_zwo_mount(device);
-}
 
 static void asi_update_zwo_state(indigo_device *device) {
 	char response[128];
