@@ -166,7 +166,7 @@ void get_nutation(double JD, nutation_s *nutation) {
 	int i;
 
 	/* should we bother recalculating nutation */
-	if (fabs(JD - c_JD) > LN_NUTATION_EPOCH_THRESHOLD) {
+	if (fabsl(JD - c_JD) > LN_NUTATION_EPOCH_THRESHOLD) {
 		/* set the new epoch */
 		c_JD = JD;
 

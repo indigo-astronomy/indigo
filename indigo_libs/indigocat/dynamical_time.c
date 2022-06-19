@@ -101,9 +101,10 @@ static double get_dynamical_diff_table(double JD) {
     /* get no days since 1620 and divide by 2 years */
     i = (int)((JD - 2312752.5) / 730.5);
 
-    /* get the base interpolation factor in the table */
-    if (i > (TERMS - 2))
-        i = TERMS - 2;
+	/* get the base interpolation factor in the table */
+	if (i > (TERMS - 2)) {
+		i = TERMS - 2;
+	}
 
 	/* calc a,b,c,n */
 	a = delta_t[i+1] - delta_t[i];
