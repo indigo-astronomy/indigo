@@ -12,22 +12,19 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef __NUTATION_H
-#define __NUTATION_H
+#ifndef __PRECESSION_H
+#define __PRECESSION_H
 
-#include <transform.h>
+#include <indigo/indigocat/indigocat_transform.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-typedef struct {
-	double longitude;	/* Nutation in longitude, in degrees */
-	double obliquity;	/* Nutation in obliquity, in degrees */
-	double ecliptic;	/* Mean obliquity of the ecliptic, in degrees */
-} nutation_s;
+extern equatorial_coords_s indigocat_precess(const equatorial_coords_s *c0, const double eq0, const double eq1);
+extern equatorial_coords_s indigocat_apply_proper_motion(const equatorial_coords_s *c0, double pmra, double pmdec, double eq0, double eq1);
 
-extern void get_nutation(double JD, nutation_s *nutation);
+extern void indigocat_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec);
 
 #ifdef __cplusplus
 };

@@ -1615,7 +1615,7 @@ static void mount_set_host_time_callback(indigo_device *device) {
 			}
 		}
 	} else if (PRIVATE_DATA->protocol == 0x0300) {
-		sprintf(command, ":SUT%013llu#", (uint64_t)((JD - JD2000) * 8.64e+7));
+		sprintf(command, ":SUT%013llu#", (uint64_t)((JDNOW - JD2000) * 8.64e+7));
 		if (!ieq_command(device, command, response, 1) || *response != '1') {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {

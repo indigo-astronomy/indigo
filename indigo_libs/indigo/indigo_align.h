@@ -47,12 +47,11 @@ extern const double TWO_PI;
 extern const double DEG2RAD;
 extern const double RAD2DEG;
 
-#define UT2JD(t) ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
-#define JD UT2JD(time(NULL))
-#define JD2000       2451545.0
-
-extern const double DELTA_T;
-extern const double DELTA_UTC_UT1;
+#define DELTA_T				(34 + 32.184 + 0.477677)
+#define DELTA_UTC_UT1	( -0.477677 / 86400.0)
+#define UT2JD(t) 			((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
+#define JDNOW 				UT2JD(time(NULL))
+#define JD2000    		2451545.0
 
 /** Cartesian point
  */
@@ -81,20 +80,6 @@ typedef struct {
  */
 extern indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, const double eq0, const double eq1);
 
-/**
- Apply proper motion c0 from eq0 to eq1
-
- c0.a - Right Ascension (radians)
- c0.d - Declination (radians)
- pmra - RA proper motion (mas/year)
- pmdec - Dec proper motion (mas/year)
- eq0 - Old Equinox (year+fraction)
- eq1 - New Equinox (year+fraction)
- */
-
-extern indigo_spherical_point_t indigo_apply_proper_motion(const indigo_spherical_point_t *c0, double pmra, double pmdec, double eq0, double eq1);
-
-
 /** Convenience wrapper for indigo_precess(...)
 
 	*ra - Right Ascension (hours)
@@ -116,13 +101,6 @@ extern void indigo_eq_to_j2k(const double eq, double *ra, double *dec);
 	*dec - Declination (degrees)
  */
 extern void indigo_j2k_to_jnow(double *ra, double *dec);
-
-/** Convenience wrapper for indigo_precess(...) and indigo_apply_proper_motion(...)
-
-	*ra - Right Ascension (hours)
-	*dec - Declination (degrees)
- */
-extern void indigo_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec);
 
 /** Convenience wrapper for indigo_precess(...)
 

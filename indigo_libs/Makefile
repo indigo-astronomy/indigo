@@ -74,6 +74,7 @@ endif
 	rm -rf $(INSTALL_INCLUDE)/indigo
 
 clean: status
+	@$(MAKE)	-C indigocat clean
 	rm -f *.o *.orig $(BUILD_LIB)/libindigo.* $(BUILD_LIB)/libraw.* $(BUILD_LIB)/libjpeg.* $(BUILD_LIB)/libtiff.* $(BUILD_LIB)/libtiffxx.* $(BUILD_LIB)/libusb-1.0.* $(LIBHIDAPI).* $(BUILD_LIB)/libftd2xx.*
 
 clean-all: status
@@ -85,7 +86,7 @@ clean-all: status
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb libhidapi libjpeg libtiff libftd2xx libraw $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: version libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
@@ -104,6 +105,20 @@ version: indigo_config.h
 indigo_config.h:	../Makefile.inc
 	cp indigo/indigo_config.h indigo/indigo_config.h.orig
 	sed 's/INDIGO_BUILD.*/INDIGO_BUILD "$(INDIGO_BUILD)"/' indigo/indigo_config.h.orig >indigo/indigo_config.h
+
+#---------------------------------------------------------------------
+#
+#	Build libindigocat
+#
+#---------------------------------------------------------------------
+
+libindigocat: $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libindigocat.$(SOEXT)
+
+$(BUILD_LIB)/libindigocat.a:
+	@$(MAKE)	-C indigocat $(BUILD_LIB)/libindigocat.a
+
+$(BUILD_LIB)/libindigocat.$(SOEXT):
+	@$(MAKE)	-C indigocat $(BUILD_LIB)/libindigocat.$(SOEXT)
 
 #---------------------------------------------------------------------
 #

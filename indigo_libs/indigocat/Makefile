@@ -1,19 +1,18 @@
-CC       = gcc
-CFLAGS   = -I. -fPIC -g -O3 -Wall -Wextra
-LDFLAGS  = -shared -lm
+include ../../Makefile.inc
 
-TARGET_LIB  = libindigocat.so
+LIBINDIGOCAT_FILES = $(addsuffix .o, $(basename $(wildcard *.c)))
 
-SOURCES = dynamical_time.c earth.c jupiter.c mars.c mercury.c moon.c neptune.c nutation.c pluto.c saturn.c sun.c transform.c uranus.c venus.c vsop87.c
-HEADERS = dynamical_time.h nutation.h solar_system.h transform.h vsop87.h
-OBJECTS = $(SOURCES:.c=.o)
+.PHONY: all clean
 
-.PHONY: all
-all: $(TARGET_LIB)
+all:	libindigocat
 
-$(TARGET_LIB): $(OBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET_LIB) $(OBJECTS)
+libindigocat: $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
-.PHONY: clean
+$(BUILD_LIB)/libindigocat.a: $(LIBINDIGOCAT_FILES)
+	$(AR) $(ARFLAGS) $@ $^
+
+$(BUILD_LIB)/libindigocat.$(SOEXT): $(LIBINDIGOCAT_FILES)
+	$(CC) -shared -o $@ $^ $(LDFLAGS) -ldl -lusb-1.0 -lz -lstdc++
+
 clean:
-	rm -f ${TARGET_LIB} ${OBJECTS}
+	rm -f *.o *.orig $(BUILD_LIB)/libindigocat.*

@@ -50,7 +50,8 @@
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_align.h>
-#include <indigo/indigo_cat_data.h>
+#include <indigo/indigocat/indigocat_star.h>
+#include <indigo/indigocat/indigocat_dso.h>
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
@@ -452,7 +453,7 @@ static void *indigo_add_star_json_resource(int max_mag) {
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
 	unsigned size = (unsigned)strlen(buffer);
 	char *sep = "";
-	indigo_star_entry *star_data = indigo_get_star_data();
+	indigocat_star_entry *star_data = indigocat_get_star_data();
 	for (int i = 0; star_data[i].hip; i++) {
 		if (star_data[i].mag > max_mag)
 			continue;
@@ -489,7 +490,7 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 	strcpy(buffer, "{\"type\":\"FeatureCollection\",\"features\": [");
 	unsigned size = (unsigned)strlen(buffer);
 	char *sep = "";
-	indigo_dso_entry *dso_data = indigo_get_dso_data();
+	indigocat_dso_entry *dso_data = indigocat_get_dso_data();
 	for (int i = 0; dso_data[i].id; i++) {
 		/* Filter by magnitude, but remove objects without name or mesier designation*/
 		if (
@@ -518,7 +519,7 @@ static int add_multiline(char *buffer, ...) {
 	va_list ap;
 	va_start(ap, buffer);
 	char *sep = "";
-	indigo_star_entry *star_data = indigo_get_star_data();
+	indigocat_star_entry *star_data = indigocat_get_star_data();
 	static char *sep2 = "";
 	size += sprintf(buffer, "%s[", sep2);
 	sep2 = ",";

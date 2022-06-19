@@ -18,10 +18,10 @@
 //  Michelle Chapront-Touze and Jean Chapront.
 
 #include <math.h>
-#include <solar_system.h>
-#include <vsop87.h>
-#include <transform.h>
 
+#include <indigo/indigocat/indigocat_solar_system.h>
+#include <indigo/indigocat/indigocat_vsop87.h>
+#include <indigo/indigocat/indigocat_transform.h>
 
 /* AU in KM */
 #define AU			149597870
@@ -39117,29 +39117,29 @@ static double sum_series_elp36 (double *t)
 	return result;
 }
 
-void moon_equatorial_coords_prec(double JD, equatorial_coords_s * position, double precision) {
+void indigocat_moon_equatorial_coords_prec(double JD, equatorial_coords_s * position, double precision) {
 	lonlat_coords_s ecl;
 
-	moon_ecliptical_coords(JD, &ecl, precision);
-	ecliptical_to_equatorial_coords(&ecl, JD, position);
+	indigocat_moon_ecliptical_coords(JD, &ecl, precision);
+	indigocat_ecliptical_to_equatorial_coords(&ecl, JD, position);
 }
 
-void moon_ecliptical_coords(double JD, lonlat_coords_s * position, double precision) {
+void indigocat_moon_ecliptical_coords(double JD, lonlat_coords_s * position, double precision) {
 	cartesian_coords_s moon;
 
-	moon_geocentric_coords(JD, &moon, precision);
+	indigocat_moon_geocentric_coords(JD, &moon, precision);
 
 	position->lon = atan2(moon.Y, moon.X);
 	position->lat = atan2(moon.Z, (sqrt((moon.X * moon.X) + (moon.Y * moon.Y))));
-	position->lon = range_degrees(RAD2DEG * position->lon);
+	position->lon = indigocat_range_degrees(RAD2DEG * position->lon);
 	position->lat = RAD2DEG * position->lat;
 }
 
-void moon_equatorial_coords(double JD, equatorial_coords_s * position) {
-	moon_equatorial_coords_prec (JD, position, 0);
+void indigocat_moon_equatorial_coords(double JD, equatorial_coords_s * position) {
+	indigocat_moon_equatorial_coords_prec (JD, position, 0);
 }
 
-void moon_geocentric_coords(double JD, cartesian_coords_s * moon, double precision) {
+void indigocat_moon_geocentric_coords(double JD, cartesian_coords_s * moon, double precision) {
 	double t[5];
 	double elp[36];
 	double a,b,c;

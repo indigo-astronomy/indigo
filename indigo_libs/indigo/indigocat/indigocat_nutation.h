@@ -11,26 +11,23 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-// Thanks to Messrs. Bretagnon and Francou for publishing planetary solution VSOP87.
 
-#ifndef __VSOP87_H
-#define __VSOP87_H
+#ifndef __NUTATION_H
+#define __NUTATION_H
 
-#include <transform.h>
+#include <indigo/indigocat/indigocat_transform.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-struct vsop {
-	float A;
-	float B;
-	float C;
-};
+typedef struct {
+	double longitude;	/* Nutation in longitude, in degrees */
+	double obliquity;	/* Nutation in obliquity, in degrees */
+	double ecliptic;	/* Mean obliquity of the ecliptic, in degrees */
+} nutation_s;
 
-extern void vsop87_to_fk5(heliocentric_coords_s * position, double JD);
-extern double vsop87_calc_series(const struct vsop * data, int terms, double t);
+extern void indigocat_get_nutation(double JD, nutation_s *nutation);
 
 #ifdef __cplusplus
 };

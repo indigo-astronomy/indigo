@@ -18,9 +18,10 @@
 //  Messrs. Bretagnon and Francou.
 
 #include <math.h>
-#include <solar_system.h>
-#include <vsop87.h>
-#include <transform.h>
+
+#include <indigo/indigocat/indigocat_solar_system.h>
+#include <indigo/indigocat/indigocat_vsop87.h>
+#include <indigo/indigocat/indigocat_transform.h>
 
 #define LONG_L0 539
 #define LONG_L1 224
@@ -2112,19 +2113,19 @@ static const struct vsop neptune_radius_r4[RADIUS_R4] = {
 };
 
 
-void neptune_equatorial_coords(double JD, equatorial_coords_s * position) {
+void indigocat_neptune_equatorial_coords(double JD, equatorial_coords_s * position) {
 	heliocentric_coords_s h_sol, h_neptune;
 	cartesian_coords_s g_sol, g_neptune;
 	double a,b,c;
 	double ra, dec, delta, diff, last, t = 0;
 
-	sun_geometric_coords(JD, &h_sol);
-	heliocentric_to_cartesian_coords(&h_sol,  &g_sol);
+	indigocat_sun_geometric_coords(JD, &h_sol);
+	indigocat_heliocentric_to_cartesian_coords(&h_sol,  &g_sol);
 
 	do {
 		last = t;
-		neptune_heliocentric_coords(JD - t, &h_neptune);
-		heliocentric_to_cartesian_coords(&h_neptune, &g_neptune);
+		indigocat_neptune_heliocentric_coords(JD - t, &h_neptune);
+		indigocat_heliocentric_to_cartesian_coords(&h_neptune, &g_neptune);
 
 		a = g_sol.X + g_neptune.X;
 		b = g_sol.Y + g_neptune.Y;
@@ -2140,11 +2141,11 @@ void neptune_equatorial_coords(double JD, equatorial_coords_s * position) {
 	dec = c / delta;
 	dec = asin (dec);
 
-	position->ra = range_degrees(RAD2DEG * (ra));
+	position->ra = indigocat_range_degrees(RAD2DEG * (ra));
 	position->dec = RAD2DEG * (dec);
 }
 
-void neptune_heliocentric_coords(double JD, heliocentric_coords_s * position) {
+void indigocat_neptune_heliocentric_coords(double JD, heliocentric_coords_s * position) {
 	double t, t2, t3, t4;
 	double L0, L1, L2, L3;
 	double B0, B1, B2, B3;
@@ -2157,30 +2158,30 @@ void neptune_heliocentric_coords(double JD, heliocentric_coords_s * position) {
 	t4 = t3 * t;
 
 	/* calc L series */
-	L0 = vsop87_calc_series(neptune_longitude_l0, LONG_L0, t);
-	L1 = vsop87_calc_series(neptune_longitude_l1, LONG_L1, t);
-	L2 = vsop87_calc_series(neptune_longitude_l2, LONG_L2, t);
-	L3 = vsop87_calc_series(neptune_longitude_l3, LONG_L3, t);
+	L0 = indigocat_vsop87_calc_series(neptune_longitude_l0, LONG_L0, t);
+	L1 = indigocat_vsop87_calc_series(neptune_longitude_l1, LONG_L1, t);
+	L2 = indigocat_vsop87_calc_series(neptune_longitude_l2, LONG_L2, t);
+	L3 = indigocat_vsop87_calc_series(neptune_longitude_l3, LONG_L3, t);
 	position->L = (L0 + L1 * t + L2 * t2 + L3 * t3);
 
 	/* calc B series */
-	B0 = vsop87_calc_series(neptune_latitude_b0, LAT_B0, t);
-	B1 = vsop87_calc_series(neptune_latitude_b1, LAT_B1, t);
-	B2 = vsop87_calc_series(neptune_latitude_b2, LAT_B2, t);
-	B3 = vsop87_calc_series(neptune_latitude_b3, LAT_B3, t);
+	B0 = indigocat_vsop87_calc_series(neptune_latitude_b0, LAT_B0, t);
+	B1 = indigocat_vsop87_calc_series(neptune_latitude_b1, LAT_B1, t);
+	B2 = indigocat_vsop87_calc_series(neptune_latitude_b2, LAT_B2, t);
+	B3 = indigocat_vsop87_calc_series(neptune_latitude_b3, LAT_B3, t);
 	position->B = (B0 + B1 * t + B2 * t2 + B3 * t3);
 
 	/* calc R series */
-	R0 = vsop87_calc_series(neptune_radius_r0, RADIUS_R0, t);
-	R1 = vsop87_calc_series(neptune_radius_r1, RADIUS_R1, t);
-	R2 = vsop87_calc_series(neptune_radius_r2, RADIUS_R2, t);
-	R3 = vsop87_calc_series(neptune_radius_r3, RADIUS_R3, t);
-	R4 = vsop87_calc_series(neptune_radius_r4, RADIUS_R4, t);
+	R0 = indigocat_vsop87_calc_series(neptune_radius_r0, RADIUS_R0, t);
+	R1 = indigocat_vsop87_calc_series(neptune_radius_r1, RADIUS_R1, t);
+	R2 = indigocat_vsop87_calc_series(neptune_radius_r2, RADIUS_R2, t);
+	R3 = indigocat_vsop87_calc_series(neptune_radius_r3, RADIUS_R3, t);
+	R4 = indigocat_vsop87_calc_series(neptune_radius_r4, RADIUS_R4, t);
 	position->R = (R0 + R1 * t + R2 * t2 + R3 * t3 + R4 * t4);
 
 	position->L = RAD2DEG * position->L;
 	position->B = RAD2DEG * position->B;
-	position->L = range_degrees(position->L);
+	position->L = indigocat_range_degrees(position->L);
 
-	vsop87_to_fk5(position, JD);
+	indigocat_vsop87_to_fk5(position, JD);
 }

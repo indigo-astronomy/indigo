@@ -66,10 +66,10 @@ static char __buffer__[32];
 #define DEC_PER_SEC 1440
 #define RA_PER_SEC 96
 
-bool is_meade = false;
+bool is_meade = true;
 bool is_10micron = false;
 bool is_gemini = false;
-bool is_avalon = true;
+bool is_avalon = false;
 bool is_onstep = false;
 bool is_zwo = false;
 

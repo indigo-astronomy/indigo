@@ -15,8 +15,9 @@
 //	Created by Rumen Bogdanovski, based on Liam Girdwood's code.
 
 #include <math.h>
-#include <nutation.h>
-#include <dynamical_time.h>
+
+#include <indigo/indigocat/indigocat_nutation.h>
+#include <indigo/indigocat/indigocat_dynamical_time.h>
 
 #define TERMS 63
 #define LN_NUTATION_EPOCH_THRESHOLD 0.1
@@ -171,7 +172,7 @@ static const struct nutation_coefficients coefficients[TERMS] = {
 /* cache values */
 static long double c_JD = 0.0, c_longitude = 0.0, c_obliquity = 0.0, c_ecliptic = 0.0;
 
-void get_nutation(double JD, nutation_s *nutation) {
+void indigocat_get_nutation(double JD, nutation_s *nutation) {
 	long double D,M,MM,F,O,T,T2,T3,JDE;
 	long double coeff_sine, coeff_cos;
 	long double argument;
@@ -183,7 +184,7 @@ void get_nutation(double JD, nutation_s *nutation) {
 		c_JD = JD;
 
 		/* get julian ephemeris day */
-		JDE = jd_to_jde(JD);
+		JDE = indigocat_jd_to_jde(JD);
 
 		T = (JDE - 2451545.0)/36525;
 		T2 = T * T;

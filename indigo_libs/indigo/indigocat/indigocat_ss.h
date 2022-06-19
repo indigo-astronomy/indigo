@@ -1,4 +1,8 @@
-// Created by Rumen Bogdanovski, 2022
+// Copyright (c) 2019 CloudMakers, s. r. o.
+// All rights reserved.
+//
+// You can use this software under the terms of 'INDIGO Astronomy
+// open-source license' (see LICENSE.md).
 //
 // THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 // OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -11,24 +15,40 @@
 // WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-//
-//	Created by Rumen Bogdanovski, based on Liam Girdwood's code.
 
-#ifndef __DYNAMICAL_TIME_H
-#define __DYNAMICAL_TIME_H
+// version history
+// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+/** INDIGO solar system data
+ \file indigocat_ss.h
+ */
 
-/* Calculate approximate dynamical time difference from julian day in seconds */
-double  get_dynamical_time_diff(double JD);
 
-/* brief Calculate julian ephemeris day (JDE) */
-double  jd_to_jde(double JD);
+#ifndef indigocat_ss_h
+#define indigocat_ss_h
 
-#ifdef __cplusplus
-};
-#endif
+typedef enum {
+	MERCURY = 1,
+	VENUS,
+	MARS,
+	JUPITER,
+	SATURN,
+	URANUS,
+	NEPTUNE,
+	PLUTO,
+	SUN,
+	MOON
+} indigocat_ss_id;
 
-#endif
+typedef struct {
+	char id;
+	double ra, dec;
+	float mag;
+	char *name;
+	double ra_now, dec_now;
+} indigocat_ss_entry;
+
+
+extern indigocat_ss_entry *indigocat_get_ss_data(void);
+
+#endif /* indigocat_dso_h */

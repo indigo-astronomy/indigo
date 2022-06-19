@@ -35,18 +35,6 @@ const double TWO_PI = 2 * M_PI;
 const double DEG2RAD = M_PI / 180.0;
 const double RAD2DEG = 180.0 / M_PI;
 
-const double DELTA_T = 34 + 32.184 + 0.477677;
-const double DELTA_UTC_UT1 = -0.477677 / 86400.0;
-
-indigo_spherical_point_t indigo_apply_proper_motion(const indigo_spherical_point_t *c0, double pmra, double pmdec, double eq0, double eq1) {
-	indigo_spherical_point_t c1 = {0, 0, 1};
-	double t = eq1 - eq0;
-	c1.a = c0->a + t * pmra * DEG2RAD / 3600000;
-	c1.d = c0->d + t * pmdec * DEG2RAD / 3600000;
-	c1.a = fmod(c1.a + TWO_PI, TWO_PI);
-	return c1;
-}
-
 /* Convenience wrappers for indigo_precess(...) */
 
 static double jnow() {
@@ -72,15 +60,6 @@ void indigo_eq_to_j2k(const double eq, double *ra, double *dec) {
 void indigo_j2k_to_jnow(double *ra, double *dec) {
 	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
 	coordinates = indigo_precess(&coordinates, 2000.0, jnow());
-	*ra = coordinates.a * RAD2DEG / 15;
-	*dec = coordinates.d * RAD2DEG;
-}
-
-void indigo_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec) {
-	indigo_spherical_point_t coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD, 0 };
-	double now = jnow();
-	coordinates = indigo_apply_proper_motion(&coordinates, pmra, pmdec, 2000.0, now);
-	coordinates = indigo_precess(&coordinates, 2000.0, now);
 	*ra = coordinates.a * RAD2DEG / 15;
 	*dec = coordinates.d * RAD2DEG;
 }

@@ -14,8 +14,10 @@
 //
 //	Created by Rumen Bogdanovski, based on Liam Girdwood's code.
 
-#include <dynamical_time.h>
 #include <stdio.h>
+
+#include <indigo/indigocat/indigocat_dynamical_time.h>
+
 #define TERMS 192
 
 struct year_TD {
@@ -161,7 +163,7 @@ static double get_dynamical_diff_other(double JD) {
     return (TD);
 }
 
-double get_dynamical_time_diff(double JD) {
+double indigocat_get_dynamical_time_diff(double JD) {
 	double TD;
 
 	/* check when JD is, and use corresponding formula */
@@ -185,11 +187,11 @@ double get_dynamical_time_diff(double JD) {
 	return TD;
 }
 
-double jd_to_jde(double JD) {
+double indigocat_jd_to_jde(double JD) {
 	double JDE;
 	double secs_in_day = 24 * 60 * 60;
 
-	JDE = JD +  get_dynamical_time_diff (JD) / secs_in_day;
+	JDE = JD +  indigocat_get_dynamical_time_diff (JD) / secs_in_day;
 
 	return JDE;
 }
