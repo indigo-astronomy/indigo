@@ -6,7 +6,7 @@ LIBINDIGOCAT_FILES = $(addsuffix .o, $(basename $(wildcard *.c)))
 
 all:	libindigocat
 
-libindigocat: $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigocat: $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libindigocat.$(SOEXT)
 
 $(BUILD_LIB)/libindigocat.a: $(LIBINDIGOCAT_FILES)
 	$(AR) $(ARFLAGS) $@ $^
