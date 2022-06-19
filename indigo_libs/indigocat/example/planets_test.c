@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include <solar_system.h>
-#include <transform.h>
+#include <indigocat/indigocat_solar_system.h>
 #include <math.h>
 #include <time.h>
 
@@ -57,34 +56,34 @@ int main (int argc, char * argv[]) {
 	printf("| JD %f\n", JD);
 	printf("|-----------------------\n");
 
-	mercury_equatorial_coords(JD, &equ);
+	indigocat_mercury_equatorial_coords(JD, &equ);
 	print_planet("Mercury", &equ);
 
-	venus_equatorial_coords(JD, &equ);
+	indigocat_venus_equatorial_coords(JD, &equ);
 	print_planet("Venus", &equ);
 
-	mars_equatorial_coords(JD, &equ);
+	indigocat_mars_equatorial_coords(JD, &equ);
 	print_planet("Mars", &equ);
 
-	jupiter_equatorial_coords(JD, &equ);
+	indigocat_jupiter_equatorial_coords(JD, &equ);
 	print_planet("Jupiter", &equ);
 
-	saturn_equatorial_coords(JD, &equ);
+	indigocat_saturn_equatorial_coords(JD, &equ);
 	print_planet("Saturn", &equ);
 
-	uranus_equatorial_coords(JD, &equ);
+	indigocat_uranus_equatorial_coords(JD, &equ);
 	print_planet("Uranus", &equ);
 
-	neptune_equatorial_coords(JD, &equ);
+	indigocat_neptune_equatorial_coords(JD, &equ);
 	print_planet("Neptune", &equ);
 
-	pluto_equatorial_coords(JD, &equ);
+	indigocat_pluto_equatorial_coords(JD, &equ);
 	print_planet("Pluto", &equ);
 
-	moon_equatorial_coords(JD, &equ);
+	indigocat_moon_equatorial_coords(JD, &equ);
 	print_planet("Moon", &equ);
 
-	sun_equatorial_coords(JD, &equ);
+	indigocat_sun_equatorial_coords(JD, &equ);
 	print_planet("Sun", &equ);
 
 	return 0;
