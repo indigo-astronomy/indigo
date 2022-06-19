@@ -1,5 +1,5 @@
 CC       = gcc
-CFLAGS   = -I../ -L../ -g -O3 -Wall -Wextra
+CFLAGS   = -I../../indigo/ -I../../ -L../../../build/lib -g -O3 -Wall -Wextra
 LDFLAGS  = -lindigocat -lm
 
 TARGET = planets_test

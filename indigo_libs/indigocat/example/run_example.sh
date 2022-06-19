@@ -1,2 +1,2 @@
 #!/bin/bash
-LD_LIBRARY_PATH=../ ./planets_test
+LD_LIBRARY_PATH=../../../build/lib ./planets_test
