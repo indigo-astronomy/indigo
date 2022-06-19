@@ -51,10 +51,10 @@ typedef struct {
 	double Z;	/* Rectangular Z coordinate */
 } cartesian_coords_s;
 
-extern void ecliptical_to_equatorial_coords(lonlat_coords_s * object, double JD, equatorial_coords_s *position);
-extern void heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_coords_s *position);
+extern void indigocat_ecliptical_to_equatorial_coords(lonlat_coords_s * object, double JD, equatorial_coords_s *position);
+extern void indigocat_heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_coords_s *position);
 
-extern double range_degrees(double angle);
+extern double indigocat_range_degrees(double angle);
 extern double range_radians2(double angle);
 
 #ifdef __cplusplus

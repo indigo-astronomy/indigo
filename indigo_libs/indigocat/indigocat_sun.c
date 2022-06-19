@@ -15,29 +15,30 @@
 //	Created by Rumen Bogdanovski, based on Liam Girdwood's code.
 
 #include <math.h>
-#include <stdio.h>
-#include <solar_system.h>
-#include <nutation.h>
-#include <transform.h>
 
-void sun_geometric_coords(double JD, heliocentric_coords_s * position) {
-	earth_heliocentric_coords(JD, position);
+#include <indigo/indigocat/indigocat_solar_system.h>
+#include <indigo/indigocat/indigocat_vsop87.h>
+#include <indigo/indigocat/indigocat_transform.h>
+#include <indigo/indigocat/indigocat_nutation.h>
+
+void indigocat_sun_geometric_coords(double JD, heliocentric_coords_s * position) {
+	indigocat_earth_heliocentric_coords(JD, position);
 
 	position->L += 180.0;
-	position->L = range_degrees(position->L);
+	position->L = indigocat_range_degrees(position->L);
 	position->B *= -1.0;
 }
 
-void sun_equatorial_coords(double JD, equatorial_coords_s * position) {
+void indigocat_sun_equatorial_coords(double JD, equatorial_coords_s * position) {
 	heliocentric_coords_s sol;
 	lonlat_coords_s LB;
 	nutation_s nutation;
 	double aberration;
 
-	sun_geometric_coords(JD, &sol);
+	indigocat_sun_geometric_coords(JD, &sol);
 
 	/* add nutation */
-	get_nutation(JD, &nutation);
+	indigocat_get_nutation(JD, &nutation);
 	sol.L += nutation.longitude;
 
 	/* aberration */
@@ -47,5 +48,5 @@ void sun_equatorial_coords(double JD, equatorial_coords_s * position) {
 	/* transform to equatorial */
 	LB.lat = sol.B;
 	LB.lon = sol.L;
-	ecliptical_to_equatorial_coords(&LB, JD, position);
+	indigocat_ecliptical_to_equatorial_coords(&LB, JD, position);
 }

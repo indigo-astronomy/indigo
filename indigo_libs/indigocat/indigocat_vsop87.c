@@ -15,9 +15,10 @@
 // Thanks to Messrs. Bretagnon and Francou for publishing planetary solution VSOP87.
 
 #include <math.h>
-#include <vsop87.h>
 
-double vsop87_calc_series(const struct vsop * data, int terms, double t) {
+#include <indigo/indigocat/indigocat_vsop87.h>
+
+double indigocat_vsop87_calc_series(const struct vsop * data, int terms, double t) {
 	double value = 0;
 	int i;
 
@@ -29,7 +30,7 @@ double vsop87_calc_series(const struct vsop * data, int terms, double t) {
 	return value;
 }
 
-void vsop87_to_fk5(heliocentric_coords_s * position, double JD) {
+void indigocat_vsop87_to_fk5(heliocentric_coords_s * position, double JD) {
 	double LL, cos_LL, sin_LL, T, delta_L, delta_B, B;
 
 	/* get julian centuries from 2000 */

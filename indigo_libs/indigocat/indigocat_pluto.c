@@ -15,11 +15,10 @@
 //	Created by Rumen Bogdanovski, based on Liam Girdwood's code.
 
 #include <math.h>
-#include <stdlib.h>
-#include <solar_system.h>
-#include <vsop87.h>
-#include <transform.h>
 
+#include <indigo/indigocat/indigocat_solar_system.h>
+#include <indigo/indigocat/indigocat_vsop87.h>
+#include <indigo/indigocat/indigocat_transform.h>
 
 #define PLUTO_COEFFS 43
 
@@ -229,19 +228,19 @@ static const struct pluto_radius radius[PLUTO_COEFFS] = {
 };
 
 
-void pluto_equatorial_coords(double JD, equatorial_coords_s * position) {
+void indigocat_pluto_equatorial_coords(double JD, equatorial_coords_s * position) {
 	heliocentric_coords_s h_sol, h_pluto;
 	cartesian_coords_s g_sol, g_pluto;
 	double a,b,c;
 	double ra, dec, delta, diff, last, t = 0;
 
-	sun_geometric_coords(JD, &h_sol);
-	heliocentric_to_cartesian_coords(&h_sol,  &g_sol);
+	indigocat_sun_geometric_coords(JD, &h_sol);
+	indigocat_heliocentric_to_cartesian_coords(&h_sol,  &g_sol);
 
 	do {
 		last = t;
-		pluto_heliocentric_coords (JD - t, &h_pluto);
-		heliocentric_to_cartesian_coords(&h_pluto, &g_pluto);
+		indigocat_pluto_heliocentric_coords (JD - t, &h_pluto);
+		indigocat_heliocentric_to_cartesian_coords(&h_pluto, &g_pluto);
 
 		a = g_sol.X + g_pluto.X;
 		b = g_sol.Y + g_pluto.Y;
@@ -257,11 +256,11 @@ void pluto_equatorial_coords(double JD, equatorial_coords_s * position) {
 	dec = c / delta;
 	dec = asin (dec);
 
-	position->ra = range_degrees(RAD2DEG * ra);
+	position->ra = indigocat_range_degrees(RAD2DEG * ra);
 	position->dec = RAD2DEG * dec;
 }
 
-void pluto_heliocentric_coords(double JD, heliocentric_coords_s * position) {
+void indigocat_pluto_heliocentric_coords(double JD, heliocentric_coords_s * position) {
 	double sum_longitude = 0, sum_latitude = 0, sum_radius = 0;
 	double J, S, P;
 	double t, a, sin_a, cos_a;

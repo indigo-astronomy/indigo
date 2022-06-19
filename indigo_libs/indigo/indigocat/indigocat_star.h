@@ -19,31 +19,13 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO HIP & DSO data
- \file indigo_cat_data.h
+/** INDIGO HIP data
+ \file indigocat_star.h
  */
 
 
-#ifndef star_data_h
-#define star_data_h
-
-typedef enum {
-	GALAXY,
-	GALAXY_PAIR,
-	GALAXY_TRIPLET,
-	OPEN_CLUSTER,
-	GLOBULAR_CLUSTER,
-	NEBULA,
-	PLANETARY_NEBULA,
-	REFLECTION_NEBULA,
-	EMISSION_NEBULA,
-	SUPERNOVA_REMNANT,
-	HII_REGION,
-	ASSOCIATION_OF_STARS,
-	STAR_CLUSTER_NEBULA,
-	GROUP_OF_GALAXIES,
-	NOVA_STAR
-} indigo_dso_type;
+#ifndef indigocat_star_h
+#define indigocat_star_h
 
 typedef struct {
 	int hip;
@@ -51,20 +33,8 @@ typedef struct {
 	float promora, promodec, px, rv, mag;
 	char *name;
 	double ra_now, dec_now;
-} indigo_star_entry;
+} indigocat_star_entry;
 
-typedef struct {
-	char *id;
-	char type;
-	double ra, dec;
-	float mag, r1, r2, angle;
-	char *name;
-	double ra_now, dec_now;
-} indigo_dso_entry;
+extern indigocat_star_entry *indigocat_get_star_data(void);
 
-extern char *indigo_dso_type_description[];
-
-extern indigo_star_entry *indigo_get_star_data(void);
-extern indigo_dso_entry *indigo_get_dso_data(void);
-
-#endif /* star_data_h */
+#endif /* indigocat_star_h */

@@ -15,10 +15,11 @@
 //	Created by Rumen Bogdanovski, based on Liam Girdwood's code.
 
 #include <math.h>
-#include <transform.h>
-#include <nutation.h>
 
-void heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_coords_s * position) {
+#include <indigo/indigocat/indigocat_transform.h>
+#include <indigo/indigocat/indigocat_nutation.h>
+
+void indigocat_heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_coords_s * position) {
 	double sin_e, cos_e;
 	double cos_B, sin_B, sin_L, cos_L;
 
@@ -37,12 +38,12 @@ void heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_c
 	position->Z = object->R * (sin_L * cos_B * sin_e + sin_B * cos_e);
 }
 
-void ecliptical_to_equatorial_coords(lonlat_coords_s * object, double JD, equatorial_coords_s * position)
+void indigocat_ecliptical_to_equatorial_coords(lonlat_coords_s * object, double JD, equatorial_coords_s * position)
 {
 	double ra, declination, longitude, latitude;
 	nutation_s nutation;
 
-	get_nutation (JD, &nutation);
+	indigocat_get_nutation (JD, &nutation);
 	nutation.ecliptic = DEG2RAD * nutation.ecliptic;
 
 	longitude = DEG2RAD * object->lon;
@@ -52,12 +53,12 @@ void ecliptical_to_equatorial_coords(lonlat_coords_s * object, double JD, equato
 	declination = sin(latitude) * cos(nutation.ecliptic) + cos(latitude) * sin(nutation.ecliptic) * sin(longitude);
 	declination = asin(declination);
 
-	position->ra = range_degrees(RAD2DEG * ra);
+	position->ra = indigocat_range_degrees(RAD2DEG * ra);
 	position->dec = RAD2DEG * declination;
 }
 
 /* puts a large angle in the correct range 0 - 360 degrees */
-double range_degrees(double angle)
+double indigocat_range_degrees(double angle)
 {
 	double temp;
 

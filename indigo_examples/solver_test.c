@@ -182,7 +182,7 @@ indigo_result indigo_match_quads(indigo_quad *image_quads, int image_quads_count
 	double max_dec = dec + radius;
 	int item_count = 16 * 1024;
 	int last_item = 0;
-	indigo_star_entry *star_entry = indigo_star_data;
+	indigocat_star_entry *star_entry = indigo_star_data;
 	indigo_star *star, *reference_stars = indigo_safe_malloc(item_count * sizeof(indigo_star));
 	while (star_entry->hip) {
 		ra = star_entry->ra;

@@ -18,9 +18,10 @@
 //  Messrs. Bretagnon and Francou.
 
 #include <math.h>
-#include <solar_system.h>
-#include <vsop87.h>
-#include <transform.h>
+
+#include <indigo/indigocat/indigocat_solar_system.h>
+#include <indigo/indigocat/indigocat_vsop87.h>
+#include <indigo/indigocat/indigocat_transform.h>
 
 #define LONG_L0 1409
 #define LONG_L1 891
@@ -6512,19 +6513,19 @@ static const struct vsop mars_radius_r5[RADIUS_R5] = {
     {     0.00000000002,  0.40954426011,     9866.41688066520},
 };
 
-void mars_equatorial_coords(double JD, equatorial_coords_s * position) {
+void indigocat_mars_equatorial_coords(double JD, equatorial_coords_s * position) {
 	heliocentric_coords_s h_sol, h_mars;
 	cartesian_coords_s g_sol, g_mars;
 	double a,b,c;
 	double ra, dec, delta, diff, last, t = 0;
 
-	sun_geometric_coords(JD, &h_sol);
-	heliocentric_to_cartesian_coords(&h_sol, &g_sol);
+	indigocat_sun_geometric_coords(JD, &h_sol);
+	indigocat_heliocentric_to_cartesian_coords(&h_sol, &g_sol);
 
 	do {
 		last = t;
-		mars_heliocentric_coords(JD - t, &h_mars);
-		heliocentric_to_cartesian_coords(&h_mars, &g_mars);
+		indigocat_mars_heliocentric_coords(JD - t, &h_mars);
+		indigocat_heliocentric_to_cartesian_coords(&h_mars, &g_mars);
 
 		a = g_sol.X + g_mars.X;
 		b = g_sol.Y + g_mars.Y;
@@ -6540,11 +6541,11 @@ void mars_equatorial_coords(double JD, equatorial_coords_s * position) {
 	dec = c / delta;
 	dec = asin (dec);
 
-	position->ra = range_degrees(RAD2DEG * ra);
+	position->ra = indigocat_range_degrees(RAD2DEG * ra);
 	position->dec = RAD2DEG * dec;
 }
 
-void mars_heliocentric_coords(double JD, heliocentric_coords_s * position) {
+void indigocat_mars_heliocentric_coords(double JD, heliocentric_coords_s * position) {
 	double t, t2, t3, t4, t5;
 	double L0, L1, L2, L3, L4, L5;
 	double B0, B1, B2, B3, B4, B5;
@@ -6558,35 +6559,35 @@ void mars_heliocentric_coords(double JD, heliocentric_coords_s * position) {
 	t5 = t4 * t;
 
 	/* calc L series */
-	L0 = vsop87_calc_series(mars_longitude_l0, LONG_L0, t);
-	L1 = vsop87_calc_series(mars_longitude_l1, LONG_L1, t);
-	L2 = vsop87_calc_series(mars_longitude_l2, LONG_L2, t);
-	L3 = vsop87_calc_series(mars_longitude_l3, LONG_L3, t);
-	L4 = vsop87_calc_series(mars_longitude_l4, LONG_L4, t);
-	L5 = vsop87_calc_series(mars_longitude_l5, LONG_L5, t);
+	L0 = indigocat_vsop87_calc_series(mars_longitude_l0, LONG_L0, t);
+	L1 = indigocat_vsop87_calc_series(mars_longitude_l1, LONG_L1, t);
+	L2 = indigocat_vsop87_calc_series(mars_longitude_l2, LONG_L2, t);
+	L3 = indigocat_vsop87_calc_series(mars_longitude_l3, LONG_L3, t);
+	L4 = indigocat_vsop87_calc_series(mars_longitude_l4, LONG_L4, t);
+	L5 = indigocat_vsop87_calc_series(mars_longitude_l5, LONG_L5, t);
 	position->L = (L0 + L1 * t + L2 * t2 + L3 * t3 + L4 * t4 + L5 * t5);
 
 	/* calc B series */
-	B0 = vsop87_calc_series(mars_latitude_b0, LAT_B0, t);
-	B1 = vsop87_calc_series(mars_latitude_b1, LAT_B1, t);
-	B2 = vsop87_calc_series(mars_latitude_b2, LAT_B2, t);
-	B3 = vsop87_calc_series(mars_latitude_b3, LAT_B3, t);
-	B4 = vsop87_calc_series(mars_latitude_b4, LAT_B4, t);
-	B5 = vsop87_calc_series(mars_latitude_b5, LAT_B5, t);
+	B0 = indigocat_vsop87_calc_series(mars_latitude_b0, LAT_B0, t);
+	B1 = indigocat_vsop87_calc_series(mars_latitude_b1, LAT_B1, t);
+	B2 = indigocat_vsop87_calc_series(mars_latitude_b2, LAT_B2, t);
+	B3 = indigocat_vsop87_calc_series(mars_latitude_b3, LAT_B3, t);
+	B4 = indigocat_vsop87_calc_series(mars_latitude_b4, LAT_B4, t);
+	B5 = indigocat_vsop87_calc_series(mars_latitude_b5, LAT_B5, t);
 	position->B = (B0 + B1 * t + B2 * t2 + B3 * t3 + B4 * t4 + B5 * t5);
 
 	/* calc R series */
-	R0 = vsop87_calc_series(mars_radius_r0, RADIUS_R0, t);
-	R1 = vsop87_calc_series(mars_radius_r1, RADIUS_R1, t);
-	R2 = vsop87_calc_series(mars_radius_r2, RADIUS_R2, t);
-	R3 = vsop87_calc_series(mars_radius_r3, RADIUS_R3, t);
-	R4 = vsop87_calc_series(mars_radius_r4, RADIUS_R4, t);
-	R5 = vsop87_calc_series(mars_radius_r5, RADIUS_R5, t);
+	R0 = indigocat_vsop87_calc_series(mars_radius_r0, RADIUS_R0, t);
+	R1 = indigocat_vsop87_calc_series(mars_radius_r1, RADIUS_R1, t);
+	R2 = indigocat_vsop87_calc_series(mars_radius_r2, RADIUS_R2, t);
+	R3 = indigocat_vsop87_calc_series(mars_radius_r3, RADIUS_R3, t);
+	R4 = indigocat_vsop87_calc_series(mars_radius_r4, RADIUS_R4, t);
+	R5 = indigocat_vsop87_calc_series(mars_radius_r5, RADIUS_R5, t);
 	position->R = (R0 + R1 * t + R2 * t2 + R3 * t3 + R4 * t4 + R5 * t5);
 
 	position->L = RAD2DEG * position->L;
 	position->B = RAD2DEG * position->B;
-	position->L = range_degrees(position->L);
+	position->L = indigocat_range_degrees(position->L);
 
-	vsop87_to_fk5(position, JD);
+	indigocat_vsop87_to_fk5(position, JD);
 }

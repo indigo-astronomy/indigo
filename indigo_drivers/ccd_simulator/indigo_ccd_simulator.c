@@ -37,9 +37,10 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
-#include <indigo/indigo_cat_data.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_align.h>
+
+#include <indigo/indigocat/indigocat_star.h>
 
 #include "indigo_ccd_simulator.h"
 
@@ -173,7 +174,7 @@ static void search_stars(indigo_device *device) {
 		double ppr_cos = ppr * cos(angle);
 		double ppr_sin = ppr * sin(angle);
 		PRIVATE_DATA->star_count = 0;
-		for (indigo_star_entry *star_data = indigo_get_star_data(); star_data->hip; star_data++) {
+		for (indigocat_star_entry *star_data = indigocat_get_star_data(); star_data->hip; star_data++) {
 			if (star_data->mag > GUIDER_MAX_MAG)
 				continue;
 			double ra = (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 ? star_data->ra : star_data->ra_now) * h2r;
