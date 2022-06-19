@@ -26,7 +26,7 @@ struct nutation_coefficients
     double obliquity2;
 };
 
-const static struct nutation_arguments arguments[TERMS] = {
+static const struct nutation_arguments arguments[TERMS] = {
     {0.0,	0.0,	0.0,	0.0,	1.0},
     {-2.0,	0.0,	0.0,	2.0,	2.0},
     {0.0,	0.0,	0.0,	2.0,	2.0},
@@ -91,7 +91,7 @@ const static struct nutation_arguments arguments[TERMS] = {
     {0.0,	0.0,	3.0,	2.0,	2.0},
     {2.0,	-1.0,	0.0,	2.0,	2.0}};
 
-const static struct nutation_coefficients coefficients[TERMS] = {
+static const struct nutation_coefficients coefficients[TERMS] = {
     {-171996.0,	-174.2,	92025.0,8.9},
     {-13187.0,	-1.6,  	5736.0,	-3.1},
     {-2274.0, 	-0.2,  	977.0,	-0.5},
