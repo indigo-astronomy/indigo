@@ -88,8 +88,8 @@ indigocat_ss_entry *indigocat_get_ss_data(void) {
 			default:
 				return indigo_ss_data;
 		}
-		indigo_ss_data[i].ra_now = position.ra;
-		indigo_ss_data[i].dec_now = position.dec;
+		indigo_ss_data[i].ra = position.ra;
+		indigo_ss_data[i].dec = position.dec;
 		indigocat_j2k_to_jnow_pm(&position.ra, &position.dec, 0, 0);
 		indigo_ss_data[i].ra_now = position.ra;
 		indigo_ss_data[i].dec_now = position.dec;
