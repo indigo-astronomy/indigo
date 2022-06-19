@@ -230,11 +230,9 @@ static bool asi_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	char command[128], response[128];
 	time_t seconds = *secs + utc_offset * 3600;
 	struct tm tm;
+	tm.tm_isdst = daylight;
 	gmtime_r(&seconds, &tm);
 	sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-	// :SCMM/DD/YY# returns two delimiters response:
-	// "1Updating Planetary Data#                                #"
-	// readout progress part
 	bool result = asi_command(device, command, response, 1, 0);
 	if (!result || *response != '1') {
 		return false;
@@ -271,12 +269,10 @@ static bool asi_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 				tm.tm_gmtoff = *utc_offset * 3600;
 				if (PRIVATE_DATA->use_dst_commands) {
 					if (asi_command(device, ":GH#", response, sizeof(response), 0)) {
-						tm.tm_isdst = atoi(response);
+						*utc_offset += atoi(response);
 					}
-				} else {
-					tm.tm_isdst = daylight;
 				}
-				*secs = mktime(&tm);
+				*secs = timegm(&tm) - *utc_offset * 3600;
 				return true;
 			}
 		}
