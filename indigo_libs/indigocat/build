@@ -1,0 +1,3 @@
+#!/bin/sh
+PLANETS="mercury.c venus.c mars.c jupiter.c saturn.c uranus.c neptune.c pluto.c moon.c"
+gcc -I. -o planet_test dynamical_time.c nutation.c vsop87.c transform.c  earth.c sun.c $PLANETS planets_test.c -lm
