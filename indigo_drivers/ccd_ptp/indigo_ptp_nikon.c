@@ -1232,8 +1232,9 @@ bool ptp_nikon_focus(indigo_device *device, int steps) {
 	if (steps == 0)
 		return true;
 	bool result = true;
-	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_LiveViewAFFocus);
-	if (property && ptp_operation_supported(device, ptp_operation_nikon_MfDrive)) {
+//	ptp_property *property = ptp_property_supported(device, ptp_property_nikon_LiveViewAFFocus);
+//	if (property && ptp_operation_supported(device, ptp_operation_nikon_MfDrive)) {
+	if (ptp_operation_supported(device, ptp_operation_nikon_MfDrive)) {
 		bool temporary_lv = false;
 		if (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE && ptp_transaction_0_0(device, ptp_operation_nikon_StartLiveView)) {
 			temporary_lv = true;
