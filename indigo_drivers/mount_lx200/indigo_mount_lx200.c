@@ -386,7 +386,6 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 			if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 				return false;
 			} else {
-				printf("<< %s\n", command);
 				return true;
 			}
 		}
