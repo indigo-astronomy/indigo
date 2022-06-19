@@ -449,7 +449,7 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 					}
 					*utc_offset = -atoi(response);
 					if (PRIVATE_DATA->use_dst_commands) {
-						if (asi_command(device, ":GH#", response, sizeof(response), 0)) {
+						if (meade_command(device, ":GH#", response, sizeof(response), 0)) {
 							*utc_offset += atoi(response);
 						}
 					}
