@@ -28,7 +28,7 @@ static double get_dynamical_diff_other(double JD);
 
 
 /* dynamical time in seconds for every second year from 1620 to 1992 */
-const static double delta_t[TERMS] = {
+static const double delta_t[TERMS] = {
     124.0, 115.0, 106.0, 98.0, 91.0,
     85.0, 79.0, 74.0, 70.0, 65.0,
     62.0, 58.0, 55.0, 53.0, 50.0,
