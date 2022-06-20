@@ -52,6 +52,7 @@
 #include <indigo/indigo_align.h>
 #include <indigo/indigocat/indigocat_star.h>
 #include <indigo/indigocat/indigocat_dso.h>
+#include <indigo/indigocat/indigocat_ss.h>
 
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
@@ -469,12 +470,25 @@ static void *indigo_add_star_json_resource(int max_mag) {
 				name = "";
 			}
 		}
-		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f,\"con\":\"\",\"bv\":0},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, star_data[i].hip, name, desig, star_data[i].mag, h2deg(star_data[i].ra), star_data[i].dec);
+		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\":\"%s\",\"mag\": %.2f},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, star_data[i].hip, name, desig, star_data[i].mag, h2deg(star_data[i].ra), star_data[i].dec);
 		if (buffer_size - size < 1024) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
 		}
 		sep = ",";
 	}
+
+	indigocat_ss_entry *ss_data = indigocat_get_ss_data();
+	for (int i = 0; ss_data[i].id; i++) {
+		double mag = ss_data[i].mag;
+		if (mag < -7)
+			mag = -7;
+		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\": \"\",\"mag\": %.2f,\"bv\":-5},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, -ss_data[i].id, ss_data[i].name, mag, h2deg(ss_data[i].ra), ss_data[i].dec);
+		if (buffer_size - size < 1024) {
+			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);
+		}
+	}
+
+
 	size += sprintf(buffer + size, "]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
