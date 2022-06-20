@@ -272,10 +272,10 @@ static bool asi_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 static bool asi_get_sidereal_time(indigo_device *device, double *siderial_time) {
 	int h, m, s;
 	char response[128];
-	char separator[2];
 
-	if (asi_command(device, ":GS#", response, sizeof(response), 0) && sscanf(response, "%d%c%d%c%d", &h, separator, &m, separator, &s) == 5) {
+	if (asi_command(device, ":GS#", response, sizeof(response), 0) && (sscanf(response, "%d:%d:%d", &h, &m, &s) == 3)) {
 		*siderial_time = (double)h + m/60.0 + s/3600.0;
+		return true;
 	} else {
 		return false;
 	}
@@ -581,8 +581,11 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 
-		double st;
-		asi_get_sidereal_time(device, &st);
+		if(indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+			double st;
+			asi_get_sidereal_time(device, &st);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount LST: %lf", st);
+		}
 
 		if (success && (success = asi_command(device, ":Gm#", response, sizeof(response), 0))) {
 			if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
