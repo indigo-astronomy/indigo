@@ -80,7 +80,6 @@ typedef struct {
 	indigo_property *mode_property;
 	indigo_property *zwo_buzzer_property;
 	indigo_timer *focuser_timer;
-	bool use_dst_commands;
 	bool home_changed;
 	bool tracking_changed;
 	bool tracking_rate_changed;
@@ -237,10 +236,6 @@ static bool asi_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	if (!result || *response != '1') {
 		return false;
 	} else {
-		if (PRIVATE_DATA->use_dst_commands) {
-			sprintf(command, ":SH%d#", daylight);
-			asi_command(device, command, NULL, 0, 0);
-		}
 		sprintf(command, ":SG%+03d#", -utc_offset);
 		if (!asi_command(device, command, response, 1, 0) || *response != '1') {
 			return false;
@@ -266,12 +261,6 @@ static bool asi_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 			tm.tm_mon -= 1;
 			if (asi_command(device, ":GG#", response, sizeof(response), 0)) {
 				*utc_offset = -atoi(response);
-				tm.tm_gmtoff = *utc_offset * 3600;
-				if (PRIVATE_DATA->use_dst_commands) {
-					if (asi_command(device, ":GH#", response, sizeof(response), 0)) {
-						*utc_offset += atoi(response);
-					}
-				}
 				*secs = timegm(&tm) - *utc_offset * 3600;
 				return true;
 			}
@@ -280,7 +269,7 @@ static bool asi_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 	return false;
 }
 
-static bool asi_get_siderial_time(indigo_device *device, double *siderial_time) {
+static bool asi_get_sidereal_time(indigo_device *device, double *siderial_time) {
 	int h, m, s;
 	char response[128];
 	char separator[2];
@@ -591,6 +580,10 @@ static void position_timer_callback(indigo_device *device) {
 				PRIVATE_DATA->prev_home_state = false;
 			}
 		}
+
+		double st;
+		asi_get_sidereal_time(device, &st);
+
 		if (success && (success = asi_command(device, ":Gm#", response, sizeof(response), 0))) {
 			if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
