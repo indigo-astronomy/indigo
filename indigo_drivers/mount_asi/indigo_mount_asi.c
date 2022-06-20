@@ -581,12 +581,6 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 
-		if(indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-			double st;
-			asi_get_sidereal_time(device, &st);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount LST: %lf", st);
-		}
-
 		if (success && (success = asi_command(device, ":Gm#", response, sizeof(response), 0))) {
 			if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
@@ -618,6 +612,13 @@ static void position_timer_callback(indigo_device *device) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+
+		if(indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+			double st;
+			asi_get_sidereal_time(device, &st);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount LST = %lf, Host LST = %lf, offset = %.2fs", st, MOUNT_LST_TIME_ITEM->number.value, fabs(st - MOUNT_LST_TIME_ITEM->number.value)*3600);
+		}
+
 		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, &PRIVATE_DATA->position_timer);
 	}
 }
