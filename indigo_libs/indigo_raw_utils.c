@@ -1932,7 +1932,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
 	int star_size = 100;
-	const int clip_edge   = height >= FIND_STAR_EDGE_CLIPPING * 4 ? FIND_STAR_EDGE_CLIPPING : (height / 4);
+	const int clip_edge = height >= FIND_STAR_EDGE_CLIPPING * 4 ? FIND_STAR_EDGE_CLIPPING : (height / 4);
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
 	uint16_t max_luminance = 0;
@@ -2044,7 +2044,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 				for (int i = star_x; i <= max_i; i++) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
-						luminance += buf[off] - threshold;
+						luminance += buf[off] - threshold_hist;
 						buf[off] = 0;
 					} else {
 						break;
@@ -2057,7 +2057,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 				for (int i = star_x - 1; i >= min_i; i--) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
-						luminance += buf[off] - threshold;
+						luminance += buf[off] - threshold_hist;
 						buf[off] = 0;
 					} else {
 						break;
@@ -2070,7 +2070,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 				for (int i = star_x; i <= max_i; i++) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
-						luminance += buf[off] - threshold;
+						luminance += buf[off] - threshold_hist;
 						buf[off] = 0;
 					} else {
 						break;
@@ -2083,7 +2083,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 				for (int i = star_x - 1; i >= min_i; i--) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
-						luminance += buf[off] - threshold;
+						luminance += buf[off] - threshold_hist;
 						buf[off] = 0;
 					} else {
 						break;
@@ -2104,7 +2104,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 				star.oversaturated = lmax == max_luminance;
 				star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
 				star.nc_distance /= divider;
-				star.luminance = log(fabs(luminance));
+				star.luminance = (luminance > 0) ? log(fabs(luminance)) : 0;
 				star_list[found++] = star;
 			}
 		}
