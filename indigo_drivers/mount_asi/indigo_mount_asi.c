@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -86,6 +86,7 @@ typedef struct {
 	bool focus_aborted;
 	int prev_tracking_rate;
 	bool prev_home_state;
+	int prev_tracking_error;
 } asi_private_data;
 
 static char *asi_error_string(unsigned int code) {
@@ -98,7 +99,7 @@ static char *asi_error_string(unsigned int code) {
 		"Target is below horizon",
 		"Target is beow the altitude limit",
 		"Time and location is not set",
-		"Unkonwn error"
+		"Warning: Meridian reached, tracking stopeed"
 	};
 	if (code > 8) code = 0;
 	return (char *)error_string[code];
@@ -393,15 +394,25 @@ static bool asi_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 	return true;
 }
 
-/*
+// NOTE! requires firmware 1.1.1
 static bool asi_get_tracking_status(indigo_device *device, bool *is_tracking, int *error_code) {
 	char response[128] = {0};
-	// Document seems to be wrong!!!
 	bool res = asi_command(device, ":GAT#", response, sizeof(response), 0);
 	if (!res) return false;
-	if (*response == '0')  return true;
+	if (response[0] == '0' && response[1] == '\0') {
+		*is_tracking = 0;
+		*error_code = 0;
+	} else if (response[0] == '1' && response[1] == '\0') {
+		*is_tracking = 1;
+		*error_code = 0;
+	} else if (response[0] == 'e') {
+		*is_tracking = 0;
+		*error_code = atoi(response+1);
+	} else {
+		return false;
+	}
+	return true;
 }
-*/
 
 static bool asi_set_tracking(indigo_device *device, bool on) {
 	if (on) {
@@ -617,6 +628,17 @@ static void position_timer_callback(indigo_device *device) {
 			double st;
 			asi_get_sidereal_time(device, &st);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount LST = %lf, Host LST = %lf, offset = %.2fs", st, MOUNT_LST_TIME_ITEM->number.value, fabs(st - MOUNT_LST_TIME_ITEM->number.value)*3600);
+		}
+
+		bool is_tracking;
+		int error_code;
+		if (asi_get_tracking_status(device, &is_tracking, &error_code)) {
+			if (PRIVATE_DATA->prev_tracking_error != error_code && error_code > 0) {
+				indigo_send_message(device, asi_error_string(error_code));
+			} else if (PRIVATE_DATA->prev_tracking_error == 8 && error_code == 0) {
+				indigo_send_message(device, "Tracking can be started");
+			}
+			PRIVATE_DATA->prev_tracking_error = error_code;
 		}
 
 		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, &PRIVATE_DATA->position_timer);
