@@ -684,12 +684,16 @@ Vue.component('indigo-query-db', {
 					if (geometry == null) continue;
 					if (data.id == id || (properties.name != null && properties.name.toUpperCase().indexOf(pattern) >= 0)) {
 						var name = properties.name;
-						if (name != "")
-							name += ", ";
-						name += properties.desig + properties.con;
-						if (name != "")
-							name += ", ";
-						name += "HIP" + data.id;
+						if (properties.desig != "") {
+							if (name != "")
+								name += ", ";
+							name += properties.desig;
+						}
+						if (data.id > 0) {
+							if (name != "")
+								name += ", ";
+							name += "HIP" + data.id;
+						}
 						this.result.push({ name: name, ra: deg2h(geometry.coordinates[0]), dec: geometry.coordinates[1] });
 					}
 				}				
@@ -917,7 +921,8 @@ function guiSetup() {
 		$('div.bg-light').removeClass("bg-light").addClass("bg-secondary");
 		$('canvas.bg-light').removeClass("bg-light").addClass("bg-secondary");
 		if (typeof config !== 'undefined') {
-			config.stars.style.fill = "#FFF";
+			config.background.fill = "#FFF";
+			config.stars.style.fill = "#000"
 		}
 	} else {
 		INDIGO.dark = false;
@@ -935,9 +940,10 @@ function setDarkMode() {
 	localStorage.setItem("dark_mode", true);
 	guiSetup();
 	if (typeof config !== 'undefined') {
-		config.stars.style.fill = "#000";
+		config.background.fill = "#000";
+		config.stars.style.fill = "#FFF"
 		if (celestialVisible) {
-			updateMap();
+			Celestial.display(config);
 		}
 	}
 }
@@ -946,9 +952,10 @@ function setLightMode() {
 	localStorage.removeItem("dark_mode");
 	guiSetup();
 	if (typeof config !== 'undefined') {
-		config.stars.style.fill = "#000";
+		config.background.fill = "#fff";
+		config.stars.style.fill = "#000"
 		if (celestialVisible) {
-			updateMap();
+			Celestial.display(config);
 		}
 	}
 }
