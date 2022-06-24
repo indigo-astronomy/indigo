@@ -388,8 +388,8 @@ static void create_frame(indigo_device *device) {
 			double guider_cos = cos(M_PI * GUIDER_IMAGE_ANGLE_ITEM->number.target / 180.0);
 			double ao_sin = sin(M_PI * GUIDER_IMAGE_AO_ANGLE_ITEM->number.target / 180.0);
 			double ao_cos = cos(M_PI * GUIDER_IMAGE_AO_ANGLE_ITEM->number.target / 180.0);
-			double x_offset = ra_offset * guider_cos - GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value * guider_sin + PRIVATE_DATA->ao_ra_offset * ao_cos - PRIVATE_DATA->ao_dec_offset * ao_sin + rand() / (double)RAND_MAX/10 - 0.1;
-			double y_offset = ra_offset * guider_sin + GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value * guider_cos + PRIVATE_DATA->ao_ra_offset * ao_sin + PRIVATE_DATA->ao_dec_offset * ao_cos + rand() / (double)RAND_MAX/10 - 0.1;
+			double x_offset = ra_offset * guider_cos - GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value * guider_sin + PRIVATE_DATA->ao_ra_offset * ao_cos - PRIVATE_DATA->ao_dec_offset * ao_sin + rand() / (double)RAND_MAX/5 - 0.1;
+			double y_offset = ra_offset * guider_sin + GUIDER_IMAGE_DEC_OFFSET_ITEM->number.value * guider_cos + PRIVATE_DATA->ao_ra_offset * ao_sin + PRIVATE_DATA->ao_dec_offset * ao_cos + rand() / (double)RAND_MAX/5 - 0.1;
 			bool y_flip = GUIDER_MODE_FLIP_STARS_ITEM->sw.value;
 			if (GUIDER_MODE_STARS_ITEM->sw.value || y_flip) {
 				for (int i = 0; i < PRIVATE_DATA->star_count; i++) {
