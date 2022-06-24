@@ -55,7 +55,7 @@
 // can be changed
 #define GUIDER_MAX_MAG					8
 #define GUIDER_MAX_STARS				400
-#define GUIDER_FOV							7
+#define GUIDER_FOV							3
 #define GUIDER_MAX_HOTPIXELS		1500
 
 #define ECLIPSE									360
