@@ -1969,14 +1969,14 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
-	uint32_t threshold = 0;
+	uint32_t sum = 0;
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			max_luminance = 0xFF;
 			for (int i = 0; i < size; i++) {
 				buf[i] = data8[i];
-				threshold += buf[i];
+				sum += buf[i];
 			}
 			break;
 		}
@@ -1984,7 +1984,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			max_luminance = 0xFFFF;
 			for (int i = 0; i < size; i++) {
 				buf[i] = data16[i];
-				threshold += buf[i];
+				sum += buf[i];
 			}
 			break;
 		}
@@ -1992,7 +1992,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			max_luminance = 0xFF;
 			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
 				buf[j] = (data8[i] + data8[i + 1] + data8[i + 2]) / 3;
-				threshold += buf[j];
+				sum += buf[j];
 				i += 2;
 			}
 			break;
@@ -2001,7 +2001,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			max_luminance = 0xFF;
 			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
 				buf[j] = (data8[i] + data8[i + 1] + data8[i + 2]) / 3;
-				threshold += buf[j];
+				sum += buf[j];
 				i += 3;
 			}
 			break;
@@ -2010,7 +2010,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			max_luminance = 0xFF;
 			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
 				buf[j] = (data8[i + 1] + data8[i + 2] + data8[i + 3]) / 3;
-				threshold += buf[j];
+				sum += buf[j];
 				i += 3;
 			}
 			break;
@@ -2019,16 +2019,17 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			max_luminance = 0xFFFF;
 			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
 				buf[j] = (data16[i] + data16[i + 1] + data16[i + 2]) / 3;
-				threshold += buf[j];
+				sum += buf[j];
 				i += 2;
 			}
 			break;
 		}
 	}
 
-	/* Look for stars 35% brighter than the frame average */
-	threshold = 1.35 * threshold / size;
-	int threshold_hist = threshold * 0.99;
+	double stddev = indigo_stddev_16(buf, width, height, NULL);
+	/* add 4.5 stddev threshold for stars */
+	uint32_t threshold = 4.5 * stddev + sum / size;
+	int threshold_hist = threshold * 0.9;
 
 	int found = 0;
 	int width2 = width / 2;
