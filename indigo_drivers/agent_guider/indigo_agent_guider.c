@@ -1030,6 +1030,17 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				}
 				if (DEVICE_PRIVATE_DATA->phase == MOVE_EAST) {
+					/* Large periodoc error like in harmonic drive mounts can result in RA speed over or under estimation.
+					   The average of West and East measured speeds should be the precise speed.
+					*/
+					last_drift = DEVICE_PRIVATE_DATA->drift;
+					double east_speed = round(1000 * last_drift / (last_count * AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) / 1000;
+					/* West speed is already stored in AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM */
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA speeds: West = %.3lf px/sec, East = %.3lf px/sec", AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value, east_speed);
+					AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = (east_speed + AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value) / 2;
+
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA speed (without PE) = %.3lf px/sec", AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value);
+					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 					DEVICE_PRIVATE_DATA->phase = DONE;
 				}
 				break;
@@ -1047,7 +1058,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 				if (pole_distnce < 5) {
 					indigo_send_message(device, "Calculated pole distance %.1f°. RA calibration may be off", pole_distnce);
 				} else {
-					indigo_send_message(device, "Calculated pole distance %.1f°", pole_distnce);
+					//indigo_send_message(device, "Calculated pole distance %.1f°", pole_distnce);
 				}
 				indigo_send_message(device, "Calibration complete");
 				save_config(device);
