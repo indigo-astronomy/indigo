@@ -54,8 +54,8 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'AGENT_SITE_DATA_SOURCE')"></indigo-select-item>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'" :tooltip="'Latitude'"></indigo-edit-number-60>
-										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'" :tooltip="'Longitude'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'λ'" :tooltip="'Longitude'"></indigo-edit-number-60>
+										<indigo-edit-number-60 :property="findProperty('Mount Agent', 'GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'φ'" :tooltip="'Latitude'"></indigo-edit-number-60>
 									</div>
 								</div>
 							</template>
@@ -184,8 +184,8 @@
 								<div class="card p-1 m-1 bg-light">
 									<div class="card-block d-flex flex-wrap">
 										<indigo-select-item :property="findProperty('Mount Agent', 'FILTER_GPS_LIST')"></indigo-select-item>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'λ'" :tooltip="'Latitude'"></indigo-show-number-60>
-										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'φ'" :tooltip="'Longitude'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LONGITUDE'" :icon="'λ'" :tooltip="'Longitude'"></indigo-show-number-60>
+										<indigo-show-number-60 :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'LATITUDE'" :icon="'φ'" :tooltip="'Latitude'"></indigo-show-number-60>
 										<indigo-show-number :property="findProperty('Mount Agent', 'GPS_GEOGRAPHIC_COORDINATES')" :name="'ELEVATION'" :icon="'↑'" :tooltip="'Elevation'"></indigo-show-number>
 									</div>
 								</div>
@@ -251,7 +251,7 @@
 	<script src="d3.min.js"></script>
 	<script src="celestial.min.js"></script>
 	<script language="javascript" type="text/javascript">
-		
+
 		indigoURL = new URL("ws://" + window.location.hostname+":"+window.location.port);
 
 		//indigoURL = new URL("ws://localhost:7624");
@@ -264,7 +264,7 @@
 		var currentCoordinates = null;
 		var targetCoordinates = null;
 		var objectCoordinates = null;
-		
+
 
 		var config = {
 			width: 2048,
@@ -306,15 +306,15 @@
 				style: { fill: "#f00", font: "bold 17px 'Lucida Sans Unicode', Consolas, sans-serif", align: "center", baseline: "middle" },
 				data: 'planets.json',
 			},
-			
+
 			mw: {
 				style: { fill:"#996", opacity: 0.1 }
 			}
 		};
-	
+
 		guiSetup();
 		window.addEventListener("load", init, false);
-		
+
 		function checkState() {
 			var server = INDIGO.devices["Server"];
 			if (server == null) {
@@ -336,7 +336,7 @@
 				}
 			}
 		}
-	
+
 		window.onresize = function() {
 			var map = $("#map");
 			if (map != null && map.length > 0) {
@@ -350,7 +350,7 @@
 				}
 			}
 		}
-	
+
 		function zoomIn() {
 			if (zoom < 5) {
 				config.width = zooms[++zoom];
@@ -438,7 +438,7 @@
 				updateMap();
 			}
 		}
-	
+
 		function canvasClick(e) {
 			var coordinates = Celestial.mapProjection.invert([e.offsetX, e.offsetY]);
 			var bestX = 0;
@@ -461,7 +461,7 @@
 			}
 			selectObject(deg2h(bestX), bestY);
 		}
-	
+
 		function updateMap() {
 			var map = $("#map");
 			if (map != null && map.length > 0) {
@@ -495,15 +495,15 @@
 				}
 			}
 		}
-	
+
 		function h2deg(ra) {
 			return ra > 12 ? (ra - 24) * 15 : ra * 15;
 		}
-	
+
 		function deg2h(ra) {
 			return ra < 0 ? ra / 15 + 24 : ra / 15;
 		}
-	
+
 		function markerCallback(error, json) {
 		}
 
@@ -516,7 +516,7 @@
 			objectCoordinates = [h2deg(ra), dec];
 			updateMap();
 		}
-	
+
 		function markerRedraw(error, json) {
 			if (celestialVisible) {
 				var pt;
@@ -560,7 +560,7 @@
 				}
 			}
 		}
-	
+
 		Celestial.add({type:"marker", callback: markerCallback, redraw: markerRedraw });
 
 		function onDefineProperty(property) {
@@ -584,7 +584,7 @@
 			}
 			guiSetup();
 	}
-	
+
 		function onUpdateProperty(property) {
 			if (property.device == "Mount Agent") {
 				if (property.name == "GEOGRAPHIC_COORDINATES" && property.state == "Ok") {
@@ -599,11 +599,11 @@
 			}
 			guiSetup();
 		}
-	
+
 		function onDeleteProperty(property) {
 			guiSetup();
 		}
-	
+
 		function setCoordinates() {
 			var property = INDIGO.findProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES");
 			var item = property.item("RA");
@@ -612,21 +612,21 @@
 			var dec = item.newValue != null ? item.newValue : item.target;
 			changeProperty("Mount Agent", "MOUNT_EQUATORIAL_COORDINATES", { "RA": ra, "DEC": dec });
 		}
-	
+
 		function goto() {
 			changeProperty("Mount Agent", "MOUNT_ON_COORDINATES_SET", { "TRACK": true });
 			setCoordinates();
 		}
-	
+
 		function sync() {
 			changeProperty("Mount Agent", "MOUNT_ON_COORDINATES_SET", { "SYNC": true });
 			setCoordinates();
 		}
-	
+
 		function stop() {
 			changeProperty("Mount Agent", "MOUNT_ABORT_MOTION", { "ABORT_MOTION": true });
 		}
-	
+
 		function park() {
 			var property = INDIGO.findProperty("Mount Agent", "MOUNT_PARK");
 			if (property != null) {
@@ -642,7 +642,7 @@
 		function startLX200Server() {
 			changeProperty("Mount Agent", "AGENT_LX200_SERVER", { "STARTED": true });
 		}
-	
+
 		function stopLX200Server() {
 			changeProperty("Mount Agent", "AGENT_LX200_SERVER", { "STOPPED": true });
 		}
@@ -671,7 +671,7 @@
 			moveEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "WEST": true });
 		}
-	
+
 		function stopWest(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "WEST": false });
@@ -681,7 +681,7 @@
 			moveEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "EAST": true });
 		}
-	
+
 		function stopEast(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_RA", { "EAST": false });
@@ -691,7 +691,7 @@
 			moveEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "NORTH": true });
 		}
-	
+
 		function stopNorth(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "NORTH": false });
@@ -701,7 +701,7 @@
 			moveEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "SOUTH": true });
 		}
-	
+
 		function stopSouth(event) {
 			stopEvent(event);
 			changeProperty("Mount Agent", "MOUNT_MOTION_DEC", { "SOUTH": false });
