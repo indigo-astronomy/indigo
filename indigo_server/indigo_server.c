@@ -480,8 +480,8 @@ static void *indigo_add_star_json_resource(int max_mag) {
 	indigocat_ss_entry *ss_data = indigocat_get_ss_data();
 	for (int i = 0; ss_data[i].id; i++) {
 		double mag = ss_data[i].mag;
-		if (mag < -7)
-			mag = -7;
+		if (mag < -4.5)
+			mag = -4.5;
 		size += sprintf(buffer + size, "%s{\"type\":\"Feature\",\"id\":%d,\"properties\":{\"name\": \"%s\",\"desig\": \"\",\"mag\": %.2f,\"bv\":-5},\"geometry\":{\"type\":\"Point\",\"coordinates\":[%.4f,%.4f]}}", sep, -ss_data[i].id, ss_data[i].name, mag, h2deg(ss_data[i].ra), ss_data[i].dec);
 		if (buffer_size - size < 1024) {
 			buffer = indigo_safe_realloc(buffer, buffer_size *= 2);

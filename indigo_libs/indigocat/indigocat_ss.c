@@ -37,14 +37,14 @@
 #define JDNOW 				UT2JD(time(NULL))
 
 static indigocat_ss_entry indigo_ss_data[] = {
-	{ MERCURY, 0.0, 0.0, -2.6, "Mercury", 0.0, 0.0 },
-	{ VENUS, 0.0, 0.0, -4.9, "Venus", 0.0, 0.0 },
-	{ MARS, 0.0, 0.0, -3.0, "Mars", 0.0, 0.0 },
-	{ JUPITER, 0.0, 0.0, -2.9, "Jupiter", 0.0, 0.0 },
-	{ SATURN, 0.0, 0.0, -2.5, "Saturn", 0.0, 0.0 },
-	{ URANUS, 0.0, 0.0, 5.3, "Uranus", 0.0, 0.0 },
-	{ NEPTUNE, 0.0, 0.0, 7.8, "Neptune", 0.0, 0.0 },
-	{ PLUTO, 0.0, 0.0, 13.65, "Pluto", 0.0, 0.0 },
+	{ MERCURY, 0.0, 0.0, -1, "Mercury", 0.0, 0.0 },
+	{ VENUS, 0.0, 0.0, -3, "Venus", 0.0, 0.0 },
+	{ MARS, 0.0, 0.0, -1, "Mars", 0.0, 0.0 },
+	{ JUPITER, 0.0, 0.0, -2, "Jupiter", 0.0, 0.0 },
+	{ SATURN, 0.0, 0.0, 0, "Saturn", 0.0, 0.0 },
+	{ URANUS, 0.0, 0.0, 5, "Uranus", 0.0, 0.0 },
+	{ NEPTUNE, 0.0, 0.0, 7, "Neptune", 0.0, 0.0 },
+	{ PLUTO, 0.0, 0.0, 13, "Pluto", 0.0, 0.0 },
 	{ SUN, 0.0, 0.0, -26, "Sun", 0.0, 0.0 },
 	{ MOON, 0.0, 0.0, -12, "Moon", 0.0, 0.0 },
 	{ 0 }
@@ -52,7 +52,7 @@ static indigocat_ss_entry indigo_ss_data[] = {
 
 indigocat_ss_entry *indigocat_get_ss_data(void) {
 	equatorial_coords_s position;
-	
+
 	for (int i = 0; indigo_ss_data[i].id; i++) {
 		switch (indigo_ss_data[i].id) {
 			case MERCURY:
