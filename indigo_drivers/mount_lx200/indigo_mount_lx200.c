@@ -104,6 +104,7 @@
 typedef struct {
 	int handle;
 	int device_count;
+	bool is_network;
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex;
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
@@ -147,8 +148,10 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 static bool meade_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_is_device_url(name, "lx200")) {
+		PRIVATE_DATA->is_network = false;
 		PRIVATE_DATA->handle = indigo_open_serial(name);
 	} else {
+		PRIVATE_DATA->is_network = true;
 		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
 		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
 	}
@@ -195,6 +198,12 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 		FD_ZERO(&readout);
 		FD_SET(PRIVATE_DATA->handle, &readout);
 		tv.tv_sec = 0;
+		if (PRIVATE_DATA->is_network) {
+			tv.tv_usec = 50;
+		} else {
+			tv.tv_usec = 5000;
+		}
+
 		tv.tv_usec = 10000;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 		if (result == 0)
