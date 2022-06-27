@@ -204,7 +204,6 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 			tv.tv_usec = 5000;
 		}
 
-		tv.tv_usec = 10000;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 		if (result == 0)
 			break;
