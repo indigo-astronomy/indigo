@@ -24,7 +24,7 @@ indigo_server indigo_mount_asi
 
 Use URL in form asi://192.168.4.1:4030 to connect to the mount over network.
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * ZWO AM5
