@@ -1590,7 +1590,8 @@ int API_EXPORTED libusb_cancel_transfer(struct libusb_transfer *transfer)
 	int r;
 
 	usbi_dbg(ctx, "transfer %p", transfer );
-	usbi_mutex_lock(&itransfer->lock);
+    if (pthread_mutex_lock(&itransfer->lock) != 0)
+         return LIBUSB_ERROR_OTHER;
 	if (!(itransfer->state_flags & USBI_TRANSFER_IN_FLIGHT)
 			|| (itransfer->state_flags & USBI_TRANSFER_CANCELLING)) {
 		r = LIBUSB_ERROR_NOT_FOUND;
