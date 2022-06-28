@@ -2,6 +2,54 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-182] - 28 Jun Tue 2022
+### Overall
+- add libindigocat - library to calculate planetary positions and stellar positions
+- indigo_property_match_changeable() - add new call to match only properties that can be changed (writable and defined)
+- indigo_drivers: simplify all drivers by using indigo_property_match_changeable()
+- indigo_docs: add PLATE_SOLVING.md
+- indigo_ccd_driver: CCD_LENS property step fix
+- indigo_raw_utils: indigo_find_stars_precise() - fix luminescence calculation
+- indigo_raw_utils: better star detection using stddev as a threshold
+- libusb: fixed regression rendering QHY cameras more unstable then they are.
+
+- indigo_server:
+	- Web UI: add solar system objects to the star map
+	- Web UI: fix Lambda and Phi designations (lambda - longitude, Phi - latitude)
+
+### New drivers
+- indigo_mount_asi:
+	- driver optimized for the lx200 dialect of ZWO AM mounts (AM mounts can still be used with the generic lx200 driver)
+
+### Driver fixes
+- indigo_mount_lx200:
+	- handshake fails if auto detection is not successful
+	- optimizations for ZWO AM mount
+	- fix am5 guide rate
+	- fix mount move
+	- remove PARK property for ZWO AM mount
+	- fix set time on ZWO AM
+	- better driver responsiveness - flush input buffer timeout reduced
+	- code cleanup
+	- minor fixes
+
+- indigo_mount_synscan:
+	- fix N/S and E/W move issue.
+
+- indigo_agent_astrometry:
+	- large index selection issue fixed
+
+- indigo_agent_guider:
+	- add RA, Dec drifts and RMSE in arc seconds
+	- fix automatic guide star selection
+	- better RA speed estimation during calibration - take periodic error effect in to account
+
+- indigo_ccd_ptp:
+	- dependency on ptp_property_nikon_LiveViewAFFocus removed
+
+- indigo_ccd_simulator:
+	- random star field shift fixed with amplitude 0.2px
+
 ## [2.0-180] - 06 Jun Mon 2022
 ### Overall
 - Remove novas dependency
