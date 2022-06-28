@@ -64,6 +64,7 @@ ifeq ($(OS_DETECTED),Darwin)
 endif
 	install -d $(INSTALL_INCLUDE)/indigo
 	cp indigo/*.h $(INSTALL_INCLUDE)/indigo
+	@$(MAKE)	-C indigocat install
 
 uninstall: status
 	rm -f $(INSTALL_LIB)/libindigo.$(SOEXT)
@@ -72,6 +73,7 @@ ifeq ($(OS_DETECTED),Darwin)
 	rm -f $(INSTALL_LIB)/libusb-1.0.dylib
 endif
 	rm -rf $(INSTALL_INCLUDE)/indigo
+	@$(MAKE)	-C indigocat uninstall
 
 clean: status
 	@$(MAKE)	-C indigocat clean

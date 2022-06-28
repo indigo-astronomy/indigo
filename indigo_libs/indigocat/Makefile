@@ -6,6 +6,17 @@ LIBINDIGOCAT_FILES = $(addsuffix .o, $(basename $(wildcard *.c)))
 
 all:	libindigocat
 
+install: libindigocat
+	cp $(BUILD_LIB)/libindigocat.$(SOEXT) $(INSTALL_LIB)
+	cp $(BUILD_LIB)/libindigocat.a $(INSTALL_LIB)
+	install -d $(INSTALL_INCLUDE)/indigo/indigocat
+	cp ../indigo/indigocat/*.h $(INSTALL_INCLUDE)/indigo/indigocat
+
+uninstall:
+	rm -f $(INSTALL_LIB)/libindigocat.$(SOEXT)
+	rm -f $(INSTALL_LIB)/libindigocat.a
+	rm -rf $(INSTALL_INCLUDE)/indigo/indigocat
+
 libindigocat: $(BUILD_LIB)/libindigocat.a $(BUILD_LIB)/libindigocat.$(SOEXT)
 
 $(BUILD_LIB)/libindigocat.a: $(LIBINDIGOCAT_FILES)
