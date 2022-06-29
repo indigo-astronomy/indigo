@@ -77,7 +77,7 @@ typedef struct {
 	char telescopeSide;
 	bool isBusy, startTracking, stopTracking;
 	bool resetWaiting;
-	indigo_timer *position_timer;
+	indigo_timer *position_timer, *ra_guider_timer, *dec_guider_timer;
 	pthread_mutex_t port_mutex;
 	indigo_property *timezone_property;
 	indigo_property *reset_property;
@@ -1510,6 +1510,26 @@ static void guider_connect_callback(indigo_device *device) {
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
 
+static void guider_ra_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->ra_guider_timer = NULL;
+	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
+		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+}
+
+static void guider_dec_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->dec_guider_timer = NULL;
+	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
+		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+	}
+}
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -1527,32 +1547,30 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 			starbook_move_pulse(device, STARBOOK_MOVE_PULSE_NORTH, GUIDER_GUIDE_NORTH_ITEM->number.value);
-			indigo_usleep(1000 * GUIDER_GUIDE_NORTH_ITEM->number.value);
+			indigo_set_timer(device, GUIDER_GUIDE_NORTH_ITEM->number.value/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
 		} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
 			starbook_move_pulse(device, STARBOOK_MOVE_PULSE_SOUTH, GUIDER_GUIDE_SOUTH_ITEM->number.value);
-			indigo_usleep(1000 * GUIDER_GUIDE_SOUTH_ITEM->number.value);
+			indigo_set_timer(device, GUIDER_GUIDE_SOUTH_ITEM->number.value/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
+		} else {
+			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		GUIDER_GUIDE_NORTH_ITEM->number.value = GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
 			starbook_move_pulse(device, STARBOOK_MOVE_PULSE_WEST, GUIDER_GUIDE_WEST_ITEM->number.value);
-			indigo_usleep(1000 * GUIDER_GUIDE_WEST_ITEM->number.value);
+			indigo_set_timer(device, GUIDER_GUIDE_WEST_ITEM->number.value/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
 		} else if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 			starbook_move_pulse(device, STARBOOK_MOVE_PULSE_EAST, GUIDER_GUIDE_EAST_ITEM->number.value);
-			indigo_usleep(1000 * GUIDER_GUIDE_EAST_ITEM->number.value);
+			indigo_set_timer(device, GUIDER_GUIDE_EAST_ITEM->number.value/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
+		} else {
+			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		}
-		GUIDER_GUIDE_WEST_ITEM->number.value = GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
