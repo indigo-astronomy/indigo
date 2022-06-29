@@ -1649,7 +1649,7 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- Ethernet support
 
-bool get_host_ip(char *hostname , unsigned long *ip) {
+static bool get_host_ip(char *hostname , unsigned long *ip) {
 	struct addrinfo hints, *servinfo, *p;
 	int rv;
 
