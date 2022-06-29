@@ -46,14 +46,28 @@
 typedef struct {
 	libusb_device *dev;
 	libgpusb_device_context *device_context;
-	indigo_timer *guider_timer;
+	indigo_timer *ra_guider_timer, *dec_guider_timer;
 	unsigned short relay_mask;
 } gpusb_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
-static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
+static void guider_ra_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->ra_guider_timer = NULL;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
+	libgpusb_set(PRIVATE_DATA->device_context, 0);
+	if (PRIVATE_DATA->relay_mask & (GPUSB_RA_WEST | GPUSB_RA_EAST)) {
+		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+	PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_WEST | GPUSB_RA_EAST);
+}
+
+static void guider_dec_timer_callback(indigo_device *device) {
+	PRIVATE_DATA->dec_guider_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 	libgpusb_set(PRIVATE_DATA->device_context, 0);
@@ -63,13 +77,7 @@ static void guider_timer_callback(indigo_device *device) {
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
-	if (PRIVATE_DATA->relay_mask & (GPUSB_RA_WEST | GPUSB_RA_EAST)) {
-		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
-		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
-		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
-	}
-	PRIVATE_DATA->relay_mask = 0;
+	PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
 }
 
 static indigo_result guider_attach(indigo_device *device) {
@@ -95,7 +103,8 @@ static void guider_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ra_guider_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dec_guider_timer);
 		libgpusb_close(PRIVATE_DATA->device_context);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -118,17 +127,17 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->dec_guider_timer);
 		PRIVATE_DATA->relay_mask &= ~(GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH);
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= GPUSB_DEC_NORTH;
-			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+			indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				PRIVATE_DATA->relay_mask |= GPUSB_DEC_SOUTH;
-				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+				indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
 			}
 		}
 		libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
@@ -138,17 +147,17 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->ra_guider_timer);
 		PRIVATE_DATA->relay_mask &= ~(GPUSB_RA_EAST | GPUSB_RA_WEST);
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= GPUSB_RA_EAST;
-			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+			indigo_set_timer(device, duration/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				PRIVATE_DATA->relay_mask |= GPUSB_RA_WEST;
-				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+				indigo_set_timer(device, duration/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
 			}
 		}
 		libgpusb_set(PRIVATE_DATA->device_context, PRIVATE_DATA->relay_mask);
