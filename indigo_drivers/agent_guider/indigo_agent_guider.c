@@ -663,33 +663,33 @@ static void restore_subframe(indigo_device *device) {
 }
 
 static indigo_property_state pulse_guide(indigo_device *device, double ra, double dec) {
+	double ra_duration = 0, dec_duration = 0;
 	char *guider_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX];
-	indigo_property *agent_guide_property;
 	if (ra) {
 		static const char *names[] = { GUIDER_GUIDE_WEST_ITEM_NAME, GUIDER_GUIDE_EAST_ITEM_NAME };
 		double values[] = { ra > 0 ? ra * 1000 : 0, ra < 0 ? -ra * 1000 : 0 };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, guider_name, GUIDER_GUIDE_RA_PROPERTY_NAME, 2, names, values);
-		indigo_usleep(fabs(ra) * 1000000);
-		if (!indigo_filter_cached_property(device, INDIGO_FILTER_GUIDER_INDEX, GUIDER_GUIDE_RA_PROPERTY_NAME, NULL, &agent_guide_property)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GUIDER_GUIDE_RA_PROPERTY not found");
-			return INDIGO_ALERT_STATE;
-		}
-		FILTER_DEVICE_CONTEXT->property_removed = false;
-		for (int i = 0; i < 200 && !FILTER_DEVICE_CONTEXT->property_removed && agent_guide_property->state == INDIGO_BUSY_STATE; i++) {
-			indigo_usleep(50000);
-		}
+		ra_duration = fabs(ra) * 1000000;
 	}
 	if (dec) {
 		static const char *names[] = { GUIDER_GUIDE_NORTH_ITEM_NAME, GUIDER_GUIDE_SOUTH_ITEM_NAME };
 		double values[] = { dec > 0 ? dec * 1000 : 0, dec < 0 ? -dec * 1000 : 0 };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, guider_name, GUIDER_GUIDE_DEC_PROPERTY_NAME, 2, names, values);
-		indigo_usleep(fabs(dec) * 1000000);
-		if (!indigo_filter_cached_property(device, INDIGO_FILTER_GUIDER_INDEX, GUIDER_GUIDE_DEC_PROPERTY_NAME, NULL, &agent_guide_property)) {
+		dec_duration =fabs(dec) * 1000000;
+	}
+	if (ra_duration || dec_duration) {
+		indigo_usleep(ra_duration > dec_duration ? ra_duration : dec_duration);
+		indigo_property *agent_ra_guide_property, *agent_dec_guide_property;
+		if (!indigo_filter_cached_property(device, INDIGO_FILTER_GUIDER_INDEX, GUIDER_GUIDE_RA_PROPERTY_NAME, NULL, &agent_ra_guide_property)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GUIDER_GUIDE_RA_PROPERTY not found");
+			return INDIGO_ALERT_STATE;
+		}
+		if (!indigo_filter_cached_property(device, INDIGO_FILTER_GUIDER_INDEX, GUIDER_GUIDE_DEC_PROPERTY_NAME, NULL, &agent_dec_guide_property)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "GUIDER_GUIDE_DEC_PROPERTY not found");
 			return INDIGO_ALERT_STATE;
 		}
 		FILTER_DEVICE_CONTEXT->property_removed = false;
-		for (int i = 0; i < 200 && !FILTER_DEVICE_CONTEXT->property_removed && agent_guide_property->state == INDIGO_BUSY_STATE; i++) {
+		for (int i = 0; i < 200 && !FILTER_DEVICE_CONTEXT->property_removed && (agent_ra_guide_property->state == INDIGO_BUSY_STATE || agent_dec_guide_property->state == INDIGO_BUSY_STATE); i++) {
 			indigo_usleep(50000);
 		}
 	}
