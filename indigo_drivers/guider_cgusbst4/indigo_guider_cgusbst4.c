@@ -250,6 +250,8 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (IS_CONNECTED) {
+		indigo_cancel_timer(device, &PRIVATE_DATA->ra_guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->dec_guider_timer);
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		guider_connect_callback(device);
 	}
