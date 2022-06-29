@@ -42,7 +42,7 @@
 
 typedef struct {
 	bool parking, parked, going_home, at_home;
-	indigo_timer *position_timer, *move_timer, *guider_timer;
+	indigo_timer *position_timer, *move_timer, *ra_guider_timer, *dec_guider_timer;
 	double ha;
 	bool slew_in_progress;
 	pthread_mutex_t position_mutex;
@@ -388,20 +388,26 @@ static indigo_result mount_detach(indigo_device *device) {
 
 	// -------------------------------------------------------------------------------- INDIGO guider device implementation
 
-static void guider_timer_callback(indigo_device *device) {
+static void guider_ra_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
-	PRIVATE_DATA->guider_timer = NULL;
-	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
-		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
-		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
-	}
+	PRIVATE_DATA->ra_guider_timer = NULL;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->position_mutex);
+}
+
+static void guider_dec_timer_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
+	PRIVATE_DATA->dec_guider_timer = NULL;
+	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
+		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->position_mutex);
 }
@@ -421,7 +427,8 @@ static indigo_result guider_attach(indigo_device *device) {
 static void guider_connect_callback(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->ra_guider_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->dec_guider_timer);
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 }
@@ -439,36 +446,36 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->dec_guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+			indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
 		} else {
 			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+				indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
 			}
 		}
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 			// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
+		indigo_cancel_timer(device, &PRIVATE_DATA->ra_guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
 		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+			indigo_set_timer(device, duration/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
 		} else {
 			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
+				indigo_set_timer(device, duration/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
 			}
 		}
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
