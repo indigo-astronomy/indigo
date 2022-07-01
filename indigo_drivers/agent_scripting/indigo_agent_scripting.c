@@ -950,10 +950,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 						memcpy(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i, tmp, sizeof(indigo_item) * (count - i - 1));
 						memcpy(tmp, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i + 1, sizeof(indigo_item) * (count - i - 1));
 						memcpy(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i, tmp, sizeof(indigo_item) * (count - i - 1));
-						memcpy(tmp, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 2));
-						memcpy(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + (i + 1), tmp, sizeof(indigo_item) * (count - i - 2));
-						memcpy(tmp, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 2));
-						memcpy(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + (i + 1), tmp, sizeof(indigo_item) * (count - i - 2));
+						memcpy(tmp, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 1));
+						memcpy(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + (i + 1), tmp, sizeof(indigo_item) * (count - i - 1));
+						memcpy(tmp, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 1));
+						memcpy(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + (i + 1), tmp, sizeof(indigo_item) * (count - i - 1));
 					}
 					AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count--;
 					AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count--;
@@ -1149,11 +1149,11 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 
 static indigo_result agent_send_message(indigo_client *client, indigo_device *device, const char *message) {
 	duk_push_global_object(PRIVATE_DATA->ctx);
-	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "agent_on_send_message")) {
+	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_send_message")) {
 		duk_push_string(PRIVATE_DATA->ctx, device->name);
 		duk_push_string(PRIVATE_DATA->ctx, message);
 		if (duk_pcall(PRIVATE_DATA->ctx, 2)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "agent_on_send_message() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_send_message() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
 	duk_pop_2(PRIVATE_DATA->ctx);
