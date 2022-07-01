@@ -469,6 +469,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 
 				if (result == INDIGO_OK) {
 					result = indigo_reduce_multistar_digest(DEVICE_PRIVATE_DATA->reference, DEVICE_PRIVATE_DATA->reference + 1, digests, used, &digest);
+					//result = indigo_reduce_weighted_multistar_digest(DEVICE_PRIVATE_DATA->reference, DEVICE_PRIVATE_DATA->reference + 1, digests, used, &digest);
 				}
 
 				if (result == INDIGO_OK) {
