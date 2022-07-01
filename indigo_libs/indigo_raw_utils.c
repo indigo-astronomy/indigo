@@ -1902,7 +1902,6 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 	double drifts[MAX_MULTISTAR_COUNT] = {0};
 	double drifts_x[MAX_MULTISTAR_COUNT] = {0};
 	double drifts_y[MAX_MULTISTAR_COUNT] = {0};
-	double weights[MAX_MULTISTAR_COUNT] = {0};
 	double average = 0;
 	double drift_x, drift_y;
 
@@ -1924,7 +1923,6 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 		indigo_calculate_drift(&ref[i], &new_digest[i], &drift_x, &drift_y);
 		drifts_x[i] = drift_x;
 		drifts_y[i] = drift_y;
-		weights[i] = new_digest[i].snr;
 		drifts[i] = sqrt(drift_x * drift_x + drift_y * drift_y);
 		average += drifts[i];
 	}
