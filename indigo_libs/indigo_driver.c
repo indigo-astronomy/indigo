@@ -412,7 +412,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(SIMULATION_PROPERTY, property, false);
 		SIMULATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SIMULATION_PROPERTY, NULL);
-	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+	} else if (indigo_property_match(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
 			if (indigo_load_properties(device, false) == INDIGO_OK)
