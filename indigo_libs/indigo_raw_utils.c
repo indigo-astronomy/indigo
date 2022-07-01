@@ -693,8 +693,9 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	*/
 	digest->centroid_x = *x = cs + m10 / m00 - 0.5;
 	digest->centroid_y = *y = ls + m01 / m00 - 0.5;
+	digest->snr = sqrt(m00);
 	digest->algorithm = centroid;
-	//INDIGO_DEBUG(indigo_log("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f]", digest->centroid_x, digest->centroid_y));
+	INDIGO_DEBUG(indigo_debug("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f], signal = %.3f, stddev_noise = %.3f, SNR = %3f", digest->centroid_x, digest->centroid_y, m00, stddev, digest->snr));
 	return INDIGO_OK;
 }
 
@@ -1891,6 +1892,71 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 
 	drift_x /= used_count;
 	drift_y /= used_count;
+	digest->centroid_x += drift_x;
+	digest->centroid_y += drift_y;
+	INDIGO_DEBUG(indigo_debug("%s: == Result using %d of %d stars. Drifts = ( %.3f, %.3f ) digest = ( %.3f, %.3f )", __FUNCTION__, used_count, count, drift_x, drift_y, digest->centroid_x, digest->centroid_y));
+	return INDIGO_OK;
+}
+
+indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest) {
+	double drifts[MAX_MULTISTAR_COUNT] = {0};
+	double drifts_x[MAX_MULTISTAR_COUNT] = {0};
+	double drifts_y[MAX_MULTISTAR_COUNT] = {0};
+	double weights[MAX_MULTISTAR_COUNT] = {0};
+	double average = 0;
+	double drift_x, drift_y;
+
+	if (
+		count < 1 ||
+		avg_ref->algorithm != centroid ||
+		ref[0].algorithm != centroid ||
+		new_digest[0].algorithm != centroid ||
+		digest == NULL
+	) return INDIGO_FAILED;
+
+	digest->algorithm = centroid;
+	digest->width = new_digest[0].width;
+	digest->height = new_digest[0].height;
+	digest->centroid_x = avg_ref->centroid_x;
+	digest->centroid_y = avg_ref->centroid_y;
+
+	for (int i = 0; i < count; i++) {
+		indigo_calculate_drift(&ref[i], &new_digest[i], &drift_x, &drift_y);
+		drifts_x[i] = drift_x;
+		drifts_y[i] = drift_y;
+		weights[i] = new_digest[i].snr;
+		drifts[i] = sqrt(drift_x * drift_x + drift_y * drift_y);
+		average += drifts[i];
+	}
+	average /= count;
+	double stddev = indigo_stddev(drifts, count);
+
+	INDIGO_DEBUG(indigo_debug("%s: average = %.4f stddev = %.4f", __FUNCTION__, average, stddev));
+
+	drift_x = 0;
+	drift_y = 0;
+	int used_count = 0;
+	double sum_weights = 0;
+	// calculate weigthed average drift with removed outliers (cut off at 1.5 * stddev)
+	// for count <= 2 use weigthed average
+	for (int i = 0; i < count; i++) {
+		if (count <= 2 || fabs(average - drifts[i]) <= 1.5 * stddev) {
+			used_count++;
+			drift_x += drifts_x[i] * new_digest[i].snr;
+			drift_y += drifts_y[i] * new_digest[i].snr;
+			sum_weights += new_digest[i].snr;
+			INDIGO_DEBUG(indigo_debug("%s: ++ Used star [%d] drift = %.4f, weight = %.4f", __FUNCTION__, i, drifts[i], new_digest[i].snr));
+		} else {
+			INDIGO_DEBUG(indigo_debug("%s: -- Skip star [%d] drift = %.4f, weight = %.4f", __FUNCTION__, i, drifts[i], new_digest[i].snr));
+		}
+	}
+
+	if (used_count < 1) {
+		return INDIGO_GUIDE_ERROR;
+	}
+
+	drift_x /= sum_weights;
+	drift_y /= sum_weights;
 	digest->centroid_x += drift_x;
 	digest->centroid_y += drift_y;
 	INDIGO_DEBUG(indigo_debug("%s: == Result using %d of %d stars. Drifts = ( %.3f, %.3f ) digest = ( %.3f, %.3f )", __FUNCTION__, used_count, count, drift_x, drift_y, digest->centroid_x, digest->centroid_y));
