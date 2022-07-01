@@ -2,6 +2,27 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-184] - 01 Jul Fri 2022
+### Overall
+- all guider drivers can handle simultaneous RA and Dec guiding
+- agent configuration load regression fixed
+
+### Driver fixes
+- indigo_agent_guider:
+	- RA and Dec guiding pulses are issued simultaneously
+
+- indigo_agent_scripting:
+	- AGENT_SCRIPTING_DELETE_SCRIPT handling and agent_send_message fixed
+
+- indigo_guider_cgusbst4:
+	- cancel guider timer on detach
+
+- indigo_guider_gpusb:
+	- cancel guider timer on detach
+
+- indigo_mount_simulator:
+	- cancel guider timer on detach
+
 ## [2.0-182] - 28 Jun Tue 2022
 ### Overall
 - add libindigocat - library to calculate planetary positions and stellar positions
