@@ -30,7 +30,7 @@ extern "C" {
 #define FITS_HEADER_SIZE 2880
 #endif
 
-#define MAX_MULTISTAR_COUNT 12
+#define MAX_MULTISTAR_COUNT 24
 
 typedef struct {
 	double x;             /* Star X */
