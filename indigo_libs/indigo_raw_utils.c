@@ -1938,14 +1938,15 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 	// calculate weigthed average drift with removed outliers (cut off at 1.5 * stddev)
 	// for count <= 2 use weigthed average
 	for (int i = 0; i < count; i++) {
+		double weight = sqrt(new_digest[i].snr);
 		if (count <= 2 || fabs(average - drifts[i]) <= 1.5 * stddev) {
 			used_count++;
-			drift_x += drifts_x[i] * new_digest[i].snr;
-			drift_y += drifts_y[i] * new_digest[i].snr;
-			sum_weights += new_digest[i].snr;
-			INDIGO_DEBUG(indigo_debug("%s: ++ Used star [%d] drift = %.4f, weight = %.4f", __FUNCTION__, i, drifts[i], new_digest[i].snr));
+			drift_x += drifts_x[i] * weight;
+			drift_y += drifts_y[i] * weight;
+			sum_weights += weight;
+			INDIGO_DEBUG(indigo_debug("%s: ++ Used star [%d] drift = %.4f, weight = %.4f", __FUNCTION__, i, drifts[i], weight));
 		} else {
-			INDIGO_DEBUG(indigo_debug("%s: -- Skip star [%d] drift = %.4f, weight = %.4f", __FUNCTION__, i, drifts[i], new_digest[i].snr));
+			INDIGO_DEBUG(indigo_debug("%s: -- Skip star [%d] drift = %.4f, weight = %.4f", __FUNCTION__, i, drifts[i], weight));
 		}
 	}
 
