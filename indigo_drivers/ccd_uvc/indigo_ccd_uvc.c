@@ -402,9 +402,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		indigo_property_copy_values(CCD_STREAMING_PROPERTY, property, false);
-		res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
+		uvc_error_t res = uvc_set_ae_mode(PRIVATE_DATA->handle, 1);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_ae_mode(%d) -> %s", 1, uvc_strerror(res));
-		uvc_error_t res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value);
+		res = uvc_set_exposure_abs(PRIVATE_DATA->handle, 10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_set_exposure_abs(%d) -> %s", (int)(10000 * CCD_STREAMING_EXPOSURE_ITEM->number.value), uvc_strerror(res));
 		if (!CCD_GAIN_PROPERTY->hidden) {
 			res = uvc_set_gain(PRIVATE_DATA->handle, CCD_GAIN_ITEM->number.value);
