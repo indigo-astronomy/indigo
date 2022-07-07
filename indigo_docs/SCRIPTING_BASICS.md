@@ -91,6 +91,7 @@ indigo_event_handlers.SQM_handler =
 ```
 This script creates two event_handlers (more on that in the section “Writing a script”) that are triggered if any property inside the Imager Agent or the Unihedron SQM device driver is updated. When either of them is triggered, it prints the property information as well as the state, permissions and item values in the log, like this;
 
+```
 Jul  2 13:34:33 ZGAstroScope indiboot[1002]: 13:34:33.504080 indigo_server: PROPERTY INSPECTOR, monitoring commences...
 Jul  2 13:34:33 ZGAstroScope indiboot[1002]: 13:34:33.504093 indigo_server: PROPERTY INSPECTOR -  property 'Unihedron SQM'.AUX_INFO, state = Ok, perm = RO
 Jul  2 13:34:33 ZGAstroScope indiboot[1002]: 13:34:33.504242 indigo_server:   SKY_BRIGHTNESS = 12.32
@@ -119,6 +120,7 @@ Jul  2 13:34:36 ZGAstroScope indiboot[1002]: 13:34:36.663300 indigo_server: PROP
 Jul  2 13:34:36 ZGAstroScope indiboot[1002]: 13:34:36.664668 indigo_server:   NONE = true
 Jul  2 13:34:36 ZGAstroScope indiboot[1002]: 13:34:36.665332 indigo_server:   SX LodeStar #010101 = false
 Jul  2 13:34:36 ZGAstroScope indiboot[1002]: 13:34:36.665945 indigo_server:   ZWO ASI2600MM Pro #0 = false
+```
 
 You can copy the example script into the scripting editor, change the devices or agents that are monitored, add other agents or devices if needed and save and execute the script. Next in Dashboard, Indigo Control Panel or a client application you can connect the devices, slew, take an image, change filter or whatever will be relevant for your script and watch the properties and states being printed in the log as Indigo goes through the process. The logging will provide a good insight in how indigo is working and what properties are updated in what way when going through a particular process.
 
