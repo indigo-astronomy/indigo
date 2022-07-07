@@ -618,4 +618,3 @@ There is one more logging command that can log the attributes of a property. In 
 
 -  **indigo_log_with_property**(“message”, property)
 
-# End of Basics of INDIGO Scripting
