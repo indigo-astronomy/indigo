@@ -485,13 +485,19 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 		return false;
 	if (longitude < 0)
 		longitude += 360;
-	sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d"));
+	if (MOUNT_TYPE_AVALON_ITEM->sw.value)
+		sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d:%02d"));
+	else
+		sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d"));
 	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 		return false;
 	} else {
 		double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
-		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
+		if (MOUNT_TYPE_AVALON_ITEM->sw.value)
+			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d:%02d"));
+		else
+			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
 		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 			return false;
