@@ -1,5 +1,5 @@
 # Basics of INDIGO Scripting
-Revision: 06.07.2022 (final)
+Revision: 12.07.2022 (v2)
 
 Author: **Johan Bakker**
 
@@ -71,7 +71,7 @@ pi@ZGAstroScope:~ $ indigo_prop_tool list "Imager Agent.AGENT_IMAGER_SEQUENCE" /
 ```
 It may also be beneficial to take a look at the first few sections of the [Indigo Driver Development Guide](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/DRIVER_DEVELOPMENT_BASICS.md). Even if you are not going to develop a C++ Indigo driver, this latter guide provides some good information about property and state changes inside Indigo, which are equally important for scripting as for driver development.
 
-Lastly, in order to gain insight into the *dynamics* of the inner workings of Indigo is to write a little script that monitors an agent or device during normal execution and list all property and state changes during the execution. This way you get a good understanding of the properties and states you need to track and manipulate in order to get your script going.
+Lastly, a good way to gain insight into the *dynamics* of the inner workings of Indigo is to write a little script that monitors an agent or device during normal execution and list all property and state changes during the execution. This way you get a good understanding of the properties and states you need to track and manipulate in order to get your script going.
 
 If for example you want to read SQM values from a Unihedron SQM device and write the values in a custom FITS header that is saved with every image you capture, you need some understanding of the properties and property states of both the Unihedron SQM and Agent_Imager. In order to get this understanding you can write a script that monitors both and logs all property and state changes. This script looks like this;
 ```JS
@@ -134,7 +134,7 @@ delete indigo_event_handlers.SQM_handler;
 
 ### Executable statement
 
-Executable statements are composed of Values, Operators, Expressions, Keywords, and Comments. An executable statement is terminated with a semicolon. The following is an executable statement;
+Executable statements are composed of Values, Operators, Expressions, Keywords and Comments. An executable statement is terminated with a semicolon. The following is an executable statement;
 ```
 indigo_log(“This is a statement”);
 ```
@@ -172,99 +172,12 @@ Statements can be grouped into code blocks by using curly brackets {…}. The pu
 
 ```JS
 function myFunction() {
-    var text_to_log = “We are inside a code block now”;
+    var text_to_log = “We are inside a code block now”;
 	indigo_log(text_to_log);
 }
 ```
 The variable text_to_log was declared inside a code block and is therefor a local variable, that can only be accessed from inside that code block.
 
-### Event handlers
-
-An event handler catches events originating from a specific device, which can be a server, driver or an agent. An event_handler can watch for different types of events;
-
-- **on_define** - A new property is defined inside the driver or agent that is being watched.
-- **on_update** - A property value or state inside the driver or agent is being updated, i.e. its value is changed.
-- **on_delete** - A property  inside the driver or an agent is being deleted.
-- **on_message** - A message has been received on the Indigo bus (more on send_message later).
-
-The following script is executed on_agent_load and its purpose is to load the config of the Unihedron SQM device, connect the device and print the SqM values to the log. Thus, as soon as Indigo server is started, this script is executed and watches for properties of the Unihedron SQM to be defined or updated as the driver is being started. The event_handler triggers for every property definition and update, so in the script we need to figure out which property triggered the event_handler and for what kind of event. We also put some boolean flags to work to make sure that loading the config and connecting the device happens only once and in the right order.
-
-```JS
-var SQM_config_load = false;
-var SQM_connected = false;
-
-indigo_event_handlers.SQM_loader = {    		// The event_handler
-
-  devices: [ "Unihedron SQM" ],				// The device or agent being watched
-
-    on_define: function(property) {			// A type of event we are looking for
-
-      	if (property.name == "CONFIG" && property.state == "Ok" && !SQM_config_load) {
-        	SQM_config_load = true;
-        	property.change ({ LOAD: true });
-      	}
-
-      	if (property.name == "CONNECTION" && property.state == "Ok" && SQM_config_load && !SQM_connected) {
-        	SQM_connected = true;
-            property.change ({ CONNECTED: true });
-      	}
-    },
-
-    on_update: function(property) {			 // A type of event we are looking for
-
-       if (property.name=='AUX_INFO' && property.state == "Ok" && SQM_connected) {
-		     indigo_log(String(property.items.SKY_BRIGHTNESS));
-       }
-    },
- };
-```
-When we see the property “CONFIG” being defined, we check if the config has not been loaded yet and if so, we change the property CONFIG.LOAD to true. Which in effect makes the Unihedron SQM driver load the config file of the currently selected profile. When we see the property “CONNECTION” being defined, we check if the config has been loaded and if we have not connected to the device already. If all is well, we connect the device by changing the property CONNECTION.CONNECTED to true.
-
-Since Indigo is fully asynchronous, no assumptions may ever be made on the order of properties being loaded or the states the properties are in. If a property.state is “BUSY” or “ALERT” it is not the time to access, alter or use it. This requires a bit of defensive programming, hence the double check on whether the config has been loaded and property states are “Ok”. If for example we try to change a value of an undefined property, we may even crash the Indigo server or client. Shouldn't happen, but sometimes does...
-
-In the on_update code block we watch for any property updates that happen inside the driver. Once connected, the Unihedron SQM driver will update the property AUX_INFO.SKY_BRIGHTNESS every 10s. When this happens the event_handler is triggered, we read the SKY_BRIGHTNESS and write it to the log.
-
-When we no longer need an event_handler, we delete the event_handler. It is good practice to do this as soon as possible, in order to prevent any unwanted interference or unexpected triggering of the event_handler. An event_handler can be deleted with the delete command, which may be executed from within itself. If we had wanted to write the SQM value to the log only once and then quit the script, we could have written the on_update code block as follows;
-```JS
-on_update: function(property) {
-
-	if (property.name=='AUX_INFO' && property.state == "Ok" && SQM_connected){
-		indigo_log(String(property.items.SKY_BRIGHTNESS));
-		delete indigo_event_handlers.SQM_loader; // Deletes the even_handler and effectively quits the script
-	}
-},
-```
-In the [README of the Scripting Agent](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/README.md), there is also a nice event-handler example script that contains functions for all types of events.
-
-### Messages
-
-Earlier it was stated that there is no direct communication possible between scripts that are running in different scripting agents, other than by sending a message on the Indigo bus. Such messages can be send by the server and can be received by the connected client applications. Clients can however not send messages from a script that can be received on the server, due to the architecture of the Indigo bus.
-
-We can create an event_handler in a script running in a client application that watches the Indigo bus for such messages with the on_message function. The event_handler must be bound to the device that is the sender of the message, i.e. the server, as is shown in the example hereunder.
-
-```JS
-indigo_event_handlers.MESSAGE_reader = {
-
-  devices: [ "@ Indigo-Sky" ], // The server device, i.e. sender of the message we are waiting for
-
-		on_message: function(message) {
-
-	 		if (message.endsWith("Message was send")) {
-				indigo_log_with_property("Message ", message);
-		 // DO Stuff
-	 		}
-		}
-};
-```
-When we test for the message content in the client side script, we need to use the method "endsWith", since the actual message is prefixed with the device name of the sender, like this "@ Indigo-Sky: Scripting Agent @ Indigo-Sky: Message was send". The command to send a message on the Indigo bus is indigo_send_message, where the message is a string;
-```JS
-indigo_send_message("Message was send");
-```
-Indigo devices and agents also send messages that can be captured. One of many examples is the message "Guiding failed" that is sent out by the Guider Agent. These kind of platform messages can be captured as well and acted upon.
-
-### Shared properties
-
-For information exchange from clients to the server and between clients, one can create custom Indigo properties on the server that be read and updated from all scripting agents. This topic goes beyond this *basic* scripting guide, but an example of indigo_define_property and indigo_delete_property can be found in the [README of the Scripting Agent](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/README.md).
 ### Timers
 
 Timers can be used to kick off functionality after a predefined time has expired. In order to create a timer, one must first declare a timer object like this;
@@ -333,23 +246,23 @@ indigo_log("Result = " + String(myResult));
 Using the "if" statement, code blocks can be executed conditionally.
 ```JS
 if (condition) {
-  //  block of code to be executed if condition1 is true
+  //  block of code to be executed if the condition is true
 }
 ```
 ```JS
 if (condition) {
-  //  block of code to be executed if condition1 is true
+  //  block of code to be executed if the condition is true
 } else {
-  //  block of code to be executed if the condition1 is false and condition2 is false
+  //  block of code to be executed if the condition is false
 }
 ```
 ```JS
 if (condition1) {
   //  block of code to be executed if condition1 is true
 } else if (condition2) {
-  //  block of code to be executed if the condition1 is false and condition2 is true
+  //  block of code to be executed if condition1 is false and condition2 is true
 } else {
-  //  block of code to be executed if the condition1 is false and condition2 is false
+  //  block of code to be executed if condition1 is false and condition2 is false
 }
 ```
 An alternative approach to conditional execution is to use the "switch" statement;
@@ -524,12 +437,33 @@ var specificDate = Date.parse("2022-06-30 16:06:01.248+02:00");
 var differenceInSeconds = (currentDate - specificDate) / 1000;  // ms divided by 1000 to get seconds
 indigo_send_message ("Difference = " + differenceInSeconds); // Logs *Difference = 56.00* (depending on current time)
 ```
+### Writing Output
+
+In many of the above examples the indigo_log command has been used. This command writes a message to the log of the server or application the script is running is, with log level "info". In the server and applications the Indigo Preferences "log_level" determines what kind of message, i.e. with what level, are logged and displayed. The available log_levels are;
+
+- **error** - log and display error messages
+- **info**  - log and display informational messages
+- **debug** - log and display debug messages
+- **trace** - log and display trace messages
+
+Apart from the indigo_log command, there are other logging commands, each logging messages with a distinct log_level;
+
+-  **indigo_error**(message)  // Logs message with log_level "error"
+-  **indigo_log**(message) // Logs message with log_level "info"
+-  **indigo_debug**(message) // Logs message with log_level "debug"
+-  **indigo_trace**(message)// Logs message with log_level "trace"
+
+There is one more logging command that can log the attributes of a property. In the section "Script design" the *indigo_log_with_property* was already used in an example script to log property attributes.
+
+-  **indigo_log_with_property**(“message”, property)
+
 ### Indigo properties
 The Indigo platform is composed of "devices". These are physical devices such as cameras, mounts, filter wheels, etc. that are controlled by drivers. But also running processes such as the Indigo server, agents and client applications. A device is accessed using the Indigo_devices command;
 ```JS
 indigo_devices ["Server"] // The Indigo Server process
-indigo_devices ["Astrometry Agent"] //The astrometry agent
+indigo_devices ["AstroImager"] //A client application
 indigo_devices ["Unihedron SQM"] //A Unihedron SQM device
+indigo_devices ["Astrometry Agent"] //The astrometry agent
 ```
 A device has properties. Properties can be accessed using the device name and the property name, separated by a ".";
 ```JS
@@ -560,7 +494,7 @@ Each property has a predefined type which is one of the following:
 - **TEXT_VECTOR** - strings of limited width
 - **NUMBER_VECTOR** - floating point numbers with defined min and max values and increment
 - **SWITCH_VECTOR** - logical values representing “on” and “off” state
-- **LIGHT_VECTOR** - status values with four possible values IDLE, OK, BUSY and ALERT
+- **LIGHT_VECTOR** - status values with four possible values IDLE, OK, BUSY and ALERT (read only)
 - **BLOB_VECTOR** - binary data of any type and any length usually image data
 
 Regarding the SWITCH_VECTOR there are several behavior rules:
@@ -584,7 +518,6 @@ if (indigo_devices ["Unihedron SQM"].AUX_INFO.state = "Ok") {
 	indigo_log("SQM value: " + String(SQM_value));
 }
 ```
-
 ### Update Indigo properties
 If we want to change item values of a property, we need to use the change method, where we provide it with *one or more* {ITEM_NAME: (value)} tuples of the right type, which are used to update the property;
 ```JS
@@ -598,23 +531,237 @@ if (indigo_devices ["Astrometry Agent"].FILTER_RELATED_AGENT_LIST.state = "Ok") 
 	indigo_devices ["Astrometry Agent"].FILTER_RELATED_AGENT_LIST.change ({"Imager Agent": true, "Mount Agent": false});
 }
 ```
-### Writing Output
 
-In many of the above examples the indigo_log command has been used. This command writes a message to the log of the server or application the script is running is, with log level "info". In the server and applications the Indigo Preferences "log_level" determines what kind of message, i.e. with what level, are logged and displayed. The available log_levels are;
+### Event handlers
 
-- **error** - log and display error messages
-- **info**  - log and display informational messages
-- **debug** - log and display debug messages
-- **trace** - log and display trace messages
+An event handler catches events originating from a specific device, such as a server, hardware devices or an agent. An event_handler can watch for different types of events;
 
-Apart from the indigo_log command, there are other logging commands, each logging messages with a distinct log_level;
+- **on_define** - A new property is defined inside the device that is being watched.
+- **on_update** - A property value or state inside the device is being updated, i.e. its value is changed.
+- **on_delete** - A property  inside the device is being deleted.
+- **on_message** - A message has been received on the Indigo bus (more on send_message later).
 
--  **indigo_error**(message)  // Logs message with log_level "error"
--  **indigo_log**(message) // Logs message with log_level "info"
--  **indigo_debug**(message) // Logs message with log_level "debug"
--  **indigo_trace**(message)// Logs message with log_level "trace"
+The following script is executed on_agent_load and its purpose is to load the config of the Unihedron SQM device, connect the device and print the SqM values to the log. Thus, as soon as Indigo server is started, this script is executed and watches for properties of the Unihedron SQM to be defined or updated as the driver is being started.
 
-There is one more logging command that can log the attributes of a property. In the section "Script design" the *indigo_log_with_property* was already used in an example script to log property attributes.
+The event_handler triggers for every property definition and update, so in the script we need to figure out which property triggered the event_handler and for what kind of event. We also put some boolean flags to work to make sure that loading the config and connecting the device happens only once and in the right order.
 
--  **indigo_log_with_property**(“message”, property)
+```JS
+var SQM_config_load = false;
+var SQM_connected = false;
 
+indigo_event_handlers.SQM_loader = {    		// The event_handler
+
+  devices: [ "Unihedron SQM" ],				// The device or agent being watched
+
+    on_define: function(property) {			// A type of event we are looking for
+
+      	if (property.name == "CONFIG" && property.state == "Ok" && !SQM_config_load) {
+        	SQM_config_load = true;
+        	property.change ({ LOAD: true });
+      	}
+
+      	if (property.name == "CONNECTION" && property.state == "Ok" && SQM_config_load && !SQM_connected) {
+        	SQM_connected = true;
+            property.change ({ CONNECTED: true });
+      	}
+    },
+
+    on_update: function(property) {			 // A type of event we are looking for
+
+       if (property.name=='AUX_INFO' && property.state == "Ok" && SQM_connected) {
+		     indigo_log(String(property.items.SKY_BRIGHTNESS));
+       }
+    },
+ };
+```
+When we see the property “CONFIG” being defined, we check if the config has not been loaded yet and if so, we change the property CONFIG.LOAD to true. Which in effect makes the Unihedron SQM driver load the config file of the currently selected profile. When we see the property “CONNECTION” being defined, we check if the config has been loaded and if we have not connected to the device already. If all is well, we connect the device by changing the property CONNECTION.CONNECTED to true.
+
+Since Indigo is fully asynchronous, no assumptions may ever be made on the order of properties being loaded or the states the properties are in. If a property.state is “BUSY” or “ALERT” it is not the time to access, alter or use it. This requires a bit of defensive programming, hence the double check on whether the config has been loaded and property states are “Ok”. If for example we try to change a value of an undefined property, we may even crash the Indigo server or client. Shouldn't happen, but sometimes does...
+
+In the on_update code block we watch for any property updates that happen inside the driver. Once connected, the Unihedron SQM driver will update the property AUX_INFO.SKY_BRIGHTNESS every 10s. When this happens the event_handler is triggered, we read the SKY_BRIGHTNESS and write it to the log.
+
+When we no longer need an event_handler, we delete the event_handler. It is good practice to do this as soon as possible, in order to prevent any unwanted interference or unexpected triggering of the event_handler. An event_handler can be deleted with the delete command, which may be executed from within itself. If we had wanted to write the SQM value to the log only once and then quit the script, we could have written the on_update code block as follows;
+```JS
+on_update: function(property) {
+
+	if (property.name=='AUX_INFO' && property.state == "Ok" && SQM_connected){
+		indigo_log(String(property.items.SKY_BRIGHTNESS));
+		delete indigo_event_handlers.SQM_loader; // Deletes the even_handler and effectively quits the script
+	}
+},
+```
+In the [README of the Scripting Agent](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/README.md), there is also a nice event-handler example script that contains functions for all types of events.
+
+### Messages
+
+Earlier it was stated that there is no direct communication possible between scripts that are running in different scripting agents, other than by sending a message on the Indigo bus or using shared properties. Such messages can be send by the server and can be received by the connected client applications. Clients can however not send messages from a script that can be received on the server, due to the architecture of the Indigo bus. Note however that some client applications, such as AstroImager and AstroGuider, run both a client and a server and can therefore exchange messages.
+
+We can create an event_handler in a script running in a client application that watches the Indigo bus for such messages with the on_message function. The event_handler must be bound to the device that is the sender of the message, e.g. the server, as is shown in the example hereunder.
+
+```JS
+indigo_event_handlers.MESSAGE_reader = {
+
+  devices: [ "@ Indigo-Sky" ], // The server device, i.e. sender of the message we are waiting for
+
+		on_message: function(message) {
+
+	 		if (message.endsWith("Message was send")) {
+				indigo_log_with_property("Message ", message);
+		 // DO Stuff
+	 		}
+		}
+};
+```
+When we test for the message content in the client side script, we need to use the method "endsWith", since the actual message is prefixed with the device name of the sender, like this "@ Indigo-Sky: Scripting Agent @ Indigo-Sky: Message was send". The command to send a message on the Indigo bus is indigo_send_message, where the message is a string;
+```JS
+indigo_send_message("Message was send");
+```
+Indigo devices and agents also send messages that can be captured. One of many examples is the message "Guiding failed" that is sent out by the Guider Agent. These kind of platform messages can be captured as well and acted upon.
+
+### Shared properties
+
+For information exchange between clients and the server as well as between clients, one can create custom Indigo properties on the server side, that be read and updated from all scripting agents.
+
+A custom property can be created on the server with the *indigo_define_\<type>\_property* function, as demonstrated in the script hereunder. There are different command for creating properties of different types;
+
+- **indigo_define_text_property** - creates a text property, i.e. a string
+- **indigo_define_number_property** - create a number property, i.e. a float
+- **indigo_define_switch_property** - creates a switch property, i.e. ON / OFF
+- **indigo_define_light_property** - creates a status property, i.e. IDLE, OK, BUSY and ALERT (read only)
+
+The exact syntax of the define functions is listed in the *Low level API* section of the [README of the Scripting Agent](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/README.md), examples are provided hereunder.
+
+In the following script the creation of a custom property "Shared Property" is demonstrated. The event "on_enumerate_properties" triggers when the function indigo_enumerate_properties is executed. You can easily try this out at the server side. The new custom property can be found in Indigo Control panel; Server->Scripting Agent->Shared property group.
+
+```JS
+// Server side event_handler to create a shared property
+
+indigo_event_handlers.Shared_properties = {
+
+  myString1: "initial value #1",
+  myString2: "initial value #2",
+
+  devices: [ "Scripting Agent" ],
+
+// Server side event that is triggered when the indigo_enumerate_properties command is executed
+
+  on_enumerate_properties: function(property) {
+      if (property.name == null || property.name == "SHARED_PROPERTY") {
+
+     // Create the property when it not exists
+        indigo_define_text_property("Scripting Agent", "SHARED_PROPERTY", "Shared property group", "Shared property",
+            { myItem1: this.myString1, myItem2: this.myString2 },
+            { myItem1: { label: "Label 1" }, myItem2: { label: "Label 2" }}, "OK", "RW", null);
+      }
+   }
+};
+
+// Server side function to enumerate properties and trigger event on_enumerate_properties
+indigo_enumerate_properties("Scripting Agent", null);
+```
+
+We can also define an "on_change" event on the server side that triggers when the property values are changed, e.g. due to client manipulation. In the example hereunder, when the on_change triggers, the state of the property is changed to "Busy" to signal other scripting agents the value is being processed. After the values have been rewritten, the state is returned to "Ok". Make sure to provide values for all property items when a property is updated; missing item values with set the corresponding items to "undefined".
+
+```JS
+// Server side event_handler to trigger on change of the shared property
+
+indigo_event_handlers.Shared_properties = {
+
+  myString1: "initial value #1",
+  myString2: "initial value #2",
+
+  devices: [ "Scripting Agent" ],
+
+// Server side event that is triggered when the property is changed
+   on_change_property: function(property) {
+     if (property.name == "SHARED_PROPERTY") {
+
+    // Get the changed values and signal "work in progress" by setting the property state to "Busy"
+       this.myString1 = property.items.myItem1;
+       this.myString2 = property.items.myItem2;
+       indigo_update_text_property("Scripting Agent", "SHARED_PROPERTY",
+          { myItem1: this.myString1, myItem2: this.myString2 }, "Busy", null);
+
+    // Proces the new values
+    // ...
+
+       indigo_log ("Server side - on_change: items values -> myItem1: " + this.myString1 + " myItem2: " + this.myString2);
+
+    // Rewrite the values, whether they are changed or not, and set the property state to "OK"
+       indigo_update_text_property("Scripting Agent", "SHARED_PROPERTY",
+          { myItem1: this.myString1, myItem2: this.myString2 }, "OK", null);
+     }
+   },
+};
+```
+
+On the client side things work slightly different. We can define a on_update event that triggers when the *indigo_update_\<type>\_property* function is used on the server side.
+```JS
+// Client side event_handler that triggers when the server updates the property
+
+indigo_event_handlers.Shared_properties = {
+
+  myString1: "",
+  myString2: "",
+
+  devices: ["Scripting Agent @ INDIGO-Server"],
+
+// Client side event that triggers when the property values have been updated
+
+   on_update: function(property) {
+
+     if (property.name == "SHARED_PROPERTY" && property.state == "Ok") {
+
+       this.myString1 = property.items.myItem1;
+       this.myString2 = property.items.myItem2;
+
+    // Proces the new values
+    // ...
+
+       indigo_log ("Client side - on_update: items values -> myItem1: " + this.myString1 + " myItem2: " + this.myString2);
+
+     }
+   },
+};
+```
+
+Properties can also be accessed directly, i.e. outside of an event_handler. In the example hereunder the property is read and logged.
+```JS
+// Get and log the current value for myItem1 and myItem2 on startup
+
+var mySERVER = indigo_devices ["Scripting Agent @ INDIGO-Server"];
+
+if (mySERVER.SHARED_PROPERTY.state == "Ok") {
+
+    indigo_log ("Client side - Read property: items values -> myItem1: " +
+       mySERVER.SHARED_PROPERTY.items.myItem1 + " myItem2: " + mySERVER.SHARED_PROPERTY.items.myItem2);
+
+} else {
+
+    indigo_log("Property read failed, state was no OK");
+}
+```
+And in the following example the property values are changed. The execution of the change function will in turn trigger the on_change event on the server side.
+
+```JS
+// Write new values for myItem1 and myItem2
+
+var mySERVER = indigo_devices ["Scripting Agent @ INDIGO-Server"];
+
+if (mySERVER.SHARED_PROPERTY.state == "Ok") {
+
+    mySERVER.SHARED_PROPERTY.change ({myItem1: "New value from client #1", myItem2: "New value from client #2"});
+
+    indigo_log ("Client side - Changing values: items values -> myItem1: " +
+       mySERVER.SHARED_PROPERTY.items.myItem1 + " myItem2: " + mySERVER.SHARED_PROPERTY.items.myItem2);
+
+} else {
+    indigo_log("Property update failed, state was no OK");
+}
+```
+Custom properties are not persistent, i.e. when the scripting agent is restarted, the custom properties will have disappeared. So, when the properties are required in the system, it is advised to execute the script that creates them on_agent_load.
+
+On can also delete the properties from a script using the indigo_delete_property function on the server side.
+```JS
+indigo_delete_property("Scripting Agent", "SHARED_PROPERTY", null);
+```
