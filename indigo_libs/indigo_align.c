@@ -188,7 +188,7 @@ indigo_spherical_point_t indigo_cartesian_to_spherical(const indigo_cartesian_po
 	}
 
 	spoint.a = (cpoint->y == 0) ? 0.0 : -atan2(cpoint->y, cpoint->x);
-	if (spoint.a < 0) spoint.a += 2 * M_PI;
+	if (spoint.a < 0) spoint.a += TWO_PI;
 	spoint.d = (M_PI / 2.0) - acos(cpoint->z);
 	return spoint;
 }
@@ -266,15 +266,11 @@ void indigo_equatorial_to_hotizontal(const indigo_spherical_point_t *eq_point, c
 	double sin_lat = sin(latitude);
 	double cos_lat = cos(latitude);
 
-	double sin_alt = sin_dec * sin_lat + cos_dec * cos_lat * cos_ha;
-	double alt = asin(sin_alt);
-
-	double cos_az = (sin_dec - sin_alt * sin_lat) / (cos(alt) * cos_lat);
-	double az = acos(cos_az);
-
-	if (sin_ha > 0) az = 2 * M_PI - az;
-	h_point->a = az;
-	h_point->d = alt;
+	// az
+	h_point->a = atan2(-cos_dec * sin_ha, cos_lat * sin_dec - sin_lat * cos_dec * cos_ha);
+	if (h_point->a < 0) h_point->a += TWO_PI;
+	// alt
+	h_point->d = asin(sin_dec * sin_lat + cos_dec * cos_lat * cos_ha);
 	h_point->r = 1;
 }
 
@@ -353,7 +349,7 @@ bool indigo_compensate_refraction(
 	double cos_az = cos(az);
 
 	st_aparent->a = atan2(sin(az) * tan_azd, cos_lat - sin_lat * cos_az * tan_azd);
-	if (st_aparent->a < 0) st_aparent->a += 2 * M_PI;
+	if (st_aparent->a < 0) st_aparent->a += TWO_PI;
 	st_aparent->d = asin(sin_lat * cos(azd) + cos_lat * sin(azd) * cos_az);
 	st_aparent->r = 1;
 	indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG);
@@ -386,7 +382,7 @@ bool indigo_compensate_refraction2(
 	double cos_az = cos(az);
 
 	st_aparent->a = atan2(sin(az) * tan_azd, cos_lat - sin_lat * cos_az * tan_azd);
-	if (st_aparent->a < 0) st_aparent->a += 2 * M_PI;
+	if (st_aparent->a < 0) st_aparent->a += TWO_PI;
 	st_aparent->d = asin(sin_lat * cos(azd) + cos_lat * sin(azd) * cos_az);
 	st_aparent->r = 1;
 	indigo_debug("Refraction HA (real/aparent) = %f / %f, DEC (real / aparent) = %f / %f\n", st->a * RAD2DEG, st_aparent->a * RAD2DEG, st->d * RAD2DEG, st_aparent->d * RAD2DEG);
