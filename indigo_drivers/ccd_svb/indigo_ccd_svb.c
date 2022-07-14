@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
