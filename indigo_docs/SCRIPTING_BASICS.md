@@ -1,5 +1,5 @@
 # Basics of INDIGO Scripting
-Revision: 12.07.2022 (v2)
+Revision: 14.07.2022 (v3)
 
 Author: **Johan Bakker**
 
@@ -458,7 +458,7 @@ There is one more logging command that can log the attributes of a property. In 
 -  **indigo_log_with_property**(“message”, property)
 
 ### Indigo properties
-The Indigo platform is composed of "devices". These are physical devices such as cameras, mounts, filter wheels, etc. that are controlled by drivers. But also running processes such as the Indigo server, agents and client applications. A device is accessed using the Indigo_devices command;
+The Indigo platform is composed of "devices". These are physical devices such as cameras, mounts, filter wheels, but also running processes such as the Indigo server, agents and client applications. Devices are accessed using the indigo_devices list, that contains a virtual representation for each device in the system;
 ```JS
 indigo_devices ["Server"] // The Indigo Server process
 indigo_devices ["AstroImager"] //A client application
@@ -476,7 +476,9 @@ A property has a state. Properties can be in one of the four states:
 - **BUSY** - the values are not reliable, some operation is in progress (like exposure is in progress)
 - **ALERT** - the values are not reliable, some operation has failed or the values set are not valid
 
-One should only manipulate a property when its state is "Ok". More on that is found in the section "State Descriptions and State Transitions" of the [Indigo Driver Development Guide](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/DRIVER_DEVELOPMENT_BASICS.md). This requires a bit of defensive programming, where before using or manipulation a property, its state should be checked.
+Property values can be trusted when the property state is “Ok”. When the property state is “Busy”, property values can be trusted, but they may change, since some operation is in progress regarding the property. Property values can not be trusted when the property state is either “Idle” or “Alert”.
+
+All property values with permissions “RW” and “WO” can be manipulated in all property states, except when the property state is “Busy”. More on this is found in the section "State Descriptions and State Transitions" of the [Indigo Driver Development Guide](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/DRIVER_DEVELOPMENT_BASICS.md). This requires a bit of defensive programming, where before using or manipulation a property, its state should be checked.
 ```JS
 if (indigo_devices ["Unihedron SQM"].AUX_INFO.state = "Ok") {
 
@@ -512,7 +514,7 @@ Properties also have permissions assigned to them, i.e. not all properties can b
 ### Read Indigo properties
 If we want the get the value of an item of a property, we can obtain it that like this;
 ```JS
-if (indigo_devices ["Unihedron SQM"].AUX_INFO.state = "Ok") {
+if (indigo_devices ["Unihedron SQM"].AUX_INFO.state == "Ok") {
 	var SQM_value;
 	SQM_value = indigo_devices ["Unihedron SQM"].items.SKY_BRIGHTNESS;
 	indigo_log("SQM value: " + String(SQM_value));
@@ -521,13 +523,13 @@ if (indigo_devices ["Unihedron SQM"].AUX_INFO.state = "Ok") {
 ### Update Indigo properties
 If we want to change item values of a property, we need to use the change method, where we provide it with *one or more* {ITEM_NAME: (value)} tuples of the right type, which are used to update the property;
 ```JS
-if (indigo_devices ["Imager Agent"].CCD_FITS_HEADERS.state = "Ok") {
+if (indigo_devices ["Imager Agent"].CCD_FITS_HEADERS.state == "Ok") {
     var FITS_value = "MYSTUFF: Stuff i want to store in the fits header of an image";
 	indigo_devices ["Imager Agent"].CCD_FITS_HEADERS.change ({HEADER_1: (FITS_value)});
 }
 ```
 ```JS
-if (indigo_devices ["Astrometry Agent"].FILTER_RELATED_AGENT_LIST.state = "Ok") {
+if (indigo_devices ["Astrometry Agent"].FILTER_RELATED_AGENT_LIST.state == "Ok") {
 	indigo_devices ["Astrometry Agent"].FILTER_RELATED_AGENT_LIST.change ({"Imager Agent": true, "Mount Agent": false});
 }
 ```
@@ -594,7 +596,9 @@ In the [README of the Scripting Agent](https://github.com/indigo-astronomy/indig
 
 ### Messages
 
-Earlier it was stated that there is no direct communication possible between scripts that are running in different scripting agents, other than by sending a message on the Indigo bus or using shared properties. Such messages can be send by the server and can be received by the connected client applications. Clients can however not send messages from a script that can be received on the server, due to the architecture of the Indigo bus. Note however that some client applications, such as AstroImager and AstroGuider, run both a client and a server and can therefore exchange messages.
+Earlier it was stated that there is no direct communication possible between scripts that are running in different scripting agents, other than by sending a message on the Indigo bus or using shared properties. The latter option is the preferred one, since messages are present in the system only to present unstructured information to the user, so using them for communication is not the intended use. But you can if you want to.
+
+Messages can be send by the server and can be received by the connected client applications. Clients can however not send messages from a script that can be received on the server, due to the architecture of the Indigo bus. Note however that some client applications, such as AstroImager and AstroGuider, run both a client and a server and can therefore exchange messages.
 
 We can create an event_handler in a script running in a client application that watches the Indigo bus for such messages with the on_message function. The event_handler must be bound to the device that is the sender of the message, e.g. the server, as is shown in the example hereunder.
 
@@ -616,11 +620,11 @@ When we test for the message content in the client side script, we need to use t
 ```JS
 indigo_send_message("Message was send");
 ```
-Indigo devices and agents also send messages that can be captured. One of many examples is the message "Guiding failed" that is sent out by the Guider Agent. These kind of platform messages can be captured as well and acted upon.
+Indigo devices and agents also send messages that can be captured. One of many examples is the message "Guiding failed" that is sent out by the Guider Agent. These kind of platform messages can be captured as well and acted upon, however, the proper way to detect state changes in guiding is to monitor the properties and states of the Guider Agent and not to rely on unstructured messages intended for displaying to the user.
 
 ### Shared properties
 
-For information exchange between clients and the server as well as between clients, one can create custom Indigo properties on the server side, that be read and updated from all scripting agents.
+For information exchange between clients and the server as well as between clients, one can create custom Indigo properties on the server side, that can be read and updated from all scripting agents.
 
 A custom property can be created on the server with the *indigo_define_\<type>\_property* function, as demonstrated in the script hereunder. There are different command for creating properties of different types;
 
@@ -738,7 +742,7 @@ if (mySERVER.SHARED_PROPERTY.state == "Ok") {
 
 } else {
 
-    indigo_log("Property read failed, state was no OK");
+    indigo_log("Property read failed, state was not OK");
 }
 ```
 And in the following example the property values are changed. The execution of the change function will in turn trigger the on_change event on the server side.
@@ -756,7 +760,7 @@ if (mySERVER.SHARED_PROPERTY.state == "Ok") {
        mySERVER.SHARED_PROPERTY.items.myItem1 + " myItem2: " + mySERVER.SHARED_PROPERTY.items.myItem2);
 
 } else {
-    indigo_log("Property update failed, state was no OK");
+    indigo_log("Property update failed, state was not OK");
 }
 ```
 Custom properties are not persistent, i.e. when the scripting agent is restarted, the custom properties will have disappeared. So, when the properties are required in the system, it is advised to execute the script that creates them on_agent_load.
