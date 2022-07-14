@@ -4170,6 +4170,30 @@
 		9D335BB0288036E6004D9F30 /* Apx60 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Apx60 Programmers Guide.pdf"; sourceTree = "<group>"; };
 		9D335BB1288036E7004D9F30 /* TE-77 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-77 Programmers Guide.pdf"; sourceTree = "<group>"; };
 		9D335BB2288036E7004D9F30 /* TE-47 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-47 Programmers Guide.pdf"; sourceTree = "<group>"; };
+		9D335BB328803C34004D9F30 /* QHY5III200.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III200.img; sourceTree = "<group>"; };
+		9D335BB428803C34004D9F30 /* QHY5III334.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III334.img; sourceTree = "<group>"; };
+		9D335BB528803C5E004D9F30 /* QHY600-9267-1203.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = "QHY600-9267-1203.img"; sourceTree = "<group>"; };
+		9D335BB628803C5E004D9F30 /* QHY530.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY530.img; sourceTree = "<group>"; };
+		9D335BB728803C5F004D9F30 /* QHY991.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY991.img; sourceTree = "<group>"; };
+		9D335BB828803C5F004D9F30 /* QHY1253.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY1253.img; sourceTree = "<group>"; };
+		9D335BB928803C5F004D9F30 /* QHY411_1.3.3.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY411_1.3.3.img; sourceTree = "<group>"; };
+		9D335BBA28803C5F004D9F30 /* QHY4040PRO.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY4040PRO.img; sourceTree = "<group>"; };
+		9D335BBB28803C5F004D9F30 /* QHY342.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY342.img; sourceTree = "<group>"; };
+		9D335BBC28803C5F004D9F30 /* QHY990.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY990.img; sourceTree = "<group>"; };
+		9D335BBD28803C5F004D9F30 /* QHY5III462.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III462.img; sourceTree = "<group>"; };
+		9D335BBE28803C5F004D9F30 /* QHY461.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY461.img; sourceTree = "<group>"; };
+		9D335BBF28803C5F004D9F30 /* QHY5III415.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III415.img; sourceTree = "<group>"; };
+		9D335BC028803C60004D9F30 /* QHY294PRO.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY294PRO.img; sourceTree = "<group>"; };
+		9D335BC128803C60004D9F30 /* QHY5III482.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III482.img; sourceTree = "<group>"; };
+		9D335BC228803C60004D9F30 /* QHY183A.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY183A.img; sourceTree = "<group>"; };
+		9D335BC328803C60004D9F30 /* QHY5III485.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III485.img; sourceTree = "<group>"; };
+		9D335BC428803C60004D9F30 /* QHY432.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY432.img; sourceTree = "<group>"; };
+		9D335BC528803C60004D9F30 /* QHY600ERIS-12-qxx.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = "QHY600ERIS-12-qxx.img"; sourceTree = "<group>"; };
+		9D335BC628803C60004D9F30 /* QHY1920.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY1920.img; sourceTree = "<group>"; };
+		9D335BC728803C60004D9F30 /* QHY533.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY533.img; sourceTree = "<group>"; };
+		9D335BC828803C60004D9F30 /* QHY9701.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY9701.img; sourceTree = "<group>"; };
+		9D335BC928803C61004D9F30 /* QHY128PRO.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY128PRO.img; sourceTree = "<group>"; };
+		9D335BCA28803C61004D9F30 /* QHY410.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY410.img; sourceTree = "<group>"; };
 		9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_gpsd.h; sourceTree = "<group>"; };
 		9D35E9D623CDB27D00B6A41F /* hex.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = hex.c; sourceTree = "<group>"; };
 		9D35E9D723CDB27D00B6A41F /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = json.c; sourceTree = "<group>"; };
@@ -5514,6 +5538,30 @@
 		597E4F7923EEE637007E0BF8 /* firmware */ = {
 			isa = PBXGroup;
 			children = (
+				9D335BBF28803C5F004D9F30 /* QHY5III415.img */,
+				9D335BBD28803C5F004D9F30 /* QHY5III462.img */,
+				9D335BC128803C60004D9F30 /* QHY5III482.img */,
+				9D335BC328803C60004D9F30 /* QHY5III485.img */,
+				9D335BC928803C61004D9F30 /* QHY128PRO.img */,
+				9D335BC228803C60004D9F30 /* QHY183A.img */,
+				9D335BC028803C60004D9F30 /* QHY294PRO.img */,
+				9D335BBB28803C5F004D9F30 /* QHY342.img */,
+				9D335BCA28803C61004D9F30 /* QHY410.img */,
+				9D335BB928803C5F004D9F30 /* QHY411_1.3.3.img */,
+				9D335BC428803C60004D9F30 /* QHY432.img */,
+				9D335BBE28803C5F004D9F30 /* QHY461.img */,
+				9D335BB628803C5E004D9F30 /* QHY530.img */,
+				9D335BC728803C60004D9F30 /* QHY533.img */,
+				9D335BB528803C5E004D9F30 /* QHY600-9267-1203.img */,
+				9D335BC528803C60004D9F30 /* QHY600ERIS-12-qxx.img */,
+				9D335BBC28803C5F004D9F30 /* QHY990.img */,
+				9D335BB728803C5F004D9F30 /* QHY991.img */,
+				9D335BB828803C5F004D9F30 /* QHY1253.img */,
+				9D335BC628803C60004D9F30 /* QHY1920.img */,
+				9D335BBA28803C5F004D9F30 /* QHY4040PRO.img */,
+				9D335BC828803C60004D9F30 /* QHY9701.img */,
+				9D335BB328803C34004D9F30 /* QHY5III200.img */,
+				9D335BB428803C34004D9F30 /* QHY5III334.img */,
 				597E4F7A23EEE637007E0BF8 /* QHY21.HEX */,
 				597E4F7B23EEE637007E0BF8 /* QHY290.img */,
 				597E4F7C23EEE637007E0BF8 /* QHY247.img */,
