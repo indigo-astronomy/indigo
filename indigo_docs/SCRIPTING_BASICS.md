@@ -598,7 +598,7 @@ In the [README of the Scripting Agent](https://github.com/indigo-astronomy/indig
 
 Earlier it was stated that there is no direct communication possible between scripts that are running in different scripting agents, other than by sending a message on the Indigo bus or using shared properties. The latter option is the preferred one, since messages are present in the system only to present unstructured information to the user, so using them for communication is not the intended use. But you can if you want to.
 
-Messages can be send by the server and can be received by the connected client applications. Clients can however not send messages from a script that can be received on the server, due to the architecture of the Indigo bus. Note however that some client applications, such as AstroImager and AstroGuider, run both a client and a server and can therefore exchange messages.
+Messages can be sent by the server and can be received by the connected client applications. Clients however, can not send messages from a script that can be received on the server, due to the architecture of the Indigo bus. Note however that some client applications, such as AstroImager and AstroGuider, run both a client and a server and can therefore exchange messages.
 
 We can create an event_handler in a script running in a client application that watches the Indigo bus for such messages with the on_message function. The event_handler must be bound to the device that is the sender of the message, e.g. the server, as is shown in the example hereunder.
 
