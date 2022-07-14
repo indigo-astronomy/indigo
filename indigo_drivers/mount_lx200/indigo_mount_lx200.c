@@ -481,29 +481,27 @@ static void meade_get_site(indigo_device *device, double *latitude, double *long
 
 static bool meade_set_site(indigo_device *device, double latitude, double longitude) {
 	char command[128], response[128];
+	bool result = true;
 	if (MOUNT_TYPE_AGOTINO_ITEM->sw.value)
 		return false;
-	if (longitude < 0)
-		longitude += 360;
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value)
 		sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d:%02d"));
 	else
 		sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d"));
 	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-		return false;
-	} else {
-		double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
-		if (MOUNT_TYPE_AVALON_ITEM->sw.value)
-			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02d"));
-		else
-			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
-		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-			return false;
-		}
+		result = false;
 	}
-	return true;
+	longitude = 360 - fmod(longitude + 360, 360);
+	if (MOUNT_TYPE_AVALON_ITEM->sw.value)
+		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02d"));
+	else
+		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
+	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
+		result = false;
+	}
+	return result;
 }
 
 static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec) {
