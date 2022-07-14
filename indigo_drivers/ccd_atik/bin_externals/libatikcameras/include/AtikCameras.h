@@ -683,6 +683,31 @@ extern "C" {
 	/// @param callback a pointer to a function which will be invoked when fast mode is completed.
 	/// @return TRUE on success, FALSE on failure.
 	artfn BOOL ArtemisSetFastCallback(  ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer));
+
+	/// @brief Set the callback that will be invoked when a fast mode exposure is completed. This extension provides
+	/// an array of info as the last arguments. The first char in the info array is always the length of the array 
+	/// -1
+	/// @param handle the connected Atik device handle.
+	/// @param callback a pointer to a function which will be invoked when fast mode is completed.
+	/// @return TRUE on success, FALSE on failure.
+	artfn BOOL ArtemisSetFastCallbackEx(ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer, unsigned char * info));
+
+	/// @brief Returns a pointer to the formatted last exposure start time while using the fast mode callback.
+	/// The buffer is internal to the SDK and is overwritten every time this function is called.
+	/// Only works with our Horizon II and ACIS/Apx series cameras
+	/// Does not include milliseconds.
+	/// @param handle the connected Atik device handle.
+	/// @see ArtemisLastStartTimeMilliseconds()
+	/// @return pointer to a null terminated buffer containing the formatted time exposure was started at.
+	artfn char* ArtemisLastFastModeStartTime(ArtemisHandle handle);
+
+	/// @brief Returns the last fast mode callback exposure start time millisecond component.
+	/// Only works with our Horizon II and ACIS/Apx series cameras
+	/// @param handle the connected Atik device handle.
+	/// @see ArtemisLastStartTime
+	/// @return millisecond component of the last exposure time.
+	artfn int   ArtemisLastFastModeStartTimeMilliseconds(ArtemisHandle handle);
+
 	// ------------------- Amplifier -----------------------------------
 
 	/// @brief Enable/disable the device's amplifier.
