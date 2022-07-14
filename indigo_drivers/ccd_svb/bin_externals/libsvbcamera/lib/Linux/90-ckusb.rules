@@ -1,2 +1,2 @@
-# Custom SvBony camera rules - original rules are totally broken!
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="f266", MODE="0666", TAG="ckusb_dev"
+KERNEL=="*", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ACTION=="add", ATTR{idVendor}=="f266", MODE="666", TAG="ckusb_dev",  A"
+KERNEL=="*", SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ACTION=="remove", TAG=="ckusb_dev", R"
