@@ -4167,6 +4167,9 @@
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D2696E422A56BD8008BE82C /* steeldrive2_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = steeldrive2_simulator.ino; sourceTree = "<group>"; };
 		9D2696E522A56BD8008BE82C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D335BB0288036E6004D9F30 /* Apx60 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Apx60 Programmers Guide.pdf"; sourceTree = "<group>"; };
+		9D335BB1288036E7004D9F30 /* TE-77 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-77 Programmers Guide.pdf"; sourceTree = "<group>"; };
+		9D335BB2288036E7004D9F30 /* TE-47 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-47 Programmers Guide.pdf"; sourceTree = "<group>"; };
 		9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_gpsd.h; sourceTree = "<group>"; };
 		9D35E9D623CDB27D00B6A41F /* hex.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = hex.c; sourceTree = "<group>"; };
 		9D35E9D723CDB27D00B6A41F /* json.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = json.c; sourceTree = "<group>"; };
@@ -4841,6 +4844,9 @@
 		591B015021A48F47006A1CD8 /* doc */ = {
 			isa = PBXGroup;
 			children = (
+				9D335BB0288036E6004D9F30 /* Apx60 Programmers Guide.pdf */,
+				9D335BB2288036E7004D9F30 /* TE-47 Programmers Guide.pdf */,
+				9D335BB1288036E7004D9F30 /* TE-77 Programmers Guide.pdf */,
 				5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */,
 				591B015121A48F47006A1CD8 /* AtikCameras.dll Guide.pdf */,
 			);
