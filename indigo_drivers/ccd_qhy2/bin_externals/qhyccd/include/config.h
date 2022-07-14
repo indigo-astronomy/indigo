@@ -10,13 +10,14 @@
 #define	IMAGEQUEUE_ORIG_MODE		1
 
 
-#define version_year                21
-#define version_month               10
-#define version_day                 12
-#define version_subday              16
-#define SDK_SVN_REVISION            11499
+#define version_year                22
+#define version_month               7
+#define version_day                 6
+#define version_subday              15
+#define SDK_SVN_REVISION            12270
 
 #if defined (_WIN32)
+#define CCM6000_SUPPORT             0
 #define QHYCCD_OPENCV_SUPPORT
 #define WINDOWS_PTHREAD_SUPPORT		1
 #define WINPCAP_MODE_SUPPORT		0
