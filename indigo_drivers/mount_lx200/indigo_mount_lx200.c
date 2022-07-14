@@ -495,7 +495,7 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 	} else {
 		double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
 		if (MOUNT_TYPE_AVALON_ITEM->sw.value)
-			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+03d*%02d:%02d"));
+			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02d"));
 		else
 			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
 		if (!meade_command(device, command, response, 1, 0) || *response != '1') {
