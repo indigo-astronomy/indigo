@@ -495,8 +495,10 @@ void loop() {
         dec = atof(buffer + 9) * 360000L;
       } else if (!strncmp(buffer, "X20", 3)) {
         strncpy(ra_guiding_speed, buffer + 3, 2);
+				Serial.print("1");
       } else if (!strncmp(buffer, "X21", 3)) {
         strncpy(dec_guiding_speed, buffer + 3, 2);
+				Serial.print("1");
       } else if (!strcmp(buffer, "X22")) {
         Serial.print(ra_guiding_speed);
         Serial.print("b");
