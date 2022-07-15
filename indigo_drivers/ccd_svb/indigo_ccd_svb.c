@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -65,6 +65,7 @@
 #define RGB24_NAME                 "RGB 24"
 #define RAW16_NAME                 "RAW 16"
 #define Y8_NAME                    "Y 8"
+#define Y16_NAME                   "Y 16"
 
 #define SVB_ADVANCED_PROPERTY      (PRIVATE_DATA->svb_advanced_property)
 
@@ -128,6 +129,8 @@ static int get_pixel_depth(indigo_device *device) {
 				return 16;
 			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, Y8_NAME))
 				return 8;
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, Y16_NAME))
+				return 16;
 		}
 		item++;
 	}
@@ -147,6 +150,8 @@ static int get_pixel_format(indigo_device *device) {
 				return SVB_IMG_RAW16;
 			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, Y8_NAME))
 				return SVB_IMG_Y8;
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, Y16_NAME))
+				return SVB_IMG_Y16;
 		}
 		item++;
 	}
@@ -670,6 +675,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + format_count, Y8_NAME, Y8_NAME, false);
 			format_count++;
 		}
+		if (pixel_format_supported(device, SVB_IMG_Y16)) {
+			indigo_init_switch_item(PIXEL_FORMAT_PROPERTY->items + format_count, Y16_NAME, Y16_NAME, false);
+			format_count++;
+		}
 		PIXEL_FORMAT_PROPERTY->count = format_count;
 
 		INFO_PROPERTY->count = 6;
@@ -728,6 +737,12 @@ static indigo_result ccd_attach(indigo_device *device) {
 			if (pixel_format_supported(device, SVB_IMG_Y8)) {
 				snprintf(name, 32, "%s %dx%d", Y8_NAME, bin, bin);
 				snprintf(label, 64, "%s %dx%d", Y8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
+				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
+				mode_count++;
+			}
+			if (pixel_format_supported(device, SVB_IMG_Y16)) {
+				snprintf(name, 32, "%s %dx%d", Y16_NAME, bin, bin);
+				snprintf(label, 64, "%s %dx%d", Y16_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
 				indigo_init_switch_item(CCD_MODE_PROPERTY->items + mode_count, name, label, false);
 				mode_count++;
 			}
@@ -1561,20 +1576,20 @@ static void process_plug_event(indigo_device *unused) {
 		indigo_attach_device(device);
 		devices[slot]=device;
 		if (is_guider) {
-		slot = find_available_device_slot();
-		if (slot < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-			pthread_mutex_unlock(&device_mutex);
-			return;
+			slot = find_available_device_slot();
+			if (slot < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+				pthread_mutex_unlock(&device_mutex);
+				return;
+			}
+			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+			device->master_device = master_device;
+			sprintf(device->name, "%s Guider #%d", info.FriendlyName, id);
+			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+			device->private_data = private_data;
+			indigo_attach_device(device);
+			devices[slot]=device;
 		}
-		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-		device->master_device = master_device;
-		sprintf(device->name, "%s Guider #%d", info.FriendlyName, id);
-		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		device->private_data = private_data;
-		indigo_attach_device(device);
-		devices[slot]=device;
-	}
 	}
 	pthread_mutex_unlock(&device_mutex);
 }
