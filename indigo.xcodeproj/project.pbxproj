@@ -4151,7 +4151,7 @@
 		59FC2EB9210CA76200730343 /* indigo_ccd_mi.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = indigo_ccd_mi.rules; sourceTree = "<group>"; };
 		59FE34602187B2F7004FB5D4 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59FE34612187B2F7004FB5D4 /* indigo_aux_dsusb_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_dsusb_main.c; sourceTree = "<group>"; };
-		59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_dsusb.c; sourceTree = "<group>"; };
+		59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_dsusb.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_dsusb.h; sourceTree = "<group>"; };
 		59FE34682187B5FD004FB5D4 /* indigo_guider_gpusb_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_guider_gpusb_main.c; sourceTree = "<group>"; };
 		59FE34692187B5FD004FB5D4 /* indigo_guider_gpusb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_guider_gpusb.h; sourceTree = "<group>"; };
