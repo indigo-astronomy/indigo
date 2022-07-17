@@ -257,6 +257,7 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	indigo_usleep(50000);
 	return true;
 }
 
@@ -595,8 +596,9 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 }
 
 static bool meade_force_flip(indigo_device *device, bool on) {
+	char response[128];
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value)
-		return meade_command(device, on ? ":TTSFd#" : ":TTRFd#", NULL, 0, 0);
+		return meade_command(device, on ? ":TTSFd#" : ":TTRFd#", response, 1, 0);
 	return false;
 }
 
@@ -607,12 +609,12 @@ static bool meade_pec(indigo_device *device, bool on) {
 }
 
 static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
-	char command[128], response[128];
+	char command[128];
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
 		sprintf(command, ":X20%02d#", ra);
-		if (meade_command(device, command, response, 1, 0)) {
+		if (meade_command(device, command, NULL, 0, 0)) {
 			sprintf(command, ":X21%02d#", dec);
-			return meade_command(device, command, response, 1, 0);
+			return meade_command(device, command, NULL, 0, 0);
 		}
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		if (ra < 10) ra = 10;
@@ -639,12 +641,11 @@ static bool meade_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 }
 
 static bool meade_set_tracking(indigo_device *device, bool on) {
-	char response[128];
 	if (on) { // TBD
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
 			return meade_command(device, ">190:192F#", NULL, 0, 0);
 		} else if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
-			return meade_command(device, ":X122#", response, 1, 0);
+			return meade_command(device, ":X122#", NULL, 0, 0);
 		} if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
 				return meade_command(device, ":RT2#", NULL, 0, 0);
@@ -662,7 +663,7 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
 			return meade_command(device, ">190:191E#", NULL, 0, 0);
 		} else if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
-			return meade_command(device, ":X120#", response, 1, 0);
+			return meade_command(device, ":X120#", NULL, 0, 0);
 		} if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			return meade_command(device, ":RT9#", NULL, 0, 0);
 		} if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value) {
@@ -797,7 +798,7 @@ static bool meade_park(indigo_device *device) {
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
 		return meade_command(device, ":hC#", NULL, 0, 0);
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value)
-		return meade_command(device, ":X362#", response, 1, 0);
+		return meade_command(device, ":X362#", response, sizeof(response), 0) && strcmp(response, "pB") == 0;
 	return false;
 }
 
@@ -810,7 +811,7 @@ static bool meade_unpark(indigo_device *device) {
 	if (MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value)
 		return meade_command(device, ":PO#", NULL, 0, 0);
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value)
-		return meade_command(device, ":X370#", response, 1, 0);
+		return meade_command(device, ":X370#", response, sizeof(response), 0)  && strcmp(response, "p0") == 0;
 	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value)
 		return meade_command(device, ":hR#", NULL, 0, 0);
 	return false;
@@ -1087,6 +1088,7 @@ static void meade_init_avalon_mount(indigo_device *device) {
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+	meade_command(device, ":TTSFh#", response, 1, 0);
 	if (meade_command(device, ":X22#", response, sizeof(response), 0)) {
 		int ra, dec;
 		if (sscanf(response, "%db%d#", &ra, &dec) == 2) {
