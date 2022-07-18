@@ -96,3 +96,11 @@ void indigocat_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec
 	*dec = coordinates.dec * RAD2DEG;
 }
 
+void indigocat_jnow_to_j2k(double *ra, double *dec) {
+	equatorial_coords_s coordinates = { *ra * 15 * DEG2RAD, *dec * DEG2RAD };
+	double now = 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
+	coordinates = indigocat_precess(&coordinates, now, 2000.0);
+	*ra = coordinates.ra * RAD2DEG / 15;
+	*dec = coordinates.dec * RAD2DEG;
+}
+
