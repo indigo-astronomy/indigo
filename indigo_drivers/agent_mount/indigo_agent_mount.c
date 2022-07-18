@@ -98,6 +98,8 @@ typedef struct {
 	double mount_target_ra, mount_target_dec;
 	int server_socket;
 	bool dome_unparked;
+	bool imager_in_preview;
+	bool guider_in_preview;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
@@ -170,6 +172,8 @@ static void set_eq_coordinates(indigo_device *device) {
 }
 
 static void abort_capture(indigo_device *device) {
+	if (DEVICE_PRIVATE_DATA->imager_in_preview)
+		return;
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
@@ -180,6 +184,8 @@ static void abort_capture(indigo_device *device) {
 }
 
 static void abort_guiding(indigo_device *device) {
+	if (DEVICE_PRIVATE_DATA->guider_in_preview)
+		return;
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
@@ -843,6 +849,33 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && property->state == INDIGO_OK_STATE && (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) || !strcmp(property->name, MOUNT_SLEW_RATE_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_DEC_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_RA_PROPERTY_NAME) || !strcmp(property->name, MOUNT_ABORT_MOTION_PROPERTY_NAME) || !strcmp(property->name, MOUNT_TRACKING_PROPERTY_NAME))) {
 			indigo_filter_forward_change_property(client, property, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
 		}
+	} else {
+		indigo_property *list = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
+		for (int i = 0; i < list->count; i++) {
+			indigo_item *item = list->items + i;
+			if (item->sw.value) {
+				if (!strncmp("Imager Agent", item->name, 12)) {
+					if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
+						CLIENT_PRIVATE_DATA->imager_in_preview = false;
+						for (int j = 0; j < property->count; j++) {
+							indigo_item *item = property->items + j;
+							if (item->sw.value && !strcmp(item->name, AGENT_IMAGER_START_PREVIEW_ITEM_NAME))
+								CLIENT_PRIVATE_DATA->imager_in_preview = true;
+						}
+					}
+				} else if (!strncmp("Guider Agent", item->name, 12)) {
+					if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
+						CLIENT_PRIVATE_DATA->guider_in_preview = false;
+						for (int j = 0; j < property->count; j++) {
+							indigo_item *item = property->items + j;
+							if (item->sw.value && !strcmp(item->name, AGENT_GUIDER_START_PREVIEW_ITEM_NAME))
+								CLIENT_PRIVATE_DATA->guider_in_preview = true;
+						}
+					}
+				}
+			}
+		}
+
 	}
 }
 
