@@ -1261,7 +1261,7 @@ static void guide_process(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum =
 				DEVICE_PRIVATE_DATA->rmse_dec_sum =
 				DEVICE_PRIVATE_DATA->rmse_ra_s_sum =
-				DEVICE_PRIVATE_DATA->rmse_dec_sum = 0;
+				DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
 				if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value)
 					DEVICE_PRIVATE_DATA->rmse_count++;
 				for (int i = 0; i < DEVICE_PRIVATE_DATA->rmse_count; i++) {
