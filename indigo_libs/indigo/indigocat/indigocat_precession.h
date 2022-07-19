@@ -25,6 +25,7 @@ extern equatorial_coords_s indigocat_precess(const equatorial_coords_s *c0, cons
 extern equatorial_coords_s indigocat_apply_proper_motion(const equatorial_coords_s *c0, double pmra, double pmdec, double eq0, double eq1);
 
 extern void indigocat_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec);
+extern void indigocat_jnow_to_j2k(double *ra, double *dec);
 
 #ifdef __cplusplus
 };
