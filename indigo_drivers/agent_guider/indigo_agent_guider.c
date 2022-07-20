@@ -244,7 +244,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			return agent_exposure_property->state;
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
-			indigo_send_message(device, "No RAW image received");
+			indigo_send_message(device, "Error: No RAW image received");
 			return INDIGO_ALERT_STATE;
 		}
 		bool missing_selection = false;
@@ -285,7 +285,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 			if (j == 0 && (!AGENT_GUIDER_START_PREVIEW_ITEM->sw.value || AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0)) {
-				indigo_send_message(device, "No stars detected");
+				indigo_send_message(device, "Warning: No stars detected");
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				return AGENT_GUIDER_START_PREVIEW_ITEM->sw.value ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -336,7 +336,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
 				if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && DEVICE_PRIVATE_DATA->reference->snr < 9) {
 					if (exposure_attempt == 2)
-						indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+						indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 					state = INDIGO_ALERT_STATE;
 					continue;
 				}
@@ -382,7 +382,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
-					indigo_send_message(device, "Warning: Can not detect star, reseting selection");
+					indigo_send_message(device, "Warning: No stars detected, reseting selection");
 					DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
 					DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
 					for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
@@ -392,7 +392,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						item_y->number.target = item_y->number.value = 0;
 					}
 					if (exposure_attempt == 2)
-						indigo_send_message(device, "Can not detect star in the selection");
+						indigo_send_message(device, "Warning: No stars detected in the selection");
 					state = INDIGO_ALERT_STATE;
 					continue;
 				}
@@ -428,7 +428,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
 				if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && digest.snr < 9) {
 					if (exposure_attempt == 2)
-						indigo_send_message(device, "Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+						indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 					state = INDIGO_ALERT_STATE;
 					continue;
 				}
@@ -482,7 +482,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					if (exposure_attempt < 2)
 						continue;
 					if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
-						indigo_send_message(device, "Can not detect star in the selection");
+						indigo_send_message(device, "Warning: No stars detected in the selection");
 						DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
 					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
