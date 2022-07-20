@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x001A
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -501,7 +501,7 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 		sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d"));
 	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-		result = false;
+		result = MOUNT_TYPE_AVALON_ITEM->sw.value; // ignore result for avalon
 	}
 	longitude = 360 - fmod(longitude + 360, 360);
 	if (MOUNT_TYPE_AVALON_ITEM->sw.value)
@@ -510,7 +510,7 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
 	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
-		result = false;
+		result = MOUNT_TYPE_AVALON_ITEM->sw.value; // ignore result for avalon
 	}
 	return result;
 }
