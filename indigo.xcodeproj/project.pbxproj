@@ -2641,7 +2641,7 @@
 		59D6719022FDBB8D00D08A2A /* indigo_ptp_sony.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ptp_sony.c; sourceTree = "<group>"; };
 		59D6719122FDBB8D00D08A2A /* indigo_ptp_sony.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ptp_sony.h; sourceTree = "<group>"; };
 		59D707651DC5268B00DEF566 /* AUTHORS.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = AUTHORS.md; sourceTree = "<group>"; };
-		59D707671DC527B800DEF566 /* indigo_mount_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_driver.c; sourceTree = "<group>"; };
+		59D707671DC527B800DEF566 /* indigo_mount_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_driver.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59D707681DC527B800DEF566 /* indigo_mount_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_mount_driver.h; sourceTree = "<group>"; };
 		59D7076C1DC52C3E00DEF566 /* indigo_mount_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator_main.c; sourceTree = "<group>"; };
 		59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_simulator.c; sourceTree = "<group>"; };

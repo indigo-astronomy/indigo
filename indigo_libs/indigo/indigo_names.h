@@ -1677,6 +1677,10 @@
  */
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY_NAME	"MOUNT_ALIGNMENT_DELETE_POINTS"
 
+/** MOUNT_ALIGNMENT_DELETE_POINTS.ALL property item name.
+ */
+#define MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME	"ALL"
+
 //----------------------------------------------------------------------
 /** MOUNT_EPOCH property name.
  */
