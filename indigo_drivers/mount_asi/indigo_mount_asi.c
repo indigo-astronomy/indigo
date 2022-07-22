@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -96,13 +96,14 @@ static char *asi_error_string(unsigned int code) {
 		"Prameters out of range",
 		"Format error",
 		"Mount not initialized",
-		"Mount is Moving",
+		"Mount is moving",
 		"Target is below horizon",
 		"Target is beow the altitude limit",
-		"Time and location is not set",
-		"Warning: Meridian reached, tracking stopeed"
+		"Time and location are not set",
+		"Warning: Meridian reached, tracking stopeed",
+		"Target is on the other side of the meridian"
 	};
-	if (code > 8) code = 0;
+	if (code > 9) code = 0;
 	return (char *)error_string[code];
 }
 
