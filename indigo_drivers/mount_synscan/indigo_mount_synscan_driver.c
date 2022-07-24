@@ -712,10 +712,10 @@ void coords_eq_to_encoder2(indigo_device* device, double ha, double dec, double 
 	haw /= M_PI + M_PI;
 	hae /= M_PI + M_PI;
 
-	assert(haw < 0.5 || hae < 0.5);
+	assert(haw <= 0.5 || hae <= 0.5);
 
 	//  Decide whether EAST or WEST provides the "normal" / CW-Down slew and fill in the positions
-//	if (haw < 0.5) {
+	//if (haw <= 0.5) {
 		haPos[0] = haw;
 		decPos[0] = degw;
 		haPos[1] = hae;
@@ -753,10 +753,10 @@ void coords_aa_to_encoder2(indigo_device* device, double az, double alt, double 
 	azw /= M_PI + M_PI;
 	aze /= M_PI + M_PI;
 
-	assert(azw < 0.5 || aze < 0.5);
+	assert(azw <= 0.5 || aze <= 0.5);
 
 	//  Decide whether EAST or WEST provides the "normal" / CW-Down slew and fill in the positions
-	//	if (haw < 0.5) {
+	//	if (haw <= 0.5) {
 	azPos[0] = azw;
 	altPos[0] = altw;
 	azPos[1] = aze;
