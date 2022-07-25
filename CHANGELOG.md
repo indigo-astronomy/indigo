@@ -2,6 +2,51 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-186] - 25 Jul Mon 2022
+### Overall
+- indigo_docs: SCRIPTING_BASICS added (Thanks to Johan Bakker)
+- indigo_align: fix indigo_equatorial_to_hotizontal() to work with poles
+- indigocat_jnow_to_j2k() helper added
+- EXPTIME format in FITS changed to %20.4f for values < 1
+- mount_driver: All alignment points can be deleted at once
+
+### Driver fixes
+- indigo_agent_guider:
+	- added weighted selection guiding method
+	- increased guide stars to 24
+	- use smaller step for several items
+	- add Error or Warning prefix to the messages
+	- select guide stars in wider area (the central 90% of the frame)
+
+- indigo_agent_mount:
+	- mount movement doesn't abort preview in imager and guider agents
+
+- indigo_ccd_uvc:
+	- auto exposure turned off
+
+- indigo_mount_lx200:
+	- high precision format used for Sg/St on Avalon
+	- bug fixes
+
+- indigo_ccd_svb:
+	- SDK updated to 1.7.3
+	- Y16 support added
+
+- indigo_ccd_atik:
+	- SDK updated to 2022-07-13
+
+- indigo_ccd_qhy2:
+	- SDK updated to V2022.07.06
+
+- indigo_aux_dsusb:
+	- autofocus made configurable
+
+- indigo_mount_asi:
+	- added "e9" error text, some messages fixed
+
+- mount_synscan:
+	- assertion fixed for Hour angle 0h and 12h
+
 ## [2.0-184] - 01 Jul Fri 2022
 ### Overall
 - all guider drivers can handle simultaneous RA and Dec guiding
