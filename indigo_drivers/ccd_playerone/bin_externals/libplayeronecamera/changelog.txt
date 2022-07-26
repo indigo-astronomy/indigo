@@ -1,0 +1,110 @@
+2022.6.20(3.0.3)
+- Optimize the stability of the new camera
+
+2022.6.14(3.0.2)
+- Optimize the stability of Saturn-M/C SQR data transmission
+
+2022.05.04(3.0.1)
+- Add POA_FAN_POWER, POA_HEATER_POWER and POA_PIXEL_BIN_SUM in POAConfig
+- Added APIs for setting Sensor Mode
+- Optimize automatic setting of cool power
+
+2022.04.26(2.0.8)
+- Optimize gain settings of Uranus-C and Mars-C II 
+- Fixed an issue which USB stuck when transfer data in rare cases
+
+2022.03.31(2.0.7)
+- Add new camera models
+
+2022.03.08(2.0.6)
+- Add new camera models
+- Enhance the stability of Apollo series
+
+2021.11.17
+- Fix possible memory leak bugs
+
+2021.10.22
+- Added support for Apollo cameras
+
+2021.07.31
+- Fix a bug that there are some circumstances that can cause snap exposure to fail.
+
+2021.07.23
+- Added multi-platform support, including Mac OS, Linux_x64, Raspberry PI OS.
+- Added 'POA_USB_BANDWIDTH_LIMIT' in POAConfig.
+
+2021.06.19
+- Added support for IMX249
+
+2021.06.14
+- Change that If the camera does not have DDR, then the 'HQI' will not be included in its POAConfig
+
+2021.06.11
+- Fixed a bug about the accuracy of AR0130 temperature
+- Try to fix the false positives in Microsoft's antivirus software
+
+2021.06.10
+- Enhance the stability of USB data transmission
+
+2021.06.08
+- Added support for new guide cameras
+- Add FPS Limit and HQI in POAConfig
+- Fixed that DPS error in some special cases
+- Fixed a bug that could cause a crash
+
+2021.03.16
+- Add 'MONO8' image format
+
+2021.02.25
+- Remove the black border of the image when RGB24 
+- When set image size (Resolution), move the field of view to the center of the image
+
+2021.02.04
+- Support Neptune-C ,Neptune-M and Neptune-C II
+- Fix a bug about auto while balance 
+
+2021.01.28
+- Fix a bug that when multiple cameras are plugged in and out, the camera cannot be opened
+
+2021.01.25
+- Fix the crash bug that when DPS correct dead pixels which there are all dead pixels around
+
+2021.01.21
+ - Remove the 'USB Bandwidth' in POAConfig
+ - Add the 'POA_WB_G' in POAConfig
+ - HCGain(High Conversion Gain) can be got by 'POAGetGainOffset' Function
+ - Upgrade the algorithm of HCPC to DPS algorithm, now it can correct the cold pixel
+
+2020.12.30
+ - Fixed Read HCPC Bug
+
+2020.12.25
+ - Change the RuntimeLibrary of the SDK to MT to reduce the dependency on 'msVCP140.dll' and 'vcruntime140.dll'
+
+2020.12.23
+ - Add sensor model name in POACameraProperties
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

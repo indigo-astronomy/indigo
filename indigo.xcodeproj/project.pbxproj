@@ -710,6 +710,13 @@
 		59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */; };
 		59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE346B2187B5FD004FB5D4 /* indigo_guider_gpusb.c */; };
 		59FE3484218887EA004FB5D4 /* indigo_focuser_lakeside.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE347E21886A17004FB5D4 /* indigo_focuser_lakeside.c */; };
+		59FFB065288D3D3600F172AC /* indigo_ccd_playerone.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB062288D3CB900F172AC /* indigo_ccd_playerone.h */; };
+		59FFB066288D3D3600F172AC /* indigo_ccd_playerone.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */; };
+		59FFB067288D3D5600F172AC /* indigo_ccd_playerone.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB062288D3CB900F172AC /* indigo_ccd_playerone.h */; };
+		59FFB068288D3D5C00F172AC /* indigo_ccd_playerone.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */; };
+		59FFB069288D3D6500F172AC /* PlayerOneCamera.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB050288D3CB900F172AC /* PlayerOneCamera.h */; };
+		59FFB06A288D3D6600F172AC /* PlayerOneCamera.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB050288D3CB900F172AC /* PlayerOneCamera.h */; };
+		59FFB06D288D542F00F172AC /* libPlayerOneCamera.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */; };
 		9D35EA2B23CDB27D00B6A41F /* indigo_gps_gpsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D35EA0023CDB27D00B6A41F /* indigo_gps_gpsd.c */; };
@@ -4162,6 +4169,21 @@
 		59FE348121886A17004FB5D4 /* indigo_focuser_lakeside_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_lakeside_main.c; sourceTree = "<group>"; };
 		59FE348321886A17004FB5D4 /* lakeside_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = lakeside_simulator.ino; sourceTree = "<group>"; };
 		59FFB048288D3C5D00F172AC /* libsbigudrv.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libsbigudrv.so; sourceTree = "<group>"; };
+		59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone.c; sourceTree = "<group>"; wrapsLines = 0; };
+		59FFB04C288D3CB900F172AC /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59FFB050288D3CB900F172AC /* PlayerOneCamera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PlayerOneCamera.h; sourceTree = "<group>"; };
+		59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libPlayerOneCamera.dylib; sourceTree = "<group>"; };
+		59FFB055288D3CB900F172AC /* player_one_astronomy.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = player_one_astronomy.rules; sourceTree = "<group>"; };
+		59FFB057288D3CB900F172AC /* libPlayerOneCamera.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so; sourceTree = "<group>"; };
+		59FFB058288D3CB900F172AC /* README.arm */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.arm; sourceTree = "<group>"; };
+		59FFB05B288D3CB900F172AC /* libPlayerOneCamera.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so; sourceTree = "<group>"; };
+		59FFB05D288D3CB900F172AC /* libPlayerOneCamera.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so; sourceTree = "<group>"; };
+		59FFB05F288D3CB900F172AC /* PlayerOne Software Development Kit.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "PlayerOne Software Development Kit.pdf"; sourceTree = "<group>"; };
+		59FFB060288D3CB900F172AC /* changelog.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = changelog.txt; sourceTree = "<group>"; };
+		59FFB061288D3CB900F172AC /* license.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
+		59FFB062288D3CB900F172AC /* indigo_ccd_playerone.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_playerone.h; sourceTree = "<group>"; };
+		59FFB063288D3CB900F172AC /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone_main.c; sourceTree = "<group>"; };
 		9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher_motor_controller_command_set.pdf; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
@@ -4600,6 +4622,7 @@
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
 				59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
+				59FFB06D288D542F00F172AC /* libPlayerOneCamera.dylib in Frameworks */,
 				9D495737245601B400674101 /* libusb-1.0.0.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -8650,6 +8673,7 @@
 				5992F7B01E1EC84B0035242E /* ccd_fli */,
 				9D976FD21DD0C46E00782B32 /* ccd_iidc */,
 				59FC2E90210CA26D00730343 /* ccd_mi */,
+				59FFB049288D3CB900F172AC /* ccd_playerone */,
 				9D586C3C22FB0C16002D382E /* ccd_ptp */,
 				59F654681EE47371007B8C93 /* ccd_qhy */,
 				597E4F7423EEE637007E0BF8 /* ccd_qhy2 */,
@@ -11446,6 +11470,116 @@
 			path = lakeside_simulator;
 			sourceTree = "<group>";
 		};
+		59FFB049288D3CB900F172AC /* ccd_playerone */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB04C288D3CB900F172AC /* README.md */,
+				59FFB063288D3CB900F172AC /* Makefile.inc */,
+				59FFB062288D3CB900F172AC /* indigo_ccd_playerone.h */,
+				59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */,
+				59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */,
+				59FFB04D288D3CB900F172AC /* bin_externals */,
+			);
+			path = ccd_playerone;
+			sourceTree = "<group>";
+		};
+		59FFB04D288D3CB900F172AC /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB04E288D3CB900F172AC /* libplayeronecamera */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		59FFB04E288D3CB900F172AC /* libplayeronecamera */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB060288D3CB900F172AC /* changelog.txt */,
+				59FFB061288D3CB900F172AC /* license.txt */,
+				59FFB05E288D3CB900F172AC /* doc */,
+				59FFB04F288D3CB900F172AC /* include */,
+				59FFB051288D3CB900F172AC /* lib */,
+			);
+			path = libplayeronecamera;
+			sourceTree = "<group>";
+		};
+		59FFB04F288D3CB900F172AC /* include */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB050288D3CB900F172AC /* PlayerOneCamera.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		59FFB051288D3CB900F172AC /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB052288D3CB900F172AC /* macOS */,
+				59FFB054288D3CB900F172AC /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		59FFB052288D3CB900F172AC /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		59FFB054288D3CB900F172AC /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB055288D3CB900F172AC /* player_one_astronomy.rules */,
+				59FFB056288D3CB900F172AC /* x64 */,
+				59FFB058288D3CB900F172AC /* README.arm */,
+				59FFB059288D3CB900F172AC /* x86 */,
+				59FFB05A288D3CB900F172AC /* arm */,
+				59FFB05C288D3CB900F172AC /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		59FFB056288D3CB900F172AC /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB057288D3CB900F172AC /* libPlayerOneCamera.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		59FFB059288D3CB900F172AC /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		59FFB05A288D3CB900F172AC /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB05B288D3CB900F172AC /* libPlayerOneCamera.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		59FFB05C288D3CB900F172AC /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB05D288D3CB900F172AC /* libPlayerOneCamera.so */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		59FFB05E288D3CB900F172AC /* doc */ = {
+			isa = PBXGroup;
+			children = (
+				59FFB05F288D3CB900F172AC /* PlayerOne Software Development Kit.pdf */,
+			);
+			path = doc;
+			sourceTree = "<group>";
+		};
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
 			isa = PBXGroup;
 			children = (
@@ -12605,6 +12739,7 @@
 				598A1C31259BA94A00C0B34C /* libatik.h in Headers */,
 				598A1C32259BA94A00C0B34C /* qhyccdcamdef.h in Headers */,
 				598A1C33259BA94A00C0B34C /* indigo_wheel_optec.h in Headers */,
+				59FFB06A288D3D6600F172AC /* PlayerOneCamera.h in Headers */,
 				598A1C34259BA94A00C0B34C /* qhyccderr.h in Headers */,
 				598A1C35259BA94A00C0B34C /* indigo_aux_driver.h in Headers */,
 				598A1C36259BA94A00C0B34C /* DDHidJoystick.h in Headers */,
@@ -12683,6 +12818,7 @@
 				598A1C77259BA94A00C0B34C /* indigo_aux_joystick.h in Headers */,
 				598A1C78259BA94A00C0B34C /* indigo_agent_alignment.h in Headers */,
 				598A1C79259BA94A00C0B34C /* libuvc_internal.h in Headers */,
+				59FFB067288D3D5600F172AC /* indigo_ccd_playerone.h in Headers */,
 				598A1C7A259BA94A00C0B34C /* duktape.h in Headers */,
 				598A1C7B259BA94A00C0B34C /* EAF_focuser.h in Headers */,
 				598A1C7C259BA94A00C0B34C /* indigo_agent_guider.h in Headers */,
@@ -12739,6 +12875,7 @@
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
 				59111D15285F53D500E57194 /* indigocat_transform.h in Headers */,
 				9D743A5D23FD58080093319F /* indigo_rotator_driver.h in Headers */,
+				59FFB069288D3D6500F172AC /* PlayerOneCamera.h in Headers */,
 				59463C1920DE6781004950F2 /* indigo_focuser_wemacro_bt.h in Headers */,
 				59C499E71EFADFE000E750AA /* indigo_ica_ptp.h in Headers */,
 				59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */,
@@ -12869,6 +13006,7 @@
 				59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */,
 				595F2921211E211100380EF4 /* DDHidAppleMikey.h in Headers */,
 				593A357E219DBAD500EDF481 /* indigo_filter.h in Headers */,
+				59FFB065288D3D3600F172AC /* indigo_ccd_playerone.h in Headers */,
 				59C76F10237872520091B966 /* config.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -13265,6 +13403,7 @@
 				598A1BB0259BA94A00C0B34C /* indigo_filter.c in Sources */,
 				598A1BB1259BA94A00C0B34C /* indigo_ccd_driver.c in Sources */,
 				598A1BB2259BA94A00C0B34C /* indigo_xml.c in Sources */,
+				59FFB068288D3D5C00F172AC /* indigo_ccd_playerone.c in Sources */,
 				59958E1025CB0E0300BEFA1B /* indigo_dome_skyroof.c in Sources */,
 				598A1BB3259BA94A00C0B34C /* indigo_dome_nexdome.c in Sources */,
 				598A1BB4259BA94A00C0B34C /* indigo_aux_rts.c in Sources */,
@@ -13495,6 +13634,7 @@
 				59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */,
 				59F6BB41261CA65800DA9BE1 /* alpaca_switch.c in Sources */,
 				591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */,
+				59FFB066288D3D3600F172AC /* indigo_ccd_playerone.c in Sources */,
 				59111CF7285F504300E57194 /* indigocat_neptune.c in Sources */,
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,
 				590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */,
@@ -13894,6 +14034,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/arm",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				ONLY_ACTIVE_ARCH = YES;
@@ -13947,6 +14088,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/arm",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -14052,6 +14194,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/gps_gpsd/externals/libgps",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy2/bin_externals/qhyccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				ONLY_ACTIVE_ARCH = YES;
@@ -14097,6 +14240,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/gps_gpsd/externals/libgps",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qhy2/bin_externals/qhyccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				OTHER_LDFLAGS = (
