@@ -1,0 +1,8 @@
+#https://www.flir.com/support-center/iis/machine-vision/application-note/understanding-usbfs-on-linux/
+
+ACTION=="add", ATTRS{idVendor}=="a0a0", RUN+="/bin/sh -c '/bin/echo 256 >/sys/module/usbcore/parameters/usbfs_memory_mb'"
+
+#https://github.com/FreeRDP/FreeRDP/issues/6651
+#https://askubuntu.com/questions/978552/how-do-i-make-libusb-work-as-non-root
+
+SUBSYSTEM=="usb", ATTRS{idVendor}=="a0a0", GROUP="plugdev", TAG+="uaccess"
