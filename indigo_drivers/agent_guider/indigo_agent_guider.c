@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x001A
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -271,9 +271,18 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				&star_count
 			);
 			int j = 0;
+			int top_left_x = header->width * 0.05;
+			int bottom_right_x = header->width * 0.95;
+			int top_left_y = header->height * 0.05;
+			int bottom_right_y = header->height * 0.95;
 			for (int i = 0; i < star_count; i++) {
-				if (stars[i].oversaturated || stars[i].nc_distance > 0.95)
+				if (
+					stars[i].oversaturated ||
+					stars[i].x < top_left_x || stars[i].x > bottom_right_x ||
+					stars[i].y < top_left_y || stars[i].y > bottom_right_y
+				) {
 					continue;
+				}
 				DEVICE_PRIVATE_DATA->stars[j] = stars[i];
 				char name[8];
 				char label[32];
