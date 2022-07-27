@@ -82,6 +82,8 @@ typedef struct {
 	int exp_bin;
 	int exp_frame_width, exp_frame_height;
 	int exp_bpp;
+	bool exp_uses_bayer_pattern;
+	char *bayer_pattern;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double target_temperature, current_temperature;
 	double cooler_power;
@@ -93,22 +95,6 @@ typedef struct {
 	indigo_property *pixel_format_property;
 	indigo_property *playerone_advanced_property;
 } playerone_private_data;
-
-static char *get_bayer_string(indigo_device *device) {
-	if (!PRIVATE_DATA->property.isColorCamera)
-		return NULL;
-	switch (PRIVATE_DATA->property.bayerPattern) {
-		case POA_BAYER_BG:
-			return "BGGR";
-		case POA_BAYER_GR:
-			return "GRBG";
-		case POA_BAYER_GB:
-			return "GBRG";
-		case POA_BAYER_RG:
-		default:
-			return "RGGB";
-	}
-}
 
 static int get_pixel_depth(indigo_device *device) {
 	int item = 0;
@@ -133,14 +119,22 @@ static int get_pixel_format(indigo_device *device) {
 	int item = 0;
 	while (item < POA_MAX_FORMATS) {
 		if (PIXEL_FORMAT_PROPERTY->items[item].sw.value) {
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME))
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW8_NAME)) {
+				PRIVATE_DATA->exp_uses_bayer_pattern = PRIVATE_DATA->property.isColorCamera;
 				return POA_RAW8;
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RGB24_NAME))
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RGB24_NAME)) {
+				PRIVATE_DATA->exp_uses_bayer_pattern = false;
 				return POA_RGB24;
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME))
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, RAW16_NAME)) {
+				PRIVATE_DATA->exp_uses_bayer_pattern = PRIVATE_DATA->property.isColorCamera;
 				return POA_RAW16;
-			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, MONO8_NAME))
+			}
+			if (!strcmp(PIXEL_FORMAT_PROPERTY->items[item].name, MONO8_NAME)) {
+				PRIVATE_DATA->exp_uses_bayer_pattern = false;
 				return POA_MONO8;
+			}
 		}
 		item++;
 	}
@@ -371,9 +365,8 @@ static void playerone_close(indigo_device *device) {
 static void exposure_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
-	char *color_string = get_bayer_string(device);
 	indigo_fits_keyword keywords[] = {
-		{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
 		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
 		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 		{ 0 }
@@ -441,9 +434,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., 2000) > %d", id, res);
 				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, 2000)", id, PRIVATE_DATA->buffer_size);
-					if ((color_string) &&   /* if colour (bayer) image but not RGB */
-							(PRIVATE_DATA->exp_bpp != 24) &&
-							(PRIVATE_DATA->exp_bpp != 48)) {
+					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
 					} else {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
@@ -457,10 +448,12 @@ static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->can_check_temperature = true;
 	indigo_finalize_video_stream(device);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (res)
+		if (res) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		else
+			indigo_ccd_failure_cleanup(device);
+		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	PRIVATE_DATA->can_check_temperature = true;
@@ -469,9 +462,8 @@ static void exposure_timer_callback(indigo_device *device) {
 static void streaming_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
-	char *color_string = get_bayer_string(device);
 	indigo_fits_keyword keywords[] = {
-		{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
 		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
 		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 		{ 0 }
@@ -541,9 +533,7 @@ static void streaming_timer_callback(indigo_device *device) {
 						break;
 					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, 2000)", id, PRIVATE_DATA->buffer_size);
-					if ((color_string) &&   /* if colour (bayer) image but not RGB */
-							(PRIVATE_DATA->exp_bpp != 24) &&
-							(PRIVATE_DATA->exp_bpp != 48)) {
+					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
 					} else {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
@@ -566,10 +556,12 @@ static void streaming_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->can_check_temperature = true;
 	indigo_finalize_video_stream(device);
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-		if (res)
+		if (res) {
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-		else
+			indigo_ccd_failure_cleanup(device);
+		} else {
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+		}
 	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
@@ -686,12 +678,13 @@ static indigo_result ccd_attach(indigo_device *device) {
 			format_count++;
 		}
 		PIXEL_FORMAT_PROPERTY->count = format_count;
-		INFO_PROPERTY->count = 6;
+		// -------------------------------------------------------------------------------- INFO
+		INFO_PROPERTY->count = 8;
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->property.cameraModelName);
-		const char *sdk_version = POAGetSDKVersion();
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
-		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
-
+		snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "%s (%s)", PRIVATE_DATA->property.cameraModelName, PRIVATE_DATA->property.sensorModelName);
+		snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_NAME_SIZE, "SDK %s, API %d", POAGetSDKVersion(), POAGetAPIVersion());
+		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->property.SN);
+		// -------------------------------------------------------------------------------- CCD_INFO
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->property.maxWidth;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->property.maxHeight;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = PRIVATE_DATA->property.bitDepth;
@@ -755,6 +748,23 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (POA_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		// --------------------------------------------------------------------------------
+		switch (PRIVATE_DATA->property.bayerPattern) {
+			case POA_BAYER_BG:
+				PRIVATE_DATA->bayer_pattern = "BGGR";
+				break;
+			case POA_BAYER_GR:
+				PRIVATE_DATA->bayer_pattern = "GRBG";
+				break;
+			case POA_BAYER_GB:
+				PRIVATE_DATA->bayer_pattern = "GBRG";
+				break;
+			case POA_BAYER_RG:
+				PRIVATE_DATA->bayer_pattern = "RGGB";
+				break;
+			default:
+				PRIVATE_DATA->bayer_pattern = NULL;
+				break;
+		}
 		return indigo_ccd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -959,6 +969,14 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		return INDIGO_OK;
 	}
 
+	if (ctrl_caps.configID == POA_AUTOEXPO_BRIGHTNESS || ctrl_caps.configID == POA_AUTOEXPO_MAX_GAIN || ctrl_caps.configID == POA_AUTOEXPO_MAX_EXPOSURE) {
+		return INDIGO_OK;
+	}
+	
+	if (ctrl_caps.configID == POA_FLIP_NONE || ctrl_caps.configID == POA_FLIP_HORI || ctrl_caps.configID == POA_FLIP_VERT || ctrl_caps.configID == POA_FLIP_BOTH) {
+		return INDIGO_OK;
+	}
+	
 	if (ctrl_caps.configID == POA_GUIDE_SOUTH || ctrl_caps.configID == POA_GUIDE_NORTH || ctrl_caps.configID == POA_GUIDE_WEST || ctrl_caps.configID == POA_GUIDE_EAST) {
 		return INDIGO_OK;
 	}
