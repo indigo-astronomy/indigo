@@ -373,6 +373,26 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
+indigo_result indigo_ccd_failure_cleanup(indigo_device *device) {
+	if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	}
+	if (CCD_PREVIEW_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
+	}
+	if (CCD_PREVIEW_HISTOGRAM_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
+	}
+	if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+	}
+	return INDIGO_OK;
+}
+
 indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -491,22 +511,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		if (CCD_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
-		}
-		if (CCD_PREVIEW_IMAGE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-		}
-		if (CCD_PREVIEW_HISTOGRAM_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_PREVIEW_HISTOGRAM_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
-		}
-		if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		}
+		indigo_ccd_failure_cleanup(device);
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_cancel_timer(device, &CCD_CONTEXT->countdown_timer);
@@ -1290,7 +1295,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
 				switch (keywords->type) {
 					case INDIGO_FITS_NUMBER:
-						add_key(&header, true,  "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
+						if (keywords->number == (int)keywords->number)
+							add_key(&header, true,  "%7s= %20d / %s", keywords->name, (int)keywords->number, keywords->comment);
+						else
+							add_key(&header, true,  "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
 						break;
 					case INDIGO_FITS_STRING:
 						add_key(&header, true,  "%7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
