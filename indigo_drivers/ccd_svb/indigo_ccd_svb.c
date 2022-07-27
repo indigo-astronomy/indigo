@@ -935,7 +935,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		if (res)
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN) > %d", id, res);
 		else
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN, > %ld)", id, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN, > %ld)", id, value);
 		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
 		CCD_GAIN_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -1027,7 +1027,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 	if (res)
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, %s) > %d", id, ctrl_caps.Name, res);
 	else
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, %s, > %d)", id, ctrl_caps.Name, value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, %s, > %d)", id, ctrl_caps.Name, value);
 	SVB_ADVANCED_PROPERTY = indigo_resize_property(SVB_ADVANCED_PROPERTY, offset + 1);
 	indigo_init_number_item(SVB_ADVANCED_PROPERTY->items+offset, ctrl_caps.Name, ctrl_caps.Name, ctrl_caps.MinValue, ctrl_caps.MaxValue, 1, value);
 	return INDIGO_OK;
