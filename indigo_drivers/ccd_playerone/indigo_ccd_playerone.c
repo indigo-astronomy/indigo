@@ -680,7 +680,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 		PIXEL_FORMAT_PROPERTY->count = format_count;
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 8;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->property.cameraModelName);
 		snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "%s (%s)", PRIVATE_DATA->property.cameraModelName, PRIVATE_DATA->property.sensorModelName);
 		snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_NAME_SIZE, "SDK %s, API %d", POAGetSDKVersion(), POAGetAPIVersion());
 		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->property.SN);
