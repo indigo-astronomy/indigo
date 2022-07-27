@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_ccd_playerone
 
-## Status: Under development
+## Status: Stable
 
 Tested with MARS-C II
 
