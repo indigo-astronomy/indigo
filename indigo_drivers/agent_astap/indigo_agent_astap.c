@@ -23,7 +23,7 @@
  \file indigo_agent_astap.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_agent_astap"
 
 #include <stdio.h>
@@ -677,6 +677,22 @@ static indigo_result agent_device_detach(indigo_device *device) {
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
 
+static void kill_children() {
+	indigo_device *device = agent_device;
+	if (device && device->private_data) {
+		if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
+			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+		indigo_device **additional_devices = DEVICE_CONTEXT->additional_device_instances;
+		if (additional_devices) {
+			for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
+				device = additional_devices[i];
+				if (device && device->private_data && ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
+					kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+			}
+		}
+	}
+}
+
 indigo_result indigo_agent_astap(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device agent_device_template = INDIGO_DEVICE_INITIALIZER(
 		ASTAP_AGENT_NAME,
@@ -725,6 +741,11 @@ indigo_result indigo_agent_astap(indigo_driver_action action, indigo_driver_info
 			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
 			agent_client->client_context = agent_device->device_context;
 			indigo_attach_client(agent_client);
+			static bool first_time = true;
+			if (first_time) {
+				first_time = false;
+				atexit(kill_children);
+			}
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
