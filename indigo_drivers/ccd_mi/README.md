@@ -14,7 +14,7 @@ This driver depends on 3rd party library and is supported on Linux (Intel 32/64 
 
 ## License
 
-INDIGO Astronomy open-source license (3rd party library is closed source, Copyright 2020, Moravian Instruments Inc. All rights reserved).
+INDIGO Astronomy open-source license (3rd party library is closed source, Copyright 2022, Moravian Instruments Inc. All rights reserved).
 
 ## Use
 
@@ -32,3 +32,4 @@ Driver is developed and tested with:
 * MI C1×26000
 * MI C3-61000
 * MI C4-16000
+* MI C5A-100M
