@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0021
+#define DRIVER_VERSION 0x0022
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -218,10 +218,11 @@ static void ieq_get_coords(indigo_device *device) {
 	}
 }
 
-static void ieq_get_utc(indigo_device *device) {
+static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 	struct tm tm;
 	char response[128], sep;
 	memset(&tm, 0, sizeof(tm));
+	tm.tm_isdst = daylight;
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (PRIVATE_DATA->hc8406) {
 		if (ieq_command(device, ":GC#", response, sizeof(response)) && sscanf(response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
@@ -229,15 +230,12 @@ static void ieq_get_utc(indigo_device *device) {
 				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 				tm.tm_mon -= 1;
 				if (ieq_command(device, ":GG#", response, sizeof(response))) {
-					tm.tm_isdst = -1;
 					if (response[0] ==  'E')
-						tm.tm_gmtoff = atoi(response + 1) * 3600;
+						*utc_offset = atoi(response + 1);
 					else
-						tm.tm_gmtoff = -atoi(response + 1) * 3600;
-					time_t secs = mktime(&tm);
-					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%ld", tm.tm_gmtoff / 3600);
-					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+						*utc_offset = -atoi(response + 1);
+					*secs = timegm(&tm) - *utc_offset * 3600;
+					return true;
 				}
 			}
 		}
@@ -247,42 +245,123 @@ static void ieq_get_utc(indigo_device *device) {
 				tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 				tm.tm_mon -= 1;
 				if (ieq_command(device, ":GG#", response, sizeof(response))) {
-					tm.tm_isdst = -1;
-					if (PRIVATE_DATA->hc8407)
-						tm.tm_gmtoff = atoi(response) * 60;
-					else
-						tm.tm_gmtoff = atoi(response);
-					time_t secs = mktime(&tm);
-					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%ld", tm.tm_gmtoff / 3600);
-					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+					*utc_offset = atoi(response);
+					*secs = timegm(&tm) - *utc_offset * 3600;
+					return true;
 				}
 			}
 		}
 	} else if (PRIVATE_DATA->protocol == 0x0100 || PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205) {
-		int tz;
-		if (ieq_command(device, ":GLT#", response, sizeof(response)) && sscanf(response, "%4d%1d%2d%2d%2d%2d%2d%2d", &tz, &tm.tm_isdst, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
+		int offset;
+		if (ieq_command(device, ":GLT#", response, sizeof(response)) && sscanf(response, "%4d%c%2d%2d%2d%2d%2d%2d", &offset, &sep, &tm.tm_year, &tm.tm_mon, &tm.tm_mday, &tm.tm_hour, &tm.tm_min, &tm.tm_sec) == 8) {
 			tm.tm_year += 100; // TODO: To be fixed in year 2100 :)
 			tm.tm_mon -= 1;
-			tm.tm_gmtoff = tz * 60;
-			time_t secs = mktime(&tm);
-			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", tz / 60);
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+			*utc_offset = offset / 60;
+			*secs = timegm(&tm) - *utc_offset * 3600;
+			return true;
 		}
 	} else if (PRIVATE_DATA->protocol == 0x0300) {
 		if (ieq_command(device, ":GUT#", response, sizeof(response))) {
-			//bool dst = response[4] == 1;
 			response[4] = 0;
-			int tz = atoi(response);
+			int offset = atoi(response);
+			*utc_offset = offset / 60;
 			double jd = atoll(response + 5) / 8.64e+7 + JD2000;
-			uint64_t secs = (jd - DELTA_UTC_UT1 - 2440587.5) * 86400.0;
-			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", tz / 60);
-			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+			*secs = (jd - DELTA_UTC_UT1 - 2440587.5) * 86400.0;
+			return true;
 		}
 	}
+	return false;
 }
+
+static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
+	char command[128], response[128];
+	time_t seconds = *secs + utc_offset * 3600;
+	struct tm tm;
+	tm.tm_isdst = daylight;
+	gmtime_r(&seconds, &tm);
+	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol == 0x0000) {
+		sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+		if (!ieq_command(device, command, response, 1) || *response != '1') {
+			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+			if (!ieq_command(device, command, response, 1)) {
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				sprintf(command, ":SG%+03d#", utc_offset);
+				if (!ieq_command(device, command, response, 1) || *response != '1') {
+					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					return true;
+				}
+			}
+		}
+	} else if (PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0100) {
+		sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+		if (!ieq_command(device, command, response, 1) || *response != '1') {
+			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+			if (!ieq_command(device, command, response, 1) || *response != '1') {
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				sprintf(command, ":SG%+03d:00#", utc_offset);
+				if (!ieq_command(device, command, response, 1) || *response != '1') {
+					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					sprintf(command, ":SDS%d#", daylight);
+					if (!ieq_command(device, command, response, 1) || *response != '1') {
+						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						return true;
+					}
+				}
+			}
+		}
+	} else if (PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205) {
+		sprintf(command, ":SL%02d%02d%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+		if (!ieq_command(device, command, response, 1) || *response != '1') {
+			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			sprintf(command, ":SC%02d%02d%02d#", tm.tm_year % 100, tm.tm_mon + 1, tm.tm_mday);
+			if (!ieq_command(device, command, response, 1) || *response != '1') {
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				sprintf(command, ":SG%+04d#", utc_offset * 60);
+				if (!ieq_command(device, command, response, 1) || *response != '1') {
+					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					sprintf(command, ":SDS%d#", daylight);
+					if (!ieq_command(device, command, response, 1) || *response != '1') {
+						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+					} else {
+						return true;
+					}
+				}
+			}
+		}
+	} else if (PRIVATE_DATA->protocol == 0x0300) {
+		sprintf(command, ":SUT%013llu#", (uint64_t)((JDNOW - JD2000) * 8.64e+7));
+		if (!ieq_command(device, command, response, 1) || *response != '1') {
+			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			sprintf(command, ":SG%+04d#", utc_offset * 60);
+			if (!ieq_command(device, command, response, 1) || *response != '1') {
+				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				sprintf(command, ":SDS%d#", daylight);
+				if (!ieq_command(device, command, response, 1) || *response != '1') {
+					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+
 
 static void position_timer_callback(indigo_device *device) {
 	char response[128];
@@ -634,7 +713,15 @@ static void position_timer_callback(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
 		indigo_update_coordinates(device, NULL);
-		ieq_get_utc(device);
+		int utc_offset;
+		time_t secs;
+		if (ieq_get_utc(device, &secs, &utc_offset)) {
+			sprintf(MOUNT_UTC_OFFSET_ITEM->text.value, "%d", utc_offset);
+			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.2 : 1, &PRIVATE_DATA->position_timer);
 	}
@@ -1182,7 +1269,6 @@ static void mount_connect_callback(indigo_device *device) {
 			ieq_get_coords(device);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = PRIVATE_DATA->currentRA;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = PRIVATE_DATA->currentDec;
-			ieq_get_utc(device);
 			indigo_set_timer(device, 0, position_timer_callback, &PRIVATE_DATA->position_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -1540,208 +1626,40 @@ static void mount_motion_ra_callback(indigo_device *device) {
 }
 
 static void mount_set_host_time_callback(indigo_device *device) {
-	char command[128], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	time_t secs = time(NULL);
-	struct tm tm = *localtime(&secs);
-	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol == 0x0000) {
-		sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-		if (!ieq_command(device, command, response, 1) || *response != '1') {
-			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
+		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
+		time_t secs = time(NULL);
+		int offset = (int)(-timezone / 3600) + daylight;
+		if (ieq_set_utc(device, &secs, offset)) {
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+			indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		} else {
-			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-			if (!ieq_command(device, command, response, 1)) {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SG%+03ld#", tm.tm_gmtoff / 60 / 60);
-				if (!ieq_command(device, command, response, 1) || *response != '1') {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0100) {
-		sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-		if (!ieq_command(device, command, response, 1) || *response != '1') {
-			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-			if (!ieq_command(device, command, response, 1) || *response != '1') {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SG%+03ld:00#", tm.tm_gmtoff / 60 / 60);
-				if (!ieq_command(device, command, response, 1) || *response != '1') {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					sprintf(command, ":SDS%d#", tm.tm_isdst);
-					if (!ieq_command(device, command, response, 1) || *response != '1') {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-					} else {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-						indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-					}
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205) {
-		sprintf(command, ":SL%02d%02d%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-		if (!ieq_command(device, command, response, 1) || *response != '1') {
-			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			sprintf(command, ":SC%02d%02d%02d#", tm.tm_year % 100, tm.tm_mon + 1, tm.tm_mday);
-			if (!ieq_command(device, command, response, 1) || *response != '1') {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SG%+04ld#", tm.tm_gmtoff / 60);
-				if (!ieq_command(device, command, response, 1) || *response != '1') {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					sprintf(command, ":SDS%d#", tm.tm_isdst);
-					if (!ieq_command(device, command, response, 1) || *response != '1') {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-					} else {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-						indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-					}
-				}
-			}
-		}
-	} else if (PRIVATE_DATA->protocol == 0x0300) {
-		sprintf(command, ":SUT%013llu#", (uint64_t)((JDNOW - JD2000) * 8.64e+7));
-		if (!ieq_command(device, command, response, 1) || *response != '1') {
-			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else {
-			sprintf(command, ":SG%+04ld#", tm.tm_gmtoff / 60);
-			if (!ieq_command(device, command, response, 1) || *response != '1') {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SDS%d#", tm.tm_isdst);
-				if (!ieq_command(device, command, response, 1) || *response != '1') {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-					MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-					indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-				}
-			}
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
-	MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 	indigo_update_property(device, MOUNT_SET_HOST_TIME_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
 static void mount_set_utc_callback(indigo_device *device) {
-	char command[128], response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	time_t secs = indigo_isogmtotime(MOUNT_UTC_ITEM->text.value);
+	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
 	if (secs == -1) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_mount_lx200: Wrong date/time format!");
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 	} else {
-		struct tm tm = *localtime(&secs);
-		if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol == 0x0000) {
-			sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-			if (!ieq_command(device, command, response, 1) || *response != '1') {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-				if (!ieq_command(device, command, response, 1)) {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					sprintf(command, ":SG%+03ld#", tm.tm_gmtoff / 60 / 60);
-					if (!ieq_command(device, command, response, 1) || *response != '1') {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-					} else {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-						indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-					}
-				}
-			}
-		} else if (PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0100) {
-			sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-			if (!ieq_command(device, command, response, 1) || *response != '1') {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
-				if (!ieq_command(device, command, response, 1) || *response != '1') {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					sprintf(command, ":SG%+03ld:00#", tm.tm_gmtoff / 60 / 60);
-					if (!ieq_command(device, command, response, 1) || *response != '1') {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-					} else {
-						sprintf(command, ":SDS%d#", tm.tm_isdst);
-						if (!ieq_command(device, command, response, 1) || *response != '1') {
-							MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-						} else {
-							MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-							MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-							indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-							indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-						}
-					}
-				}
-			}
-		} else if (PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205) {
-			sprintf(command, ":SL%02d%02d%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
-			if (!ieq_command(device, command, response, 1) || *response != '1') {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SC%02d%02d%02d#", tm.tm_year % 100, tm.tm_mon + 1, tm.tm_mday);
-				if (!ieq_command(device, command, response, 1) || *response != '1') {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					sprintf(command, ":SG%+04ld#", tm.tm_gmtoff / 60);
-					if (!ieq_command(device, command, response, 1) || *response != '1') {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-					} else {
-						sprintf(command, ":SDS%d#", tm.tm_isdst);
-						if (!ieq_command(device, command, response, 1) || *response != '1') {
-							MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-						} else {
-							MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-							MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-							indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-							indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-						}
-					}
-				}
-			}
-		} else if (PRIVATE_DATA->protocol == 0x0300) {
-			sprintf(command, ":SUT%013llu#", (uint64_t)((UT2JD(secs) - JD2000) * 8.64e+7));
-			if (!ieq_command(device, command, response, 1) || *response != '1') {
-				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-			} else {
-				sprintf(command, ":SG%+04ld#", tm.tm_gmtoff / 60);
-				if (!ieq_command(device, command, response, 1) || *response != '1') {
-					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-				} else {
-					sprintf(command, ":SDS%d#", tm.tm_isdst);
-					if (!ieq_command(device, command, response, 1) || *response != '1') {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-					} else {
-						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-						indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-					}
-				}
-			}
+		if (ieq_set_utc(device, &secs, offset)) {
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	}
-	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 

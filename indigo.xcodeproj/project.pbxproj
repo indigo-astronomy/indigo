@@ -4408,7 +4408,7 @@
 		9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_ioptron_main.c; sourceTree = "<group>"; };
 		9DAD522D21246EB5002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_mount_ioptron.c; sourceTree = "<group>"; };
-		9DAD523221246FA9002FCC79 /* Protocol_V1.4.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.4.pdf; sourceTree = "<group>"; };
+		9DAD523221246FA9002FCC79 /* Protocol_V1.4 (8407).pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Protocol_V1.4 (8407).pdf"; sourceTree = "<group>"; };
 		9DAD523821258801002FCC79 /* indigo_guider_cgusbst4_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_cgusbst4_main.c; sourceTree = "<group>"; };
 		9DAD523921258801002FCC79 /* indigo_guider_cgusbst4.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_cgusbst4.c; sourceTree = "<group>"; };
 		9DAD523A21258801002FCC79 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4458,7 +4458,7 @@
 		9DBC34641DCB267700588DB9 /* indigo_wheel_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_asi.h; sourceTree = "<group>"; };
 		9DBC34701DCB26E500588DB9 /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = System/Library/Frameworks/Cocoa.framework; sourceTree = SDKROOT; };
 		9DBC34721DCB26F200588DB9 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = System/Library/Frameworks/IOKit.framework; sourceTree = SDKROOT; };
-		9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Protocol_V1.01.pdf; sourceTree = "<group>"; };
+		9DBF2E732164BA7100A48C02 /* Protocol_V1.01 (8406).pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Protocol_V1.01 (8406).pdf"; sourceTree = "<group>"; };
 		9DC4736C21A4596500EE561A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DC4967D22BA7B810052AB3E /* indigo_agent_auxiliary.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_auxiliary.h; sourceTree = "<group>"; };
 		9DC4967E22BA7B810052AB3E /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -12218,8 +12218,8 @@
 				9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */,
 				9DAD522C21246EB5002FCC79 /* indigo_mount_ioptron_main.c */,
 				5956F663230BCE170016C7C2 /* Protocol_V1.0.pdf */,
-				9DBF2E732164BA7100A48C02 /* Protocol_V1.01.pdf */,
-				9DAD523221246FA9002FCC79 /* Protocol_V1.4.pdf */,
+				9DBF2E732164BA7100A48C02 /* Protocol_V1.01 (8406).pdf */,
+				9DAD523221246FA9002FCC79 /* Protocol_V1.4 (8407).pdf */,
 				59E67789212C8042004B99BE /* Protocol_V2.0.pdf */,
 				5956F662230BCE120016C7C2 /* Protocol_V2.5.pdf */,
 				5956F661230BCC0D0016C7C2 /* Protocol_V3.0.pdf */,
