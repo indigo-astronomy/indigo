@@ -1,8 +1,34 @@
 /*
  * The Moravian Instruments (MI) camera library.
  *
- * Copyright 2021, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
+ * Copyright (c) 2016-2022, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
  * All rights reserved.
+ *
+ * Redistribution.  Redistribution and use in binary form, without
+ * modification, are permitted provided that the following conditions are
+ * met:
+ *
+ * - Redistributions must reproduce the above copyright notice and the
+ *   following disclaimer in the documentation and/or other materials
+ *   provided with the distribution.
+ * - Neither the name of Moravian Instruments nor the names of its
+ *   suppliers may be used to endorse or promote products derived from this
+ *   software without specific prior written permission.
+ * - No reverse engineering, decompilation, or disassembly of this software
+ *   is permitted.
+ *
+ * DISCLAIMER.  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND
+ * CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING,
+ * BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
+ * FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+ * COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+ * TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
+ * USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH
+ * DAMAGE.
  */
 
 #pragma once
@@ -49,6 +75,7 @@ typedef struct camera camera_t;
   ReceiveTimeout = 30000
   MicrometerFilterOffsets = false
   ClearTime = 15
+  HWBinning = false
 
   [filters]
   Luminance, LGray, 0
@@ -72,8 +99,11 @@ typedef struct camera camera_t;
  * the chip. There is no need to change the default value (15 seconds).
  * If you want to use advanced USB functions below, you can turn this feature by
  * setting "ClearTime" to 0 or -1 and clear the chip manualy with gxusb_clear().
+ * "HWBinning" controls whether the library bins the image itself or the camera
+ * does the binning directly in hardware. This setting is valid only for C1x,
+ * C3, C4 and C5 cameras.
  *------------------------------------------------------------------------------
- * Section [filters] is for G2/G3/G4 camera filter wheel configuration.
+ * Section [filters] is for configuring cameras with filter wheel.
  * There is no way how to determine the actual filters in the filter wheel
  * automatically. You must create .ini file with this section.
  *
@@ -198,6 +228,7 @@ enum
                              gxccd_get_value() */
     GBP_GAIN,                      /* true if camera can return gain in gxccd_get_value() */
     GBP_ELECTRONIC_SHUTTER,        /* true if camera has electronic shutter */
+    GBP_GPS,                       /* true if camera has gps module */
     GBP_CONFIGURED = 127,          /* true if camera is configured */
     GBP_RGB,                       /* true if camera has Bayer RGBG filters on the chip */
     GBP_CMY,                       /* true if camera has CMY filters on the chip */
@@ -477,6 +508,29 @@ int gxccd_move_telescope(camera_t *camera, int16_t ra_duration_ms, int16_t dec_d
  * call is still in progress.
  */
 int gxccd_move_in_progress(camera_t *camera, bool *moving);
+
+/*
+ * Returns actual date and exact time of the last image exposure.
+ * Date and time is obtained from GPS and is in UTC time standard.
+ * Subsecond precision is additionally achieved with internal camera counter.
+ * For this function to work, the camera must contain a GPS receiver module and
+ * it must be synchronized with at least 5 satellites. You can call
+ * "gxccd_get_gps_data()" to obtain GPS status.
+ */
+int gxccd_get_image_time_stamp(camera_t *camera, int *year, int *month,
+                               int *day, int *hour, int *minute, double *second);
+
+/*
+ * Returns actual date, exact time, latitude, longitude, mean sea level and
+ * status of GPS module. Date and time is in UTC time standard. Subsecond precision
+ * is additionally achieved with internal camera counter. For this function to work,
+ * the camera must contain a GPS receiver module. Position information needs at
+ * least 3 satellites, date and time is returned after synchronization with 5
+ * satellites.
+ */
+int gxccd_get_gps_data(camera_t *camera, double *lat, double *lon, double *msl,
+                       int *year, int *month, int *day, int *hour, int *minute,
+                       double *second, unsigned int *satellites, bool *fix);
 
 /*
  * If any call fails (returns -1), this function returns failure description
