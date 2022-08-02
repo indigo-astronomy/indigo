@@ -45,25 +45,9 @@
 
 #define PRIVATE_DATA	((prodigy_private_data *)device->private_data)
 
-#define X_FOCUSER_MOTOR_TYPE_PROPERTY			(PRIVATE_DATA->motor_type_property)
-#define X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM	(X_FOCUSER_MOTOR_TYPE_PROPERTY->items+0)
-#define X_FOCUSER_MOTOR_TYPE_DC_ITEM			(X_FOCUSER_MOTOR_TYPE_PROPERTY->items+1)
-
-#define X_FOCUSER_ENCODER_PROPERTY				(PRIVATE_DATA->encoder_property)
-#define X_FOCUSER_ENCODER_ENABLED_ITEM		(X_FOCUSER_ENCODER_PROPERTY->items+0)
-#define X_FOCUSER_ENCODER_DISABLED_ITEM		(X_FOCUSER_ENCODER_PROPERTY->items+1)
-
-#define X_FOCUSER_LED_PROPERTY						(PRIVATE_DATA->led_property)
-#define X_FOCUSER_LED_ENABLED_ITEM				(X_FOCUSER_LED_PROPERTY->items+0)
-#define X_FOCUSER_LED_DISABLED_ITEM				(X_FOCUSER_LED_PROPERTY->items+1)
-
 typedef struct {
 	int handle;
 	indigo_timer *timer;
-	indigo_property *motor_type_property;
-	indigo_property *encoder_property;
-	indigo_property *backlash_property;
-	indigo_property *led_property;
 	pthread_mutex_t mutex;
 } prodigy_private_data;
 
@@ -89,21 +73,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		X_FOCUSER_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_MOTOR_TYPE", FOCUSER_MAIN_GROUP, "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_MOTOR_TYPE_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_switch_item(X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM, "STEPPER", "Stepper motor", false);
-		indigo_init_switch_item(X_FOCUSER_MOTOR_TYPE_DC_ITEM, "DC", "DC Motor", false);
-		X_FOCUSER_ENCODER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_ENCODER", FOCUSER_MAIN_GROUP, "Encoder state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_ENCODER_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_switch_item(X_FOCUSER_ENCODER_ENABLED_ITEM, "ENABLED", "Enabled", false);
-		indigo_init_switch_item(X_FOCUSER_ENCODER_DISABLED_ITEM, "DISABLED", "Disabled", false);
-		X_FOCUSER_LED_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_FOCUSER_LED", FOCUSER_MAIN_GROUP, "LED status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (X_FOCUSER_LED_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		indigo_init_switch_item(X_FOCUSER_LED_ENABLED_ITEM, "ENABLED", "Enabled", false);
-		indigo_init_switch_item(X_FOCUSER_LED_DISABLED_ITEM, "DISABLED", "Disabled", false);
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
@@ -156,14 +125,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
-		if (indigo_property_match(X_FOCUSER_MOTOR_TYPE_PROPERTY, property))
-			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
-		if (indigo_property_match(X_FOCUSER_ENCODER_PROPERTY, property))
-			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-		if (indigo_property_match(X_FOCUSER_LED_PROPERTY, property))
-			indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);
-	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
@@ -233,10 +194,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				if (token) { // version
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, token);
 				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // motor
-					indigo_set_switch(X_FOCUSER_MOTOR_TYPE_PROPERTY, *token == '1' ? X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM : X_FOCUSER_MOTOR_TYPE_DC_ITEM, true);
-				}
+				token = strtok_r(NULL, ":", &pnt); // motor
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // temperature
 					FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_ITEM->number.target = indigo_atod(token);
@@ -249,18 +207,9 @@ static void focuser_connection_handler(indigo_device *device) {
 				if (token) { // moving status
 					FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = *token == '1' ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // led status
-					indigo_set_switch(X_FOCUSER_LED_PROPERTY, *token == '1' ? X_FOCUSER_LED_ENABLED_ITEM : X_FOCUSER_LED_DISABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // reverse
-					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
-				}
-				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // encoder
-					indigo_set_switch(X_FOCUSER_ENCODER_PROPERTY, *token == '1' ? X_FOCUSER_ENCODER_DISABLED_ITEM: X_FOCUSER_ENCODER_ENABLED_ITEM, true);
-				}
+				token = strtok_r(NULL, ":", &pnt); // led status
+				token = strtok_r(NULL, ":", &pnt); // reverse
+				token = strtok_r(NULL, ":", &pnt); // encoder
 				token = strtok_r(NULL, ":", &pnt);
 				if (token) { // backlash
 					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
@@ -277,9 +226,6 @@ static void focuser_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
-			indigo_define_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
-			indigo_define_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-			indigo_define_property(device, X_FOCUSER_LED_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -292,9 +238,6 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 			prodigy_command(device, "H", response, sizeof(response));
-			indigo_delete_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
-			indigo_delete_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-			indigo_delete_property(device, X_FOCUSER_LED_PROPERTY, NULL);
 			strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Undefined");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
@@ -394,45 +337,6 @@ static void focuser_reverse_motion_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
-static void focuser_motor_type_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[16], response[64];
-	snprintf(command, sizeof(command), "R:%d", (int)X_FOCUSER_MOTOR_TYPE_STEPPER_ITEM->sw.value? 1 : 0);
-	if (prodigy_command(device, command, response, sizeof(response))) {
-		X_FOCUSER_MOTOR_TYPE_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		X_FOCUSER_MOTOR_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	indigo_update_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
-static void focuser_encoder_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[16], response[64];
-	snprintf(command, sizeof(command), "E:%d", (int)X_FOCUSER_ENCODER_DISABLED_ITEM->sw.value? 1 : 0);
-	if (prodigy_command(device, command, response, sizeof(response))) {
-		X_FOCUSER_ENCODER_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		X_FOCUSER_ENCODER_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	indigo_update_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
-static void focuser_led_handler(indigo_device *device) {
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	char command[16], response[64];
-	snprintf(command, sizeof(command), "L:%d", (int)X_FOCUSER_LED_ENABLED_ITEM->sw.value ? 2 : 1);
-	if (prodigy_command(device, command, response, sizeof(response))) {
-		X_FOCUSER_LED_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		X_FOCUSER_LED_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	indigo_update_property(device, X_FOCUSER_LED_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
 static void focuser_backlash_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16], response[64];
@@ -494,27 +398,6 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_reverse_motion_handler, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- X_FOCUSER_MOTOR_TYPE
-	} else if (indigo_property_match_changeable(X_FOCUSER_MOTOR_TYPE_PROPERTY, property)) {
-		indigo_property_copy_values(X_FOCUSER_MOTOR_TYPE_PROPERTY, property, false);
-		X_FOCUSER_MOTOR_TYPE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_FOCUSER_MOTOR_TYPE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_motor_type_handler, NULL);
-		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- X_FOCUSER_ENCODER_PROPERTY
-	} else if (indigo_property_match_changeable(X_FOCUSER_ENCODER_PROPERTY, property)) {
-		indigo_property_copy_values(X_FOCUSER_ENCODER_PROPERTY, property, false);
-		X_FOCUSER_ENCODER_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_FOCUSER_ENCODER_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_encoder_handler, NULL);
-		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- X_FOCUSER_LED
-	} else if (indigo_property_match_changeable(X_FOCUSER_LED_PROPERTY, property)) {
-		indigo_property_copy_values(X_FOCUSER_LED_PROPERTY, property, false);
-		X_FOCUSER_LED_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_FOCUSER_LED_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_led_handler, NULL);
-		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
@@ -532,9 +415,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connection_handler(device);
 	}
-	indigo_release_property(X_FOCUSER_MOTOR_TYPE_PROPERTY);
-	indigo_release_property(X_FOCUSER_ENCODER_PROPERTY);
-	indigo_release_property(X_FOCUSER_LED_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);

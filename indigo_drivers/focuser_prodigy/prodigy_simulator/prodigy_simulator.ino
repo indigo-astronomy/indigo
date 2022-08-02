@@ -22,13 +22,9 @@
 #define Serial SerialUSB
 #endif
 
-int motor_mode = 0;
 float temperature = 22.4;
 int position = 50;
 int moving_status = 0;
-int led_status = 0;
-int reverse = 0;
-int disabled_encoder = 0;
 int backlash_value = 100;
 
 void setup() {
@@ -44,7 +40,7 @@ void loop() {
     Serial.println("OK_PRDG");
   } else if (command.equals("A")) {
     Serial.print("OK_PRDG:1.4:");
-    Serial.print(motor_mode);
+    Serial.print(1);
     Serial.print(":");
     Serial.print(temperature);
     Serial.print(":");
@@ -52,11 +48,11 @@ void loop() {
     Serial.print(":");
     Serial.print(moving_status);
     Serial.print(":");
-    Serial.print(led_status);
+    Serial.print(0);
     Serial.print(":");
-    Serial.print(reverse);
+    Serial.print(0);
     Serial.print(":");
-    Serial.print(disabled_encoder);
+    Serial.print(0);
     Serial.print(":");
     Serial.println(backlash_value);
   } else if (command.startsWith("S:")) {
@@ -69,15 +65,6 @@ void loop() {
 		position = command.substring(2).toInt();
   } else if (command.startsWith("H")) {
     Serial.println(command);
-  } else if (command.startsWith("N:")) {
-    reverse = command.substring(2).toInt();
-    Serial.print("N:");
-    Serial.println(reverse);
-  } else if (command.startsWith("R:")) {
-    motor_mode = command.substring(2).toInt();
-    Serial.println(motor_mode);
-  } else if (command.startsWith("E:")) {
-    disabled_encoder = command.substring(2).toInt();
     Serial.println(command);
   } else if (command.startsWith("C:")) {
     backlash_value = command.substring(2).toInt();
