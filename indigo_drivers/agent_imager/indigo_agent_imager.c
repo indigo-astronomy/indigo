@@ -386,8 +386,10 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				indigo_usleep(200000);
-			exposure_attempt--;
-			continue;
+			if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
+				exposure_attempt--;
+				continue;
+			}
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_ALERT_STATE;
@@ -415,8 +417,10 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				indigo_usleep(200000);
-			exposure_attempt--;
-			continue;
+			if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
+				exposure_attempt--;
+				continue;
+			}
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return INDIGO_ALERT_STATE;
@@ -650,8 +654,10 @@ static bool exposure_batch(indigo_device *device) {
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 					indigo_usleep(200000);
-				exposure_attempt--;
-				continue;
+				if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
+					exposure_attempt--;
+					continue;
+				}
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				return false;
@@ -677,8 +683,10 @@ static bool exposure_batch(indigo_device *device) {
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 					indigo_usleep(200000);
-				exposure_attempt--;
-				continue;
+				if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
+					exposure_attempt--;
+					continue;
+				}
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				return false;
