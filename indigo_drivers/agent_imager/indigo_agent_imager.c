@@ -577,6 +577,7 @@ static void preview_process(indigo_device *device) {
 static void check_breakpoint(indigo_device *device, indigo_item *breakpoint) {
 	if (breakpoint->sw.value) {
 		AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+		AGENT_PAUSE_PROCESS_ITEM->sw.value = true;
 		indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, "%s paused on %s breakpoint", device->name, breakpoint->name);
 		while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -585,11 +586,12 @@ static void check_breakpoint(indigo_device *device, indigo_item *breakpoint) {
 			}
 			if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value && DEVICE_PRIVATE_DATA->barrier_resume) {
 				const char *names[] = { AGENT_PAUSE_PROCESS_ITEM_NAME };
-				const bool values[] = { true };
+				const bool values[] = { false };
 				for (int i = 0; i < AGENT_IMAGER_BARRIER_STATE_PROPERTY->count; i++) {
 					indigo_item *item = AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + i;
 					indigo_change_switch_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME, 1, names, values);
 				}
+				AGENT_PAUSE_PROCESS_ITEM->sw.value = false;
 				AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 				break;
 			}
