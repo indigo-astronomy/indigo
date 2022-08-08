@@ -432,7 +432,8 @@ set the ROI area before capture.
 you must stop capture before call it.
 the width and height is the value after binning.
 ie. you need to set width to 640 and height to 480 if you want to run at 640X480@BIN2
-ASI120's data size must be times of 1024 which means width*height%1024=0
+Specially, ASI120's data size must be times of 1024 which means width*height%1024=0.
+
 Paras:		
 int CameraID: this is get from the camera property use the API ASIGetCameraProperty
 int iWidth,  the width of the ROI area. Make sure iWidth%8 == 0. 
@@ -792,6 +793,23 @@ ASI_ERROR_CAMERA_CLOSED : camera didn't open
 ASI_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
 ***************************************************************************/
 ASICAMERA_API ASI_ERROR_CODE ASIGetGainOffset(int iCameraID, int *pOffset_HighestDR, int *pOffset_UnityGain, int *pGain_LowestRN, int *pOffset_LowestRN);
+
+/***************************************************************************
+Descriptions:
+get the frequently-used gain and offset
+Paras:		
+int CameraID: this is get from the camera property use the API ASIGetCameraProperty
+pLGain: Low gain
+pMGain: Middle Gain
+pHGain: High Gain, the gain at the lowest read noise
+pHOffset: Offset at the lowest read noise
+
+return:
+ASI_SUCCESS : Operation is successful
+ASI_ERROR_CAMERA_CLOSED : camera didn't open
+ASI_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+***************************************************************************/
+ASICAMERA_API ASI_ERROR_CODE ASIGetLMHGainOffset(int iCameraID, int* pLGain, int* pMGain, int* pHGain, int* pHOffset);
 
 /***************************************************************************
 Descriptions:
