@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 16.12.2020 (draft)
+Revision: 10.08.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -532,6 +532,6 @@ An open source examples of client API usage are the following pieces of code:
 
 1. [indigo_tools/indigo_prop_tool.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c) - Command line property management tool
 
-1. [INDIGO Control Panel](https://github.com/indigo-astronomy/control-panel) - Official Linux and Windows Control panel using QT framework
+1. [INDIGO Control Panel](https://github.com/indigo-astronomy/indigo_control_panel) - Official Linux and Windows Control panel using QT framework
 
 1. [PixInsight INDIGO client project](https://github.com/PixInsight/PCL/tree/master/src/modules/processes/contrib/kkretzschmar/INDIClient)

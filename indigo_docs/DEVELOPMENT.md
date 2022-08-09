@@ -32,11 +32,11 @@ Structures and helper functions for a client code are defined in *indigo_client.
 
 An open source examples of client API usage are the following pieces of code:
 
-[indigo_test/client.c - API example](https://github.com/indigo-astronomy/indigo/blob/master/indigo_test/client.c)
+[indigo_test/client.c - API example](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/client.c)
 
 [indigo_tools/indigo_prop_tool.c - command line tool](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c)
 
-[Linux control panel project - under development](https://github.com/indigo-astronomy/control-panel)
+[Linux control panel project](https://github.com/indigo-astronomy/indigo_control_panel)
 
 [PixInsight INDIGO client project - under development](https://github.com/PixInsight/PCL/tree/master/src/modules/processes/contrib/kkretzschmar/INDIClient)
 
