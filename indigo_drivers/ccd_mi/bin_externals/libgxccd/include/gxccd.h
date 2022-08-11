@@ -76,6 +76,8 @@ typedef struct camera camera_t;
   MicrometerFilterOffsets = false
   ClearTime = 15
   HWBinning = false
+  BinningSum = false
+  BinningSaturate = false
 
   [filters]
   Luminance, LGray, 0
@@ -102,6 +104,10 @@ typedef struct camera camera_t;
  * "HWBinning" controls whether the library bins the image itself or the camera
  * does the binning directly in hardware. This setting is valid only for C1x,
  * C3, C4 and C5 cameras.
+ * "BinningSum" controls whether the library/camera sums binned pixels instead
+ * of averaging them.
+ * "BinningSaturate" controls whether the library/camera sets resulting binned
+ * pixel to saturation value if any of the source pixels is saturated.
  *------------------------------------------------------------------------------
  * Section [filters] is for configuring cameras with filter wheel.
  * There is no way how to determine the actual filters in the filter wheel
