@@ -1,6 +1,6 @@
 # INDIGO Astrometry / ASTAP Agent - Polar Alignment Guide
 
-Revision: 09.08.2022 (draft)
+Revision: 17.08.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -14,7 +14,7 @@ INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived fro
 
 ## Configuration
 - **Exposure time** - This is the exposure time in seconds used for the frame acquisition. Usually several seconds is enough.
-- **Hour angle move** - This is how much the mount should move in Hour angle (-Right Ascension) between the exposures in degrees (15 degrees = 1 hour). In the northern hemisphere positive value will move the mount Clockwise, negative - Counterclockwise or vice versa in southern hemisphere. The recommended value is between 15 and 25 degrees (See the safety note below).
+- **Hour angle move** - This is how much the mount should move in Hour angle (-Right Ascension) between the exposures in degrees (15 degrees = 1 hour). In the northern hemisphere positive value will move the mount Clockwise (as seen from above the mount, looking down the polar axis), negative - Counterclockwise or vice versa in southern hemisphere. The recommended value is between 15 and 25 degrees (See the safety note below).
 - **Compensate refraction** - This is a flag indicating weather to compensate for the atmospheric refraction during the calculation of the polar error (0 = off, 1 = on). In *Ain INDIGO Imager* it is exposed as a checkbox labeled "*Comp. AR*".
 - **Related Agents** - The polar alignment will work only if image source agent and the mount agent is selected. This is usually done in the client.
 
@@ -47,9 +47,11 @@ INDIGO uses 3 point polar alignment (3PPA) procedure. This method is derived fro
  03:39:57.092 Altitude error: +60.00', move Up (use altitude adjustment knob)
  ```
 
+**Note:** *C.W.* is Clockwise and *C.C.W.* is counterclockwise as seen from above the mount, looking down the polar axis.
+
 4. Follow the instructions and move the mount polar axis using the altitude and azimuth polar alignment knobs. **Do not touch Right ascension and Declination!** Moving in Right ascension or Declination will lead to wrong polar error estimation and wrong polar alignment.
 
- In the example above we should move clockwise (C.W.) in azimuth and up (Up) in altitude.
+In the example above we should move clockwise (C.W.) in azimuth and up (Up) in altitude.
 
 5. Now click "Recalculate error". This will take another exposure and give you another polar error estimate:
 
