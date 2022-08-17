@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -385,8 +385,9 @@ static bool asi_sync(indigo_device *device, double ra, double dec, int *error_co
 
 static bool asi_set_guide_rate(indigo_device *device, int ra, int dec) {
 	char command[128];
+	// asi miunt has one guide rate for ra and dec
 	if (ra < 10) ra = 10;
-	if (dec > 90) ra = 90;
+	if (ra > 90) ra = 90;
 	float rate = ra / 100.0;
 	sprintf(command, ":Rg%.1f#", rate);
 	return (asi_command(device, command, NULL, 0, 0));
