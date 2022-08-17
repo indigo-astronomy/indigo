@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x001A
+#define DRIVER_VERSION 0x001B
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -617,8 +617,9 @@ static bool meade_set_guide_rate(indigo_device *device, int ra, int dec) {
 			return meade_command(device, command, NULL, 0, 0);
 		}
 	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		// asi miunt has one guide rate for ra and dec
 		if (ra < 10) ra = 10;
-		if (dec > 90) ra = 90;
+		if (ra > 90) ra = 90;
 		float rate = ra / 100.0;
 		sprintf(command, ":Rg%.1f#", rate);
 		return (meade_command(device, command, NULL, 0, 0));
