@@ -1080,14 +1080,14 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	if (response.type == ptp_container_data) {
 		length -= PTP_CONTAINER_HDR_SIZE;
 		int total = response.length - PTP_CONTAINER_HDR_SIZE;
-		unsigned char *buffer = indigo_safe_malloc(total);
+		unsigned char *buffer = indigo_safe_malloc(total + 1024); // 1024 added to avoid mysterious LIBUSB_ERROR_OVERFLOWs
 		memcpy(buffer, &response.payload, length);
 		int offset = length;
 		if (data_in_size)
 			*data_in_size = total;
 		total -= length;
 		while (total > 0) {
-			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total, &length, PTP_TIMEOUT);
+			rc = libusb_bulk_transfer(PRIVATE_DATA->handle, PRIVATE_DATA->ep_in, buffer + offset, total + 1024 > PTP_MAX_BULK_TRANSFER_SIZE ? PTP_MAX_BULK_TRANSFER_SIZE : total + 1024, &length, PTP_TIMEOUT);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 			if (rc < 0) {
 				free(buffer);
