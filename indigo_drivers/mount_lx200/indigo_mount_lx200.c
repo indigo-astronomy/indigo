@@ -162,6 +162,11 @@ static bool meade_open(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
 	}
 	if (PRIVATE_DATA->handle >= 0) {
+		if (PRIVATE_DATA->is_network) {
+			int opt = 1;
+			if (setsockopt(PRIVATE_DATA->handle, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int)) < 0)
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disable Nagle algorithm");
+		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		// flush the garbage if any...
 		char c;
