@@ -265,6 +265,7 @@ static int open_socket(const char *host, int port, int type) {
 		}
 		indigo_error("Can't connect socket (%s)", strerror(errno));
 		close(handle);
+		handle = -1;
 	}
 	freeaddrinfo(address_list);
 	return handle;
