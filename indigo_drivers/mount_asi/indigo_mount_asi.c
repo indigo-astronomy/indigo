@@ -1249,7 +1249,6 @@ static indigo_result guider_detach(indigo_device *device) {
 	return indigo_guider_detach(device);
 }
 
-// --------------------------------------------------------------------------------
 static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
