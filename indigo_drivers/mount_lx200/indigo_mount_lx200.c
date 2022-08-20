@@ -167,8 +167,9 @@ static bool meade_open(indigo_device *device) {
 	if (PRIVATE_DATA->handle >= 0) {
 		if (PRIVATE_DATA->is_network) {
 			int opt = 1;
-			if (setsockopt(PRIVATE_DATA->handle, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int)) < 0)
+			if (setsockopt(PRIVATE_DATA->handle, IPPROTO_TCP, TCP_NODELAY, &opt, sizeof(int)) < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to disable Nagle algorithm");
+			}
 		}
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		// flush the garbage if any...
@@ -2535,9 +2536,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return indigo_focuser_detach(device);
 }
 
-// --------------------------------------------------------------------------------
-static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback)
-{
+static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		callback(device);
@@ -2555,8 +2554,7 @@ static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 static indigo_device *mount_focuser = NULL;
 
-static void network_disconnection(__attribute__((unused)) indigo_device* device)
-{
+static void network_disconnection(__attribute__((unused)) indigo_device* device) {
 	// Since all three devices share the same TCP connection,
 	// process the disconnection on all three of them
 	device_network_disconnection(mount, mount_connect_callback);
