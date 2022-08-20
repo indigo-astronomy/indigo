@@ -40,6 +40,9 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/time.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
@@ -199,11 +202,13 @@ static bool meade_open(indigo_device *device) {
 	}
 }
 
+static void network_disconnection(__attribute__((unused)) indigo_device *device);
+
 static bool meade_command(indigo_device *device, char *command, char *response, int max, int sleep) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
-	// flush
+	// flush, and detect network disconnection
 	while (true) {
 		fd_set readout;
 		FD_ZERO(&readout);
@@ -225,6 +230,11 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 		result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result < 1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			if (PRIVATE_DATA->is_network) {
+				// This is a disconnection
+				indigo_set_timer(device, 0, network_disconnection, NULL);
+				INDIGO_DRIVER_LOG (DRIVER_NAME, "Disconnection from %s", DEVICE_PORT_ITEM->text.value);
+			}
 			return false;
 		}
 	}
@@ -270,7 +280,7 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	char c;
 	struct timeval tv;
-	// flush
+	// flush, and detect network disconnection
 	while (true) {
 		fd_set readout;
 		FD_ZERO(&readout);
@@ -287,6 +297,11 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 		result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result < 1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+			if (PRIVATE_DATA->is_network) {
+				// This is a disconnection
+				indigo_set_timer(device, 0, network_disconnection, NULL);
+				INDIGO_DRIVER_LOG (DRIVER_NAME, "Disconnection from %s", DEVICE_PORT_ITEM->text.value);
+			}
 			return false;
 		}
 	}
@@ -2521,12 +2536,33 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 // --------------------------------------------------------------------------------
+static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback)
+{
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		callback(device);
+		CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;  // The alert state signals the unexpected disconnection
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+	}
+	// Otherwise not previously connected, nothing to do
+}
+
+// --------------------------------------------------------------------------------
 
 static lx200_private_data *private_data = NULL;
 
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 static indigo_device *mount_focuser = NULL;
+
+static void network_disconnection(__attribute__((unused)) indigo_device* device)
+{
+	// Since all three devices share the same TCP connection,
+	// process the disconnection on all three of them
+	device_network_disconnection(mount, mount_connect_callback);
+	device_network_disconnection(mount_guider, guider_connect_callback);
+	device_network_disconnection(mount_focuser, focuser_connect_callback);
+}
 
 indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_device mount_template = INDIGO_DEVICE_INITIALIZER(
