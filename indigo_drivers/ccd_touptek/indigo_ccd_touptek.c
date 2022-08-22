@@ -110,8 +110,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 				}
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_PullImageV2(%d, ->[%d x %d, %x, %d]) -> %08x", PRIVATE_DATA->bits, frameInfo.width, frameInfo.height, frameInfo.flag, frameInfo.seq, result);
-				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+				indigo_ccd_failure_cleanup(device);
 				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -126,8 +125,7 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 		case TOUPCAM_EVENT_NOFRAMETIMEOUT:
 		case TOUPCAM_EVENT_NOPACKETTIMEOUT:
 		case TOUPCAM_EVENT_ERROR: {
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			indigo_ccd_failure_cleanup(device);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			break;

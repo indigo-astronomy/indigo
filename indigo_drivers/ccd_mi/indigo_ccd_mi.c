@@ -101,8 +101,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			indigo_ccd_failure_cleanup(device);
 			mi_report_error(device, CCD_EXPOSURE_PROPERTY);
 		}
 		PRIVATE_DATA->downloading = false;
