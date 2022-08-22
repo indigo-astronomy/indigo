@@ -601,6 +601,8 @@ static void streaming_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->can_check_temperature = true;
 	indigo_finalize_video_stream(device);
 	if (res) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, "Streaming failed");
 	} else {

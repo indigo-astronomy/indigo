@@ -301,6 +301,10 @@ static void handle_streaming(indigo_device *device) {
 	else {
 		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }
@@ -318,10 +322,13 @@ static void handle_exposure(indigo_device *device) {
 	indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 	indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-	if (PRIVATE_DATA->exposure(device))
+	if (PRIVATE_DATA->exposure(device)) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 }

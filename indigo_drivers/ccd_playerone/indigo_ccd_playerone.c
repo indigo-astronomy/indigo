@@ -25,7 +25,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 #include <stdlib.h>
@@ -249,7 +249,7 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageSize(%d, %d, %d)", id, fw, fh);
 
-	
+
 	POAConfigValue value = { .intValue = (long)s2us(exposure) };
 	res = POASetConfig(id, POA_EXPOSURE, value, POA_FALSE);
 	if (res) {
@@ -338,7 +338,7 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 	else
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_COOLER_POWER, > %d)", id, value.intValue);
 	*power = value.intValue;
-	
+
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
 }
@@ -455,6 +455,10 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_ALERT_STATE) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	PRIVATE_DATA->can_check_temperature = true;
 }
@@ -562,6 +566,10 @@ static void streaming_timer_callback(indigo_device *device) {
 		} else {
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 		}
+	}
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
@@ -971,15 +979,15 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 	if (ctrl_caps.configID == POA_AUTOEXPO_BRIGHTNESS || ctrl_caps.configID == POA_AUTOEXPO_MAX_GAIN || ctrl_caps.configID == POA_AUTOEXPO_MAX_EXPOSURE) {
 		return INDIGO_OK;
 	}
-	
+
 	if (ctrl_caps.configID == POA_FLIP_NONE || ctrl_caps.configID == POA_FLIP_HORI || ctrl_caps.configID == POA_FLIP_VERT || ctrl_caps.configID == POA_FLIP_BOTH) {
 		return INDIGO_OK;
 	}
-	
+
 	if (ctrl_caps.configID == POA_GUIDE_SOUTH || ctrl_caps.configID == POA_GUIDE_NORTH || ctrl_caps.configID == POA_GUIDE_WEST || ctrl_caps.configID == POA_GUIDE_EAST) {
 		return INDIGO_OK;
 	}
-	
+
 	if (ctrl_caps.isWritable) {
 		int offset = POA_ADVANCED_PROPERTY->count;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);

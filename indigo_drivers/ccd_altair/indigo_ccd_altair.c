@@ -126,6 +126,8 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 		case ALTAIRCAM_EVENT_NOFRAMETIMEOUT:
 		case ALTAIRCAM_EVENT_NOPACKETTIMEOUT:
 		case ALTAIRCAM_EVENT_ERROR: {
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			break;

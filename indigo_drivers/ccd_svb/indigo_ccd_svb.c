@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -508,6 +508,10 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_ALERT_STATE) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -556,7 +560,7 @@ static void streaming_timer_callback(indigo_device *device) {
 					time_t start = time(NULL);
 					while (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 						if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-							CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+							CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 							break;
 						}
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -582,7 +586,7 @@ static void streaming_timer_callback(indigo_device *device) {
 							break;
 						}
 						if (res != SVB_ERROR_TIMEOUT) {
-							CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+							CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 							break;
 						}
 						if (remaining < -1) {
@@ -633,15 +637,19 @@ static void streaming_timer_callback(indigo_device *device) {
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
 			indigo_ccd_failure_cleanup(device);
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	}
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }

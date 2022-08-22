@@ -210,33 +210,37 @@ static void exposure_timer_callback(indigo_device *device) {
 			err = dc1394_capture_dequeue(PRIVATE_DATA->camera, DC1394_CAPTURE_POLICY_WAIT, &frame);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_dequeue() -> %s", dc1394_error_get_string(err));
 			if (err == DC1394_SUCCESS) {
-        void *data = frame->image;
-        assert(data != NULL);
-        int width = frame->size[0];
-        int height = frame->size[1];
-        int size = frame->image_bytes;
+				void *data = frame->image;
+				assert(data != NULL);
+				int width = frame->size[0];
+				int height = frame->size[1];
+				int size = frame->image_bytes;
 				int bpp = frame->data_depth;
-        if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
-          dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
+				if (frame->color_coding == DC1394_COLOR_CODING_YUV411 || frame->color_coding == DC1394_COLOR_CODING_YUV422 || frame->color_coding == DC1394_COLOR_CODING_YUV444) {
+					dc1394_convert_to_RGB8(data, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, width, height, frame->yuv_byte_order, frame->color_coding, 0);
 					bpp = 24;
-        } else {
-          memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
-        }
-        err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
-        INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-        indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, true, NULL, false);
+				} else {
+					memcpy(PRIVATE_DATA->buffer + FITS_HEADER_SIZE, data, size);
+				}
+				err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
+				indigo_process_image(device, PRIVATE_DATA->buffer, width, height, bpp, frame->little_endian, true, NULL, false);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			} else {
-        if (frame != NULL) {
-          err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
-          INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
-        }
+				if (frame != NULL) {
+					err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
+				}
+				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 			}
 		}
 	} else {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Capture setup failed");
 	}
@@ -291,8 +295,13 @@ static void streaming_timer_callback(indigo_device *device) {
 	stop_camera(device);
 	indigo_finalize_video_stream(device);
 	CCD_STREAMING_COUNT_ITEM->number.value = 0;
-	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 
@@ -653,7 +662,7 @@ static void process_plug_event(libusb_device *dev) {
 					err = dc1394_video_set_iso_speed(camera, DC1394_ISO_SPEED_400);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_video_set_iso_speed(DC1394_ISO_SPEED_400) -> %s", dc1394_error_get_string(err));
 				}
-				
+
 				INDIGO_DEBUG_DRIVER(FILE *tmp = tmpfile());
 				INDIGO_DEBUG_DRIVER(dc1394_camera_print_info(camera, tmp));
 				INDIGO_DEBUG_DRIVER(dc1394featureset_t features);
@@ -671,7 +680,7 @@ static void process_plug_event(libusb_device *dev) {
 				}
 				INDIGO_DEBUG_DRIVER(free(line));
 				INDIGO_DEBUG_DRIVER(fclose(tmp));
-				
+
 				iidc_private_data *private_data = indigo_safe_malloc(sizeof(iidc_private_data));
 				private_data->camera = camera;
 				private_data->guid = guid;
