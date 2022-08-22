@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -411,6 +411,8 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} else {
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 		}
@@ -464,6 +466,8 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 					indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 				}
 			} else {
+				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 				PRIVATE_DATA->can_check_temperature = true;
@@ -625,6 +629,8 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 			}
 		}
 	} else {
+		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed.");
 	}
