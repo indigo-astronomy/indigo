@@ -450,14 +450,12 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_ccd_failure_cleanup(device);
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_ALERT_STATE) {
-		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_ccd_failure_cleanup(device);
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	PRIVATE_DATA->can_check_temperature = true;
@@ -562,14 +560,12 @@ static void streaming_timer_callback(indigo_device *device) {
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_ccd_failure_cleanup(device);
 		} else {
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
-		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_ccd_failure_cleanup(device);
 	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }

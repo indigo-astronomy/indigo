@@ -1184,8 +1184,7 @@ static void exposure_timer_callback(indigo_device *device)
 						  "capture thread terminated normally");
 		}
 		if (!PRIVATE_DATA->buffer || PRIVATE_DATA->buffer_size == 0) {
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+			indigo_ccd_failure_cleanup(device);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 			return;
@@ -1220,8 +1219,7 @@ static void exposure_timer_callback(indigo_device *device)
 							PRIVATE_DATA->buffer,
 							PRIVATE_DATA->buffer_size);
 			if (rc) {
-				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+				indigo_ccd_failure_cleanup(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Debayer failed");
 				return;
@@ -1231,8 +1229,7 @@ static void exposure_timer_callback(indigo_device *device)
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	} else {
-		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_ccd_failure_cleanup(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 	}
@@ -2667,10 +2664,9 @@ static indigo_result ccd_change_property(indigo_device *device,
 		int rc = pthread_create(&thread_id_capture, NULL,
 					thread_capture, device);
 		if (rc) {
+			indigo_ccd_failure_cleanup(device);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 			return INDIGO_FAILED;
 		}
 

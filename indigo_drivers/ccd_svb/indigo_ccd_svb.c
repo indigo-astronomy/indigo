@@ -502,15 +502,13 @@ static void exposure_timer_callback(indigo_device *device) {
 	indigo_finalize_video_stream(device);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
-			indigo_ccd_failure_cleanup(device);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_ALERT_STATE) {
-		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_ccd_failure_cleanup(device);
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -636,7 +634,6 @@ static void streaming_timer_callback(indigo_device *device) {
 	indigo_finalize_video_stream(device);
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
-			indigo_ccd_failure_cleanup(device);
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
@@ -648,8 +645,7 @@ static void streaming_timer_callback(indigo_device *device) {
 		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 	}
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
-		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_ccd_failure_cleanup(device);
 	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }

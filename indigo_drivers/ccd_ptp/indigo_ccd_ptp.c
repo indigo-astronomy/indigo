@@ -325,8 +325,7 @@ static void handle_exposure(indigo_device *device) {
 	if (PRIVATE_DATA->exposure(device)) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_ccd_failure_cleanup(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);

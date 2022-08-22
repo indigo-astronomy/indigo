@@ -232,15 +232,13 @@ static void exposure_timer_callback(indigo_device *device) {
 					err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
 				}
-				CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+				indigo_ccd_failure_cleanup(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed");
 			}
 		}
 	} else {
-		CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
+		indigo_ccd_failure_cleanup(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Capture setup failed");
 	}
@@ -289,6 +287,7 @@ static void streaming_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
 	} else {
+		indigo_ccd_failure_cleanup(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Capture setup failed");
 	}
