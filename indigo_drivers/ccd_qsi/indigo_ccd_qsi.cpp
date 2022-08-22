@@ -26,7 +26,7 @@
  \file indigo_ccd_qsi.cpp
  */
 
-#define DRIVER_VERSION    0x000C
+#define DRIVER_VERSION    0x000D
 #define DRIVER_NAME       "indigo_ccd_qsi"
 
 #include <stdlib.h>
@@ -240,6 +240,8 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		} catch (std::runtime_error err) {
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 			std::string text = err.what();
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, text.c_str());
