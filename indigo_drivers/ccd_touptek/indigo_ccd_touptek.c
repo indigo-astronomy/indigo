@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME "indigo_ccd_touptek"
 
 #include <stdlib.h>
@@ -126,6 +126,8 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 		case TOUPCAM_EVENT_NOFRAMETIMEOUT:
 		case TOUPCAM_EVENT_NOPACKETTIMEOUT:
 		case TOUPCAM_EVENT_ERROR: {
+			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			break;
