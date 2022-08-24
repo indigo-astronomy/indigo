@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 
-# Copyright (c) 2021 Rumen G.Bogdanovski <rumen@skyarchive.org>
+# Copyright (c) 2021 Rumen G.Bogdanovski <rumenastro@gmail.com>
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy

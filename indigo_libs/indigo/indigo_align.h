@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G.Bogdanovski <rumen@skyarchive.org>
+// 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
 
 // The mathematics for the three point polar alignment were derived independently, based on the common principles of the spherical geometry.
 // The algorythm and the source code were developed based on the math we derived.

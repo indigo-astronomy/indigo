@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by by Rumen G. Bogdanovski <rumen@skyarchive.org>
+// 2.0 by by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO Lacerta FBC aux driver
  \file indigo_aux_fbc.h

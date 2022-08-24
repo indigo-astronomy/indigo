@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G.Bogdaanovski <rumen@skyarchive.org>
+// 2.0 by Rumen G.Bogdaanovski <rumenastro@gmail.com>
 
 /** INDIGO Manual filter wheel driver
  \file indigo_whell_manual.h

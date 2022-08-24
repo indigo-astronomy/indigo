@@ -4,7 +4,7 @@ Revision: 11.22.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
-e-mail: *rumen@skyarchive.org*
+e-mail: *rumenastro@gmail.com*
 
 ## Autofocus Quality Estimators
 INDIGO Imager Agent can use two focus quality metrics called Focus Quality Estimators. Each of them has its positives and drawbacks.

@@ -3,7 +3,7 @@ Revision: 06.04.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
-e-mail: *rumen@skyarchive.org*
+e-mail: *rumenastro@gmail.com*
 
 **IMPORTANT: This functionality is still considered experimental and may be a subject to changes.**
 

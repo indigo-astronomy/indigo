@@ -19,7 +19,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 # version history
-# 0.1 by Rumen Bogdanovski <rumen@skyarchive.org>
+# 0.1 by Rumen Bogdanovski <rumenastro@gmail.com>
 #        Thomas Stibor <thomas@stibor.net>
 
 # ASCOL telescope simulator

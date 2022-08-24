@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen Bogdanovski <rumen@skyarchive.org>
+// 2.0 by Rumen Bogdanovski <rumenastro@gmail.com>
 
 #include <stdio.h>
 #include <stdlib.h>

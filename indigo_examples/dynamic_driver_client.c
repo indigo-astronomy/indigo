@@ -18,7 +18,7 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
-//      & Rumen G.Bogdanovski <rumen@skyarchive.org>
+//      & Rumen G.Bogdanovski <rumenastro@gmail.com>
 
 #include <stdio.h>
 #include <stdlib.h>

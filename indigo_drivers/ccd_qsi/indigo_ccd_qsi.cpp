@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 //
-// 23.08.2020 by Rumen.G.Bogdanovski <rumen@skyarchive.org>
+// 23.08.2020 by Rumen.G.Bogdanovski <rumenastro@gmail.com>
 // - major rework: made driver stable with access to QSI camera
 
 /** INDIGO CCD driver for Quantum Scientific Imaging

@@ -3,7 +3,7 @@ Revision: 04.08.2020 (early draft)
 
 Authors: **Rumen G.Bogdanovski** & **Peter Polakovic**
 
-e-mail: *rumen@skyarchive.org*
+e-mail: *rumenastro@gmail.com*
 
 ## What are Agents?
 

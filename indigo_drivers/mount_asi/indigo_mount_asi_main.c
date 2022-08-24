@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G.Bogdanovski <rumen@skyarchive.org>
+// 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO ZWO AM driver main
  \file indigo_mount_asi_main.c
