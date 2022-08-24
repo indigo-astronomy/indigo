@@ -1,6 +1,6 @@
 #---------------------------------------------------------------------
 #
-# Copyright (c) 2021 Rumen G.bogdanovski <rumen@skyarchive.org>
+# Copyright (c) 2021 Rumen G.bogdanovski <rumenastro@gmail.com>
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy

@@ -4,7 +4,7 @@ Revision: 12.03.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
-e-mail: *rumen@skyarchive.org*
+e-mail: *rumenastro@gmail.com*
 
 ## Drift Controller Settings
 

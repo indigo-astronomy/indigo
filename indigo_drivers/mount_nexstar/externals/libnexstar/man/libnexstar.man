@@ -544,11 +544,11 @@ The undocumented commands are described here:
 http://www.paquettefamily.ca/nexstar/NexStar_AUX_Commands_10.pdf
 
 .SH AUTHORS
-Created by Rumen G.Bogdanovski <rumen@skyarchive.org>
+Created by Rumen G.Bogdanovski <rumenastro@gmail.com>
 
 The author assumes no liability or responsibility for damage or injury
 to persons or property arising from any use of this product. Use it at
 your own risk.
 
 .SH BUGS
-If you find any, please send bug reports to rumen@skyarchive.org
+If you find any, please send bug reports to rumenastro@gmail.com

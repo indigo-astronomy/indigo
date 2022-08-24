@@ -3,7 +3,7 @@ Revision: 12.01.2021 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
-e-mail: *rumen@skyarchive.org*
+e-mail: *rumenastro@gmail.com*
 
 ## The INDIGO server: **indigo_server**
 This is the help message of the indigo_server:

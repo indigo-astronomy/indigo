@@ -4,7 +4,7 @@ Revision: 17.08.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
-e-mail: *rumen@skyarchive.org*
+e-mail: *rumenastro@gmail.com*
 
 ## Introduction
 

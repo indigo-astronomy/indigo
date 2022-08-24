@@ -3,7 +3,7 @@ Revision: 10.08.2020 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
-e-mail: *rumen@skyarchive.org*
+e-mail: *rumenastro@gmail.com*
 
 ## INDIGO Concepts
 

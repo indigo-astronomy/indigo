@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by by Rumen G. Bogdanovski <rumen@skyarchive.org>
+// 2.0 by by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO Geoptik flat field generator aux driver
  \file indigo_aux_geoptikflat.h

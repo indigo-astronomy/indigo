@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2019-2021 Thomas Stibor <thomas@stibor.net> & Rumen G.Bogdanovski <rumen@skyarchive.org>
+# Copyright (c) 2019-2021 Thomas Stibor <thomas@stibor.net> & Rumen G.Bogdanovski <rumenastro@gmail.com>
 # All rights reserved.
 #
 # You can use this software under the terms of 'INDIGO Astronomy
