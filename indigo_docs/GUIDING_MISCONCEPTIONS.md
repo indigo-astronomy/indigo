@@ -72,9 +72,9 @@ The graph below shows typical worm gear and typical strain wave PE curves. It is
 
 As we can see it is not the PE amplitude what is important but the steepest [slope](https://en.wikipedia.org/wiki/Slope) of the PE curve. It is measured in arc seconds per second ("/s). Looking at the graphs above the steepest slopes for both curves are when they cross 0 (but this may not always be the case). So let us estimate the slopes for both.
 
-- Worm gear starting at &approx;180s to &approx;250s drops from +4" to -4" and the slope is *(+4" - (-4")) / (250s - 180s) = 8" / 70s = 0.11"/s
+- Worm gear starting at &approx;180s to &approx;250s drops from +4" to -4" and the slope is *(+4" - (-4")) / (250s - 180s) = 8" / 70s = 0.11"/s*
 
-- Strain wave gear starting at &approx;200s to &approx;230s drops from +4" to -4" and the slope is *(+4" - (-4")) / (230s - 200s) = 8" / 30s = 0.27"/s
+- Strain wave gear starting at &approx;200s to &approx;230s drops from +4" to -4" and the slope is *(+4" - (-4")) / (230s - 200s) = 8" / 30s = 0.27"/s*
 
 So in this case with the same guide exposure we can expect that the worm gear mount will be more than two times more accurate than the strain wave gear.
 
