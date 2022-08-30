@@ -52,9 +52,9 @@ Do not be too obsessed with the polar alignment. In most of the cases polar alig
 
 ## Perfect balance is essential for a good guiding
 
-This does not apply to Strain wave gear (Harmonic drive) mounts. They do not need balancing at all. They do have a way to attach counter weights but they are more to keep the center of gravity within the base, so that the telescope will not tip over rather than easing the motors.
+This does not apply to [strain wave gear](https://en.wikipedia.org/wiki/Strain_wave_gearing) (Harmonic drive) mounts. They do not need balancing at all. They do have a way to attach counter weights but they are more to keep the center of gravity within the base, so that the telescope will not tip over rather than easing the motors.
 
-What comes to the worm gear mounts a sight imbalance will actually make the guiding better. The thing is that they all have some backlash in both RA and Dec and if the balance is perfect slight gust of wind or the inertia of the guiding pulse can make the mount wobble withing the backlash play. To avoid that it is a good idea to have a certain amount of imbalance in both RA and Dec, so that the gravity will always clear the backlash in one direction. There is a technique called *\"East heavy mount balancing\"* used for better guiding which utilizes this principle.
+What comes to the [worm gear](https://en.wikipedia.org/wiki/Worm_drive) mounts a sight imbalance will actually make the guiding better. The thing is that they all have some backlash in both RA and Dec and if the balance is perfect slight gust of wind or the inertia of the guiding pulse can make the mount wobble withing the backlash play. To avoid that it is a good idea to have a certain amount of imbalance in both RA and Dec, so that the gravity will always clear the backlash in one direction. There is a technique called *\"East heavy mount balancing\"* used for better guiding which utilizes this principle.
 
 ## The larger the periodic error the worse the guiding
 
@@ -70,7 +70,7 @@ The graph below shows typical worm gear and typical strain wave PE curves. It is
 
 ![](GUIDING_MISCONCEPTIONS/wormvsharmonic.png)
 
-As we can see it is not the PE amplitude what is important but the steepest slope of the PE curve. It is measured in arc seconds per second ("/s). Looking at the graphs above the steepest slopes for both curves are when they cross 0 (but this may not always be the case). So let us estimate the slopes for both.
+As we can see it is not the PE amplitude what is important but the steepest [slope](https://en.wikipedia.org/wiki/Slope) of the PE curve. It is measured in arc seconds per second ("/s). Looking at the graphs above the steepest slopes for both curves are when they cross 0 (but this may not always be the case). So let us estimate the slopes for both.
 
 - Worm gear starting at &approx;180s to &approx;250s drops from +4" to -4" and the slope is *(+4" - (-4")) / (250s - 180s) = 8" / 70s = 0.11"/s
 
