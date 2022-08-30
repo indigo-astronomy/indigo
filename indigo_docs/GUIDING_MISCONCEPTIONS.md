@@ -1,4 +1,4 @@
-# Five Guiding misconceptions Explained
+# Five Guiding Misconceptions Explained
 
 Revision: 30.08.2022 (draft)
 
@@ -20,6 +20,15 @@ The drift is measured by comparing the positions of [centroids](https://en.wikip
 Let us return to the example above: We have a seeing with a frequency of 5 Hz and peak to peak of 2" (amplitude 1"). In order to guide it out (assuming a perfect mount that is able to correct immediately) we need to guide with at least 10Hz (2 &times; the seeing frequency) in order to "see" the seeing errors and in this case our RMSE would be close to 1". With our perfect mount we can correct these errors immediately and the final image sharpness would be close to the theoretical sharpness of the telescope, which is let us say [FWHM](https://en.wikipedia.org/wiki/Full_width_at_half_maximum) = 1". However if we use 1 second guiding exposures these 5Hz scintillation will be almost invisible, so almost no corrections will be made and the mount being perfect we would result in RMSE close to 0", and the stars will have FWHM &approx; 2". I say RMSE close to 0" as some [aliasing](https://en.wikipedia.org/wiki/Aliasing) will occur because the error frequencies are above the Nyquist frequency and the the low pass filter frequency response is not a [Heviside step function](https://en.wikipedia.org/wiki/Heaviside_step_function).
 
 So we ended up with RMSE &approx; 0" and FWHM &approx; 2" of the stars vs RMSE &approx; 1" and FWHM &approx; 1" of the stars. Actually this is nothing new and surprising as this is the principle used in the amateur adaptive optics. There is a small and lightweight prism inside, which can move with several tens of Hertz to make these fast corrections needed to guide out 5-10 Hz or even faster seeing errors.
+
+Here is a real life example. I took these two 300s images with my new ZWO AM5 mount from my balcony in extremely bad seeing conditions. AM5 turned out to be very responsive and I managed to prove my point. The two images are taken minutes apart and I repeated the same test several times in a row with the same result.
+The images taken with 0.2s guiding exposure had Total RMSE &approx; 1.2" and looked a bit sharper than the ones taken with 1.5s guiding exposure and Total RMSE &approx; 0.7".
+
+Guiding exposure of 0.2s with Total RMSE 1.2" (looks sharper)
+![](GUIDING_MISCONCEPTIONS/1.2RMSE_0.2s_guiding.png)
+
+Guiding exposure of 1.5s with Total RMSE 0.7"
+![](GUIDING_MISCONCEPTIONS/0.7RMSE_1.5s_guiding.png)
 
 Also RMSE does not say anything about the star shapes, and you may end up in oblong stars with an excellent RMSE. The thing is that if Right Ascension RMSE and Declination RMSE differ significantly the stars in the final image will be elongated in the direction of the axis with the larger RMSE. Actually the only conclusion one can draw from the RMSE values is the final image star roundness. If the ratio *RMSE RA / RMS Dec = 1* the stars will be perfectly round.
 
