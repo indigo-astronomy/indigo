@@ -36,11 +36,11 @@ As stated above RMSE is not a measure of how [precise and accurate](https://en.w
 
 ## Better polar alignment means better guiding
 
-Often it is quite the opposite. Most amateur mounts have a relatively large backlashes and close to perfect polar alignment will require Declination corrections in both directions. This means that the backlash will play a role when a correction direction changes and may lead to several overshoots before settling. In this case it is better to have a bit of polar error this will introduce a sight drift and will ensure declination corrections in one direction.
+Sometimes it is quite the opposite. Most amateur mounts have relatively large backlashes, some even have quite stiff Declination axis. Close to perfect polar alignment will require Declination corrections in both directions. This means that the backlash will play a role when the direction of the correction changes and may lead to several overshoots before settling. In this case it is better to have a bit of polar error. This will introduce a sight drift and will ensure declination corrections in only one direction.
 
-Some will argue that the drift will introduce large errors to be corrected. Actually no. If we have 10' polar alignment error we will have accumulated Dec drift of 10' in 6 hours of tracking and the drift rate will be about 0.028"/s which can be easily guided. And if the mount has no periodic error, unguided 30 sec exposure will have just about 0.8" drift error.
+Some will argue that the drift will introduce large errors to be corrected. Actually no. If we have 10' polar alignment error we will have accumulated drift of 10' in 6 hours of tracking and the drift rate will be about 0.028"/s which can be easily guided. And if the mount has no periodic error, unguided 30 sec exposure will have just about 0.8" drift error.
 
-## Several arc minutes of polar alignment error will lead considerable field rotation
+## Several arc minutes of polar alignment error will lead to considerable field rotation
 
 It depends, but generally it is not an issue. The bigger the field of view the worse the field rotation. Therefore let us assume that we have a relatively large field of view of 3&deg; and a total polar alignment error of 5'. The [math](http://celestialwonders.com/articles/polaralignment/PolarAlignmentAccuracy.pdf) says that with 600s subs at the celestial equator the stars at the edge will be elongated by 0.35" and at 60&deg; declination the elongation will be by 0.69". So with a good seeing of 1.5" it will be barely noticeable and the optical aberrations of the system at the edge of frame will have more noticeable effect.
 
@@ -60,11 +60,11 @@ What comes to the [worm gear](https://en.wikipedia.org/wiki/Worm_drive) mounts a
 
 The truth is that the periodic error (PE) amplitude itself if only part of the equation. It does not say anything without some other parameters. The most important in this case is the error period. Two mounts with the same peak to peak PE and sinusoidal PE curve but different periods will perform differently.
 
-The graph below shows two mounts with sinusoidal PE curves and same peak to peak PE of 14" but one has 300s period and the second has 600s period. The first one will go from +7" to -7" in 150s and the second in 300s. Therefore with the same guiding cycle (guiding exposure) the second mount will perform better.
+The graph below shows two mounts with sinusoidal PE curves and same peak to peak PE of 14" but one has 300s period and the second has 600s period. The first one will go from +7" to -7" in 150s and the second in 300s. Therefore with the same guiding cycle (guiding exposure) the second mount will perform better as it will drift slower.
 
 ![](GUIDING_MISCONCEPTIONS/sin2periods.png)
 
-Sinusoidal PE curves are not always the case they are more typical for the worm gear mounts. Lately strain wave gear (Harmonic drive) mounts are becoming more popular but this is not the case with them. They tend to have quite rough and asymmetric PE curves.
+Sinusoidal PE curves are not always the case, they are more typical for the worm gear mounts. Lately strain wave gear (Harmonic drive) mounts are becoming popular but this is not the case with them. They tend to have quite rough and asymmetric PE curves.
 
 The graph below shows typical worm gear and typical strain wave PE curves. It is easy to see that the strain wave curve has steeper slopes despite the same peak to peak PE (14") and period (432s). In this case with the same guiding exposure time we can expect the worm gear mount to perform better.
 
@@ -84,7 +84,7 @@ So far so good, but the PE curves may not be as smooth as in these examples. Som
 
 ![](GUIDING_MISCONCEPTIONS/wormvsharmonic_hf.png)
 
-Picture above shows the same two graphs with the same period, same amplitude but this time they are not so smooth and the worm gear mount has four times bigger high frequency (HF) random errors. Sometimes these errors last for less than a second and are really hard to correct. You may need to use short guide cycles but the mount may not be responsive enough to correct them. In this case using longer exposures will result in better RMSE values but the final images may not improve. Some budget mounts have HF random errors bigger than 1".
+The picture above shows the same two graphs with the same period, same amplitude but this time they are not so smooth and the worm gear mount has four times bigger high frequency (HF) random errors. Sometimes these errors last for less than a second and are really hard to correct. You may need to use short guide cycles but the mount may not be responsive enough to correct them. In this case using longer exposures will result in better RMSE values but the final images may not improve. Some budget mounts have HF random errors bigger than 1".
 
 So it is not the PE amplitude, it is the PE curve slopes and the HF random errors that will manifest as guiding errors.
 
