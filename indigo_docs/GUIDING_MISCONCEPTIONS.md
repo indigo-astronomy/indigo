@@ -32,7 +32,7 @@ Guiding exposure of 1.5s with Total RMSE 0.7"
 
 Also RMSE does not say anything about the star shapes, and you may end up in oblong stars with an excellent RMSE. The thing is that if Right Ascension RMSE and Declination RMSE differ significantly the stars in the final image will be elongated in the direction of the axis with the larger RMSE. Actually the only conclusion one can draw from the RMSE values is the final image star roundness. If the ratio *RMSE RA / RMS Dec = 1* the stars will be perfectly round.
 
-As stated above RMSE is not a measure of how precise the guiding is. RMSE is a measure of how smooth the guiding is for a given axis with a specified guiding cycle (guiding exposure). One can not compare RMSE values without specifying the exposure time and the axis. And one can not judge the final image quality by the RMSE value.
+As stated above RMSE is not a measure of how [precise and accurate](https://en.wikipedia.org/wiki/Accuracy_and_precision) the guiding is. RMSE is a measure of how smooth the guiding is in the current conditions. One can not compare the quality of the images based on the RMSE values taken with different guiding exposures or taken with different equipment or taken in different seeing conditions etc.
 
 ## Better polar alignment means better guiding
 
