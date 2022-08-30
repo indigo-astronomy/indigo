@@ -70,18 +70,22 @@ The graph below shows typical worm gear and typical strain wave PE curves. It is
 
 ![](GUIDING_MISCONCEPTIONS/wormvsharmonic.png)
 
-As we can see it is not the PE amplitude what is important but the steepest [slope](https://en.wikipedia.org/wiki/Slope) of the PE curve. It is measured in arc seconds per second ("/s). Looking at the graphs above the steepest slopes for both curves are when they cross 0 (but this may not always be the case). So let us estimate the slopes for both.
+As we can see it is not the PE amplitude what is important but the steepest [slope](https://en.wikipedia.org/wiki/Slope) of the PE curve. It is measured in arc seconds per second ("/s) and tells us how many arc seconds of drift will be accumulated for one second of tracking.
 
-- Worm gear starting at &approx;180s to &approx;250s drops from +4" to -4" and the slope is *(+4" - (-4")) / (250s - 180s) = 8" / 70s = 0.11"/s*
+Looking at the graphs above the steepest slopes for both curves are when they cross 0 (but this may not always be the case). So let us estimate the slopes for both mounts.
 
-- Strain wave gear starting at &approx;200s to &approx;230s drops from +4" to -4" and the slope is *(+4" - (-4")) / (230s - 200s) = 8" / 30s = 0.27"/s*
+- Worm gear mount: starting at &approx;180s to &approx;250s PE drops from +4" to -4" and the slope is *(+4" - (-4")) / (250s - 180s) = 8" / 70s = 0.11"/s*
 
-So in this case with the same guide exposure we can expect that the worm gear mount will be more than two times more accurate than the strain wave gear.
+- Strain wave gear mount: starting at &approx;200s to &approx;230s PE drops from +4" to -4" and the slope is *(+4" - (-4")) / (230s - 200s) = 8" / 30s = 0.27"/s*
+
+So in this case with the same guide exposures we can expect that the worm gear mount will be more than two times more accurate than the strain wave gear.
 
 So far so good, but the PE curves may not be as smooth as in these examples. Sometimes the curves may show significant high frequency errors and this is where the things become ugly.
 
 ![](GUIDING_MISCONCEPTIONS/wormvsharmonic_hf.png)
 
-Picture above shows the same two graphs with the same period, same amplitude but this time they are not so smooth and the worm gear mount has four times bigger high frequency (HF) random errors. Sometimes these errors last for less than a second and are really hard to correct. You may need to use short guide cycles but the mount may not be responsive enough to correct them. In this case using longer exposures will result in better RMSE values but there will be some amount of blur in the final images. Some budget mounts may have HF random errors bigger than 1".
+Picture above shows the same two graphs with the same period, same amplitude but this time they are not so smooth and the worm gear mount has four times bigger high frequency (HF) random errors. Sometimes these errors last for less than a second and are really hard to correct. You may need to use short guide cycles but the mount may not be responsive enough to correct them. In this case using longer exposures will result in better RMSE values but the final images may not improve. Some budget mounts have HF random errors bigger than 1".
 
-So it is not the PE amplitude, it is the PE curve steepest slope and the HF random errors that will manifest as guiding errors.
+So it is not the PE amplitude, it is the PE curve slopes and the HF random errors that will manifest as guiding errors.
+
+Clear skies!
