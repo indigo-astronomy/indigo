@@ -23,9 +23,7 @@ So we ended up with RMSE &approx; 0" and FWHM &approx; 2" of the stars vs RMSE &
 
 Also RMSE does not say anything about the star shapes, and you may end up in oblong stars with an excellent RMSE. The thing is that if Right Ascension RMSE and Declination RMSE differ significantly the stars in the final image will be elongated in the direction of the axis with the larger RMSE. Actually the only conclusion one can draw from the RMSE values is the final image star roundness. If the ratio *RMSE RA / RMS Dec = 1* the stars will be perfectly round.
 
-As stated above RMSE is not a measure of how precise the guiding is. RMSE is a measure of how smooth the guiding is for a given axis with a specified guiding cycle (guiding exposure). One can not compare RMSE values without specifying the exposure time and the axis. And one can not judge the final image quality by the *Total RMSE* value. Actually the *Total RMSE* value is next to meaningless.
-
-In conclusion: If a single number should be provided related to RMSE it would be the ratio *RMSE RA / RMS Dec* as it determines the star roundness. And the worst would be the Total RMSE, as it does not provide any useful information.
+As stated above RMSE is not a measure of how precise the guiding is. RMSE is a measure of how smooth the guiding is for a given axis with a specified guiding cycle (guiding exposure). One can not compare RMSE values without specifying the exposure time and the axis. And one can not judge the final image quality by the RMSE value.
 
 ## Better polar alignment means better guiding
 
@@ -35,21 +33,46 @@ Some will argue that the drift will introduce large errors to be corrected. Actu
 
 ## Several arc minutes of polar alignment error will lead considerable field rotation
 
-It depends, but generally it is not an issue. The bigger the field of view the worse the field rotation. Therefore let us assume that we have a relatively large field of view of 3&deg; and a total polar alignment error of 5'. The math says that with 600 sec subs at the celestial equator the stars at the edge will be elongated by 0.35" and at 60&deg; declination the elongation will be by 0.69". So with a good seeing of 1.5" it will be barely noticeable and the optical aberrations of the system at the edge of frame will have more noticeable effect.
+It depends, but generally it is not an issue. The bigger the field of view the worse the field rotation. Therefore let us assume that we have a relatively large field of view of 3&deg; and a total polar alignment error of 5'. The [math](http://celestialwonders.com/articles/polaralignment/PolarAlignmentAccuracy.pdf) says that with 600s subs at the celestial equator the stars at the edge will be elongated by 0.35" and at 60&deg; declination the elongation will be by 0.69". So with a good seeing of 1.5" it will be barely noticeable and the optical aberrations of the system at the edge of frame will have more noticeable effect.
 
-With 1&deg; field of view at the celestial equator the star elongation will be a mere 0.12" and at 60&deg; declination will be only 0.23". Also halving the exposure time to 300 sec the numbers above are halved too.
+With 1&deg; field of view at the celestial equator the star elongation will be a mere 0.12" and at 60&deg; declination will be only 0.23". Also halving the exposure time to 300s the numbers above are halved too.
 
-Please note that telescope with diameter of 120mm has a resolution of approximately 1" and all the numbers above are well within the resolution of a 12cm telescope and above that the seeing is the limiting factor.
+Please note that telescope with diameter of 120 mm has a resolution of approximately 1" and all the numbers above are well within the resolution of a 12 cm telescope and above that the seeing is the limiting factor.
 
 Do not be too obsessed with the polar alignment. In most of the cases polar alignment error of 5' is more than enough.
 
 ## Perfect balance is essential for a good guiding
 
-This does not apply to Strain wave gear (Harmonic) mounts. They do not need balancing at all. They do have a way to attach counter weights but they are more to keep the center of gravity within the base, so that the telescope will not tip over rather than easing the motors.
+This does not apply to Strain wave gear (Harmonic drive) mounts. They do not need balancing at all. They do have a way to attach counter weights but they are more to keep the center of gravity within the base, so that the telescope will not tip over rather than easing the motors.
 
 What comes to the worm gear mounts a sight imbalance will actually make the guiding better. The thing is that they all have some backlash in both RA and Dec and if the balance is perfect slight gust of wind or the inertia of the guiding pulse can make the mount wobble withing the backlash play. To avoid that it is a good idea to have a certain amount of imbalance in both RA and Dec, so that the gravity will always clear the backlash in one direction. There is a technique called *\"East heavy mount balancing\"* used for better guiding which utilizes this principle.
 
 ## The larger the periodic error the worse the guiding
-(TBD)
-- symmetric vs asymmetric curve
-- smoothness of the curve
+
+The truth is that the periodic error (PE) amplitude itself if only part of the equation. It does not say anything without some other parameters. The most important is the error period. So two mounts with the same peak to peak PE and sinusoidal PE curve but different periods will behave differently.
+
+The graph below shows two mounts with sinusoidal PE curves and same peak to peak PE of 14" but one has 300 sec period and the second has 600s period. The first one will go from +7" to -7" in 150 sec and the second in 300 sec. Therefore the with the same guiding cycle (guiding exposure) the second mount will behave better.
+
+![](GUIDING_MISCONCEPTIONS/sin2periods.png)
+
+Sinusoidal PE curves are not always the case they are more typical for the worm gear mounts. Lately strain wave gear (Harmonic drive) mounts are becoming more popular but this is not the case with them. They tend to have quite rough and asymmetric PE curves.
+
+The graph below shows typical worm gear and typical strain wave PE curves. It is easy to see that the strain wave curve has steeper slopes despite the same peak to peak PE (14") and period (432s). In this case with the same guiding exposure time we can expect the worm gear mount to perform better.
+
+![](GUIDING_MISCONCEPTIONS/wormvsharmonic.png)
+
+As we can see it is not the PE amplitude what is important but the steepest slope of the PE curve. It is measured in arc seconds per second ("/s). Looking at the graphs above the steepest slopes for both curves are when they cross 0 (but this may not always be the case). So let us estimate the slopes for both.
+
+- Worm gear starting at &approx;180s to &approx;250s drops from +4" to -4" and the slope is *(+4" - (-4")) / (250s - 180s) = 8" / 70s = 0.11"/s
+
+- Strain wave gear starting at &approx;200s to &approx;230s drops from +4" to -4" and the slope is *(+4" - (-4")) / (230s - 200s) = 8" / 30s = 0.27"/s
+
+So in this case with the same guide exposure we can expect that the worm gear mount will be more than two times more accurate than the strain wave gear.
+
+So far so good, but the PE curves may not be as smooth as in these examples. Sometimes the curves may show significant high frequency errors and this is where the things become ugly.
+
+![](GUIDING_MISCONCEPTIONS/wormvsharmonic_hf.png)
+
+Picture above shows the same two graphs with the same period, same amplitude but this time the worm gear mount has four times larger high frequency (HF) random errors. Sometimes these errors last for less than a second and are really hard to correct. You may need to use short guide exposures but the mount may not be responsive enough to correct them. In this case using longer exposures will result in better RMSE values but there will be some amount of blur in the final images. Some budget mounts may have > 1" HF random errors.
+
+So it is not the PE amplitude, it is the PE curve steepest slope and the HF random errors that will manifest as guiding errors.
