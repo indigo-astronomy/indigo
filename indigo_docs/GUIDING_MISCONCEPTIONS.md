@@ -7,7 +7,7 @@ Author: **Rumen G.Bogdanovski**
 e-mail: *rumenastro@gmail.com*
 
 
-I am writing this article because because I have heard these statements many  times and I had to explain them over an over. I will try to explain them without going into too much details and I am not going to provide mathematical proofs of the claims. I will try to make the explanations as simple as possible, yet providing some hooks for those who want to learn more about the matter.
+I am writing this article because I have heard these statements many times and I had to explain them over an over. I will try to explain them without going into too much details and I am not going to provide mathematical proofs of the claims. I will try to make the explanations as simple as possible, yet providing some hooks for those who want to learn more about the matter.
 
 ## Lower RMSE means better image
 
