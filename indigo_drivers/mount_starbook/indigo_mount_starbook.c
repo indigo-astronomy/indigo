@@ -480,10 +480,11 @@ static bool starbook_parse_query_degree_minute(const char *query, const char *ke
 		// parse failed
 		return false;
 	}
+	int s = (temp[0] == '-') ? -1 : 1;
 	if (sign) {
-		*sign = (temp[0] == '-') ? -1 : 1;
+		*sign = s;
 	}
-	const char *beg = (sign < 0) ? &temp[1] : temp;
+	const char *beg = (s < 0) ? &temp[1] : temp;
 	int len = 0;
 	const char *sep = strstr(beg, "+");
 	if (sep == NULL) {
