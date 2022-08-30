@@ -58,9 +58,9 @@ What comes to the [worm gear](https://en.wikipedia.org/wiki/Worm_drive) mounts a
 
 ## The bigger the periodic error the worse the guiding
 
-The truth is that the periodic error (PE) amplitude itself if only part of the equation. It does not say anything without some other parameters. The most important is the error period. So two mounts with the same peak to peak PE and sinusoidal PE curve but different periods will behave differently.
+The truth is that the periodic error (PE) amplitude itself if only part of the equation. It does not say anything without some other parameters. The most important in this case is the error period. Two mounts with the same peak to peak PE and sinusoidal PE curve but different periods will perform differently.
 
-The graph below shows two mounts with sinusoidal PE curves and same peak to peak PE of 14" but one has 300s period and the second has 600s period. The first one will go from +7" to -7" in 150s and the second in 300s. Therefore the with the same guiding cycle (guiding exposure) the second mount will behave better.
+The graph below shows two mounts with sinusoidal PE curves and same peak to peak PE of 14" but one has 300s period and the second has 600s period. The first one will go from +7" to -7" in 150s and the second in 300s. Therefore with the same guiding cycle (guiding exposure) the second mount will perform better.
 
 ![](GUIDING_MISCONCEPTIONS/sin2periods.png)
 
