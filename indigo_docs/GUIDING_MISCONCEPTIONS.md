@@ -56,11 +56,11 @@ This does not apply to [strain wave gear](https://en.wikipedia.org/wiki/Strain_w
 
 What comes to the [worm gear](https://en.wikipedia.org/wiki/Worm_drive) mounts a sight imbalance will actually make the guiding better. The thing is that they all have some backlash in both RA and Dec and if the balance is perfect slight gust of wind or the inertia of the guiding pulse can make the mount wobble withing the backlash play. To avoid that it is a good idea to have a certain amount of imbalance in both RA and Dec, so that the gravity will always clear the backlash in one direction. There is a technique called *\"East heavy mount balancing\"* used for better guiding which utilizes this principle.
 
-## The larger the periodic error the worse the guiding
+## The bigger the periodic error the worse the guiding
 
 The truth is that the periodic error (PE) amplitude itself if only part of the equation. It does not say anything without some other parameters. The most important is the error period. So two mounts with the same peak to peak PE and sinusoidal PE curve but different periods will behave differently.
 
-The graph below shows two mounts with sinusoidal PE curves and same peak to peak PE of 14" but one has 300 sec period and the second has 600s period. The first one will go from +7" to -7" in 150 sec and the second in 300 sec. Therefore the with the same guiding cycle (guiding exposure) the second mount will behave better.
+The graph below shows two mounts with sinusoidal PE curves and same peak to peak PE of 14" but one has 300s period and the second has 600s period. The first one will go from +7" to -7" in 150s and the second in 300s. Therefore the with the same guiding cycle (guiding exposure) the second mount will behave better.
 
 ![](GUIDING_MISCONCEPTIONS/sin2periods.png)
 
@@ -82,6 +82,6 @@ So far so good, but the PE curves may not be as smooth as in these examples. Som
 
 ![](GUIDING_MISCONCEPTIONS/wormvsharmonic_hf.png)
 
-Picture above shows the same two graphs with the same period, same amplitude but this time the worm gear mount has four times larger high frequency (HF) random errors. Sometimes these errors last for less than a second and are really hard to correct. You may need to use short guide exposures but the mount may not be responsive enough to correct them. In this case using longer exposures will result in better RMSE values but there will be some amount of blur in the final images. Some budget mounts may have > 1" HF random errors.
+Picture above shows the same two graphs with the same period, same amplitude but this time they are not so smooth and the worm gear mount has four times bigger high frequency (HF) random errors. Sometimes these errors last for less than a second and are really hard to correct. You may need to use short guide cycles but the mount may not be responsive enough to correct them. In this case using longer exposures will result in better RMSE values but there will be some amount of blur in the final images. Some budget mounts may have HF random errors bigger than 1".
 
 So it is not the PE amplitude, it is the PE curve steepest slope and the HF random errors that will manifest as guiding errors.
