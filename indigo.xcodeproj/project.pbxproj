@@ -964,6 +964,7 @@
 		5912C80C23D2447400A48B75 /* INDI-COMPARISON.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "INDI-COMPARISON.md"; sourceTree = "<group>"; };
 		5912C80D23D2447400A48B75 /* DEVELOPMENT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = DEVELOPMENT.md; sourceTree = "<group>"; };
 		5912C80E23D2447400A48B75 /* PROTOCOLS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROTOCOLS.md; sourceTree = "<group>"; };
+		5913653428BF4A4D00ABB99B /* readme.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = readme.txt; sourceTree = "<group>"; };
 		5917AC4921A3586D00AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5917AC4A21A3588800AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		5917AC4C21A35F9000AC018A /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -8217,6 +8218,7 @@
 		59A68E08277DC3D0000439CC /* libsvbcamera */ = {
 			isa = PBXGroup;
 			children = (
+				5913653428BF4A4D00ABB99B /* readme.txt */,
 				59A68E0B277DC3D0000439CC /* VERSION */,
 				59A68E09277DC3D0000439CC /* include */,
 				59A68E0C277DC3D0000439CC /* lib */,
