@@ -46,7 +46,7 @@ It depends, but generally it is not an issue. The bigger the field of view the w
 
 With 1&deg; field of view at the celestial equator the star elongation will be a mere 0.12" and at 60&deg; declination will be only 0.23". Also halving the exposure time to 300s the numbers above are halved too.
 
-Please note that telescope with diameter of 120 mm has a resolution of approximately 1" and all the numbers above are well within the resolution of a 12 cm telescope and above that the seeing is the limiting factor.
+Please note that telescope with diameter of 120 mm has theoretical [airy disk](https://en.wikipedia.org/wiki/Airy_disk) size of approximately 1" and all the numbers above are well within this number. For larger telescopes the seeing is the limiting factor.
 
 Do not be too obsessed with the polar alignment. In most of the cases polar alignment error of 5' is more than enough.
 
