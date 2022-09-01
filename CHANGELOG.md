@@ -2,6 +2,66 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-188] - 02 Sep Fri 2022
+### Overall
+- indigo_ccd_failure_cleanup() call added
+- documentation updates
+- indigo_io.c: Fix wrong report of failed connection
+- All ccd drivers:
+	- set CCD_IMAGE state to ALERT when CCD_EXPOSURE is ALERT
+	- use indigo_ccd_failure_cleanup() to cleanup the state at error
+
+### New Drivrs
+- indigo_ccd_playerone:
+	- Driver for PlayerOne cameras
+
+- indigo_focuser_prodigy:
+	- supports focuser part only, power box not implemented yet
+
+### Driver fixes
+- indigo_agent_imager:
+	- AGENT_PAUSE_PROCESS_WAIT_ITEM added to AGENT_PAUSE_PROCESS_PROPERTY
+	- frame counting with wait & pause fixed
+	- breakpoint handling fixed
+
+- indigo_agent_astap:
+	- kill pending children at exit
+	- fix process failure if exposure fails
+
+- indigo_agent_astrometry:
+	- kill pending children at exit
+	- fix process failure if exposure fails
+
+- indigo_ccd_asi:
+	- better cooler error handling
+	- update sdk to v.1.26
+
+- indigo_ccd_svb:
+	- code refactored
+	- SDK updated to version 1.9.4
+
+- indigo_ccd_mi:
+	- add support for new C5 cameras and optional GPS module attachment
+	- update SDK with some new PIDs and support for new binning parameters
+
+- indigo_ccd_ptp:
+	- fix LIBUSB_ERROR_OVERFLOWs
+
+- indigo_mount_asi:
+	- typo fixes
+	- Handling of TCP disconnections
+
+- indigo_mount_lx200:
+	- typo fixes
+	- Handling of TCP disconnections
+
+- indigo_mount_ioptron:
+	- fix TZ/DST issues
+
+- indigo_mount_starbook:
+	- fix getstatus (starbook < 4.20)
+
+
 ## [2.0-186] - 25 Jul Mon 2022
 ### Overall
 - indigo_docs: SCRIPTING_BASICS added (Thanks to Johan Bakker)
