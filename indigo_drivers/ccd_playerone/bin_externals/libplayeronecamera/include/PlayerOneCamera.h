@@ -105,8 +105,8 @@ typedef enum _POAConfig                 ///< Camera Config Definition
     POA_AUTOEXPO_BRIGHTNESS,            ///< target brightness when auto-adjust, read-write, valueType == VAL_INT
     POA_GUIDE_NORTH,                    ///< ST4 guide north, generally,it's DEC+ on the mount, read-write, valueType == VAL_BOOL
     POA_GUIDE_SOUTH,                    ///< ST4 guide south, generally,it's DEC- on the mount, read-write, valueType == VAL_BOOL
-    POA_GUIDE_EAST,                     ///< ST4 guide east, generally,it's RA- on the mount, read-write, valueType == VAL_BOOL
-    POA_GUIDE_WEST,                     ///< ST4 guide west, generally,it's RA+ on the mount, read-write, valueType == VAL_BOOL
+    POA_GUIDE_EAST,                     ///< ST4 guide east, generally,it's RA+ on the mount, read-write, valueType == VAL_BOOL
+    POA_GUIDE_WEST,                     ///< ST4 guide west, generally,it's RA- on the mount, read-write, valueType == VAL_BOOL
     POA_EGAIN,                          ///< e/ADU, This value will change with gain, read-only, valueType == VAL_FLOAT
     POA_COOLER_POWER,                   ///< cooler power percentage[0-100%](only cool camera), read-only, valueType == VAL_INT
     POA_TARGET_TEMP,                    ///< camera target temperature(uint: C), read-write, valueType == VAL_INT

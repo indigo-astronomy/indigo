@@ -4177,10 +4177,9 @@
 		59FFB050288D3CB900F172AC /* PlayerOneCamera.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PlayerOneCamera.h; sourceTree = "<group>"; };
 		59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libPlayerOneCamera.dylib; sourceTree = "<group>"; };
 		59FFB055288D3CB900F172AC /* player_one_astronomy.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = player_one_astronomy.rules; sourceTree = "<group>"; };
-		59FFB057288D3CB900F172AC /* libPlayerOneCamera.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so; sourceTree = "<group>"; };
-		59FFB058288D3CB900F172AC /* README.arm */ = {isa = PBXFileReference; lastKnownFileType = text; path = README.arm; sourceTree = "<group>"; };
-		59FFB05B288D3CB900F172AC /* libPlayerOneCamera.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so; sourceTree = "<group>"; };
-		59FFB05D288D3CB900F172AC /* libPlayerOneCamera.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so; sourceTree = "<group>"; };
+		59FFB057288D3CB900F172AC /* libPlayerOneCamera.so.3 */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so.3; sourceTree = "<group>"; };
+		59FFB05B288D3CB900F172AC /* libPlayerOneCamera.so.3 */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so.3; sourceTree = "<group>"; };
+		59FFB05D288D3CB900F172AC /* libPlayerOneCamera.so.3 */ = {isa = PBXFileReference; lastKnownFileType = file; path = libPlayerOneCamera.so.3; sourceTree = "<group>"; };
 		59FFB05F288D3CB900F172AC /* PlayerOne Software Development Kit.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "PlayerOne Software Development Kit.pdf"; sourceTree = "<group>"; };
 		59FFB060288D3CB900F172AC /* changelog.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = changelog.txt; sourceTree = "<group>"; };
 		59FFB061288D3CB900F172AC /* license.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
@@ -11545,7 +11544,6 @@
 			children = (
 				59FFB055288D3CB900F172AC /* player_one_astronomy.rules */,
 				59FFB056288D3CB900F172AC /* x64 */,
-				59FFB058288D3CB900F172AC /* README.arm */,
 				59FFB059288D3CB900F172AC /* x86 */,
 				59FFB05A288D3CB900F172AC /* arm */,
 				59FFB05C288D3CB900F172AC /* arm64 */,
@@ -11556,7 +11554,7 @@
 		59FFB056288D3CB900F172AC /* x64 */ = {
 			isa = PBXGroup;
 			children = (
-				59FFB057288D3CB900F172AC /* libPlayerOneCamera.so */,
+				59FFB057288D3CB900F172AC /* libPlayerOneCamera.so.3 */,
 			);
 			path = x64;
 			sourceTree = "<group>";
@@ -11571,7 +11569,7 @@
 		59FFB05A288D3CB900F172AC /* arm */ = {
 			isa = PBXGroup;
 			children = (
-				59FFB05B288D3CB900F172AC /* libPlayerOneCamera.so */,
+				59FFB05B288D3CB900F172AC /* libPlayerOneCamera.so.3 */,
 			);
 			path = arm;
 			sourceTree = "<group>";
@@ -11579,7 +11577,7 @@
 		59FFB05C288D3CB900F172AC /* arm64 */ = {
 			isa = PBXGroup;
 			children = (
-				59FFB05D288D3CB900F172AC /* libPlayerOneCamera.so */,
+				59FFB05D288D3CB900F172AC /* libPlayerOneCamera.so.3 */,
 			);
 			path = arm64;
 			sourceTree = "<group>";

@@ -1,3 +1,7 @@
+2022.8.25(3.0.4)
+- Enhanced camera stability when startup
+- Enhanced thread safety
+
 2022.6.20(3.0.3)
 - Optimize the stability of the new camera
 
