@@ -14,6 +14,7 @@ All notable changes to INDIGO framework will be documented in this file.
 ### New Drivrs
 - indigo_ccd_playerone:
 	- Driver for PlayerOne cameras
+	- 32-bit Intel not supported
 
 - indigo_focuser_prodigy:
 	- supports focuser part only, power box not implemented yet

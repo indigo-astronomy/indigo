@@ -40,7 +40,7 @@
 
 #include "indigo_ccd_playerone.h"
 
-#if !(defined(__APPLE__) && defined(__arm64__))
+#if !(defined(__APPLE__) && defined(__arm64__)) && !(defined(__linux__) && defined(__i386__))
 
 #if defined(INDIGO_MACOS)
 #include <libusb-1.0/libusb.h>
@@ -1793,6 +1793,7 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 		case INDIGO_DRIVER_SHUTDOWN:
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "This driver is not supported on this architecture");
 			return INDIGO_UNSUPPORTED_ARCH;
 		case INDIGO_DRIVER_INFO:
 			break;
