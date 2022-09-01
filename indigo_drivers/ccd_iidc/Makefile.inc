@@ -12,4 +12,4 @@ ifeq ($(OS_DETECTED),Darwin)
 CONFIGURE_FLAGS = LIBUSB_CFLAGS="-I$(BUILD_INCLUDE)/libusb-1.0" LIBUSB_LIBS="-L$(BUILD_LIB) -lusb-1.0"
 endif
 
-FIX_SDK_LIB_SO = install_name_tool -change `otool -L $(SDK_LIB_SO) | grep libusb -m1 | cut -f2 | cut -f1 -d " "` $(BUILD_LIB)/libusb-1.0.dylib $(BUILD_LIB)/$(notdir $(SDK_LIB_SO))
+FIX_SDK_LIB_DYLIB = install_name_tool -change `otool -L $(SDK_LIB_SO) | grep libusb -m1 | cut -f2 | cut -f1 -d " "` $(BUILD_LIB)/libusb-1.0.dylib $(BUILD_LIB)/$(notdir $(SDK_LIB_SO))
