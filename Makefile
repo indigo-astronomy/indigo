@@ -104,7 +104,7 @@ else
 		ifeq ($(ARCH_DETECTED),i686)
 			ARCH_DETECTED = x86
 			DEBIAN_ARCH = i386
-			EXCLUDED_DRIVERS += ccd_player_one
+			EXCLUDED_DRIVERS += ccd_playerone
 		endif
 		ifeq ($(ARCH_DETECTED),x86_64)
 			ifneq ($(wildcard /lib/x86_64-linux-gnu/),)
