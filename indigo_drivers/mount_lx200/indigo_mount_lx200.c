@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x001B
+#define DRIVER_VERSION 0x001C
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -371,16 +371,17 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 	return true;
 }
 
-//static bool gemini_command(indigo_device *device, char *command, char *response, int max) {
-//	char buffer[128];
-//	uint8_t checksum = command[0];
-//	for (size_t i=1; i < strlen(command); i++)
-//		checksum = checksum ^ command[i];
-//	checksum = checksum % 128;
-//	checksum += 64;
-//	snprintf(buffer, sizeof(buffer), "%s%c#", command, checksum);
-//	return meade_command(device, buffer, response, max, 0);
-//}
+static bool gemini_set(indigo_device *device, int command, char *parameter) {
+	char buffer[128];
+	sprintf(buffer, ">%d:%s", command, parameter);
+	uint8_t checksum = buffer[0];
+	for (size_t i = 1; i < strlen(buffer); i++)
+		checksum = checksum ^ buffer[i];
+	checksum = checksum % 128 + 64;
+	strncat(buffer, (char *)&checksum, 1);
+	strncat(buffer, "#", 1);
+	return meade_command(device, buffer, NULL, 0, 0);
+}
 
 static void meade_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
@@ -665,7 +666,7 @@ static bool meade_get_guide_rate(indigo_device *device, int *ra, int *dec) {
 static bool meade_set_tracking(indigo_device *device, bool on) {
 	if (on) { // TBD
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
-			return meade_command(device, ">190:192F#", NULL, 0, 0);
+			return gemini_set(device, 192, "");
 		} else if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
 			return meade_command(device, ":X122#", NULL, 0, 0);
 		} if (MOUNT_TYPE_AP_ITEM->sw.value) {
@@ -683,7 +684,7 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 		}
 	} else {
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
-			return meade_command(device, ">190:191E#", NULL, 0, 0);
+			return gemini_set(device, 191, "");
 		} else if (MOUNT_TYPE_AVALON_ITEM->sw.value) {
 			return meade_command(device, ":X120#", NULL, 0, 0);
 		} if (MOUNT_TYPE_AP_ITEM->sw.value) {
@@ -701,7 +702,7 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 	if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'q') {
 		PRIVATE_DATA->lastTrackRate = 'q';
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
-			return meade_command(device, ">130:131E#", NULL, 0, 0);
+			return gemini_set(device, 131, "");
 		else if (MOUNT_TYPE_AP_ITEM->sw.value)
 			return meade_command(device, ":RT2#", NULL, 0, 0);
 		else
@@ -709,7 +710,7 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 	} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 's') {
 		PRIVATE_DATA->lastTrackRate = 's';
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
-			return meade_command(device, ">130:134@", NULL, 0, 0);
+			return gemini_set(device, 134, "");
 		else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value)
 			return meade_command(device, ":TSOLAR#", NULL, 0, 0);
 		else if (MOUNT_TYPE_AP_ITEM->sw.value)
@@ -719,7 +720,7 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 	} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'l') {
 		PRIVATE_DATA->lastTrackRate = 'l';
 		if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
-			return meade_command(device, ">130:133G#", NULL, 0, 0);
+			return gemini_set(device, 133, "");
 		else if (MOUNT_TYPE_AP_ITEM->sw.value)
 			return meade_command(device, ":RT0#", NULL, 0, 0);
 		else
