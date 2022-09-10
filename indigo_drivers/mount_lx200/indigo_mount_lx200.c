@@ -373,14 +373,15 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 
 static bool gemini_set(indigo_device *device, int command, char *parameter) {
 	char buffer[128];
-	sprintf(buffer, ">%d:%s", command, parameter);
+	char *end = buffer + sprintf(buffer, ">%d:%s", command, parameter);
 	uint8_t checksum = buffer[0];
 	for (size_t i = 1; i < strlen(buffer); i++)
 		checksum = checksum ^ buffer[i];
 	checksum = checksum % 128 + 64;
-	strncat(buffer, (char *)&checksum, 1);
-	strncat(buffer, "#", 1);
-	return meade_command(device, buffer, NULL, 0, 0);
+  *end++ = checksum;
+  *end++ = '#';
+  *end++ = 0;
+ 	return meade_command(device, buffer, NULL, 0, 0);
 }
 
 static void meade_close(indigo_device *device) {
