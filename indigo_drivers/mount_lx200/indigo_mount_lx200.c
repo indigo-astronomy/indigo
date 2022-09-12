@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x001C
+#define DRIVER_VERSION 0x001d
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -373,14 +373,15 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 
 static bool gemini_set(indigo_device *device, int command, char *parameter) {
 	char buffer[128];
-	sprintf(buffer, ">%d:%s", command, parameter);
+	char *end = buffer + sprintf(buffer, ">%d:%s", command, parameter);
 	uint8_t checksum = buffer[0];
 	for (size_t i = 1; i < strlen(buffer); i++)
 		checksum = checksum ^ buffer[i];
 	checksum = checksum % 128 + 64;
-	strncat(buffer, (char *)&checksum, 1);
-	strncat(buffer, "#", 1);
-	return meade_command(device, buffer, NULL, 0, 0);
+  *end++ = checksum;
+  *end++ = '#';
+  *end++ = 0;
+ 	return meade_command(device, buffer, NULL, 0, 0);
 }
 
 static void meade_close(indigo_device *device) {
@@ -743,6 +744,20 @@ static bool meade_set_slew_rate(indigo_device *device) {
 		} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
 			PRIVATE_DATA->lastSlewRate = 's';
 			return meade_command(device, ":RC3#", NULL, 0, 0);
+		}
+	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
+			PRIVATE_DATA->lastSlewRate = 'g';
+			return meade_command(device, ":R1#", NULL, 0, 0);
+		} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
+			PRIVATE_DATA->lastSlewRate = 'c';
+			return meade_command(device, ":R4#", NULL, 0, 0);
+		} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
+			PRIVATE_DATA->lastSlewRate = 'm';
+			return meade_command(device, ":R8#", NULL, 0, 0);
+		} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
+			PRIVATE_DATA->lastSlewRate = 's';
+			return meade_command(device, ":R9#", NULL, 0, 0);
 		}
 	} else {
 		if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {

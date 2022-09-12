@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -465,16 +465,16 @@ static bool asi_set_tracking_rate(indigo_device *device) {
 static bool asi_set_slew_rate(indigo_device *device) {
 	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
 		PRIVATE_DATA->lastSlewRate = 'g';
-		return asi_command(device, ":RG#", NULL, 0, 0);
+		return asi_command(device, ":R1#", NULL, 0, 0);
 	} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
 		PRIVATE_DATA->lastSlewRate = 'c';
-		return asi_command(device, ":RC#", NULL, 0, 0);
+		return asi_command(device, ":R4#", NULL, 0, 0);
 	} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
 		PRIVATE_DATA->lastSlewRate = 'm';
-		return asi_command(device, ":RM#", NULL, 0, 0);
+		return asi_command(device, ":R8#", NULL, 0, 0);
 	} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
 		PRIVATE_DATA->lastSlewRate = 's';
-		return asi_command(device, ":RS#", NULL, 0, 0);
+		return asi_command(device, ":R9#", NULL, 0, 0);
 	}
 	return true;
 }
