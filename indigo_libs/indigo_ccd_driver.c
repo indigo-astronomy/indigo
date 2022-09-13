@@ -1195,12 +1195,36 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			char buffer[15];
 			time_info = localtime(&current_time);
 			if (fs[1] == 'H') {
-				strftime(buffer, 15, "%H:%M:%S", time_info);
+				strftime(buffer, 15, "%H-%M-%S", time_info);
 			} else {
 				strftime(buffer, 15, "%Y-%m-%d", time_info);
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, buffer);
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
+		} else if (fs[1] == 'C') { // %C - colour filter, R G B Ha etc.
+			bool found = false;
+			strncpy(tmp, format, fs - format);
+			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+				indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+				if (*item->text.value) {
+					if (!strncmp(item->text.value, "FILTER", 6)) {
+						char keyword[50] = "";
+						char filter[50] = "";
+						int res = sscanf(item->text.value, "%[^']'%[^']", keyword, filter);
+						if (res != 2) {
+							found = false;
+						} else {
+							strcat(tmp, filter);
+							found = true;
+						}
+					}
+				}
+			}
+			if (!found) {
+				strcat(tmp, "NA");
+			}
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if (isdigit(fs[1]) && fs[2] == 'S') { // %nS - sequence number in %0nd format
@@ -1255,6 +1279,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
+
 	INDIGO_DEBUG(clock_t start = clock());
 	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
