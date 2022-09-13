@@ -1130,9 +1130,20 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	free(memory_handle);
 }
 
+static void sanitise(char *buffer) {
+	for (char *p = buffer; *p; p++) {
+		if (isalnum(*p) || isdigit(*p))
+			continue;
+		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%')
+			continue;
+		*p = '_';
+	}
+}
+
 static bool create_file_name(indigo_device *device, void *blob_value, long blob_size, char *dir, char *prefix, char *suffix, char *file_name) {
 	char format[PATH_MAX], tmp[PATH_MAX];
 	strcpy(format, dir);
+	sanitise(prefix);
 	if (strchr(prefix, '%') == NULL) { // No %, INDI style
 		char *placeholder = strstr(prefix, "XXX");
 		if (placeholder == NULL) {
@@ -1164,15 +1175,28 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcat(tmp, md5_digest);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
-		} else if (fs[1] == 'E') { // %E - exposure time
+		} else if (fs[1] == 'E' || (isdigit(fs[1]) && fs[2] == 'E')) { // %E or %nE - exposure time
 			char e[16];
-			if (CCD_EXPOSURE_ITEM->number.target >= 1.0)
-				sprintf(e, "%.1f", CCD_EXPOSURE_ITEM->number.value);
-			else
-				sprintf(e, "%.4f", CCD_EXPOSURE_ITEM->number.value);
+			int digits = 0;
+			if (fs[1] == 'E') {
+				if (CCD_EXPOSURE_ITEM->number.target < 0.001)
+					digits = 4;
+				else if (CCD_EXPOSURE_ITEM->number.target < 0.01)
+					digits = 3;
+				else if (CCD_EXPOSURE_ITEM->number.target < 0.1)
+					digits = 2;
+				else if (CCD_EXPOSURE_ITEM->number.target < 1)
+					digits = 1;
+			} else {
+				digits = fs[1] - '0';
+			}
+			sprintf(e, "%.*f", digits, CCD_EXPOSURE_ITEM->number.target);
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, e);
-			strcat(tmp, fs + 2);
+			if (fs[1] == 'E')
+				strcat(tmp, fs + 2);
+			else
+				strcat(tmp, fs + 3);
 			strcpy(format, tmp);
 		} else if (fs[1] == 'T') { // %T - temperature
 			char t[16];
@@ -1185,23 +1209,36 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strncpy(tmp, format, fs - format);
 			for(int i = 0; i < CCD_FRAME_TYPE_PROPERTY->count; i++) {
 				if (CCD_FRAME_TYPE_PROPERTY->items[i].sw.value) {
-					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].label);
+					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].name);
 				}
 			}
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
-		} else if (fs[1] == 'D' || fs[1] == 'H') { // %D - date, H - time
+		} else if ((fs[1] == 'D' || fs[1] == 'H') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'H'))) { // %D, %.D, %-D - date, %H, %.H, %-H - time
 			struct tm * time_info;
 			char buffer[15];
 			time_info = localtime(&current_time);
 			if (fs[1] == 'H') {
-				strftime(buffer, 15, "%H-%M-%S", time_info);
-			} else {
-				strftime(buffer, 15, "%Y-%m-%d", time_info);
+				strftime(buffer, 15, "%H%M%S", time_info);
+			} else if (fs[1] == 'D') {
+				strftime(buffer, 15, "%Y%m%d", time_info);
+			} else if (fs[2] == 'H') {
+				if (fs[1] == '.')
+					strftime(buffer, 15, "%H.%M.%S", time_info);
+				else if (fs[1] == '-')
+					strftime(buffer, 15, "%H-%M-%S", time_info);
+			} else if (fs[2] == 'D') {
+				if (fs[1] == '.')
+					strftime(buffer, 15, "%Y.%m.%d", time_info);
+				else if (fs[1] == '-')
+					strftime(buffer, 15, "%Y-%m-%d", time_info);
 			}
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, buffer);
-			strcat(tmp, fs + 2);
+			if (fs[1] == 'D' || fs[1] == 'H')
+				strcat(tmp, fs + 2);
+			else
+				strcat(tmp, fs + 3);
 			strcpy(format, tmp);
 		} else if (fs[1] == 'C') { // %C - colour filter, R G B Ha etc.
 			bool found = false;
@@ -1216,6 +1253,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 						if (res != 2) {
 							found = false;
 						} else {
+							sanitise(filter);
 							strcat(tmp, filter);
 							found = true;
 						}
