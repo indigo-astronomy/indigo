@@ -1151,15 +1151,17 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 	}
 	strcat(format, suffix);
 
+	time_t current_time;
+	time(&current_time);
+
 	char *fs = strchr(format, '%');
-	while (*fs) {
+	while (fs) {
 		memset(tmp, 0, PATH_MAX);
-		if (fs[1] == 'M') { // %M - MD5 hash from the first 1024 bytes of BLOB
+		if (fs[1] == 'M') { // %M - MD5 hash from the first INDIGO_PARTIAL_MD5_LEN bytes of BLOB
+			char md5_digest[33];
 			strncpy(tmp, format, fs - format);
-			if (blob_size < 1024)
-				strcat(tmp, md5(blob_value, blob_size));
-			else
-				strcat(tmp, md5(blob_value, 1024));
+			indigo_md5_partial(md5_digest, blob_value, blob_size, INDIGO_PARTIAL_MD5_LEN);
+			strcat(tmp, md5_digest);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if (fs[1] == 'E') { // %E - exposure time
@@ -1181,16 +1183,24 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcpy(format, tmp);
 		} else if (fs[1] == 'F') { // %F - frame type
 			strncpy(tmp, format, fs - format);
-			if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
-				strcat(tmp, "Light");
-			else if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
-				strcat(tmp, "Flat");
-			else if (CCD_FRAME_TYPE_BIAS_ITEM->sw.value)
-				strcat(tmp, "Bias");
-			else if (CCD_FRAME_TYPE_DARK_ITEM->sw.value)
-				strcat(tmp, "Dark");
-			else if (CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value)
-				strcat(tmp, "DarkFlat");
+			for(int i = 0; i < CCD_FRAME_TYPE_PROPERTY->count; i++) {
+				if (CCD_FRAME_TYPE_PROPERTY->items[i].sw.value) {
+					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].label);
+				}
+			}
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
+		} else if (fs[1] == 'D' || fs[1] == 'H') { // %D - date, H - time
+			struct tm * time_info;
+			char buffer[15];
+			time_info = localtime(&current_time);
+			if (fs[1] == 'H') {
+				strftime(buffer, 15, "%H:%M:%S", time_info);
+			} else {
+				strftime(buffer, 15, "%Y-%m-%d", time_info);
+			}
+			strncpy(tmp, format, fs - format);
+			strcat(tmp, buffer);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if (isdigit(fs[1]) && fs[2] == 'S') { // %nS - sequence number in %0nd format
