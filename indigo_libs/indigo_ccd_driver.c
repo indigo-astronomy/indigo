@@ -1134,7 +1134,7 @@ static void sanitise(char *buffer) {
 	for (char *p = buffer; *p; p++) {
 		if (isalnum(*p) || isdigit(*p))
 			continue;
-		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%')
+		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%' || *p == '#' || *p == ' ' || *p == '+' || *p == '@')
 			continue;
 		*p = '_';
 	}
