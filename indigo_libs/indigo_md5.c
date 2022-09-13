@@ -35,7 +35,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "indigo_md5.h"
+#include <indigo/indigo_md5.h>
 
 typedef struct {
 	uint64_t size;        // Size of input in bytes
@@ -52,15 +52,15 @@ typedef struct {
 #define C 0x98badcfe
 #define D 0x10325476
 
-static uint32_t S[] =
-{ 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+static uint32_t S[] = {
+	7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
 	5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20, 5,  9, 14, 20,
 	4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
 	6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21
 };
 
-static uint32_t K[] =
-{ 0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
+static uint32_t K[] = {
+	0xd76aa478, 0xe8c7b756, 0x242070db, 0xc1bdceee,
 	0xf57c0faf, 0x4787c62a, 0xa8304613, 0xfd469501,
 	0x698098d8, 0x8b44f7af, 0xffff5bb1, 0x895cd7be,
 	0x6b901122, 0xfd987193, 0xa679438e, 0x49b40821,
@@ -89,8 +89,8 @@ static uint32_t K[] =
 /*
  * Padding used to make the size (in bits) of the input congruent to 448 mod 512
  */
-static uint8_t PADDING[] =
-{ 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+static uint8_t PADDING[] = {
+	0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -238,15 +238,20 @@ static void md5_finalize(md5_context *ctx) {
 /*
  * Functions that will return a pointer to the hash of the provided input
  */
-char *md5(void *data, long length) {
-	static char result[33];
+void indigo_md5(char digest[33], const void *data, const long length) {
 	md5_context ctx;
 	md5_init(&ctx);
 	md5_update(&ctx, (uint8_t *)data, length);
 	md5_finalize(&ctx);
 	for (int i = 0; i < 16; i++) {
-		sprintf(result + 2 * i, "%02x", ctx.digest[i]);
+		sprintf(digest + 2 * i, "%02x", ctx.digest[i]);
 	}
-	return result;
 }
 
+void indigo_md5_partial(char digest[33], const void *data, const long data_length, const long use_length) {
+	if (data_length < use_length) {
+		return indigo_md5(digest, data, data_length);
+	} else {
+		return indigo_md5(digest, data, use_length);
+	}
+}

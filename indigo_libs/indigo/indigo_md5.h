@@ -30,7 +30,9 @@
 
 #include <stdint.h>
 
-char *md5(void *data, long length);
+#define INDIGO_PARTIAL_MD5_LEN 4096
 
+void indigo_md5(char digest[33], const void *data, const long length);
+void indigo_md5_partial(char digest[33], const void *data, const long data_length, const long use_length);
 
 #endif /* indigo_md5_h */
