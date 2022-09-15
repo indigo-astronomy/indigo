@@ -1209,7 +1209,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strncpy(tmp, format, fs - format);
 			for(int i = 0; i < CCD_FRAME_TYPE_PROPERTY->count; i++) {
 				if (CCD_FRAME_TYPE_PROPERTY->items[i].sw.value) {
-					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].name);
+					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].label);
 				}
 			}
 			strcat(tmp, fs + 2);
