@@ -255,3 +255,18 @@ void indigo_md5_partial(char digest[33], const void *data, const long data_lengt
 		return indigo_md5(digest, data, use_length);
 	}
 }
+
+void indigo_md5_file_partial(char digest[33], FILE *file, const long use_length) {
+	char *input_buffer = malloc(use_length);
+	size_t input_size = 0;
+	md5_context ctx;
+	md5_init(&ctx);
+	if ((input_size = fread(input_buffer, 1, use_length, file)) > 0) {
+		md5_update(&ctx, (uint8_t *)input_buffer, input_size);
+	}
+	md5_finalize(&ctx);
+	free(input_buffer);
+	for (int i = 0; i < 16; i++) {
+		sprintf(digest + 2 * i, "%02x", ctx.digest[i]);
+	}
+}
