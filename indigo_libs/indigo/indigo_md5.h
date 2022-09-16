@@ -30,9 +30,18 @@
 
 #include <stdint.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define INDIGO_PARTIAL_MD5_LEN 4096
 
 void indigo_md5(char digest[33], const void *data, const long length);
 void indigo_md5_partial(char digest[33], const void *data, const long data_length, const long use_length);
+void indigo_md5_file_partial(char digest[33], FILE *file, const long use_length);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* indigo_md5_h */
