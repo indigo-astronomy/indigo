@@ -1261,7 +1261,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				}
 			}
 			if (!found) {
-				strcat(tmp, "NA");
+				strcat(tmp, "nofilter");
 			}
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
