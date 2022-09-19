@@ -756,6 +756,7 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
+		property->allocated_count = count;
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -778,6 +779,7 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
+		property->allocated_count = count;
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -800,6 +802,7 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
+		property->allocated_count = count;
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -823,6 +826,7 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
+		property->allocated_count = count;
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -850,6 +854,7 @@ indigo_property *indigo_init_blob_property_p(indigo_property *property, const ch
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
+		property->allocated_count = count;
 	} else {
 		indigo_resize_property(property, count);
 	}
@@ -870,13 +875,24 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	assert(property != NULL);
 	if (property->count == count)
 		return property;
-	property = indigo_safe_realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
+	if (count > property->allocated_count) {
+		property = indigo_safe_realloc(property, sizeof(indigo_property) + count * sizeof(indigo_item));
+		property->allocated_count = count;
+	}
 	assert(property != NULL);
 	if (count > property->count)
 		memset(property->items+property->count, 0, (count - property->count) * sizeof(indigo_item));
 	property->count = count;
 	return property;
 }
+
+indigo_property *indigo_clear_property(indigo_property *property) {
+	int allocated_count = property->allocated_count;
+	memset(property, 0, sizeof(indigo_property) + allocated_count * sizeof(indigo_item));
+	property->allocated_count = allocated_count;
+	return property;
+}
+
 
 void indigo_release_property(indigo_property *property) {
 	if (property == NULL)

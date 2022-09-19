@@ -39,6 +39,7 @@
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
 #define TEXT_LEN_TO_PRINT 80
+#define MAX_ITEMS 128
 
 //#define DEBUG
 
@@ -54,15 +55,15 @@ typedef struct {
 	int item_count;
 	char device_name[INDIGO_NAME_SIZE];
 	char property_name[INDIGO_NAME_SIZE];
-	char item_name[INDIGO_MAX_ITEMS][INDIGO_NAME_SIZE];
-	char value_string[INDIGO_MAX_ITEMS][INDIGO_VALUE_SIZE];
+	char item_name[MAX_ITEMS][INDIGO_NAME_SIZE];
+	char value_string[MAX_ITEMS][INDIGO_VALUE_SIZE];
 } property_change_request;
 
 typedef struct {
 	int item_count;
 	char device_name[INDIGO_NAME_SIZE];
 	char property_name[INDIGO_NAME_SIZE];
-	char item_name[INDIGO_MAX_ITEMS][INDIGO_NAME_SIZE];
+	char item_name[MAX_ITEMS][INDIGO_NAME_SIZE];
 } property_get_request;
 
 typedef struct {
@@ -413,7 +414,7 @@ static void print_property_list_filtered(indigo_property *property, const char *
 
 static void print_property_get_filtered(indigo_property *property, const char *message, const property_get_request *filter) {
 	indigo_item *item;
-	char value_string[INDIGO_MAX_ITEMS][PATH_MAX] = {0};
+	char value_string[MAX_ITEMS][PATH_MAX] = {0};
 	char filename[PATH_MAX+15];
 	int i, r, items_found = 0;
 
@@ -620,10 +621,10 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 
 	if (set_requested) {
 		if (!strcmp(property->device, change_request.device_name) && !strcmp(property->name, change_request.property_name)) {
-			static char *items[INDIGO_MAX_ITEMS] = {NULL};
-			static char *txt_values[INDIGO_MAX_ITEMS] = {NULL};
-			static bool bool_values[INDIGO_MAX_ITEMS] = {false};
-			double dbl_values[INDIGO_MAX_ITEMS];
+			static char *items[MAX_ITEMS] = {NULL};
+			static char *txt_values[MAX_ITEMS] = {NULL};
+			static bool bool_values[MAX_ITEMS] = {false};
+			double dbl_values[MAX_ITEMS];
 
 			for (i = 0; i< change_request.item_count; i++) {
 				items[i] = (char *)malloc(INDIGO_NAME_SIZE);

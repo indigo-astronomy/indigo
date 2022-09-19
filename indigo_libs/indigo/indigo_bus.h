@@ -50,10 +50,6 @@ extern "C" {
  */
 #define INDIGO_VALUE_SIZE     512
 
-/** Max number of item per property.
- */
-#define INDIGO_MAX_ITEMS      512
-
 // forward definitions
 
 typedef int indigo_glock;
@@ -269,7 +265,8 @@ typedef struct {
 	short version;                      ///< property version INDIGO_VERSION_NONE, INDIGO_VERSION_LEGACY or INDIGO_VERSION_2_0
 	bool hidden;                        ///< property is hidden/unused by  driver (for optional properties)
 	bool defined;												///< property is defined
-	int count;                          ///< number of property items
+	int allocated_count;                ///< number of allocated property items
+	int count;                          ///< number of used property items
 	indigo_item items[];                ///< property items
 } indigo_property;
 
@@ -492,6 +489,9 @@ extern indigo_property *indigo_init_blob_property(indigo_property *property, con
 /** Resize property.
  */
 extern indigo_property *indigo_resize_property(indigo_property *property, int count);
+/** Clear property.
+ */
+extern indigo_property *indigo_clear_property(indigo_property *property);
 /** Allocate blob buffer (rounded up to 2880 bytes).
  */
 extern void *indigo_alloc_blob_buffer(long size);

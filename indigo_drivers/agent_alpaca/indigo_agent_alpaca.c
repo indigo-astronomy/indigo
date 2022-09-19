@@ -23,7 +23,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -389,10 +389,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_DISCOVERY_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_DISCOVERY_PORT_ITEM, "PORT", "Discovery port", 0, 0xFFFF, 0, 32227);
-		AGENT_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_DEVICES", MAIN_GROUP, "Device mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_MAX_ITEMS);
+		AGENT_DEVICES_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_DEVICES", MAIN_GROUP, "Device mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, ALPACA_MAX_ITEMS);
 		if (AGENT_DISCOVERY_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		for (int i = 0; i <INDIGO_MAX_ITEMS; i++) {
+		for (int i = 0; i < ALPACA_MAX_ITEMS; i++) {
 			sprintf(AGENT_DEVICES_PROPERTY->items[i].name, "%d", i);
 			sprintf(AGENT_DEVICES_PROPERTY->items[i].label, "Device #%d", i);
 		}
@@ -439,9 +439,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_DEVICES_PROPERTY, property)) {
 		int count = AGENT_DEVICES_PROPERTY->count;
-		AGENT_DEVICES_PROPERTY->count = INDIGO_MAX_ITEMS;
+		AGENT_DEVICES_PROPERTY->count = ALPACA_MAX_ITEMS;
 		indigo_property_copy_values(AGENT_DEVICES_PROPERTY, property, false);
-		for (int i = INDIGO_MAX_ITEMS; i; i--) {
+		for (int i = ALPACA_MAX_ITEMS; i; i--) {
 			indigo_item *item = AGENT_DEVICES_PROPERTY->items + i - 1;
 			if (*item->text.value) {
 				AGENT_DEVICES_PROPERTY->count = i;
@@ -549,7 +549,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 							if (*private_data->devices_property->items[device_number].text.value == 0)
 								break;
 						}
-						if (device_number < INDIGO_MAX_ITEMS) {
+						if (device_number < ALPACA_MAX_ITEMS) {
 							indigo_item *item = private_data->devices_property->items + device_number;
 							strcpy(item->text.value, property->device);
 							alpaca_device->device_number = device_number;

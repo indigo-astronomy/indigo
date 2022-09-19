@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0022
+#define DRIVER_VERSION 0x0023
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1753,14 +1753,12 @@ static void setup_download(indigo_device *device) {
 		indigo_delete_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
 		struct dirent **entries;
 		int count = scandir(DEVICE_PRIVATE_DATA->current_folder, &entries, image_filter, alphasort);
-		if (count > DOWNLOAD_MAX_COUNT)
-			count = DOWNLOAD_MAX_COUNT;
 		if (count >= 0) {
 			int i;
-			for (i = 0; i < count && i < DOWNLOAD_MAX_COUNT; i++) {
+			for (i = 0; i < count; i++) {
+				AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_resize_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, i + 2);
 				indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + i + 1, entries[i]->d_name,  entries[i]->d_name, false);
 			}
-			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count = i + 1;
 		}
 		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
@@ -1853,10 +1851,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AGENT_IMAGER_DOWNLOAD_FILE_ITEM, AGENT_IMAGER_DOWNLOAD_FILE_ITEM_NAME, "File name", "");
-		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY_NAME, "Agent", "Download image list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, DOWNLOAD_MAX_COUNT + 1);
+		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY_NAME, "Agent", "Download image list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_REFRESH_ITEM, AGENT_IMAGER_DOWNLOAD_FILES_REFRESH_ITEM_NAME, "Refresh", false);
 		AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY_NAME, "Agent", "Download image data", INDIGO_OK_STATE, 1);
 		if (AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY == NULL)
@@ -1940,10 +1937,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM, AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM_NAME, "Trigger/manual", true);
 		indigo_init_switch_item(AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM, AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM_NAME, "Barrier", false);
-		AGENT_IMAGER_BARRIER_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_IMAGER_BARRIER_STATE_PROPERTY_NAME, MAIN_GROUP, "Breakpoint barrier state", INDIGO_OK_STATE, INDIGO_MAX_ITEMS);
+		AGENT_IMAGER_BARRIER_STATE_PROPERTY = indigo_init_light_property(NULL, device->name, AGENT_IMAGER_BARRIER_STATE_PROPERTY_NAME, MAIN_GROUP, "Breakpoint barrier state", INDIGO_OK_STATE, 0);
 		if (AGENT_IMAGER_BARRIER_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		AGENT_IMAGER_BARRIER_STATE_PROPERTY->count = 0;
 		// --------------------------------------------------------------------------------
 		DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
 		DEVICE_PRIVATE_DATA->use_rms_estimator = false;
@@ -2483,8 +2479,8 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				indigo_item *item = property->items + i;
 				if (item->sw.value && !strncmp(item->name, "Imager Agent", 12)) {
 					// On related imager agents duplicate AGENT_IMAGER_BREAKPOINT_PROPERTY and reset AGENT_IMAGER_RESUME_CONDITION_PROPERTY to AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM
+					AGENT_IMAGER_BARRIER_STATE_PROPERTY = indigo_resize_property(AGENT_IMAGER_BARRIER_STATE_PROPERTY, AGENT_IMAGER_BARRIER_STATE_PROPERTY->count + 1);
 					indigo_init_light_item(AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + AGENT_IMAGER_BARRIER_STATE_PROPERTY->count, item->name, item->label, INDIGO_IDLE_STATE);
-					AGENT_IMAGER_BARRIER_STATE_PROPERTY->count++;
 					if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 						// On related imager agents duplicate AGENT_IMAGER_BREAKPOINT_PROPERTY and reset AGENT_IMAGER_RESUME_CONDITION_PROPERTY to AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM
 						strcpy(clone->device, item->name);
