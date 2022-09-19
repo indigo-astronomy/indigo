@@ -23,7 +23,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_agent_scripting"
 
 #include <stdlib.h>
@@ -45,6 +45,7 @@
 #define MAX_USER_SCRIPT_COUNT											128
 #define MAX_CACHED_SCRIPT_COUNT										126
 #define MAX_TIMER_COUNT														32
+#define MAX_ITEMS																	128
 
 #define AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY				(PRIVATE_DATA->agent_add_script_property)
 #define AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM			(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY->items+0)
@@ -261,8 +262,8 @@ static duk_ret_t enable_blob(duk_context *ctx) {
 static duk_ret_t change_text_property(duk_context *ctx) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_require_string(ctx, 1);
-	char *names[INDIGO_MAX_ITEMS];
-	char *values[INDIGO_MAX_ITEMS];
+	char *names[MAX_ITEMS];
+	char *values[MAX_ITEMS];
 	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
 	int i = 0;
 	while (duk_next(ctx, -1, true)) {
@@ -288,8 +289,8 @@ static duk_ret_t change_text_property(duk_context *ctx) {
 static duk_ret_t change_number_property(duk_context *ctx) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_require_string(ctx, 1);
-	char *names[INDIGO_MAX_ITEMS];
-	double values[INDIGO_MAX_ITEMS];
+	char *names[MAX_ITEMS];
+	double values[MAX_ITEMS];
 	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
 	int i = 0;
 	while (duk_next(ctx, -1, true)) {
@@ -313,8 +314,8 @@ static duk_ret_t change_number_property(duk_context *ctx) {
 static duk_ret_t change_switch_property(duk_context *ctx) {
 	const char *device = duk_require_string(ctx, 0);
 	const char *property = duk_require_string(ctx, 1);
-	char *names[INDIGO_MAX_ITEMS];
-	bool values[INDIGO_MAX_ITEMS];
+	char *names[MAX_ITEMS];
+	bool values[MAX_ITEMS];
 	duk_enum(ctx, 2, DUK_ENUM_OWN_PROPERTIES_ONLY );
 	int i = 0;
 	while (duk_next(ctx, -1, true)) {
@@ -346,10 +347,10 @@ static duk_ret_t define_text_property(duk_context *ctx) {
 	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
 		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
 		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
-			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_text_property(tmp, device, property, property_group, property_label, state, perm, INDIGO_MAX_ITEMS);
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_text_property(tmp, device, property, property_group, property_label, state, perm, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true)) {
+			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				indigo_copy_name(item->name, key);
@@ -382,10 +383,10 @@ static duk_ret_t define_number_property(duk_context *ctx) {
 	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
 		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
 		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
-			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_number_property(tmp, device, property, property_group, property_label, state, perm, INDIGO_MAX_ITEMS);
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_number_property(tmp, device, property, property_group, property_label, state, perm, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true)) {
+			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				indigo_copy_name(item->name, key);
@@ -431,10 +432,10 @@ static duk_ret_t define_switch_property(duk_context *ctx) {
 	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
 		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
 		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
-			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_switch_property(tmp, device, property, property_group, property_label, state, perm, rule, INDIGO_MAX_ITEMS);
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_switch_property(tmp, device, property, property_group, property_label, state, perm, rule, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true)) {
+			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				indigo_copy_name(item->name, key);
@@ -466,10 +467,10 @@ static duk_ret_t define_light_property(duk_context *ctx) {
 	for (int i = 0; i < MAX_CACHED_SCRIPT_COUNT; i++) {
 		indigo_property *tmp = PRIVATE_DATA->agent_cached_property[i];
 		if (tmp == NULL || (!strcmp(tmp->device, device) && !strcmp(tmp->name, property))) {
-			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_light_property(tmp, device, property, property_group, property_label, state, INDIGO_MAX_ITEMS);
+			PRIVATE_DATA->agent_cached_property[i] = tmp = indigo_init_light_property(tmp, device, property, property_group, property_label, state, MAX_ITEMS);
 			duk_enum(ctx, 4, DUK_ENUM_OWN_PROPERTIES_ONLY );
 			tmp->count = 0;
-			while (duk_next(ctx, -1, true)) {
+			while (duk_next(ctx, -1, true) && tmp->count < MAX_ITEMS) {
 				indigo_item *item = tmp->items + tmp->count;
 				const char *key = duk_require_string(ctx, -2);
 				indigo_copy_name(item->name, key);
@@ -701,20 +702,20 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_text_item(AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM, AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM_NAME, "Name", "");
 		indigo_init_text_item_raw(AGENT_SCRIPTING_ADD_SCRIPT_ITEM, AGENT_SCRIPTING_ADD_SCRIPT_ITEM_NAME, "Script", "");
-		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Execute script", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_MAX_ITEMS - 2);
+		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Execute script", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_ITEMS - 2);
 		if (AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count = 0;
-		AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Delete script", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_MAX_ITEMS - 2);
+		AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Delete script", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_ITEMS - 2);
 		if (AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count = 0;
-		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Exececute on agent load", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_ITEMS);
+		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Exececute on agent load", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_ITEMS);
 		if (AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY_NAME, "New script", true);
-		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Execute on agent unload", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, INDIGO_MAX_ITEMS);
+		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Execute on agent unload", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_ITEMS);
 		if (AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->count = 1;

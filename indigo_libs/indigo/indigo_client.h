@@ -44,7 +44,7 @@ extern "C" {
 #define INDIGO_MAX_SERVERS    10
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#define INDIGO_MAX_DRIVERS    INDIGO_MAX_ITEMS
+#define INDIGO_MAX_DRIVERS    128
 
 /** Driver entry type.
  */

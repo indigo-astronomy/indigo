@@ -33,6 +33,7 @@
 #define ALPACA_INTERFACE_VERSION	1
 #define ALPACA_MAX_FILTERS				32
 #define ALPACA_MAX_SWITCHES				8
+#define ALPACA_MAX_ITEMS					128
 
 typedef enum {
 	indigo_alpaca_error_OK = 0x000,
@@ -96,8 +97,8 @@ typedef struct indigo_alpaca_device_struct {
 			uint32_t offsetmin;
 			uint32_t offsetmax;
 			uint32_t offset;
-			char *readoutmodes_names[INDIGO_MAX_ITEMS];
-			char *readoutmodes_labels[INDIGO_MAX_ITEMS];
+			char *readoutmodes_names[ALPACA_MAX_ITEMS];
+			char *readoutmodes_labels[ALPACA_MAX_ITEMS];
 			int readoutmode;
 		} ccd;
 		struct {

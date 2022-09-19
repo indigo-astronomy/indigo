@@ -740,7 +740,7 @@ static indigo_alpaca_error alpaca_set_readoutmode(indigo_alpaca_device *device, 
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (value < 0 || value > INDIGO_MAX_ITEMS || device->ccd.readoutmodes_names[value] == NULL) {
+	if (value < 0 || value > ALPACA_MAX_ITEMS || device->ccd.readoutmodes_names[value] == NULL) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
@@ -1176,7 +1176,7 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		indigo_alpaca_error result = alpaca_get_readoutmodes(alpaca_device, version, &value);
 		if (result == indigo_alpaca_error_OK) {
 			long index = snprintf(buffer, buffer_length, "\"Value\": [ ");
-			for (int i = 0; i < INDIGO_MAX_ITEMS; i++) {
+			for (int i = 0; i < ALPACA_MAX_ITEMS; i++) {
 				if (value[i] == NULL)
 					break;
 				index += snprintf(buffer + index, buffer_length - index, "%s\"%s\"", i == 0 ? "" : ", ", value[i]);
