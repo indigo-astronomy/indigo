@@ -534,11 +534,12 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 	reset_socket(server, -1);
 	bool thread_runing = server->thread_started;
 	pthread_mutex_unlock(&mutex);
-	while (thread_runing) {
+	int timeout = 5;
+	while (thread_runing && timeout--) {
 		pthread_mutex_lock(&mutex);
 		thread_runing = server->thread_started;
 		pthread_mutex_unlock(&mutex);
-		indigo_usleep(10000);
+		indigo_usleep(0.1 * ONE_SECOND_DELAY);
 	}
 	return INDIGO_OK;
 }
