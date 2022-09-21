@@ -508,7 +508,7 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
 	bool connected = false;
 
-	if (last_error[0] != 0) last_error[0] = 0;
+	if (last_error != NULL && last_error[0] != 0) last_error[0] = 0;
 	if (server == NULL) return false;
 
 	pthread_mutex_lock(&mutex);
@@ -532,6 +532,13 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 #endif
 	}
 	reset_socket(server, -1);
+	bool thread_runing = server->thread_started;
 	pthread_mutex_unlock(&mutex);
+	while (thread_runing) {
+		pthread_mutex_lock(&mutex);
+		thread_runing = server->thread_started;
+		pthread_mutex_unlock(&mutex);
+		indigo_usleep(10000);
+	}
 	return INDIGO_OK;
 }
