@@ -381,6 +381,10 @@ extern char indigo_log_name[];
  */
 extern void (*indigo_log_message_handler)(const char *message);
 
+/** Get INDIGO version major.minor-build.
+ */
+extern void indigo_get_version(int *major, int *minor, int *build);
+
 /** Print diagnostic messages.
  */
 extern void indigo_log_message(const char *format, va_list args);
