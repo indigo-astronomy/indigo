@@ -2,6 +2,33 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-190] - 22 Sep Thu 2022
+## NOTE: This version is binary incompatible with the previous version. Clients that link libindigo dynamically should be recompiled!!!
+
+### Overall
+- add indigo_get_version() call
+- Properties can have unlimited number of items
+- fix crash related to indigo_disconnect_server()
+- add md5 hash support - useful for file transfer
+- All ccd drivers:
+	- server stored images use more advanced name templates
+
+### Driver fixes
+- indigo_agent_imager:
+	- scandir() leeks fixed
+
+- indigo_mount_lx200:
+	- :RG# :RC# etc does not work any more on AM5 - using :R1# :R3# instead
+	- checksum crash fixed
+	- fix gemini issues
+
+- indigo_mount_asi:
+	- :RG# :RC# etc does not work any more - using :R1# :R3# instead
+
+- indigo_ccd_mi:
+	- Update MI library to version 0.7.2/0.6.2
+	- Fix bug in GPS exposure time info
+
 ## [2.0-188] - 02 Sep Fri 2022
 ### Overall
 - indigo_ccd_failure_cleanup() call added
