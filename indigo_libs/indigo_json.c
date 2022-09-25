@@ -147,7 +147,7 @@ static void *one_text_handler(parser_state state, char *name, char *value, indig
 	} else if (state == TEXT_VALUE && !strcmp(name, "name")) {
 		indigo_copy_name(property->items[property->count - 1].name, value);
 	} else if (state == TEXT_VALUE && !strcmp(name, "value")) {
-		indigo_set_text_item_value(property->items + property->count, value);
+		indigo_set_text_item_value(property->items + property->count - 1, value);
 	}
 	return one_text_handler;
 }
