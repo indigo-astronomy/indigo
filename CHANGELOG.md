@@ -2,6 +2,11 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-192] - 25 Sep Sun 2022
+
+### Overall
+- fix memory overrun in json parser
+
 ## [2.0-190] - 22 Sep Thu 2022
 ## NOTE: This version is binary incompatible with the previous version. Clients that link libindigo dynamically should be recompiled!!!
 
