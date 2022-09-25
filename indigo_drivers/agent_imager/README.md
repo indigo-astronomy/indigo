@@ -71,7 +71,7 @@ On other Imager Agent instances don't select related agents, select PRE-CAPTURE 
 Set the same COUNT value in AGENT_IMAGER_BATCH and start exposure batch on all Imager Agents in any order. The will wait for each other until all are suspended on PRE-CAPTURE and then resumed by Imager Agent with AGENT_IMAGER_RESUME_CONDITION set to BARRIER.
 
 ### Configuration for synchronising dithering on multiple Imager Agent instances
- 
+
 On one of Imager Agent instances select other Imager Agent instances and Guider agent as related agents, select PRE-CAPTURE and POST-CAPTURE breakpoints in AGENT_IMAGER_BREAKPOINT and BARRIER in AGENT_IMAGER_RESUME_CONDITION. Configure dithering as usual.
 On other Imager Agent instances don't select related agents, select PRE-CAPTURE and CAPTURE breakpoints in AGENT_IMAGER_BREAKPOINT and TRIGGER in AGENT_IMAGER_RESUME_CONDITION.
 
@@ -84,3 +84,10 @@ Setting AGENT_IMAGER_BREAKPOINT to any state and AGENT_IMAGER_RESUME_CONDITION t
 ### Caveats
 
 Remember, than making circular references in related agent chain or setting AGENT_IMAGER_RESUME_CONDITION to BARRIER on more than one Imager agent is not detected and can lead to recursion or deadlock!
+
+## Notes on server stored images
+
+Server side images are stored by the camera driver therefore they will be saved on the host where the driver runs. If the Imager agent uses remote driver, it will not be able to see those files and the client will not be able to download them using the remote agent. There are three posible solutions to this:
+1. Provide a common storage for the driver and the agent.
+2. Run another Imager agent on the driver host and use it only for image download.
+3. Generally it is not a good idea to use agents with remote drivers. Try to avoid this setup if possible. If you need multiserver setup try to run coresponding agents and drivers on the same host when posible.
