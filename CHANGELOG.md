@@ -2,6 +2,12 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-194] - 27 Sep Tue 2022
+
+### Driver Fixes
+- indigo_agent_imager:
+	- fix wrong size of AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY when no files available
+
 ## [2.0-192] - 25 Sep Sun 2022
 
 ### Overall
