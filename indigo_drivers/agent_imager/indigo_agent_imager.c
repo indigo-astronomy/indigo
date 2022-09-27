@@ -1755,8 +1755,8 @@ static void setup_download(indigo_device *device) {
 		int count = scandir(DEVICE_PRIVATE_DATA->current_folder, &entries, image_filter, alphasort);
 		if (count >= 0) {
 			int i;
+			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_resize_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, count + 1);
 			for (i = 0; i < count; i++) {
-				AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_resize_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, i + 2);
 				indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + i + 1, entries[i]->d_name,  entries[i]->d_name, false);
 				free(entries[i]);
 			}
