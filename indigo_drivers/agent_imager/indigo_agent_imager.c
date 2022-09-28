@@ -189,6 +189,7 @@ typedef struct {
 	double saved_frame_left, saved_frame_top;
 	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
+	size_t image_buffer_size;
 	int focuser_position;
 	int saved_backlash;
 	indigo_star_detection stars[MAX_STAR_COUNT];
@@ -2174,10 +2175,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				if (stat(file_name, &file_stat) < 0) {
 					break;
 				}
-				if (DEVICE_PRIVATE_DATA->image_buffer)
+				if (DEVICE_PRIVATE_DATA->image_buffer && (DEVICE_PRIVATE_DATA->image_buffer_size < file_stat.st_size || DEVICE_PRIVATE_DATA->image_buffer_size > 2*file_stat.st_size)) {
 					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_realloc(DEVICE_PRIVATE_DATA->image_buffer, file_stat.st_size);
-				else
+					DEVICE_PRIVATE_DATA->image_buffer_size = file_stat.st_size;
+				} else if (DEVICE_PRIVATE_DATA->image_buffer == NULL){
 					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(file_stat.st_size);
+					DEVICE_PRIVATE_DATA->image_buffer_size = file_stat.st_size;
+				}
 				int fd = open(file_name, O_RDONLY, 0);
 				if (fd == -1) {
 					break;
@@ -2352,6 +2356,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_WHEEL_FILTER_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
+	DEVICE_PRIVATE_DATA->image_buffer_size = 0;
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
 	return indigo_filter_device_detach(device);
 }
