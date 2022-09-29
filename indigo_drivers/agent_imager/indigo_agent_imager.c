@@ -2176,12 +2176,16 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				if (stat(file_name, &file_stat) < 0) {
 					break;
 				}
-				if (DEVICE_PRIVATE_DATA->image_buffer && (DEVICE_PRIVATE_DATA->image_buffer_size < file_stat.st_size || DEVICE_PRIVATE_DATA->image_buffer_size > 2*file_stat.st_size)) {
-					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_realloc(DEVICE_PRIVATE_DATA->image_buffer, file_stat.st_size);
-					DEVICE_PRIVATE_DATA->image_buffer_size = file_stat.st_size;
+				/* allocate 5% more mem to accomodate size fluctuation of the compressed images
+				   and reallocate smaller buffer only if the next image is more than 50% smaller
+				*/
+				size_t malloc_size = 1.05 * file_stat.st_size;
+				if (DEVICE_PRIVATE_DATA->image_buffer && (DEVICE_PRIVATE_DATA->image_buffer_size < file_stat.st_size || DEVICE_PRIVATE_DATA->image_buffer_size > 2 * file_stat.st_size)) {
+					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_realloc(DEVICE_PRIVATE_DATA->image_buffer, malloc_size);
+					DEVICE_PRIVATE_DATA->image_buffer_size = malloc_size;
 				} else if (DEVICE_PRIVATE_DATA->image_buffer == NULL){
-					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(file_stat.st_size);
-					DEVICE_PRIVATE_DATA->image_buffer_size = file_stat.st_size;
+					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(malloc_size);
+					DEVICE_PRIVATE_DATA->image_buffer_size = malloc_size;
 				}
 				int fd = open(file_name, O_RDONLY, 0);
 				if (fd == -1) {
