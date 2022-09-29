@@ -289,7 +289,8 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 	char *buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *value_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
-	indigo_property *property = indigo_safe_malloc(sizeof(indigo_property));
+	indigo_property *property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
+	property->allocated_count = INDIGO_PREALLOCATED_COUNT;
 	char *pointer = buffer;
 	char *value_pointer = value_buffer;
 	char *name_pointer = name_buffer;

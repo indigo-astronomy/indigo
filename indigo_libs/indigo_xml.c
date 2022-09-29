@@ -1333,7 +1333,8 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 		context->properties = NULL;
 	}
 
-	context->property = indigo_safe_malloc(sizeof(indigo_property));
+	context->property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
+	context->property->allocated_count = INDIGO_PREALLOCATED_COUNT;
 
 	int handle = 0;
 	if (device != NULL) {
