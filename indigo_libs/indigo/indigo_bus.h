@@ -50,6 +50,10 @@ extern "C" {
  */
 #define INDIGO_VALUE_SIZE     512
 
+/** Pre-allocated item count for property buffers.
+ */
+#define INDIGO_PREALLOCATED_COUNT     512
+
 // forward definitions
 
 typedef int indigo_glock;
