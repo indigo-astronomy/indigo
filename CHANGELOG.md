@@ -2,6 +2,16 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-196] - 01 Oct Sat 2022
+
+### Overall
+- better property buffers handling to avoid memory fragmentation
+
+### Driver Fixes
+- indigo_agent_imager:
+        - more relaxed buffer allocation
+
+
 ## [2.0-194] - 27 Sep Tue 2022
 
 ### Driver Fixes
