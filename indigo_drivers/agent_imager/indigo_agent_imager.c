@@ -1758,16 +1758,16 @@ static void setup_download(indigo_device *device) {
 			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_resize_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, count + 1);
 			char file_name[INDIGO_VALUE_SIZE + INDIGO_NAME_SIZE];
 			struct stat file_stat;
-			for (int i = 0, j = 1; i < count; i++) {
+			int valid_count = 1; /* Refresh item is 0 */
+			for (int i = 0; i < count; i++) {
 				strcpy(file_name, DEVICE_PRIVATE_DATA->current_folder);
 				strcat(file_name, entries[i]->d_name);
-				if (stat(file_name, &file_stat) < 0 || file_stat.st_size == 0) {
-					AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count--;
-					continue;
+				if (stat(file_name, &file_stat) >= 0 && file_stat.st_size > 0) {
+					indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + valid_count++, entries[i]->d_name, entries[i]->d_name, false);
 				}
-				indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + j++, entries[i]->d_name,  entries[i]->d_name, false);
 				free(entries[i]);
 			}
+			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count = valid_count;
 			free(entries);
 		}
 		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->state = INDIGO_OK_STATE;
