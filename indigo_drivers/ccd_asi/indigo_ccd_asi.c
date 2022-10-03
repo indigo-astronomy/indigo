@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0023
+#define DRIVER_VERSION 0x0024
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -959,10 +959,10 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = ASIGetControlValue(id, ctrl_caps.ControlType, &value, &unused);
 	int res2 = 0;
-	if (ctrl_caps.ControlType == ASI_BANDWIDTHOVERLOAD && value == 100) {
+	if (ctrl_caps.ControlType == ASI_BANDWIDTHOVERLOAD && value != ASI_DEFAULT_BANDWIDTH) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Current USB Bandwidth for camera #%d is %d, reseting to default (%d)", id, value, ASI_DEFAULT_BANDWIDTH);
 		value = ASI_DEFAULT_BANDWIDTH;
 		res2 = ASISetControlValue(id, ctrl_caps.ControlType, value, false);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Default USB Bandwidth is 100, reducing to %d", value);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
