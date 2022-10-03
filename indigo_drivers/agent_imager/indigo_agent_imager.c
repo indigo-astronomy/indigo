@@ -1757,7 +1757,15 @@ static void setup_download(indigo_device *device) {
 		if (count >= 0) {
 			int i;
 			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_resize_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, count + 1);
+			char file_name[INDIGO_VALUE_SIZE + INDIGO_NAME_SIZE];
+			struct stat file_stat;
 			for (i = 0; i < count; i++) {
+				strcpy(file_name, DEVICE_PRIVATE_DATA->current_folder);
+				strcat(file_name, entries[i]->d_name);
+				if (stat(file_name, &file_stat) < 0 || file_stat.st_size == 0) {
+					AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count--;
+					continue;
+				}
 				indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + i + 1, entries[i]->d_name,  entries[i]->d_name, false);
 				free(entries[i]);
 			}
@@ -2173,7 +2181,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				struct stat file_stat;
 				strcpy(file_name, DEVICE_PRIVATE_DATA->current_folder);
 				strcat(file_name, AGENT_IMAGER_DOWNLOAD_FILE_ITEM->text.value);
-				if (stat(file_name, &file_stat) < 0) {
+				if (stat(file_name, &file_stat) < 0 || file_stat.st_size == 0) {
+					AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
+					AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 				/* allocate 5% more mem to accomodate size fluctuation of the compressed images
