@@ -1935,16 +1935,15 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 			}
 			close(handle);
+			if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
+				file_remove(file_name);
+			}
 		} else if (message == NULL) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 			message = strerror(errno);
 		}
-		if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
-			file_remove(file_name);
-		} else {
-			INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
-		}
 		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
+		INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
 	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		*CCD_IMAGE_ITEM->blob.url = 0;
@@ -2028,12 +2027,15 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 					indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
 					int handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-					if (handle) {
+					if (handle > 0) {
 						if (!indigo_write(handle, image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
 							CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 							message = strerror(errno);
 						}
 						close(handle);
+						if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
+							file_remove(file_name);
+						}
 					} else {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 						message = strerror(errno);
@@ -2042,12 +2044,8 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = "dir + prefix + suffix is too long";
 				}
-				if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
-					file_remove(file_name);
-				} else {
-					INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
-				}
 				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
+				INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 			}
 			if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 				*CCD_IMAGE_ITEM->blob.url = 0;
@@ -2145,22 +2143,21 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 					message = strerror(errno);
 				}
 			}
-		} else if (handle) {
+		} else if (handle > 0) {
 			if (!indigo_write(handle, data, data_size)) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}
 			close(handle);
+			if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
+				file_remove(file_name);
+			}
 		} else {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 			message = strerror(errno);
 		}
-		if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
-			file_remove(file_name);
-		} else {
-			INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
-		}
 		indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
+		INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
 	if (CCD_UPLOAD_MODE_CLIENT_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		*CCD_IMAGE_ITEM->blob.url = 0;
