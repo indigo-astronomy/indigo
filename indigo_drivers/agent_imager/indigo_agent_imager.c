@@ -1755,18 +1755,17 @@ static void setup_download(indigo_device *device) {
 		struct dirent **entries;
 		int count = scandir(DEVICE_PRIVATE_DATA->current_folder, &entries, image_filter, alphasort);
 		if (count >= 0) {
-			int i;
 			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_resize_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, count + 1);
 			char file_name[INDIGO_VALUE_SIZE + INDIGO_NAME_SIZE];
 			struct stat file_stat;
-			for (i = 0; i < count; i++) {
+			for (int i = 0, j = 1; i < count; i++) {
 				strcpy(file_name, DEVICE_PRIVATE_DATA->current_folder);
 				strcat(file_name, entries[i]->d_name);
 				if (stat(file_name, &file_stat) < 0 || file_stat.st_size == 0) {
 					AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count--;
 					continue;
 				}
-				indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + i + 1, entries[i]->d_name,  entries[i]->d_name, false);
+				indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + j++, entries[i]->d_name,  entries[i]->d_name, false);
 				free(entries[i]);
 			}
 			free(entries);
