@@ -735,13 +735,13 @@ void indigo_alpaca_mount_update_property(indigo_alpaca_device *alpaca_device, in
 					alpaca_device->mount.trackingrates[3] = true;
 				}
 			}
-		} else if (!strcmp(property->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME)) {
-			if (property->state == INDIGO_OK_STATE) {
-				for (int i = 0; i < property->count; i++) {
-					indigo_item *item = property->items + i;
-					if (!strcmp(item->name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME)) {
-						alpaca_device->mount.sideofpier = item->sw.value ? 2 : 1;
-					}
+		}
+	} else if (!strcmp(property->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME)) {
+					alpaca_device->mount.sideofpier = item->sw.value ? 2 : 1;
 				}
 			}
 		}
