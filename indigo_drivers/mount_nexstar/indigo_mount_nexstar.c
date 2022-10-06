@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -198,9 +198,7 @@ static void position_timer_callback(indigo_device *device) {
 		}
 	}
 	bool linked = false;
-	if (PRIVATE_DATA->gps) {
-		nexstar_private_data *private_data = PRIVATE_DATA;
-		indigo_device *device = private_data->gps;
+	if (PRIVATE_DATA->gps && PRIVATE_DATA->gps->gp_bits) {
 		char response[3];
 		if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0x37, 0, 0, 0, 1, response) == RC_OK) {
 			linked = response[0] > 0;
@@ -228,7 +226,7 @@ static void position_timer_callback(indigo_device *device) {
 			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		}
 	}
-	if (PRIVATE_DATA->gps) {
+	if (PRIVATE_DATA->gps && PRIVATE_DATA->gps->gp_bits) {
 		nexstar_private_data *private_data = PRIVATE_DATA;
 		indigo_device *device = private_data->gps;
 		if (linked) {
@@ -669,11 +667,14 @@ static void mount_handle_slew_rate(indigo_device *device) {
 }
 
 static void mount_handle_motion_ns(indigo_device *device) {
+	indigo_log("mount_handle_motion_ns 0"); //-----------
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res = RC_OK;
 	if (PRIVATE_DATA->slew_rate == 0)
 		mount_handle_slew_rate(device);
+	indigo_log("mount_handle_motion_ns 1"); //-----------
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+	indigo_log("mount_handle_motion_ns 2"); //-----------
 	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -684,6 +685,7 @@ static void mount_handle_motion_ns(indigo_device *device) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
+	indigo_log("mount_handle_motion_ns 3"); //-----------
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", dev_id, res, strerror(errno));
@@ -925,6 +927,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+		indigo_log("MOUNT_MOTION_NS %d %d", MOUNT_MOTION_NORTH_ITEM->sw.value, MOUNT_MOTION_SOUTH_ITEM->sw.value); //-----------
 		indigo_set_timer(device, 0, mount_handle_motion_ns, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
@@ -1225,10 +1228,12 @@ static void gps_handle_connect(indigo_device *device) {
 		int res = tc_pass_through_cmd(PRIVATE_DATA->dev_id, 1, 0xB0, 0xFE, 0, 0, 0, 2, response);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res == RC_OK) {
+			device->gp_bits = 1;
 			sprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, "%d.%d", response[0], response[1]);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
+			device->gp_bits = 0;
 			strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_send_message(device, "No GPS unit detected");
