@@ -23,7 +23,7 @@
  \file indigo_aux_joystick.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_joystick"
 
 #include <stdlib.h>
@@ -281,6 +281,19 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value) {
 			if (open_joystick(device)) {
+				MOUNT_PARK_PARKED_ITEM->sw.value = false;
+				MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
+				MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value = false;
+				MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value = false;
+				MOUNT_SLEW_RATE_FIND_ITEM->sw.value = false;
+				MOUNT_SLEW_RATE_MAX_ITEM->sw.value = false;
+				MOUNT_MOTION_NORTH_ITEM->sw.value = false;
+				MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
+				MOUNT_MOTION_WEST_ITEM->sw.value = false;
+				MOUNT_MOTION_EAST_ITEM->sw.value = false;
+				MOUNT_ABORT_MOTION_ITEM->sw.value = false;
+				MOUNT_TRACKING_ON_ITEM->sw.value = false;
+				MOUNT_TRACKING_OFF_ITEM->sw.value = false;
 				indigo_define_property(device, JOYSTICK_AXES_PROPERTY, NULL);
 				indigo_define_property(device, JOYSTICK_BUTTONS_PROPERTY, NULL);
 				indigo_define_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
