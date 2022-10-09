@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -846,8 +846,19 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX])) {
-		if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && property->state == INDIGO_OK_STATE && (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) || !strcmp(property->name, MOUNT_SLEW_RATE_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_DEC_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_RA_PROPERTY_NAME) || !strcmp(property->name, MOUNT_ABORT_MOTION_PROPERTY_NAME) || !strcmp(property->name, MOUNT_TRACKING_PROPERTY_NAME))) {
-			indigo_filter_forward_change_property(client, property, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
+		if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && property->state == INDIGO_OK_STATE) {
+			if (!strcmp(property->name, MOUNT_MOTION_DEC_PROPERTY_NAME) || !strcmp(property->name, MOUNT_MOTION_RA_PROPERTY_NAME) || !strcmp(property->name, MOUNT_ABORT_MOTION_PROPERTY_NAME)) {
+				// forward property even if no item is on
+				indigo_filter_forward_change_property(client, property, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
+			} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) || !strcmp(property->name, MOUNT_SLEW_RATE_PROPERTY_NAME) || !strcmp(property->name, MOUNT_TRACKING_PROPERTY_NAME)) {
+				// forward property only if some item is on
+				for (int i = 0; i < property->count; i++) {
+					if (property->items[i].sw.value) {
+						indigo_filter_forward_change_property(client, property, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
+						break;
+					}
+				}
+			}
 		}
 	} else {
 		indigo_property *list = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
