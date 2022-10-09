@@ -46,7 +46,7 @@ If you see occasional or frequent "Exposure failed" errors reported, one of the 
 
 2. Some cooled ASI cameras require the cooler power to be connected for a reliable operation, even if the cooling is not enabled.
 
-3. Often lower grade USB cables can cause unstable camera operation. Please try better USB cable. I have never had issues with the cables supplied by ZWO but some users claim that they had to replace them to fix the problem.
+3. Often lower grade USB cables can cause unstable camera operation. Try better USB cable. We have never had issues with the cables supplied by ZWO but some users claim that they had to replace them to fix the problem.
 
 4. If you have a second camera connected to the USB port of another camera, please reconnect it directly to the computer. According to ZWO, USB ports of the cameras are intended for focusers, filter wheels etc. but not for cameras.
 
@@ -54,4 +54,4 @@ If you see occasional or frequent "Exposure failed" errors reported, one of the 
 
 6. If you are using a Raspberry Pi or some other SBC, the power adapter may not be powerful enough. Please use more powerful adapter. We recommend at least 5.1V @ 2.5A for RPi3 and 5.1 @ 3A for RPi4.
 
-If none  of the above helps please enable ZWO ASI debug log as described [here](https://www.indigo-astronomy.org/download/How%20to%20get%20log%20file%20on%20Linux.pdf) and skip the ASI studio requirement. Just run INDIGO as usually do it. Once the issue is reproduced please send the log file to indigo@cloudmakers.eu
+If none of the above helps, enable ZWO ASI debug log as described [here](https://www.indigo-astronomy.org/download/How%20to%20get%20log%20file%20on%20Linux.pdf). You do not need ASI Studio, you can connect and disconnect the camera from INDIGO. Once the ASI debug log is enabled start INDIGO as usual and when the issue is reproduced please send the log file to indigo@cloudmakers.eu
