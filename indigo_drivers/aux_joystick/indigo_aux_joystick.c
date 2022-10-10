@@ -23,7 +23,7 @@
  \file indigo_aux_joystick.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_joystick"
 
 #include <stdlib.h>
@@ -394,11 +394,19 @@ static void event_axis(indigo_device *device, int axis, int value) {
 	JOYSTICK_AXES_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, JOYSTICK_AXES_PROPERTY, NULL);
 	axis++;
-	value = value / 10000;
-	if (value > 4)
-		value = 4;
-	else if (value < -4)
-		value = -4;
+	if (value > 0) {
+		if (value < 1000) value = 0;
+		else if (value < 32000) value = 1;
+		else if (value < 60000) value = 2;
+		else if (value < 65000) value = 3;
+		else value = 4;
+	} else {
+		if (value < -65000) value = -4;
+		else if (value < -60000) value = -3;
+		else if (value < -32000) value = -2;
+		else if (value < -1000) value = -1;
+		else value = 0;
+	}
 	if (JOYSTICK_MAPPING_MOTION_DEC_ITEM->number.value == axis) {
 		if (JOYSTICK_OPTIONS_ANALOG_STICK_ITEM->sw.value) {
 			if (value != 0 && abs(value) > PRIVATE_DATA->ra_slew_rate) {
@@ -600,7 +608,7 @@ static NSMutableArray *wrappers = nil;
 		}
 		if (!found) {
 			DDHidJoystickWrapper *wrapper = [[DDHidJoystickWrapper alloc] init];
-			
+
 			int axis_count = 0;
 			int pov_count = 0;
 			if (joystick.countOfSticks > 0) {
@@ -612,7 +620,7 @@ static NSMutableArray *wrappers = nil;
 				axis_count += stick.countOfStickElements;
 				pov_count = stick.countOfPovElements;
 			}
-			
+
 			wrapper->device = allocate_device([joystick.productName cStringUsingEncoding:NSASCIIStringEncoding], joystick.locationId, joystick.numberOfButtons, axis_count, pov_count);
 			wrapper->joystick = joystick;
 			wrapper->queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
