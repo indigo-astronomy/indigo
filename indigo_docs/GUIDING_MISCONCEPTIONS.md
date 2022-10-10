@@ -1,6 +1,6 @@
 # Five Guiding Misconceptions Explained
 
-Revision: 30.08.2022 (draft)
+Revision: 11.10.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
