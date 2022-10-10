@@ -77,14 +77,15 @@
 #define JOYSTICK_MAPPING_PARKED_ITEM									(JOYSTICK_MAPPING_PROPERTY->items+0)
 #define JOYSTICK_MAPPING_UNPARKED_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+1)
 #define JOYSTICK_MAPPING_ABORT_ITEM										(JOYSTICK_MAPPING_PROPERTY->items+2)
-#define JOYSTICK_MAPPING_TRACKING_ON_ITEM							(JOYSTICK_MAPPING_PROPERTY->items+3)
-#define JOYSTICK_MAPPING_TRACKING_OFF_ITEM						(JOYSTICK_MAPPING_PROPERTY->items+4)
-#define JOYSTICK_MAPPING_MOTION_RA_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+5)
-#define JOYSTICK_MAPPING_MOTION_DEC_ITEM							(JOYSTICK_MAPPING_PROPERTY->items+6)
-#define JOYSTICK_MAPPING_RATE_GUIDE_ITEM							(JOYSTICK_MAPPING_PROPERTY->items+7)
-#define JOYSTICK_MAPPING_RATE_CENTERING_ITEM					(JOYSTICK_MAPPING_PROPERTY->items+8)
-#define JOYSTICK_MAPPING_RATE_FIND_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+9)
-#define JOYSTICK_MAPPING_RATE_MAX_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+10)
+#define JOYSTICK_MAPPING_HOME_ITEM									(JOYSTICK_MAPPING_PROPERTY->items+3)
+#define JOYSTICK_MAPPING_TRACKING_ON_ITEM							(JOYSTICK_MAPPING_PROPERTY->items+4)
+#define JOYSTICK_MAPPING_TRACKING_OFF_ITEM						(JOYSTICK_MAPPING_PROPERTY->items+5)
+#define JOYSTICK_MAPPING_MOTION_RA_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+6)
+#define JOYSTICK_MAPPING_MOTION_DEC_ITEM							(JOYSTICK_MAPPING_PROPERTY->items+7)
+#define JOYSTICK_MAPPING_RATE_GUIDE_ITEM							(JOYSTICK_MAPPING_PROPERTY->items+8)
+#define JOYSTICK_MAPPING_RATE_CENTERING_ITEM					(JOYSTICK_MAPPING_PROPERTY->items+9)
+#define JOYSTICK_MAPPING_RATE_FIND_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+10)
+#define JOYSTICK_MAPPING_RATE_MAX_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+11)
 
 #define JOYSTICK_OPTIONS_PROPERTY											(PRIVATE_DATA->joystick_options_property)
 #define JOYSTICK_OPTIONS_ANALOG_STICK_ITEM						(JOYSTICK_OPTIONS_PROPERTY->items+0)
@@ -94,6 +95,9 @@
 #define MOUNT_PARK_PROPERTY														(PRIVATE_DATA->mount_park_property)
 #define MOUNT_PARK_PARKED_ITEM												(MOUNT_PARK_PROPERTY->items+0)
 #define MOUNT_PARK_UNPARKED_ITEM											(MOUNT_PARK_PROPERTY->items+1)
+
+#define MOUNT_HOME_PROPERTY													(PRIVATE_DATA->mount_home_property)
+#define MOUNT_HOME_ITEM														(MOUNT_HOME_PROPERTY->items+0)
 
 #define MOUNT_SLEW_RATE_PROPERTY											(PRIVATE_DATA->mount_slew_rate_property)
 #define MOUNT_SLEW_RATE_GUIDE_ITEM										(MOUNT_SLEW_RATE_PROPERTY->items+0)
@@ -128,6 +132,7 @@ typedef struct {
 	indigo_property *joystick_mapping_property;
 	indigo_property *joystick_options_property;
 	indigo_property *mount_park_property;
+	indigo_property *mount_home_property;
 	indigo_property *mount_slew_rate_property;
 	indigo_property *mount_motion_dec_property;
 	indigo_property *mount_motion_ra_property;
@@ -175,14 +180,15 @@ static indigo_result aux_attach(indigo_device *device) {
 			indigo_init_number_item(JOYSTICK_AXES_PROPERTY->items + i, name, label, -65536, 65536, 0, 0);
 		}
 		// -------------------------------------------------------------------------------- JOYSTICK_MAPPING
-		JOYSTICK_MAPPING_PROPERTY = indigo_init_number_property(NULL, device->name, JOYSTICK_MAPPING_PROPERTY_NAME, JOYSTICK_CONFIG_GROUP, "Buttons and axes mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, 11);
+		JOYSTICK_MAPPING_PROPERTY = indigo_init_number_property(NULL, device->name, JOYSTICK_MAPPING_PROPERTY_NAME, JOYSTICK_CONFIG_GROUP, "Buttons and axes mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
 		if (JOYSTICK_MAPPING_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(JOYSTICK_MAPPING_PARKED_ITEM, JOYSTICK_MAPPING_PARKED_ITEM_NAME, "Park mount button", 0, PRIVATE_DATA->button_count, 1, 6);
 		indigo_init_number_item(JOYSTICK_MAPPING_UNPARKED_ITEM, JOYSTICK_MAPPING_UNPARKED_ITEM_NAME, "Unpark mount button", 0, PRIVATE_DATA->button_count, 1, 8);
 		indigo_init_number_item(JOYSTICK_MAPPING_ABORT_ITEM, JOYSTICK_MAPPING_ABORT_ITEM_NAME, "Abort mount movement button", 0, PRIVATE_DATA->button_count, 1, 9);
-		indigo_init_number_item(JOYSTICK_MAPPING_TRACKING_ON_ITEM, JOYSTICK_MAPPING_TRACKING_ON_ITEM_NAME, "Tracking on  button", 0, PRIVATE_DATA->button_count, 1, 5);
-		indigo_init_number_item(JOYSTICK_MAPPING_TRACKING_OFF_ITEM, JOYSTICK_MAPPING_TRACKING_OFF_ITEM_NAME, "Tracking off  button", 0, PRIVATE_DATA->button_count, 1, 7);
+		indigo_init_number_item(JOYSTICK_MAPPING_HOME_ITEM, JOYSTICK_MAPPING_HOME_ITEM_NAME, "Home button", 0, PRIVATE_DATA->button_count, 1, 10);
+		indigo_init_number_item(JOYSTICK_MAPPING_TRACKING_ON_ITEM, JOYSTICK_MAPPING_TRACKING_ON_ITEM_NAME, "Tracking on button", 0, PRIVATE_DATA->button_count, 1, 5);
+		indigo_init_number_item(JOYSTICK_MAPPING_TRACKING_OFF_ITEM, JOYSTICK_MAPPING_TRACKING_OFF_ITEM_NAME, "Tracking off button", 0, PRIVATE_DATA->button_count, 1, 7);
 		indigo_init_number_item(JOYSTICK_MAPPING_MOTION_RA_ITEM, JOYSTICK_MAPPING_MOTION_RA_ITEM_NAME, "RA motion axis", 0, PRIVATE_DATA->axis_count + 2 * PRIVATE_DATA->pov_count, 1, 1);
 		indigo_init_number_item(JOYSTICK_MAPPING_MOTION_DEC_ITEM, JOYSTICK_MAPPING_MOTION_DEC_ITEM_NAME, "Dec motion axis", 0, PRIVATE_DATA->axis_count + 2 * PRIVATE_DATA->pov_count, 1, 2);
 		indigo_init_number_item(JOYSTICK_MAPPING_RATE_GUIDE_ITEM, JOYSTICK_MAPPING_RATE_GUIDE_ITEM_NAME, "Guide rate button", 0, PRIVATE_DATA->button_count, 1, 1);
@@ -202,6 +208,11 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_PARK_PARKED_ITEM, MOUNT_PARK_PARKED_ITEM_NAME, "Mount parked", false);
 		indigo_init_switch_item(MOUNT_PARK_UNPARKED_ITEM, MOUNT_PARK_UNPARKED_ITEM_NAME, "Mount unparked", false);
+		// -------------------------------------------------------------------------------- MOUNT_HOME
+		MOUNT_HOME_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_HOME_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Home", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
+		if (MOUNT_HOME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(MOUNT_HOME_ITEM, MOUNT_HOME_ITEM_NAME, "Goto home position", false);
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
 		MOUNT_SLEW_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SLEW_RATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Slew rate", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 4);
 		if (MOUNT_SLEW_RATE_PROPERTY == NULL)
@@ -255,6 +266,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 				indigo_define_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_PARK_PROPERTY, property))
 				indigo_define_property(device, MOUNT_PARK_PROPERTY, NULL);
+			if (indigo_property_match(MOUNT_HOME_PROPERTY, property))
+				indigo_define_property(device, MOUNT_HOME_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property))
 				indigo_define_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
 			if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property))
@@ -283,6 +296,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			if (open_joystick(device)) {
 				MOUNT_PARK_PARKED_ITEM->sw.value = false;
 				MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
+				MOUNT_HOME_ITEM->sw.value = false;
 				MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value = false;
 				MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value = false;
 				MOUNT_SLEW_RATE_FIND_ITEM->sw.value = false;
@@ -299,6 +313,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_define_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
 				indigo_define_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
 				indigo_define_property(device, MOUNT_PARK_PROPERTY, NULL);
+				indigo_define_property(device, MOUNT_HOME_PROPERTY, NULL);
 				indigo_define_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
 				indigo_define_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 				indigo_define_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
@@ -316,6 +331,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
 			indigo_delete_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_PARK_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_HOME_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
@@ -355,6 +371,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(JOYSTICK_MAPPING_PROPERTY);
 	indigo_release_property(JOYSTICK_OPTIONS_PROPERTY);
 	indigo_release_property(MOUNT_PARK_PROPERTY);
+	indigo_release_property(MOUNT_HOME_PROPERTY);
 	indigo_release_property(MOUNT_SLEW_RATE_PROPERTY);
 	indigo_release_property(MOUNT_MOTION_DEC_PROPERTY);
 	indigo_release_property(MOUNT_MOTION_RA_PROPERTY);
@@ -535,6 +552,10 @@ static void event_button(indigo_device *device, int button, bool value) {
 		indigo_set_switch(MOUNT_ABORT_MOTION_PROPERTY, MOUNT_ABORT_MOTION_ITEM, value);
 		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+	} else  if (JOYSTICK_MAPPING_HOME_ITEM->number.value == button) {
+		indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, value);
+		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 	} else  if (JOYSTICK_MAPPING_TRACKING_ON_ITEM->number.value == button && value) {
 		indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
