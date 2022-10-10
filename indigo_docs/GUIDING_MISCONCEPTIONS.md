@@ -22,12 +22,12 @@ Let us return to the example above: We have a seeing with a frequency of 5 Hz an
 So we ended up with RMSE &approx; 0" and FWHM &approx; 2" of the stars vs RMSE &approx; 1" and FWHM &approx; 1" of the stars. Actually this is nothing new and surprising as this is the principle used in the amateur adaptive optics. There is a small and lightweight prism inside, which can move with several tens of Hertz to make these fast corrections needed to guide out 5-10 Hz or even faster seeing errors.
 
 Here is a real life example. I took these two 300s images with my new ZWO AM5 mount from my balcony in extremely bad seeing conditions. AM5 turned out to be very responsive and I managed to prove my point. The two images are taken minutes apart and I repeated the same test several times in a row with the same result.
-The images taken with 0.2s guiding exposure had Total RMSE &approx; 1.2" and looked a bit sharper than the ones taken with 1.5s guiding exposure and Total RMSE &approx; 0.7".
+The images taken with 0.2s guiding exposure had total RMSE &approx; 1.2" and average median FWHM = 3.8px looked sharper than the ones taken with 1.5s guiding exposure which had total RMSE &approx; 0.7" and average median FWHM = 4.2px.
 
-Guiding exposure of 0.2s with Total RMSE 1.2" (looks sharper)
+Guiding exposure of 0.2s with total RMSE 1.2", median FWHM 3.81px (looks sharper)
 ![](GUIDING_MISCONCEPTIONS/1.2RMSE_0.2s_guiding.png)
 
-Guiding exposure of 1.5s with Total RMSE 0.7"
+Guiding exposure of 1.5s with total RMSE 0.7", median FWHM 4.16px
 ![](GUIDING_MISCONCEPTIONS/0.7RMSE_1.5s_guiding.png)
 
 Also RMSE does not say anything about the star shapes, and you may end up in oblong stars with an excellent RMSE. The thing is that if Right Ascension RMSE and Declination RMSE differ significantly the stars in the final image will be elongated in the direction of the axis with the larger RMSE. Actually the only conclusion one can draw from the RMSE values is the final image star roundness. If the ratio *RMSE RA / RMS Dec = 1* the stars will be perfectly round.
