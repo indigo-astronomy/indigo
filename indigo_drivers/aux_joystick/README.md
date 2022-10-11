@@ -1,5 +1,7 @@
 # HID Joystick (Gaming Controller) driver
 
+This driver is used to control mounts with a gaming controller via the Mount Agent (indigo_mount_agent).
+
 ## Supported devices
 
 * HID Joysticks (Gaming Controllers)
