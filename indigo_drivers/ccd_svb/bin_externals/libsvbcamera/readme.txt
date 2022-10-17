@@ -193,7 +193,7 @@ Date:2022-8-10
 
 Version: v1.9.3
 Date:2022-8-13
-1. Fixed the bug that the soft trigger of SV505C and SV705C did not display the picture
+1. Fixed the bug that the soft trigger of SV505C and SV705C did not output the image
 
 
 ##########################################################
@@ -204,3 +204,15 @@ Date:2022-8-13
 Version: v1.9.4
 Date:2022-8-17
 1. Disable output syslog
+
+
+##########################################################
+版本:v1.9.6
+日期:2022-9-28
+1.修正SV705C在RAW8的低分辨率下不了图的BUG
+2.修正使用sharpcap时无法通过DirectShow多次打开相机的BUG
+
+Version: v1.9.6
+Date:2022-9-28
+1. Fixed the bug that the SV705C could not output the image at the low resolution of RAW8
+2. Fixed the bug that the camera could not be opened multiple times through DirectShow when using sharpcap
