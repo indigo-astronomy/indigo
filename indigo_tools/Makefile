@@ -44,10 +44,10 @@ clean-all: status
 	git clean -dfx
 
 $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
-	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) -lindigo
+	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) $(BUILD_LIB)/libindigo.a -lz
 
 $(BUILD_BIN)/indigo_raw_to_fits: indigo_raw_to_fits.o
-	$(CC) $(CFLAGS)  -o $@ indigo_raw_to_fits.o $(LDFLAGS) -lindigo
+	$(CC) $(CFLAGS)  -o $@ indigo_raw_to_fits.o $(LDFLAGS) $(BUILD_LIB)/libindigo.a -lz
 
 $(BUILD_BIN)/indigo_drivers: indigo_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_drivers.o $(LDFLAGS) -lindigo
