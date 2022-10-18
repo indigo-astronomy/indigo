@@ -156,6 +156,7 @@
 #include "mount_starbook/indigo_mount_starbook.h"
 #include "ccd_playerone/indigo_ccd_playerone.h"
 #include "focuser_prodigy/indigo_focuser_prodigy.h"
+#include "agent_config/indigo_agent_config.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -190,6 +191,7 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_guider,
 	indigo_agent_imager,
 	indigo_agent_lx200_server,
+	indigo_agent_config,
 	indigo_agent_scripting,
 	indigo_agent_mount,
 	indigo_agent_snoop,
