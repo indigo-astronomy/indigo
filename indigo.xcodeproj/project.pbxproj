@@ -4343,7 +4343,7 @@
 		9D61B9E0216E4B1B000DE7E8 /* mjkzz_def.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mjkzz_def.h; sourceTree = "<group>"; };
 		9D62F6FE28FEA1E3006599FF /* indigo_agent_config.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_config.h; sourceTree = "<group>"; };
 		9D62F6FF28FEA1E3006599FF /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		9D62F70028FEA1E3006599FF /* indigo_agent_config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_config.c; sourceTree = "<group>"; };
+		9D62F70028FEA1E3006599FF /* indigo_agent_config.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_agent_config.c; sourceTree = "<group>"; wrapsLines = 0; };
 		9D658B941DE4A8BC006C9CC5 /* indigo_names.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_names.h; sourceTree = "<group>"; };
 		9D6940832180B9F600AB112C /* indigo_aux_upb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_upb.h; sourceTree = "<group>"; };
 		9D6940892180B9F600AB112C /* indigo_aux_upb.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_upb.c; sourceTree = "<group>"; };
