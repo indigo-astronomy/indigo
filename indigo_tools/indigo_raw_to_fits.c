@@ -86,7 +86,7 @@ static void print_help(const char *name) {
 	       "       -t  | --ccd-temperature degC   : add CCD-TEMP keyword with the given value to the header\n"
 	       "       -b  | --bayer-pattern pattern  : add BAYERPAT keyword (pattern = BGGR | GBRG | GRBG | RGGB)\n"
 	       "       -h  | --help                   : print this help\n"
-	       "       -q  | --quiet                  : print errors and statistics\n"
+	       "       -q  | --quiet                  : print only errors and statistics\n"
 	);
 }
 
