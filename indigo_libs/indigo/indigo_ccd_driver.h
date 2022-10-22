@@ -104,6 +104,30 @@ extern "C" {
 
 #define CCD_LENS_FOCAL_LENGTH_ITEM      			(CCD_LENS_PROPERTY->items+1)
 
+/** CCD_LENS_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_LENS_INFO_PROPERTY                              (CCD_CONTEXT->ccd_lens_info_property)
+
+/** CCD_LENS_INFO.HORIZONTAL_FOV property item pointer.
+ */
+
+#define CCD_LENS_INFO_HORIZONTAL_FOV_ITEM                   (CCD_LENS_INFO_PROPERTY->items+0)
+
+/** CCD_LENS_INFO.VERTICAL_FOV property item pointer.
+ */
+
+#define CCD_LENS_INFO_VERTICAL_FOV_ITEM                    (CCD_LENS_INFO_PROPERTY->items+1)
+
+/** CCD_LENS_INFO.HORIZONTAL_PIXEL_SCALE property item pointer.
+ */
+
+#define CCD_LENS_INFO_HORIZONTAL_PIXEL_SCALE_ITEM          (CCD_LENS_INFO_PROPERTY->items+2)
+
+/** CCD_LENS_INFO.VERTICAL_PIXEL_SCALE property item pointer.
+ */
+
+#define CCD_LENS_INFO_VERTICAL_PIXEL_SCALE_ITEM            (CCD_LENS_INFO_PROPERTY->items+3)
+
 /** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_UPLOAD_MODE_PROPERTY          (CCD_CONTEXT->ccd_upload_mode_property)
@@ -451,6 +475,7 @@ typedef struct {
 	void *video_stream;														///< video stream control structure
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
+	indigo_property *ccd_lens_info_property;		///< CCD_LENS_INFO property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
 	indigo_property *ccd_preview_property;				///< CCD_PREVIEW property pointer
 	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
