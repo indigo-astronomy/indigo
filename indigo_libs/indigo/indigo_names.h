@@ -295,6 +295,28 @@
 
 //----------------------------------------------------------------------
 
+/** CCD_LENS_INFO property name.
+ */
+#define CCD_LENS_INFO_PROPERTY_NAME                          "CCD_LENS_INFO"
+
+/** CCD_LENS_INFO.HORIZONTAL_FIELD_OF_VIEW item name.
+ */
+#define CCD_LENS_INFO_HORIZONTAL_FOV_ITEM_NAME               "HORIZNTAL_FIELD_OF_VIEW"
+
+/** CCD_LENS_INFO.VERTICAL_FIELD_OF_VIEW item name.
+ */
+#define CCD_LENS_INFO_VERTICAL_FOV_ITEM_NAME                 "VERTICAL_FIELD_OF_VIEW"
+
+/** CCD_LENS_INFO.HORIZONTAL_PIXEL_SCALE item name.
+ */
+#define CCD_LENS_INFO_HORIZONTAL_PIXEL_SCALE_ITEM_NAME       "HORIZONTAL_PIXEL_SCALE"
+
+/** CCD_LENS_INFO.VERTICAL_PIXEL_SCALE item name.
+ */
+#define CCD_LENS_INFO_VERTICAL_PIXEL_SCALE_ITEM_NAME         "VERTICAL_PIXEL_SCALE"
+
+//----------------------------------------------------------------------
+
 /** CCD_PREVIEW property name.
  */
 #define CCD_PREVIEW_PROPERTY_NAME							"CCD_PREVIEW"
