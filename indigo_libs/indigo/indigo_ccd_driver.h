@@ -108,25 +108,21 @@ extern "C" {
  */
 #define CCD_LENS_INFO_PROPERTY                              (CCD_CONTEXT->ccd_lens_info_property)
 
-/** CCD_LENS_INFO.HORIZONTAL_FOV property item pointer.
+/** CCD_LENS_INFO.FOV_WIDTH property item pointer.
  */
+#define CCD_LENS_INFO_FOV_WIDTH_ITEM                       (CCD_LENS_INFO_PROPERTY->items+0)
 
-#define CCD_LENS_INFO_HORIZONTAL_FOV_ITEM                   (CCD_LENS_INFO_PROPERTY->items+0)
-
-/** CCD_LENS_INFO.VERTICAL_FOV property item pointer.
+/** CCD_LENS_INFO.FOV_HEIGHT property item pointer.
  */
+#define CCD_LENS_INFO_FOV_HEIGHT_ITEM                      (CCD_LENS_INFO_PROPERTY->items+1)
 
-#define CCD_LENS_INFO_VERTICAL_FOV_ITEM                    (CCD_LENS_INFO_PROPERTY->items+1)
-
-/** CCD_LENS_INFO.HORIZONTAL_PIXEL_SCALE property item pointer.
+/** CCD_LENS_INFO.PIXEL_SCALE_WIDTH property item pointer.
  */
+#define CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM              (CCD_LENS_INFO_PROPERTY->items+2)
 
-#define CCD_LENS_INFO_HORIZONTAL_PIXEL_SCALE_ITEM          (CCD_LENS_INFO_PROPERTY->items+2)
-
-/** CCD_LENS_INFO.VERTICAL_PIXEL_SCALE property item pointer.
+/** CCD_LENS_INFO.PIXEL_SCALE_HEIGHT property item pointer.
  */
-
-#define CCD_LENS_INFO_VERTICAL_PIXEL_SCALE_ITEM            (CCD_LENS_INFO_PROPERTY->items+3)
+#define CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM             (CCD_LENS_INFO_PROPERTY->items+3)
 
 /** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
