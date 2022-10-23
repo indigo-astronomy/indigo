@@ -836,6 +836,8 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 			task->device = device;
 			task->image = indigo_safe_malloc_copy(task->size = AGENT_PLATESOLVER_IMAGE_ITEM->blob.size, AGENT_PLATESOLVER_IMAGE_ITEM->blob.value);
+			// uploaded files should not use camera pixel scale
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = 0;
 			indigo_async((void *(*)(void *))solve, task);
 			AGENT_PLATESOLVER_IMAGE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -959,6 +961,25 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 							INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->can_start_exposure = i > 0;
 							break;
 						}
+					}
+					break;
+				}
+			}
+		} else if (!strcmp(property->name, CCD_LENS_INFO_PROPERTY_NAME)) {
+			indigo_property *related_agents = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
+			for (int j = 0; j < related_agents->count; j++) {
+				indigo_item *item = related_agents->items + j;
+				if (item->sw.value && !strcmp(item->name, device_name)) {
+					indigo_debug("%s(): %s.%s: state %d", __FUNCTION__, device_name, property->name, property->state);
+					if (property->state == INDIGO_OK_STATE) {
+						indigo_item *item = indigo_get_item(property, CCD_LENS_INFO_VERTICAL_PIXEL_SCALE_ITEM_NAME);
+						if (item) {
+							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = item->number.value;
+							indigo_debug("%s(): %s.%s: pixel_scale = %f", __FUNCTION__, device_name, property->name, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale);
+						}
+					} else {
+						INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = 0;
+						indigo_debug("%s(): %s.%s not in OK state, pixel_scale = %f", __FUNCTION__, device_name, property->name, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale);
 					}
 					break;
 				}
