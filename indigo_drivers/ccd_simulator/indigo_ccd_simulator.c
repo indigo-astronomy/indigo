@@ -741,10 +741,18 @@ static indigo_result ccd_attach(indigo_device *device) {
 				PRIVATE_DATA->target_temperature = PRIVATE_DATA->current_temperature = CCD_TEMPERATURE_ITEM->number.value = 25;
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_COOLER_POWER_ITEM->number.value = 0;
+				CCD_LENS_FOCAL_LENGTH_ITEM->number.value = 12.7;
+				CCD_LENS_APERTURE_ITEM->number.value = 4;
+				CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
+				populate_ccd_lens_info(device);
 			} else {
 				CCD_COOLER_PROPERTY->hidden = true;
 				CCD_COOLER_POWER_PROPERTY->hidden = true;
 				CCD_TEMPERATURE_PROPERTY->hidden = true;
+				CCD_LENS_FOCAL_LENGTH_ITEM->number.value = 5.1;
+				CCD_LENS_APERTURE_ITEM->number.value = 2;
+				CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
+				populate_ccd_lens_info(device);
 			}
 		}
 		// -------------------------------------------------------------------------------- CCD_STREAMING

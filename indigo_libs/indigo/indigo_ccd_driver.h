@@ -504,6 +504,14 @@ typedef struct {
  */
 extern double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
 
+/** Populate CCD_LENS_INFO property based on the sensor and lens data
+ */
+void populate_ccd_lens_info(indigo_device *device);
+
+/** Populate and update CCD_LENS_INFO proeprty based on the sensor and lens data
+ */
+void update_ccd_lens_info(indigo_device *device);
+
 /** Suspend countdown.
  */
 extern void indigo_ccd_suspend_countdown(indigo_device *device);

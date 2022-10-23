@@ -88,7 +88,7 @@ double indigo_pixel_scale(double focal_length_cm, double pixel_size_um) {
 	}
 }
 
-void update_ccd_lens_info(indigo_device *device) {
+void populate_ccd_lens_info(indigo_device *device) {
 	if (CCD_LENS_FOCAL_LENGTH_ITEM->number.value == 0) {
 		CCD_LENS_INFO_FOV_WIDTH_ITEM->number.value =
 		CCD_LENS_INFO_FOV_HEIGHT_ITEM->number.value =
@@ -106,6 +106,10 @@ void update_ccd_lens_info(indigo_device *device) {
 		CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.value = CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.value * CCD_BIN_VERTICAL_ITEM->number.value;
 		CCD_LENS_INFO_PROPERTY->state = INDIGO_OK_STATE;
 	}
+}
+
+void update_ccd_lens_info(indigo_device *device) {
+	populate_ccd_lens_info(device);
 	indigo_update_property(device, CCD_LENS_INFO_PROPERTY, NULL);
 }
 
