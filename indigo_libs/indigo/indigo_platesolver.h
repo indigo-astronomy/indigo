@@ -166,6 +166,7 @@ typedef struct {
 	bool (*solve)(indigo_device *, void *image, unsigned long size);
 	void (*abort)(indigo_device *);
 	pthread_mutex_t mutex;
+	double pixel_scale;
 	bool failed;
 	bool abort_process_requested;
 	int saved_sync_mode;
