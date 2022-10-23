@@ -23,7 +23,7 @@
  \file indigo_agent_astap.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_agent_astap"
 
 #include <stdio.h>
@@ -457,6 +457,8 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 		}
 		if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0) {
 			params_index += sprintf(params + params_index, " -fov %.1f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
+		} else if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value < 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0 && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale > 0) {
+			params_index += sprintf(params + params_index, " -fov %.1f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
 		}
 		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; k++) {
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
