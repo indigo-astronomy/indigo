@@ -972,7 +972,7 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 				if (item->sw.value && !strcmp(item->name, device_name)) {
 					indigo_debug("%s(): %s.%s: state %d", __FUNCTION__, device_name, property->name, property->state);
 					if (property->state == INDIGO_OK_STATE) {
-						indigo_item *item = indigo_get_item(property, CCD_LENS_INFO_VERTICAL_PIXEL_SCALE_ITEM_NAME);
+						indigo_item *item = indigo_get_item(property, CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM_NAME);
 						if (item) {
 							INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = item->number.value;
 							indigo_debug("%s(): %s.%s: pixel_scale = %f", __FUNCTION__, device_name, property->name, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale);
