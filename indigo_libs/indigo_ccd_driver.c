@@ -1354,7 +1354,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					break;
 			}
 			strcat(tmp, fs + 3);
-			for (int i = 0; i < max; i++) {
+			for (int i = 1; i < max; i++) {
 				snprintf(format, PATH_MAX, tmp, i);
 				if (stat(format, &sb) == 0 && S_ISREG(sb.st_mode))
 					continue;;
