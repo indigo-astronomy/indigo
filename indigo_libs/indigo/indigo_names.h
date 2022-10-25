@@ -295,25 +295,25 @@
 
 //----------------------------------------------------------------------
 
-/** CCD_LENS_INFO property name.
+/** CCD_LENS_FOV property name.
  */
-#define CCD_LENS_INFO_PROPERTY_NAME                        "CCD_LENS_INFO"
+#define CCD_LENS_FOV_PROPERTY_NAME                        "CCD_LENS_FOV"
 
-/** CCD_LENS_INFO.FOV_WIDTH item name.
+/** CCD_LENS_FOV.FOV_WIDTH item name.
  */
-#define CCD_LENS_INFO_FOV_WIDTH_ITEM_NAME                  "FOV_WIDTH"
+#define CCD_LENS_FOV_FOV_WIDTH_ITEM_NAME                  "FOV_WIDTH"
 
-/** CCD_LENS_INFO.FOV_HEIGHT item name.
+/** CCD_LENS_FOV.FOV_HEIGHT item name.
  */
-#define CCD_LENS_INFO_FOV_HEIGHT_ITEM_NAME                 "FOV_HEIGHT"
+#define CCD_LENS_FOV_FOV_HEIGHT_ITEM_NAME                 "FOV_HEIGHT"
 
-/** CCD_LENS_INFO.PIXEL_SCALE_WIDTH item name.
+/** CCD_LENS_FOV.PIXEL_SCALE_WIDTH item name.
  */
-#define CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM_NAME          "PIXEL_SCALE_WIDTH"
+#define CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM_NAME          "PIXEL_SCALE_WIDTH"
 
-/** CCD_LENS_INFO.PIXEL_SCALE_HEIGHT item name.
+/** CCD_LENS_FOV.PIXEL_SCALE_HEIGHT item name.
  */
-#define CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM_NAME         "PIXEL_SCALE_HEIGHT"
+#define CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM_NAME         "PIXEL_SCALE_HEIGHT"
 
 //----------------------------------------------------------------------
 
