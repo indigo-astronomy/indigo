@@ -525,6 +525,10 @@ extern void indigo_process_dslr_preview_image(indigo_device *device, void *data,
  */
 extern void indigo_finalize_video_stream(indigo_device *device);
 
+/** Finalize DSLR video stream.
+ */
+extern void indigo_finalize_dslr_video_stream(indigo_device *device);
+
 /** Set alert state on dependent properties.
  */
 extern indigo_result indigo_ccd_failure_cleanup(indigo_device *device);

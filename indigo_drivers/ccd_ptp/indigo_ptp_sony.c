@@ -998,7 +998,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 			}
 		} else if (PRIVATE_DATA->last_error == ptp_response_AccessDenied) {
 			if (retry_count++ > 100) {
-				indigo_finalize_video_stream(device);
+				indigo_finalize_dslr_video_stream(device);
 				return false;
 			}
 		}
@@ -1007,7 +1007,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 		buffer = NULL;
 		indigo_usleep(100000);
 	}
-	indigo_finalize_video_stream(device);
+	indigo_finalize_dslr_video_stream(device);
 	return !PRIVATE_DATA->abort_capture;
 }
 

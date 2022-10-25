@@ -2177,25 +2177,27 @@ void indigo_process_dslr_preview_image(indigo_device *device, void *data, int bl
 
 void indigo_finalize_video_stream(indigo_device *device) {
 	if (CCD_CONTEXT->video_stream) {
-		if (CCD_IMAGE_FORMAT_PROPERTY->count == 3) {
-			if (CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM->sw.value) {
-				gwavi_close((struct gwavi_t *)(CCD_CONTEXT->video_stream));
-				CCD_CONTEXT->video_stream = NULL;
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			}
-		} else {
-			if (CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value) {
-				gwavi_close((struct gwavi_t *)(CCD_CONTEXT->video_stream));
-				CCD_CONTEXT->video_stream = NULL;
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			} else if (CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
-				indigo_ser_close((indigo_ser *)(CCD_CONTEXT->video_stream));
-				CCD_CONTEXT->video_stream = NULL;
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-			}
+		if (CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value) {
+			gwavi_close((struct gwavi_t *)(CCD_CONTEXT->video_stream));
+			CCD_CONTEXT->video_stream = NULL;
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		} else if (CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
+			indigo_ser_close((indigo_ser *)(CCD_CONTEXT->video_stream));
+			CCD_CONTEXT->video_stream = NULL;
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
+		}
+	}
+}
+
+void indigo_finalize_dslr_video_stream(indigo_device *device) {
+	if (CCD_CONTEXT->video_stream) {
+		if (CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM->sw.value) {
+			gwavi_close((struct gwavi_t *)(CCD_CONTEXT->video_stream));
+			CCD_CONTEXT->video_stream = NULL;
+			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
 		}
 	}
 }
