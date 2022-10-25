@@ -239,7 +239,7 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 			FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->count = 0;
 			// -------------------------------------------------------------------------------- CCD_LENS_FOV
-			CCD_LENS_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_FOV_PROPERTY_NAME, "Camera", "Lens info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 4);
+			CCD_LENS_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_FOV_PROPERTY_NAME, "Camera", "FOV and pixel scale", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 4);
 			if (CCD_LENS_FOV_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_LENS_FOV_FOV_WIDTH_ITEM, CCD_LENS_FOV_FOV_WIDTH_ITEM_NAME, "FOV width (°)", 0, 180, 0, 0);
@@ -608,7 +608,7 @@ static void update_ccd_lens_info(indigo_device *device, indigo_property *propert
 		}
 		update = true;
 	}
-	if (CCD_LENS_FOV_PROPERTY->state == INDIGO_OK_STATE && update) {
+	if (update) {
 		CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value = indigo_pixel_scale(FILTER_DEVICE_CONTEXT->focal_length, FILTER_DEVICE_CONTEXT->pixel_width) / 3600.0;
 		CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value = indigo_pixel_scale(FILTER_DEVICE_CONTEXT->focal_length, FILTER_DEVICE_CONTEXT->pixel_height) / 3600.0;
 		CCD_LENS_FOV_FOV_WIDTH_ITEM->number.value = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * FILTER_DEVICE_CONTEXT->frame_width;
