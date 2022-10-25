@@ -139,6 +139,10 @@ extern bool indigo_connection_status(indigo_server_entry *server, char *last_err
  */
 extern indigo_result indigo_disconnect_server(indigo_server_entry *server);
 
+/** Format item to string.
+ */
+extern indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, double value);
+
 #ifdef __cplusplus
 }
 #endif
