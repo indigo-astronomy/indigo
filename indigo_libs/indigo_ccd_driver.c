@@ -1275,32 +1275,26 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				continue;
 			}
 			struct stat sb;
-			int max = 0;
 			strncpy(tmp, format, fs - format + 1);
 			switch (fs[1]) {
 				case '1':
 					strcat(tmp, "01d");
-					max = 10;
 					break;
 				case '2':
 					strcat(tmp, "02d");
-					max = 100;
 					break;
 				case '3':
 					strcat(tmp, "03d");
-					max = 1000;
 					break;
 				case '4':
 					strcat(tmp, "04d");
-					max = 10000;
 					break;
 				case '5':
 					strcat(tmp, "05d");
-					max = 100000;
 					break;
 			}
 			strcat(tmp, fs + 3);
-			for (int i = 1; i < max; i++) {
+			for (int i = 1; i < 100000; i++) {
 				snprintf(format, PATH_MAX, tmp, i);
 				if (stat(format, &sb) == 0 && S_ISREG(sb.st_mode))
 					continue;;
