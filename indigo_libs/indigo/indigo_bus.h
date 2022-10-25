@@ -808,6 +808,10 @@ static inline void indigo_safe_free(void *pointer) {
 extern void *indigo_alloc_large_buffer(void);
 extern void indigo_free_large_buffer(void *large_buffer);
 
+/** Calculate pixel scale in arcsec/pixel
+ */
+extern double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
+
 #ifdef __cplusplus
 }
 #endif

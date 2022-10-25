@@ -1791,3 +1791,11 @@ void indigo_free_large_buffer(void *large_buffer) {
 	pthread_mutex_unlock(&buffer_mutex);
 	free(large_buffer);
 }
+
+double indigo_pixel_scale(double focal_length_cm, double pixel_size_um) {
+	if (focal_length_cm > 0) {
+		return 20.6265 * pixel_size_um / focal_length_cm;
+	} else {
+		return 0;
+	}
+}
