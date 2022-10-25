@@ -33,6 +33,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <pthread.h>
+#include <math.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <unistd.h>
 #include <libgen.h>
@@ -542,4 +543,36 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 		indigo_usleep(0.1 * ONE_SECOND_DELAY);
 	}
 	return INDIGO_OK;
+}
+
+indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, double value) {
+	int format_length = (int)strlen(format);
+	double d = fabs(value);
+	double m = 60.0 * (d - floor(d));
+	double s = 60.0 * (m - floor(m));
+	if (!strcmp(format + format_length - 3, "10m")) {
+		snprintf(buffer, buffer_size, "%d:%02d:%06.3f", (int)value, (int)m, s);
+		return INDIGO_OK;
+	} else if (!strcmp(format + format_length - 2, "9m")) {
+		snprintf(buffer, buffer_size, "%d:%02d:%05.2f", (int)value, (int)m, s);
+		return INDIGO_OK;
+	} else if (!strcmp(format + format_length - 2, "8m")) {
+		snprintf(buffer, buffer_size, "%d:%02d:%04.1f", (int)value, (int)m, s);
+		return INDIGO_OK;
+	} else if (!strcmp(format + format_length - 2, "6m")) {
+		snprintf(buffer, buffer_size, "%d:%02d:%02d", (int)value, (int)m, (int)round(s));
+		return INDIGO_OK;
+	} else if (!strcmp(format + format_length - 2, "5m")) {
+		snprintf(buffer, buffer_size, "%d:%04.1f", (int)value, m);
+		return INDIGO_OK;
+	} else if (!strcmp(format + format_length - 2, "4m")) {
+		snprintf(buffer, buffer_size, "%d:%02d", (int)value, (int)m);
+		return INDIGO_OK;
+	} else if (!strcmp(format + format_length - 1, "m")) {
+		snprintf(buffer, buffer_size, "%d:%02d:%04.1f", (int)value, (int)m, s);
+		return INDIGO_OK;
+	} else {
+		return snprintf(buffer, buffer_size, format, value) == 1 ? INDIGO_OK : INDIGO_FAILED;
+	}
+	return INDIGO_FAILED;
 }

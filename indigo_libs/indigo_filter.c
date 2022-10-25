@@ -248,8 +248,8 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 			indigo_init_number_item(CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM, CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM_NAME, "Pixel scale height (°/px)", 0, 5, 0, 0);
 			strcpy(CCD_LENS_FOV_FOV_WIDTH_ITEM->number.format, "%m");
 			strcpy(CCD_LENS_FOV_FOV_HEIGHT_ITEM->number.format, "%m");
-			strcpy(CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.format, "%m");
-			strcpy(CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.format, "%m");
+			strcpy(CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.format, "%.10m");
+			strcpy(CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.format, "%.10m");
 			CCD_LENS_FOV_PROPERTY->hidden = true;
 			// --------------------------------------------------------------------------------
 			CONFIG_PROPERTY->hidden = true;
