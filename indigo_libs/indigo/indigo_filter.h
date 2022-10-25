@@ -168,25 +168,25 @@ extern "C" {
  */
 #define FILTER_RELATED_AGENT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property)
 
-/** CCD_LENS_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+/** CCD_LENS_FOV property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_LENS_INFO_PROPERTY                (FILTER_DEVICE_CONTEXT->ccd_lens_info_property)
+#define CCD_LENS_FOV_PROPERTY                (FILTER_DEVICE_CONTEXT->ccd_lens_info_property)
 
-/** CCD_LENS_INFO.FOV_WIDTH property item pointer.
+/** CCD_LENS_FOV.FOV_WIDTH property item pointer.
  */
-#define CCD_LENS_INFO_FOV_WIDTH_ITEM          (CCD_LENS_INFO_PROPERTY->items+0)
+#define CCD_LENS_FOV_FOV_WIDTH_ITEM          (CCD_LENS_FOV_PROPERTY->items+0)
 
-/** CCD_LENS_INFO.FOV_HEIGHT property item pointer.
+/** CCD_LENS_FOV.FOV_HEIGHT property item pointer.
  */
-#define CCD_LENS_INFO_FOV_HEIGHT_ITEM         (CCD_LENS_INFO_PROPERTY->items+1)
+#define CCD_LENS_FOV_FOV_HEIGHT_ITEM         (CCD_LENS_FOV_PROPERTY->items+1)
 
-/** CCD_LENS_INFO.PIXEL_SCALE_WIDTH property item pointer.
+/** CCD_LENS_FOV.PIXEL_SCALE_WIDTH property item pointer.
  */
-#define CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM  (CCD_LENS_INFO_PROPERTY->items+2)
+#define CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM  (CCD_LENS_FOV_PROPERTY->items+2)
 
-/** CCD_LENS_INFO.PIXEL_SCALE_HEIGHT property item pointer.
+/** CCD_LENS_FOV.PIXEL_SCALE_HEIGHT property item pointer.
  */
-#define CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM (CCD_LENS_INFO_PROPERTY->items+3)
+#define CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM (CCD_LENS_FOV_PROPERTY->items+3)
 
 
 /** Filter device context structure.

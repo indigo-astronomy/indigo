@@ -154,7 +154,6 @@ typedef struct {
 	double rmse_ra_sum, rmse_dec_sum;
 	double rmse_ra_s_sum, rmse_dec_s_sum;
 	double rmse_ra_threshold, rmse_dec_threshold;
-	double pixel_scale_width, pixel_scale_height;
 	unsigned long rmse_count;
 	void *last_image;
 	enum { IGNORE = -2, PREVIEW, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
@@ -1176,8 +1175,8 @@ static void guide_process(indigo_device *device) {
 			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
 			double sin_angle = sin(angle);
 			double cos_angle = cos(angle);
-			double pix_scale_x = DEVICE_PRIVATE_DATA->pixel_scale_width;
-			double pix_scale_y = DEVICE_PRIVATE_DATA->pixel_scale_height;
+			double pix_scale_x = FILTER_DEVICE_CONTEXT->pixel_scale_horizontal;
+			double pix_scale_y = FILTER_DEVICE_CONTEXT->pixel_scale_vertical;
 			double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
 			double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
 			double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
@@ -1791,18 +1790,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
-		if (!strcmp(property->name, CCD_LENS_INFO_PROPERTY_NAME)) {
-			double pixel_size = 0;
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(&property->items[i], CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->pixel_scale_width = property->items[i].number.value * 3600.0;
-				} else if (!strcmp(&property->items[i], CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->pixel_scale_height = property->items[i].number.value * 3600.0;
-				}
-			}
-		}
-	}
 	return indigo_filter_define_property(client, device, property, message);
 }
 
@@ -1817,15 +1804,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			} else if (CLIENT_PRIVATE_DATA->last_image) {
 				free(CLIENT_PRIVATE_DATA->last_image);
 				CLIENT_PRIVATE_DATA->last_image = NULL;
-			}
-		} else if (!strcmp(property->name, CCD_LENS_INFO_PROPERTY_NAME)) {
-			double pixel_size = 0;
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(&property->items[i], CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->pixel_scale_width = property->items[i].number.value * 3600.0;
-				} else if (!strcmp(&property->items[i], CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->pixel_scale_height = property->items[i].number.value * 3600.0;
-				}
 			}
 		}
 	}
