@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -100,6 +100,7 @@ typedef struct {
 	bool dome_unparked;
 	bool imager_in_preview;
 	bool guider_in_preview;
+	bool imager_paused;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
@@ -172,7 +173,7 @@ static void set_eq_coordinates(indigo_device *device) {
 }
 
 static void abort_capture(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->imager_in_preview)
+	if (DEVICE_PRIVATE_DATA->imager_in_preview || DEVICE_PRIVATE_DATA->imager_paused)
 		return;
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
@@ -873,6 +874,8 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 							if (item->sw.value && !strcmp(item->name, AGENT_IMAGER_START_PREVIEW_ITEM_NAME))
 								CLIENT_PRIVATE_DATA->imager_in_preview = true;
 						}
+					} else if (!strcmp(property->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME)) {
+						CLIENT_PRIVATE_DATA->imager_paused = property->state == INDIGO_BUSY_STATE;
 					}
 				} else if (!strncmp("Guider Agent", item->name, 12)) {
 					if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
