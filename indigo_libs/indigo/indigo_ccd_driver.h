@@ -104,26 +104,6 @@ extern "C" {
 
 #define CCD_LENS_FOCAL_LENGTH_ITEM      			(CCD_LENS_PROPERTY->items+1)
 
-/** CCD_LENS_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
- */
-#define CCD_LENS_INFO_PROPERTY                              (CCD_CONTEXT->ccd_lens_info_property)
-
-/** CCD_LENS_INFO.FOV_WIDTH property item pointer.
- */
-#define CCD_LENS_INFO_FOV_WIDTH_ITEM                       (CCD_LENS_INFO_PROPERTY->items+0)
-
-/** CCD_LENS_INFO.FOV_HEIGHT property item pointer.
- */
-#define CCD_LENS_INFO_FOV_HEIGHT_ITEM                      (CCD_LENS_INFO_PROPERTY->items+1)
-
-/** CCD_LENS_INFO.PIXEL_SCALE_WIDTH property item pointer.
- */
-#define CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM              (CCD_LENS_INFO_PROPERTY->items+2)
-
-/** CCD_LENS_INFO.PIXEL_SCALE_HEIGHT property item pointer.
- */
-#define CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM             (CCD_LENS_INFO_PROPERTY->items+3)
-
 /** CCD_UPLOAD_MODE property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_UPLOAD_MODE_PROPERTY          (CCD_CONTEXT->ccd_upload_mode_property)
@@ -471,7 +451,6 @@ typedef struct {
 	void *video_stream;														///< video stream control structure
 	indigo_property *ccd_info_property;           ///< CCD_INFO property pointer
 	indigo_property *ccd_lens_property;						///< CCD_LENS property pointer
-	indigo_property *ccd_lens_info_property;		///< CCD_LENS_INFO property pointer
 	indigo_property *ccd_upload_mode_property;    ///< CCD_UPLOAD_MODE property pointer
 	indigo_property *ccd_preview_property;				///< CCD_PREVIEW property pointer
 	indigo_property *ccd_local_mode_property;     ///< CCD_LOCAL_MODE property pointer
@@ -499,18 +478,6 @@ typedef struct {
 	indigo_property *ccd_rbi_flush_enable_property; ///< CCD_RBI_FLUSH_ENABLE property pointer
 	indigo_property *ccd_rbi_flush_property;			///< CCD_RBI_FLUSH property pointer
 } indigo_ccd_context;
-
-/** Calculate pixel scale in arcsec/pixel
- */
-extern double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
-
-/** Populate CCD_LENS_INFO property based on the sensor and lens data
- */
-void populate_ccd_lens_info(indigo_device *device);
-
-/** Populate and update CCD_LENS_INFO proeprty based on the sensor and lens data
- */
-void update_ccd_lens_info(indigo_device *device);
 
 /** Suspend countdown.
  */

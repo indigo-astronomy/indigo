@@ -238,6 +238,19 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 				return INDIGO_FAILED;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->count = 0;
+			// -------------------------------------------------------------------------------- CCD_LENS_INFO
+			CCD_LENS_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_INFO_PROPERTY_NAME, "Camera", "Lens info", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 4);
+			if (CCD_LENS_INFO_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(CCD_LENS_INFO_FOV_WIDTH_ITEM, CCD_LENS_INFO_FOV_WIDTH_ITEM_NAME, "FOV width (°)", 0, 180, 0, 0);
+			indigo_init_number_item(CCD_LENS_INFO_FOV_HEIGHT_ITEM, CCD_LENS_INFO_FOV_HEIGHT_ITEM_NAME, "FOV height (°)", 0, 180, 0, 0);
+			indigo_init_number_item(CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM, CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM_NAME, "Pixel scale width (°/px)", 0, 5, 0, 0);
+			indigo_init_number_item(CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM, CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM_NAME, "Pixel scale height (°/px)", 0, 5, 0, 0);
+			strcpy(CCD_LENS_INFO_FOV_WIDTH_ITEM->number.format, "%m");
+			strcpy(CCD_LENS_INFO_FOV_HEIGHT_ITEM->number.format, "%m");
+			strcpy(CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM->number.format, "%m");
+			strcpy(CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.format, "%m");
+			CCD_LENS_INFO_PROPERTY->hidden = true;
 			// --------------------------------------------------------------------------------
 			CONFIG_PROPERTY->hidden = true;
 			PROFILE_PROPERTY->hidden = true;
@@ -265,6 +278,8 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 		if (cached_property && indigo_property_match(cached_property, property))
 			indigo_define_property(device, cached_property, NULL);
 	}
+	if (indigo_property_match(CCD_LENS_INFO_PROPERTY, property))
+		indigo_define_property(device, CCD_LENS_INFO_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
@@ -345,6 +360,8 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 					}
 				}
 			}
+			indigo_delete_property(device, CCD_LENS_INFO_PROPERTY, NULL);
+			CCD_LENS_INFO_PROPERTY->hidden = true;
 			indigo_init_switch_item(connection_property->items, CONNECTION_DISCONNECTED_ITEM_NAME, NULL, true);
 			connection_property->access_token = indigo_get_device_or_master_token(connection_property->device);
 			indigo_change_property(client, connection_property);
@@ -499,6 +516,7 @@ indigo_result indigo_filter_device_detach(indigo_device *device) {
 			FILTER_DEVICE_CONTEXT->additional_client_instances[i] = NULL;
 		}
 	}
+	indigo_release_property(CCD_LENS_INFO_PROPERTY);
 	return indigo_device_detach(device);
 }
 
@@ -538,6 +556,66 @@ static void add_to_list(indigo_device *device, indigo_property *device_list, ind
 		indigo_define_property(device, device_list, NULL);
 	} else {
 		indigo_error("[%s:%d] Max device count reached", __FUNCTION__, __LINE__);
+	}
+}
+
+static void update_ccd_lens_info(indigo_device *device, indigo_property *property) {
+	bool update = false;
+	if (!strcmp(property->name, CCD_LENS_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_LENS_FOCAL_LENGTH_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->focal_length = item->number.value;
+				CCD_LENS_INFO_PROPERTY->state = item->number.value > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				break;
+			}
+		}
+		update = true;
+	}
+	if (!strcmp(property->name, CCD_INFO_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_INFO_PIXEL_WIDTH_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->pixel_width = item->number.value;
+			}
+			if (!strcmp(item->name, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->pixel_height = item->number.value;
+			}
+		}
+		update = true;
+	}
+	if (!strcmp(property->name, CCD_FRAME_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->frame_width = item->number.value;
+			}
+			if (!strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->frame_height = item->number.value;
+			}
+		}
+		update = true;
+	}
+	if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->bin_horizontal = item->number.value;
+			}
+			if (!strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->bin_vertical = item->number.value;
+			}
+		}
+		update = true;
+	}
+	if (CCD_LENS_INFO_PROPERTY->state == INDIGO_OK_STATE && update) {
+		CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM->number.value = indigo_pixel_scale(FILTER_DEVICE_CONTEXT->focal_length, FILTER_DEVICE_CONTEXT->pixel_width) / 3600.0;
+		CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.value = indigo_pixel_scale(FILTER_DEVICE_CONTEXT->focal_length, FILTER_DEVICE_CONTEXT->pixel_height) / 3600.0;
+		CCD_LENS_INFO_FOV_WIDTH_ITEM->number.value = CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM->number.value * FILTER_DEVICE_CONTEXT->frame_width;
+		CCD_LENS_INFO_FOV_HEIGHT_ITEM->number.value = CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.value * FILTER_DEVICE_CONTEXT->frame_height;
+		CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM->number.value = CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM->number.value * FILTER_DEVICE_CONTEXT->bin_horizontal;
+		CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.value = CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.value * FILTER_DEVICE_CONTEXT->bin_vertical;
+		indigo_update_property(device, CCD_LENS_INFO_PROPERTY, NULL);
 	}
 }
 
@@ -632,6 +710,8 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 			int name_prefix_length = property_name_prefix_len[i];
 			if (strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[i]))
 				continue;
+			if (i == INDIGO_FILTER_CCD_INDEX)
+				update_ccd_lens_info(device, property);
 			bool found = false;
 			for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
 				if (device_cache[j] == property) {
@@ -709,6 +789,20 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 							indigo_property all_properties;
 							memset(&all_properties, 0, sizeof(all_properties));
 							strcpy(all_properties.device, property->device);
+							CCD_LENS_INFO_PROPERTY->hidden = false;
+							CCD_LENS_INFO_FOV_WIDTH_ITEM->number.value =
+							CCD_LENS_INFO_FOV_HEIGHT_ITEM->number.value =
+							CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM->number.value =
+							CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM->number.value = 0;
+							CCD_LENS_INFO_PROPERTY->state = INDIGO_IDLE_STATE;
+							FILTER_CLIENT_CONTEXT->frame_width =
+							FILTER_CLIENT_CONTEXT->frame_height =
+							FILTER_CLIENT_CONTEXT->bin_horizontal =
+							FILTER_CLIENT_CONTEXT->bin_vertical = 0;
+							FILTER_CLIENT_CONTEXT->pixel_width =
+							FILTER_CLIENT_CONTEXT->pixel_height =
+							FILTER_CLIENT_CONTEXT->focal_length = 0.0;
+							indigo_define_property(device, CCD_LENS_INFO_PROPERTY, NULL);
 							indigo_enumerate_properties(client, &all_properties);
 						}
 						indigo_update_property(device, device_list, NULL);
@@ -725,6 +819,8 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 		} else {
 			if (strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[i]))
 				continue;
+			if (i == INDIGO_FILTER_CCD_INDEX)
+				update_ccd_lens_info(device, property);
 			for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 				if (device_cache[i] == property) {
 					if (agent_cache[i]) {

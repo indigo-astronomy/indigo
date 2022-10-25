@@ -167,7 +167,28 @@ extern "C" {
 /** Related agent list switch property.
  */
 #define FILTER_RELATED_AGENT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property)
-	
+
+/** CCD_LENS_INFO property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_LENS_INFO_PROPERTY                (FILTER_DEVICE_CONTEXT->ccd_lens_info_property)
+
+/** CCD_LENS_INFO.FOV_WIDTH property item pointer.
+ */
+#define CCD_LENS_INFO_FOV_WIDTH_ITEM          (CCD_LENS_INFO_PROPERTY->items+0)
+
+/** CCD_LENS_INFO.FOV_HEIGHT property item pointer.
+ */
+#define CCD_LENS_INFO_FOV_HEIGHT_ITEM         (CCD_LENS_INFO_PROPERTY->items+1)
+
+/** CCD_LENS_INFO.PIXEL_SCALE_WIDTH property item pointer.
+ */
+#define CCD_LENS_INFO_PIXEL_SCALE_WIDTH_ITEM  (CCD_LENS_INFO_PROPERTY->items+2)
+
+/** CCD_LENS_INFO.PIXEL_SCALE_HEIGHT property item pointer.
+ */
+#define CCD_LENS_INFO_PIXEL_SCALE_HEIGHT_ITEM (CCD_LENS_INFO_PROPERTY->items+3)
+
+
 /** Filter device context structure.
  */
 typedef struct {
@@ -188,6 +209,13 @@ typedef struct {
 	bool (*validate_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
 	bool (*validate_related_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
 	indigo_client *additional_client_instances[MAX_ADDITIONAL_INSTANCES];
+	indigo_property *ccd_lens_info_property;
+	int frame_width, frame_height;
+	int bin_horizontal, bin_vertical;
+	double pixel_width, pixel_height;
+	double focal_length;
+	double pixel_scale_horizontal, pixel_scale_vertical;
+	double fov_width, fov_height;
 } indigo_filter_context;
 
 /** Device attach callback function.
