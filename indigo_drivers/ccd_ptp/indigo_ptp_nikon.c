@@ -1199,7 +1199,7 @@ bool ptp_nikon_liveview(indigo_device *device) {
 			buffer = NULL;
 			indigo_usleep(100000);
 		}
-		indigo_finalize_video_stream(device);
+		indigo_finalize_dslr_video_stream(device);
 		ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
 		return !PRIVATE_DATA->abort_capture;
 	}

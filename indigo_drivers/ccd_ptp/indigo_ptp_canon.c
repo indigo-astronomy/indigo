@@ -1515,7 +1515,7 @@ bool ptp_canon_liveview(indigo_device *device) {
 				free(buffer);
 			indigo_usleep(100000);
 		}
-		indigo_finalize_video_stream(device);
+		indigo_finalize_dslr_video_stream(device);
 		set_number_property(device, ptp_property_canon_EVFOutputDevice, 0);
 		//set_property(device, ptp_property_canon_EVFMode, 0);
 		return !PRIVATE_DATA->abort_capture;

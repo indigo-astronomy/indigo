@@ -550,7 +550,10 @@ static void streaming_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
 	}
-	indigo_finalize_video_stream(device);
+	if (device == PRIVATE_DATA->dslr)
+		indigo_finalize_dslr_video_stream(device);
+	else
+		indigo_finalize_video_stream(device);
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
 		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
