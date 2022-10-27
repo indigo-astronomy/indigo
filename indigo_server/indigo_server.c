@@ -1103,7 +1103,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 				indigo_update_property(device, SERVER_LOAD_PROPERTY, "Driver %s (%s) loaded", name, driver->description);
 			} else {
 				SERVER_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, SERVER_LOAD_PROPERTY, indigo_last_message);
+				indigo_update_property(device, SERVER_LOAD_PROPERTY, "Driver %s (%s) failed to load", name, driver->description);
 			}
 		}
 		return INDIGO_OK;
