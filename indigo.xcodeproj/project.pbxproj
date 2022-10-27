@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 46;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -13282,6 +13282,7 @@
 		};
 		598A1CAB259BA95500C0B34C /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
 			files = (
 			);
@@ -13957,7 +13958,10 @@
 				OTHER_LDFLAGS = "-w";
 				SDKROOT = macosx;
 				SYSTEM_HEADER_SEARCH_PATHS = indigo_libs;
-				USER_HEADER_SEARCH_PATHS = "indigo_drivers indigo_mac_drivers";
+				USER_HEADER_SEARCH_PATHS = (
+					indigo_drivers,
+					indigo_mac_drivers,
+				);
 			};
 			name = Debug;
 		};
@@ -14018,9 +14022,13 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				OTHER_LDFLAGS = "-w";
 				SDKROOT = macosx;
-				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SYSTEM_HEADER_SEARCH_PATHS = indigo_libs;
-				USER_HEADER_SEARCH_PATHS = "indigo_drivers indigo_mac_drivers";
+				USER_HEADER_SEARCH_PATHS = (
+					indigo_drivers,
+					indigo_mac_drivers,
+				);
 			};
 			name = Release;
 		};
@@ -14103,8 +14111,19 @@
 				MACH_O_TYPE = mh_dylib;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					indigo_drivers/ccd_iidc/externals/libdc1394,
+					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,
+					indigo_drivers/ccd_apogee/bin_externals,
+					"indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include",
+					indigo_drivers/gps_gpsd/externals/libgps,
+					"${inherited}",
+				);
+				USER_HEADER_SEARCH_PATHS = (
+					indigo,
+					indigo_drivers,
+					indigo_mac_drivers,
+				);
 			};
 			name = Debug;
 		};
@@ -14156,8 +14175,19 @@
 				);
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					indigo_drivers/ccd_iidc/externals/libdc1394,
+					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,
+					indigo_drivers/ccd_apogee/bin_externals,
+					"indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include",
+					indigo_drivers/gps_gpsd/externals/libgps,
+					"${inherited}",
+				);
+				USER_HEADER_SEARCH_PATHS = (
+					indigo,
+					indigo_drivers,
+					indigo_mac_drivers,
+				);
 			};
 			name = Release;
 		};
@@ -14267,8 +14297,19 @@
 					"-allow-multiple-definition",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					indigo_drivers/ccd_iidc/externals/libdc1394,
+					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,
+					indigo_drivers/ccd_apogee/bin_externals,
+					"indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include",
+					indigo_drivers/gps_gpsd/externals/libgps,
+					"${inherited}",
+				);
+				USER_HEADER_SEARCH_PATHS = (
+					indigo,
+					indigo_drivers,
+					indigo_mac_drivers,
+				);
 			};
 			name = Debug;
 		};
@@ -14312,8 +14353,19 @@
 					"-allow-multiple-definition",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SYSTEM_HEADER_SEARCH_PATHS = "indigo_drivers/ccd_iidc/externals/libdc1394 indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include indigo_drivers/ccd_apogee/bin_externals indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include indigo_drivers/gps_gpsd/externals/libgps ${inherited}";
-				USER_HEADER_SEARCH_PATHS = "indigo indigo_drivers indigo_mac_drivers";
+				SYSTEM_HEADER_SEARCH_PATHS = (
+					indigo_drivers/ccd_iidc/externals/libdc1394,
+					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,
+					indigo_drivers/ccd_apogee/bin_externals,
+					"indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include",
+					indigo_drivers/gps_gpsd/externals/libgps,
+					"${inherited}",
+				);
+				USER_HEADER_SEARCH_PATHS = (
+					indigo,
+					indigo_drivers,
+					indigo_mac_drivers,
+				);
 			};
 			name = Release;
 		};
