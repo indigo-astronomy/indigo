@@ -2,6 +2,45 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-200] - 27 Oct Thu 2022
+
+### Overall
+- docs:
+	- updated PLATE_SOLVING.md
+- all ccd drivers:
+	- saved files are numbered from 1 instead of 0
+	- max file count limits for different formats replaced with single limit
+	- indigo_finalize_dslr_video_stream() added
+
+- all agents:
+	- add property CCD_LENS_FOV is uses the camera data and shows FOV and pixel scale
+	- related agent removal bug fixed
+
+- indigo_client:
+	- added indigo_format_number() to format sexadecimal numbers (%m format)
+
+- indigo_server:
+	- fix driver load failure to load message
+
+### Driver Fixes
+- indigo_agent_astap:
+	- use pixel scale from camera as a hint
+
+- indigo_agent_astrometry:
+	- use pixel scale from camera as a hint
+	- use pixel scale hint (it was not used at all) - works way faster with many indexes selected
+
+- indigo_ccd_simulator:
+	- better parameter defaults so that guiding makes more sense with 5cm FL - still not really ok but much better
+
+- indigo_ccd_svb:
+	- SDK updated to 1.9.6
+
+- indigo_aux_joystick:
+	- make analog mode more usable
+	- button mapped to go home
+
+
 ## [2.0-198] - 09 Oct Sun 2022
 
 ### Overall
