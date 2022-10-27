@@ -843,8 +843,8 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 	return INDIGO_OK;
 }
 
-static void remove_from_list(indigo_device *device, indigo_property *device_list, indigo_property *property, char *device_name) {
-	for (int i = 1; i < device_list->count; i++) {
+static void remove_from_list(indigo_device *device, indigo_property *device_list, int start, indigo_property *property, char *device_name) {
+	for (int i = start; i < device_list->count; i++) {
 		if (!strcmp(property->device, device_list->items[i].name)) {
 			if (device_list->items[i].sw.value && device_name) {
 				device_list->items[0].sw.value = true;
@@ -929,10 +929,10 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	}
 	if (*property->name == 0 || !strcmp(property->name, INFO_PROPERTY_NAME)) {
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
-			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_device_list_properties[i], property, FILTER_CLIENT_CONTEXT->device_name[i]);
-			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i], property, NULL);
-			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, property, NULL);
+			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_device_list_properties[i], 1, property, FILTER_CLIENT_CONTEXT->device_name[i]);
+			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i], 1, property, NULL);
 		}
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, 0, property, NULL);
 	}
 	return INDIGO_OK;
 }
