@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-## [2.0-200] - 27 Oct Thu 2022
+## [2.0-200] - 28 Oct Fri 2022
 
 ### Overall
 - docs:
@@ -20,7 +20,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- added indigo_format_number() to format sexadecimal numbers (%m format)
 
 - indigo_server:
-	- fix driver load failure to load message
+	- better handling of driver failure to load
 
 ### Driver Fixes
 - indigo_agent_astap:
