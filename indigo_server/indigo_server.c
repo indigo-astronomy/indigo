@@ -980,6 +980,16 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	return INDIGO_OK;
 }
 
+static void send_driver_load_error_message(indigo_result result, char *driver_name) {
+	if (result == INDIGO_UNSUPPORTED_ARCH) {
+		indigo_send_message(&server_device, "Driver '%s' failed to load: not supported on this architecture", driver_name);
+	} else if (result == INDIGO_UNRESOLVED_DEPS) {
+		indigo_send_message(&server_device, "Driver '%s' failed to load: unresolved dependencies", driver_name);
+	} else if (result != INDIGO_OK){
+		indigo_send_message(&server_device, "Driver '%s' failed to load", driver_name);
+	}
+}
+
 static indigo_result change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(property != NULL);
@@ -1017,26 +1027,21 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 					if (driver->dl_handle == NULL && !driver->initialized) {
 						indigo_result result = driver->driver(INDIGO_DRIVER_INIT, NULL);
 						SERVER_DRIVERS_PROPERTY->items[i].sw.value = driver->initialized = result == INDIGO_OK;
-						if (result == INDIGO_UNSUPPORTED_ARCH)
-							indigo_send_message(&server_device, "Driver '%s' is not supported on this architecture", driver->description);
-						if (result == INDIGO_UNRESOLVED_DEPS)
-							indigo_send_message(&server_device, "Driver '%s' has unresolved dependencies", driver->description);
+						send_driver_load_error_message(result, driver->name);
 					} else if (driver->dl_handle != NULL && !driver->initialized) {
 						indigo_result result = driver->driver(INDIGO_DRIVER_INIT, NULL);
 						SERVER_DRIVERS_PROPERTY->items[i].sw.value = driver->initialized = result == INDIGO_OK;
-						if (result == INDIGO_UNSUPPORTED_ARCH)
-							indigo_send_message(&server_device, "Driver '%s' is not supported on this architecture", driver->description);
-						if (result == INDIGO_UNRESOLVED_DEPS)
-							indigo_send_message(&server_device, "Driver '%s' has unresolved dependencies", driver->description);
+						send_driver_load_error_message(result, driver->name);
 						if (driver && !driver->initialized)
 							indigo_remove_driver(driver);
 					}
 				} else {
-					SERVER_DRIVERS_PROPERTY->items[i].sw.value = indigo_load_driver(name, true, &driver) == INDIGO_OK;
+					indigo_result result = indigo_load_driver(name, true, &driver);
+					SERVER_DRIVERS_PROPERTY->items[i].sw.value = result == INDIGO_OK;
 					if (driver && !driver->initialized) {
-						indigo_send_message(device, "Driver %s failed to load", name);
 						indigo_remove_driver(driver);
 					}
+					send_driver_load_error_message(result, name);
 				}
 			} else if (driver) {
 				indigo_result result = INDIGO_OK;
@@ -1082,7 +1087,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 					return INDIGO_OK;
 				}
 			indigo_driver_entry *driver;
-			if (indigo_load_driver(SERVER_LOAD_ITEM->text.value, true, &driver) == INDIGO_OK) {
+			indigo_result result = INDIGO_OK;
+			if ((result = indigo_load_driver(SERVER_LOAD_ITEM->text.value, true, &driver)) == INDIGO_OK) {
 				bool found = false;
 				for (int i = 0; i < SERVER_DRIVERS_PROPERTY->count; i++) {
 					if (!strcmp(SERVER_DRIVERS_PROPERTY->items[i].name, name)) {
@@ -1103,7 +1109,11 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 				indigo_update_property(device, SERVER_LOAD_PROPERTY, "Driver %s (%s) loaded", name, driver->description);
 			} else {
 				SERVER_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, SERVER_LOAD_PROPERTY, "Driver %s (%s) failed to load", name, driver->description);
+				if (driver && !driver->initialized) {
+					indigo_remove_driver(driver);
+				}
+				send_driver_load_error_message(result, name);
+				indigo_update_property(device, SERVER_LOAD_PROPERTY, NULL);
 			}
 		}
 		return INDIGO_OK;
