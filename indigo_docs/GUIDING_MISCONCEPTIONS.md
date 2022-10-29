@@ -1,6 +1,6 @@
-# Five Guiding Misconceptions Explained
+# Several Guiding Misconceptions Explained
 
-Revision: 11.10.2022 (draft)
+Revision: 29.10.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -33,6 +33,10 @@ Guiding exposure of 1.5s with total RMSE 0.7", median FWHM 4.16px
 Also RMSE does not say anything about the star shapes, and you may end up in oblong stars with an excellent RMSE. The thing is that if Right Ascension RMSE and Declination RMSE differ significantly the stars in the final image will be elongated in the direction of the axis with the larger RMSE. Actually the only conclusion one can draw from the RMSE values is the final image star roundness. If the ratio *RMSE RA / RMS Dec = 1* the stars will be perfectly round.
 
 As stated above RMSE is not a measure of how [precise and accurate](https://en.wikipedia.org/wiki/Accuracy_and_precision) the guiding is. RMSE is a measure of how smooth the guiding is in the current conditions. One can not compare the quality of the images based on the RMSE values taken with different guiding exposures or taken with different equipment or taken in different seeing conditions etc.
+
+## Lower RMSE means mechanically superior mount
+
+As mentioned in the previous section RMSE is not a good metric for the image quality. All mentioned above is valid for the mechanical quality of the mount. However there is another factor that plays a major role here. It is the declination at which you are guiding. The closer to the pole you go the shorter the Right Ascension circle. The equator is a [Great circle](https://en.wikipedia.org/wiki/Great_circle) where the RA tracking errors are most prominent and at the pole there is no circle, the circle collapses to a point and the mount rotates the telescope around its axis. In other words the closer you go to the pole the smaller the RA circle. So, for the same RA difference between two points the telescope will have to move less if closer to the pole by a factor of roughly cos(Dec). This is to say that with the same mount if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; more to the pole at Dec = 70&deg; the RA RMSE would be 0.17". So comparing two mounts by RMSE only makes no sense. You should at the very least least specify the Declination at which you get those numbers (not to mention the factors mentioned in the previous section).
 
 ## Better polar alignment means better guiding
 
