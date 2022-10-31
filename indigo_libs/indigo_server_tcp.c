@@ -129,6 +129,7 @@ static void start_worker_thread(int *client_socket) {
 						*params++ = 0;
 					char websocket_key[256] = "";
 					bool use_gzip = false;
+					bool use_imagebytes = false;
 					while (indigo_read_line(socket, header, BUFFER_SIZE) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
 							strncpy(websocket_key, header + 19, sizeof(websocket_key));
@@ -136,7 +137,11 @@ static void start_worker_thread(int *client_socket) {
 							keep_alive = false;
 						if (!strncasecmp(header, "Accept-Encoding:", 16)) {
 							if (strstr(header + 16, "gzip"))
-							use_gzip = true;
+								use_gzip = true;
+						}
+						if (!strncasecmp(header, "Accept-Encoding:", 16)) {
+							if (strstr(header + 16, "application/imagebytes"))
+								use_imagebytes = true;
 						}
 					}
 					if (!strcmp(path, "/")) {
@@ -263,7 +268,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_LOG(indigo_log("%s -> Failed", request));
 							goto failure;
 						} else if (resource->handler) {
-							keep_alive = resource->handler(socket, use_gzip ? "GET/GZIP" : "GET", path, params);
+							keep_alive = resource->handler(socket, use_imagebytes ? "GET/IMAGEBYTES" : (use_gzip ? "GET/GZIP" : "GET"), path, params);
 						} else if (resource->data) {
 							INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 							INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
