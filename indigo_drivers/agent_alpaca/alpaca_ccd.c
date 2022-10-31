@@ -1312,19 +1312,12 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 }
 
 #define PRINTF(fmt, ...) if (use_gzip) gzprintf(gzf, fmt, ##__VA_ARGS__); else indigo_printf(socket, fmt, ##__VA_ARGS__);
-#define WRITE(buffer, length) if (use_gzip) gzwrite(gzf, buffer, length); else indigo_write(socket, buffer, length);
 
 void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
 	indigo_alpaca_error result = indigo_alpaca_error_OK;
 	indigo_blob_entry *entry;
-	gzFile gzf = NULL;
 	if (use_imagebytes) {
-		if (use_gzip) {
-			indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Encoding: gzip\r\n\r\n");
-			gzf = gzdopen(socket, "w");
-		} else {
-			indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\n\r\n");
-		}
+		indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\n\r\n");
 		indigo_alpaca_metadata metadata = { 0 };
 		metadata.metadata_version = 1;
 		metadata.client_transaction_id = client_transaction_id;
@@ -1345,7 +1338,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					uint8_t *data = entry->content + sizeof(indigo_raw_header);
 					for (int col = 0; col < width; col++) {
 						for (int row = 0; row < height; row++) {
-							WRITE((const char *)&data[row * width + col], 1);
+							indigo_write(socket, (const char *)&data[row * width + col], 1);
 						}
 					}
 					break;
@@ -1358,7 +1351,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					uint16_t *data = entry->content + sizeof(indigo_raw_header);
 					for (int col = 0; col < width; col++) {
 						for (int row = 0; row < height; row++) {
-							WRITE((const char *)&data[row * width + col], 2);
+							indigo_write(socket, (const char *)&data[row * width + col], 2);
 						}
 					}
 					break;
@@ -1373,7 +1366,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = 0; row < height; row++) {
 							int base = 3 * (row * width + col);
 							uint8_t rgb[3] = { data[base + 0], data[base + 1], data[base + 2] };
-							WRITE((const char *)(const char *)rgb, 3);
+							indigo_write(socket, (const char *)(const char *)rgb, 3);
 						}
 					}
 					break;
@@ -1388,7 +1381,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = 0; row < height; row++) {
 							int base = 3 * (row * width + col);
 							uint16_t rgb[3] = { data[base + 0], data[base + 1], data[base + 2] };
-							WRITE((const char *)(const char *)rgb, 6);
+							indigo_write(socket, (const char *)(const char *)rgb, 6);
 						}
 					}
 					break;
@@ -1403,7 +1396,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = 0; row < height; row++) {
 							int base = 4 * (row * width + col);
 							uint8_t rgb[3] = { data[base + 0], data[base + 1], data[base + 2] };
-							WRITE((const char *)(const char *)rgb, 3);
+							indigo_write(socket, (const char *)(const char *)rgb, 3);
 						}
 					}
 					break;
@@ -1418,7 +1411,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = 0; row < height; row++) {
 							int base = 4 * (row * width + col);
 							uint8_t rgb[3] = { data[base + 3], data[base + 2], data[base + 1] };
-							WRITE((const char *)(const char *)rgb, 3);
+							indigo_write(socket, (const char *)(const char *)rgb, 3);
 						}
 					}
 					break;
@@ -1428,9 +1421,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		} else {
 			metadata.error_number = result;
 			indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-			PRINTF("%s", indigo_alpaca_error_string(result));
+			indigo_printf(socket, "%s", indigo_alpaca_error_string(result));
 		}
 	} else {
+		gzFile gzf = NULL;
 		if (use_gzip) {
 			indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
 			gzf = gzdopen(socket, "w");
@@ -1517,7 +1511,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 			result = indigo_alpaca_error_InvalidOperation;
 		}
 		PRINTF("], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", result, indigo_alpaca_error_string(result), client_transaction_id, server_transaction_id);
+		if (use_gzip)
+			gzclose(gzf);
 	}
-	if (use_gzip)
-		gzclose(gzf);
 }
