@@ -6,6 +6,8 @@ https://github.com/ASCOMInitiative/ASCOMRemote/blob/master/Documentation/ASCOM%2
 
 https://ascom-standards.org/api
 
+https://ascom-standards.org/Developer/AlpacaImageBytes.pdf
+
 ## Supported devices
 
 N/A
@@ -68,6 +70,7 @@ ICameraV3 implemented.
 * INDIGO RGB is mapped to Colour, other modes to Mono sensor type (no bayer offsets etc)
 * INDIGO camera mode is mapped to ASCOM readout mode
 * None and GZip image compression supported (no deflate)
+* application/imagebytes transfer mode supported (with and without gzip compression)
 
 #### Selecting "Image array transfer transfer method"
 Alpaca supports several methods for image transfer, but some of them are mostly useless especially for large images.
