@@ -310,7 +310,7 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 	if (!strncmp(method, "GET", 3)) {
 		parse_url_params(params, &client_id, &client_transaction_id, &id);
 		if (!strncmp(command, "imagearray", 10)) {
-			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"));
+			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
 			return false;
 		} else {
 			buffer = indigo_alloc_large_buffer();
