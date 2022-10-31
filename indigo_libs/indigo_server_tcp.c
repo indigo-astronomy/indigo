@@ -139,8 +139,8 @@ static void start_worker_thread(int *client_socket) {
 							if (strstr(header + 16, "gzip"))
 								use_gzip = true;
 						}
-						if (!strncasecmp(header, "Accept-Encoding:", 16)) {
-							if (strstr(header + 16, "application/imagebytes"))
+						if (!strncasecmp(header, "Accept:", 7)) {
+							if (strstr(header + 7, "application/imagebytes"))
 								use_imagebytes = true;
 						}
 					}
