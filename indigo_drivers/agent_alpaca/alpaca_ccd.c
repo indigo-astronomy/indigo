@@ -1350,8 +1350,9 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					uint16_t *data = entry->content + sizeof(indigo_raw_header);
 					uint32_t *buffer = malloc(size * 4), *pnt = buffer;
 					for (int col = 0; col < width; col++)
-						for (int row = 0; row < height; row++)
+						for (int row = 0; row < height; row++) {
 							*pnt++ = data[row * width + col];
+						}
 					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", sizeof(metadata) + size * 2);
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
 					indigo_write(socket, (const char *)buffer, size * 4);
@@ -1362,7 +1363,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					metadata.dimension3 = 3;
 					metadata.rank = 3;
 					uint8_t *data = entry->content + sizeof(indigo_raw_header);
-					uint8_t *buffer = malloc(size * 12), *pnt = buffer;
+					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = 0; row < height; row++) {
 							int base = 3 * (row * width + col);
@@ -1380,7 +1381,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					metadata.rank = 3;
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
 					uint16_t *data = entry->content + sizeof(indigo_raw_header);
-					uint16_t *buffer = malloc(size * 12), *pnt = buffer;
+					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = 0; row < height; row++) {
 							int base = 3 * (row * width + col);
@@ -1397,7 +1398,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					metadata.dimension3 = 3;
 					metadata.rank = 3;
 					uint8_t *data = entry->content + sizeof(indigo_raw_header);
-					uint8_t *buffer = malloc(size * 12), *pnt = buffer;
+					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = 0; row < height; row++) {
 							int base = 4 * (row * width + col);
@@ -1415,7 +1416,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					metadata.rank = 3;
 					metadata.image_element_type = metadata.transmission_element_type = 6; // byte
 					uint8_t *data = entry->content + sizeof(indigo_raw_header);
-					uint8_t *buffer = malloc(size * 12), *pnt = buffer;
+					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
 						for (int row = 0; row < height; row++) {
 							int base = 4 * (row * width + col);
