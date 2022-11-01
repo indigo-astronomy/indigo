@@ -210,6 +210,19 @@ typedef struct indigo_alpaca_device_struct {
 	struct indigo_alpaca_device_struct *next;
 } indigo_alpaca_device;
 
+typedef enum {
+	indigo_alpaca_type_unknown = 0, // 0 to 3 are values already used in the Alpaca standard
+	indigo_alpaca_type_int16 = 1,
+	indigo_alpaca_type_int32 = 2,
+	indigo_alpaca_type_double = 3,
+	indigo_alpaca_type_single = 4, // 4 to 9 are an extension to include other numeric types
+	indigo_alpaca_type_uint64 = 5,
+	indigo_alpaca_type_byte = 6,
+	indigo_alpaca_type_int64 = 7,
+	indigo_alpaca_type_uint16 = 8,
+	indigo_alpaca_type_uint32 = 9
+} indigo_alpaca_element_type;
+
 typedef struct {
 	int32_t metadata_version; // Bytes 0..3 - Metadata version = 1
 	int32_t error_number; // Bytes 4..7 - Alpaca error number or zero for success
