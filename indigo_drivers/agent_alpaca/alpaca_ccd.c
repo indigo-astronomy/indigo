@@ -1367,9 +1367,9 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					for (int col = 0; col < width; col++)
 						for (int row = 0; row < height; row++) {
 							int base = 3 * (row * width + col);
-							*pnt++ = data[base + 0];
-							*pnt++ = data[base + 1];
 							*pnt++ = data[base + 2];
+							*pnt++ = data[base + 1];
+							*pnt++ = data[base + 0];
 						}
 					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", sizeof(metadata) + size * 3);
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
@@ -1385,46 +1385,11 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					for (int col = 0; col < width; col++)
 						for (int row = 0; row < height; row++) {
 							int base = 3 * (row * width + col);
-							*pnt++ = data[base + 0];
-							*pnt++ = data[base + 1];
 							*pnt++ = data[base + 2];
+							*pnt++ = data[base + 1];
+							*pnt++ = data[base + 0];
 						}
 					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", sizeof(metadata) + size * 6);
-					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-					indigo_write(socket, (const char *)buffer, size * 12);
-					break;
-				}
-				case INDIGO_RAW_RGBA32: {
-					metadata.dimension3 = 3;
-					metadata.rank = 3;
-					uint8_t *data = entry->content + sizeof(indigo_raw_header);
-					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
-					for (int col = 0; col < width; col++)
-						for (int row = 0; row < height; row++) {
-							int base = 4 * (row * width + col);
-							*pnt++ = data[base + 0];
-							*pnt++ = data[base + 1];
-							*pnt++ = data[base + 2];
-						}
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", sizeof(metadata) + size * 3);
-					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-					indigo_write(socket, (const char *)buffer, size * 12);
-					break;
-				}
-				case INDIGO_RAW_ABGR32: {
-					metadata.dimension3 = 3;
-					metadata.rank = 3;
-					metadata.image_element_type = metadata.transmission_element_type = 6; // byte
-					uint8_t *data = entry->content + sizeof(indigo_raw_header);
-					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
-					for (int col = 0; col < width; col++)
-						for (int row = 0; row < height; row++) {
-							int base = 4 * (row * width + col);
-							*pnt++ = data[base + 3];
-							*pnt++ = data[base + 2];
-							*pnt++ = data[base + 1];
-						}
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", sizeof(metadata) + size * 3);
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
 					indigo_write(socket, (const char *)buffer, size * 12);
 					break;
