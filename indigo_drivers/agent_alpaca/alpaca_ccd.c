@@ -1366,9 +1366,9 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--) {
 							int base = 3 * (row * width + col);
+							*pnt++ = data[base + 2];
 							*pnt++ = data[base + 0];
 							*pnt++ = data[base + 1];
-							*pnt++ = data[base + 2];
 						}
 					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
 					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
