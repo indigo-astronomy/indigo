@@ -1423,7 +1423,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						} else {
 							PRINTF(", [");
 						}
-						for (int row = 0; row < height; row++) {
+						for (int row = height - 1; row >= 0; row--) {
 							if (row == 0) {
 								PRINTF("%d", data[row * width + col]);
 							} else {
@@ -1443,7 +1443,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						} else {
 							PRINTF(", [");
 						}
-						for (int row = 0; row < height; row++) {
+						for (int row = height - 1; row >= 0; row--) {
 							if (row == 0) {
 								PRINTF("%d", data[row * width + col]);
 							} else {
@@ -1463,7 +1463,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						} else {
 							PRINTF(", [");
 						}
-						for (int row = 0; row < height; row++) {
+						for (int row = height - 1; row >= 0; row--) {
 							int base = 3 * (row * width + col);
 							int r = data[base + 0];
 							int g = data[base + 1];
