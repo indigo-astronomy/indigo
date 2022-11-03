@@ -33,7 +33,7 @@
 #include <assert.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <sys/dirent.h>
+#include <dirent.h>
 #include <sys/stat.h>
 
 #include <indigo/indigo_agent.h>
