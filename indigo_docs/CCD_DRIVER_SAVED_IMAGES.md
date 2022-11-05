@@ -19,13 +19,13 @@ In INDIGO, saving images from the camera driver is controlled by two separate pr
 
 * **CCD_LOCAL_MODE** - This property sets the path and the file name template of the driver saved copy of the image. It has two items:
 	- **DIR** - the directory where the image will be saved, this directory should exist and should be writable.
-	- **PREFIX** - the file name prefix or the file name template. There are two ways to provide the filename template. The first is the legacy, INDI style, where you can provide a prefix and a file number placeholder. The second is more complex with various placeholders.
+	- **PREFIX** - the file name prefix or the file name template. There are two ways to provide the filename template. The first is the legacy, INDI style, where you can provide a prefix and a file number placeholder. The second is more complex with various placeholders. The image format extension is automatically appended.
 
 In client-server setup the camera driver saved images are saved on the server. In this context "LOCAL" stands for local for the server and the clients can access them through the INDIGO Imager Agent.
 
 ## Legacy file name templates
 
-The legacy file name templates come as INDI standard heritage. Here **PREFIX** item is in format "image_XXX" or "image_XXXX", where "image" is a string literal and "XXX" or "XXXX" suffix is a placeholder for the file number. The image format extension is automatically appended.
+The legacy file name templates come as INDI standard heritage. Here **PREFIX** item is in format "image_XXX" or "image_XXXX", where "image" is a string literal and "XXX" or "XXXX" suffix is a placeholder for the file number.
 
 ### Examples
 
