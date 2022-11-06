@@ -51,7 +51,7 @@ INDIGO file name templates support a number of placeholders starting with "%" ch
 
 * **%H**, **%-H** or **%.H** - expands to the local time in formats respectively: HHMMSS, HH-MM-SS or HH.MM.SS
 
-* **%C** - expands to the filter name: "R", "G", "B", "Ha", "OIII" etc.
+* **%C** - expands to the filter name: "R", "G", "B", "Ha", "OIII" etc. This placeholder reads *FILTER* keyword set in the **CCD_FITS_HEADERS** property, if not set it will expand to "nofilter". INDIGO Imager Agent sets this keyword if filer wheel is selected.
 
 * **%nS** - expands to the sequential number of the file with the same name. Where 'n' is the number of digits used to represent the number and can be in the range [1, 5].
 
