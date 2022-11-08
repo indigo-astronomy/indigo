@@ -1772,7 +1772,7 @@ static inline int datetimesort(const struct dirent **a, const struct dirent **b)
 
 	if (stat1.st_mtime > stat2.st_mtime) return 1;
 	if (stat1.st_mtime < stat2.st_mtime) return -1;
-	if (stat1.st_mtime = stat2.st_mtime) {
+	if (stat1.st_mtime == stat2.st_mtime) {
 		#if defined(INDIGO_LINUX)
 		if (stat1.st_mtim.tv_nsec > stat2.st_mtim.tv_nsec) return 1;
 		if (stat1.st_mtim.tv_nsec < stat2.st_mtim.tv_nsec) return -1;
