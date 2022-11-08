@@ -1770,7 +1770,9 @@ static inline int datetimesort(const struct dirent **a, const struct dirent **b)
         return 0;
     }
 
-    return stat1.st_mtime > stat2.st_mtime;
+	if (stat1.st_mtime > stat2.st_mtime) return 1;
+	if (stat1.st_mtime < stat2.st_mtime) return -1;
+	return 0;
 }
 
 static inline void print_dirent(const struct dirent **a) {
@@ -1785,7 +1787,7 @@ static inline void print_dirent(const struct dirent **a) {
         INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not stat %s", path1);
         return;
     }
-   INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s => %d", path1, stat1.st_mtime);
+   INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s => %d", path1, stat1.st_ctime);
 
 }
 
