@@ -51,6 +51,30 @@
                 "ignoreFailures": true
             }
         ]
+    },
+    {
+        "name": "Debug (lldb)",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/build/bin/indigo_server",
+        "args": ["--do-not-fork", "-vv"],
+        "stopAtEntry": true,
+        "cwd": "${fileDirname}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "lldb"
+    },
+    {
+        "name": "Debug (lldb) - simulators",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/build/bin/indigo_server",
+        "args": ["--do-not-fork", "-vv", "indigo_ccd_simulator", "indigo_mount_simulator"],
+        "stopAtEntry": true,
+        "cwd": "${fileDirname}",
+        "environment": [],
+        "externalConsole": false,
+        "MIMode": "lldb"
     }
     ]
 }
