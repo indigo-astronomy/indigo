@@ -38,6 +38,7 @@
 
 #include <indigo/indigo_agent.h>
 #include <indigo/indigo_xml.h>
+#include <indigo/indigo_client.h>
 
 #include "indigo_agent_config.h"
 
@@ -56,7 +57,7 @@
 #define AGENT_CONFIG_PROFILES_PROPERTY_NAME				"AGENT_CONFIG_PROFILES"
 #define AGENT_CONFIG_PROFILES_PROPERTY						(DEVICE_PRIVATE_DATA->profiles)
 
-#define AGENT_CONFIG_PROPERTY_NAME								"AGENT_CONFIG_%d"
+#define AGENT_CONFIG_PROPERTY_NAME								"AGENT_CONFIG %s" // remember to change all "12" and "13" occurences if this format is changed
 
 #define MAX_AGENTS																16
 #define AGENT_CONFIG_AGENTS_PROPERTIES						(DEVICE_PRIVATE_DATA->agents)
@@ -70,6 +71,7 @@ typedef struct {
 	indigo_property *drivers;
 	indigo_property *profiles;
 	indigo_property *agents[MAX_AGENTS];
+	char server[INDIGO_NAME_SIZE];
 	int restore_count;
 	indigo_property *restore_properties[MAX_AGENTS];
 	pthread_mutex_t restore_mutex;
@@ -117,6 +119,60 @@ static void populate_lists(indigo_device *device) {
 }
 
 static void load_configuration(indigo_device *device) {
+	// request deselect everything from all agents first
+	for (int i = 0; i < MAX_AGENTS; i++) {
+		indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i];
+		if (agent) {
+			indigo_property *copy = indigo_safe_malloc_copy(sizeof(indigo_property) + agent->count * sizeof(indigo_item), agent);
+			char *device_name = copy->name + 13;
+			for (int j = 0; j < copy->count; j++) {
+				indigo_item *item = copy->items + j;
+				if (strcmp(item->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
+					if (*item->text.value) {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Deselecting '%s' from '%s'", item->text.value, device_name);
+						indigo_change_switch_property_1(agent_client, device_name, item->name, FILTER_DEVICE_LIST_NONE_ITEM_NAME, true);
+					}
+				} else {
+					char *rest = NULL;
+					for (char *token = strtok_r(item->text.value, ";", &rest); token; token = strtok_r(NULL, ";", &rest)) {
+						if (token == NULL || *token == 0)
+							break;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Deselecting '%s' from '%s'", token, device_name);
+						indigo_change_switch_property_1(agent_client, device_name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, token, false);
+					}
+					break;
+				}
+			}
+		}
+	}
+	// check everything is deselected
+	bool done = false;
+	for (int k = 0; k < 30; k++) {
+		done = true;
+		for (int i = 0; i < MAX_AGENTS; i++) {
+			indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i];
+			if (agent) {
+				for (int j = 0; j < agent->count; j++) {
+					indigo_item *item = agent->items + j;
+					if (*item->text.value) {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for %s to disconnect", item->text.value);
+						done = false;
+						break;
+					}
+				}
+				if (!done)
+					break;
+			}
+		}
+		if (done)
+			break;
+		indigo_usleep(100000);
+	}
+	if (!done) {
+		indigo_send_message(agent_device, "Can't deselect active devices before loading new configuration");
+		return;
+	}
+	// load saved configuration
 	for (int i = 0; i < AGENT_CONFIG_LOAD_PROPERTY->count; i++) {
 		indigo_item *item = AGENT_CONFIG_LOAD_PROPERTY->items + i;
 		if (item->sw.value) {
@@ -144,37 +200,54 @@ static void load_configuration(indigo_device *device) {
 
 static void process_configuration_property(indigo_device *device) {
 	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->restore_mutex);
-
 	for (int i = 0; i < DEVICE_PRIVATE_DATA->restore_count; i++) {
-		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 		indigo_property *property = DEVICE_PRIVATE_DATA->restore_properties[i];
 		if (property) {
 			DEVICE_PRIVATE_DATA->restore_properties[i] = NULL;
 			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Restoring '%s'", property->name);
 			if (!strcmp(property->name, AGENT_CONFIG_DRIVERS_PROPERTY_NAME)) {
-				for (int j = 0; j < property->count; j++) {
-					indigo_item *item = property->items + j;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Loading '%s'", item->name);
-					// TBD
-				}
+				indigo_property *copy = indigo_safe_malloc_copy(sizeof(indigo_property) + property->count * sizeof(indigo_item), property);
+				strcpy(copy->name, SERVER_DRIVERS_PROPERTY_NAME);
+				strcpy(copy->device, DEVICE_PRIVATE_DATA->server);
+				indigo_change_property(agent_client, copy); // it expects this call is actually synchronous on a local bus
+				indigo_safe_free(copy);
 			} else if (!strcmp(property->name, AGENT_CONFIG_PROFILES_PROPERTY_NAME)) {
 				for (int j = 0; j < property->count; j++) {
 					indigo_item *item = property->items + j;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting '%s' to '%s'", item->text.value, item->name);
-					// TBD
+					indigo_change_switch_property_1(agent_client, item->name, PROFILE_PROPERTY_NAME, item->text.value, true); // it expects this call is actually synchronous on a local bus
 				}
 			} else {
+				char *device_name = property->name + 13;
 				for (int j = 0; j < property->count; j++) {
 					indigo_item *item = property->items + j;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting '%s' to '%s'", item->text.value, item->name);
-					// TBD
+					if (strcmp(item->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
+						if (*item->text.value) {
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting '%s' to '%s'", item->text.value, device_name);
+							indigo_change_switch_property_1(agent_client, device_name, item->name, item->text.value, true);
+						} else {
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting 'NONE' to '%s'", device_name);
+							indigo_change_switch_property_1(agent_client, device_name, item->name, FILTER_DEVICE_LIST_NONE_ITEM_NAME, true);
+						}
+					}
+				}
+				for (int j = 0; j < property->count; j++) {
+					indigo_item *item = property->items + j;
+					if (!strcmp(item->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
+						char *rest = NULL;
+						for (char *token = strtok_r(item->text.value, ";", &rest); token; token = strtok_r(NULL, ";", &rest)) {
+							if (token == NULL || *token == 0)
+								break;
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting '%s' from '%s'", item->text.value, device_name);
+							indigo_change_switch_property_1(agent_client, device_name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, token, true);
+						}
+						break;
+					}
 				}
 			}
 			indigo_release_property(property);
 			break;
-		} else {
-			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 		}
 	}
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->restore_mutex);
@@ -202,10 +275,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		AGENT_CONFIG_REMOVE_PROPERTY->count = 0;
 		populate_lists(device);
-		AGENT_CONFIG_DRIVERS_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_CONFIG_DRIVERS_PROPERTY_NAME, "Configuration", "Drivers", INDIGO_OK_STATE, INDIGO_RO_PERM, 128);
+		AGENT_CONFIG_DRIVERS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_CONFIG_DRIVERS_PROPERTY_NAME, "Configuration", "Drivers", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 0);
 		if (AGENT_CONFIG_DRIVERS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		AGENT_CONFIG_DRIVERS_PROPERTY->count = 0;
 		AGENT_CONFIG_PROFILES_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_CONFIG_PROFILES_PROPERTY_NAME, "Configuration", "Profiles", INDIGO_OK_STATE, INDIGO_RO_PERM, 128);
 		if (AGENT_CONFIG_PROFILES_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -311,7 +383,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_define_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 		indigo_define_property(device, AGENT_CONFIG_REMOVE_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (!strncmp(property->name, "AGENT_CONFIG_", 13)) {
+	} else if (!strncmp(property->name, "AGENT_CONFIG", 12)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 		DEVICE_PRIVATE_DATA->restore_properties[DEVICE_PRIVATE_DATA->restore_count++] = indigo_safe_malloc_copy(sizeof(indigo_property) + property->count * sizeof(indigo_item), property);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
@@ -339,25 +411,10 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static void update_drivers(indigo_device *device, indigo_property *property) {
 	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
-	int index = 0;
 	indigo_delete_property(device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
-	AGENT_CONFIG_DRIVERS_PROPERTY->count = 0;
-	for (int i = 0; i < property->count; i++) {
-		indigo_item *item = property->items + i;
-		if (item->sw.value && strncmp(item->name, "indigo_agent_", 13)) {
-			AGENT_CONFIG_DRIVERS_PROPERTY = indigo_resize_property(AGENT_CONFIG_DRIVERS_PROPERTY, index + 1);
-			indigo_init_text_item(AGENT_CONFIG_DRIVERS_PROPERTY->items + index, item->name, item->name, item->label);
-			index++;
-		}
-	}
-	for (int i = 0; i < property->count; i++) {
-		indigo_item *item = property->items + i;
-		if (item->sw.value && !strncmp(item->name, "indigo_agent_", 13) && strcmp(item->name, "indigo_agent_config")) {
-			AGENT_CONFIG_DRIVERS_PROPERTY = indigo_resize_property(AGENT_CONFIG_DRIVERS_PROPERTY, index + 1);
-			indigo_init_text_item(AGENT_CONFIG_DRIVERS_PROPERTY->items + index, item->name, item->name, item->label);
-			index++;
-		}
-	}
+	AGENT_CONFIG_DRIVERS_PROPERTY = indigo_resize_property(AGENT_CONFIG_DRIVERS_PROPERTY, property->count);
+	memcpy(AGENT_CONFIG_DRIVERS_PROPERTY->items, property->items, property->count * sizeof(indigo_item));
+	strcpy(DEVICE_PRIVATE_DATA->server, property->device);
 	indigo_define_property(device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 }
@@ -392,9 +449,11 @@ static void add_profile(indigo_device *device, indigo_property *property) {
 static void add_device(indigo_device *device, indigo_property *property) {
 	pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 	indigo_property *agent = NULL;
+	char name[INDIGO_NAME_SIZE];
+	sprintf(name, AGENT_CONFIG_PROPERTY_NAME, property->device);
 	for (int i = 0; i < MAX_AGENTS; i++) {
 		indigo_property *prop = AGENT_CONFIG_AGENTS_PROPERTIES[i];
-		if (prop && !strcmp(prop->label, property->device)) {
+		if (prop && !strcmp(prop->name, name)) {
 			agent = prop;
 			indigo_delete_property(device, agent, NULL);
 			break;
@@ -403,8 +462,6 @@ static void add_device(indigo_device *device, indigo_property *property) {
 	if (agent == NULL) {
 		for (int i = 0; i < MAX_AGENTS; i++) {
 			if (AGENT_CONFIG_AGENTS_PROPERTIES[i] == NULL) {
-				char name[INDIGO_NAME_SIZE];
-				sprintf(name, AGENT_CONFIG_PROPERTY_NAME, i);
 				agent = indigo_init_text_property(NULL, device->name, name, "Configuration", property->device, INDIGO_OK_STATE, INDIGO_RO_PERM, 4);
 				agent->count = 0;
 				AGENT_CONFIG_AGENTS_PROPERTIES[i] = agent;
@@ -412,8 +469,11 @@ static void add_device(indigo_device *device, indigo_property *property) {
 			}
 		}
 	}
-	if (agent == NULL)
+	if (agent == NULL) {
+		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Too many agents detected");
 		return;
+	}
 	indigo_item *filter = NULL;
 	for (int i = 0; i < agent->count; i++) {
 		indigo_item *item = agent->items + i;
@@ -438,7 +498,7 @@ static void add_device(indigo_device *device, indigo_property *property) {
 		indigo_item *item = property->items + i;
 		if (item->sw.value) {
 			if (*filter->text.value)
-				strcat(filter->text.value, "; ");
+				strcat(filter->text.value, ";");
 			if (strcmp(item->name, "NONE"))
 				strcat(filter->text.value, item->name);
 		}
