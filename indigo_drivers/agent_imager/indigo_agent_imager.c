@@ -1769,9 +1769,24 @@ static inline int datetimesort(const struct dirent **a, const struct dirent **b)
         INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not stat %s", path1);
         return 0;
     }
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %d\n%s -> %d\n\n", path1, stat1.st_mtime, path2, stat2.st_mtime);
 
     return stat1.st_mtime > stat2.st_mtime;
+}
+
+static inline void print_dirent(const struct dirent **a) {
+    int rc;
+    struct stat stat1;
+    char path1[INDIGO_VALUE_SIZE];
+
+    snprintf(path1, INDIGO_VALUE_SIZE, "%s/%s", imagedir, (*a)->d_name);
+
+    rc = stat(path1, &stat1);
+    if (rc) {
+        INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not stat %s", path1);
+        return;
+    }
+   INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s => %d", path1, stat1.st_mtime);
+
 }
 
 static void setup_download(indigo_device *device) {
@@ -1789,6 +1804,7 @@ static void setup_download(indigo_device *device) {
 				strcpy(file_name, DEVICE_PRIVATE_DATA->current_folder);
 				strcat(file_name, entries[i]->d_name);
 				if (stat(file_name, &file_stat) >= 0 && file_stat.st_size > 0) {
+					print_dirent(&entries[i]);
 					indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + valid_count++, entries[i]->d_name, entries[i]->d_name, false);
 				}
 				free(entries[i]);
