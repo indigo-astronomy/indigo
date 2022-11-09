@@ -26,14 +26,18 @@
 #define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_agent_scripting"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_io.h>
 #include <indigo/indigo_driver.h>
 
 #include "duktape.h"
@@ -148,7 +152,16 @@ static void push_items(indigo_property *property, bool use_target) {
 				push_state(item->light.value);
 				break;
 			case INDIGO_BLOB_VECTOR:
+				//duk_push_string(PRIVATE_DATA->ctx, item->blob.url);
+				duk_push_object(PRIVATE_DATA->ctx);
 				duk_push_string(PRIVATE_DATA->ctx, item->blob.url);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "url");
+				duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "size");
+				duk_push_string(PRIVATE_DATA->ctx, item->blob.format);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "format");
+				duk_push_pointer(PRIVATE_DATA->ctx, item->blob.value);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "value");
 				break;
 		}
 		duk_put_prop_string(PRIVATE_DATA->ctx, -2, item->name);
@@ -229,6 +242,28 @@ static duk_ret_t trace_message(duk_context *ctx) {
 static duk_ret_t send_message(duk_context *ctx) {
 	const char *message = duk_require_string(ctx, 0);
 	indigo_send_message(agent_device, message);
+	return 0;
+}
+
+// function indigo_save_blob(file_name, item)
+
+static duk_ret_t save_blob(duk_context *ctx) {
+	const char *file_name = duk_require_string(ctx, 0);
+	duk_get_prop_string(ctx, 1, "value");
+	const void *buffer = duk_get_pointer(ctx, -1);
+	duk_pop(ctx);
+	duk_get_prop_string(ctx, 1, "size");
+	const long size = duk_get_number(ctx, -1);
+	duk_pop(ctx);
+	//printf("%s %p %ld\n", file_name, buffer, size);
+	int handle = open(file_name, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (handle > 0) {
+		indigo_write(handle, buffer, size);
+		close(handle);
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_save_blob() failed -> %d (%s)", stderr, strerror(errno));
+		return 1;
+	}
 	return 0;
 }
 
@@ -740,6 +775,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_trace");
 			duk_push_c_function(PRIVATE_DATA->ctx, send_message, 1);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_send_message");
+			duk_push_c_function(PRIVATE_DATA->ctx, save_blob, 2);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_save_blob");
 			duk_push_c_function(PRIVATE_DATA->ctx, emumerate_properties, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_enumerate_properties");
 			duk_push_c_function(PRIVATE_DATA->ctx, enable_blob, 3);
