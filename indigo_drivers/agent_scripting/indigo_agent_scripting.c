@@ -262,9 +262,9 @@ static duk_ret_t save_blob(duk_context *ctx) {
 		close(handle);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_save_blob() failed -> %d (%s)", stderr, strerror(errno));
-		return 1;
+		return 0;
 	}
-	return 0;
+	return 1;
 }
 
 // function indigo_enumerate_properties(device_name, property_name)
