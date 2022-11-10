@@ -509,16 +509,13 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				double stddev_x = indigo_stddev(DEVICE_PRIVATE_DATA->stack_x, count);
 				double stddev_y = indigo_stddev(DEVICE_PRIVATE_DATA->stack_y, count);
 
-				double tmp[MAX_STACK - 1];
-
 				/* Use Modified PID controller - Large random errors are not used in I, to prevent overshoots */
 				if (
 					fabs(DEVICE_PRIVATE_DATA->drift_x) < 5 * stddev_x ||
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1
 				) {
-					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
-					memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, tmp, sizeof(double) * (MAX_STACK - 1));
+					memmove(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
 					DEVICE_PRIVATE_DATA->stack_x[0] = DEVICE_PRIVATE_DATA->drift_x;
 				} else {
 					indigo_debug(
@@ -534,8 +531,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1
 				) {
-					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
-					memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, tmp, sizeof(double) * (MAX_STACK - 1));
+					memmove(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
 					DEVICE_PRIVATE_DATA->stack_y[0] = DEVICE_PRIVATE_DATA->drift_y;
 				} else {
 					indigo_debug(

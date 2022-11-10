@@ -594,7 +594,7 @@ static indigo_result agent_delete_property(indigo_client *client, indigo_device 
 				if (!strcmp(item->name, property->device)) {
 					int count = AGENT_CONFIG_PROFILES_PROPERTY->count - i - 1;
 					if (count > 0)
-						memcpy(AGENT_CONFIG_PROFILES_PROPERTY->items + i, AGENT_CONFIG_PROFILES_PROPERTY->items + i + 1, count * sizeof(indigo_item));
+						memmove(AGENT_CONFIG_PROFILES_PROPERTY->items + i, AGENT_CONFIG_PROFILES_PROPERTY->items + i + 1, count * sizeof(indigo_item));
 					AGENT_CONFIG_PROFILES_PROPERTY->count--;
 					break;
 				}
