@@ -764,7 +764,7 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 		property = indigo_safe_malloc(size);
 		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -787,7 +787,7 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 		property = indigo_safe_malloc(size);
 		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -810,7 +810,7 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 		property = indigo_safe_malloc(size);
 		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -834,7 +834,7 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 		property = indigo_safe_malloc(size);
 		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -862,7 +862,7 @@ indigo_property *indigo_init_blob_property_p(indigo_property *property, const ch
 		property = indigo_safe_malloc(size);
 		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
