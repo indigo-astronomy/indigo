@@ -1,6 +1,6 @@
 # Several Guiding Misconceptions Explained
 
-Revision: 29.10.2022 (draft)
+Revision: 11.11.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -36,7 +36,19 @@ As stated above RMSE is not a measure of how [precise and accurate](https://en.w
 
 ## Lower RMSE means mechanically superior mount
 
-As mentioned in the previous section RMSE is not a good metric for the final image quality. All mentioned above is valid for the mechanical quality of the mount too. However there is another factor that plays a major role here. It is the declination at which you are guiding. The closer you go to the pole the shorter the circle of the right ascension. The equator is a [great circle](https://en.wikipedia.org/wiki/Great_circle) where the RA tracking errors are most prominent and they translate 1:1 to angular errors on the great circle. On the other hand at the pole there is no circle (it collapses to a point) and the tracking errors are virtually 0 as the mount rotates the telescope around its axis. So the closer you are to the pole the smaller [circle of a sphere](https://en.wikipedia.org/wiki/Circle_of_a_sphere) is followed by the telescope and it will travel smaller [angular distance](https://en.wikipedia.org/wiki/Angular_distance) for the same difference in RA by a factor of roughly cos(declination). This means that with the same mount, if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; with the same mount you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; further to the pole, at Dec = 70&deg; the RA RMSE would be 0.17". So, if you can get so different RMSE values with a single mount how can you compare two mounts by RMSE only? It just makes no sense. You should at the very least specify the declination at which you get those numbers (not to mention the factors mentioned in the previous section).
+As mentioned in the previous section RMSE is not a good metric for the final image quality. All mentioned above is valid for the mechanical quality of the mount too. However there is another factor that plays a major role here. It is the declination at which you are guiding. See the picture:
+
+![](GUIDING_MISCONCEPTIONS/RA-errors.jpg)
+
+Here both red arcs are 2h in RA (30&deg;). The one at the equator has [great circle](https://en.wikipedia.org/wiki/Great_circle) length of 30&deg; as the equator is a great circle. The one at Declination = 60&deg; is about 2&times; shorter. So the closer you are to the pole the smaller [circle of a sphere](https://en.wikipedia.org/wiki/Circle_of_a_sphere) is followed by the telescope and:
+
+*Dec circle length = Equator length &times; cos(Dec)*
+
+Similarly the [angular distance](https://en.wikipedia.org/wiki/Angular_distance) between the two ends of the arcs with the same RA difference at different Declination, will have different lengths. And for small angles the relation above is a close approximation.
+
+The same apples for the RA errors. The equator is a great circle where the RA tracking errors are most prominent and they project 1:1 to angular errors. On the other hand at the pole there is no circle (it collapses to a point) and the tracking errors are virtually 0 as the mount rotates the telescope around a point. This means that with the same mount, if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; with the same mount you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; further to the pole, at Dec = 70&deg; the RA RMSE would be 0.17".
+
+So, if you can get so different RMSE values with a single mount, how can you compare two mounts by RMSE only? It just makes no sense. You should at the very least specify the declination at which you get those numbers (not to mention the factors mentioned in the previous section).
 
 ## Better polar alignment means better guiding
 
