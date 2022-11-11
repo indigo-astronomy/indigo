@@ -46,9 +46,9 @@ Here both red arcs are 2 hours in RA (30&deg;). So at both Dec = 0&deg; and Dec 
 
 Similarly the [great circle distances](https://en.wikipedia.org/wiki/Great-circle_distance) between the two ends of the arcs with the same RA difference at different Declinations, will be different. And for small angles the relation shown above is a very good approximation.
 
-The same apples for the RA error, because we measure the guiding error as a great circle distance and not as RA difference or Dec difference. Since the equator is a great circle the RA error projection is a great circle distance. On the other hand at the pole there is no circle (it collapses to a point) (*cos(90&deg;) = 0*) and the guiding error collapses to a point too, following the cos(Dec) rule. This means that with the same mount, if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; with the same mount you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; further to the pole, at Dec = 70&deg; the RA RMSE would be 0.17".
+The same apples for the RA error, because we measure the guiding error as a great circle distance and not as RA difference. At the equator, since it is a great circle, the RA error projection is a great circle distance. On the other hand at the pole there is no circle (it collapses to a point) (*cos(90&deg;) = 0*) and the RA error collapses to a point too, following the cos(Dec) rule. This means that with the same mount, if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; with the same mount you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; further to the pole, at Dec = 70&deg; the RA RMSE would be 0.17".
 
-What comes to Declination, it is always follows a great circle therefore the decination difference is always a great circle distance.
+What comes to Declination, it is always follows a great circle, therefore the decination difference is always a great circle distance.
 
 So, if you can get so different RMSE values with a single mount, how can you compare two mounts by RMSE only? It just makes no sense. You should at the very least specify the declination at which you get those numbers (not to mention the factors mentioned in the previous section).
 
