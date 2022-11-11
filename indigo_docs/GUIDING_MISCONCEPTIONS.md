@@ -40,13 +40,15 @@ As mentioned in the previous section RMSE is not a good metric for the final ima
 
 ![](GUIDING_MISCONCEPTIONS/RA-errors.jpg)
 
-Here both red arcs are 2h in RA (30&deg;). The one at the equator has [great circle](https://en.wikipedia.org/wiki/Great_circle) length of 30&deg; as the equator is a great circle. The one at Declination = 60&deg; is about 2&times; shorter. So the closer you are to the pole the smaller [circle of a sphere](https://en.wikipedia.org/wiki/Circle_of_a_sphere) is followed by the telescope and:
+Here both red arcs are 2 hours in RA (30&deg;). So at both Dec = 0&deg; and Dec = 60&deg; the RA axis will turn 30&deg;. However the arc at the equator has [great circle](https://en.wikipedia.org/wiki/Great_circle) length of 30&deg; as the equator is a great circle, and the one at Dec = 60&deg; is &approx;2&times; shorter because RA follows a shorter [circle of a sphere](https://en.wikipedia.org/wiki/Circle_of_a_sphere). The relation is:
 
-*Dec circle length = Equator length &times; cos(Dec)*
+*Circle length = Equator length &times; cos(Dec)*
 
-Similarly the [angular distance](https://en.wikipedia.org/wiki/Angular_distance) between the two ends of the arcs with the same RA difference at different Declination, will have different lengths. And for small angles the relation above is a close approximation.
+Similarly the [great circle distances](https://en.wikipedia.org/wiki/Great-circle_distance) between the two ends of the arcs with the same RA difference at different Declinations, will be different. And for small angles the relation shown above is a very good approximation.
 
-The same apples for the RA errors, because we measure angular distance, not RA difference. Since the equator is a great circle and the RA tracking errors are most prominent as they project 1:1 to angular errors. On the other hand at the pole there is no circle (it collapses to a point) and the tracking errors collapse to a point too, following cos(Dec). This means that with the same mount, if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; with the same mount you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; further to the pole, at Dec = 70&deg; the RA RMSE would be 0.17".
+The same apples for the RA error, because we measure the guiding error as a great circle distance and not as RA difference or Dec difference. Since the equator is a great circle the RA error projection is a great circle distance. On the other hand at the pole there is no circle (it collapses to a point) (*cos(90&deg;) = 0*) and the guiding error collapses to a point too, following the cos(Dec) rule. This means that with the same mount, if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; with the same mount you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; further to the pole, at Dec = 70&deg; the RA RMSE would be 0.17".
+
+What comes to Declination, it is always follows a great circle therefore the decination difference is always a great circle distance.
 
 So, if you can get so different RMSE values with a single mount, how can you compare two mounts by RMSE only? It just makes no sense. You should at the very least specify the declination at which you get those numbers (not to mention the factors mentioned in the previous section).
 
