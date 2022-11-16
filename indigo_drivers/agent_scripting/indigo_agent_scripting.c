@@ -26,9 +26,9 @@
 //#define API_CHANGE
 
 #ifdef API_CHANGE
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #else
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #endif
 
 #define DRIVER_NAME	"indigo_agent_scripting"
@@ -170,8 +170,8 @@ static void push_items(indigo_property *property, bool use_target) {
 				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "size");
 				duk_push_string(PRIVATE_DATA->ctx, item->blob.format);
 				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "format");
-				duk_push_pointer(PRIVATE_DATA->ctx, item->blob.value);
-				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "value");
+				duk_push_pointer(PRIVATE_DATA->ctx, item);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "reference");
 				break;
 		}
 		duk_put_prop_string(PRIVATE_DATA->ctx, -2, item->name);
@@ -259,20 +259,41 @@ static duk_ret_t send_message(duk_context *ctx) {
 
 static duk_ret_t save_blob(duk_context *ctx) {
 	const char *file_name = duk_require_string(ctx, 0);
-	duk_get_prop_string(ctx, 1, "value");
-	const void *buffer = duk_get_pointer(ctx, -1);
+	duk_get_prop_string(ctx, 1, "reference");
+	indigo_item *item = duk_get_pointer(ctx, -1);
 	duk_pop(ctx);
-	duk_get_prop_string(ctx, 1, "size");
-	const long size = duk_get_number(ctx, -1);
-	duk_pop(ctx);
-	//printf("%s %p %ld\n", file_name, buffer, size);
+	if (*item->blob.url != 0 && item->blob.size == 0) {
+		if (!indigo_populate_http_blob_item(item)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed");
+			return 0;
+		}
+		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
+		duk_put_prop_string(PRIVATE_DATA->ctx, 1, "size");
+	}
 	int handle = open(file_name, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (handle > 0) {
-		indigo_write(handle, buffer, size);
+		indigo_write(handle, item->blob.value, item->blob.size);
 		close(handle);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_save_blob() failed -> %d (%s)", stderr, strerror(errno));
 		return 0;
+	}
+	return 1;
+}
+
+// function indigo_populate_blob(item)
+
+static duk_ret_t populate_blob(duk_context *ctx) {
+	duk_get_prop_string(ctx, 0, "reference");
+	indigo_item *item = duk_get_pointer(ctx, -1);
+	duk_pop(ctx);
+	if (*item->blob.url != 0 && item->blob.size == 0) {
+		if (!indigo_populate_http_blob_item(item)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed");
+			return 0;
+		}
+		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
+		duk_put_prop_string(PRIVATE_DATA->ctx, 0, "size");
 	}
 	return 1;
 }
@@ -794,6 +815,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_send_message");
 			duk_push_c_function(PRIVATE_DATA->ctx, save_blob, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_save_blob");
+			duk_push_c_function(PRIVATE_DATA->ctx, populate_blob, 1);
+			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_populate_blob");
 			duk_push_c_function(PRIVATE_DATA->ctx, emumerate_properties, 2);
 			duk_put_global_string(PRIVATE_DATA->ctx, "indigo_enumerate_properties");
 			duk_push_c_function(PRIVATE_DATA->ctx, enable_blob, 3);
