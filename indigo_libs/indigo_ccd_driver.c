@@ -1382,13 +1382,35 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 		INDIGO_DEBUG(clock_t start = clock());
-		time_t timer;
-		struct tm* tm_info;
-		char date_time_end[20];
-		time(&timer);
-		timer -= CCD_EXPOSURE_ITEM->number.target;
-		tm_info = gmtime(&timer);
-		strftime(date_time_end, 20, "%Y-%m-%dT%H:%M:%S", tm_info);
+		struct timeval tv;
+		struct tm tm_info;
+		char date_time[20], date_time_end[25];
+		gettimeofday(&tv, NULL);
+		long millisec = lrint(tv.tv_usec/1000.0);
+		if (millisec >= 1000) {
+			millisec -= 1000;
+			tv.tv_sec++;
+		}
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			double secs = floor(CCD_STREAMING_EXPOSURE_ITEM->number.target);
+			millisec -= (long)((CCD_STREAMING_EXPOSURE_ITEM->number.target - secs) * 1000);
+			if (millisec < 0) {
+				millisec += 1000;
+				tv.tv_sec--;
+			}
+			tv.tv_sec -= (int)secs;
+		} else {
+			double secs = floor(CCD_EXPOSURE_ITEM->number.target);
+			millisec -= (long)((CCD_EXPOSURE_ITEM->number.target - secs) * 1000);
+			if (millisec < 0) {
+				millisec += 1000;
+				tv.tv_sec--;
+			}
+			tv.tv_sec -= (int)secs;
+		}
+		gmtime_r(&tv.tv_sec, &tm_info);
+		strftime(date_time, sizeof(date_time), "%Y-%m-%dT%H:%M:%S", &tm_info);
+		snprintf(date_time_end, sizeof(date_time_end), "%s.%03ld", date_time, millisec);
 		char *header = data;
 		memset(header, ' ', FITS_HEADER_SIZE);
 		add_key(&header, true,  "SIMPLE  =                    T / file conforms to FITS standard");
@@ -1415,10 +1437,17 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			add_key(&header, true,  "XPIXSZ  = %20.2f / pixel width [microns]", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin);
 			add_key(&header, true,  "YPIXSZ  = %20.2f / pixel height [microns]", CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
 		}
-		if (CCD_EXPOSURE_ITEM->number.target >= 1.0)
-			add_key(&header, true,  "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
-		else
-			add_key(&header, true,  "EXPTIME = %20.4f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			if (CCD_STREAMING_EXPOSURE_ITEM->number.target >= 1.0)
+				add_key(&header, true,  "EXPTIME = %20.2f / exposure time [s]", CCD_STREAMING_EXPOSURE_ITEM->number.target);
+			else
+				add_key(&header, true,  "EXPTIME = %20.4f / exposure time [s]", CCD_STREAMING_EXPOSURE_ITEM->number.target);
+		} else {
+			if (CCD_EXPOSURE_ITEM->number.target >= 1.0)
+				add_key(&header, true,  "EXPTIME = %20.2f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
+			else
+				add_key(&header, true,  "EXPTIME = %20.4f / exposure time [s]", CCD_EXPOSURE_ITEM->number.target);
+		}
 		if (!CCD_TEMPERATURE_PROPERTY->hidden)
 			add_key(&header, true,  "CCD-TEMP= %20.2f / CCD temperature [C]", CCD_TEMPERATURE_ITEM->number.value);
 		if (CCD_FRAME_TYPE_LIGHT_ITEM->sw.value)
