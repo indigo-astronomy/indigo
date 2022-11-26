@@ -2,6 +2,36 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+## [2.0-202] - 26 Nov Sat 2022
+
+### Overall
+- property resizing fixed
+- docs:
+	- GUIDING_MISCONCEPTIONS.md updated
+	- CCD_DRIVER_SAVED_IMAGES.md creaated - describes how file name templates work for the server side saved images.
+
+- all ccd driivers:
+	- FITS keyword OBS-DAT used with millisec precision
+	- EXPTIME fixed for streaming
+
+### New Drivers:
+- indigo_agent_config:
+	- new configuration agent created - it manages server condigurations
+
+### Driver Fixes:
+- indigo_agent_alpaca:
+	- imagebytes support
+
+- indigo_agent_imager:
+	- AGENT_IMAGER_DOWNLOAD_FILES property is sorted by creation time and date.
+
+- indigo_agent_scripting:
+	- indigo_save_blob() added
+	- indigo_populate_blob() added
+
+- indigo_focuser_focusdreampro:
+	- fix focuser limits
+
 ## [2.0-200] - 28 Oct Fri 2022
 
 ### Overall
