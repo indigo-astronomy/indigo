@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -305,7 +305,7 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 		*current = 0;
 	}
 
-	if (!PRIVATE_DATA->property_ex.bSupportControlTemp) {
+	if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RO_PERM) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		return true;
 	}
@@ -968,14 +968,10 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == SVB_TARGET_TEMPERATURE) {
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		if (ctrl_caps.IsWritable)
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
-		else
-			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
-		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.MinValue;
-		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.MaxValue;
-		CCD_TEMPERATURE_ITEM->number.value = CCD_TEMPERATURE_ITEM->number.target = ctrl_caps.DefaultValue;
-		PRIVATE_DATA->target_temperature = ctrl_caps.DefaultValue;
+		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
+		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.MinValue/10;
+		CCD_TEMPERATURE_ITEM->number.max = ctrl_caps.MaxValue/10;
+		CCD_TEMPERATURE_ITEM->number.value = CCD_TEMPERATURE_ITEM->number.target = PRIVATE_DATA->target_temperature = ctrl_caps.DefaultValue/10;
 		PRIVATE_DATA->can_check_temperature = true;
 		return INDIGO_OK;
 	}

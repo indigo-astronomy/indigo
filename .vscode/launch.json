@@ -33,7 +33,7 @@
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceFolder}/build/bin/indigo_server",
-        "args": ["--do-not-fork", "-vv", "indigo_ccd_simulator", "indigo_mount_simulator"],
+        "args": ["--do-not-fork", "-vv", "indigo_ccd_svb", "indigo_mount_simulator"],
         "stopAtEntry": true,
         "cwd": "${fileDirname}",
         "environment": [],
