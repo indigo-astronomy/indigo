@@ -94,6 +94,7 @@ typedef struct {
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
+	bool is_sv305;
 	SVB_CAMERA_INFO info;
 	SVB_CAMERA_PROPERTY property;
 	SVB_CAMERA_PROPERTY_EX property_ex;
@@ -195,7 +196,7 @@ static bool svb_open(indigo_device *device) {
 		res = SVBOpenCamera(id);
 		if (res) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBOpenCamera(%d) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBOpenCamera(%d) = %d", id, res);
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
@@ -216,6 +217,14 @@ static bool svb_open(indigo_device *device) {
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->property.MaxHeight * PRIVATE_DATA->property.MaxWidth * 2 + FITS_HEADER_SIZE + 1024;
 			PRIVATE_DATA->buffer = (unsigned char*)indigo_alloc_blob_buffer(PRIVATE_DATA->buffer_size);
 		}
+		if (PRIVATE_DATA->property.IsTriggerCam) {
+			res = SVBSetCameraMode(id, SVB_MODE_TRIG_SOFT);
+			if (res) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetCameraMode(%d, SVB_MODE_TRIG_SOFT) = %d", id, res);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetCameraMode(%d, SVB_MODE_TRIG_SOFT)", id);
+			}
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -233,9 +242,9 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 	int pixel_format = get_pixel_format(device);
 	res = SVBGetOutputImageType(id, &c_pixel_format);
 	if (res)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetOutputImageType(%d) > %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetOutputImageType(%d) = %d", id, res);
 	else
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetOutputImageType(%d, > %d)", id, c_pixel_format);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetOutputImageType(%d) = %d", id, c_pixel_format);
 	if (c_pixel_format != pixel_format || PRIVATE_DATA->first_frame) {
 		res = SVBSetOutputImageType(id, pixel_format);
 		if (res) {
@@ -249,9 +258,9 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 	}
 	res = SVBGetROIFormat(id, &c_frame_left, &c_frame_top, &c_frame_width, &c_frame_height, &c_bin);
 	if (res)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetROIFormat(%d) > %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetROIFormat(%d) = %d", id, res);
 	else
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetROIFormat(%d, > %d, > %d, > %d, > %d, > %d)", id, c_frame_left, c_frame_top, c_frame_width, c_frame_height, c_bin);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetROIFormat(%d, %d, %d, %d, %d, %d)", id, c_frame_left, c_frame_top, c_frame_width, c_frame_height, c_bin);
 	int fl = frame_left / bin;
 	int ft = frame_top / bin;
 	int fw = frame_width / bin;
@@ -260,7 +269,7 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 		res = SVBSetROIFormat(id, fl, ft, fw, fh, bin);
 		if (res) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetROIFormat(%d, %d, %d, %d, %d, %d) > %d", id, fl, ft, fw, fh, bin, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetROIFormat(%d, %d, %d, %d, %d, %d) = %d", id, fl, ft, fw, fh, bin, res);
 			return false;
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetROIFormat(%d, %d, %d, %d, %d, %d)", id, fl, ft, fw, fh, bin);
@@ -268,15 +277,15 @@ static bool svb_setup_exposure(indigo_device *device, double exposure, int frame
 	}
 	res = SVBGetControlValue(id, SVB_EXPOSURE, &c_exposure, &pauto);
 	if (res)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE) > %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE) = %d", id, res);
 	else
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE, > %d)", id, c_exposure);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE) = %d", id, c_exposure);
 	long e = (long)s2us(exposure);
 	if (c_exposure != e) {
 		res = SVBSetControlValue(id, SVB_EXPOSURE, e, SVB_FALSE);
 		if (res) {
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_EXPOSURE, %ld) > %d", id, e, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_EXPOSURE, %ld) = %d", id, e, res);
 			return false;
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_EXPOSURE, %ld)", id, e);
@@ -305,9 +314,9 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 	if (PRIVATE_DATA->has_temperature_sensor) {
 		res = SVBGetControlValue(id, SVB_CURRENT_TEMPERATURE, &temp_x10, &unused);
 		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_CURRENT_TEMPERATURE) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_CURRENT_TEMPERATURE) = %d", id, res);
 		else
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_CURRENT_TEMPERATURE > %d)", id, temp_x10);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_CURRENT_TEMPERATURE) = %d", id, temp_x10);
 		*current = temp_x10 / 10.0; /* SVB_CURRENT_TEMPERATURE gives temp x 10 */
 	} else {
 		*current = 0;
@@ -321,40 +330,40 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 	res = SVBGetControlValue(id, SVB_COOLER_ENABLE, &current_status, &unused);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_ENABLE) > %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_ENABLE) = %d", id, res);
 		return false;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_ENABLE, > %ld)", id, current_status);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_ENABLE) = %ld", id, current_status);
 
 	if (current_status != status) {
 		res = SVBSetControlValue(id, SVB_COOLER_ENABLE, status, false);
 		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_COOLER_ENABLE, %ld) > %d", id, status, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_COOLER_ENABLE, %ld) = %d", id, status, res);
 		else
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_COOLER_ENABLE, %ld)", id, status);
 	} else if (status) {
 		long current_target = 0;
 		res = SVBGetControlValue(id, SVB_TARGET_TEMPERATURE, &current_target, &unused);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_TARGET_TEMP) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_TARGET_TEMP) = %d", id, res);
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, ASI_TARGET_TEMP, > %ld)", id, current_target);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, ASI_TARGET_TEMP) = %lf", id, current_target);
 		}
 		if ((long)target != current_target) {
 			res = SVBSetControlValue(id, SVB_TARGET_TEMPERATURE, (long)target, false);
 			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE, %ld) > %d", id, current_target, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE, %lf) = %d", id, current_target, res);
 			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE, %ld)", id, current_target);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE, %lf)", id, current_target);
 			}
 		}
 	}
 
 	res = SVBGetControlValue(id, SVB_COOLER_POWER, cooler_power, &unused);
 	if (res)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) > %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) = %d", id, res);
 	else
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER, > %ld)", id, cooler_power);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) = %lf", id, cooler_power);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -380,6 +389,120 @@ static void svb_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
+
+	indigo_fits_keyword keywords[] = {
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
+		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
+		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+		{ 0 }
+	};
+
+	int id = PRIVATE_DATA->dev_id;
+	SVB_ERROR_CODE res;
+
+	PRIVATE_DATA->can_check_temperature = false;
+	while (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			break;
+		}
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res == SVB_SUCCESS) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+			break;
+		} else if (res != SVB_ERROR_TIMEOUT) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+			break;
+		}
+	}
+
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	res = SVBStopVideoCapture(id);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
+	}
+	PRIVATE_DATA->can_check_temperature = true;
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (res) {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_ALERT_STATE) {
+		indigo_ccd_failure_cleanup(device);
+	} else if (CCD_EXPOSURE_PROPERTY->state == INDIGO_OK_STATE) {
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
+		} else {
+			indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
+		}
+		indigo_finalize_video_stream(device);
+	}
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	}
+	PRIVATE_DATA->can_check_temperature = true;
+}
+
+static void exposure_handler(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+
+	int id = PRIVATE_DATA->dev_id;
+	SVB_ERROR_CODE res;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = SVBStopVideoCapture(id);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
+	}
+	if (svb_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		while (true) {
+			if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0) != SVB_SUCCESS) {
+				res = SVB_SUCCESS;
+				break;
+			}
+		}
+		res = SVBStartVideoCapture(id);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) > %d", id, res);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			indigo_ccd_failure_cleanup(device);
+			return;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStartVideoCapture(%d)", id);
+		}
+
+		res = SVBSendSoftTrigger(id);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSendSoftTrigger((%d) > %d", id, res);
+		} else {
+			indigo_ccd_resume_countdown(device);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSendSoftTrigger((%d)", id);
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+			return;
+		}
+	}
+}
+
+static void sv305_exposure_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 	indigo_fits_keyword keywords[] = {
@@ -415,15 +538,15 @@ static void exposure_timer_callback(indigo_device *device) {
 			}
 			res = SVBStartVideoCapture(id);
 			if (res) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) > %d", id, res);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) = %d", id, res);
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStartVideoCapture(%d)", id);
 				res = SVBSendSoftTrigger(id);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSendSoftTrigger((%d) > %d", id, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSendSoftTrigger(%d) = %d", id, res);
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSendSoftTrigger((%d)", id);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSendSoftTrigger(%d)", id);
 					time_t start = time(NULL);
 					while (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 						if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -448,10 +571,10 @@ static void exposure_timer_callback(indigo_device *device) {
 								res = SVBStopVideoCapture(id);
 								pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 								if (res)
-									INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) > %d", id, res);
+									INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
 								else
 									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
-								indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+								indigo_set_timer(device, 0, sv305_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 								return;
 							}
 							break;
@@ -468,10 +591,10 @@ static void exposure_timer_callback(indigo_device *device) {
 							res = SVBStopVideoCapture(id);
 							pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 							if (res)
-								INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) > %d", id, res);
+								INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
 							else
 								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
-							indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+							indigo_set_timer(device, 0, sv305_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 							return;
 						}
 						if (CCD_EXPOSURE_ITEM->number.value > remaining && remaining >= 0) {
@@ -482,7 +605,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 						CCD_EXPOSURE_ITEM->number.value = 0;
 						if (res) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetVideoData(%d) > %d", id, res);
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetVideoData(%d) = %d", id, res);
 						} else {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetVideoData(%d)", id);
 							if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
@@ -497,7 +620,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = SVBStopVideoCapture(id);
 				if (res)
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) > %d", id, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
 				else
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -543,7 +666,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	res = SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) > %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
 	else
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
 	if (svb_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
@@ -551,7 +674,7 @@ static void streaming_timer_callback(indigo_device *device) {
 		res = SVBSetCameraMode(id, SVB_MODE_NORMAL);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetCameraMode(%d) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetCameraMode(%d) = %d", id, res);
 		} else {
 			while (true) {
 				if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0) != SVB_SUCCESS)
@@ -613,7 +736,7 @@ static void streaming_timer_callback(indigo_device *device) {
 					CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetVideoData(%d) > %d", id, res);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetVideoData(%d) = %d", id, res);
 						break;
 					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetVideoData(%d)", id);
@@ -855,7 +978,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	res = SVBGetNumOfControls(id, &ctrl_count);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetNumOfControls(%d) > %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetNumOfControls(%d) = %d", id, res);
 		return INDIGO_NOT_FOUND;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetNumOfControls(%d, > %d)", id, ctrl_count);
@@ -868,15 +991,15 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 				value = (long)property->items[item].number.value;
 				res = SVBSetControlValue(id, ctrl_caps.ControlType, value, SVB_FALSE);
 				if (res)
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, %s, %ld) > %d", id, ctrl_caps.Name, value, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, %s, %ld) = %d", id, ctrl_caps.Name, value, res);
 				else
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, %s, %ld)", id, ctrl_caps.Name, value);
 				res = SVBGetControlValue(id, ctrl_caps.ControlType, &value, &unused);
 				property->items[item].number.value = value;
 				if (res)
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, %s) > %d", id, ctrl_caps.Name, res, value);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res, value);
 				else
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, %s, > %ld)", id, ctrl_caps.Name, value);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, %s) = %ld", id, ctrl_caps.Name, value);
 			}
 		}
 	}
@@ -904,9 +1027,9 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		res = SVBGetControlValue(id, SVB_EXPOSURE, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE) = %d", id, res);
 		else
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE, > %ld)", id, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_EXPOSURE) = %ld", id, value);
 		CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target = us2s(value);
 		return INDIGO_OK;
 	}
@@ -924,9 +1047,9 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		res = SVBGetControlValue(id, SVB_BLACK_LEVEL, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_BLACK_LEVEL) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_BLACK_LEVEL) = %d", id, res);
 		else
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_BLACK_LEVEL, > %ld)", id, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_BLACK_LEVEL) = %ld", id, value);
 		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
 		CCD_OFFSET_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -945,9 +1068,9 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		res = SVBGetControlValue(id, SVB_GAIN, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN) = %d", id, res);
 		else
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN, > %ld)", id, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAIN) = %ld", id, value);
 		CCD_GAIN_ITEM->number.value = CCD_GAIN_ITEM->number.target = value;
 		CCD_GAIN_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -966,9 +1089,9 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		res = SVBGetControlValue(id, SVB_GAMMA, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAMMA) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAMMA) = %d", id, res);
 		else
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAMMA, > %ld)", id, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_GAMMA) = %ld", id, value);
 		CCD_GAMMA_ITEM->number.value = CCD_GAMMA_ITEM->number.target = value;
 		CCD_GAMMA_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -1016,9 +1139,9 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		res = SVBGetControlValue(id, SVB_COOLER_POWER, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) = %d", id, res);
 		else
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER, > %ld)", id, value);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) = %ld", id, value);
 		CCD_COOLER_POWER_ITEM->number.value = CCD_COOLER_POWER_ITEM->number.target = value;
 		return INDIGO_OK;
 	}
@@ -1133,8 +1256,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		PRIVATE_DATA->retry = RETRY_COUNT;
-		indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-		return INDIGO_OK;
+		if(PRIVATE_DATA->is_sv305) {
+			indigo_set_timer(device, 0, sv305_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+			return INDIGO_OK;
+		} else {
+			indigo_set_timer(device, 0, exposure_handler, &PRIVATE_DATA->exposure_timer);
+			indigo_ccd_suspend_countdown(device);
+		}
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -1690,6 +1818,7 @@ static void process_plug_event(indigo_device *unused) {
 			device->master_device = master_device;
 			sprintf(device->name, "%s Guider #%d", info.FriendlyName, id);
 			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+			if (strstr("SV305", info.FriendlyName)) private_data->is_sv305 = true;
 			device->private_data = private_data;
 			indigo_attach_device(device);
 			devices[slot]=device;
