@@ -199,7 +199,15 @@ static bool svb_open(indigo_device *device) {
 			PRIVATE_DATA->count_open--;
 			return false;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBOpenCamera(%d)", id, res);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBOpenCamera(%d) = %d", id, res);
+
+		/* disable saving config - seems it leads to a deadlock */
+		res = SVBSetAutoSaveParam(id, SVB_FALSE);
+    	if (res != SVB_SUCCESS) {
+        	INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetAutoSaveParam(%d, SVB_FALSE) = %d", id, res);
+        	return false;
+    	}
+
 		SVBStopVideoCapture(id);
 		if (PRIVATE_DATA->buffer == NULL) {
 			if (PRIVATE_DATA->property.IsColorCam)
@@ -1650,6 +1658,8 @@ static void process_plug_event(indigo_device *unused) {
 	if (res == SVB_SUCCESS) {
 		res = SVBOpenCamera(info.CameraID);
 		if (res == SVB_SUCCESS) {
+			/* disable saving config - seems it leads to a deadlock */
+			SVBSetAutoSaveParam(info.CameraID, SVB_FALSE);
 			SVBGetCameraProperty(info.CameraID, &property);
 			SVBCanPulseGuide(info.CameraID, &is_guider);
 			SVBCloseCamera(info.CameraID);
