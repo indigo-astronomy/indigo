@@ -494,7 +494,6 @@ static void exposure_handler(indigo_device *device) {
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSendSoftTrigger((%d) > %d", id, res);
 		} else {
-			indigo_ccd_resume_countdown(device);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSendSoftTrigger((%d)", id);
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			return;
@@ -1261,7 +1260,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		} else {
 			indigo_set_timer(device, 0, exposure_handler, &PRIVATE_DATA->exposure_timer);
-			indigo_ccd_suspend_countdown(device);
 		}
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
