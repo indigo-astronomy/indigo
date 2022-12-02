@@ -230,6 +230,26 @@ static bool svb_open(indigo_device *device) {
 	return true;
 }
 
+static bool svb_abort_exposure(indigo_device *device) {
+	int id = PRIVATE_DATA->dev_id;
+	SVB_ERROR_CODE res;
+
+	if (device->is_connected) return false;
+
+	/* streming is hadled in the callback */
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) return false;
+
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = SVBStopVideoCapture(id);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
+	return true;
+}
+
 static bool svb_setup_exposure(indigo_device *device, double exposure, int frame_left, int frame_top, int frame_width, int frame_height, int bin) {
 	int id = PRIVATE_DATA->dev_id;
 	SVB_ERROR_CODE res;
@@ -495,6 +515,7 @@ static void exposure_handler(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSendSoftTrigger((%d) > %d", id, res);
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSendSoftTrigger((%d)", id);
+			indigo_ccd_resume_countdown(device);
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			return;
 		}
@@ -1210,6 +1231,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				CCD_ABORT_EXPOSURE_ITEM->sw.value = true;
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
+				svb_abort_exposure(device);
 			} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				CCD_STREAMING_COUNT_ITEM->number.value = 0;
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
@@ -1257,10 +1279,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PRIVATE_DATA->retry = RETRY_COUNT;
 		if(PRIVATE_DATA->is_sv305) {
 			indigo_set_timer(device, 0, sv305_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-			return INDIGO_OK;
 		} else {
 			indigo_set_timer(device, 0, exposure_handler, &PRIVATE_DATA->exposure_timer);
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -1284,6 +1306,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+		}
+		if ((!PRIVATE_DATA->is_sv305) && (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE)){
+			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
+			svb_abort_exposure(device);
 		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		// -------------------------------------------------------------------------------- CCD_COOLER
