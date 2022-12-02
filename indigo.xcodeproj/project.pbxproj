@@ -607,12 +607,8 @@
 		59A68E1F277DC3D0000439CC /* indigo_ccd_svb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A68E06277DC3D0000439CC /* indigo_ccd_svb.c */; };
 		59A68E20277DC3D0000439CC /* SVBCameraSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A68E0A277DC3D0000439CC /* SVBCameraSDK.h */; };
 		59A68E21277DC3D0000439CC /* SVBCameraSDK.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A68E0A277DC3D0000439CC /* SVBCameraSDK.h */; };
-		59A68E31277DE623000439CC /* indigo_ccd_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 590A86401DB80A04002F12FB /* indigo_ccd_asi.c */; };
 		59A68E32277DE626000439CC /* indigo_ccd_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 590A86411DB80A04002F12FB /* indigo_ccd_asi.h */; };
 		59A68E33277DE627000439CC /* indigo_ccd_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 590A86411DB80A04002F12FB /* indigo_ccd_asi.h */; };
-		59A68E34277DE658000439CC /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
-		59A68E35277DE661000439CC /* indigo_ccd_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 590A86401DB80A04002F12FB /* indigo_ccd_asi.c */; };
-		59A68E36277DF089000439CC /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599A63D41DF3670100ABC827 /* libjpeg.a */; };
 		59AA603E25AB10E80065905E /* solver_test_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 59AA603D25AB10E80065905E /* solver_test_image.c */; };
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
 		59B636AF20A74CD400EF2D52 /* indigo_usb_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B636AD20A74CD400EF2D52 /* indigo_usb_utils.h */; };
@@ -4615,6 +4611,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59F9615F293A0CB500294D7D /* libSVBCameraSDK.a in Frameworks */,
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
@@ -4627,10 +4624,8 @@
 				598786482540C6C500CE8B48 /* libtiffxx.a in Frameworks */,
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
 				59D138A2283E5A8700FCC514 /* libraw.a in Frameworks */,
-				59A68E36277DF089000439CC /* libjpeg.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
-				59A68E34277DE658000439CC /* libASICamera2.a in Frameworks */,
 				5980010A22E4E76700021D67 /* libapogee.a in Frameworks */,
 				598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */,
 				5942229F22E34AA9009DAD5C /* libdc1394.dylib in Frameworks */,
@@ -4638,7 +4633,6 @@
 				5903560E25A8CA37001DC5DB /* libfli.a in Frameworks */,
 				9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */,
 				9DDEFBFB21EE351C00657C8F /* libaltaircam.dylib in Frameworks */,
-				59F9615F293A0CB500294D7D /* libSVBCameraSDK.a in Frameworks */,
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
 				59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
@@ -13451,7 +13445,6 @@
 				598A1BA8259BA94A00C0B34C /* indigo_dome_driver.c in Sources */,
 				598A1BA9259BA94A00C0B34C /* indigo_aux_sqm.c in Sources */,
 				59D8BBD7260E628B00B904EE /* alpaca_ccd.c in Sources */,
-				59A68E35277DE661000439CC /* indigo_ccd_asi.c in Sources */,
 				598A1BAA259BA94A00C0B34C /* indigo_wheel_manual.c in Sources */,
 				59111CF3285F504200E57194 /* indigocat_mars.c in Sources */,
 				59F6BB42261CA65800DA9BE1 /* alpaca_switch.c in Sources */,
@@ -13693,7 +13686,6 @@
 				59DD69CE1FC1D30300AEF0DF /* indigo_dome_driver.c in Sources */,
 				9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */,
 				59D8BBD6260E628B00B904EE /* alpaca_ccd.c in Sources */,
-				59A68E31277DE623000439CC /* indigo_ccd_asi.c in Sources */,
 				59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */,
 				59F6BB41261CA65800DA9BE1 /* alpaca_switch.c in Sources */,
 				591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */,
