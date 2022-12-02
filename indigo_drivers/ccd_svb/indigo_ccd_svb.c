@@ -234,7 +234,7 @@ static bool svb_abort_exposure(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	SVB_ERROR_CODE res;
 
-	if (device->is_connected) return false;
+	if (!device->is_connected) return false;
 
 	/* streming is hadled in the callback */
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) return false;
@@ -485,20 +485,22 @@ static void exposure_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	res = SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
 	}
+
 	if (svb_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
 		while (true) {
-			if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0) != SVB_SUCCESS) {
+			if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 10) != SVB_SUCCESS) {
 				res = SVB_SUCCESS;
 				break;
 			}
 		}
+
 		res = SVBStartVideoCapture(id);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) > %d", id, res);
@@ -517,7 +519,6 @@ static void exposure_handler(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSendSoftTrigger((%d)", id);
 			indigo_ccd_resume_countdown(device);
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-			return;
 		}
 	}
 }
@@ -1201,6 +1202,11 @@ static void handle_ccd_connect_property(indigo_device *device) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetNumOfControls(%d) > %d", id, res);
 				else
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetNumOfControls(%d, > %d)", id, ctrl_count);
+
+				// fix for SDK gain error issue
+				// set exposure time
+				SVBSetControlValue(id, SVB_EXPOSURE, (long)(1 * 1000000L), SVB_FALSE);
+
 				SVB_ADVANCED_PROPERTY = indigo_resize_property(SVB_ADVANCED_PROPERTY, 0);
 				for (int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1280,7 +1286,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if(PRIVATE_DATA->is_sv305) {
 			indigo_set_timer(device, 0, sv305_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else {
-			indigo_set_timer(device, 0, exposure_handler, &PRIVATE_DATA->exposure_timer);
+			indigo_set_timer(device, 0, exposure_handler, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
@@ -1307,7 +1313,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		if ((!PRIVATE_DATA->is_sv305) && (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE)){
+		if ((!PRIVATE_DATA->is_sv305) && (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE)) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			svb_abort_exposure(device);
 		}
