@@ -22,5 +22,6 @@ indigo_server indigo_ccd_svb
 
 ## Status: Stable
 
-Tested with SV305Pro
-
+Driver is developed and tested with:
+* SV305Pro
+* SV405CC
