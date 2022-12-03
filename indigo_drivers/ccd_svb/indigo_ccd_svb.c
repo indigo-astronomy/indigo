@@ -177,6 +177,23 @@ static indigo_result svb_enumerate_properties(indigo_device *device, indigo_clie
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
 
+static void svb_clear_video_buffer(indigo_device *device, bool aggressive) {
+	int id = PRIVATE_DATA->dev_id;
+	/* For some reason SVBStopVideoCapture() does not appear to cancel exposure timer,
+	   this makes SVBGetVideoData() to return previous exposure data when exposure timer
+	   hits. So, in aggressive mode we force exposure timer to finish, so that we can
+	   clear the buffer.
+	   NOTE: this resets the exposure time!!! 
+	*/
+	if (aggressive) {
+		SVBSetControlValue(id, SVB_EXPOSURE, 1, SVB_FALSE);
+		indigo_usleep(10);
+	}
+	while (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100) == SVB_SUCCESS) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Clearing video buffer %s", aggressive ? "aggressively" : "relaxed");
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Video buffer clean");
+}
 
 static bool svb_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
@@ -240,6 +257,7 @@ static bool svb_abort_exposure(indigo_device *device) {
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	svb_clear_video_buffer(device, true);
 	res = SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
@@ -483,6 +501,7 @@ static void exposure_handler(indigo_device *device) {
 	SVB_ERROR_CODE res;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	svb_clear_video_buffer(device, false);
 	res = SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
@@ -493,13 +512,6 @@ static void exposure_handler(indigo_device *device) {
 
 	if (svb_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
-		while (true) {
-			if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 10) != SVB_SUCCESS) {
-				res = SVB_SUCCESS;
-				break;
-			}
-		}
 
 		res = SVBStartVideoCapture(id);
 		if (res) {
@@ -536,6 +548,7 @@ static void sv305_exposure_timer_callback(indigo_device *device) {
 	SVB_ERROR_CODE res;
 	PRIVATE_DATA->can_check_temperature = false;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	svb_clear_video_buffer(device, false);
 	res = SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
@@ -551,12 +564,6 @@ static void sv305_exposure_timer_callback(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetCameraMode(%d, SVB_MODE_TRIG_SOFT)", id);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			while (true) {
-				if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0) != SVB_SUCCESS) {
-					res = SVB_SUCCESS;
-					break;
-				}
-			}
 			res = SVBStartVideoCapture(id);
 			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) = %d", id, res);
@@ -572,6 +579,7 @@ static void sv305_exposure_timer_callback(indigo_device *device) {
 					while (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 						if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 							CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+							svb_clear_video_buffer(device, true);
 							break;
 						}
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -684,6 +692,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	SVB_ERROR_CODE res;
 	PRIVATE_DATA->can_check_temperature = false;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	svb_clear_video_buffer(device, false);
 	res = SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
@@ -708,6 +717,7 @@ static void streaming_timer_callback(indigo_device *device) {
 				while (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						svb_clear_video_buffer(device, true);
 						break;
 					}
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -811,6 +821,7 @@ static void sv305_streaming_timer_callback(indigo_device *device) {
 	SVB_ERROR_CODE res;
 	PRIVATE_DATA->can_check_temperature = false;
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	svb_clear_video_buffer(device, false);
 	res = SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
@@ -838,6 +849,7 @@ static void sv305_streaming_timer_callback(indigo_device *device) {
 					while (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 						if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 							CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+							svb_clear_video_buffer(device, true);
 							break;
 						}
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1514,7 +1526,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_GAIN, %ld) > %d", PRIVATE_DATA->dev_id, value, res);
 			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_GAIN, %ld)", PRIVATE_DATA->dev_id, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBSetControlValue(%d, SVB_GAIN, %ld)", PRIVATE_DATA->dev_id, value);
 			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
