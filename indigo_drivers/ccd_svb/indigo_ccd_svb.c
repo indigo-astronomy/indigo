@@ -1424,7 +1424,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->retry = RETRY_COUNT;
 		if(PRIVATE_DATA->is_sv305) {
-			indigo_set_timer(device, 0, sv305_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+			indigo_set_timer(device, 0, exposure_handler, &PRIVATE_DATA->exposure_timer);
+			//indigo_set_timer(device, 0, sv305_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else {
 			indigo_set_timer(device, 0, exposure_handler, NULL);
 		}
@@ -1447,7 +1448,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		PRIVATE_DATA->retry = RETRY_COUNT;
 		if (PRIVATE_DATA->is_sv305) {
-			indigo_set_timer(device, 0, sv305_streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+			indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+			//indigo_set_timer(device, 0, sv305_streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else {
 			indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}
@@ -1457,7 +1459,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		if ((!PRIVATE_DATA->is_sv305) && (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE)) {
+		// if ((!PRIVATE_DATA->is_sv305) && 
+		if (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			svb_abort_exposure(device);
 		}
