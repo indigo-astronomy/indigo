@@ -691,6 +691,133 @@ static void streaming_timer_callback(indigo_device *device) {
 	else
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
 	if (svb_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+		while (true) {
+			if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0) != SVB_SUCCESS)
+				break;
+		}
+		res = SVBStartVideoCapture(id);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) = %d", id, res);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStartVideoCapture(%d) = %d", id, res);
+			while (CCD_STREAMING_COUNT_ITEM->number.value != 0 && CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				res = SVBSendSoftTrigger(id);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				time_t start = time(NULL);
+				while (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+					if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					double remaining = CCD_STREAMING_EXPOSURE_ITEM->number.target - (time(NULL) - start);
+					if (res == SVB_SUCCESS) {
+						if (remaining > 1) {
+							if (PRIVATE_DATA->retry == 0) {
+								indigo_send_message(device, "Exposure was retried %d times, failed", RETRY_COUNT);
+								CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+								break;
+							}
+							PRIVATE_DATA->retry--;
+							pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+							SVBStopVideoCapture(id);
+							pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+							CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
+							indigo_update_property(device, CCD_STREAMING_PROPERTY, "Exposure is terminated prematurely, retrying...");
+							indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+							return;
+						}
+						break;
+					}
+					if (res != SVB_ERROR_TIMEOUT) {
+						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						break;
+					}
+					if (remaining < -1) {
+						PRIVATE_DATA->retry--;
+						CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
+						indigo_update_property(device, CCD_STREAMING_PROPERTY, "Exposure is not finished on time, retrying...");
+						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+						SVBStopVideoCapture(id);
+						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+						return;
+					}
+					if (CCD_STREAMING_EXPOSURE_ITEM->number.value > remaining && remaining >= 0) {
+						CCD_STREAMING_EXPOSURE_ITEM->number.value = remaining;
+						indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+					}
+				}
+				CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
+				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+				if (res) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetVideoData(%d) = %d", id, res);
+					break;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetVideoData(%d)", id);
+				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
+						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
+					} else {
+						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
+					}
+					if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+						CCD_STREAMING_COUNT_ITEM->number.value -= 1;
+					CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
+					CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+				}
+			}
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			SVBStopVideoCapture(id);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		}
+	} else {
+		res = SVB_ERROR_GENERAL_ERROR;
+	}
+	PRIVATE_DATA->can_check_temperature = true;
+	indigo_finalize_video_stream(device);
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (res) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+		}
+	}
+	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	}
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
+		indigo_ccd_failure_cleanup(device);
+	}
+	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+}
+
+static void sv305_streaming_timer_callback(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
+	indigo_fits_keyword keywords[] = {
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
+		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
+		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+		{ 0 }
+	};
+	int id = PRIVATE_DATA->dev_id;
+	SVB_ERROR_CODE res;
+	PRIVATE_DATA->can_check_temperature = false;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	res = SVBStopVideoCapture(id);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res)
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStopVideoCapture(%d) = %d", id, res);
+	else
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
+	if (svb_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = SVBSetCameraMode(id, SVB_MODE_NORMAL);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -730,7 +857,7 @@ static void streaming_timer_callback(indigo_device *device) {
 								pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 								CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
 								indigo_update_property(device, CCD_STREAMING_PROPERTY, "Exposure is terminated prematurely, retrying...");
-								indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+								indigo_set_timer(device, 0, sv305_streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 								return;
 							}
 							break;
@@ -746,7 +873,7 @@ static void streaming_timer_callback(indigo_device *device) {
 							pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 							SVBStopVideoCapture(id);
 							pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-							indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+							indigo_set_timer(device, 0, sv305_streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 							return;
 						}
 						if (CCD_STREAMING_EXPOSURE_ITEM->number.value > remaining && remaining >= 0) {
@@ -801,6 +928,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	}
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
+
 
 static void ccd_temperature_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
@@ -1306,7 +1434,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
 		PRIVATE_DATA->retry = RETRY_COUNT;
-		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+		if (PRIVATE_DATA->is_sv305) {
+			indigo_set_timer(device, 0, sv305_streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+		} else {
+			indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+		}
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
