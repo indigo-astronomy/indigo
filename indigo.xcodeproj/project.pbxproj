@@ -215,6 +215,9 @@
 		597BD1C6260BBA5100239274 /* alpaca_mount.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD1C4260BBA5000239274 /* alpaca_mount.c */; };
 		597BD1CF260CE2A800239274 /* alpaca_rotator.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD1CE260CE2A700239274 /* alpaca_rotator.c */; };
 		597BD1D0260CE2A800239274 /* alpaca_rotator.c in Sources */ = {isa = PBXBuildFile; fileRef = 597BD1CE260CE2A700239274 /* alpaca_rotator.c */; };
+		597C7223293CFBD80016D45A /* libjpeg.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 599A63D41DF3670100ABC827 /* libjpeg.a */; };
+		597C7224293CFC2B0016D45A /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
+		597C7225293CFC3A0016D45A /* indigo_ccd_asi.c in Sources */ = {isa = PBXBuildFile; fileRef = 590A86401DB80A04002F12FB /* indigo_ccd_asi.c */; };
 		597DFE242804A880009E37CB /* indigo_rotator_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 597DFE1F2804A87F009E37CB /* indigo_rotator_optec.c */; };
 		597DFE252804A880009E37CB /* indigo_rotator_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 597DFE1F2804A87F009E37CB /* indigo_rotator_optec.c */; };
 		597E79DF25A5DB7D009B0817 /* indigo_agent_astrometry.c in Sources */ = {isa = PBXBuildFile; fileRef = 597E79DE25A5DB6E009B0817 /* indigo_agent_astrometry.c */; };
@@ -702,7 +705,7 @@
 		59F7E5ED245878C700EF273A /* indigo_token.h in Headers */ = {isa = PBXBuildFile; fileRef = 59F7E5EC245878C700EF273A /* indigo_token.h */; };
 		59F871BD26A87162007DF91C /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
 		59F871BF26A871B6007DF91C /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
-		59F9615F293A0CB500294D7D /* libSVBCameraSDK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A68E0E277DC3D0000439CC /* libSVBCameraSDK.a */; };
+		59F9615F293A0CB500294D7D /* libSVBCameraSDK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A68E0E277DC3D0000439CC /* libSVBCameraSDK.dylib */; };
 		59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */; };
 		59FA0B2022FCACC700A15D19 /* indigo_ptp_canon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FA0B1E22FCACC600A15D19 /* indigo_ptp_canon.c */; };
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
@@ -2512,7 +2515,7 @@
 		59A68E06277DC3D0000439CC /* indigo_ccd_svb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_svb.c; sourceTree = "<group>"; };
 		59A68E0A277DC3D0000439CC /* SVBCameraSDK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVBCameraSDK.h; sourceTree = "<group>"; };
 		59A68E0B277DC3D0000439CC /* VERSION */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = VERSION; sourceTree = "<group>"; };
-		59A68E0E277DC3D0000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
+		59A68E0E277DC3D0000439CC /* libSVBCameraSDK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libSVBCameraSDK.dylib; sourceTree = "<group>"; };
 		59A68E12277DC3D0000439CC /* README.arm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.arm; sourceTree = "<group>"; };
 		59A68E13277DC3D0000439CC /* 90-ckusb.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "90-ckusb.rules"; sourceTree = "<group>"; };
 		59A68E1A277DC3D0000439CC /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
@@ -4611,13 +4614,15 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				59F9615F293A0CB500294D7D /* libSVBCameraSDK.a in Frameworks */,
+				597C7223293CFBD80016D45A /* libjpeg.a in Frameworks */,
+				59F9615F293A0CB500294D7D /* libSVBCameraSDK.dylib in Frameworks */,
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
 				598786462540C69E00CE8B48 /* libtiff.a in Frameworks */,
 				9DDEFBFF21EE358F00657C8F /* libUSB2ST4Conv.a in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
+				597C7224293CFC2B0016D45A /* libASICamera2.a in Frameworks */,
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
 				59D762A424B8802100745F97 /* libqhyccd.a in Frameworks */,
 				59A5302121A35159000B6F27 /* libatik.a in Frameworks */,
@@ -8250,7 +8255,7 @@
 		59A68E0D277DC3D0000439CC /* macOS */ = {
 			isa = PBXGroup;
 			children = (
-				59A68E0E277DC3D0000439CC /* libSVBCameraSDK.a */,
+				59A68E0E277DC3D0000439CC /* libSVBCameraSDK.dylib */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -13587,6 +13592,7 @@
 				59FA0B2022FCACC700A15D19 /* indigo_ptp_canon.c in Sources */,
 				9D62F70128FEAF62006599FF /* indigo_agent_config.c in Sources */,
 				5911B6CB22630FE900D6B9EC /* indigo_raw_utils.c in Sources */,
+				597C7225293CFC3A0016D45A /* indigo_ccd_asi.c in Sources */,
 				59FE34652187B2F8004FB5D4 /* indigo_aux_dsusb.c in Sources */,
 				59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */,
 				59C3BB12255077E9000720B4 /* indigo_ptp_fuji.c in Sources */,
