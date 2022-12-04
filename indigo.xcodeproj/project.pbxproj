@@ -2512,7 +2512,7 @@
 		59A5302621A35359000B6F27 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59A68E04277DC3D0000439CC /* indigo_ccd_svb.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_svb.h; sourceTree = "<group>"; };
 		59A68E05277DC3D0000439CC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		59A68E06277DC3D0000439CC /* indigo_ccd_svb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_svb.c; sourceTree = "<group>"; };
+		59A68E06277DC3D0000439CC /* indigo_ccd_svb.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_svb.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59A68E0A277DC3D0000439CC /* SVBCameraSDK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SVBCameraSDK.h; sourceTree = "<group>"; };
 		59A68E0B277DC3D0000439CC /* VERSION */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = VERSION; sourceTree = "<group>"; };
 		59A68E0E277DC3D0000439CC /* libSVBCameraSDK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libSVBCameraSDK.dylib; sourceTree = "<group>"; };
