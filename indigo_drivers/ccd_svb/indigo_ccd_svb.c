@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -51,8 +51,6 @@
 #endif
 
 #include "SVBCameraSDK.h"
-
-#define SVB_DEFAULT_BANDWIDTH      45
 
 #define SVB_MAX_FORMATS            4
 
@@ -130,7 +128,6 @@ static int get_pixel_depth(indigo_device *device) {
 	return 8;
 }
 
-
 static int get_pixel_format(indigo_device *device) {
 	int item = 0;
 	while (item < SVB_MAX_FORMATS) {
@@ -151,7 +148,6 @@ static int get_pixel_format(indigo_device *device) {
 	return SVB_IMG_END;
 }
 
-
 static bool pixel_format_supported(indigo_device *device, SVB_IMG_TYPE type) {
 	for (int i = 0; i < SVB_MAX_FORMATS; i++) {
 		if (i == SVB_IMG_END)
@@ -161,7 +157,6 @@ static bool pixel_format_supported(indigo_device *device, SVB_IMG_TYPE type) {
 	}
 	return false;
 }
-
 
 static indigo_result svb_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
@@ -217,10 +212,10 @@ static bool svb_open(indigo_device *device) {
 
 		/* disable saving config - seems it leads to a deadlock */
 		res = SVBSetAutoSaveParam(id, SVB_FALSE);
-    	if (res != SVB_SUCCESS) {
-        	INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetAutoSaveParam(%d, SVB_FALSE) = %d", id, res);
-        	return false;
-    	}
+		if (res != SVB_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetAutoSaveParam(%d, SVB_FALSE) = %d", id, res);
+				return false;
+		}
 
 		SVBStopVideoCapture(id);
 		if (PRIVATE_DATA->buffer == NULL) {
@@ -247,10 +242,12 @@ static bool svb_abort_exposure(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
 	SVB_ERROR_CODE res;
 
-	if (!device->is_connected) return false;
+	if (!device->is_connected)
+		return false;
 
 	/* streming is hadled in the callback */
-	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) return false;
+	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)
+		return false;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	svb_clear_video_buffer(device, true);
@@ -534,12 +531,14 @@ static void exposure_handler(indigo_device *device) {
 static void streaming_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
+	
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
 		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
 		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 		{ 0 }
 	};
+	
 	int id = PRIVATE_DATA->dev_id;
 	SVB_ERROR_CODE res;
 
@@ -644,7 +643,8 @@ static void streaming_handler(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (svb_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
