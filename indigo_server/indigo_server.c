@@ -62,7 +62,7 @@
 #include "ccd_sx/indigo_ccd_sx.h"
 #include "wheel_sx/indigo_wheel_sx.h"
 #include "ccd_ssag/indigo_ccd_ssag.h"
-//#include "ccd_asi/indigo_ccd_asi.h"
+#include "ccd_asi/indigo_ccd_asi.h"
 #include "guider_asi/indigo_guider_asi.h"
 #include "wheel_asi/indigo_wheel_asi.h"
 #include "ccd_atik/indigo_ccd_atik.h"
@@ -215,7 +215,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_usbdp,
 	indigo_ccd_altair,
 	indigo_ccd_apogee,
-	//indigo_ccd_asi,
+	indigo_ccd_asi,
 	indigo_ccd_atik,
 	indigo_ccd_dsi,
 	indigo_ccd_fli,
