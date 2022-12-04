@@ -627,18 +627,12 @@ static void streaming_handler(indigo_device *device) {
 	else
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBStopVideoCapture(%d)", id);
 	if (svb_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
-		while (true) {
-			if (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0) != SVB_SUCCESS)
-				break;
-		}
 		res = SVBStartVideoCapture(id);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) = %d", id, res);
 		} else {
 			indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}
-	} else {
-		res = SVB_ERROR_GENERAL_ERROR;
 	}
 }
 
