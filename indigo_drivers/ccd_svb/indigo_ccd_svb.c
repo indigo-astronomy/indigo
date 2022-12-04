@@ -77,8 +77,6 @@
 #define us2s(s) ((s) / 1000000.0)
 #define s2us(us) ((us) * 1000000)
 
-#define RETRY_COUNT	5
-
 typedef struct {
 	int dev_id;
 	int count_open;
@@ -94,14 +92,12 @@ typedef struct {
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
-	bool is_sv305;
 	SVB_CAMERA_INFO info;
 	SVB_CAMERA_PROPERTY property;
 	SVB_CAMERA_PROPERTY_EX property_ex;
 	indigo_property *pixel_format_property;
 	indigo_property *svb_advanced_property;
 	bool first_frame;
-	int retry;
 } svb_private_data;
 
 static int get_pixel_depth(indigo_device *device) {
@@ -580,36 +576,11 @@ static void streaming_timer_callback(indigo_device *device) {
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					double remaining = CCD_STREAMING_EXPOSURE_ITEM->number.target - (time(NULL) - start);
 					if (res == SVB_SUCCESS) {
-						if (remaining > 1) {
-							if (PRIVATE_DATA->retry == 0) {
-								indigo_send_message(device, "Exposure was retried %d times, failed", RETRY_COUNT);
-								CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-								break;
-							}
-							PRIVATE_DATA->retry--;
-							pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-							SVBStopVideoCapture(id);
-							pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-							CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
-							indigo_update_property(device, CCD_STREAMING_PROPERTY, "Exposure is terminated prematurely, retrying...");
-							indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
-							return;
-						}
 						break;
 					}
 					if (res != SVB_ERROR_TIMEOUT) {
 						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 						break;
-					}
-					if (remaining < -1) {
-						PRIVATE_DATA->retry--;
-						CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
-						indigo_update_property(device, CCD_STREAMING_PROPERTY, "Exposure is not finished on time, retrying...");
-						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						SVBStopVideoCapture(id);
-						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-						indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
-						return;
 					}
 					if (CCD_STREAMING_EXPOSURE_ITEM->number.value > remaining && remaining >= 0) {
 						CCD_STREAMING_EXPOSURE_ITEM->number.value = remaining;
@@ -1135,7 +1106,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_use_shortest_exposure_if_bias(device);
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		PRIVATE_DATA->retry = RETRY_COUNT;
 		indigo_set_timer(device, 0, exposure_handler, NULL);
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
@@ -1153,7 +1123,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		PRIVATE_DATA->retry = RETRY_COUNT;
 		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
@@ -1161,7 +1130,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		// if ((!PRIVATE_DATA->is_sv305) && 
 		if (CCD_STREAMING_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			svb_abort_exposure(device);
@@ -1697,7 +1665,7 @@ static void process_plug_event(indigo_device *unused) {
 			device->master_device = master_device;
 			sprintf(device->name, "%s Guider #%d", info.FriendlyName, id);
 			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-			if (strstr("SV305", info.FriendlyName)) private_data->is_sv305 = true;
+			//if (strstr("SV305", info.FriendlyName)) private_data->is_sv305 = true;
 			device->private_data = private_data;
 			indigo_attach_device(device);
 			devices[slot]=device;
