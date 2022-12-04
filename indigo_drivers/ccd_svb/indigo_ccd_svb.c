@@ -635,7 +635,7 @@ static void streaming_handler(indigo_device *device) {
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBStartVideoCapture(%d) = %d", id, res);
 		} else {
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
+			indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}
 	} else {
 		res = SVB_ERROR_GENERAL_ERROR;
@@ -1003,7 +1003,7 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 		if (res)
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) = %d", id, res);
 		else
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) = %ld", id, value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, SVB_COOLER_POWER) = %ld", id, value);
 		CCD_COOLER_POWER_ITEM->number.value = CCD_COOLER_POWER_ITEM->number.target = value;
 		return INDIGO_OK;
 	}
