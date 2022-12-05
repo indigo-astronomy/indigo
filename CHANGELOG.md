@@ -2,6 +2,25 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-204] - XX Dec XXX 2022
+
+### Overall
+- all ccd drivers: fix exposure countdown race
+
+### Driver Fixes:
+- indigo_ccd_asi:
+	- SDK updated to v.1.27
+
+- indigo_ccd_svb:
+	- SDK uodated to v.1.9.8
+	- switch to statically inked version of the SDK on Linux
+	- fix ocasional broken frames
+	- fix exposure retry issue
+	- swithched from sychronous to asynchrnous exposure handling
+	- fix cooler issues for SV405
+	- fix streaming for SV405
+	- many bugfixes
+
 ## [2.0-202] - 26 Nov Sat 2022
 
 ### Overall
@@ -10,7 +29,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- GUIDING_MISCONCEPTIONS.md updated
 	- CCD_DRIVER_SAVED_IMAGES.md creaated - describes how file name templates work for the server side saved images.
 
-- all ccd driivers:
+- all ccd drivers:
 	- FITS keyword OBS-DAT used with millisec precision
 	- EXPTIME fixed for streaming
 
