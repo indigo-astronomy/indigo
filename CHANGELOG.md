@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-204] - XX Dec XXX 2022
+# [2.0-204] - 06 Dec Tue 2022
 
 ### Overall
 - all ccd drivers: fix exposure countdown race
