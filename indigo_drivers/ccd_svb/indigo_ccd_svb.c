@@ -1521,6 +1521,7 @@ static bool connected_ids[SVBCAMERA_ID_MAX] = {false};
 
 static int find_index_by_device_id(int id) {
 	SVB_CAMERA_INFO info;
+	SVBGetNumOfConnectedCameras();
 	int count = SVBGetNumOfConnectedCameras();
 	for (int index = 0; index < count; index++) {
 		SVBGetCameraInfo(&info, index);
@@ -1533,7 +1534,7 @@ static int find_index_by_device_id(int id) {
 static int find_plugged_device_id() {
 	int i, id = NO_DEVICE, new_id = NO_DEVICE;
 	SVB_CAMERA_INFO info;
-
+	SVBGetNumOfConnectedCameras();
 	int count = SVBGetNumOfConnectedCameras();
 	for (i = 0; i < count; i++) {
 		SVBGetCameraInfo(&info, i);
@@ -1570,7 +1571,7 @@ static int find_unplugged_device_id() {
 	bool dev_tmp[SVBCAMERA_ID_MAX] = {false};
 	int i;
 	SVB_CAMERA_INFO info;
-
+	SVBGetNumOfConnectedCameras();
 	int count = SVBGetNumOfConnectedCameras();
 	for (i = 0; i < count; i++) {
 		SVBGetCameraInfo(&info, i);
