@@ -186,15 +186,18 @@ static void load_configuration(indigo_device *device) {
 		indigo_usleep(100000);
 	}
 	if (!done) {
-		indigo_send_message(agent_device, "Can't deselect active devices before loading new configuration");
+		AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Can't deselect active devices before loading new configuration");
 		return;
 	}
 	// load saved configuration
+	char message[INDIGO_VALUE_SIZE] = "";
 	for (int i = 0; i < AGENT_CONFIG_LOAD_PROPERTY->count; i++) {
 		indigo_item *item = AGENT_CONFIG_LOAD_PROPERTY->items + i;
 		if (item->sw.value) {
 			int handle = indigo_open_config_file(item->name, 0, O_RDONLY, EXTENSION);
 			if (handle > 0) {
+				snprintf(message, INDIGO_VALUE_SIZE, "Loading configuration '%s'", item->name);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Loading saved configuration from %s%s", item->name, EXTENSION);
 				indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 				strcpy(client->name, CONFIG_READER);
@@ -212,7 +215,11 @@ static void load_configuration(indigo_device *device) {
 		}
 	}
 	AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
+	if (message[0] == '\0') {
+		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
+	} else {
+		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, message);
+	}
 }
 
 static void process_configuration_property(indigo_device *device) {
@@ -343,6 +350,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_CONFIG_SAVE_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_CONFIG_SAVE_PROPERTY, property, false);
+		char message[INDIGO_VALUE_SIZE] = "";
 		if (*AGENT_CONFIG_SAVE_NAME_ITEM->text.value) {
 			if (AGENT_CONFIG_SETUP_AUTOSAVE_NAME_ITEM->sw.value) {
 				for (int i = 0; i < MAX_AGENTS; i++) {
@@ -379,20 +387,27 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				}
 				pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 				close(handle);
+				snprintf(message, INDIGO_VALUE_SIZE, "Active configuration saved as '%s'", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Active configuration saved to %s%s", AGENT_CONFIG_SAVE_NAME_ITEM->text.value, EXTENSION);
 				AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
+				snprintf(message, INDIGO_VALUE_SIZE, "Failed to save active configuration as '%s'", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to save active configuration to %s%s", AGENT_CONFIG_SAVE_NAME_ITEM->text.value, EXTENSION);
 				AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else {
+			snprintf(message, INDIGO_VALUE_SIZE, "Configuration name '%s' is not valid", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid name for active configuration");
 			AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_delete_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 		populate_list(device);
 		indigo_define_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
-		indigo_update_property(device, AGENT_CONFIG_SAVE_PROPERTY, NULL);
+		if (message[0] == '\0') {
+			indigo_update_property(device, AGENT_CONFIG_SAVE_PROPERTY, NULL);
+		} else {
+			indigo_update_property(device, AGENT_CONFIG_SAVE_PROPERTY, message);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_CONFIG_LOAD_PROPERTY, property)) {
 		if (AGENT_CONFIG_LOAD_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -406,23 +421,31 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_CONFIG_DELETE_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_CONFIG_DELETE_PROPERTY, property, false);
+		char message[INDIGO_VALUE_SIZE] = "";
 		if (strchr(AGENT_CONFIG_DELETE_NAME_ITEM->text.value, '/')) {
+			snprintf(message, INDIGO_VALUE_SIZE, "Invalid configuration name '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid configuration name %s", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 			AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			char path[256];
 			snprintf(path, sizeof(path), "%s/.indigo/%s%s", getenv("HOME"), AGENT_CONFIG_DELETE_NAME_ITEM->text.value, EXTENSION);
 			if (unlink(path)) {
+				snprintf(message, INDIGO_VALUE_SIZE, "Failed to remove configuration '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't remove saved configuration %s", path);
 				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
+				snprintf(message, INDIGO_VALUE_SIZE, "Configuration '%s' deleted", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_OK_STATE;
 			}
 			indigo_delete_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 			populate_list(device);
 			indigo_define_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 		}
-		indigo_update_property(device, AGENT_CONFIG_DELETE_PROPERTY, NULL);
+		if (message[0] == '\0') {
+			indigo_update_property(device, AGENT_CONFIG_DELETE_PROPERTY, NULL);
+		} else {
+			indigo_update_property(device, AGENT_CONFIG_DELETE_PROPERTY, message);
+		}
 		return INDIGO_OK;
 	} else if (!strncmp(property->name, "AGENT_CONFIG", 12)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
