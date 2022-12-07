@@ -32,7 +32,7 @@
 extern "C" {
 #endif
 
-#define CONFIG_AGENT_NAME	"Configuration agent"
+#define CONFIG_AGENT_NAME	"Configuration Agent"
 	
 /** Create Configuration agent instance
  */
