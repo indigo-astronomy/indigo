@@ -954,7 +954,6 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 	}
 
 	if (ctrl_caps.ControlType == SVB_TARGET_TEMPERATURE) {
-		indigo_error("target_temperature = %d", ctrl_caps.IsWritable);
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
 		CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 		CCD_TEMPERATURE_ITEM->number.min = ctrl_caps.MinValue/10;
