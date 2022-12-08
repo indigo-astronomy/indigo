@@ -1,2 +1,1 @@
-# SvBONY
-SUBSYSTEMS=="usb", ATTRS{idVendor}=="f266", MODE="0666", TAG="ckusb_dev"
+SUBSYSTEMS=="usb", ENV{DEVTYPE}=="usb_device", ATTRS{idVendor}=="f266", ATTRS{idProduct}=="9a0a", MODE="0666"

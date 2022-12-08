@@ -216,3 +216,41 @@ Version: v1.9.6
 Date:2022-9-28
 1. Fixed the bug that the SV705C could not output the image at the low resolution of RAW8
 2. Fixed the bug that the camera could not be opened multiple times through DirectShow when using sharpcap
+
+
+##########################################################
+版本:v1.9.7
+日期:2022-11-03
+1.修正SV405CC偶尔失去响应的BUG(相机固件需要升级到v2.0.0.6)
+2.修正SV405CC无法设置最大分辨率的BUG
+
+Version: v1.9.7
+Date: 2022-11-03
+1. Fixed the bug that SV405CC occasionally loses response(Camera firmware needs to be upgraded to v2.0.0.6)
+2. Fixed the bug that SV405CC cannot set the maximum resolution
+
+
+##########################################################
+版本:v1.9.8
+日期:2022-11-09
+1.修正SV405CC设置某些分辨率图像不正确的BUG
+
+Version:v1.9.8
+Date: 2022-11-09
+1.Fixed the bug that SV405CC set some resolution images incorrectly
+
+
+##########################################################
+版本:v1.10.0
+日期:2022-12-07
+1.支持SV605MC相机
+2.修正SV605CC触发拍照时间的问题
+3.修正一些BUG
+4.增加新的API接口函数SVBGetCameraFirmwareVersion和SVBIsCameraNeedToUpgrade
+
+Version: v1.10.0
+Date: 2022-12-07
+1. Support SV605MC camera
+2. Fixed the issue that SV605CC triggers the photo time
+3. Fix some bugs
+4. Add new API interface functions SVBGetCameraFirmwareVersion and SVBIsCameraNeedToUpgrade
