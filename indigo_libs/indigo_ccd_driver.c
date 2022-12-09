@@ -510,7 +510,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
-				indigo_cancel_timer_sync(device, &CCD_CONTEXT->countdown_timer);
+				indigo_cancel_timer(device, &CCD_CONTEXT->countdown_timer);
 				indigo_set_timer(device, 1.0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 			}
 		}
