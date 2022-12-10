@@ -29,6 +29,7 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_fits.h>
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -444,6 +445,7 @@ typedef struct {
 	indigo_device_context device_context;         ///< device context base
 	bool countdown_enabled;												///< countdown enabled
 	indigo_timer *countdown_timer;								///< countdown timer
+	pthread_mutex_t countdown_mutex;							///< countdown mutex
 	void *preview_image;													///< preview image buffer
 	unsigned long preview_image_size;							///< preview image buffer size
 	void *preview_histogram;											///< preview histogram buffer
