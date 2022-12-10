@@ -72,15 +72,17 @@ static void jpeg_decompress_error_callback(j_common_ptr cinfo) {
 }
 
 static void countdown_timer_callback(indigo_device *device) {
-	if (pthread_mutex_trylock(&CCD_CONTEXT->countdown_mutex) == 0) {
-		if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
-			CCD_EXPOSURE_ITEM->number.value -= 1;
-			if (CCD_EXPOSURE_ITEM->number.value < 0) CCD_EXPOSURE_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			indigo_reschedule_timer(device, 1.0, &CCD_CONTEXT->countdown_timer);
-		}
-		pthread_mutex_unlock(&CCD_CONTEXT->countdown_mutex);
+	if (CCD_CONTEXT->countdown_enabled && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
+		CCD_EXPOSURE_ITEM->number.value -= 1;
+		if (CCD_EXPOSURE_ITEM->number.value < 0) CCD_EXPOSURE_ITEM->number.value = 0;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		indigo_reschedule_timer(device, 1.0, &CCD_CONTEXT->countdown_timer);
 	}
+}
+
+static void start_countdown_timer_callback(indigo_device *device) {
+	indigo_cancel_timer_sync(device, &CCD_CONTEXT->countdown_timer);
+	indigo_set_timer(device, 1.0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 }
 
 void indigo_ccd_suspend_countdown(indigo_device *device) {
@@ -106,7 +108,6 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 	}
 	if (CCD_CONTEXT != NULL) {
 		if (indigo_device_attach(device, driver_name, version, INDIGO_INTERFACE_CCD) == INDIGO_OK) {
-			pthread_mutex_init(&CCD_CONTEXT->countdown_mutex, NULL);
 			// -------------------------------------------------------------------------------- CCD_INFO
 			CCD_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_INFO_PROPERTY_NAME, CCD_MAIN_GROUP, "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 8);
 			if (CCD_INFO_PROPERTY == NULL)
@@ -513,10 +514,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 				}
 			}
 			if (CCD_EXPOSURE_ITEM->number.value >= 1) {
-				pthread_mutex_lock(&CCD_CONTEXT->countdown_mutex);
-				indigo_cancel_timer(device, &CCD_CONTEXT->countdown_timer);
-				indigo_set_timer(device, 1.0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
-				pthread_mutex_unlock(&CCD_CONTEXT->countdown_mutex);
+				indigo_set_timer(device, 0, start_countdown_timer_callback, NULL);
 			}
 		}
 		return INDIGO_OK;
