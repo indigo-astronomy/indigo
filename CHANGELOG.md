@@ -2,6 +2,26 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-206] - 10 Dec Sat 2022
+
+### Overall
+- all ccd drivers: fix exposure countdown deadlock
+
+### Driver Fixes:
+- indigo_agent_config:
+	- fix driver name
+	- fix stale BUSY state, make save/load/delete more verbose
+
+- indigo_ccd_altair:
+	- SDK updated to 53.21749.20221121
+
+- indigo_ccd_touptek:
+	- SDK updated to 53.21749.20221121
+
+- indigo_ccd_svb:
+	- SDK uodated to v.1.10.0
+
+
 # [2.0-204] - 06 Dec Tue 2022
 
 ### Overall
