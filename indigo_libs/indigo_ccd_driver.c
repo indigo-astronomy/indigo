@@ -81,7 +81,12 @@ static void countdown_timer_callback(indigo_device *device) {
 	double now;
 	while(!CCD_CONTEXT->countdown_canceled) {
 		now = get_time_hd();
-		if (CCD_CONTEXT->countdown_endtime > 0 && CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE && CCD_EXPOSURE_ITEM->number.value >= 1) {
+		if (
+			CCD_CONTEXT->countdown_enabled &&
+			CCD_CONTEXT->countdown_endtime > 0 &&
+			CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE &&
+			CCD_EXPOSURE_ITEM->number.value >= 1
+		) {
 			//indigo_error("%lf - %lf = %lf (%f)", CCD_CONTEXT->countdown_endtime, now, CCD_CONTEXT->countdown_endtime - now, ceil(CCD_CONTEXT->countdown_endtime - now));
 			CCD_EXPOSURE_ITEM->number.value = ceil(CCD_CONTEXT->countdown_endtime - now);
 			if (CCD_EXPOSURE_ITEM->number.value <= 0) {
@@ -95,11 +100,13 @@ static void countdown_timer_callback(indigo_device *device) {
 }
 
 void indigo_ccd_suspend_countdown(indigo_device *device) {
+	CCD_CONTEXT->countdown_enabled = false;
 	CCD_CONTEXT->countdown_endtime = 0;
 }
 
 void indigo_ccd_resume_countdown(indigo_device *device) {
 	CCD_CONTEXT->countdown_endtime = get_time_hd() + CCD_EXPOSURE_ITEM->number.value;
+	CCD_CONTEXT->countdown_enabled = true;
 }
 
 void indigo_use_shortest_exposure_if_bias(indigo_device *device) {
@@ -174,7 +181,6 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_EXPOSURE_ITEM, CCD_EXPOSURE_ITEM_NAME, "Start exposure", 0, 10000, 1, 0);
 			strcpy(CCD_EXPOSURE_ITEM->number.format, "%g");
-			CCD_CONTEXT->countdown_endtime = 0;
 			// -------------------------------------------------------------------------------- CCD_STREAMING
 			CCD_STREAMING_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_STREAMING_PROPERTY_NAME, CCD_MAIN_GROUP, "Start streaming", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_STREAMING_PROPERTY == NULL)
@@ -443,6 +449,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
 			CCD_CONTEXT->countdown_canceled = false;
+			CCD_CONTEXT->countdown_enabled = true;
+			CCD_CONTEXT->countdown_endtime = 0;
 			indigo_set_timer(device, 0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 		} else {
 			CCD_CONTEXT->countdown_canceled = true;

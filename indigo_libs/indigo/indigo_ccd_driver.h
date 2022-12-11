@@ -443,6 +443,7 @@ extern "C" {
 typedef struct {
 	indigo_device_context device_context;         ///< device context base
 	bool countdown_canceled;									///< countdown canceled
+	bool countdown_enabled;									///< countdown enabled
 	double countdown_endtime;									///< countdown end time
 	indigo_timer *countdown_timer;								///< countdown timer
 	void *preview_image;													///< preview image buffer
