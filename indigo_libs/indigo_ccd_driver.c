@@ -454,7 +454,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_set_timer(device, 0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 		} else {
 			CCD_CONTEXT->countdown_canceled = true;
-			indigo_cancel_timer(device, &CCD_CONTEXT->countdown_timer);
 			CCD_STREAMING_COUNT_ITEM->number.value = 0;
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
@@ -777,6 +776,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 
 indigo_result indigo_ccd_detach(indigo_device *device) {
 	assert(device != NULL);
+	CCD_CONTEXT->countdown_canceled = true;
+	indigo_cancel_timer_sync(device, &CCD_CONTEXT->countdown_timer);
 	indigo_release_property(CCD_INFO_PROPERTY);
 	indigo_release_property(CCD_LENS_PROPERTY);
 	indigo_release_property(CCD_UPLOAD_MODE_PROPERTY);
