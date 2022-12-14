@@ -157,6 +157,7 @@
 #include "ccd_playerone/indigo_ccd_playerone.h"
 #include "focuser_prodigy/indigo_focuser_prodigy.h"
 #include "agent_config/indigo_agent_config.h"
+#include "mount_asi/indigo_mount_asi.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -284,6 +285,7 @@ driver_entry_point static_drivers[] = {
 	indigo_guider_eqmac,
 #endif
 	indigo_guider_gpusb,
+	indigo_mount_asi,
 	indigo_mount_ioptron,
 	indigo_mount_lx200,
 	indigo_mount_nexstar,
