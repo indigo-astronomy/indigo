@@ -56,6 +56,9 @@
 
 #define AGENT_CONFIG_LOAD_PROPERTY								(DEVICE_PRIVATE_DATA->load_config)
 
+#define AGENT_CONFIG_LAST_CONFIG_PROPERTY					(DEVICE_PRIVATE_DATA->last_config)
+#define AGENT_CONFIG_LAST_CONFIG_NAME_ITEM			    			(AGENT_CONFIG_LAST_CONFIG_PROPERTY->items+0)
+
 #define AGENT_CONFIG_DRIVERS_PROPERTY							(DEVICE_PRIVATE_DATA->drivers)
 
 #define AGENT_CONFIG_PROFILES_PROPERTY						(DEVICE_PRIVATE_DATA->profiles)
@@ -72,6 +75,7 @@ typedef struct {
 	indigo_property *save_config;
 	indigo_property *remove_config;
 	indigo_property *load_config;
+	indigo_property *last_config;
 	indigo_property *drivers;
 	indigo_property *profiles;
 	indigo_property *agents[MAX_AGENTS];
@@ -217,6 +221,7 @@ static void load_configuration(indigo_device *device) {
 				close(handle);
 				free(context);
 				free(client);
+				strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, item->name, INDIGO_VALUE_SIZE);
 			}
 			item->sw.value = false;
 		}
@@ -227,6 +232,7 @@ static void load_configuration(indigo_device *device) {
 	} else {
 		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, message);
 	}
+	indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 }
 
 static void process_configuration_property(indigo_device *device) {
@@ -284,8 +290,6 @@ static void process_configuration_property(indigo_device *device) {
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->restore_mutex);
 }
 
-
-
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result agent_device_attach(indigo_device *device) {
@@ -297,22 +301,32 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_CONFIG_SETUP_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_CONFIG_SETUP_AUTOSAVE_NAME_ITEM, AGENT_CONFIG_SETUP_AUTOSAVE_ITEM_NAME, "Autosave device configurations on profile save", false);
+
 		AGENT_CONFIG_SAVE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_CONFIG_SAVE_PROPERTY_NAME, MAIN_GROUP, "Save as configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_CONFIG_SAVE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AGENT_CONFIG_SAVE_NAME_ITEM, AGENT_CONFIG_SAVE_NAME_ITEM_NAME, "Name", "");
+
 		AGENT_CONFIG_DELETE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_CONFIG_DELETE_PROPERTY_NAME, MAIN_GROUP, "Delete configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_CONFIG_DELETE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AGENT_CONFIG_DELETE_NAME_ITEM, AGENT_CONFIG_DELETE_NAME_ITEM_NAME, "Name", "");
+
+		AGENT_CONFIG_LAST_CONFIG_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_CONFIG_LAST_CONFIG_PROPERTY_NAME, MAIN_GROUP, "Last configuration used", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+		if (AGENT_CONFIG_LAST_CONFIG_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM, AGENT_CONFIG_LAST_CONFIG_NAME_ITEM_NAME, "Name", "");
+
 		AGENT_CONFIG_LOAD_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_CONFIG_LOAD_PROPERTY_NAME, MAIN_GROUP, "Load configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 16);
 		if (AGENT_CONFIG_LOAD_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		AGENT_CONFIG_LOAD_PROPERTY->count = 0;
 		populate_list(device);
+
 		AGENT_CONFIG_DRIVERS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_CONFIG_DRIVERS_PROPERTY_NAME, "Configuration", "Drivers", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_ANY_OF_MANY_RULE, 0);
 		if (AGENT_CONFIG_DRIVERS_PROPERTY == NULL)
 			return INDIGO_FAILED;
+
 		AGENT_CONFIG_PROFILES_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_CONFIG_PROFILES_PROPERTY_NAME, "Configuration", "Profiles", INDIGO_OK_STATE, INDIGO_RO_PERM, 128);
 		if (AGENT_CONFIG_PROFILES_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -335,6 +349,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_CONFIG_DELETE_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_CONFIG_LOAD_PROPERTY, property))
 		indigo_define_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_CONFIG_LAST_CONFIG_PROPERTY, property))
+		indigo_define_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_CONFIG_DRIVERS_PROPERTY, property))
 		indigo_define_property(device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_CONFIG_PROFILES_PROPERTY, property))
@@ -416,6 +432,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_update_property(device, AGENT_CONFIG_SAVE_PROPERTY, message);
 		}
+		if (AGENT_CONFIG_SAVE_PROPERTY->state == INDIGO_OK_STATE) {
+			strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, AGENT_CONFIG_SAVE_NAME_ITEM->text.value, INDIGO_VALUE_SIZE);
+			indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_CONFIG_LOAD_PROPERTY, property)) {
 		if (AGENT_CONFIG_LOAD_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -455,6 +475,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_update_property(device, AGENT_CONFIG_DELETE_PROPERTY, message);
 		}
+		if (
+			AGENT_CONFIG_DELETE_PROPERTY->state == INDIGO_OK_STATE &&
+			!strncmp(AGENT_CONFIG_DELETE_NAME_ITEM->text.value, AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, INDIGO_VALUE_SIZE)
+		) {
+			AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value[0] = '\0';
+			indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	} else if (!strncmp(property->name, "AGENT_CONFIG", 12)) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
@@ -470,6 +497,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_CONFIG_SETUP_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_SAVE_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_DELETE_PROPERTY);
+	indigo_release_property(AGENT_CONFIG_LAST_CONFIG_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_LOAD_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_DRIVERS_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_PROFILES_PROPERTY);
