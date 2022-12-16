@@ -1036,6 +1036,21 @@ static void hotplug_callback(void* pCallbackCtx) {
 	indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 }
 
+static void remove_all_devices() {
+	int i;
+	for(i = 0; i < ALTAIRCAM_MAX; i++) {
+		indigo_device **device = &devices[i];
+		if (*device == NULL)
+			continue;
+		indigo_detach_device(*device);
+		HAltaircam handle = ((altair_private_data *)(*device)->private_data)->handle;
+		if (handle != NULL) Altaircam_Close(handle);
+		free((*device)->private_data);
+		free(*device);
+		*device = NULL;
+	}
+}
+
 indigo_result indigo_ccd_altair(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
@@ -1058,11 +1073,13 @@ indigo_result indigo_ccd_altair(indigo_driver_action action, indigo_driver_info 
 			break;
 		}
 		case INDIGO_DRIVER_SHUTDOWN:
+			for (int i = 0; i < ALTAIRCAM_MAX; i++) {
+				VERIFY_NOT_CONNECTED(devices[i]);
+			}
 			last_action = action;
 			Altaircam_HotPlug(NULL, NULL);
 			hotplug_callback_initialized = false;
-			for (int i = 0; i < ALTAIRCAM_MAX; i++)
-				VERIFY_NOT_CONNECTED(devices[i]);
+			remove_all_devices();
 			break;
 
 		case INDIGO_DRIVER_INFO:
