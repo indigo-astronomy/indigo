@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 53.21749.20221121 */
+/* Version: 53.21849.20221208 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -122,6 +122,7 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_FLAG_USB30_OVER_USB20    0x00000100  /* usb3.0 camera connected to usb2.0 port */
 #define ALTAIRCAM_FLAG_ST4                 0x00000200  /* ST4 port */
 #define ALTAIRCAM_FLAG_GETTEMPERATURE      0x00000400  /* support to get the temperature of the sensor */
+#define ALTAIRCAM_FLAG_HIGH_FULLWELL       0x00000800  /* high fullwell capacity */
 #define ALTAIRCAM_FLAG_RAW10               0x00001000  /* pixel format, RAW 10bits */
 #define ALTAIRCAM_FLAG_RAW12               0x00002000  /* pixel format, RAW 12bits */
 #define ALTAIRCAM_FLAG_RAW14               0x00004000  /* pixel format, RAW 14bits */
@@ -259,7 +260,7 @@ typedef struct {
 } AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.21749.20221121
+    get the version of this dll/so/dylib, which is: 53.21849.20221208
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -935,6 +936,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
                                                                 high 16 bits: max
                                                                 low 16 bits: min
                                                          */
+#define ALTAIRCAM_OPTION_HIGH_FULLWELL          0x55       /* high fullwell capacity: 0 => disable, 1 => enable */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8              0x00
