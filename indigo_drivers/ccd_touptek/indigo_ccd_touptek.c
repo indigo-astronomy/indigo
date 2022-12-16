@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME "indigo_ccd_touptek"
 
 #include <stdlib.h>
@@ -973,11 +973,22 @@ static void process_plug_event(indigo_device *unusued) {
 				NULL,
 				ccd_detach
 				);
+
+			/* cam.id is not constant it changes at replug so we use serial number */
+			char camera_id[32] = {0};
+			HToupcam handle = Toupcam_Open(cam.id);
+			if(handle != NULL) {
+				Toupcam_get_SerialNumber(handle, camera_id);
+				Toupcam_Close(handle);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get serial number of Camera %s #%s", cam.displayname, cam.id);
+				strncpy(camera_id, cam.id, 32);
+			}
 			touptek_private_data *private_data = indigo_safe_malloc(sizeof(touptek_private_data));
 			private_data->cam = cam;
 			private_data->present = true;
 			indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-			snprintf(camera->name, INDIGO_NAME_SIZE, "ToupTek %s #%s", cam.displayname, cam.id);
+			snprintf(camera->name, INDIGO_NAME_SIZE, "ToupTek %s #%s", cam.displayname, camera_id);
 			camera->private_data = private_data;
 			private_data->camera = camera;
 			for (int i = 0; i < TOUPCAM_MAX; i++) {
@@ -996,7 +1007,7 @@ static void process_plug_event(indigo_device *unusued) {
 					guider_detach
 					);
 				indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-				snprintf(guider->name, INDIGO_NAME_SIZE, "ToupTek %s (guider) #%s", cam.displayname, cam.id);
+				snprintf(guider->name, INDIGO_NAME_SIZE, "ToupTek %s (guider) #%s", cam.displayname, camera_id);
 				guider->private_data = private_data;
 				private_data->guider = guider;
 				indigo_attach_device(guider);
