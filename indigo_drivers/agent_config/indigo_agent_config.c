@@ -34,6 +34,7 @@
 #include <pthread.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <ctype.h>
 #include <sys/stat.h>
 
 #include <indigo/indigo_agent.h>
