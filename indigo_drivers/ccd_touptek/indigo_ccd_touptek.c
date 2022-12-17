@@ -154,6 +154,25 @@ static void ccd_temperature_callback(indigo_device *device) {
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_get_Temperature() -> %08x", result);
 	}
+	if (!CCD_COOLER_POWER_PROPERTY->hidden) {
+		int current_voltage = 0, max_voltage = 0;
+		if (CCD_COOLER_ON_ITEM->sw.value) {
+			result = Toupcam_get_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_TEC_VOLTAGE, &current_voltage);
+		} else {
+			current_voltage = 0;
+		}
+		result = Toupcam_get_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_TEC_VOLTAGE_MAX, &max_voltage);
+		if (result >= 0 && max_voltage > 0) {
+			double cooler_power = (double)current_voltage/max_voltage * 100;
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_OK_STATE;
+			CCD_COOLER_POWER_ITEM->number.value = round(cooler_power);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Toupcam_get_Option(TOUPCAM_OPTION_TEC_VOLTAGE_MAX) -> %08x", result);
+			CCD_COOLER_POWER_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_COOLER_POWER_ITEM->number.value = 0;
+		}
+		indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
+	}
 	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperature_timer);
 }
 
@@ -363,6 +382,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			if (PRIVATE_DATA->cam.model->flag & TOUPCAM_FLAG_TEC_ONOFF) {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_COOLER_PROPERTY->hidden = false;
+				CCD_COOLER_POWER_PROPERTY->hidden = false;
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 			} else {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
