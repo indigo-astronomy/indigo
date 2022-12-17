@@ -250,8 +250,8 @@ static void setup_exposure(indigo_device *device) {
 			PRIVATE_DATA->height = height;
 		}
 	}
-	result = Altaircam_Flush(PRIVATE_DATA->handle);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_Flush() -> %08x", result);
+	result = Altaircam_put_Option(PRIVATE_DATA->handle, ALTAIRCAM_OPTION_FLUSH, 3);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Altaircam_put_Option(ALTAIRCAM_OPTION_FLUSH) -> %08x", result);
 }
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);

@@ -250,8 +250,8 @@ static void setup_exposure(indigo_device *device) {
 			PRIVATE_DATA->height = height;
 		}
 	}
-	result = Toupcam_Flush(PRIVATE_DATA->handle);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_Flush() -> %08x", result);
+	result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_FLUSH, 3);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_FLUSH) -> %08x", result);
 }
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
