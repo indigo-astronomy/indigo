@@ -972,18 +972,14 @@ static void process_plug_event(indigo_device *unusued) {
 				ccd_change_property,
 				NULL,
 				ccd_detach
-				);
+			);
 
-			/* cam.id is not constant it changes at replug so we use serial number */
+			/* cam.id is not constant it changes at replug so we set increasing field to 00 */
 			char camera_id[32] = {0};
-			HAltaircam handle = Altaircam_Open(cam.id);
-			if(handle != NULL) {
-				Altaircam_get_SerialNumber(handle, camera_id);
-				Altaircam_Close(handle);
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get serial number of Camera %s #%s", cam.displayname, cam.id);
-				strncpy(camera_id, cam.id, 32);
-			}
+			strncpy(camera_id, cam.id, 32);
+			camera_id[5] = '0';
+			camera_id[6] = '0';
+
 			altair_private_data *private_data = indigo_safe_malloc(sizeof(altair_private_data));
 			private_data->cam = cam;
 			private_data->present = true;
