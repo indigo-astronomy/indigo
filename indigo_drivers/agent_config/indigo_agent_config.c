@@ -47,8 +47,8 @@
 #define CLIENT_PRIVATE_DATA												private_data
 
 #define AGENT_CONFIG_SETUP_PROPERTY								(DEVICE_PRIVATE_DATA->setup)
-#define AGENT_CONFIG_SETUP_AUTOSAVE_NAME_ITEM			(AGENT_CONFIG_SETUP_PROPERTY->items+0)
-#define AGENT_CONFIG_SETUP_UNLOAD_NAME_ITEM				(AGENT_CONFIG_SETUP_PROPERTY->items+1)
+#define AGENT_CONFIG_SETUP_AUTOSAVE_ITEM			(AGENT_CONFIG_SETUP_PROPERTY->items+0)
+#define AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM				(AGENT_CONFIG_SETUP_PROPERTY->items+1)
 
 #define AGENT_CONFIG_SAVE_PROPERTY								(DEVICE_PRIVATE_DATA->save_config)
 #define AGENT_CONFIG_SAVE_NAME_ITEM			    			(AGENT_CONFIG_SAVE_PROPERTY->items+0)
@@ -257,7 +257,7 @@ static void process_configuration_property(indigo_device *device) {
 				indigo_property *copy = indigo_safe_malloc_copy(sizeof(indigo_property) + property->count * sizeof(indigo_item), property);
 				strcpy(copy->name, SERVER_DRIVERS_PROPERTY_NAME);
 				strcpy(copy->device, DEVICE_PRIVATE_DATA->server);
-				if (!AGENT_CONFIG_SETUP_UNLOAD_NAME_ITEM->sw.value) {
+				if (!AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM->sw.value) {
 					for (int j = 0; j < AGENT_CONFIG_DRIVERS_PROPERTY->count; j++) {
 						indigo_item *item = AGENT_CONFIG_DRIVERS_PROPERTY->items + j;
 						if (item->sw.value) {
@@ -345,8 +345,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_CONFIG_SETUP_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_CONFIG_SETUP_PROPERTY_NAME, MAIN_GROUP, "Agent configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (AGENT_CONFIG_SETUP_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_CONFIG_SETUP_AUTOSAVE_NAME_ITEM, AGENT_CONFIG_SETUP_AUTOSAVE_ITEM_NAME, "Autosave device configurations on profile save", false);
-		indigo_init_switch_item(AGENT_CONFIG_SETUP_UNLOAD_NAME_ITEM, AGENT_CONFIG_SETUP_UNLOAD_NAME_ITEM_NAME, "Unload unused drivers", false);
+		indigo_init_switch_item(AGENT_CONFIG_SETUP_AUTOSAVE_ITEM, AGENT_CONFIG_SETUP_AUTOSAVE_ITEM_NAME, "Autosave device configurations on profile save", false);
+		indigo_init_switch_item(AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM, AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM_NAME, "Unload unused drivers", false);
 
 		AGENT_CONFIG_SAVE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_CONFIG_SAVE_PROPERTY_NAME, MAIN_GROUP, "Save as configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_CONFIG_SAVE_PROPERTY == NULL)
@@ -422,7 +422,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		char message[INDIGO_VALUE_SIZE] = "";
 		if (*AGENT_CONFIG_SAVE_NAME_ITEM->text.value) {
 			replace_spaces(AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
-			if (AGENT_CONFIG_SETUP_AUTOSAVE_NAME_ITEM->sw.value) {
+			if (AGENT_CONFIG_SETUP_AUTOSAVE_ITEM->sw.value) {
 				for (int i = 0; i < MAX_AGENTS; i++) {
 					pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 					indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i];
