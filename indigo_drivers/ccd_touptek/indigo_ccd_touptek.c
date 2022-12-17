@@ -1057,17 +1057,20 @@ static void hotplug_callback(void* pCallbackCtx) {
 }
 
 static void remove_all_devices() {
-	int i;
-	for(i = 0; i < TOUPCAM_MAX; i++) {
-		indigo_device **device = &devices[i];
-		if (*device == NULL)
-			continue;
-		indigo_detach_device(*device);
-		HToupcam handle = ((touptek_private_data *)(*device)->private_data)->handle;
-		if (handle != NULL) Toupcam_Close(handle);
-		free((*device)->private_data);
-		free(*device);
-		*device = NULL;
+	for (int i = 0; i < TOUPCAM_MAX; i++) {
+		indigo_device *device = devices[i];
+		if (device) {
+			indigo_device *guider = PRIVATE_DATA->guider;
+			if (guider) {
+				indigo_detach_device(guider);
+				free(guider);
+			}
+			indigo_detach_device(device);
+			if (device->private_data)
+				free(device->private_data);
+			free(device);
+			devices[i] = NULL;
+		}
 	}
 }
 
