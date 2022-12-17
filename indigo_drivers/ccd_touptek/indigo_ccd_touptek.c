@@ -1100,7 +1100,7 @@ indigo_result indigo_ccd_touptek(indigo_driver_action action, indigo_driver_info
 				VERIFY_NOT_CONNECTED(devices[i]);
 			}
 			last_action = action;
-			Toupcam_HotPlug(NULL, NULL);
+			//Toupcam_HotPlug(NULL, NULL);  // if used, after unload/load hot plug doesn't work anymore
 			hotplug_callback_initialized = false;
 			remove_all_devices();
 			break;
