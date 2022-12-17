@@ -203,7 +203,7 @@ static void setup_exposure(indigo_device *device) {
 					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 1) -> %08x", result);
 					PRIVATE_DATA->bits = atoi(item->name + 3); // FIXME: should be ignored in RAW mode, but it is not
-				} else if (strncmp(item->name, "RGB", 3) == 0) {
+				} else if (strncmp(item->name, "RGB08", 5) == 0) {
 					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_RAW, 0);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Toupcam_put_Option(TOUPCAM_OPTION_RAW, 0) -> %08x", result);
 					result = Toupcam_put_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_BITDEPTH, 0);
@@ -284,13 +284,13 @@ static indigo_result ccd_attach(indigo_device *device) {
 			if ((flags & TOUPCAM_FLAG_MONO) == 0) {
 				if (flags & TOUPCAM_FLAG_RAW8) {
 					snprintf(name, sizeof(name), "RAW08_%d", i);
-					snprintf(label, sizeof(label), "RAW %d x %d x 8", frame_width, frame_height);
+					snprintf(label, sizeof(label), "RAW 8 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & TOUPCAM_FLAG_RAW10) {
 					snprintf(name, sizeof(name), "RAW10_%d", i);
-					snprintf(label, sizeof(label), "RAW %d x %d x 10", frame_width, frame_height);
+					snprintf(label, sizeof(label), "RAW 10 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max < 10)
 						CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 10;
@@ -298,7 +298,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				}
 				if (flags & TOUPCAM_FLAG_RAW12) {
 					snprintf(name, sizeof(name), "RAW12_%d", i);
-					snprintf(label, sizeof(label), "RAW %d x %d x 12", frame_width, frame_height);
+					snprintf(label, sizeof(label), "RAW 12 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 12;
@@ -306,7 +306,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				}
 				if (flags & TOUPCAM_FLAG_RAW14) {
 					snprintf(name, sizeof(name), "RAW14_%d", i);
-					snprintf(label, sizeof(label), "RAW %d x %d x 14", frame_width, frame_height);
+					snprintf(label, sizeof(label), "RAW 14 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 14;
@@ -314,26 +314,26 @@ static indigo_result ccd_attach(indigo_device *device) {
 				}
 				if (flags & TOUPCAM_FLAG_RAW16) {
 					snprintf(name, sizeof(name), "RAW16_%d", i);
-					snprintf(label, sizeof(label), "RAW %d x %d x 16", frame_width, frame_height);
+					snprintf(label, sizeof(label), "RAW 16 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
 					CCD_MODE_PROPERTY->count++;
 				}
-				snprintf(name, sizeof(name), "RGB_%d", i);
-				snprintf(label, sizeof(label), "RGB %d x %d", frame_width, frame_height);
+				snprintf(name, sizeof(name), "RGB08_%d", i);
+				snprintf(label, sizeof(label), "RGB 24 %dx%d", frame_width, frame_height);
 				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 				CCD_MODE_PROPERTY->count++;
 			} else {
 				if (flags & TOUPCAM_FLAG_RAW8) {
 					snprintf(name, sizeof(name), "MON08_%d", i);
-					snprintf(label, sizeof(label), "MON %d x %d x 8", frame_width, frame_height);
+					snprintf(label, sizeof(label), "MON 8 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & TOUPCAM_FLAG_RAW10) {
 					snprintf(name, sizeof(name), "MON10_%d", i);
-					snprintf(label, sizeof(label), "MON %d x %d x 10", frame_width, frame_height);
+					snprintf(label, sizeof(label), "MON 10 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 10)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 10;
@@ -341,7 +341,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				}
 				if (flags & TOUPCAM_FLAG_RAW12) {
 					snprintf(name, sizeof(name), "MON12_%d", i);
-					snprintf(label, sizeof(label), "MON %d x %d x 12", frame_width, frame_height);
+					snprintf(label, sizeof(label), "MON 12 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 12;
@@ -349,7 +349,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				}
 				if (flags & TOUPCAM_FLAG_RAW14) {
 					snprintf(name, sizeof(name), "MON14_%d", i);
-					snprintf(label, sizeof(label), "MON %d x %d x 14", frame_width, frame_height);
+					snprintf(label, sizeof(label), "MON 14 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 14;
@@ -357,7 +357,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				}
 				if (flags & TOUPCAM_FLAG_RAW16) {
 					snprintf(name, sizeof(name), "MON16_%d", i);
-					snprintf(label, sizeof(label), "MON %d x %d x 16", frame_width, frame_height);
+					snprintf(label, sizeof(label), "MON 16 %d x %d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
