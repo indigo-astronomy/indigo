@@ -156,6 +156,9 @@ static void ccd_temperature_callback(indigo_device *device) {
 	}
 	if (!CCD_COOLER_POWER_PROPERTY->hidden) {
 		int current_voltage = 0, max_voltage = 0;
+		/* When cooler is OFF current_voltage is reported as the last measured when
+		   power was ON, so we set it to 0 to show correct percentage
+		*/
 		if (CCD_COOLER_ON_ITEM->sw.value) {
 			result = Toupcam_get_Option(PRIVATE_DATA->handle, TOUPCAM_OPTION_TEC_VOLTAGE, &current_voltage);
 		} else {
