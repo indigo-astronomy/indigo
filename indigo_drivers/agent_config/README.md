@@ -29,6 +29,8 @@ When the configuration is loaded, unnecessary drivers will not be unloaded by de
 
 ## Saving, loading and removing service configurations
 
+The Configuration agent can manage only the local service configuration. If a complex setup is used with multiple services, each service should run its own configuration agent.
+
 ### Saving or creating new configurations
 New configuration or overwriting existing configuration is achieved by witting the configuration name in **NAME** item of the **AGENT_CONFIG_SAVE** property. If the configuration already exists it will be overwritten.
 
