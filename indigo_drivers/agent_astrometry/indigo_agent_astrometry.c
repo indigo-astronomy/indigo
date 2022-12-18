@@ -826,7 +826,7 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			if (!indigo_platesolver_validate_executable("solve-field") || !indigo_platesolver_validate_executable("image2xy") || !indigo_platesolver_validate_executable("curl")) {
-				indigo_error("astrometry.net is not available");
+				indigo_error("Astrometry.net or curl is not available");
 				return INDIGO_UNRESOLVED_DEPS;
 			}
 			last_action = action;
