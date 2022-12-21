@@ -32,6 +32,7 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <ctype.h>
 #include <sys/time.h>
 
 #include <indigo/indigo_usb_utils.h>
@@ -997,11 +998,20 @@ static void process_plug_event(indigo_device *unusued) {
 				ccd_detach
 			);
 
-			/* cam.id is not constant it changes at replug so we set increasing field to 00 */
+			/* cam.id is not constant it changes at replug so we remove the increasing field */
+			/* cam_id format is #tp-N-XX-NNNN-NNNN whenre XX increases everytime the camera is pluged in */
 			char camera_id[32] = {0};
 			strncpy(camera_id, cam.id, 32);
-			camera_id[5] = '0';
-			camera_id[6] = '0';
+			if (camera_id[4] == '-' && isdigit(camera_id[5])) {
+				int index = 5;
+				int base = 5;
+				while (isdigit(camera_id[index++]));
+				while (camera_id[index] != 0) {
+					camera_id[base++] = camera_id[index++];
+				}
+				camera_id[base]='\0';
+			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera ID '%s' changed to '%s'", cam.id, camera_id);
 
 			touptek_private_data *private_data = indigo_safe_malloc(sizeof(touptek_private_data));
 			private_data->cam = cam;
