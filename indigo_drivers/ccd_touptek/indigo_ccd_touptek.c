@@ -981,7 +981,7 @@ static void process_plug_event(indigo_device *unusued) {
 		bool found = false;
 		for (int i = 0; i < TOUPCAM_MAX; i++) {
 			indigo_device *device = devices[i];
-			if (device && memcmp(PRIVATE_DATA->cam.id, cam.id, sizeof(cam.id)) == 0) {
+			if (device && !strncmp(PRIVATE_DATA->cam.id, cam.id, sizeof(cam.id))) {
 				found = true;
 				PRIVATE_DATA->present = true;
 				break;
@@ -1011,8 +1011,8 @@ static void process_plug_event(indigo_device *unusued) {
 			camera->private_data = private_data;
 			private_data->camera = camera;
 			for (int i = 0; i < TOUPCAM_MAX; i++) {
-				if (devices[j] == NULL) {
-					indigo_attach_device(devices[j] = camera);
+				if (devices[i] == NULL) {
+					indigo_attach_device(devices[i] = camera);
 					break;
 				}
 			}
