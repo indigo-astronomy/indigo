@@ -72,18 +72,15 @@
 indigo_result indigo_try_global_lock(indigo_device *device) {
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
+	if (device->master_device != NULL)
+		device = device->master_device;
+	if (device->lock > 0)
+		return INDIGO_FAILED;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	if (device->master_device != NULL && device->master_device != device) {
-		if (device->master_device->lock > 0) return INDIGO_FAILED;
-		strncat(tmp_lock_file, device->master_device->name, 250);
-	} else {
-		if (device->lock > 0) return INDIGO_FAILED;
-		strncat(tmp_lock_file, device->name, 250);
-	}
+	strncat(tmp_lock_file, device->name, 250);
 	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
-	if (fd == -1) {
+	if (fd == -1)
 		return -1;
-	}
 
 	static struct flock lock;
 	lock.l_type = F_WRLCK;
@@ -99,28 +96,23 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 		fd = -1;
 		errno = local_errno;
 	}
-	if (device->master_device) device->master_device->lock = fd;
-	else device->lock = fd;
-	if (fd > 0) return INDIGO_OK;
+	device->lock = fd;
+	if (fd > 0)
+		return INDIGO_OK;
 	return INDIGO_LOCK_ERROR;
 }
-
 
 indigo_result indigo_global_unlock(indigo_device *device) {
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
+	if (device->master_device != NULL)
+		device = device->master_device;
+	if (device->lock <= 0)
+		return INDIGO_FAILED;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	if (device->master_device) {
-		if (device->master_device->lock <= 0) return INDIGO_FAILED;
-		close(device->master_device->lock);
-		device->master_device->lock = -1;
-		strncat(tmp_lock_file, device->master_device->name, 250);
-	} else {
-		if (device->lock <= 0) return INDIGO_FAILED;
-		close(device->lock);
-		device->lock = -1;
-		strncat(tmp_lock_file, device->name, 250);
-	}
+	close(device->lock);
+	device->lock = -1;
+	strncat(tmp_lock_file, device->name, 250);
 	unlink(tmp_lock_file);
 	return INDIGO_OK;
 }
@@ -347,6 +339,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = true;
 		indigo_init_number_item(ADDITIONAL_INSTANCES_COUNT_ITEM, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, "Count", 0, MAX_ADDITIONAL_INSTANCES, 1, 0);
 		pthread_mutex_init(&DEVICE_CONTEXT->config_mutex, NULL);
+		pthread_mutex_init(&DEVICE_CONTEXT->multi_device_mutex, NULL);
 		indigo_device *master_device = device->master_device;
 		if (DEVICE_CONTEXT->base_device == NULL && master_device != NULL && master_device != device) {
 			// create the same number of additional devices as defined on the master device
@@ -615,6 +608,7 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_delete_property(device, all_properties, NULL);
 	indigo_release_property(all_properties);
 	pthread_mutex_destroy(&DEVICE_CONTEXT->config_mutex);
+	pthread_mutex_destroy(&DEVICE_CONTEXT->multi_device_mutex);
 	free(DEVICE_CONTEXT);
 	device->device_context = NULL;
 	return INDIGO_OK;
