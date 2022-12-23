@@ -156,7 +156,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
-	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -286,7 +286,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -459,7 +459,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
-	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -485,7 +485,7 @@ static void guider_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -569,7 +569,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
-	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -597,7 +597,7 @@ static void wheel_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_unlock_master_device(device);
 }
 
 

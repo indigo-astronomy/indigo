@@ -972,3 +972,13 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 	/* reqquest is valid */
 	return false;
 }
+
+void indigo_lock_master_device(indigo_device *device) {
+	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL)
+		pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+}
+
+void indigo_unlock_master_device(indigo_device *device) {
+	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL)
+		pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+}
