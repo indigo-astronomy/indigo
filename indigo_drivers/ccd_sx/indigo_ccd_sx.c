@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -750,6 +750,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			bool result = true;
@@ -800,7 +801,9 @@ static void ccd_connect_callback(indigo_device *device) {
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	}	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	}
+	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -947,6 +950,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			bool result = true;
@@ -981,6 +985,7 @@ static void guider_connect_callback(indigo_device *device) {
 		}
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
