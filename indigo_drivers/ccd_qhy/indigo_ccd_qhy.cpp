@@ -707,6 +707,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (qhy_open(device)) {
@@ -939,6 +940,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1306,6 +1308,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (qhy_open(device)) {
@@ -1328,6 +1331,7 @@ static void guider_connect_callback(indigo_device *device) {
 		}
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
