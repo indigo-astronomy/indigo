@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -635,6 +635,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (fli_open(device)) {
@@ -773,6 +774,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 
@@ -788,7 +790,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
-		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -1025,6 +1026,7 @@ static void process_plug_event(indigo_device *unused) {
 	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
 	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
 	device->private_data = private_data;
+	device->master_device = device;
 	indigo_attach_device(device);
 	devices[slot]=device;
 	pthread_mutex_unlock(&device_mutex);
