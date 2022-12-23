@@ -392,6 +392,15 @@ extern bool indigo_ignore_connection_change(indigo_device *device, indigo_proper
 */
 extern int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive);
 
+/** Lock multidevice mutex on master device
+ */
+extern void indigo_lock_master_device(indigo_device *device);
+
+/** Unlock multidevice mutex on master device
+ */
+extern void indigo_unlock_master_device(indigo_device *device);
+
+
 #ifdef __cplusplus
 }
 #endif

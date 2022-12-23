@@ -1015,7 +1015,7 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 }
 
 static void handle_ccd_connect_property(indigo_device *device) {
-	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (playerone_open(device)) {
@@ -1069,7 +1069,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1371,7 +1371,7 @@ static indigo_result guider_attach(indigo_device *device) {
 
 
 static void handle_guider_connection_property(indigo_device *device) {
-	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (playerone_open(device)) {
@@ -1394,7 +1394,7 @@ static void handle_guider_connection_property(indigo_device *device) {
 		}
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
-	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	indigo_unlock_master_device(device);
 }
 
 
