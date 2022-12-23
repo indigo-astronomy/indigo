@@ -434,6 +434,7 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 
 static void ccd_connect_callback(indigo_device *device) {
 	HRESULT result;
+	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -548,7 +549,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		if (X_CCD_FAN_PROPERTY)
 			indigo_delete_property(device, X_CCD_FAN_PROPERTY, NULL);
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
-			if (((altair_private_data *)PRIVATE_DATA->guider->private_data)->handle == NULL) {
+			if (PRIVATE_DATA->handle != NULL) {
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				Altaircam_Close(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -560,6 +561,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -868,6 +870,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -898,7 +901,7 @@ static void guider_connect_callback(indigo_device *device) {
 		}
 	} else {
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
-			if (((altair_private_data *)PRIVATE_DATA->camera->private_data)->handle == NULL) {
+			if (PRIVATE_DATA->handle != NULL) {
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				Altaircam_Close(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -910,6 +913,7 @@ static void guider_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1019,6 +1023,7 @@ static void process_plug_event(indigo_device *unusued) {
 			indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			snprintf(camera->name, INDIGO_NAME_SIZE, "Altair %s #%s", cam.displayname, camera_id);
 			camera->private_data = private_data;
+			camera->master_device = camera;
 			private_data->camera = camera;
 			for (int i = 0; i < ALTAIRCAM_MAX; i++) {
 				if (devices[i] == NULL) {
@@ -1038,6 +1043,7 @@ static void process_plug_event(indigo_device *unusued) {
 				indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				snprintf(guider->name, INDIGO_NAME_SIZE, "Altair %s (guider) #%s", cam.displayname, camera_id);
 				guider->private_data = private_data;
+				guider->master_device = camera;
 				private_data->guider = guider;
 				indigo_attach_device(guider);
 			}
