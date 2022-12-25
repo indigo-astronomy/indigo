@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -750,6 +750,7 @@ static void asi_init_mount(indigo_device *device) {
 }
 
 static void mount_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -783,6 +784,7 @@ static void mount_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static void mount_home_callback(indigo_device *device) {
@@ -1149,6 +1151,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -1179,6 +1182,7 @@ static void guider_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static void guider_guide_dec_callback(indigo_device *device) {
