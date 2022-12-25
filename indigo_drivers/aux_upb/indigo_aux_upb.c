@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -731,6 +731,7 @@ static void aux_timer_callback(indigo_device *device) {
 
 static void aux_connection_handler(indigo_device *device) {
 	char response[128];
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
@@ -1005,6 +1006,7 @@ static void aux_connection_handler(indigo_device *device) {
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
 
 static void aux_power_outlet_handler(indigo_device *device) {
@@ -1376,6 +1378,7 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void focuser_connection_handler(indigo_device *device) {
 	char response[128];
+	indigo_unlock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
@@ -1457,6 +1460,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
 
 static void focuser_speed_handler(indigo_device *device) {
