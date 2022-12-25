@@ -23,7 +23,7 @@
  \file indigo_mount_nexstaraux.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_mount_nexstaraux"
 
 #include <stdlib.h>
@@ -336,6 +336,7 @@ static void position_timer_callback(indigo_device *device) {
 
 static void mount_connect_handler(indigo_device *device) {
 	unsigned char reply[16] = { 0 };
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = nexstaraux_open(device);
 		if (result) {
@@ -366,6 +367,7 @@ static void mount_connect_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static void mount_tracking_handler(indigo_device *device) {
@@ -702,6 +704,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_handler(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = nexstaraux_open(device);
 		if (result) {
@@ -717,6 +720,7 @@ static void guider_connect_handler(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static void guider_timer_ra_handler(indigo_device *device) {

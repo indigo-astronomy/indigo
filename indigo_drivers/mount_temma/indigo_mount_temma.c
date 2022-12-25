@@ -25,7 +25,7 @@
  \file indigo_mount_temma.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME	"indigo_mount_temma"
 
 #include <stdlib.h>
@@ -401,6 +401,7 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 }
 
 static void mount_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -450,6 +451,7 @@ static void mount_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_mount_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -739,6 +741,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -758,6 +761,7 @@ static void guider_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -860,9 +864,11 @@ indigo_result indigo_mount_temma(indigo_driver_action action, indigo_driver_info
 			private_data = indigo_safe_malloc(sizeof(temma_private_data));
 			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
 			mount_guider->private_data = private_data;
+			mount_guider->master_device = mount;
 			indigo_attach_device(mount_guider);
 			break;
 

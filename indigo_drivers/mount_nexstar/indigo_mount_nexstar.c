@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -1326,9 +1326,11 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 		private_data->count_open = 0;
 		mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 		mount->private_data = private_data;
+		mount->master_device = mount;
 		indigo_attach_device(mount);
 		mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
 		mount_guider->private_data = private_data;
+		mount_guider->master_device = mount;
 		indigo_attach_device(mount_guider);
 		break;
 

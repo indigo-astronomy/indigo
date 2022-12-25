@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0022
+#define DRIVER_VERSION 0x0023
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -2099,6 +2099,7 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 			private_data = indigo_safe_malloc(sizeof(ioptron_private_data));
 			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
 			mount_guider->private_data = private_data;
