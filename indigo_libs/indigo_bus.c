@@ -731,10 +731,9 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 }
 
 indigo_result indigo_stop() {
-	pthread_mutex_lock(&device_mutex);
-	pthread_mutex_lock(&client_mutex);
 	INDIGO_TRACE(indigo_trace("INDIGO Bus: stop request"));
 	if (is_started) {
+		pthread_mutex_lock(&client_mutex);
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->detach != NULL) {
@@ -742,17 +741,19 @@ indigo_result indigo_stop() {
 				client->last_result = client->detach(client);
 			}
 		}
+		pthread_mutex_unlock(&client_mutex);
+		pthread_mutex_lock(&device_mutex);
 		for (int i = 0; i < MAX_DEVICES; i++) {
 			indigo_device *device = devices[i];
-			if (device != NULL && device->detach != NULL) {
-				devices[i] = NULL;
-				device->last_result = device->detach(device);
+			if (device != NULL) {
+				indigo_error("INDIGO Bus: can't stop, '%s' is attached", device->name);
+				pthread_mutex_unlock(&device_mutex);
+				return INDIGO_BUSY;
 			}
 		}
+		pthread_mutex_unlock(&device_mutex);
 		is_started = false;
 	}
-	pthread_mutex_unlock(&client_mutex);
-	pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
 }
 
