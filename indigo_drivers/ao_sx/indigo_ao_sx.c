@@ -23,7 +23,7 @@
  \file indigo_ao_sx.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_ao_sx"
 
 #include <stdlib.h>
@@ -161,6 +161,7 @@ static indigo_result ao_attach(indigo_device *device) {
 }
 
 static void ao_connection_handler(indigo_device *device) {
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (sx_open(device)) {
@@ -184,6 +185,7 @@ static void ao_connection_handler(indigo_device *device) {
 	}
 	indigo_ao_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
 
 static void ao_guide_dec_handler(indigo_device *device) {
@@ -306,6 +308,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connection_handler(indigo_device *device) {
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -322,6 +325,7 @@ static void guider_connection_handler(indigo_device *device) {
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
 
 static void guider_guide_dec_handler(indigo_device *device) {
@@ -431,6 +435,7 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 			indigo_attach_device(ao);
 			guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider->private_data = private_data;
+			guider->master_device = ao;
 			indigo_attach_device(guider);
 			break;
 
