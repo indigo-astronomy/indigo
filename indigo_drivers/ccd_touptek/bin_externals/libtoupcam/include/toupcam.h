@@ -1,7 +1,7 @@
 #ifndef __toupcam_h__
 #define __toupcam_h__
 
-/* Version: 53.21749.20221121 */
+/* Version: 53.21849.20221208 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -122,6 +122,7 @@ typedef struct Toupcam_t { int unused; } *HToupcam, *HToupCam;
 #define TOUPCAM_FLAG_USB30_OVER_USB20    0x00000100  /* usb3.0 camera connected to usb2.0 port */
 #define TOUPCAM_FLAG_ST4                 0x00000200  /* ST4 port */
 #define TOUPCAM_FLAG_GETTEMPERATURE      0x00000400  /* support to get the temperature of the sensor */
+#define TOUPCAM_FLAG_HIGH_FULLWELL       0x00000800  /* high fullwell capacity */
 #define TOUPCAM_FLAG_RAW10               0x00001000  /* pixel format, RAW 10bits */
 #define TOUPCAM_FLAG_RAW12               0x00002000  /* pixel format, RAW 12bits */
 #define TOUPCAM_FLAG_RAW14               0x00004000  /* pixel format, RAW 14bits */
@@ -259,7 +260,7 @@ typedef struct {
 } ToupcamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.21749.20221121
+    get the version of this dll/so/dylib, which is: 53.21849.20221208
 */
 #if defined(_WIN32)
 TOUPCAM_API(const wchar_t*)   Toupcam_Version();
@@ -935,6 +936,7 @@ TOUPCAM_API(HRESULT)  Toupcam_feed_Pipe(HToupcam h, unsigned pipeId);
                                                                 high 16 bits: max
                                                                 low 16 bits: min
                                                          */
+#define TOUPCAM_OPTION_HIGH_FULLWELL          0x55       /* high fullwell capacity: 0 => disable, 1 => enable */
 
 /* pixel format */
 #define TOUPCAM_PIXELFORMAT_RAW8              0x00
