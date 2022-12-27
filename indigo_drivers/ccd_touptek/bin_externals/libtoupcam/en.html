@@ -1,13 +1,13 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <title>Toupcam API Manual</title>
 </head>
 <body>
 <h1 align="center">Toupcam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 53.21749.20221121</li></ul>
+<hr/><ul><li>Version: 53.21849.20221208</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -19,7 +19,7 @@
 		  <li>arm: Win10 or above</li>
         </ul>
       </li>
-	  <li>WinRT: x64, x86, arm64, arm; Windows10 or above</li>
+	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
       <li>macOS: universal (x64 + x86); macOS 10.10 or above</li>
       <li>Linux: kernel 2.6.27 or above
 	    <ul>
@@ -43,7 +43,7 @@
 </ul>
 <hr/><h1><font color="#0000FF">2. Introduction</font></h1><hr/>
 <p>Toupcam cameras support various kinds of APIs (Application Program Interface), namely
- Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://docs.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
+ Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
 <ul><li>inc</li></ul>
 <blockquote>
@@ -86,7 +86,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		DLL files for WinRT / UWP (Universal Windows Platform) / Windows Store App.<br/>
 		These dll files are compatible with Windows Runtime, and can be consumed from a Universal Windows Platform app.<br/>
 		If use C# to develop the UWP, toupcam.cs wrapper class can be used to P/Invoke into toupcam.dll.<br/>
-		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
+		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
 		</blockquote>
 	</li>
      <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)
@@ -415,7 +415,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 #include "toupcam.h"</pre></td></tr></table>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Calling Convention</font></h2>
-	<p>Win: __stdcall, please see <a href="https://docs.microsoft.com/en-us/cpp/cpp/stdcall" target="_blank">here</a></p>
+	<p>Win: __stdcall, please see <a href="https://learn.microsoft.com/en-us/cpp/cpp/stdcall" target="_blank">here</a></p>
 	<p>macOS, Linux and Android: __cdecl</p>
 </li></ul>
 <ul><li><h2><a id="callback"><font color="#0000FF">Callback: PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK_V4/V3</font></a></h2>
@@ -426,6 +426,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	<p><strong>There are limitations in the callback context:</strong></p>
 	<p><strong>(a) Do NOT call Toupcam_Stop and Toupcam_Close in this callback function, otherwise, deadlocks.</strong></p>
 	<p><strong>(b) Do NOT call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</strong></p>
+	<p><strong>(c) Do NOT call Toupcam_put_Roi, it will fail with the error code E_WRONG_THREAD.</strong></p>
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
 <p>Functions with coordinate parameters, such as Toupcam_put_Roi, Toupcam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
@@ -513,6 +514,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  <tr>
    <td width="29%">TOUPCAM_FLAG_GETTEMPERATURE</td>
    <td width="63%">support to get the temperature of the sensor, Toupcam_get_Temperature</td>
+ </tr>
+ <tr>
+   <td width="29%">TOUPCAM_FLAG_HIGH_FULLWELL</td>
+   <td width="63%">support high fullwell capacity</td>
  </tr>
   <tr>
    <td width="29%">TOUPCAM_FLAG_RAW10</td>
@@ -680,7 +685,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </blockquote>
   <p><strong>Remarks:</strong></p><blockquote>
   <p>This function is only available on macOS, Linux. To process the device plug in / pull out:</p><ul>
-  <li>On Windows, please refer to the MSDN(<a href="https://docs.microsoft.com/en-us/windows/win32/devio/device-management" target="_blank">Device Management</a>, <a href="https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal" target="_blank">Detecting Media Insertion or Removal</a>, <a href="https://docs.microsoft.com/en-us/windows/win32/devio/processing-a-request-to-remove-a-device" target="_blank">Processing a Request to Remove a Device</a>).</li>
+  <li>On Windows, please refer to the MSDN(<a href="https://learn.microsoft.com/en-us/windows/win32/devio/device-management" target="_blank">Device Management</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal" target="_blank">Detecting Media Insertion or Removal</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/processing-a-request-to-remove-a-device" target="_blank">Processing a Request to Remove a Device</a>).</li>
   <li>On Android, please refer <a href="https://developer.android.com/guide/topics/connectivity/usb/host" target="_blank">here</a></li>
   <li>On Linux/macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Toupcam_EnumV2(...) again to enum the cameras.</li>
   <li>On macOS, IONotificationPortCreate series APIs can also be used as an alternative.</li>
@@ -1497,6 +1502,12 @@ typedef struct {
 		<td>Yes</td>
       </tr>
       <tr>
+        <td>TOUPCAM_OPTION_HIGH_FULLWELL</td>
+        <td>high fullwell capacity:<br/>0 => disable, 1 => enable</td>
+		<td>Model Specific</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td>TOUPCAM_OPTION_AUTOEXPOSURE_PERCENT</td>
         <td>auto exposure percent to average<br/>
         1~99: top percent average<br/>
@@ -1569,7 +1580,7 @@ typedef struct {
       <tr>
         <td>TOUPCAM_OPTION_THREAD_PRIORITY</td>
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
-          Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority" target="_blank">SetThreadPriority</a></blockquote>
+          Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority" target="_blank">SetThreadPriority</a></blockquote>
 		  Linux &amp; macOS: <blockquote>The high 16 bits for the scheduling policy, and the low 16 bits for the priority.<br/>
 		  Please refer to <a href="https://linux.die.net/man/3/pthread_setschedparam" target="_blank">pthread_setschedparam</a>
 		  </blockquote></td>
