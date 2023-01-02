@@ -86,6 +86,7 @@ typedef struct {
 	indigo_property *restore_properties[MAX_AGENTS];
 	pthread_mutex_t restore_mutex;
 	pthread_mutex_t data_mutex;
+	bool failure;
 } agent_private_data;
 
 static indigo_device *agent_device = NULL;
@@ -210,6 +211,7 @@ static void load_configuration(indigo_device *device) {
 	}
 	indigo_usleep(ONE_SECOND_DELAY);
 	// load saved configuration
+	DEVICE_PRIVATE_DATA->failure = false;
 	for (int i = 0; i < AGENT_CONFIG_LOAD_PROPERTY->count; i++) {
 		indigo_item *item = AGENT_CONFIG_LOAD_PROPERTY->items + i;
 		if (item->sw.value) {
@@ -248,7 +250,10 @@ static void load_configuration(indigo_device *device) {
 			item->sw.value = false;
 		}
 	}
-	AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_OK_STATE;
+	if (DEVICE_PRIVATE_DATA->failure)
+		AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
+	else
+		AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 }
@@ -303,6 +308,7 @@ static void process_configuration_property(indigo_device *device) {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting '%s' to '%s'", item->text.value, item->name);
 						indigo_change_switch_property_1(agent_client, item->name, PROFILE_PROPERTY_NAME, item->text.value, true); // it expects this call is actually synchronous on a local bus
 					} else {
+						DEVICE_PRIVATE_DATA->failure = true;
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' profile can't be restored", item->text.value, item->name);
 					}
 				}
@@ -341,12 +347,14 @@ static void process_configuration_property(indigo_device *device) {
 					for (int j = 0; j < MAX_AGENTS; j++) {
 						indigo_property *agent = agent = DEVICE_PRIVATE_DATA->agents[j];
 						if (agent && !strcmp(property->name, agent->name)) {
-							if (agent->state == INDIGO_ALERT_STATE)
+							if (agent->state == INDIGO_ALERT_STATE) {
+								DEVICE_PRIVATE_DATA->failure = true;
 								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failed to restore '%s'", property->name);
-							else if (agent->state == INDIGO_OK_STATE)
+							} else if (agent->state == INDIGO_OK_STATE) {
 								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "'%s' restored", property->name);
-							else
+							} else {
 								done = false;
+							}
 							break;
 						}
 					}
