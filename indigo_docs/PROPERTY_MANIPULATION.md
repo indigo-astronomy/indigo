@@ -175,17 +175,9 @@ CCD Imager Simulator.CONNECTION.DISCONNECTED = OFF
 
 - Setting **TEXT_VECTOR** (please note quotes have to be escaped with '\' as shown):
 ```
-indigo@indigosky:~ $ indigo_prop_tool set "CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_1=\"MYKEY = 5\""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_1 = "MYKEY   = 5"
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_2 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_3 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_4 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_5 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_6 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_7 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_8 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_9 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_10 = ""
+indigo@indigosky:~ $ indigo_prop_tool set "CCD Imager Simulator.CCD_SET_FITS_HEADER.NAME=\"MYKEY\";VALUE=\"5\""
+CCD Imager Simulator.CCD_SET_FITS_HEADER.NAME = "MYKEY"
+CCD Imager Simulator.CCD_SET_FITS_HEADER.VALUE = "5"
 ```
 
 - Setting **NUMBER_VECTOR**:
