@@ -219,6 +219,8 @@ static void load_configuration(indigo_device *device) {
 			if (handle > 0) {
 				indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Loading configuration '%s', please wait...", item->name);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Loading saved configuration from %s%s", item->name, EXTENSION);
+				strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, item->name, INDIGO_NAME_SIZE);
+				indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 				indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 				strcpy(client->name, CONFIG_READER);
 				indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
@@ -532,6 +534,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 			AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_BUSY_STATE;
+			AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value[0] = '\0';
 			indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 			indigo_set_timer(device, 0, load_configuration, NULL);
 		} else {
