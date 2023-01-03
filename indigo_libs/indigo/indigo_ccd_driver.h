@@ -386,6 +386,26 @@ extern "C" {
  */
 #define CCD_FITS_HEADERS_PROPERTY         (CCD_CONTEXT->ccd_fits_headers)
 
+/** CCD_SET_FITS_HEADER property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_SET_FITS_HEADER_PROPERTY      (CCD_CONTEXT->ccd_set_fits_header)
+
+/** CCD_SET_FITS_HEADER.NAME property item pointer.
+ */
+#define CCD_SET_FITS_HEADER_NAME_ITEM      (CCD_SET_FITS_HEADER_PROPERTY->items+0)
+
+/** CCD_SET_FITS_HEADER.VALUE property item pointer.
+ */
+#define CCD_SET_FITS_HEADER_VALUE_ITEM      (CCD_SET_FITS_HEADER_PROPERTY->items+1)
+
+/** CCD_REMOVE_FITS_HEADER property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_REMOVE_FITS_HEADER_PROPERTY   (CCD_CONTEXT->ccd_remove_fits_header)
+
+/** CCD_REMOVE_FITS_HEADER.NAME property item pointer.
+ */
+#define CCD_REMOVE_FITS_HEADER_NAME_ITEM      (CCD_REMOVE_FITS_HEADER_PROPERTY->items+0)
+
 /** FITS header size, it should be added to image buffer size, raw data should start at this offset.
  */
 #define FITS_HEADER_SIZE  2880
@@ -476,6 +496,8 @@ typedef struct {
 	indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
 	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
 	indigo_property *ccd_fits_headers;						///< CCD_FITS_HEADERS property pointer
+	indigo_property *ccd_set_fits_header;					///< CCD_SET_FITS_HEADER property pointer
+	indigo_property *ccd_remove_fits_header;			///< CCD_REMOVE_FITS_HEADER property pointer
 	indigo_property *ccd_jpeg_settings;						///< CCD_JPEG_SETTINGS property pointer
 	indigo_property *ccd_rbi_flush_enable_property; ///< CCD_RBI_FLUSH_ENABLE property pointer
 	indigo_property *ccd_rbi_flush_property;			///< CCD_RBI_FLUSH property pointer
@@ -534,6 +556,16 @@ extern void indigo_finalize_dslr_video_stream(indigo_device *device);
 /** Set alert state on dependent properties.
  */
 extern indigo_result indigo_ccd_failure_cleanup(indigo_device *device);
+
+/** Set FITS header
+ */
+extern indigo_result indigo_set_fits_header(indigo_client *client, char *device, char *name, char *format, ...);
+
+/** Remove FITS header
+ */
+extern indigo_result indigo_remove_fits_header(indigo_client *client, char *device, char *name);
+
+
 
 #ifdef __cplusplus
 }
