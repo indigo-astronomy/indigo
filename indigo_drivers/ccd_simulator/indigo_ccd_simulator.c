@@ -1058,29 +1058,27 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- CCD_FITS_HEADERS
-	} else if (GUIDER_MODE_PROPERTY && indigo_property_match_defined(CCD_FITS_HEADERS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_SET_FITS_HEADER
+	} else if (GUIDER_MODE_PROPERTY && indigo_property_match_changeable(CCD_SET_FITS_HEADER_PROPERTY, property)) {
 		if (device == PRIVATE_DATA->guider) {
 			bool update = false;
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = property->items + i;
-				int d, m, s;
-				if (sscanf(item->text.value, "OBJCTRA='%d %d %d'", &d, &m, &s) == 3) {
-					GUIDER_IMAGE_RA_ITEM->number.value = GUIDER_IMAGE_RA_ITEM->number.target = d + m / 60.0 + s / 3600.0;
-					update = true;
-				}
-				if (sscanf(item->text.value, "OBJCTDEC='%d %d %d'", &d, &m, &s) == 3) {
-					GUIDER_IMAGE_DEC_ITEM->number.value = GUIDER_IMAGE_DEC_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
-					update = true;
-				}
-				if (sscanf(item->text.value, "SITELAT='%d %d %d'", &d, &m, &s) == 3) {
-					GUIDER_IMAGE_LAT_ITEM->number.value = GUIDER_IMAGE_LAT_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
-					update = true;
-				}
-				if (sscanf(item->text.value, "SITELONG='%d %d %d'", &d, &m, &s) == 3) {
-					GUIDER_IMAGE_LONG_ITEM->number.value = GUIDER_IMAGE_LONG_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
-					update = true;
-				}
+			int d, m, s;
+			indigo_property_copy_values(CCD_SET_FITS_HEADER_PROPERTY, property, false);
+			if (!strcmp(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, "OBJCTRA") && sscanf(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value, "'%d %d %d'", &d, &m, &s) == 3) {
+				GUIDER_IMAGE_RA_ITEM->number.value = GUIDER_IMAGE_RA_ITEM->number.target = d + m / 60.0 + s / 3600.0;
+				update = true;
+			}
+			if (!strcmp(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, "OBJCTDEC") && sscanf(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value, "'%d %d %d'", &d, &m, &s) == 3) {
+				GUIDER_IMAGE_DEC_ITEM->number.value = GUIDER_IMAGE_DEC_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
+				update = true;
+			}
+			if (!strcmp(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, "SITELAT") && sscanf(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value, "'%d %d %d'", &d, &m, &s) == 3) {
+				GUIDER_IMAGE_LAT_ITEM->number.value = GUIDER_IMAGE_LAT_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
+				update = true;
+			}
+			if (!strcmp(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, "SITELONG") && sscanf(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value, "'%d %d %d'", &d, &m, &s) == 3) {
+				GUIDER_IMAGE_LONG_ITEM->number.value = GUIDER_IMAGE_LONG_ITEM->number.target = (abs(d) + m / 60.0 + s / 3600.0) * (d >= 0 ? 1 : -1);
+				update = true;
 			}
 			if (update)
 				indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
