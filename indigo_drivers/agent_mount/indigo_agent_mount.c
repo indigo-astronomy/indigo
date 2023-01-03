@@ -42,6 +42,7 @@
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_mount_driver.h>
+#include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_align.h>
 
 #include "indigo_agent_mount.h"
@@ -147,12 +148,8 @@ static void set_site_coordinates3(indigo_device *device) {
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
 		if (item->sw.value && !strncmp("Imager Agent", item->name, 12)) {
-			indigo_property *property = indigo_init_text_property(NULL, item->name, CCD_FITS_HEADERS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			indigo_init_text_item(property->items + 0, "HEADER_5", NULL, "SITELAT='%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 3600)) % 60);
-			indigo_init_text_item(property->items + 1, "HEADER_6", NULL,  "SITELONG='%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 3600)) % 60);
-			property->access_token = indigo_get_device_or_master_token(property->device);
-			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-			indigo_release_property(property);
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, item->name, "SITELAT", "'%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 3600)) % 60);
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, item->name, "SITELONG", "'%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 3600)) % 60);
 		}
 	}
 }
@@ -162,12 +159,8 @@ static void set_eq_coordinates(indigo_device *device) {
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
 		if (item->sw.value && !strncmp("Imager Agent", item->name, 12)) {
-			indigo_property *property = indigo_init_text_property(NULL, item->name, CCD_FITS_HEADERS_PROPERTY_NAME, NULL, NULL, INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
-			indigo_init_text_item(property->items + 0, "HEADER_7", NULL, "OBJCTRA='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
-			indigo_init_text_item(property->items + 1, "HEADER_8", NULL,  "OBJCTDEC='%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
-			property->access_token = indigo_get_device_or_master_token(property->device);
-			indigo_change_property(FILTER_DEVICE_CONTEXT->client, property);
-			indigo_release_property(property);
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, item->name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, item->name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
 		}
 	}
 }
@@ -894,7 +887,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 }
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (!strncmp(property->device, "Imager Agent", 12) && !strcmp(property->name, CCD_FITS_HEADERS_PROPERTY_NAME)) {
+	if (!strncmp(property->device, "Imager Agent", 12) && !strcmp(property->name, CCD_SET_FITS_HEADER_PROPERTY_NAME)) {
 		set_site_coordinates3(FILTER_CLIENT_CONTEXT->device);
 	} else {
 		process_snooping(client, device, property);
