@@ -2,6 +2,53 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-208] - 04 Jan Wed 2023
+### Overall
+- indigo_ccd_driver: more robust exposure countdown timer implementation
+- webGUI: mounts without park feature fixed
+- debs: add curl dependency in the deb as it is used by astrometry agent
+- global lock/unlock fixed
+- shared multi_device_mutex added to device context
+- all drivers: connect synchronisation fixed
+- indigo_lock_master_device()/indigo_unlock_master_device() added
+- INDIGO bus stop fixed
+
+### Driver Fixes:
+-  indigo_agent_config:
+	- add AGENT_CONFIG_LAST_CONFIG proeprty
+	- replace spaces from config names with undercore
+	- synchronisation improved
+	- unused drivers unload is optional
+	- make AGENT_CONFIG_SETUP items more descriptive
+	- describe agent operation
+	- AGENT_CONFIG_LOAD property waits in busy state until finished
+
+- indigo_mount_lx200:
+	- AM5 autodetection fixed
+
+- indigo_ccd_altair:
+	- SDK v.53.21849.20221208
+	- fix driver shutdown
+	- use better device ids in the device name
+	- show cooler power
+	- do not use the depricated XXX_Flush() function
+	- multi device support fixed
+	- hotplug/unplug fixed
+	- unify labels of CCD_MODE items to match the template of other drivers
+
+- indigo_ccd_touptek:
+	- updated SDK v.53.21849.20221208
+	- fix driver shutdown
+	- use better device ids in the device name
+	- show cooler power
+	- do not use the depricated XXX_Flush() function
+	- multi-device support fixed
+	- hotplug/unplug fixed
+	- unify labels of CCD_MODE items to match the template of other drivers
+
+- indigo_ccd_andor:
+	- small fixes
+
 # [2.0-206] - 10 Dec Sat 2022
 
 ### Overall
