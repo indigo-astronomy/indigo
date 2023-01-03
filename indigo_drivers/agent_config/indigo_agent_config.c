@@ -514,7 +514,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_delete_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 		populate_list(device);
-		AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_define_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
 		if (message[0] == '\0') {
 			indigo_update_property(device, AGENT_CONFIG_SAVE_PROPERTY, NULL);
@@ -532,6 +531,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_property_copy_values(AGENT_CONFIG_LOAD_PROPERTY, property, false);
 			AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
+			AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 			indigo_set_timer(device, 0, load_configuration, NULL);
 		} else {
 			indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
