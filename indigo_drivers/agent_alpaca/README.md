@@ -73,7 +73,7 @@ ICameraV3 implemented.
 * application/imagebytes transfer mode supported
 
 #### Selecting "Image array transfer transfer method"
-Alpaca supports several methods for image transfer, but some of them are mostly useless especially for large images. We strongly recommend to select either "ImageBytes" as a transfer method.
+Alpaca supports several methods for image transfer, but some of them are mostly useless especially for large images. We strongly recommend to select "ImageBytes" as a transfer method.
 
 ### Wheel
 
