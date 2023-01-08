@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>

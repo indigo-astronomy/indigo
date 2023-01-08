@@ -25,7 +25,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 #include <stdlib.h>
