@@ -255,7 +255,6 @@ static bool asi_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	char command[128], response[128];
 	time_t seconds = *secs + utc_offset * 3600;
 	struct tm tm;
-	tm.tm_isdst = daylight;
 	gmtime_r(&seconds, &tm);
 	sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
 	bool result = asi_command(device, command, response, 1, 0);
@@ -722,7 +721,7 @@ static void asi_init_mount(indigo_device *device) {
 	if (secs < 978310800) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Mount is not initialized, initializing...");
 		secs = time(NULL);
-		utc_offset = (int)(-timezone / 3600) + daylight;
+		utc_offset = indigo_get_utc_offset();
 		asi_set_utc(device, &secs, utc_offset);
 		asi_set_site(device, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
 	}
@@ -891,8 +890,7 @@ static void mount_set_host_time_callback(indigo_device *device) {
 	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		time_t secs = time(NULL);
-		int offset = (int)(-timezone / 3600) + daylight;
-		if (asi_set_utc(device, &secs, offset)) {
+		if (asi_set_utc(device, &secs, indigo_get_utc_offset())) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
