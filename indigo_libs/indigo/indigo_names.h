@@ -597,9 +597,27 @@
  */
 #define CCD_FITS_HEADERS_PROPERTY_NAME									"CCD_FITS_HEADERS"
 
-/** CCD_FITS_HEADERS.HEADER_x property item name.
+//----------------------------------------------------------------------
+/** CCD_SET_FITS_HEADER property name.
  */
-#define CCD_FITS_HEADER_ITEM_NAME							"HEADER_%d"
+#define CCD_SET_FITS_HEADER_PROPERTY_NAME								"CCD_SET_FITS_HEADER"
+
+/** CCD_SET_FITS_HEADER.NAME property item name.
+ */
+#define CCD_SET_FITS_HEADER_NAME_ITEM_NAME							"NAME"
+
+/** CCD_SET_FITS_HEADER.VALUE property item name.
+ */
+#define CCD_SET_FITS_HEADER_VALUE_ITEM_NAME							"VALUE"
+
+//----------------------------------------------------------------------
+/** CCD_REMOVE_FITS_HEADER property name.
+ */
+#define CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME						"CCD_REMOVE_FITS_HEADER"
+
+/** CCD_REMOVE_FITS_HEADER.NAME property item name.
+ */
+#define CCD_REMOVE_FITS_HEADER_NAME_ITEM_NAME						"NAME"
 
 
 //----------------------------------------------------------------------
