@@ -238,7 +238,12 @@
 | | | **CCD_IMAGE_FILE** | | **new!** |
 | | | | FILE | |
 | | | **CCD_FITS_HEADERS** | | **new!** |
-| | | | HEADER_1,... | |
+| | | | KEY,... | |
+| | | **CCD_SET_FITS_HEADER** | | **new!** |
+| | | | NAME | |
+| | | | VALUE | |
+| | | **CCD_REMOVE_FITS_HEADER** | | **new!** |
+| | | | NAME | |
 | | | **CCD_PREVIEW** | | **new!** |
 | | | | ENABLED | |
 | | | | DISABLED | |

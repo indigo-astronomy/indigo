@@ -268,17 +268,17 @@ static void set_headers(indigo_device *device) {
 		for (int i = 0; i < AGENT_WHEEL_FILTER_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_WHEEL_FILTER_PROPERTY->items + i;
 			if (item->sw.value) {
-				indigo_change_text_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_FITS_HEADERS_PROPERTY_NAME, "HEADER_9", "FILTER='%s'", item->label);
+				indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], "FILTER", "'%s'", item->label);
 				break;
 			}
 		}
 	} else {
-		indigo_change_text_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_FITS_HEADERS_PROPERTY_NAME, "HEADER_9", "");
+		indigo_remove_fits_header(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], "FILTER");
 	}
 	if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX]) {
-		indigo_change_text_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_FITS_HEADERS_PROPERTY_NAME, "HEADER_10", "FOCUSPOS=%d", DEVICE_PRIVATE_DATA->focuser_position);
+		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], "FOCUSPOS", "%d", DEVICE_PRIVATE_DATA->focuser_position);
 	} else {
-		indigo_change_text_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], CCD_FITS_HEADERS_PROPERTY_NAME, "HEADER_10", "");
+		indigo_remove_fits_header(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], "FOCUSPOS");
 	}
 }
 
