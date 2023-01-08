@@ -222,7 +222,6 @@ static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 	struct tm tm;
 	char response[128], sep;
 	memset(&tm, 0, sizeof(tm));
-	tm.tm_isdst = daylight;
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (PRIVATE_DATA->hc8406) {
 		if (ieq_command(device, ":GC#", response, sizeof(response)) && sscanf(response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
@@ -277,7 +276,6 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	char command[128], response[128];
 	time_t seconds = *secs + utc_offset * 3600;
 	struct tm tm;
-	tm.tm_isdst = daylight;
 	gmtime_r(&seconds, &tm);
 	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol == 0x0000) {
 		sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
@@ -309,7 +307,7 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":SDS%d#", daylight);
+					sprintf(command, ":SDS%d#", indigo_get_dst_state());
 					if (!ieq_command(device, command, response, 1) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
@@ -331,7 +329,7 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":SDS%d#", daylight);
+					sprintf(command, ":SDS%d#", indigo_get_dst_state());
 					if (!ieq_command(device, command, response, 1) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
@@ -349,7 +347,7 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				sprintf(command, ":SDS%d#", daylight);
+				sprintf(command, ":SDS%d#", indigo_get_dst_state());
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
@@ -1630,8 +1628,7 @@ static void mount_set_host_time_callback(indigo_device *device) {
 	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		time_t secs = time(NULL);
-		int offset = (int)(-timezone / 3600) + daylight;
-		if (ieq_set_utc(device, &secs, offset)) {
+		if (ieq_set_utc(device, &secs, indigo_get_utc_offset())) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
