@@ -239,6 +239,7 @@ static void ccd_connect_callback(indigo_device *device) {
 									CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
 								PRIVATE_DATA->format = formats[frame_format].format;
 							}
+							CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0;
 							char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 							sprintf(name, "%d_%dx%d", frame_format, frame->wWidth, frame->wHeight);
 							sprintf(label, formats[frame_format].label_format, frame->wWidth, frame->wHeight);
