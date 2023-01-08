@@ -738,6 +738,14 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = get_pixel_depth(device);
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = 8;
 		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 24;
+		if (strstr(PRIVATE_DATA->info.FriendlyName, "305") || strstr(PRIVATE_DATA->info.FriendlyName, "505") || strstr(PRIVATE_DATA->info.FriendlyName, "705"))
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 2.9;
+		else if (strstr(PRIVATE_DATA->info.FriendlyName, "405"))
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 4.63;
+		else if (strstr(PRIVATE_DATA->info.FriendlyName, "605") || strstr(PRIVATE_DATA->info.FriendlyName, "905"))
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 3.75;
+		else
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0;
 
 		/* find max binning */
 		int max_bin = 1;
