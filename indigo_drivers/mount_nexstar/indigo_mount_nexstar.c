@@ -500,7 +500,7 @@ static void mount_handle_set_utc_from_host(indigo_device *device) {
 			int offset = (int)tm_timenow.tm_gmtoff/3600;
 			int dst = 0;
 			/* daylight is set by localtime_r() call */
-			if (daylight != 0) {
+			if (tm_timenow.tm_isdst != 0) {
 				offset -=1;
 				dst = 1;
 			}
@@ -729,7 +729,7 @@ static void mount_handle_utc(indigo_device *device) {
 	int offset = atoi(MOUNT_UTC_OFFSET_ITEM->text.value);
 	int dst = 0;
 	tzset(); /* make sure daylight is set */
-	if (daylight != 0) {
+	if (indigo_get_dst_state() != 0) {
 		offset -=1;
 		dst = 1;
 	}
