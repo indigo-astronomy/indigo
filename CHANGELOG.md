@@ -14,7 +14,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - INDIGO bus stop fixed
 
 ### Driver Fixes:
--  indigo_agent_config:
+- indigo_agent_config:
 	- add AGENT_CONFIG_LAST_CONFIG proeprty
 	- replace spaces from config names with undercore
 	- synchronisation improved
