@@ -360,6 +360,13 @@ static void solve(indigo_platesolver_task *task) {
 	double recenter_dec = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value;
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
 
+	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
+		if(AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == POLAR_ALIGN_REFERENCE_1) {
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a;
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.d = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d;
+		}
+	}
+
 	// Solve with a particular plate solver
 	bool success = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size);
 	indigo_safe_free(task->image);
@@ -431,8 +438,8 @@ static void solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 			bool ok = mount_slew(
 				device,
-				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a * RAD2DEG - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG,
+				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a * RAD2DEG - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15,
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.d * RAD2DEG,
 				3
 			);
 			if (ok) {
@@ -473,8 +480,8 @@ static void solve(indigo_platesolver_task *task) {
 			indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 			bool ok = mount_slew(
 				device,
-				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a * RAD2DEG - AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15,
-				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d * RAD2DEG,
+				(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a * RAD2DEG - 2 * AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.value) / 15,
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.d * RAD2DEG,
 				3
 			);
 			if (ok) {

@@ -68,10 +68,10 @@ static char __buffer__[32];
 
 bool is_meade = false;
 bool is_10micron = false;
-bool is_gemini = false;
+bool is_gemini = true;
 bool is_avalon = false;
 bool is_onstep = false;
-bool is_zwo = true;
+bool is_zwo = false;
 
 int date_day = 1;
 int date_month = 1;
