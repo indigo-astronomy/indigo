@@ -50,36 +50,36 @@
 
 #include "indigo_mount_lx200.h"
 
-#define PRIVATE_DATA        ((lx200_private_data *)device->private_data)
+#define PRIVATE_DATA				((lx200_private_data *)device->private_data)
 
-#define MOUNT_MODE_PROPERTY					(PRIVATE_DATA->alignment_mode_property)
-#define EQUATORIAL_ITEM                 (MOUNT_MODE_PROPERTY->items+0)
-#define ALTAZ_MODE_ITEM                 (MOUNT_MODE_PROPERTY->items+1)
+#define MOUNT_MODE_PROPERTY							(PRIVATE_DATA->alignment_mode_property)
+#define EQUATORIAL_ITEM									(MOUNT_MODE_PROPERTY->items+0)
+#define ALTAZ_MODE_ITEM									(MOUNT_MODE_PROPERTY->items+1)
 
-#define MOUNT_MODE_PROPERTY_NAME		"X_MOUNT_MODE"
-#define EQUATORIAL_ITEM_NAME            "EQUATORIAL"
-#define ALTAZ_MODE_ITEM_NAME            "ALTAZ"
+#define MOUNT_MODE_PROPERTY_NAME				"X_MOUNT_MODE"
+#define EQUATORIAL_ITEM_NAME						"EQUATORIAL"
+#define ALTAZ_MODE_ITEM_NAME						"ALTAZ"
 
 #define FORCE_FLIP_PROPERTY							(PRIVATE_DATA->force_flip_property)
-#define FORCE_FLIP_ENABLED_ITEM         (FORCE_FLIP_PROPERTY->items+0)
-#define FORCE_FLIP_DISABLED_ITEM        (FORCE_FLIP_PROPERTY->items+1)
+#define FORCE_FLIP_ENABLED_ITEM					(FORCE_FLIP_PROPERTY->items+0)
+#define FORCE_FLIP_DISABLED_ITEM				(FORCE_FLIP_PROPERTY->items+1)
 
 #define FORCE_FLIP_PROPERTY_NAME				"X_FORCE_FLIP"
 #define FORCE_FLIP_ENABLED_ITEM_NAME		"ENABLED"
 #define FORCE_FLIP_DISABLED_ITEM_NAME		"DISABLED"
 
 #define MOUNT_TYPE_PROPERTY							(PRIVATE_DATA->mount_type_property)
-#define MOUNT_TYPE_DETECT_ITEM          (MOUNT_TYPE_PROPERTY->items+0)
-#define MOUNT_TYPE_MEADE_ITEM          	(MOUNT_TYPE_PROPERTY->items+1)
-#define MOUNT_TYPE_EQMAC_ITEM          	(MOUNT_TYPE_PROPERTY->items+2)
-#define MOUNT_TYPE_10MICRONS_ITEM       (MOUNT_TYPE_PROPERTY->items+3)
-#define MOUNT_TYPE_GEMINI_ITEM         	(MOUNT_TYPE_PROPERTY->items+4)
-#define MOUNT_TYPE_STARGO_ITEM          (MOUNT_TYPE_PROPERTY->items+5)
-#define MOUNT_TYPE_STARGO2_ITEM         (MOUNT_TYPE_PROPERTY->items+6)
-#define MOUNT_TYPE_AP_ITEM          		(MOUNT_TYPE_PROPERTY->items+7)
-#define MOUNT_TYPE_ON_STEP_ITEM         (MOUNT_TYPE_PROPERTY->items+8)
-#define MOUNT_TYPE_AGOTINO_ITEM         (MOUNT_TYPE_PROPERTY->items+9)
-#define MOUNT_TYPE_ZWO_ITEM         		(MOUNT_TYPE_PROPERTY->items+10)
+#define MOUNT_TYPE_DETECT_ITEM					(MOUNT_TYPE_PROPERTY->items+0)
+#define MOUNT_TYPE_MEADE_ITEM						(MOUNT_TYPE_PROPERTY->items+1)
+#define MOUNT_TYPE_EQMAC_ITEM						(MOUNT_TYPE_PROPERTY->items+2)
+#define MOUNT_TYPE_10MICRONS_ITEM				(MOUNT_TYPE_PROPERTY->items+3)
+#define MOUNT_TYPE_GEMINI_ITEM				 	(MOUNT_TYPE_PROPERTY->items+4)
+#define MOUNT_TYPE_STARGO_ITEM					(MOUNT_TYPE_PROPERTY->items+5)
+#define MOUNT_TYPE_STARGO2_ITEM					(MOUNT_TYPE_PROPERTY->items+6)
+#define MOUNT_TYPE_AP_ITEM							(MOUNT_TYPE_PROPERTY->items+7)
+#define MOUNT_TYPE_ON_STEP_ITEM					(MOUNT_TYPE_PROPERTY->items+8)
+#define MOUNT_TYPE_AGOTINO_ITEM					(MOUNT_TYPE_PROPERTY->items+9)
+#define MOUNT_TYPE_ZWO_ITEM				 			(MOUNT_TYPE_PROPERTY->items+10)
 
 #define MOUNT_TYPE_PROPERTY_NAME				"X_MOUNT_TYPE"
 #define MOUNT_TYPE_DETECT_ITEM_NAME			"DETECT"
@@ -88,7 +88,7 @@
 #define MOUNT_TYPE_10MICRONS_ITEM_NAME	"10MIC"
 #define MOUNT_TYPE_GEMINI_ITEM_NAME			"GEMINI"
 #define MOUNT_TYPE_STARGO_ITEM_NAME			"STARGO"
-#define MOUNT_TYPE_STARGO2_ITEM_NAME    "STARGO2"
+#define MOUNT_TYPE_STARGO2_ITEM_NAME		"STARGO2"
 #define MOUNT_TYPE_AP_ITEM_NAME					"AP"
 #define MOUNT_TYPE_ON_STEP_ITEM_NAME		"ONSTEP"
 #define MOUNT_TYPE_AGOTINO_ITEM_NAME		"AGOTINO"
@@ -380,9 +380,9 @@ static bool gemini_set(indigo_device *device, int command, char *parameter) {
 	for (size_t i = 1; i < strlen(buffer); i++)
 		checksum = checksum ^ buffer[i];
 	checksum = checksum % 128 + 64;
-  *end++ = checksum;
-  *end++ = '#';
-  *end++ = 0;
+	*end++ = checksum;
+	*end++ = '#';
+	*end++ = 0;
  	return meade_command(device, buffer, NULL, 0, 0);
 }
 
@@ -499,8 +499,8 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 
 static void meade_get_site(indigo_device *device, double *latitude, double *longitude) {
 	char response[128];
-  if (MOUNT_TYPE_STARGO2_ITEM->sw.value)
-    return;
+	if (MOUNT_TYPE_STARGO2_ITEM->sw.value)
+		return;
 	if (meade_command(device, ":Gt#", response, sizeof(response), 0)) {
 		if (MOUNT_TYPE_STARGO_ITEM->sw.value)
 			str_replace(response, 't', '*');
@@ -605,9 +605,9 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		return false;
 	}
 	if (!meade_command(device, ":CM#", response, 1, 100000) || *response == 0) {
-    if (MOUNT_TYPE_STARGO2_ITEM->sw.value && !strncmp(response, " M31", 4))
-      return true;
-      
+		if (MOUNT_TYPE_STARGO2_ITEM->sw.value && !strncmp(response, " M31", 4))
+			return true;
+			
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		return false;
 	}
@@ -855,7 +855,7 @@ static bool meade_unpark(indigo_device *device) {
 	if (MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value)
 		return meade_command(device, ":PO#", NULL, 0, 0);
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value)
-		return meade_command(device, ":X370#", response, sizeof(response), 0)  && strcmp(response, "p0") == 0;
+		return meade_command(device, ":X370#", response, sizeof(response), 0) && strcmp(response, "p0") == 0;
 	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value)
 		return meade_command(device, ":hR#", NULL, 0, 0);
 	return false;
@@ -1038,7 +1038,7 @@ static void meade_init_meade_mount(indigo_device *device) {
 	FORCE_FLIP_PROPERTY->hidden = true;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Meade");
 	if (meade_command(device, ":GVF#", response, sizeof(response), 0)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Version:  %s", response);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Version: %s", response);
 		char *sep = strchr(response, '|');
 		if (sep != NULL)
 			*sep = 0;
@@ -1051,7 +1051,7 @@ static void meade_init_meade_mount(indigo_device *device) {
 		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
 	if (meade_command(device, ":GW#", response, sizeof(response), 0)) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Status:   %s", response);
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Status: %s", response);
 		MOUNT_MODE_PROPERTY->hidden = false;
 		if (response[0] == 'P' || response[0] == 'G')
 			indigo_set_switch(MOUNT_MODE_PROPERTY, EQUATORIAL_ITEM, true);
@@ -1113,7 +1113,7 @@ static void meade_init_gemini_mount(indigo_device *device) {
 	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
 	indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 	indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
-  meade_command(device, ":p0#", NULL, 0, 0);
+	meade_command(device, ":p0#", NULL, 0, 0);
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
@@ -1144,26 +1144,26 @@ static void meade_init_stargo_mount(indigo_device *device) {
 			MOUNT_GUIDE_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 	}
-	meade_command(device, ":TTSFd#",  response, 1, 0);
+	meade_command(device, ":TTSFd#", response, 1, 0);
 	indigo_define_property(device, FORCE_FLIP_PROPERTY, NULL);
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
 
 static void meade_init_stargo2_mount(indigo_device *device) {
-  MOUNT_TRACKING_PROPERTY->hidden = true;
-  MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-  MOUNT_HOME_PROPERTY->hidden = true;
-  MOUNT_MODE_PROPERTY->hidden = true;
-  MOUNT_PARK_PROPERTY->hidden = true;
-  MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
-  MOUNT_UTC_TIME_PROPERTY->hidden = true;
-  MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
-  FORCE_FLIP_PROPERTY->hidden = true;
-  strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
-  strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Avalon StarGO2");
-  strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
-  meade_update_mount_state(device);
+	MOUNT_TRACKING_PROPERTY->hidden = true;
+	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+	MOUNT_HOME_PROPERTY->hidden = true;
+	MOUNT_MODE_PROPERTY->hidden = true;
+	MOUNT_PARK_PROPERTY->hidden = true;
+	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+	MOUNT_UTC_TIME_PROPERTY->hidden = true;
+	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+	FORCE_FLIP_PROPERTY->hidden = true;
+	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Avalon");
+	strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Avalon StarGO2");
+	strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, "N/A");
+	meade_update_mount_state(device);
 }
 
 static void meade_init_ap_mount(indigo_device *device) {
@@ -1335,8 +1335,8 @@ static void meade_init_mount(indigo_device *device) {
 		meade_init_gemini_mount(device);
 	else if (MOUNT_TYPE_STARGO_ITEM->sw.value)
 		meade_init_stargo_mount(device);
-  else if (MOUNT_TYPE_STARGO2_ITEM->sw.value)
-    meade_init_stargo2_mount(device);
+	else if (MOUNT_TYPE_STARGO2_ITEM->sw.value)
+		meade_init_stargo2_mount(device);
 	else if (MOUNT_TYPE_AP_ITEM->sw.value)
 		meade_init_ap_mount(device);
 	else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value)
@@ -2092,7 +2092,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_10MICRONS_ITEM, MOUNT_TYPE_10MICRONS_ITEM_NAME, "10Microns", false);
 		indigo_init_switch_item(MOUNT_TYPE_GEMINI_ITEM, MOUNT_TYPE_GEMINI_ITEM_NAME, "Gemini Losmandy", false);
 		indigo_init_switch_item(MOUNT_TYPE_STARGO_ITEM, MOUNT_TYPE_STARGO_ITEM_NAME, "Avalon StarGO", false);
-    indigo_init_switch_item(MOUNT_TYPE_STARGO2_ITEM, MOUNT_TYPE_STARGO2_ITEM_NAME, "Avalon StarGO2", false);
+		indigo_init_switch_item(MOUNT_TYPE_STARGO2_ITEM, MOUNT_TYPE_STARGO2_ITEM_NAME, "Avalon StarGO2", false);
 		indigo_init_switch_item(MOUNT_TYPE_AP_ITEM, MOUNT_TYPE_AP_ITEM_NAME, "Astro-Physics GTO", false);
 		indigo_init_switch_item(MOUNT_TYPE_ON_STEP_ITEM, MOUNT_TYPE_ON_STEP_ITEM_NAME, "OnStep", false);
 		indigo_init_switch_item(MOUNT_TYPE_AGOTINO_ITEM, MOUNT_TYPE_AGOTINO_ITEM_NAME, "aGotino", false);
@@ -2304,10 +2304,10 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
 		} else if (MOUNT_TYPE_STARGO2_ITEM->sw.value) {
-      strcpy(DEVICE_PORT_ITEM->text.value, "lx200://StarGo2.local:9624");
-      DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
-      indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
-    }
+			strcpy(DEVICE_PORT_ITEM->text.value, "lx200://StarGo2.local:9624");
+			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
+		}
 		indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ZWO_BUZZER_PROPERTY, property)) {
