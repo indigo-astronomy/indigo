@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x001F
+#define DRIVER_VERSION 0x0020
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -734,6 +734,17 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 			return meade_command(device, ":TL#", NULL, 0, 0);
 	}
 	return true;
+}
+
+static bool meade_set_epoch_rate(indigo_device *device) {
+  if (MOUNT_EPOCH_ITEM->number.value == 0) {
+    if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
+      return meade_command(device, ":p0#", NULL, 0, 0);
+  } else if (MOUNT_EPOCH_ITEM->number.value == 2000) {
+    if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
+      return meade_command(device, ":p1#", NULL, 0, 0);
+  }
+  return false;
 }
 
 static bool meade_set_slew_rate(indigo_device *device) {
@@ -1710,7 +1721,10 @@ static void meade_update_mount_state(indigo_device *device) {
 	// read coordinates
 	double ra = 0, dec = 0;
 	if (meade_get_coordinates(device, &ra, &dec)) {
-		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+    if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
+      indigo_jnow_to_j2k(&ra, &dec);
+    else
+      indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		// check state
@@ -1888,7 +1902,8 @@ static void mount_eq_coords_callback(indigo_device *device) {
 	char message[50] = {0};
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+  if (!MOUNT_TYPE_GEMINI_ITEM->sw.value)
+    indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		if (meade_set_tracking_rate(device) && meade_slew(device, ra, dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -2012,6 +2027,14 @@ static void mount_track_rate_callback(indigo_device *device) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+}
+
+static void mount_epoch_callback(indigo_device *device) {
+  if (meade_set_epoch_rate(device))
+    MOUNT_EPOCH_PROPERTY->state = INDIGO_OK_STATE;
+  else
+    MOUNT_EPOCH_PROPERTY->state = INDIGO_ALERT_STATE;
+  indigo_update_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 }
 
 static void mount_force_flip_callback(indigo_device *device) {
@@ -2267,6 +2290,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_track_rate_callback, NULL);
 		return INDIGO_OK;
+  } else if (indigo_property_match_changeable(MOUNT_EPOCH_PROPERTY, property)) {
+    // -------------------------------------------------------------------------------- MOUNT_EPOCH
+    if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
+      indigo_property_copy_values(MOUNT_EPOCH_PROPERTY, property, false);
+      if (MOUNT_EPOCH_ITEM->number.value == 0 || MOUNT_EPOCH_ITEM->number.value == 2000) {
+        MOUNT_EPOCH_PROPERTY->state = INDIGO_BUSY_STATE;
+        indigo_update_property(device, MOUNT_EPOCH_PROPERTY, NULL);
+        indigo_set_timer(device, 0, mount_epoch_callback, NULL);
+      } else {
+        MOUNT_EPOCH_PROPERTY->state = INDIGO_ALERT_STATE;
+        indigo_update_property(device, MOUNT_EPOCH_PROPERTY, NULL);
+      }
+      return INDIGO_OK;
+    }
 	} else if (indigo_property_match_changeable(FORCE_FLIP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FORCE_FLIP
 		if (IS_PARKED) {
