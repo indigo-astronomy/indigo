@@ -1103,13 +1103,13 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		while (keywords->type && (next_key - fits_header) < (FITS_HEADER_SIZE - 80)) {
 			switch (keywords->type) {
 				case INDIGO_FITS_NUMBER:
-					add_key(&next_key, false, "%-7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
+					add_key(&next_key, false, "%-8s= %20f / %s", keywords->name, keywords->number, keywords->comment);
 					break;
 				case INDIGO_FITS_STRING:
-					add_key(&next_key, false, "%-7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+					add_key(&next_key, false, "%-8s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
 					break;
 				case INDIGO_FITS_LOGICAL:
-					add_key(&next_key, false, "%-7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
+					add_key(&next_key, false, "%-8s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
 					break;
 			}
 			keywords++;
@@ -1118,7 +1118,7 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 		indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 		if ((next_key - fits_header) < (FITS_HEADER_SIZE - 80))
-			add_key(&next_key, false, "%-7s= %s", item->name, item->text.value);
+			add_key(&next_key, false, "%-8s= %s", item->name, item->text.value);
 	}
 
 	add_key(&next_key, false, "END");
@@ -1514,15 +1514,15 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				switch (keywords->type) {
 					case INDIGO_FITS_NUMBER:
 						if (keywords->number == (int)keywords->number)
-							add_key(&header, true,  "%-7s= %20d / %s", keywords->name, (int)keywords->number, keywords->comment);
+							add_key(&header, true,  "%-8s= %20d / %s", keywords->name, (int)keywords->number, keywords->comment);
 						else
-							add_key(&header, true,  "%-7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
+							add_key(&header, true,  "%-8s= %20f / %s", keywords->name, keywords->number, keywords->comment);
 						break;
 					case INDIGO_FITS_STRING:
-						add_key(&header, true,  "%-7s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+						add_key(&header, true,  "%-8s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
 						break;
 					case INDIGO_FITS_LOGICAL:
-						add_key(&header, true,  "%-7s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
+						add_key(&header, true,  "%-8s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
 						break;
 				}
 				keywords++;
@@ -1531,7 +1531,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 			if ((header - (char *)data) < (FITS_HEADER_SIZE - 80))
-				add_key(&header, true, "%-7s= %s", item->name, item->text.value);
+				add_key(&header, true, "%-8s= %s", item->name, item->text.value);
 		}
 		add_key(&header, true,  "END");
 		if (byte_per_pixel == 2 && naxis == 2) {
