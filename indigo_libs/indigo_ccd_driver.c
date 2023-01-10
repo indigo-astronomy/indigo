@@ -721,6 +721,19 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_SET_FITS_HEADER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_SET_FITS_HEADER
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_SET_FITS_HEADER_NAME_ITEM_NAME) && strlen(item->text.value) > 8) {
+				CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Header name is too long");
+				return INDIGO_OK;
+			}
+			if (!strcmp(item->name, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME) && strlen(item->text.value) > 58) {
+				CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Header value is too long");
+				return INDIGO_OK;
+			}
+		}
 		indigo_property_copy_values(CCD_SET_FITS_HEADER_PROPERTY, property, false);
 		bool found = false;
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
