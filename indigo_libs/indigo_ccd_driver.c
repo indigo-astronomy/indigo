@@ -297,13 +297,13 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			CCD_SET_FITS_HEADER_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_SET_FITS_HEADER_PROPERTY_NAME, CCD_IMAGE_GROUP, "Set FITS header", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_SET_FITS_HEADER_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_text_item(CCD_SET_FITS_HEADER_NAME_ITEM, CCD_SET_FITS_HEADER_NAME_ITEM_NAME, "Key name", "");
-			indigo_init_text_item(CCD_SET_FITS_HEADER_VALUE_ITEM, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME, "Key value", "");
+			indigo_init_text_item(CCD_SET_FITS_HEADER_NAME_ITEM, CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
+			indigo_init_text_item(CCD_SET_FITS_HEADER_VALUE_ITEM, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME, "Value", "");
 			// -------------------------------------------------------------------------------- CCD_REMOVE_FITS_HEADER
 			CCD_REMOVE_FITS_HEADER_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_IMAGE_GROUP, "Remove FITS header", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_REMOVE_FITS_HEADER_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_text_item(CCD_REMOVE_FITS_HEADER_NAME_ITEM, CCD_REMOVE_FITS_HEADER_NAME_ITEM_NAME, "Key name", "");
+			indigo_init_text_item(CCD_REMOVE_FITS_HEADER_NAME_ITEM, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
 			// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
 			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
 			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
@@ -723,14 +723,14 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_SET_FITS_HEADER
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			if (!strcmp(item->name, CCD_SET_FITS_HEADER_NAME_ITEM_NAME) && strlen(item->text.value) > 8) {
+			if (!strcmp(item->name, CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME) && strlen(item->text.value) > 8) {
 				CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Header name is too long");
+				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Keyword is too long");
 				return INDIGO_OK;
 			}
 			if (!strcmp(item->name, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME) && strlen(item->text.value) > 58) {
 				CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Header value is too long");
+				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Keyword value is too long");
 				return INDIGO_OK;
 			}
 		}
@@ -2332,5 +2332,5 @@ indigo_result indigo_set_fits_header(indigo_client *client, char *device, char *
 }
 
 indigo_result indigo_remove_fits_header(indigo_client *client, char *device, char *name) {
-	return indigo_change_text_property_1(client, device, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_NAME_ITEM_NAME, name);
+	return indigo_change_text_property_1(client, device, CCD_REMOVE_FITS_HEADERS_PROPERTY_NAME, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, name);
 }

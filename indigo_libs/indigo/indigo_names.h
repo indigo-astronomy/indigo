@@ -604,7 +604,7 @@
 
 /** CCD_SET_FITS_HEADER.NAME property item name.
  */
-#define CCD_SET_FITS_HEADER_NAME_ITEM_NAME							"NAME"
+#define CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME							"KEYWORD"
 
 /** CCD_SET_FITS_HEADER.VALUE property item name.
  */
@@ -617,7 +617,7 @@
 
 /** CCD_REMOVE_FITS_HEADER.NAME property item name.
  */
-#define CCD_REMOVE_FITS_HEADER_NAME_ITEM_NAME						"NAME"
+#define CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME						"KEYWORD"
 
 
 //----------------------------------------------------------------------
