@@ -1509,6 +1509,14 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		add_key(&header, true,  "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
+		if (!CCD_LENS_PROPERTY->hidden) {
+			// https://indico.esa.int/event/124/attachments/711/771/06_ESA-SSA-NEO-RS-0003_1_6_FITS_keyword_requirements_2014-08-01.pdf
+			// 5.4 Telescope information
+			if (CCD_LENS_APERTURE_ITEM->number.value > 0)
+				add_key(&header, true,  "APTDIA  = %20.2f / Aperture diameter (mm)", CCD_LENS_APERTURE_ITEM->number.value * 10);
+			if (CCD_LENS_FOCAL_LENGTH_ITEM->number.value > 0)
+				add_key(&header, true,  "FOCALLEN= %20.2f / Focal length (mm)", CCD_LENS_FOCAL_LENGTH_ITEM->number.value * 10);
+		}
 		if (keywords) {
 			while (keywords->type && (header - (char *)data) < (FITS_HEADER_SIZE - 80)) {
 				switch (keywords->type) {
@@ -1638,6 +1646,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		strcpy(header, "XISF0100");
 		header += 16;
 		memset(header, 0, FITS_HEADER_SIZE);
+		// https://pixinsight.com/doc/docs/XISF-1.0-spec/XISF-1.0-spec.html
 		sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
 		header += strlen(header);
 		char *frame_type = "Light";
@@ -1710,6 +1719,20 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			header += strlen(header);
 			sprintf(header, "<FITSKeyword name='GAMMA' value='%20.2f' comment='Gamma'/>", CCD_GAMMA_ITEM->number.value);
 			header += strlen(header);
+		}
+		if (!CCD_LENS_PROPERTY->hidden) {
+			if (CCD_LENS_APERTURE_ITEM->number.value > 0) {
+				sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_APERTURE_ITEM->number.value / 100, b1));
+				header += strlen(header);
+				sprintf(header, "<FITSKeyword name='APTDIA' value='%20.2f' comment='Aperture diameter (mm)'/>", CCD_LENS_APERTURE_ITEM->number.value * 10);
+				header += strlen(header);
+			}
+			if (CCD_LENS_FOCAL_LENGTH_ITEM->number.value > 0) {
+				sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_FOCAL_LENGTH_ITEM->number.value / 100, b1));
+				header += strlen(header);
+				sprintf(header, "<FITSKeyword name='FOCALLEN' value='%20.2f' comment='Focal length (mm)'/>", CCD_LENS_FOCAL_LENGTH_ITEM->number.value * 10);
+				header += strlen(header);
+			}
 		}
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
@@ -2270,15 +2293,28 @@ void indigo_finalize_dslr_video_stream(indigo_device *device) {
 	}
 }
 
+// use formats like this:
+//	..., "%%20d", int_value);
+//	..., "%%20f", double_value);
+//	..., "%'%s'", string);
+//	..., "%20c", bool_value ? 'T' : 'F');
+//	..., "%%20d / comment", int_value);
+//	..., "%%20f / comment", double_value);
+//	..., "%'%s'%*c / comment", string, (int)(18 - strlen(string)), ' ');
+//	..., "%20c / comment", bool_value ? 'T' : 'F');
+
 indigo_result indigo_set_fits_header(indigo_client *client, char *device, char *name, char *format, ...) {
-	char tmp[INDIGO_VALUE_SIZE];
+	char key[9] = "";
+	char value[71] = "";
+	strncpy(key, name, 8);
 	va_list args;
 	va_start(args, format);
-	vsnprintf(tmp, INDIGO_VALUE_SIZE, format, args);
+	vsnprintf(value, 70, format, args);
 	va_end(args);
 	char *names[] = { "NAME", "VALUE" };
-	char *values[] = { name, NULL };
-	values[1] = tmp;
+	char *values[] = { NULL, NULL };
+	values[0] = key;
+	values[1] = value;
 	return indigo_change_text_property(client, device, CCD_SET_FITS_HEADER_PROPERTY_NAME, 2, (const char **)names, (const char **)values);
 }
 
