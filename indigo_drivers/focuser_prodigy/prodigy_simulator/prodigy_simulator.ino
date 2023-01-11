@@ -26,6 +26,10 @@ float temperature = 22.4;
 int position = 50;
 int moving_status = 0;
 int backlash_value = 100;
+int power_1 = 0;
+int power_2 = 0;
+int usb_1 = 0;
+int usb_2 = 0;
 
 void setup() {
   Serial.begin(19200);
@@ -55,17 +59,28 @@ void loop() {
     Serial.print(0);
     Serial.print(":");
     Serial.println(backlash_value);
+  } else if (command.equals("D")) {
+    Serial.print("D:");
+    Serial.print(power_1);
+    Serial.print(":");
+    Serial.print(power_2);
+    Serial.print(":");
+    Serial.print(usb_1);
+    Serial.print(":");
+    Serial.println(usb_2);
   } else if (command.startsWith("S:")) {
     Serial.println(command);
   } else if (command.startsWith("G:")) {
     position += command.substring(2).toInt();
+    Serial.println(command);
   } else if (command.startsWith("M:")) {
     position = command.substring(2).toInt();
+    Serial.println(command);
 	} else if (command.startsWith("W:")) {
 		position = command.substring(2).toInt();
+    Serial.println(command);
   } else if (command.startsWith("H")) {
-    Serial.println(command);
-    Serial.println(command);
+    Serial.println(0);
   } else if (command.startsWith("C:")) {
     backlash_value = command.substring(2).toInt();
     Serial.println(command);
@@ -75,5 +90,21 @@ void loop() {
     Serial.println(position);
   } else if (command.equals("I")) {
     Serial.println(moving_status);
+  } else if (command.equals("Z")) {
+    position = 0;
+    Serial.println("Z:1");
+  } else if (command.startsWith("U:")) {
+    usb_1 = command.substring(2).toInt();
+    Serial.println(command);
+  } else if (command.startsWith("J:")) {
+    usb_2 = command.substring(2).toInt();
+    Serial.println(command);
+  } else if (command.startsWith("X:")) {
+    power_1 = command.substring(2).toInt();
+    Serial.println(command);
+  } else if (command.startsWith("Y:")) {
+    power_2 = command.substring(2).toInt();
+    Serial.println(command);
+  } else if (command.startsWith("Q")) {
   }
 }
