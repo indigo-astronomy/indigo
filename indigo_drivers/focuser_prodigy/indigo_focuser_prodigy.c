@@ -572,34 +572,34 @@ static void aux_connection_handler(indigo_device *device) {
 					PRIVATE_DATA->handle = 0;
 				}
 			}
-			if (PRIVATE_DATA->handle > 0) {
-				if (prodigy_command(device, "D", response, sizeof(response)) && !strncmp(response, "D:",2)) {
-					char *pnt, *token = strtok_r(response, ":", &pnt);
-					token = strtok_r(NULL, ":", &pnt); // power #1
-					if (token) {
-						indigo_set_switch(AUX_POWER_OUTLET_PROPERTY, AUX_POWER_OUTLET_1_ITEM, *token == '1');
-					}
-					token = strtok_r(NULL, ":", &pnt); // power #2
-					if (token) {
-						indigo_set_switch(AUX_POWER_OUTLET_PROPERTY, AUX_POWER_OUTLET_2_ITEM, *token == '2');
-					}
-					token = strtok_r(NULL, ":", &pnt); // usb #1
-					if (token) {
-						indigo_set_switch(AUX_USB_PORT_PROPERTY, AUX_USB_PORT_1_ITEM, *token == '1');
-					}
-					token = strtok_r(NULL, ":", &pnt); // usb #2
-					if (token) {
-						indigo_set_switch(AUX_USB_PORT_PROPERTY, AUX_USB_PORT_2_ITEM, *token == '1');
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'D' response");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-					}
+		}
+		if (PRIVATE_DATA->handle > 0) {
+			if (prodigy_command(device, "D", response, sizeof(response)) && !strncmp(response, "D:",2)) {
+				char *pnt, *token = strtok_r(response, ":", &pnt);
+				token = strtok_r(NULL, ":", &pnt); // power #1
+				if (token) {
+					indigo_set_switch(AUX_POWER_OUTLET_PROPERTY, AUX_POWER_OUTLET_1_ITEM, *token == '1');
+				}
+				token = strtok_r(NULL, ":", &pnt); // power #2
+				if (token) {
+					indigo_set_switch(AUX_POWER_OUTLET_PROPERTY, AUX_POWER_OUTLET_2_ITEM, *token == '2');
+				}
+				token = strtok_r(NULL, ":", &pnt); // usb #1
+				if (token) {
+					indigo_set_switch(AUX_USB_PORT_PROPERTY, AUX_USB_PORT_1_ITEM, *token == '1');
+				}
+				token = strtok_r(NULL, ":", &pnt); // usb #2
+				if (token) {
+					indigo_set_switch(AUX_USB_PORT_PROPERTY, AUX_USB_PORT_2_ITEM, *token == '1');
 				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'D' response");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to parse 'D' response");
 					close(PRIVATE_DATA->handle);
 					PRIVATE_DATA->handle = 0;
 				}
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'D' response");
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = 0;
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
