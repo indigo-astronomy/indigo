@@ -25,6 +25,7 @@ properties are first of all defined memory structures which are, if needed, mapp
 | CONFIG | switch | no | yes | LOAD | yes |  |
 |  |  |  |  | SAVE | yes |  |
 |  |  |  |  | REMOVE | yes |  |
+| PROFILE_NAME | text | no | yes | NAME_0,... | yes | Set profile name |
 | PROFILE | switch | no | yes | PROFILE_0,... | yes | Select the profile number for subsequent CONFIG operation |
 | DEVICE_PORT | text | no | no | PORT | no | Either device path like "/dev/tty0" or URL like "lx200://host:port". |
 | DEVICE_BAUDRATE | text | no | no | BAUDRATE | no | Serial port configuration in a string like this: 9600-8N1 |
