@@ -23,6 +23,8 @@
 #endif
 
 int current_filter = 1;
+int target_filter = 1;
+int moving = 0;
 
 void setup() {
   Serial.begin(9600);
@@ -31,25 +33,50 @@ void setup() {
     ;
 }
 
+void update_state() {
+  static long unsigned last_millis = 0;
+  long unsigned current_millis = millis();
+  long unsigned lapse = current_millis - last_millis;
+  if (moving == 1) {
+    if (lapse < 1000)
+      return;
+    if (target_filter < current_filter) {
+      current_filter--;
+    } else if (target_filter > current_filter) {
+      current_filter++;
+    } else {
+      moving = 0;
+    }
+  }
+  last_millis = current_millis;
+}
+
+
 void loop() {
+  update_state();
   String command = Serial.readStringUntil('\n');
   if (command.equals("W#")) {
     Serial.println("FW_OK");
   } else if (command.equals("WA")) {
     Serial.print("FW_OK:");
     Serial.print(current_filter);
-    Serial.println(":0");
+    Serial.print(":");
+    Serial.println(moving);
   } else if (command.equals("WF")) {
     Serial.print("WF:");
-    Serial.println(current_filter);
+    Serial.println(moving == 0 ? current_filter : -1);
   } else if (command.equals("WV")) {
-    Serial.println("WV:1.0");
+    Serial.println("WV:1.1");
   } else if (command.startsWith("WM:")) {
-    current_filter = command.substring(3).toInt();
+    target_filter = command.substring(3).toInt();
+    moving = 1;
     Serial.println(command);
   } else if (command.equals("WR")) {
-    Serial.println("WR:0");
+    Serial.print("WR:");
+    Serial.println(moving);
   } else if (command.equals("WI")) {
+    moving = 0;
+    current_filter = 1;
     Serial.println("WI:1");
   } else if (command.equals("WQ")) {
   }
