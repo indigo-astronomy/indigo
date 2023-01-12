@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-/** Create Field Rotator Simulator device instance
+/** Create Field Rotator device instance
  */
 
 extern indigo_result indigo_rotator_optec(indigo_driver_action action, indigo_driver_info *info);
