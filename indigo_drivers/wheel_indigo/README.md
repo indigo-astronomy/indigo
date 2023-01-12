@@ -22,7 +22,7 @@ indigo_server indigo_wheel_indigo
 
 ## Status: Untested
 
-Looking for device owners!!! :)
+Tested with a simulator only. Looking for device owners!!! :)
 
 Based on protocol description found here:
 
