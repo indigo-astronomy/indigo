@@ -154,6 +154,14 @@ extern "C" {
 
 #define PROFILE_COUNT									5
 
+/** PROFILE_NAME property pointer, property is mandatory.
+ */
+#define PROFILE_NAME_PROPERTY         (DEVICE_CONTEXT->profile_name_property)
+
+/** PROFILE_NAME.NAME_0 property item pointer.
+ */
+#define PROFILE_NAME_ITEM              (PROFILE_NAME_PROPERTY->items+0)
+
 /** PROFILE property pointer, property is mandatory.
  */
 #define PROFILE_PROPERTY               (DEVICE_CONTEXT->profile_property)
@@ -248,6 +256,7 @@ typedef struct {
 	indigo_property *info_property;           ///< INFO property pointer
 	indigo_property *simulation_property;     ///< SIMULATION property pointer
 	indigo_property *configuration_property;  ///< CONFIGURATION property pointer
+	indigo_property *profile_name_property; 	///< PROFILE_NAME property pointer
 	indigo_property *profile_property; 				///< PROFILE property pointer
 	indigo_property *device_port_property;		///< DEVICE_PORT property pointer
 	indigo_property *device_baudrate_property;///< DEVICE_BAUDRATE property pointer

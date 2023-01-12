@@ -98,6 +98,15 @@
 #define CONFIG_REMOVE_ITEM_NAME							"REMOVE"
 
 //----------------------------------------------------------------------
+/** PROFILE_NAME property name.
+ */
+#define PROFILE_NAME_PROPERTY_NAME						"PROFILE_NAME"
+
+/** PROFILE_NAME.NAME_X property item name.
+ */
+#define PROFILE_NAME_ITEM_NAME								"NAME_%d"
+
+//----------------------------------------------------------------------
 /** PROFILE property name.
  */
 #define PROFILE_PROPERTY_NAME									"PROFILE"
