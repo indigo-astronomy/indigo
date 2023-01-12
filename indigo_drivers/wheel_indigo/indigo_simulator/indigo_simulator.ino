@@ -22,7 +22,7 @@
 #define Serial SerialUSB
 #endif
 
-int current_filter = '1';
+int current_filter = 1;
 
 void setup() {
   Serial.begin(9600);
