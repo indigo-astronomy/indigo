@@ -126,6 +126,8 @@ This is the list of requirements taken into the consideration:
 96. Vixen StarBook mount driver
 97. PlayerOne camera driver
 98. PegasusAstro Prodigy Microfocuser driver
+99. PegasusAstro Indigo wheel driver
+100. PegasusAstro Falcon rotator driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
