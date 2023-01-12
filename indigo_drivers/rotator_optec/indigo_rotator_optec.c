@@ -405,10 +405,10 @@ static indigo_result rotator_detach(indigo_device *device) {
 // --------------------------------------------------------------------------------
 
 static pyxis_private_data *private_data = NULL;
-static indigo_device *imager_focuser = NULL;
+static indigo_device *rotator = NULL;
 
 indigo_result indigo_rotator_optec(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device imager_rotator_template = INDIGO_DEVICE_INITIALIZER(
+	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
 		"Optec Pyxis",
 		rotator_attach,
 		rotator_enumerate_properties,
@@ -428,18 +428,18 @@ indigo_result indigo_rotator_optec(indigo_driver_action action, indigo_driver_in
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(pyxis_private_data));
-			imager_focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_rotator_template);
-			imager_focuser->private_data = private_data;
-			indigo_attach_device(imager_focuser);
+			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
+			rotator->private_data = private_data;
+			indigo_attach_device(rotator);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			VERIFY_NOT_CONNECTED(imager_focuser);
+			VERIFY_NOT_CONNECTED(rotator);
 			last_action = action;
-			if (imager_focuser != NULL) {
-				indigo_detach_device(imager_focuser);
-				free(imager_focuser);
-				imager_focuser = NULL;
+			if (rotator != NULL) {
+				indigo_detach_device(rotator);
+				free(rotator);
+				rotator = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);
