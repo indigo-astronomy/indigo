@@ -65,7 +65,7 @@ static void wheel_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
 		if (PRIVATE_DATA->handle > 0) {
 			if (indigo_command(device, "W#", response, sizeof(response)) && !strcmp(response, "FW_OK")) {
 			} else {
