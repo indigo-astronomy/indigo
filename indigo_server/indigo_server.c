@@ -158,6 +158,7 @@
 #include "focuser_prodigy/indigo_focuser_prodigy.h"
 #include "agent_config/indigo_agent_config.h"
 #include "mount_asi/indigo_mount_asi.h"
+#include "wheel_indigo/indigo_wheel_indigo.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -302,6 +303,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_asi,
 	indigo_wheel_atik,
 	indigo_wheel_fli,
+	indigo_wheel_indigo,
 	indigo_wheel_manual,
 	indigo_wheel_optec,
 	indigo_wheel_qhy,
