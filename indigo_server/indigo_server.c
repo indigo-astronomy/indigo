@@ -159,6 +159,7 @@
 #include "agent_config/indigo_agent_config.h"
 #include "mount_asi/indigo_mount_asi.h"
 #include "wheel_indigo/indigo_wheel_indigo.h"
+#include "rotator_falcon/indigo_rotator_falcon.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -297,6 +298,7 @@ driver_entry_point static_drivers[] = {
 	indigo_mount_starbook,
 	indigo_mount_synscan,
 	indigo_mount_temma,
+	indigo_rotator_falcon,
 	indigo_rotator_lunatico,
 	indigo_rotator_optec,
 	indigo_rotator_simulator,
