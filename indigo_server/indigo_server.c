@@ -160,6 +160,7 @@
 #include "mount_asi/indigo_mount_asi.h"
 #include "wheel_indigo/indigo_wheel_indigo.h"
 #include "rotator_falcon/indigo_rotator_falcon.h"
+#include "wheel_playerone/indigo_wheel_playerone.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -308,6 +309,7 @@ driver_entry_point static_drivers[] = {
 	indigo_wheel_indigo,
 	indigo_wheel_manual,
 	indigo_wheel_optec,
+	indigo_wheel_playerone,
 	indigo_wheel_qhy,
 	indigo_wheel_quantum,
 	indigo_wheel_sx,
