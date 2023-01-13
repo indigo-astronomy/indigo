@@ -19,13 +19,13 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu> (refactored from ASI driver by Rumen G. Bogdanovski)
-
+// 2.1 by Sven Kreiensen <s.kreiensen@lyconsys.com> (modified playerone_setup_exposure(), exposure_timer_callback() and streaming_timer_callback())
 
 /** INDIGO Player One CCD driver
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 #include <stdlib.h>
@@ -40,7 +40,7 @@
 
 #include "indigo_ccd_playerone.h"
 
-#if !(defined(__APPLE__) && defined(__arm64__)) && !(defined(__linux__) && defined(__i386__))
+#if !(defined(__linux__) && defined(__i386__))
 
 #if defined(INDIGO_MACOS)
 #include <libusb-1.0/libusb.h>
@@ -114,7 +114,6 @@ static int get_pixel_depth(indigo_device *device) {
 	return 8;
 }
 
-
 static int get_pixel_format(indigo_device *device) {
 	int item = 0;
 	while (item < POA_MAX_FORMATS) {
@@ -141,7 +140,6 @@ static int get_pixel_format(indigo_device *device) {
 	return POA_END;
 }
 
-
 static bool pixel_format_supported(indigo_device *device, POAImgFormat type) {
 	for (int i = 0; i < POA_MAX_FORMATS; i++) {
 		if (i == POA_END)
@@ -152,7 +150,6 @@ static bool pixel_format_supported(indigo_device *device, POAImgFormat type) {
 	return false;
 }
 
-
 static indigo_result playerone_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
@@ -162,7 +159,6 @@ static indigo_result playerone_enumerate_properties(indigo_device *device, indig
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
-
 
 static bool playerone_open(indigo_device *device) {
 	int id = PRIVATE_DATA->dev_id;
@@ -212,14 +208,15 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 	POAErrors res;
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	int pf = get_pixel_format(device);
-	res = POASetImageFormat(id, pf);
+
+	/* Always stop exposure before modifying any parameters. Just to be safe. */
+	res = POAStopExposure(id);
 	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageFormat(%d, %d) > %d", id, pf, res);
-		return false;
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStopExposure(%d) > %d", id, res);
+			return false;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageFormat(%d, %d)", id, pf);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStopExposure(%d)", id);
 
 	res = POASetImageBin(id, bin);
 	if (res) {
@@ -228,16 +225,6 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 		return false;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageBin(%d, %d)", id, bin);
-
-	int fl = frame_left / bin;
-	int ft = frame_top / bin;
-	res = POASetImageStartPos(id, fl, ft);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d) > %d", id, fl, ft, res);
-		return false;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d)", id, fl, ft);
 
 	int fw = frame_width / bin;
 	int fh = frame_height / bin;
@@ -249,15 +236,43 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageSize(%d, %d, %d)", id, fw, fh);
 
-
-	POAConfigValue value = { .intValue = (long)s2us(exposure) };
-	res = POASetConfig(id, POA_EXPOSURE, value, POA_FALSE);
+	int fl = frame_left / bin;
+	int ft = frame_top / bin;
+	res = POASetImageStartPos(id, fl, ft);
 	if (res) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d) > %d", id, value.intValue, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d) > %d", id, fl, ft, res);
 		return false;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d)", id, value.intValue);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d)", id, fl, ft);
+
+	int pf = get_pixel_format(device);
+	res = POASetImageFormat(id, pf);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageFormat(%d, %d) > %d", id, pf, res);
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageFormat(%d, %d)", id, pf);
+
+	POAConfigValue exposure_value = { .intValue = (long)s2us(exposure) };
+	res = POASetConfig(id, POA_EXPOSURE, exposure_value, POA_FALSE);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d) > %d", id, exposure_value.intValue, res);
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d)", id, exposure_value.intValue);
+
+	POAConfigValue gain_value;
+	gain_value.intValue = (long)(CCD_GAIN_ITEM->number.value);
+	res = POASetConfig(id, POA_GAIN, gain_value, POA_FALSE);
+	if (res) {
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GAIN, %d) > %d", id, gain_value.intValue, res);
+		return false;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GAIN, %d)", id, gain_value.intValue);
 
 	PRIVATE_DATA->exp_bin = bin;
 	PRIVATE_DATA->exp_frame_width = frame_width;
@@ -372,35 +387,13 @@ static void exposure_timer_callback(indigo_device *device) {
 		{ 0 }
 	};
 	int id = PRIVATE_DATA->dev_id;
-	POAErrors res;
+	POAErrors res = POA_OK;
 	POACameraState state;
 	PRIVATE_DATA->can_check_temperature = false;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = POAGetCameraState(id, &state);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetCameraState(%d, ...) > %d", id, res);
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCameraState(%d, > %d)", id, state);
-		if (state == STATE_EXPOSING) {
-			res = POAStopExposure(id);
-			if (res)
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStopExposure(%d) > %d", id, res);
-			else
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStopExposure(%d)", id);
-		}
-		while (true) {
-			res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, 0) > %d", id, PRIVATE_DATA->buffer_size, res);
-			if (res) {
-				res = POA_OK;
-				break;
-			}
-		}
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res == POA_OK && playerone_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+	if (playerone_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = POAStartExposure(id, true);
+		res = POAStartExposure(id, false); // Single exposure mode.
+		/* Single exposure mode Does not work for Saturn-C, due to a bug in the POAImageReady() function. Have to set video mode here as a workaround */
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStartExposure(%d, true) > %d", id, res);
@@ -409,6 +402,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target;
 			while (CCD_EXPOSURE_ITEM->number.value > 1) {
 				if (POAGetCameraState(id, &state) == POA_OK && state != STATE_EXPOSING) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "State != EXPOSING");
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
@@ -428,12 +422,12 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 2000);
+				res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE - 1024, 2000);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., 2000) > %d", id, res);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, 2000)", id, PRIVATE_DATA->buffer_size);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size, 2000);
 					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
 					} else {
@@ -441,6 +435,11 @@ static void exposure_timer_callback(indigo_device *device) {
 					}
 				}
 			}
+			res = POAStopExposure(id);
+			if (res)
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStopExposure(%d) > %d", id, res);
+			else
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStopExposure(%d)", id);
 		}
 	} else {
 		res = POA_ERROR_EXPOSURE_FAILED;
@@ -471,40 +470,17 @@ static void streaming_timer_callback(indigo_device *device) {
 		{ 0 }
 	};
 	int id = PRIVATE_DATA->dev_id;
-	POAErrors res;
+	POAErrors res = POA_OK;
 	POACameraState state;
 	PRIVATE_DATA->can_check_temperature = false;
-	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	res = POAGetCameraState(id, &state);
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetCameraState(%d, ...) > %d", id, res);
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCameraState(%d, > %d)", id, state);
-		if (state == STATE_EXPOSING) {
-			res = POAStopExposure(id);
-			if (res)
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStopExposure(%d) > %d", id, res);
-			else
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStopExposure(%d)", id);
-		}
-		while (true) {
-			res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 0);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, 0) > %d", id, PRIVATE_DATA->buffer_size, res);
-			if (res) {
-				res = POA_OK;
-				break;
-			}
-		}
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if (res == POA_OK && playerone_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+	if (playerone_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = POAStartExposure(id, false);
+		res = POAStartExposure(id, false); // Streaming exposure mode
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStartExposure(%d, true) > %d", id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStartExposure(%d, false) > %d", id, res);
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStartExposure(%d, true) > %d", id, res);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStartExposure(%d, false) > %d", id, res);
 			while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
 				while (CCD_STREAMING_EXPOSURE_ITEM->number.value > 1) {
@@ -528,13 +504,13 @@ static void streaming_timer_callback(indigo_device *device) {
 				CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 2000);
+					res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE - 1024, 2000);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., 2000) > %d", id, res);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
 						break;
 					}
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, 2000)", id, PRIVATE_DATA->buffer_size);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size, 2000);
 					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
 					} else {

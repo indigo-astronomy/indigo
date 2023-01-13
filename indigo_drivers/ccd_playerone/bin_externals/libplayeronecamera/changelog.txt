@@ -1,3 +1,9 @@
+2022.12.02(3.1.0)
+- Enhance the stability of camera output data when using USB HUB
+- Optimize the cooling logic of cooled camera
+- POA_HEATER is deprecated, the heater will turn on/off as the cooler is turned on/off
+- The SDK for the Mac OS supports Apple Silicon
+
 2022.8.25(3.0.4)
 - Enhanced camera stability when startup
 - Enhanced thread safety

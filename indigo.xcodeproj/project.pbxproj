@@ -606,6 +606,7 @@
 		59A4133B2971E76800F0A80B /* libPlayerOnePW.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59A4133D2971E76D00F0A80B /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; };
 		59A4133E2971E79700F0A80B /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; };
+		59A4133F2971FBA400F0A80B /* libPlayerOneCamera.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */; };
 		59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D3F21A330FB000B6F27 /* sbigudrv.h */; };
 		59A52D6521A33617000B6F27 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D5721A3360B000B6F27 /* gxccd.h */; };
 		59A52DF121A33E4C000B6F27 /* libfli.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52DCF21A33E34000B6F27 /* libfli.h */; };
@@ -4652,6 +4653,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				59D138A3283E5A9C00FCC514 /* libraw.a in Frameworks */,
+				59A4133F2971FBA400F0A80B /* libPlayerOneCamera.dylib in Frameworks */,
 				598A1D02259BAE0800C0B34C /* libatik.a in Frameworks */,
 				598A1CFB259BADCE00C0B34C /* libgps.a in Frameworks */,
 				598A1CF3259BAD9A00C0B34C /* libfli.a in Frameworks */,

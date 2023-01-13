@@ -1,6 +1,6 @@
 ﻿/****************************************************************************
 **
-** Copyright (C) 2021 The Player One Astronomy Co., Ltd.
+** Copyright (C) 2022 The Player One Astronomy Co., Ltd.
 ** This software is the secondary software development kit (SDK) for
 ** the astronomy cameras made by Player One Astronomy Co., Ltd.
 ** Player One Astronomy Co., Ltd (hereinafter referred to as "the company") owns its copyright.
@@ -111,7 +111,7 @@ typedef enum _POAConfig                 ///< Camera Config Definition
     POA_COOLER_POWER,                   ///< cooler power percentage[0-100%](only cool camera), read-only, valueType == VAL_INT
     POA_TARGET_TEMP,                    ///< camera target temperature(uint: C), read-write, valueType == VAL_INT
     POA_COOLER,                         ///< turn cooler(and fan) on or off, read-write, valueType == VAL_BOOL
-    POA_HEATER,                         ///< turn lens heater on or off, read-write, valueType == VAL_BOOL
+    POA_HEATER,                         ///< (deprecated)get state of lens heater(on or off), read-only, valueType == VAL_BOOL
     POA_HEATER_POWER,                   ///< lens heater power percentage[0-100%], read-write, valueType == VAL_INT
     POA_FAN_POWER,                      ///< radiator fan power percentage[0-100%], read-write, valueType == VAL_INT
     POA_FLIP_NONE,                      ///< no flip, Note: set this config(POASetConfig), the 'confValue' will be ignored, read-write, valueType == VAL_BOOL
@@ -557,7 +557,7 @@ POACAMERA_API  POAErrors POAStopExposure(int nCameraID);
  * @param pCameraState (output), pointer to a POACameraState value for saving camera state
  *
  * @return  POA_OK: operation successful
- *          POA_ERROR_POINTER: pImgFormat is NULL pointer
+ *          POA_ERROR_POINTER: pCameraState is NULL pointer
  *          POA_ERROR_INVALID_ID: no camera with this ID was found or the ID is out of boundary
  */
 POACAMERA_API  POAErrors POAGetCameraState(int nCameraID, POACameraState *pCameraState);
