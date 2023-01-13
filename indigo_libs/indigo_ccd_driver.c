@@ -2324,7 +2324,7 @@ indigo_result indigo_set_fits_header(indigo_client *client, char *device, char *
 	va_start(args, format);
 	vsnprintf(value, 70, format, args);
 	va_end(args);
-	char *names[] = { "NAME", "VALUE" };
+	char *names[] = { CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME };
 	char *values[] = { NULL, NULL };
 	values[0] = key;
 	values[1] = value;
