@@ -1,0 +1,27 @@
+2022.12.19(1.0.0)
+- Initial Release, support all Player One filter wheel(Phoenix Wheel)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
