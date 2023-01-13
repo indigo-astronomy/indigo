@@ -434,14 +434,6 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			if (DEVICE_CONTEXT->property_save_file_handle) {
 				close(DEVICE_CONTEXT->property_save_file_handle);
 				DEVICE_CONTEXT->property_save_file_handle = 0;
-				indigo_save_property(device, NULL, PROFILE_NAME_PROPERTY);
-				if (DEVICE_CONTEXT->property_save_file_handle) {
-					CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-					close(DEVICE_CONTEXT->property_save_file_handle);
-					DEVICE_CONTEXT->property_save_file_handle = 0;
-				} else {
-					CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
-				}
 			} else {
 				CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -466,7 +458,18 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			indigo_copy_name(profile_item->label, name_item->text.value);
 		}
 		indigo_define_property(device, PROFILE_PROPERTY, NULL);
-		PROFILE_NAME_PROPERTY->state = INDIGO_OK_STATE;
+		if (strcmp(client->name, CONFIG_READER)) {
+			indigo_save_property(device, NULL, PROFILE_NAME_PROPERTY);
+			if (DEVICE_CONTEXT->property_save_file_handle) {
+				PROFILE_NAME_PROPERTY->state = INDIGO_OK_STATE;
+				close(DEVICE_CONTEXT->property_save_file_handle);
+				DEVICE_CONTEXT->property_save_file_handle = 0;
+			} else {
+				PROFILE_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else {
+			PROFILE_NAME_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		indigo_update_property(device, PROFILE_NAME_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(PROFILE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- PROFILE
