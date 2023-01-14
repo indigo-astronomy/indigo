@@ -26,7 +26,7 @@
 #define DRIVER_VERSION 0x0001
 #define DRIVER_NAME "indigo_wheel_playerone"
 
-#define PONE_ID_MAX 24
+#define PONE_HANDLE_MAX 24
 
 #include <stdlib.h>
 #include <string.h>
@@ -58,21 +58,21 @@
 #define is_connected                    gp_bits
 
 typedef struct {
-	int dev_id;
+	int dev_handle;
 	int current_slot, target_slot;
 	int count;
 	indigo_timer *wheel_timer;
 	pthread_mutex_t usb_mutex;
 } pone_private_data;
 
-static int find_index_by_device_id(int id);
+static int find_index_by_device_handle(int handle);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-	//int res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->current_slot));
-	//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->current_slot, res);
+	int res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &(PRIVATE_DATA->current_slot));
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->current_slot, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	PRIVATE_DATA->current_slot++;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
@@ -103,7 +103,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static void wheel_connect_callback(indigo_device *device) {
 	PWProperties info;
-	int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+	int index = find_index_by_device_handle(PRIVATE_DATA->dev_handle);
 	if (index < 0) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -118,23 +118,27 @@ static void wheel_connect_callback(indigo_device *device) {
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 				} else {
-					//EFWGetID(index, &(PRIVATE_DATA->dev_id));
-					int res; // = EFWOpen(PRIVATE_DATA->dev_id);
-					//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
+					int res = POAGetPWPropertiesByHandle(PRIVATE_DATA->dev_handle, &info);
+					if (res != PW_OK) {
+						info.Handle = -1;
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d) = %d", PRIVATE_DATA->dev_handle, res);
+					}
+					PRIVATE_DATA->dev_handle = info.Handle;
+					res = POAOpenPW(PRIVATE_DATA->dev_handle);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (!res) {
+					if (res != PW_OK) {
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						//EFWGetProperty(PRIVATE_DATA->dev_id, &info);
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count = info.PositionCount;
-						//res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot, res);
+						res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &(PRIVATE_DATA->target_slot));
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 						PRIVATE_DATA->target_slot++;
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 						indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d) = %d", index, res);
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d) = %d", index, res);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -144,10 +148,16 @@ static void wheel_connect_callback(indigo_device *device) {
 		} else {
 			if (device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				//int res = EFWClose(PRIVATE_DATA->dev_id);
-				//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-				//res = EFWGetID(index, &(PRIVATE_DATA->dev_id));
-				//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
+				int res = POAClosePW(PRIVATE_DATA->dev_handle);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAClosePW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+				res = POAGetPWPropertiesByHandle(PRIVATE_DATA->dev_handle, &info);
+				if (res != PW_OK) {
+					info.Handle = -1;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d) = %d", PRIVATE_DATA->dev_handle, res);
+				} else {
+					PRIVATE_DATA->dev_handle = info.Handle;
+				}
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d, -> %d) = %d", index, PRIVATE_DATA->dev_handle, res);
 				indigo_global_unlock(device);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				device->is_connected = false;
@@ -183,8 +193,8 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			//int res = EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
-			//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWSetPosition(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1, res);
+			int res = POAGotoPosition(PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGotoPosition(%d, %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1, res);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 		}
@@ -213,42 +223,42 @@ static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define NO_DEVICE                 (-1000)
 
 
-static int efw_products[100];
-static int efw_id_count = 0;
+const int pw_products[1] = {0xf001};
+const int pw_pid_count = 1;
 
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
-static bool connected_ids[PONE_ID_MAX];
+static bool connected_handles[PONE_HANDLE_MAX];
 
-static int find_index_by_device_id(int id) {
-	int count; // = EFWGetNum();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
-	int cur_id;
+static int find_index_by_device_handle(int handle) {
+	int count = POAGetPWCount();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWCount() = %d", count);
+	PWProperties props;
 	for (int index = 0; index < count; index++) {
-		int res; // = EFWGetID(index, &cur_id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, cur_id, res);
-		if (res == PW_OK && cur_id == id) {
+		int res = POAGetPWProperties(index, &props);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWProperties(%d, -> %d) = %d", index, props.Handle, res);
+		if (res == PW_OK && props.Handle == handle) {
 			return index;
 		}
 	}
 	return -1;
 }
 
-
-static int find_plugged_device_id() {
-	int id = NO_DEVICE, new_id = NO_DEVICE;
-	int count; // = EFWGetNum();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
+static int find_plugged_device_handle() {
+	int new_handle = NO_DEVICE;
+	PWProperties props;
+	int count = POAGetPWCount();
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWCount() = %d", count);
 	for (int index = 0; index < count; index++) {
-		int res; // = EFWGetID(index, &id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
-		if (res == PW_OK && !connected_ids[id]) {
-			new_id = id;
-			connected_ids[id] = true;
+		int res = POAGetPWProperties(index, &props);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWProperties(%d, -> %d) = %d", index, props.Handle, res);
+		if (res == PW_OK && !connected_handles[props.Handle]) {
+			new_handle = props.Handle;
+			connected_handles[props.Handle] = true;
 			break;
 		}
 	}
-	return new_id;
+	return new_handle;
 }
 
 
@@ -260,36 +270,36 @@ static int find_available_device_slot() {
 }
 
 
-static int find_device_slot(int id) {
+static int find_device_slot(int handle) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
-		if (PRIVATE_DATA->dev_id == id) return slot;
+		if (PRIVATE_DATA->dev_handle == handle) return slot;
 	}
 	return -1;
 }
 
 
-static int find_unplugged_device_id() {
-	bool dev_tmp[PONE_ID_MAX] = { false };
-	int id = -1;
-	int count; // = EFWGetNum();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetNum() = %d", count);
+static int find_unplugged_device_handle() {
+	bool dev_tmp[PONE_HANDLE_MAX] = { false };
+	int count = POAGetPWCount();
+	PWProperties props;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWCount() = %d", count);
 	for (int index = 0; index < count; index++) {
-		int res; // = EFWGetID(index, &id);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, id, res);
+		int res = POAGetPWProperties(index, &props);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWProperties(%d, -> %d) = %d", index, props.Handle, res);
 		if (res == PW_OK)
-			dev_tmp[id] = true;
+			dev_tmp[props.Handle] = true;
 	}
-	id = -1;
-	for (int index = 0; index < PONE_ID_MAX; index++) {
-		if (connected_ids[index] && !dev_tmp[index]) {
-			id = index;
-			connected_ids[id] = false;
+	int handle = -1;
+	for (int index = 0; index < PONE_HANDLE_MAX; index++) {
+		if (connected_handles[index] && !dev_tmp[index]) {
+			handle = index;
+			connected_handles[handle] = false;
 			break;
 		}
 	}
-	return id;
+	return handle;
 }
 
 static void process_plug_event(indigo_device *unused) {
@@ -309,39 +319,39 @@ static void process_plug_event(indigo_device *unused) {
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	int id = find_plugged_device_id();
-	if (id == NO_DEVICE) {
+	int handle = find_plugged_device_handle();
+	if (handle == NO_DEVICE) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
-	int res; // = EFWOpen(id);
+	int res = POAOpenPW(handle);
 	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d}) = %d", id, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d}) = %d", handle, res);
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWOpen(%d}) = %d", id, res);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d}) = %d", handle, res);
 	}
 	while (true) {
-		res = 0; // = EFWGetProperty(id, &info);
-		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProperty(%d, -> { %d, '%s', %d }) = %d", id, info.ID, info.Name, info.slotNum, res);
+		res = POAGetPWPropertiesByHandle(handle, &info);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d, -> { %d, '%s', %d }) = %d", handle, info.Handle, info.Name, info.PositionCount, res);
 		if (res == PW_OK) {
-			//EFWClose(id);
+			POAClosePW(handle);
 			break;
 		}
 		if (res != PW_ERROR_IS_MOVING) {
-			// EFWClose(id);
+			POAClosePW(handle);
 			pthread_mutex_unlock(&device_mutex);
 			return;
 		}
-		  indigo_usleep(ONE_SECOND_DELAY);
+		indigo_usleep(ONE_SECOND_DELAY);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-	sprintf(device->name, "%s #%d", info.Name, id);
+	sprintf(device->name, "%s #%d", info.Name, handle);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	pone_private_data *private_data = indigo_safe_malloc(sizeof(pone_private_data));
-	private_data->dev_id = id;
+	private_data->dev_handle = handle;
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
@@ -349,11 +359,11 @@ static void process_plug_event(indigo_device *unused) {
 }
 
 static void process_unplug_event(indigo_device *unused) {
-	int slot, id;
+	int slot, handle;
 	bool removed = false;
 	pthread_mutex_lock(&device_mutex);
-	while ((id = find_unplugged_device_id()) != -1) {
-		slot = find_device_slot(id);
+	while ((handle = find_unplugged_device_handle()) != -1) {
+		slot = find_device_slot(handle);
 		if (slot < 0) continue;
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
@@ -367,7 +377,7 @@ static void process_unplug_event(indigo_device *unused) {
 		removed = true;
 	}
 	if (!removed) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI EFW device unplugged (maybe ASI Camera)!");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No Pheoenix FW unplugged (maybe Player One camera)!");
 	}
 	pthread_mutex_unlock(&device_mutex);
 }
@@ -377,9 +387,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
-			for (int i = 0; i < efw_id_count; i++) {
-				if (descriptor.idVendor != PONE_VENDOR_ID || efw_products[i] != descriptor.idProduct) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No ASI EFW device plugged (maybe ASI Camera)!");
+			for (int i = 0; i < pw_pid_count; i++) {
+				if (descriptor.idVendor != PONE_VENDOR_ID || pw_products[i] != descriptor.idProduct) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No Pheoenix FW unplugged (maybe Player One camera)!");
 					continue;
 				}
 				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
@@ -405,8 +415,8 @@ static void remove_all_devices() {
 		free(*device);
 		*device = NULL;
 	}
-	for (int index = 0; index < PONE_ID_MAX; index++)
-		connected_ids[index] = false;
+	for (int index = 0; index < PONE_HANDLE_MAX; index++)
+		connected_handles[index] = false;
 }
 
 
@@ -424,17 +434,12 @@ indigo_result indigo_wheel_playerone(indigo_driver_action action, indigo_driver_
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
 
-		char *sdk_version = POAGetPWSDKVer();
+		const char *sdk_version = POAGetPWSDKVer();
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Player One filter wheel SDK v. %s", sdk_version);
 
-		for(int index = 0; index < PONE_ID_MAX; index++)
-			connected_ids[index] = false;
-		//efw_id_count = EFWGetProductIDs(efw_products);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetProductIDs(-> [ %d, %d, ... ]) = %d", efw_products[0], efw_products[1], efw_id_count);
-		if (efw_id_count <= 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get the list of supported IDs.");
-			return INDIGO_FAILED;
-		}
+		for(int index = 0; index < PONE_HANDLE_MAX; index++)
+			connected_handles[index] = false;
+
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, PONE_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
