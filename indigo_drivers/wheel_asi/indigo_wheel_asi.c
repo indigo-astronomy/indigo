@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -50,7 +50,14 @@
 
 #define ASI_VENDOR_ID                   0x03c3
 
-#define PRIVATE_DATA        ((asi_private_data *)device->private_data)
+#define PRIVATE_DATA                   ((asi_private_data *)device->private_data)
+
+#define ADVANCED_GROUP                 "Advanced"
+
+#define X_CALIBRATE_PROPERTY           (PRIVATE_DATA->calibrate_property)
+#define X_CALIBRATE_START_ITEM         (X_CALIBRATE_PROPERTY->items+0)
+#define X_CALIBRATE_PROPERTY_NAME      "X_CALIBRATE"
+#define X_CALIBRATE_START_ITEM_NAME    "START"
 
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
@@ -61,6 +68,7 @@ typedef struct {
 	int count;
 	indigo_timer *wheel_timer;
 	pthread_mutex_t usb_mutex;
+	indigo_property *calibrate_property;
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
@@ -82,6 +90,38 @@ static void wheel_timer_callback(indigo_device *device) {
 	indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 }
 
+static void calibrate_callback(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	int res = EFWCalibrate(PRIVATE_DATA->dev_id);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWCalibrate(%d) = %d", PRIVATE_DATA->dev_id, res);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+	if (res == EFW_SUCCESS) {
+		int pos = 0;
+		do {
+			indigo_usleep(ONE_SECOND_DELAY);
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			int res = EFWGetPosition(PRIVATE_DATA->dev_id, &pos);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, pos, res);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		} while (pos == -1);
+		WHEEL_SLOT_ITEM->number.value =
+		WHEEL_SLOT_ITEM->number.target =
+		PRIVATE_DATA->current_slot =
+		PRIVATE_DATA->target_slot = ++pos;
+		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+
+		X_CALIBRATE_START_ITEM->sw.value=false;
+		X_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration finished");
+	} else {
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		X_CALIBRATE_START_ITEM->sw.value=false;
+		X_CALIBRATE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration failed");
+	}
+}
 
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
@@ -93,10 +133,24 @@ static indigo_result wheel_attach(indigo_device *device) {
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
 
+		X_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_PROPERTY_NAME, ADVANCED_GROUP, "Calibrate filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (X_CALIBRATE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_CALIBRATE_START_ITEM, X_CALIBRATE_START_ITEM_NAME, "Start", false);
+
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
+}
+
+static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	if (device->is_connected) {
+		if (indigo_property_match(X_CALIBRATE_PROPERTY, property))
+			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
+	}
+	return indigo_wheel_enumerate_properties(device, client, property);
 }
 
 static void wheel_connect_callback(indigo_device *device) {
@@ -123,11 +177,13 @@ static void wheel_connect_callback(indigo_device *device) {
 					if (!res) {
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						EFWGetProperty(PRIVATE_DATA->dev_id, &info);
+						indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count = info.slotNum;
 						res = EFWGetPosition(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->target_slot));
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 						PRIVATE_DATA->target_slot++;
+						WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot;
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 						indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
@@ -146,6 +202,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 				res = EFWGetID(index, &(PRIVATE_DATA->dev_id));
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
+				indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
 				indigo_global_unlock(device);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				device->is_connected = false;
@@ -188,11 +245,21 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_CALIBRATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CALIBRATE
+		indigo_property_copy_values(X_CALIBRATE_PROPERTY, property, false);
+		if (X_CALIBRATE_START_ITEM->sw.value) {
+			X_CALIBRATE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, X_CALIBRATE_PROPERTY, "Calibration started");
+			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
+			indigo_set_timer(device, 0.5, calibrate_callback, &PRIVATE_DATA->wheel_timer);
+		}
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_wheel_change_property(device, client, property);
 }
-
 
 static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
@@ -200,6 +267,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		wheel_connect_callback(device);
 	}
+	indigo_release_property(X_CALIBRATE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
@@ -295,7 +363,7 @@ static void process_plug_event(indigo_device *unused) {
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		wheel_attach,
-		indigo_wheel_enumerate_properties,
+		wheel_enumerate_properties,
 		wheel_change_property,
 		NULL,
 		wheel_detach
