@@ -2,6 +2,61 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-210] - 16 Jan Mon 2023
+### Overall
+- indigo_ccd_driver: Changed API to custom add fits headers to avoid possible races via CCD_SET_FITS_HEADER/CCD_REMOVE_FITS_HEADER.
+- indigo_get_utc_offset() and indigo_get_dst_state() added
+- all mount drivers: use indigo_get_utc_offset() and indigo_get_dst_state()
+- APTDIA and FOCALLEN added to fits headers
+- device profile names are configurable
+
+### New Drivers:
+- indigo_wheel_indigo:
+	- PegasusAstro Indigo filter wheel driver - looking for testers!
+
+- indigo_focuser_prodigy:
+	- PegasusAstro Prodigy Microfocuser driver - looking for testers!
+
+- insigo_rotator_falcon:
+	- PegasusAstro Falcon rotator driver added - looking for testers!
+
+- indigo_rotator_optec:
+	- Optec Pyxis camera field rotator - looking for testers!
+
+### Driver Fixes:
+- indigo_agent_astrometry:
+	- use same reference RA and Dec for the 3 points in polar alignment
+	- fix bug in polar error recalculation leading to offset between 0" and 20"
+
+- indigo_agent_astap:
+	- use same reference RA and Dec for the 3 points in polar alignment
+	- fix bug in polar error recalculation leading to offset between 0" and 20"
+
+- indigo_agent_guider:
+	- forces upload to clinet on frame request
+
+- indigo_ccd_playerone:
+	- CCD_INFO_PIXEL_SIZE_ITEM is properly set
+	- SDK updated to 3.1.0
+	- several fixes
+
+- indigo_ccd_svb:
+	- CCD_INFO_PIXEL_SIZE_ITEM is properly set
+
+- indigo_ccd_uvc:
+	- CCD_INFO_PIXEL_SIZE_ITEM set to 0 as value is not known
+
+- indigo_ccd_iidc:
+	- CCD_INFO_PIXEL_SIZE_ITEM is properly set
+
+- indigo_wheel_asi:
+	- add calibration function
+
+- indigo_mount_lx200:
+	- StarGO2 support added
+	- epoch support removed
+	- Gemini mounts forced to accept JNow
+
 # [2.0-208] - 04 Jan Wed 2023
 ### Overall
 - indigo_ccd_driver: more robust exposure countdown timer implementation
