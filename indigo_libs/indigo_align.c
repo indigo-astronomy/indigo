@@ -236,12 +236,7 @@ indigo_spherical_point_t indigo_apply_polar_error(const indigo_spherical_point_t
 
 /* derotate coordinates using polar errors */
 indigo_spherical_point_t indigo_correct_polar_error(const indigo_spherical_point_t *position, double u, double v) {
-	indigo_cartesian_point_t position_h = indigo_spherical_to_cartesian(position);
-	indigo_cartesian_point_t position_h_y = indigo_cartesian_rotate_y(&position_h, -u);
-	indigo_cartesian_point_t position_h_yx = indigo_cartesian_rotate_x(&position_h_y, -v);
-	indigo_cartesian_point_t position_h_yxz = indigo_cartesian_rotate_z(&position_h_yx, -v);
-	indigo_spherical_point_t p = indigo_cartesian_to_spherical(&position_h_yxz);
-	return p;
+	return indigo_apply_polar_error(position, -u, -v);
 }
 
 /* convert spherical point in radians to ha/ra dec in hours and degrees */
@@ -498,6 +493,18 @@ bool indigo_reestimate_polar_error(
 		*u - .02 * DEG2RAD,
 		*u + .02 * DEG2RAD,
 		0.002 * DEG2RAD,
+		u,
+		v
+	);
+	_reestimate_polar_error(
+		position,
+		target_position,
+		*v - .002 * DEG2RAD,
+		*v + .002 * DEG2RAD,
+		0.0002 * DEG2RAD,
+		*u - .002 * DEG2RAD,
+		*u + .002 * DEG2RAD,
+		0.0002 * DEG2RAD,
 		u,
 		v
 	);
