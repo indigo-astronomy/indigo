@@ -24,7 +24,8 @@ indigo_server indigo_ccd_ssag
 
 ## Comments
 
-The following VID/PID combinations are recognised by this driver: 0x1856/0x0011 (SSAG), 0x1618/0x0901 (QHY5).
+The following VID/PID combinations are recognised by this driver: 0x1856/0x0011 (SSAG), 0x1618/0x0901 (QHY5). 
+You can configure custom VID/PID by setting environment variables SSAG_VID and SSAG_PID.
 
 ## Status: Stable
 
