@@ -20,7 +20,6 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_wheel_playerone
 
-## Status: Stable
+## Status: Under development
 
-Driver is developed and tested with:
-* Player One Phoenix wheel
+* Not tested
