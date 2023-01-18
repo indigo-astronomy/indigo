@@ -1044,6 +1044,13 @@ static void handle_ccd_connect_property(indigo_device *device) {
 	} else {
 		if(device->is_connected) {
 			PRIVATE_DATA->can_check_temperature = false;
+
+			/* ASI has problems with sychronous timer canceling (on ARM linux) while sleeping in countdown_timer_callback()
+			   so we cancel it gracefully - THIS IS A WORKAROUND - TO BE INVESTIGATED!
+			*/
+			CCD_CONTEXT->countdown_canceled = true;
+			indigo_usleep(0.5 * ONE_SECOND_DELAY);
+
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
