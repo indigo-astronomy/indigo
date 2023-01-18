@@ -26,7 +26,7 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
@@ -569,6 +569,11 @@ static indigo_result guider_detach(indigo_device *device) {
 #define OTI_LOADER_VENDOR_ID 0x16C0
 #define OTI_LOADER_PRODUCT_ID 0x296D
 
+/* custom uninitialized VID/PID */
+
+static int custom_vid = 0;
+static int custom_pid = 0;
+
 static indigo_device *devices[MAX_DEVICES];
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -592,7 +597,7 @@ static void process_plug_event(libusb_device *dev) {
 	struct libusb_device_descriptor descriptor;
 	pthread_mutex_lock(&device_mutex);
 	INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-	if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID) || (descriptor.idVendor == OTI_LOADER_VENDOR_ID && descriptor.idProduct == OTI_LOADER_PRODUCT_ID)) {
+	if ((custom_vid != 0 && custom_pid != 0 && descriptor.idVendor == custom_vid && descriptor.idProduct == custom_pid) || (descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID) || (descriptor.idVendor == OTI_LOADER_VENDOR_ID && descriptor.idProduct == OTI_LOADER_PRODUCT_ID)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
 		libusb_ref_device(dev);
 		indigo_async((void *)(void *)ssag_firmware, dev);
@@ -680,6 +685,13 @@ indigo_result indigo_ccd_ssag(indigo_driver_action action, indigo_driver_info *i
 			devices[i] = 0;
 		}
 		indigo_start_usb_event_handler();
+		char *env;
+		if ((env = getenv("SSAG_VID")))
+			custom_vid = (int)strtol(env, NULL, 16);
+		if ((env = getenv("SSAG_PID")))
+			custom_pid = (int)strtol(env, NULL, 16);
+		if (custom_vid && custom_pid)
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "using custom VID = 0x%04x, PID = 0x%04x", custom_vid, custom_pid);
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
