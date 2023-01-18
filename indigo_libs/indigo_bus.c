@@ -1698,12 +1698,15 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 
 void indigo_usleep(unsigned int delay) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	unsigned int s = delay / 1000000;
-	unsigned int us = delay % 1000000;
-	if (s)
-		sleep(s);
-	if (us)
-		usleep(us);
+	struct timespec remaining;
+	struct timespec requested = {
+		(int)(delay / ONE_SECOND_DELAY),
+		(delay % ONE_SECOND_DELAY) * 1000
+	};
+	int ret = nanosleep(&requested, &remaining);
+	if (ret < 0) {
+		indigo_error("%s(): nanosleep() returned %d", __FUNCTION__, ret);
+	}
 #endif
 #if defined(INDIGO_WINDOWS)
 	unsigned int s = delay / 1000;
