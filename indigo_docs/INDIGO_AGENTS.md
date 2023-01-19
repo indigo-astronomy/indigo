@@ -1,5 +1,5 @@
 # INDIGO Agents
-Revision: 04.08.2020 (early draft)
+Revision: 19.01.2023 (early draft)
 
 Authors: **Rumen G.Bogdanovski** & **Peter Polakovic**
 
@@ -29,7 +29,12 @@ Agent code contains the most of the application logic for the typical operations
 
 - **Snoop Agent** is a special agent that enables the communication between the device drivers. Device drivers can not communicate between each other natively. To make it possible the **Snoop Agent** is used. For example The Mount can synchronize the time and the geographical coordinates from the GPS using the **Snoop Agent**. The agent name is "*indigo_agent_snoop*".
 
-- **Astrometry Agent** manages indexes, solves camera images and sync the position to mounts. 
+- **Astrometry Agent** solves images using Astrometry.net, manages indexes and syncs the current position to the mount. It is also responsible for the mount polar alignment. The agent name is "*indigo_agent_astrometry*"
+
+- **ATAP Agent** solves images using ASTAP, manages indexes and syncs the current position to the mount. It is also responsible for the mount polar alignment. The agent name is "*indigo_agent_astrometry*"
+
+- **Configuration Agent** is responsible for managing the system configuration. The agent's [README.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_config/README.md) contains useful information. The agent name is "*indigo_agent_config*".
+
 
 **Agents** can also talk to each other. E.g. **Imager Agent** can initiate dithering in **Guider Agent** or to sync coordinates in **Mount Agent** to the center of a plate solved image. **Mount Agent** can set FITS metadata in **Imager Agent** or to stop guiding upon slew or parking request. Such agents we refer as related agents.
 
