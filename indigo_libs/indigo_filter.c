@@ -454,7 +454,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 	for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 		indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_device_list_properties[i];
 		if (indigo_property_match(device_list, property)) {
-			if (FILTER_DEVICE_CONTEXT->running_process) {
+			if (FILTER_DEVICE_CONTEXT->running_process || device_list->state == INDIGO_BUSY_STATE) {
 				indigo_update_property(device, device_list, "You can't change selection now!");
 				return INDIGO_OK;
 			}
