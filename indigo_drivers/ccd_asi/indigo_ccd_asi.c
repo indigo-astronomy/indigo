@@ -1034,11 +1034,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				PRIVATE_DATA->in_exposure_callback = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->has_temperature_sensor) {
-					/* I add 2s delay because if the countdown_timer is sceduled while temperatire_callback is running countdown_timer == temperature_timer.
-					   To be fixed in indigo_timer.c
-					   Peter, Please!
-					*/
-					indigo_set_timer(device, 2, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
+					indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 				}
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
