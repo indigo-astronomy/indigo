@@ -53,7 +53,7 @@
 #define NANO	1000000000L
 
 int timer_count = 0;
-indigo_timer *free_timer;
+indigo_timer *free_timer = NULL;
 
 pthread_mutex_t free_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t cancel_timer_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -175,13 +175,13 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 		t->data = data;
 		pthread_create(&t->thread, NULL, (void * (*)(void*))timer_func, t);
 	}
-	pthread_mutex_unlock(&free_timer_mutex);
 	if (timer) {
 		t->reference = timer;
 		*timer = t;
 	} else {
 		t->reference = NULL;
 	}
+	pthread_mutex_unlock(&free_timer_mutex);
 	return true;
 }
 
