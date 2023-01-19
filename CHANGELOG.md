@@ -2,6 +2,18 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-212] - 19 Jan Thu 2023
+- replace usleep() with nanosleep() in indigo_usleep();
+- indigo_timer: fixes race in indigo_set_timer();
+- indigo_ccd_driver: use balanced approach to countdown timer - fixes potential race
+- all agents:
+	- selection can not be changed while list is busy - fixes connect race
+	- CCD_LENS_FOV created for CCDs only
+
+### Driver Fixes:
+- indigo_ccd_ssag:
+	- custom vid/pid enabled
+
 # [2.0-210] - 16 Jan Mon 2023
 ### Overall
 - indigo_ccd_driver: Changed API to custom add fits headers to avoid possible races via CCD_SET_FITS_HEADER/CCD_REMOVE_FITS_HEADER.
