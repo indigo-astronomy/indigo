@@ -115,16 +115,16 @@ static void *timer_func(indigo_timer *timer) {
 		}
 		pthread_mutex_unlock(&cancel_timer_mutex);
 
+		pthread_mutex_lock(&timer->mutex);
+		while (!timer->wake)
+			pthread_cond_wait(&timer->cond, &timer->mutex);
+		pthread_mutex_unlock(&timer->mutex);
+
 		pthread_mutex_lock(&free_timer_mutex);
 		timer->next = free_timer;
 		free_timer = timer;
 		timer->wake = false;
 		pthread_mutex_unlock(&free_timer_mutex);
-
-		pthread_mutex_lock(&timer->mutex);
-		while (!timer->wake)
-			pthread_cond_wait(&timer->cond, &timer->mutex);
-		pthread_mutex_unlock(&timer->mutex);
 	}
 	return NULL;
 }
