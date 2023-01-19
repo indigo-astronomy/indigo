@@ -328,6 +328,10 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_number_item(CCD_RBI_FLUSH_EXPOSURE_ITEM, CCD_RBI_FLUSH_EXPOSURE_ITEM_NAME, "NIR flood time (s)", 0, 16, 0, 1);
 			indigo_init_number_item(CCD_RBI_FLUSH_COUNT_ITEM, CCD_RBI_FLUSH_COUNT_ITEM_NAME, "Number of flushes", 1, 10, 1, 3);
 			// --------------------------------------------------------------------------------
+			CCD_CONTEXT->countdown_canceled = false;
+			CCD_CONTEXT->countdown_enabled = false;
+			CCD_CONTEXT->countdown_endtime = 0;
+			indigo_set_timer(device, 0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 			return INDIGO_OK;
 		}
 	}
@@ -459,12 +463,11 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
-			CCD_CONTEXT->countdown_canceled = false;
 			CCD_CONTEXT->countdown_enabled = true;
 			CCD_CONTEXT->countdown_endtime = 0;
-			indigo_set_timer(device, 0, countdown_timer_callback, &CCD_CONTEXT->countdown_timer);
 		} else {
-			CCD_CONTEXT->countdown_canceled = true;
+			CCD_CONTEXT->countdown_enabled = false;
+			CCD_CONTEXT->countdown_endtime = 0;
 			CCD_STREAMING_COUNT_ITEM->number.value = 0;
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
