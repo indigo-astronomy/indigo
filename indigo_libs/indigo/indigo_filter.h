@@ -213,7 +213,6 @@ typedef struct {
 	int bin_horizontal, bin_vertical;
 	double pixel_width, pixel_height;
 	double focal_length;
-	double pixel_scale_horizontal, pixel_scale_vertical;
 	double fov_width, fov_height;
 } indigo_filter_context;
 
