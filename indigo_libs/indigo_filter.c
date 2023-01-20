@@ -442,7 +442,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 			} else {
 				indigo_set_switch(device_list, device_list->items, true);
 				device_list->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, device_list, "'%s' is not available and maybe in use.", name);
+				indigo_update_property(device, device_list, "'%s' is in use and can not be selected.", name);
 			}
 			indigo_release_property(connection_property);
 			return INDIGO_OK;
