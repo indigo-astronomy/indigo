@@ -2,6 +2,11 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-214] - 20 Jan Thu 2023
+
+### Driver Fixes:
+- indigo_agent_guider: fixed pixel scale 
+
 # [2.0-212] - 19 Jan Thu 2023
 - replace usleep() with nanosleep() in indigo_usleep();
 - indigo_timer: fixes race in indigo_set_timer();
