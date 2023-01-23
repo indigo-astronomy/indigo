@@ -449,8 +449,12 @@ indigo_result indigo_detach_device(indigo_device *device) {
 		if (devices[i] == device) {
 			devices[i] = NULL;
 			pthread_mutex_unlock(&device_mutex);
-			if (device->detach != NULL)
+			if (device->detach != NULL) {
+				indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
+				indigo_delete_property(device, all_properties, NULL);
+				indigo_release_property(all_properties);
 				device->last_result = device->detach(device);
+			}
 			return INDIGO_OK;
 		}
 	}

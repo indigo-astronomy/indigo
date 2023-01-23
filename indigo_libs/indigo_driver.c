@@ -641,9 +641,6 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(PROFILE_PROPERTY);
 	indigo_release_property(AUTHENTICATION_PROPERTY);
 	indigo_release_property(ADDITIONAL_INSTANCES_PROPERTY);
-	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
-	indigo_delete_property(device, all_properties, NULL);
-	indigo_release_property(all_properties);
 	pthread_mutex_destroy(&DEVICE_CONTEXT->config_mutex);
 	pthread_mutex_destroy(&DEVICE_CONTEXT->multi_device_mutex);
 	free(DEVICE_CONTEXT);

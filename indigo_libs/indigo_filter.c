@@ -331,16 +331,16 @@ static void add_cached_connection_property(indigo_device *device, indigo_propert
 	int free_index = -1;
 	for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
 		indigo_property *cached_property = FILTER_DEVICE_CONTEXT->connection_property_cache[i];
-		if (cached_property == NULL)
-			free_index = i;
-		else if (cached_property == property) {
+		if (cached_property == property) {
+			return;
+		} else if (cached_property == NULL) {
 			free_index = i;
 			break;
 		}
 	}
-	if (free_index == -1 && property == NULL)
+	if (free_index == -1)
 		indigo_error("[%s:%d] Max cached device count reached", __FUNCTION__, __LINE__);
-	if (free_index >= 0 && FILTER_DEVICE_CONTEXT->connection_property_cache[free_index] == NULL)
+	else
 		FILTER_DEVICE_CONTEXT->connection_property_cache[free_index] = property;
 }
 
@@ -693,7 +693,6 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
 	}
 	if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
-		add_cached_connection_property(device, property);
 		indigo_item *interface = indigo_get_item(property, INFO_DEVICE_INTERFACE_ITEM_NAME);
 		if (interface) {
 			int mask = atoi(interface->text.value);
@@ -948,7 +947,6 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i], 1, property->device, NULL);
 		}
 		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, 0, property->device, NULL);
-		remove_cached_connection_property(device, property);
 	}
 	return INDIGO_OK;
 }
