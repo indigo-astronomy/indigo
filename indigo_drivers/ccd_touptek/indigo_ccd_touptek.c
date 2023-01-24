@@ -39,7 +39,7 @@
 
 #include "indigo_ccd_touptek.h"
 
-#ifdef ALTAIR
+#if defined(ALTAIR)
 
 #define DRIVER_LABEL					"AltairAstro Camera"
 #define DRIVER_NAME						"indigo_ccd_altair"
@@ -51,6 +51,19 @@
 #define SDK_HANDLE						HAltaircam
 
 #include <altaircam.h>
+
+#elif defined(OMEGONPRO)
+
+#define DRIVER_LABEL					"OmegonPro Camera"
+#define DRIVER_NAME						"indigo_ccd_omegonpro"
+#define DRIVER_PRIVATE_DATA		omegonpro_private_data
+
+#define SDK_FUN(x)						Omegonprocam_##x
+#define SDK_DEF(x)						OMEGONPROCAM_##x
+#define SDK_TYPE(x)						Omegonprocam##x
+#define SDK_HANDLE						HOmegonprocam
+
+#include <omegonprocam.h>
 
 #else
 
