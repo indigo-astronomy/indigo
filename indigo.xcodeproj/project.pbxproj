@@ -82,6 +82,14 @@
 		5913653828CFB42000ABB99B /* indigo_md5.h in Headers */ = {isa = PBXBuildFile; fileRef = 5913653528CFB42000ABB99B /* indigo_md5.h */; };
 		5913653928CFB42000ABB99B /* indigo_md5.c in Sources */ = {isa = PBXBuildFile; fileRef = 5913653628CFB42000ABB99B /* indigo_md5.c */; };
 		5913653A28CFB42000ABB99B /* indigo_md5.c in Sources */ = {isa = PBXBuildFile; fileRef = 5913653628CFB42000ABB99B /* indigo_md5.c */; };
+		591CCFAC2980396B003243AE /* indigo_ccd_omegonpro.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CCD892980396A003243AE /* indigo_ccd_omegonpro.c */; };
+		591CCFAD2980396B003243AE /* indigo_ccd_omegonpro.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CCD892980396A003243AE /* indigo_ccd_omegonpro.c */; };
+		591CCFAE2980396B003243AE /* omegonprocam.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CCD8E2980396A003243AE /* omegonprocam.h */; };
+		591CCFAF2980396B003243AE /* omegonprocam.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CCD8E2980396A003243AE /* omegonprocam.h */; };
+		591CD0AA2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */; };
+		591CD0AB2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */; };
+		591CD0AC29803D87003243AE /* libomegonprocam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CCED02980396A003243AE /* libomegonprocam.dylib */; };
+		591CD0AD29803D87003243AE /* libomegonprocam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CCED02980396A003243AE /* libomegonprocam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		591F329324211F3C00D1D64B /* indigo_dome_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328624211EB000D1D64B /* indigo_dome_dragonfly.c */; };
 		591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
@@ -904,6 +912,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		591CD0AE29803D87003243AE /* Embed Libraries */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				591CD0AD29803D87003243AE /* libomegonprocam.dylib in Embed Libraries */,
+			);
+			name = "Embed Libraries";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		59A4133C2971E76800F0A80B /* Embed Libraries */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1031,6 +1050,18 @@
 		591B017421A49F55006A1CD8 /* libaltaircam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libaltaircam.dylib; path = build/lib/libaltaircam.dylib; sourceTree = "<group>"; };
 		591C3F4A1F8A883F002B5596 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = README.md; path = indigo_drivers/ccd_qsi/README.md; sourceTree = SOURCE_ROOT; };
 		591C3F4B1F8A8926002B5596 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		591CCD882980396A003243AE /* indigo_ccd_omegonpro_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_omegonpro_main.c; sourceTree = "<group>"; };
+		591CCD892980396A003243AE /* indigo_ccd_omegonpro.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_omegonpro.c; sourceTree = "<group>"; };
+		591CCD8A2980396A003243AE /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		591CCD8E2980396A003243AE /* omegonprocam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = omegonprocam.h; sourceTree = "<group>"; };
+		591CCED02980396A003243AE /* libomegonprocam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libomegonprocam.dylib; sourceTree = "<group>"; };
+		591CCF3C2980396A003243AE /* 99-omegonprocam.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "99-omegonprocam.rules"; sourceTree = "<group>"; };
+		591CCF402980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
+		591CCF422980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
+		591CCF442980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
+		591CCF462980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
+		591CCFA72980396A003243AE /* en.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
+		591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_omegonpro.h; sourceTree = "<group>"; };
 		591E113A215844BC00ABADA6 /* nexstar_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nexstar_simulator.ino; sourceTree = "<group>"; };
 		591E113B2159531B00ABADA6 /* skywatcher.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher.pdf; sourceTree = "<group>"; };
 		591E113C2159531B00ABADA6 /* celestron.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = celestron.pdf; sourceTree = "<group>"; };
@@ -4692,6 +4723,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				597C7223293CFBD80016D45A /* libjpeg.a in Frameworks */,
+				591CD0AC29803D87003243AE /* libomegonprocam.dylib in Frameworks */,
 				59F9615F293A0CB500294D7D /* libSVBCameraSDK.dylib in Frameworks */,
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
@@ -5003,6 +5035,97 @@
 				591B015421A48F53006A1CD8 /* AtikCameras.h */,
 			);
 			path = include;
+			sourceTree = "<group>";
+		};
+		591CCD872980396A003243AE /* ccd_omegonpro */ = {
+			isa = PBXGroup;
+			children = (
+				591CCD8A2980396A003243AE /* README.md */,
+				591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */,
+				591CCD892980396A003243AE /* indigo_ccd_omegonpro.c */,
+				591CCD882980396A003243AE /* indigo_ccd_omegonpro_main.c */,
+				591CCD8B2980396A003243AE /* bin_externals */,
+			);
+			path = ccd_omegonpro;
+			sourceTree = "<group>";
+		};
+		591CCD8B2980396A003243AE /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				591CCD8C2980396A003243AE /* libomegonprocam */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		591CCD8C2980396A003243AE /* libomegonprocam */ = {
+			isa = PBXGroup;
+			children = (
+				591CCFA72980396A003243AE /* en.html */,
+				591CCF3C2980396A003243AE /* 99-omegonprocam.rules */,
+				591CCD8D2980396A003243AE /* include */,
+				591CCECF2980396A003243AE /* macOS */,
+				591CCF3A2980396A003243AE /* linux */,
+			);
+			path = libomegonprocam;
+			sourceTree = "<group>";
+		};
+		591CCD8D2980396A003243AE /* include */ = {
+			isa = PBXGroup;
+			children = (
+				591CCD8E2980396A003243AE /* omegonprocam.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		591CCECF2980396A003243AE /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				591CCED02980396A003243AE /* libomegonprocam.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		591CCF3A2980396A003243AE /* linux */ = {
+			isa = PBXGroup;
+			children = (
+				591CCF3F2980396A003243AE /* x64 */,
+				591CCF412980396A003243AE /* x86 */,
+				591CCF432980396A003243AE /* arm */,
+				591CCF452980396A003243AE /* arm64 */,
+			);
+			path = linux;
+			sourceTree = "<group>";
+		};
+		591CCF3F2980396A003243AE /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				591CCF402980396A003243AE /* libomegonprocam.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		591CCF412980396A003243AE /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				591CCF422980396A003243AE /* libomegonprocam.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		591CCF432980396A003243AE /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				591CCF442980396A003243AE /* libomegonprocam.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		591CCF452980396A003243AE /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				591CCF462980396A003243AE /* libomegonprocam.so */,
+			);
+			path = arm64;
 			sourceTree = "<group>";
 		};
 		591E1139215844BC00ABADA6 /* nexstar_simulator */ = {
@@ -8930,6 +9053,7 @@
 				5992F7B01E1EC84B0035242E /* ccd_fli */,
 				9D976FD21DD0C46E00782B32 /* ccd_iidc */,
 				59FC2E90210CA26D00730343 /* ccd_mi */,
+				591CCD872980396A003243AE /* ccd_omegonpro */,
 				59FFB049288D3CB900F172AC /* ccd_playerone */,
 				9D586C3C22FB0C16002D382E /* ccd_ptp */,
 				59F654681EE47371007B8C93 /* ccd_qhy */,
@@ -13117,6 +13241,7 @@
 				598A1C78259BA94A00C0B34C /* indigo_agent_alignment.h in Headers */,
 				598A1C79259BA94A00C0B34C /* libuvc_internal.h in Headers */,
 				59FFB067288D3D5600F172AC /* indigo_ccd_playerone.h in Headers */,
+				591CCFAF2980396B003243AE /* omegonprocam.h in Headers */,
 				598A1C7A259BA94A00C0B34C /* duktape.h in Headers */,
 				59A413372971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */,
 				598A1C7B259BA94A00C0B34C /* EAF_focuser.h in Headers */,
@@ -13130,6 +13255,7 @@
 				598A1C82259BA94A00C0B34C /* indigo_wheel_quantum.h in Headers */,
 				598A1C83259BA94A00C0B34C /* indigo_ccd_apogee.h in Headers */,
 				598A1C84259BA94A00C0B34C /* DDHidAppleRemote.h in Headers */,
+				591CD0AB2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */,
 				598A1C85259BA94A00C0B34C /* indigo_mount_lx200.h in Headers */,
 				59B51353297066040075C8A1 /* indigo_wheel_indigo.h in Headers */,
 				598A1C86259BA94A00C0B34C /* indigo_focuser_efa.h in Headers */,
@@ -13241,10 +13367,12 @@
 				59A52F1821A3417C000B6F27 /* libgpusb.h in Headers */,
 				5913653728CFB42000ABB99B /* indigo_md5.h in Headers */,
 				595F292D211E211200380EF4 /* DDHidLib.h in Headers */,
+				591CD0AA2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */,
 				595567C624B882DD00DF303D /* config.h in Headers */,
 				59A413362971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */,
 				59F7E5ED245878C700EF273A /* indigo_token.h in Headers */,
 				59111D12285F53D500E57194 /* indigocat_nutation.h in Headers */,
+				591CCFAE2980396B003243AE /* omegonprocam.h in Headers */,
 				9D9EA6B71DBFA30600E11841 /* indigo_wheel_driver.h in Headers */,
 				59958E3325CC833C00BEFA1B /* indigo_aux_skyalert.h in Headers */,
 				9DAD522521246C18002FCC79 /* indigo_mount_synscan_private.h in Headers */,
@@ -13398,6 +13526,7 @@
 				599C9A441DA022C0008BBCC1 /* Sources */,
 				599C9A451DA022C0008BBCC1 /* Frameworks */,
 				599C9A461DA022C0008BBCC1 /* Headers */,
+				591CD0AE29803D87003243AE /* Embed Libraries */,
 			);
 			buildRules = (
 				59F7E5EB245874E400EF273A /* PBXBuildRule */,
@@ -13686,6 +13815,7 @@
 				598A1B9C259BA94A00C0B34C /* libdsi.c in Sources */,
 				598A1B9D259BA94A00C0B34C /* nexstar.c in Sources */,
 				598A1B9E259BA94A00C0B34C /* DDHidAppleMikey.m in Sources */,
+				591CCFAD2980396B003243AE /* indigo_ccd_omegonpro.c in Sources */,
 				59F50A3325A5DEDD00C19115 /* indigo_agent_astrometry.c in Sources */,
 				598A1B9F259BA94A00C0B34C /* indigo_wheel_quantum.c in Sources */,
 				598A1BA0259BA94A00C0B34C /* indigo_focuser_wemacro.c in Sources */,
@@ -13896,6 +14026,7 @@
 				599C9A4C1DA022E3008BBCC1 /* indigo_driver.c in Sources */,
 				597BD19D2606974900239274 /* alpaca_lightbox.c in Sources */,
 				9D35EA2B23CDB27D00B6A41F /* indigo_gps_gpsd.c in Sources */,
+				591CCFAC2980396B003243AE /* indigo_ccd_omegonpro.c in Sources */,
 				59111D00285F504300E57194 /* indigocat_dynamical_time.c in Sources */,
 				59A321A321D6291E00EC0F4A /* indigo_focuser_asi.c in Sources */,
 				597BD14E2601381F00239274 /* indigo_agent_alpaca.c in Sources */,
@@ -14367,6 +14498,13 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/arm64",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_playerone/bin_externals/libPlayerOnePW/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 				);
 				MACH_O_TYPE = mh_dylib;
 				ONLY_ACTIVE_ARCH = YES;
@@ -14433,6 +14571,13 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svbony/bin_externals/libsvbcamera/lib/Linux/arm64",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_playerone/bin_externals/libPlayerOnePW/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 				);
 				MACH_O_TYPE = mh_dylib;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -14551,6 +14696,14 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_playerone/bin_externals/libPlayerOnePW/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				ONLY_ACTIVE_ARCH = YES;
@@ -14609,6 +14762,14 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_svb/bin_externals/libsvbcamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_playerone/bin_externals/libplayeronecamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_playerone/bin_externals/libPlayerOnePW/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/win/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/mac",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagelib/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				OTHER_LDFLAGS = (

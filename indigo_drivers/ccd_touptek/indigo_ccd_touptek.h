@@ -31,8 +31,10 @@
 #include <indigo/indigo_guider_driver.h>
 #include <indigo/indigo_wheel_driver.h>
 
-#ifdef ALTAIR
+#if defined(ALTAIR)
 #define ENTRY_POINT indigo_ccd_altair
+#elif defined(OMEGONPRO)
+#define ENTRY_POINT indigo_ccd_omegonpro
 #else
 #define ENTRY_POINT indigo_ccd_touptek
 #endif
