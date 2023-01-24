@@ -65,6 +65,19 @@
 
 #include <omegonprocam.h>
 
+#elif defined(STARSHOOTG)
+
+#define DRIVER_LABEL					"Orion StarShot G Camera"
+#define DRIVER_NAME						"indigo_ccd_ssg"
+#define DRIVER_PRIVATE_DATA		ssg_private_data
+
+#define SDK_FUN(x)						Starshootg_##x
+#define SDK_DEF(x)						STARSHOOTG_##x
+#define SDK_TYPE(x)						Starshootg##x
+#define SDK_HANDLE						HStarshootg
+
+#include <starshootg.h>
+
 #else
 
 #define DRIVER_LABEL					"Touptek Camera"
