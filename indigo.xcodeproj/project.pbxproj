@@ -90,6 +90,14 @@
 		591CD0AB2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */; };
 		591CD0AC29803D87003243AE /* libomegonprocam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CCED02980396A003243AE /* libomegonprocam.dylib */; };
 		591CD0AD29803D87003243AE /* libomegonprocam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CCED02980396A003243AE /* libomegonprocam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		591CD0C6298041EB003243AE /* indigo_ccd_ssg.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CD0B029803FFF003243AE /* indigo_ccd_ssg.c */; };
+		591CD0C7298041EC003243AE /* indigo_ccd_ssg.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CD0B029803FFF003243AE /* indigo_ccd_ssg.c */; };
+		591CD0C8298041F1003243AE /* indigo_ccd_ssg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B329803FFF003243AE /* indigo_ccd_ssg.h */; };
+		591CD0C9298041F2003243AE /* indigo_ccd_ssg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B329803FFF003243AE /* indigo_ccd_ssg.h */; };
+		591CD0CA2980420C003243AE /* libstarshootg.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0BB29803FFF003243AE /* libstarshootg.dylib */; };
+		591CD0CB2980420C003243AE /* libstarshootg.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0BB29803FFF003243AE /* libstarshootg.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		591CD0CC298042C0003243AE /* starshootg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B729803FFF003243AE /* starshootg.h */; };
+		591CD0CD298042C1003243AE /* starshootg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B729803FFF003243AE /* starshootg.h */; };
 		591F329324211F3C00D1D64B /* indigo_dome_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328624211EB000D1D64B /* indigo_dome_dragonfly.c */; };
 		591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
@@ -918,6 +926,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				591CD0CB2980420C003243AE /* libstarshootg.dylib in Embed Libraries */,
 				591CD0AD29803D87003243AE /* libomegonprocam.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
@@ -1062,6 +1071,18 @@
 		591CCF462980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
 		591CCFA72980396A003243AE /* en.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
 		591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_omegonpro.h; sourceTree = "<group>"; };
+		591CD0B029803FFF003243AE /* indigo_ccd_ssg.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssg.c; sourceTree = "<group>"; };
+		591CD0B129803FFF003243AE /* indigo_ccd_ssg_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_ssg_main.c; sourceTree = "<group>"; };
+		591CD0B229803FFF003243AE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		591CD0B329803FFF003243AE /* indigo_ccd_ssg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssg.h; sourceTree = "<group>"; };
+		591CD0B729803FFF003243AE /* starshootg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = starshootg.h; sourceTree = "<group>"; };
+		591CD0B829803FFF003243AE /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
+		591CD0BB29803FFF003243AE /* libstarshootg.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libstarshootg.dylib; sourceTree = "<group>"; };
+		591CD0BE29803FFF003243AE /* libstarshootg.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libstarshootg.so; sourceTree = "<group>"; };
+		591CD0C029803FFF003243AE /* libstarshootg.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libstarshootg.so; sourceTree = "<group>"; };
+		591CD0C229803FFF003243AE /* libstarshootg.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libstarshootg.so; sourceTree = "<group>"; };
+		591CD0C429803FFF003243AE /* libstarshootg.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libstarshootg.so; sourceTree = "<group>"; };
+		591CD0C529803FFF003243AE /* 99-starshootg.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-starshootg.rules"; sourceTree = "<group>"; };
 		591E113A215844BC00ABADA6 /* nexstar_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nexstar_simulator.ino; sourceTree = "<group>"; };
 		591E113B2159531B00ABADA6 /* skywatcher.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher.pdf; sourceTree = "<group>"; };
 		591E113C2159531B00ABADA6 /* celestron.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = celestron.pdf; sourceTree = "<group>"; };
@@ -4748,6 +4769,7 @@
 				9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */,
 				9DDEFBFB21EE351C00657C8F /* libaltaircam.dylib in Frameworks */,
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
+				591CD0CA2980420C003243AE /* libstarshootg.dylib in Frameworks */,
 				59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
 				59FFB06D288D542F00F172AC /* libPlayerOneCamera.dylib in Frameworks */,
@@ -5124,6 +5146,105 @@
 			isa = PBXGroup;
 			children = (
 				591CCF462980396A003243AE /* libomegonprocam.so */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		591CD0AF29803FFF003243AE /* ccd_ssg */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0B229803FFF003243AE /* README.md */,
+				591CD0B329803FFF003243AE /* indigo_ccd_ssg.h */,
+				591CD0B029803FFF003243AE /* indigo_ccd_ssg.c */,
+				591CD0B129803FFF003243AE /* indigo_ccd_ssg_main.c */,
+				591CD0B429803FFF003243AE /* bin_externals */,
+			);
+			path = ccd_ssg;
+			sourceTree = "<group>";
+		};
+		591CD0B429803FFF003243AE /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0B529803FFF003243AE /* libstarshootg */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		591CD0B529803FFF003243AE /* libstarshootg */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0B829803FFF003243AE /* en.html */,
+				591CD0C529803FFF003243AE /* 99-starshootg.rules */,
+				591CD0B629803FFF003243AE /* include */,
+				591CD0B929803FFF003243AE /* lib */,
+			);
+			path = libstarshootg;
+			sourceTree = "<group>";
+		};
+		591CD0B629803FFF003243AE /* include */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0B729803FFF003243AE /* starshootg.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		591CD0B929803FFF003243AE /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0BA29803FFF003243AE /* macOS */,
+				591CD0BC29803FFF003243AE /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		591CD0BA29803FFF003243AE /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0BB29803FFF003243AE /* libstarshootg.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		591CD0BC29803FFF003243AE /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0BD29803FFF003243AE /* x64 */,
+				591CD0BF29803FFF003243AE /* x86 */,
+				591CD0C129803FFF003243AE /* arm */,
+				591CD0C329803FFF003243AE /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		591CD0BD29803FFF003243AE /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0BE29803FFF003243AE /* libstarshootg.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		591CD0BF29803FFF003243AE /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0C029803FFF003243AE /* libstarshootg.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		591CD0C129803FFF003243AE /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0C229803FFF003243AE /* libstarshootg.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		591CD0C329803FFF003243AE /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0C429803FFF003243AE /* libstarshootg.so */,
 			);
 			path = arm64;
 			sourceTree = "<group>";
@@ -9062,6 +9183,7 @@
 				59F4EC6F1E941CF400CC7772 /* ccd_sbig */,
 				59D381AA1D95984D00E87393 /* ccd_simulator */,
 				59519D421DB422E3008BAF29 /* ccd_ssag */,
+				591CD0AF29803FFF003243AE /* ccd_ssg */,
 				59A68E03277DC3D0000439CC /* ccd_svb */,
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
@@ -13128,6 +13250,7 @@
 			files = (
 				59B8A8C827ADAD8400A27609 /* indigo_align.h in Headers */,
 				598A1C1B259BA94A00C0B34C /* libdsusb.h in Headers */,
+				591CD0CD298042C1003243AE /* starshootg.h in Headers */,
 				598A1C1C259BA94A00C0B34C /* duk_config.h in Headers */,
 				598A1C1D259BA94A00C0B34C /* DDHidUsageTables.h in Headers */,
 				598A1C1E259BA94A00C0B34C /* indigo_driver_json.h in Headers */,
@@ -13203,6 +13326,7 @@
 				598A1C55259BA94A00C0B34C /* indigo_focuser_asi.h in Headers */,
 				59A413332971E54C00F0A80B /* PlayerOnePW.h in Headers */,
 				598A1C56259BA94A00C0B34C /* indigo_ccd_ptp.h in Headers */,
+				591CD0C9298041F2003243AE /* indigo_ccd_ssg.h in Headers */,
 				598A1C57259BA94A00C0B34C /* indigo_mount_ioptron.h in Headers */,
 				598A1C58259BA94A00C0B34C /* indigo_gps_nmea.h in Headers */,
 				598A1C59259BA94A00C0B34C /* DDHidUsage.h in Headers */,
@@ -13326,6 +13450,7 @@
 				595F2918211E211100380EF4 /* DDHidMouse.h in Headers */,
 				59D9682F21A2FE5D0069A64C /* EFW_filter.h in Headers */,
 				5979C88A254A9EED005395BE /* indigo_wheel_qhy.h in Headers */,
+				591CD0CC298042C0003243AE /* starshootg.h in Headers */,
 				9D4D64B220A9D947008ECE4B /* indigo_guider_eqmac.h in Headers */,
 				595F291C211E211100380EF4 /* DDHidElement.h in Headers */,
 				59C499E51EFADFE000E750AA /* indigo_ccd_ica.h in Headers */,
@@ -13421,6 +13546,7 @@
 				9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */,
 				59413562232404D100ED5FF4 /* indigo_focuser_efa.h in Headers */,
 				593A8F0D285F615400F6CF1C /* indigocat_precession.h in Headers */,
+				591CD0C8298041F1003243AE /* indigo_ccd_ssg.h in Headers */,
 				595F2931211E211200380EF4 /* NSXReturnThrowError.h in Headers */,
 				9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */,
 				59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */,
@@ -13809,6 +13935,7 @@
 				598A1B97259BA94A00C0B34C /* DDHidJoystick.m in Sources */,
 				598A1B98259BA94A00C0B34C /* indigo_ccd_atik.c in Sources */,
 				598A1B99259BA94A00C0B34C /* indigo_aux_ppb.c in Sources */,
+				591CD0C7298041EC003243AE /* indigo_ccd_ssg.c in Sources */,
 				59111CEF285F504200E57194 /* indigocat_transform.c in Sources */,
 				598A1B9A259BA94A00C0B34C /* DDHidKeyboardBarcodeScanner.m in Sources */,
 				598A1B9B259BA94A00C0B34C /* indigo_agent_lx200_server.c in Sources */,
@@ -14192,6 +14319,7 @@
 				59F1AD1223FB15B300008F02 /* indigo_focuser_lunatico.c in Sources */,
 				59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */,
 				5979C87225473AE0005395BE /* indigo_avi.c in Sources */,
+				591CD0C6298041EB003243AE /* indigo_ccd_ssg.c in Sources */,
 				9D73E61821FF37F9003CEC15 /* libuvc_frame.c in Sources */,
 				9D73E61A21FF37F9003CEC15 /* libuvc_ctrl_gen.c in Sources */,
 				594F347E278E1739002F1B21 /* indigocat_star.c in Sources */,
@@ -14704,6 +14832,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_ssg/bin_externals/libstarshootg/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				ONLY_ACTIVE_ARCH = YES;
@@ -14770,6 +14899,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_ssg/bin_externals/libstarshootg/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				OTHER_LDFLAGS = (
