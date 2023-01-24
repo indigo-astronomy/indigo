@@ -37,6 +37,8 @@
 #define ENTRY_POINT indigo_ccd_omegonpro
 #elif defined(STARSHOOTG)
 #define ENTRY_POINT indigo_ccd_ssg
+#elif defined(RISING)
+#define ENTRY_POINT indigo_ccd_rising
 #else
 #define ENTRY_POINT indigo_ccd_touptek
 #endif

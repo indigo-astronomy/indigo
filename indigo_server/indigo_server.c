@@ -163,6 +163,7 @@
 #include "wheel_playerone/indigo_wheel_playerone.h"
 #include "ccd_omegonpro/indigo_ccd_omegonpro.h"
 #include "ccd_ssg/indigo_ccd_ssg.h"
+#include "ccd_rising/indigo_ccd_rising.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -238,6 +239,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ptp,
 	indigo_ccd_qhy2,
 	indigo_ccd_qsi,
+	indigo_ccd_rising,
 #ifndef __aarch64__
 	indigo_ccd_sbig,
 #endif

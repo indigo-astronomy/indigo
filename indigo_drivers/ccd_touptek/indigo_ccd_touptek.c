@@ -78,6 +78,19 @@
 
 #include <starshootg.h>
 
+#elif defined(RISING)
+
+#define DRIVER_LABEL					"RisingCam Camera"
+#define DRIVER_NAME						"indigo_ccd_rising"
+#define DRIVER_PRIVATE_DATA		rising_private_data
+
+#define SDK_FUN(x)						Nncam_##x
+#define SDK_DEF(x)						NNCAM_##x
+#define SDK_TYPE(x)						Nncam##x
+#define SDK_HANDLE						HNncam
+
+#include <nncam.h>
+
 #else
 
 #define DRIVER_LABEL					"Touptek Camera"
