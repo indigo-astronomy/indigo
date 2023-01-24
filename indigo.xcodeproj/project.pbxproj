@@ -103,6 +103,12 @@
 		591CD0F229805E31003243AE /* libstarshootg.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; };
 		591CD0F429805E31003243AE /* libomegonprocam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F029805E30003243AE /* libomegonprocam.dylib */; };
 		591CD0F629805E31003243AE /* libnncam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; };
+		591CD11029806D41003243AE /* indigo_ccd_mallin.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0FA29806D24003243AE /* indigo_ccd_mallin.h */; };
+		591CD11129806D41003243AE /* indigo_ccd_mallin.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CD10F29806D24003243AE /* indigo_ccd_mallin.c */; };
+		591CD11229806D42003243AE /* indigo_ccd_mallin.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0FA29806D24003243AE /* indigo_ccd_mallin.h */; };
+		591CD11329806D42003243AE /* indigo_ccd_mallin.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CD10F29806D24003243AE /* indigo_ccd_mallin.c */; };
+		591CD11429806D46003243AE /* mallincam.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0FF29806D24003243AE /* mallincam.h */; };
+		591CD11529806D47003243AE /* mallincam.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0FF29806D24003243AE /* mallincam.h */; };
 		591F329324211F3C00D1D64B /* indigo_dome_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328624211EB000D1D64B /* indigo_dome_dragonfly.c */; };
 		591F329424211F3F00D1D64B /* indigo_aux_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328924211EB000D1D64B /* indigo_aux_dragonfly.c */; };
 		591FAB7B1E391B1C0076BD6E /* indigo_focuser_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 591FAB781E391B1C0076BD6E /* indigo_focuser_fli.c */; };
@@ -1091,6 +1097,18 @@
 		591CD0EF29805E30003243AE /* libstarshootg.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libstarshootg.dylib; path = build/lib/libstarshootg.dylib; sourceTree = "<group>"; };
 		591CD0F029805E30003243AE /* libomegonprocam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libomegonprocam.dylib; path = build/lib/libomegonprocam.dylib; sourceTree = "<group>"; };
 		591CD0F129805E30003243AE /* libnncam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libnncam.dylib; path = build/lib/libnncam.dylib; sourceTree = "<group>"; };
+		591CD0FA29806D24003243AE /* indigo_ccd_mallin.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_mallin.h; sourceTree = "<group>"; };
+		591CD0FB29806D24003243AE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		591CD0FF29806D24003243AE /* mallincam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mallincam.h; sourceTree = "<group>"; };
+		591CD10029806D24003243AE /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
+		591CD10129806D24003243AE /* 99-mallincam.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-mallincam.rules"; sourceTree = "<group>"; };
+		591CD10429806D24003243AE /* libmallincam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libmallincam.dylib; sourceTree = "<group>"; };
+		591CD10729806D24003243AE /* libmallincam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libmallincam.so; sourceTree = "<group>"; };
+		591CD10929806D24003243AE /* libmallincam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libmallincam.so; sourceTree = "<group>"; };
+		591CD10B29806D24003243AE /* libmallincam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libmallincam.so; sourceTree = "<group>"; };
+		591CD10D29806D24003243AE /* libmallincam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libmallincam.so; sourceTree = "<group>"; };
+		591CD10E29806D24003243AE /* indigo_ccd_mallin_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_mallin_main.c; sourceTree = "<group>"; };
+		591CD10F29806D24003243AE /* indigo_ccd_mallin.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_mallin.c; sourceTree = "<group>"; };
 		591E113A215844BC00ABADA6 /* nexstar_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nexstar_simulator.ino; sourceTree = "<group>"; };
 		591E113B2159531B00ABADA6 /* skywatcher.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher.pdf; sourceTree = "<group>"; };
 		591E113C2159531B00ABADA6 /* celestron.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = celestron.pdf; sourceTree = "<group>"; };
@@ -5365,6 +5383,105 @@
 			path = arm64;
 			sourceTree = "<group>";
 		};
+		591CD0F929806D24003243AE /* ccd_mallin */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0FB29806D24003243AE /* README.md */,
+				591CD0FA29806D24003243AE /* indigo_ccd_mallin.h */,
+				591CD10F29806D24003243AE /* indigo_ccd_mallin.c */,
+				591CD10E29806D24003243AE /* indigo_ccd_mallin_main.c */,
+				591CD0FC29806D24003243AE /* bin_externals */,
+			);
+			path = ccd_mallin;
+			sourceTree = "<group>";
+		};
+		591CD0FC29806D24003243AE /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0FD29806D24003243AE /* libmallincam */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		591CD0FD29806D24003243AE /* libmallincam */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0FE29806D24003243AE /* include */,
+				591CD10029806D24003243AE /* en.html */,
+				591CD10129806D24003243AE /* 99-mallincam.rules */,
+				591CD10229806D24003243AE /* lib */,
+			);
+			path = libmallincam;
+			sourceTree = "<group>";
+		};
+		591CD0FE29806D24003243AE /* include */ = {
+			isa = PBXGroup;
+			children = (
+				591CD0FF29806D24003243AE /* mallincam.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		591CD10229806D24003243AE /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				591CD10329806D24003243AE /* macOS */,
+				591CD10529806D24003243AE /* Linux */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		591CD10329806D24003243AE /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				591CD10429806D24003243AE /* libmallincam.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		591CD10529806D24003243AE /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				591CD10629806D24003243AE /* x64 */,
+				591CD10829806D24003243AE /* x86 */,
+				591CD10A29806D24003243AE /* arm */,
+				591CD10C29806D24003243AE /* arm64 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		591CD10629806D24003243AE /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				591CD10729806D24003243AE /* libmallincam.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		591CD10829806D24003243AE /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				591CD10929806D24003243AE /* libmallincam.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		591CD10A29806D24003243AE /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				591CD10B29806D24003243AE /* libmallincam.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		591CD10C29806D24003243AE /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				591CD10D29806D24003243AE /* libmallincam.so */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
 		591E1139215844BC00ABADA6 /* nexstar_simulator */ = {
 			isa = PBXGroup;
 			children = (
@@ -9289,6 +9406,7 @@
 				5911F7AB1F02E10B0053F3CA /* ccd_dsi */,
 				5992F7B01E1EC84B0035242E /* ccd_fli */,
 				9D976FD21DD0C46E00782B32 /* ccd_iidc */,
+				591CD0F929806D24003243AE /* ccd_mallin */,
 				59FC2E90210CA26D00730343 /* ccd_mi */,
 				591CCD872980396A003243AE /* ccd_omegonpro */,
 				59FFB049288D3CB900F172AC /* ccd_playerone */,
@@ -13454,6 +13572,7 @@
 				598A1C5A259BA94A00C0B34C /* indigo_ccd_qsi.h in Headers */,
 				598A1C5B259BA94A00C0B34C /* libgpusb.h in Headers */,
 				598A1C5C259BA94A00C0B34C /* DDHidLib.h in Headers */,
+				591CD11529806D47003243AE /* mallincam.h in Headers */,
 				598A1C5D259BA94A00C0B34C /* config.h in Headers */,
 				59B51360297077920075C8A1 /* indigo_rotator_falcon.h in Headers */,
 				598A1C5E259BA94A00C0B34C /* indigo_token.h in Headers */,
@@ -13520,6 +13639,7 @@
 				598A1C92259BA94A00C0B34C /* indigo_mount_synscan_guider.h in Headers */,
 				598A1C93259BA94A00C0B34C /* indigo_timer.h in Headers */,
 				598A1C94259BA94A00C0B34C /* indigo_dome_nexdome.h in Headers */,
+				591CD11229806D42003243AE /* indigo_ccd_mallin.h in Headers */,
 				59111D11285F53D100E57194 /* indigocat_vsop87.h in Headers */,
 				598A1C95259BA94A00C0B34C /* indigo_ptp_canon.h in Headers */,
 				598A1C96259BA94A00C0B34C /* DDHidAppleMikey.h in Headers */,
@@ -13570,6 +13690,7 @@
 				595F292A211E211200380EF4 /* DDHidJoystick.h in Headers */,
 				9D73E60C21FF37DB003CEC15 /* libuvc_config.h in Headers */,
 				595F2918211E211100380EF4 /* DDHidMouse.h in Headers */,
+				591CD11029806D41003243AE /* indigo_ccd_mallin.h in Headers */,
 				59D9682F21A2FE5D0069A64C /* EFW_filter.h in Headers */,
 				5979C88A254A9EED005395BE /* indigo_wheel_qhy.h in Headers */,
 				591CD0CC298042C0003243AE /* starshootg.h in Headers */,
@@ -13596,6 +13717,7 @@
 				59111D08285F511500E57194 /* indigocat_ss.h in Headers */,
 				59C3BB13255077E9000720B4 /* indigo_ptp_fuji.h in Headers */,
 				59E38B551F1577A000187839 /* indigo_ica_ptp_nikon.h in Headers */,
+				591CD11429806D46003243AE /* mallincam.h in Headers */,
 				9DC496A322C39A170052AB3E /* indigo_aux_sqm.h in Headers */,
 				59A242F422A5B45F001C38F8 /* indigo_focuser_steeldrive2.h in Headers */,
 				591CD0E629805CB5003243AE /* indigo_ccd_rising.h in Headers */,
@@ -14156,6 +14278,7 @@
 				59D2B9E8294A2B22002F0F90 /* indigo_ccd_asi.c in Sources */,
 				598A1BDE259BA94A00C0B34C /* indigo_dome_nexdome3.c in Sources */,
 				598A1BDF259BA94A00C0B34C /* indigo_wheel_xagyl.c in Sources */,
+				591CD11329806D42003243AE /* indigo_ccd_mallin.c in Sources */,
 				59111CEB285F504200E57194 /* indigocat_venus.c in Sources */,
 				598A1BE0259BA94A00C0B34C /* indigo_aux_driver.c in Sources */,
 				598A1BE1259BA94A00C0B34C /* libuvc_frame_mjpeg.c in Sources */,
@@ -14358,6 +14481,7 @@
 				9DAD523D21258801002FCC79 /* indigo_guider_cgusbst4.c in Sources */,
 				9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */,
 				59111CFC285F504300E57194 /* indigocat_vsop87.c in Sources */,
+				591CD11129806D41003243AE /* indigo_ccd_mallin.c in Sources */,
 				594122A11FD2DE7800D792FF /* indigo_dome_azimuth.c in Sources */,
 				595567D824BA00DA00DF303D /* indigo_mount_pmc8_main.c in Sources */,
 				59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */,

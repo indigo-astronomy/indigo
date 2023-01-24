@@ -91,6 +91,19 @@
 
 #include <nncam.h>
 
+#elif defined(MALLIN)
+
+#define DRIVER_LABEL					"MallinCam Camera"
+#define DRIVER_NAME						"indigo_ccd_mallin"
+#define DRIVER_PRIVATE_DATA		mallin_private_data
+
+#define SDK_CALL(x)						Toupcam_##x
+#define SDK_DEF(x)						MALLINCAM_##x
+#define SDK_TYPE(x)						Toupcam##x
+#define SDK_HANDLE						HToupCam
+
+#include <mallincam.h>
+
 #else
 
 #define DRIVER_LABEL					"Touptek Camera"
@@ -1085,7 +1098,7 @@ static void process_plug_event(indigo_device *unusued) {
 			private_data->cam = cam;
 			private_data->present = true;
 			indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-			snprintf(camera->name, INDIGO_NAME_SIZE, "ToupTek %s #%s", cam.displayname, camera_id);
+			snprintf(camera->name, INDIGO_NAME_SIZE, "%s #%s", cam.displayname, camera_id);
 			camera->private_data = private_data;
 			camera->master_device = camera;
 			private_data->camera = camera;
@@ -1105,7 +1118,7 @@ static void process_plug_event(indigo_device *unusued) {
 					guider_detach
 					);
 				indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-				snprintf(guider->name, INDIGO_NAME_SIZE, "ToupTek %s (guider) #%s", cam.displayname, camera_id);
+				snprintf(guider->name, INDIGO_NAME_SIZE, "%s (guider) #%s", cam.displayname, camera_id);
 				guider->private_data = private_data;
 				guider->master_device = camera;
 				private_data->guider = guider;
