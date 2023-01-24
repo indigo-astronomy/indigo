@@ -89,13 +89,11 @@
 		591CD0AA2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */; };
 		591CD0AB2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CCFA92980396A003243AE /* indigo_ccd_omegonpro.h */; };
 		591CD0AC29803D87003243AE /* libomegonprocam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CCED02980396A003243AE /* libomegonprocam.dylib */; };
-		591CD0AD29803D87003243AE /* libomegonprocam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CCED02980396A003243AE /* libomegonprocam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		591CD0C6298041EB003243AE /* indigo_ccd_ssg.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CD0B029803FFF003243AE /* indigo_ccd_ssg.c */; };
 		591CD0C7298041EC003243AE /* indigo_ccd_ssg.c in Sources */ = {isa = PBXBuildFile; fileRef = 591CD0B029803FFF003243AE /* indigo_ccd_ssg.c */; };
 		591CD0C8298041F1003243AE /* indigo_ccd_ssg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B329803FFF003243AE /* indigo_ccd_ssg.h */; };
 		591CD0C9298041F2003243AE /* indigo_ccd_ssg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B329803FFF003243AE /* indigo_ccd_ssg.h */; };
 		591CD0CA2980420C003243AE /* libstarshootg.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0BB29803FFF003243AE /* libstarshootg.dylib */; };
-		591CD0CB2980420C003243AE /* libstarshootg.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0BB29803FFF003243AE /* libstarshootg.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		591CD0CC298042C0003243AE /* starshootg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B729803FFF003243AE /* starshootg.h */; };
 		591CD0CD298042C1003243AE /* starshootg.h in Headers */ = {isa = PBXBuildFile; fileRef = 591CD0B729803FFF003243AE /* starshootg.h */; };
 		591F329324211F3C00D1D64B /* indigo_dome_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328624211EB000D1D64B /* indigo_dome_dragonfly.c */; };
@@ -920,18 +918,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		591CD0AE29803D87003243AE /* Embed Libraries */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				591CD0CB2980420C003243AE /* libstarshootg.dylib in Embed Libraries */,
-				591CD0AD29803D87003243AE /* libomegonprocam.dylib in Embed Libraries */,
-			);
-			name = "Embed Libraries";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		59A4133C2971E76800F0A80B /* Embed Libraries */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -5085,8 +5071,7 @@
 				591CCFA72980396A003243AE /* en.html */,
 				591CCF3C2980396A003243AE /* 99-omegonprocam.rules */,
 				591CCD8D2980396A003243AE /* include */,
-				591CCECF2980396A003243AE /* macOS */,
-				591CCF3A2980396A003243AE /* linux */,
+				591CD0CE2980453B003243AE /* lib */,
 			);
 			path = libomegonprocam;
 			sourceTree = "<group>";
@@ -5247,6 +5232,15 @@
 				591CD0C429803FFF003243AE /* libstarshootg.so */,
 			);
 			path = arm64;
+			sourceTree = "<group>";
+		};
+		591CD0CE2980453B003243AE /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				591CCECF2980396A003243AE /* macOS */,
+				591CCF3A2980396A003243AE /* linux */,
+			);
+			path = lib;
 			sourceTree = "<group>";
 		};
 		591E1139215844BC00ABADA6 /* nexstar_simulator */ = {
@@ -13652,7 +13646,6 @@
 				599C9A441DA022C0008BBCC1 /* Sources */,
 				599C9A451DA022C0008BBCC1 /* Frameworks */,
 				599C9A461DA022C0008BBCC1 /* Headers */,
-				591CD0AE29803D87003243AE /* Embed Libraries */,
 			);
 			buildRules = (
 				59F7E5EB245874E400EF273A /* PBXBuildRule */,
