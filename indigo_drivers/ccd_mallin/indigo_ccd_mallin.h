@@ -1,4 +1,4 @@
-// Copyright (c) 2018 CloudMakers, s. r. o.
+// Copyright (c) 2023 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,44 +19,30 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO ToupTek CCD driver
- \file indigo_ccd_touptek.h
+/** INDIGO MallinCam CCD driver
+ \file indigo_ccd_mallin.h
  */
 
-#ifndef ccd_touptek_h
-#define ccd_touptek_h
+#ifndef ccd_mallin_h
+#define ccd_mallin_h
 
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_guider_driver.h>
 #include <indigo/indigo_wheel_driver.h>
 
-#if defined(ALTAIR)
-#define ENTRY_POINT indigo_ccd_altair
-#elif defined(OMEGONPRO)
-#define ENTRY_POINT indigo_ccd_omegonpro
-#elif defined(STARSHOOTG)
-#define ENTRY_POINT indigo_ccd_ssg
-#elif defined(RISING)
-#define ENTRY_POINT indigo_ccd_rising
-#elif defined(MALLIN)
-#define ENTRY_POINT indigo_ccd_mallin
-#else
-#define ENTRY_POINT indigo_ccd_touptek
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/** Register ToupTek CCD hot-plug callback
+/** Register MallinCam CCD hot-plug callback
  */
 
-extern indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_ccd_mallin(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* ccd_touptek_h */
+#endif /* ccd_mallin_h */
 
