@@ -161,6 +161,8 @@
 #include "wheel_indigo/indigo_wheel_indigo.h"
 #include "rotator_falcon/indigo_rotator_falcon.h"
 #include "wheel_playerone/indigo_wheel_playerone.h"
+#include "ccd_omegonpro/indigo_ccd_omegonpro.h"
+#include "ccd_ssg/indigo_ccd_ssg.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -231,6 +233,7 @@ driver_entry_point static_drivers[] = {
 #endif
 	indigo_ccd_iidc,
 	indigo_ccd_mi,
+	indigo_ccd_omegonpro,
 	indigo_ccd_playerone,
 	indigo_ccd_ptp,
 	indigo_ccd_qhy2,
@@ -240,6 +243,7 @@ driver_entry_point static_drivers[] = {
 #endif
 	indigo_ccd_simulator,
 	indigo_ccd_ssag,
+	indigo_ccd_ssg,
 	indigo_ccd_svb,
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
