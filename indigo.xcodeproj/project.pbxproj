@@ -5115,7 +5115,7 @@
 			path = macOS;
 			sourceTree = "<group>";
 		};
-		591CCF3A2980396A003243AE /* linux */ = {
+		591CCF3A2980396A003243AE /* Linux */ = {
 			isa = PBXGroup;
 			children = (
 				591CCF3F2980396A003243AE /* x64 */,
@@ -5123,7 +5123,7 @@
 				591CCF432980396A003243AE /* arm */,
 				591CCF452980396A003243AE /* arm64 */,
 			);
-			path = linux;
+			path = Linux;
 			sourceTree = "<group>";
 		};
 		591CCF3F2980396A003243AE /* x64 */ = {
@@ -5261,7 +5261,7 @@
 			isa = PBXGroup;
 			children = (
 				591CCECF2980396A003243AE /* macOS */,
-				591CCF3A2980396A003243AE /* linux */,
+				591CCF3A2980396A003243AE /* Linux */,
 			);
 			path = lib;
 			sourceTree = "<group>";
@@ -5309,7 +5309,7 @@
 			isa = PBXGroup;
 			children = (
 				591CD0DA29805BAF003243AE /* macOS */,
-				591CD0DC29805BAF003243AE /* linux */,
+				591CD0DC29805BAF003243AE /* Linux */,
 			);
 			path = lib;
 			sourceTree = "<group>";
@@ -5322,7 +5322,7 @@
 			path = macOS;
 			sourceTree = "<group>";
 		};
-		591CD0DC29805BAF003243AE /* linux */ = {
+		591CD0DC29805BAF003243AE /* Linux */ = {
 			isa = PBXGroup;
 			children = (
 				591CD0DD29805BAF003243AE /* x64 */,
@@ -5330,7 +5330,7 @@
 				591CD0E129805BAF003243AE /* arm */,
 				591CD0E329805BAF003243AE /* arm64 */,
 			);
-			path = linux;
+			path = Linux;
 			sourceTree = "<group>";
 		};
 		591CD0DD29805BAF003243AE /* x64 */ = {
