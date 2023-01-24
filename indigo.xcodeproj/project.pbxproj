@@ -1063,7 +1063,6 @@
 		591CCD8A2980396A003243AE /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		591CCD8E2980396A003243AE /* omegonprocam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = omegonprocam.h; sourceTree = "<group>"; };
 		591CCED02980396A003243AE /* libomegonprocam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libomegonprocam.dylib; sourceTree = "<group>"; };
-		591CCF3C2980396A003243AE /* 99-omegonprocam.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "99-omegonprocam.rules"; sourceTree = "<group>"; };
 		591CCF402980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
 		591CCF422980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
 		591CCF442980396A003243AE /* libomegonprocam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libomegonprocam.so; sourceTree = "<group>"; };
@@ -1081,7 +1080,6 @@
 		591CD0C029803FFF003243AE /* libstarshootg.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libstarshootg.so; sourceTree = "<group>"; };
 		591CD0C229803FFF003243AE /* libstarshootg.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libstarshootg.so; sourceTree = "<group>"; };
 		591CD0C429803FFF003243AE /* libstarshootg.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libstarshootg.so; sourceTree = "<group>"; };
-		591CD0C529803FFF003243AE /* 99-starshootg.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-starshootg.rules"; sourceTree = "<group>"; };
 		591CD0D029805BAF003243AE /* indigo_ccd_rising.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_rising.c; sourceTree = "<group>"; };
 		591CD0D129805BAF003243AE /* indigo_ccd_rising_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_rising_main.c; sourceTree = "<group>"; };
 		591CD0D229805BAF003243AE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -1093,7 +1091,6 @@
 		591CD0E029805BAF003243AE /* libnncam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libnncam.so; sourceTree = "<group>"; };
 		591CD0E229805BAF003243AE /* libnncam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libnncam.so; sourceTree = "<group>"; };
 		591CD0E429805BAF003243AE /* libnncam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libnncam.so; sourceTree = "<group>"; };
-		591CD0E529805BAF003243AE /* 99-nncam.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-nncam.rules"; sourceTree = "<group>"; };
 		591CD0EF29805E30003243AE /* libstarshootg.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libstarshootg.dylib; path = build/lib/libstarshootg.dylib; sourceTree = "<group>"; };
 		591CD0F029805E30003243AE /* libomegonprocam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libomegonprocam.dylib; path = build/lib/libomegonprocam.dylib; sourceTree = "<group>"; };
 		591CD0F129805E30003243AE /* libnncam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libnncam.dylib; path = build/lib/libnncam.dylib; sourceTree = "<group>"; };
@@ -1101,7 +1098,6 @@
 		591CD0FB29806D24003243AE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		591CD0FF29806D24003243AE /* mallincam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = mallincam.h; sourceTree = "<group>"; };
 		591CD10029806D24003243AE /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
-		591CD10129806D24003243AE /* 99-mallincam.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-mallincam.rules"; sourceTree = "<group>"; };
 		591CD10429806D24003243AE /* libmallincam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libmallincam.dylib; sourceTree = "<group>"; };
 		591CD10729806D24003243AE /* libmallincam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libmallincam.so; sourceTree = "<group>"; };
 		591CD10929806D24003243AE /* libmallincam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libmallincam.so; sourceTree = "<group>"; };
@@ -5110,7 +5106,6 @@
 			isa = PBXGroup;
 			children = (
 				591CCFA72980396A003243AE /* en.html */,
-				591CCF3C2980396A003243AE /* 99-omegonprocam.rules */,
 				591CCD8D2980396A003243AE /* include */,
 				591CD0CE2980453B003243AE /* lib */,
 			);
@@ -5200,7 +5195,6 @@
 			isa = PBXGroup;
 			children = (
 				591CD0B829803FFF003243AE /* en.html */,
-				591CD0C529803FFF003243AE /* 99-starshootg.rules */,
 				591CD0B629803FFF003243AE /* include */,
 				591CD0B929803FFF003243AE /* lib */,
 			);
@@ -5310,7 +5304,6 @@
 				591CD0D629805BAF003243AE /* include */,
 				591CD0D829805BAF003243AE /* en.html */,
 				591CD0D929805BAF003243AE /* lib */,
-				591CD0E529805BAF003243AE /* 99-nncam.rules */,
 			);
 			path = libnncam;
 			sourceTree = "<group>";
@@ -5408,7 +5401,6 @@
 			children = (
 				591CD0FE29806D24003243AE /* include */,
 				591CD10029806D24003243AE /* en.html */,
-				591CD10129806D24003243AE /* 99-mallincam.rules */,
 				591CD10229806D24003243AE /* lib */,
 			);
 			path = libmallincam;
