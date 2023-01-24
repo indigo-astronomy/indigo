@@ -128,6 +128,10 @@ This is the list of requirements taken into the consideration:
 98. PegasusAstro Prodigy Microfocuser driver
 99. PegasusAstro Indigo wheel driver
 100. PegasusAstro Falcon rotator driver
+101. OmegonPro CCD driver
+102. MallinCam CCD driver
+103. RisingCam CCD driver
+104. Orion StarShotG CCD driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
