@@ -4454,7 +4454,7 @@
 		9D48B79C215E570600CF757E /* indigo_ccd_touptek.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_touptek.h; sourceTree = "<group>"; };
 		9D48B79D215E570600CF757E /* indigo_ccd_touptek_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_touptek_main.c; sourceTree = "<group>"; };
 		9D48B79E215E570600CF757E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		9D48B79F215E570600CF757E /* indigo_ccd_touptek.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_touptek.c; sourceTree = "<group>"; };
+		9D48B79F215E570600CF757E /* indigo_ccd_touptek.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_touptek.c; sourceTree = "<group>"; wrapsLines = 0; };
 		9D48B7A3215E570600CF757E /* toupcam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = toupcam.h; sourceTree = "<group>"; };
 		9D48B7A4215E570600CF757E /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
 		9D48B7A7215E570600CF757E /* libtoupcam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libtoupcam.dylib; sourceTree = "<group>"; };
