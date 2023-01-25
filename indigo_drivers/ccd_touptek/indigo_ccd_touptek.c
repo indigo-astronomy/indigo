@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 
 #include <stdlib.h>
 #include <string.h>
@@ -105,6 +105,8 @@
 #include <mallincam.h>
 
 #else
+
+#define TOUPTEK
 
 #define DRIVER_LABEL					"Touptek Camera"
 #define DRIVER_NAME						"indigo_ccd_touptek"
@@ -1045,9 +1047,69 @@ static indigo_result guider_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static bool hotplug_callback_initialized = false;
 static indigo_device *devices[SDK_DEF(MAX)];
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+#ifdef TOUPTEK
+
+#define TOUPTEK_VID	0x0547
+
+struct oem_2_toupcam {
+	int oem_vid;
+	int oem_pid;
+	int toupcam_pid;
+	char *name;
+} oem_2_toupcam[] = {
+	{ 0x547, 0xe077, 0x11ea, "Meade DSI IV Color" }, // USB3.0 + DDR
+	{ 0x547, 0xe078, 0x11eb, "Meade DSI IV Color" }, // USB2.0 + DDR
+	{ 0x547, 0xe079, 0x11f6, "Meade DSI IV Mono" }, // USB3.0 + DDR
+	{ 0x547, 0xe07a, 0x11f7, "Meade DSI IV Mono" }, // USB2.0 + DDR
+
+	{ 0x547, 0xe06b, 0x106b, "Meade DSI IV Color" }, // USB3.0
+	{ 0x547, 0xe075, 0x1075, "Meade DSI IV Color" }, // USB2.0
+	{ 0x547, 0xe06d, 0x106d, "Meade DSI IV Mono" }, // USB3.0
+	{ 0x547, 0xe076, 0x1076, "Meade DSI IV Mono" },  // USB2.0
+	
+	{ 0x547, 0xe00b, 0x11ca, "Meade LPI-GC Adv" }, // USB3.0
+	{ 0x547, 0xe00c, 0x11cb, "Meade LPI-GC Adv" }, // USB2.0
+	{ 0x547, 0xe00d, 0x11cc, "Meade LPI-GM Adv" }, // USB3.0
+	{ 0x547, 0xe00e, 0x11cd, "Meade LPI-GM Adv" }, // USB2.0
+	
+	{ 0x547, 0xe007, 0x115a, "Meade LPI-GC Adv" }, // USB3.0 + temperature sensor
+	{ 0x547, 0xe008, 0x115b, "Meade LPI-GC Adv" }, // USB2.0 + temperature sensor
+	{ 0x547, 0xe009, 0x115c, "Meade LPI-GM Adv" }, // USB3.0 + temperature sensor
+	{ 0x547, 0xe00a, 0x115d, "Meade LPI-GM Adv" }, // USB2.0 + temperature sensor
+
+	{ 0x549, 0xe003, 0x1003, "Meade LPI-GC" },
+	{ 0x549, 0xe004, 0x1004, "Meade LPI-GM" },
+
+	{ 0, 0, 0, NULL }
+};
+
+int OEMCamEnum(ToupcamDeviceV2 *cams, int max_count) {
+	int oem_count = 0;
+	int usb_count;
+	libusb_device **list;
+	usb_count = libusb_get_device_list(NULL, &list);
+	for (int i = 0; (i < usb_count) && (oem_count < max_count); i++) {
+		libusb_device *dev = list[i];
+		const struct oem_camera *cam;
+		struct libusb_device_descriptor desc;
+		libusb_get_device_descriptor(dev, &desc);
+		for (int j = 0; oem_2_toupcam[j].name != NULL; j++) {
+			if (oem_2_toupcam[j].oem_vid == desc.idVendor && oem_2_toupcam[j].oem_pid == desc.idProduct) {
+				cams[oem_count].model = Toupcam_get_Model(TOUPTEK_VID, oem_2_toupcam[j].toupcam_pid);
+				strcpy(cams[oem_count].displayname, oem_2_toupcam[j].name);
+				sprintf(cams[oem_count].id, "tp-%d-%d-%d-%d", libusb_get_bus_number(dev), libusb_get_device_address(dev),TOUPTEK_VID, oem_2_toupcam[j].toupcam_pid);
+				oem_count++;
+			}
+		}
+	}
+	libusb_free_device_list(list, 1);
+	return oem_count;
+}
+
+#endif
 
 static void process_plug_event(indigo_device *unusued) {
 	pthread_mutex_lock(&mutex);
@@ -1057,8 +1119,13 @@ static void process_plug_event(indigo_device *unusued) {
 			PRIVATE_DATA->present = false;
 	}
 	SDK_TYPE(DeviceV2) cams[SDK_DEF(MAX)];
-	int cnt = SDK_CALL(EnumV2)(cams);
-	for (int j = 0; j < cnt; j++) {
+	int count = SDK_CALL(EnumV2)(cams);
+
+#ifdef TOUPTEK
+	count += OEMCamEnum(&cams[count], TOUPCAM_MAX - count);
+#endif
+	
+	for (int j = 0; j < count; j++) {
 		SDK_TYPE(DeviceV2) cam = cams[j];
 		bool found = false;
 		for (int i = 0; i < SDK_DEF(MAX); i++) {
@@ -1079,21 +1146,33 @@ static void process_plug_event(indigo_device *unusued) {
 				ccd_detach
 			);
 
-			/* cam.id is not constant it changes at replug so we remove the increasing field */
-			/* cam_id format is #tp-N-XX-NNNN-NNNN whenre XX increases everytime the camera is pluged in */
-			char camera_id[32] = {0};
-			strncpy(camera_id, cam.id, 32);
-			if (camera_id[4] == '-' && isdigit(camera_id[5])) {
-				int index = 5;
-				int base = 5;
-				while (isdigit(camera_id[index++]));
-				while (camera_id[index] != 0) {
-					camera_id[base++] = camera_id[index++];
-				}
-				camera_id[base]='\0';
-			}
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera ID '%s' changed to '%s'", cam.id, camera_id);
 
+			char camera_id[32] = {0};
+			
+//			/* cam.id is not constant it changes at replug so we remove the increasing field */
+//			/* cam_id format is #tp-N-XX-NNNN-NNNN whenre XX increases everytime the camera is pluged in */
+//			strncpy(camera_id, cam.id, 32);
+//			if (camera_id[4] == '-' && isdigit(camera_id[5])) {
+//				int index = 5;
+//				int base = 5;
+//				while (isdigit(camera_id[index++]));
+//				while (camera_id[index] != 0) {
+//					camera_id[base++] = camera_id[index++];
+//				}
+//				camera_id[base]='\0';
+//			}
+//			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera ID '%s' changed to '%s'", cam.id, camera_id);
+			
+			SDK_HANDLE handle = SDK_CALL(Open)(cam.id);
+			if (handle != NULL) {
+				char serial[32];
+				SDK_CALL(get_SerialNumber)(handle, serial);
+				SDK_CALL(Close)(handle);
+				strcpy(camera_id, serial + strlen(serial) - 6);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get serial number of Camera %s #%s", cam.displayname, cam.id);
+			}
+		
 			DRIVER_PRIVATE_DATA *private_data = indigo_safe_malloc(sizeof(DRIVER_PRIVATE_DATA));
 			private_data->cam = cam;
 			private_data->present = true;
@@ -1144,10 +1223,10 @@ static void process_plug_event(indigo_device *unusued) {
 	pthread_mutex_unlock(&mutex);
 }
 
-
-static void hotplug_callback(void* pCallbackCtx) {
+static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
 	indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
-}
+	return 0;
+};
 
 static void remove_all_devices() {
 	for (int i = 0; i < SDK_DEF(MAX); i++) {
@@ -1167,6 +1246,8 @@ static void remove_all_devices() {
 	}
 }
 
+static libusb_hotplug_callback_handle callback_handle;
+
 indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
@@ -1180,21 +1261,19 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 			last_action = action;
 			for (int i = 0; i < SDK_DEF(MAX); i++)
 				devices[i] = NULL;
-			if (!hotplug_callback_initialized) {
-				SDK_CALL(HotPlug)(hotplug_callback, NULL);
-				hotplug_callback_initialized = true;
-			}
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "SDK version %s", SDK_CALL(Version)());
-			hotplug_callback(NULL);
-			break;
+			indigo_start_usb_event_handler();
+			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
 		}
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < SDK_DEF(MAX); i++) {
 				VERIFY_NOT_CONNECTED(devices[i]);
 			}
 			last_action = action;
-			//SDK_CALL(HotPlug)(NULL, NULL);  // if used, after unload/load hot plug doesn't work anymore
-			hotplug_callback_initialized = false;
+			libusb_hotplug_deregister_callback(NULL, callback_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 			remove_all_devices();
 			break;
 
