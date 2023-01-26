@@ -40,7 +40,7 @@
 #if defined(ALTAIR)
 
 #define ENTRY_POINT						indigo_ccd_altair
-#define CAMERA_NAME_PREFIX				"Altair"
+#define CAMERA_NAME_PREFIX		"Altair"
 #define DRIVER_LABEL					"AltairAstro Camera"
 #define DRIVER_NAME						"indigo_ccd_altair"
 #define DRIVER_PRIVATE_DATA		altair_private_data
@@ -56,7 +56,7 @@
 #elif defined(OMEGONPRO)
 
 #define ENTRY_POINT						indigo_ccd_omegonpro
-#define CAMERA_NAME_PREFIX				"Omegon"
+#define CAMERA_NAME_PREFIX		"Omegon"
 #define DRIVER_LABEL					"OmegonPro Camera"
 #define DRIVER_NAME						"indigo_ccd_omegonpro"
 #define DRIVER_PRIVATE_DATA		omegonpro_private_data
@@ -72,7 +72,7 @@
 #elif defined(STARSHOOTG)
 
 #define ENTRY_POINT						indigo_ccd_ssg
-#define CAMERA_NAME_PREFIX				"Orion"
+#define CAMERA_NAME_PREFIX		"Orion"
 #define DRIVER_LABEL					"Orion StarShot G Camera"
 #define DRIVER_NAME						"indigo_ccd_ssg"
 #define DRIVER_PRIVATE_DATA		ssg_private_data
@@ -88,7 +88,7 @@
 #elif defined(RISING)
 
 #define ENTRY_POINT						indigo_ccd_rising
-#define CAMERA_NAME_PREFIX				"RisingCam"
+#define CAMERA_NAME_PREFIX		"RisingCam"
 #define DRIVER_LABEL					"RisingCam Camera"
 #define DRIVER_NAME						"indigo_ccd_rising"
 #define DRIVER_PRIVATE_DATA		rising_private_data
@@ -104,7 +104,7 @@
 #elif defined(MALLIN)
 
 #define ENTRY_POINT						indigo_ccd_mallin
-#define CAMERA_NAME_PREFIX				"MallinCam"
+#define CAMERA_NAME_PREFIX		"MallinCam"
 #define DRIVER_LABEL					"MallinCam Camera"
 #define DRIVER_NAME						"indigo_ccd_mallin"
 #define DRIVER_PRIVATE_DATA		mallin_private_data
@@ -122,7 +122,7 @@
 #define TOUPTEK
 
 #define ENTRY_POINT						indigo_ccd_touptek
-#define CAMERA_NAME_PREFIX				"Touptek"
+#define CAMERA_NAME_PREFIX		"Touptek"
 #define DRIVER_LABEL					"Touptek Camera"
 #define DRIVER_NAME						"indigo_ccd_touptek"
 #define DRIVER_PRIVATE_DATA		touptek_private_data
@@ -1168,8 +1168,10 @@ static void process_plug_event(indigo_device *unusued) {
 				char serial[33] = {0};
 				SDK_CALL(get_SerialNumber)(handle, serial);
 				SDK_CALL(Close)(handle);
-				/* clear camera state - otherwise can not get exposure on lunux */
+				/* clear camera state - otherwise can not get exposure on linux */
+#ifdef INDIGO_LINUX
 				SDK_CALL(Replug)(cam.id);
+#endif
 				strcpy(camera_id, serial + strlen(serial) - 6);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get serial number of Camera %s #%s", cam.displayname, cam.id);
@@ -1199,7 +1201,7 @@ static void process_plug_event(indigo_device *unusued) {
 					guider_detach
 					);
 				indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-				snprintf(guider->name, INDIGO_NAME_SIZE, "%s (guider) #%s", cam.displayname, camera_id);
+				snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider) #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
 				guider->private_data = private_data;
 				guider->master_device = camera;
 				private_data->guider = guider;
