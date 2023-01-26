@@ -1162,17 +1162,19 @@ static void process_plug_event(indigo_device *unusued) {
 //				camera_id[base]='\0';
 //			}
 //			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera ID '%s' changed to '%s'", cam.id, camera_id);
-			
+
 			SDK_HANDLE handle = SDK_CALL(Open)(cam.id);
 			if (handle != NULL) {
-				char serial[32];
+				char serial[33] = {0};
 				SDK_CALL(get_SerialNumber)(handle, serial);
 				SDK_CALL(Close)(handle);
+				/* clear camera state - otherwise can not get exposure on lunux */
+				SDK_CALL(Replug)(cam.id);
 				strcpy(camera_id, serial + strlen(serial) - 6);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get serial number of Camera %s #%s", cam.displayname, cam.id);
 			}
-		
+
 			DRIVER_PRIVATE_DATA *private_data = indigo_safe_malloc(sizeof(DRIVER_PRIVATE_DATA));
 			private_data->cam = cam;
 			private_data->present = true;
