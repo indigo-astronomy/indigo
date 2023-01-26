@@ -40,7 +40,7 @@
 #if defined(ALTAIR)
 
 #define ENTRY_POINT						indigo_ccd_altair
-
+#define CAMERA_NAME_PREFIX				"Altair"
 #define DRIVER_LABEL					"AltairAstro Camera"
 #define DRIVER_NAME						"indigo_ccd_altair"
 #define DRIVER_PRIVATE_DATA		altair_private_data
@@ -56,6 +56,7 @@
 #elif defined(OMEGONPRO)
 
 #define ENTRY_POINT						indigo_ccd_omegonpro
+#define CAMERA_NAME_PREFIX				"Omegon"
 #define DRIVER_LABEL					"OmegonPro Camera"
 #define DRIVER_NAME						"indigo_ccd_omegonpro"
 #define DRIVER_PRIVATE_DATA		omegonpro_private_data
@@ -71,6 +72,7 @@
 #elif defined(STARSHOOTG)
 
 #define ENTRY_POINT						indigo_ccd_ssg
+#define CAMERA_NAME_PREFIX				"Orion"
 #define DRIVER_LABEL					"Orion StarShot G Camera"
 #define DRIVER_NAME						"indigo_ccd_ssg"
 #define DRIVER_PRIVATE_DATA		ssg_private_data
@@ -86,6 +88,7 @@
 #elif defined(RISING)
 
 #define ENTRY_POINT						indigo_ccd_rising
+#define CAMERA_NAME_PREFIX				"RisingCam"
 #define DRIVER_LABEL					"RisingCam Camera"
 #define DRIVER_NAME						"indigo_ccd_rising"
 #define DRIVER_PRIVATE_DATA		rising_private_data
@@ -101,6 +104,7 @@
 #elif defined(MALLIN)
 
 #define ENTRY_POINT						indigo_ccd_mallin
+#define CAMERA_NAME_PREFIX				"MallinCam"
 #define DRIVER_LABEL					"MallinCam Camera"
 #define DRIVER_NAME						"indigo_ccd_mallin"
 #define DRIVER_PRIVATE_DATA		mallin_private_data
@@ -118,6 +122,7 @@
 #define TOUPTEK
 
 #define ENTRY_POINT						indigo_ccd_touptek
+#define CAMERA_NAME_PREFIX				"Touptek"
 #define DRIVER_LABEL					"Touptek Camera"
 #define DRIVER_NAME						"indigo_ccd_touptek"
 #define DRIVER_PRIVATE_DATA		touptek_private_data
@@ -1174,7 +1179,7 @@ static void process_plug_event(indigo_device *unusued) {
 			private_data->cam = cam;
 			private_data->present = true;
 			indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-			snprintf(camera->name, INDIGO_NAME_SIZE, "%s #%s", cam.displayname, camera_id);
+			snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
 			camera->private_data = private_data;
 			camera->master_device = camera;
 			private_data->camera = camera;
