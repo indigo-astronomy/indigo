@@ -29,21 +29,6 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_guider_driver.h>
-#include <indigo/indigo_wheel_driver.h>
-
-#if defined(ALTAIR)
-#define ENTRY_POINT indigo_ccd_altair
-#elif defined(OMEGONPRO)
-#define ENTRY_POINT indigo_ccd_omegonpro
-#elif defined(STARSHOOTG)
-#define ENTRY_POINT indigo_ccd_ssg
-#elif defined(RISING)
-#define ENTRY_POINT indigo_ccd_rising
-#elif defined(MALLIN)
-#define ENTRY_POINT indigo_ccd_mallin
-#else
-#define ENTRY_POINT indigo_ccd_touptek
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,7 +37,7 @@ extern "C" {
 /** Register ToupTek CCD hot-plug callback
  */
 
-extern indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_ccd_touptek(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }

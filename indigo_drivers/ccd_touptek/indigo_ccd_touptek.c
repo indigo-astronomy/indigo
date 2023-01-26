@@ -37,9 +37,9 @@
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
 
-#include "indigo_ccd_touptek.h"
-
 #if defined(ALTAIR)
+
+#define ENTRY_POINT						indigo_ccd_altair
 
 #define DRIVER_LABEL					"AltairAstro Camera"
 #define DRIVER_NAME						"indigo_ccd_altair"
@@ -51,9 +51,11 @@
 #define SDK_HANDLE						HAltaircam
 
 #include <altaircam.h>
+#include "../ccd_altair/indigo_ccd_altair.h"
 
 #elif defined(OMEGONPRO)
 
+#define ENTRY_POINT						indigo_ccd_omegonpro
 #define DRIVER_LABEL					"OmegonPro Camera"
 #define DRIVER_NAME						"indigo_ccd_omegonpro"
 #define DRIVER_PRIVATE_DATA		omegonpro_private_data
@@ -64,9 +66,11 @@
 #define SDK_HANDLE						HOmegonprocam
 
 #include <omegonprocam.h>
+#include "../ccd_omegonpro/indigo_ccd_omegonpro.h"
 
 #elif defined(STARSHOOTG)
 
+#define ENTRY_POINT						indigo_ccd_ssg
 #define DRIVER_LABEL					"Orion StarShot G Camera"
 #define DRIVER_NAME						"indigo_ccd_ssg"
 #define DRIVER_PRIVATE_DATA		ssg_private_data
@@ -77,9 +81,11 @@
 #define SDK_HANDLE						HStarshootg
 
 #include <starshootg.h>
+#include "../ccd_ssg/indigo_ccd_ssg.h"
 
 #elif defined(RISING)
 
+#define ENTRY_POINT						indigo_ccd_rising
 #define DRIVER_LABEL					"RisingCam Camera"
 #define DRIVER_NAME						"indigo_ccd_rising"
 #define DRIVER_PRIVATE_DATA		rising_private_data
@@ -90,9 +96,11 @@
 #define SDK_HANDLE						HNncam
 
 #include <nncam.h>
+#include "../ccd_rising/indigo_ccd_rising.h"
 
 #elif defined(MALLIN)
 
+#define ENTRY_POINT						indigo_ccd_mallin
 #define DRIVER_LABEL					"MallinCam Camera"
 #define DRIVER_NAME						"indigo_ccd_mallin"
 #define DRIVER_PRIVATE_DATA		mallin_private_data
@@ -103,11 +111,13 @@
 #define SDK_HANDLE						HToupCam
 
 #include <mallincam.h>
+#include "../ccd_mallin/indigo_ccd_mallin.h"
 
 #else
 
 #define TOUPTEK
 
+#define ENTRY_POINT						indigo_ccd_touptek
 #define DRIVER_LABEL					"Touptek Camera"
 #define DRIVER_NAME						"indigo_ccd_touptek"
 #define DRIVER_PRIVATE_DATA		touptek_private_data
@@ -118,6 +128,7 @@
 #define SDK_HANDLE						HToupCam
 
 #include <toupcam.h>
+#include "../ccd_touptek/indigo_ccd_touptek.h"
 
 #endif
 
@@ -1146,23 +1157,7 @@ static void process_plug_event(indigo_device *unusued) {
 				ccd_detach
 			);
 
-
-			char camera_id[32] = {0};
-			
-//			/* cam.id is not constant it changes at replug so we remove the increasing field */
-//			/* cam_id format is #tp-N-XX-NNNN-NNNN whenre XX increases everytime the camera is pluged in */
-//			strncpy(camera_id, cam.id, 32);
-//			if (camera_id[4] == '-' && isdigit(camera_id[5])) {
-//				int index = 5;
-//				int base = 5;
-//				while (isdigit(camera_id[index++]));
-//				while (camera_id[index] != 0) {
-//					camera_id[base++] = camera_id[index++];
-//				}
-//				camera_id[base]='\0';
-//			}
-//			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera ID '%s' changed to '%s'", cam.id, camera_id);
-
+			char camera_id[16] = {0};
 			SDK_HANDLE handle = SDK_CALL(Open)(cam.id);
 			if (handle != NULL) {
 				char serial[33] = {0};
@@ -1174,7 +1169,7 @@ static void process_plug_event(indigo_device *unusued) {
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get serial number of Camera %s #%s", cam.displayname, cam.id);
 			}
-
+			
 			DRIVER_PRIVATE_DATA *private_data = indigo_safe_malloc(sizeof(DRIVER_PRIVATE_DATA));
 			private_data->cam = cam;
 			private_data->present = true;
