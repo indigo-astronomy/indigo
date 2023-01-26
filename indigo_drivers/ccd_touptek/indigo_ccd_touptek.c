@@ -1162,26 +1162,28 @@ static void process_plug_event(indigo_device *unusued) {
 				ccd_detach
 			);
 
+#ifdef INDIGO_MACOS
 			char camera_id[16] = {0};
 			SDK_HANDLE handle = SDK_CALL(Open)(cam.id);
 			if (handle != NULL) {
 				char serial[33] = {0};
 				SDK_CALL(get_SerialNumber)(handle, serial);
 				SDK_CALL(Close)(handle);
-				/* clear camera state - otherwise can not get exposure on linux */
-#ifdef INDIGO_LINUX
-				SDK_CALL(Replug)(cam.id);
-#endif
 				strcpy(camera_id, serial + strlen(serial) - 6);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not get serial number of Camera %s #%s", cam.displayname, cam.id);
 			}
-			
+#endif
+
 			DRIVER_PRIVATE_DATA *private_data = indigo_safe_malloc(sizeof(DRIVER_PRIVATE_DATA));
 			private_data->cam = cam;
 			private_data->present = true;
 			indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+#ifdef INDIGO_MACOS
 			snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
+#else
+			snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
+#endif
 			camera->private_data = private_data;
 			camera->master_device = camera;
 			private_data->camera = camera;
@@ -1201,7 +1203,11 @@ static void process_plug_event(indigo_device *unusued) {
 					guider_detach
 					);
 				indigo_device *guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
+#ifdef INDIGO_MACOS
 				snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider) #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
+#else
+				snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider)", CAMERA_NAME_PREFIX, cam.displayname);
+#endif
 				guider->private_data = private_data;
 				guider->master_device = camera;
 				private_data->guider = guider;
