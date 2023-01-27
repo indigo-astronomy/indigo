@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -127,18 +127,37 @@ static void wheel_connect_callback(indigo_device *device) {
 					res = POAOpenPW(PRIVATE_DATA->dev_handle);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res != PW_OK) {
+					if (res == PW_OK) {
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count = info.PositionCount;
+
+						/* On connect wheel goes to position 1 - we need to wait while moving but not more than 15s */
+						PWState state;
+						const int max_wait = 30;
+						const float retry_delay = 0.5;
+						int count = 0;
+						do {
+							indigo_usleep(retry_delay * ONE_SECOND_DELAY);
+							PWErrors res = POAGetPWState(PRIVATE_DATA->dev_handle, &state);
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWState(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, state, res);
+							count++;
+						} while (state == PW_STATE_MOVING && count < max_wait);
+
+						if (count >= max_wait) {
+							indigo_update_property(device, CONNECTION_PROPERTY, "WARNING: Did not move to initial position in %.0f seconds.", max_wait * retry_delay);
+						}
+
 						res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &(PRIVATE_DATA->target_slot));
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot, res);
 						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 						PRIVATE_DATA->target_slot++;
+						WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot;
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 						device->is_connected = true;
 						indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d) = %d", index, res);
+						indigo_global_unlock(device);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
