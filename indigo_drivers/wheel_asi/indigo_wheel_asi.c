@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -189,6 +189,7 @@ static void wheel_connect_callback(indigo_device *device) {
 						indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
 					} else {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWOpen(%d) = %d", index, res);
+						indigo_global_unlock(device);
 						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
