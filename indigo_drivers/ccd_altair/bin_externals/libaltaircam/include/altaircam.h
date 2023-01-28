@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 53.21849.20221208 */
+/* Version: 53.22004.20230115 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -260,7 +260,7 @@ typedef struct {
 } AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.21849.20221208
+    get the version of this dll/so/dylib, which is: 53.22004.20230115
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -675,7 +675,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_RealTime(HAltaircam h, int* val);
 
 /* discard the current internal frame cache.
     If DDR present, also discard the frames in the DDR.
-    Altaircam_Flush is obsolete, it's a synonyms for Altaircam_put_Option(h, ALTAIRCAM_OPTION_FLUSH, 3)
+    Altaircam_Flush is obsolete, recommend using Altaircam_put_Option(h, ALTAIRCAM_OPTION_FLUSH, 3)
 */
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_Flush(HAltaircam h);
@@ -1043,7 +1043,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_AfParam(HAltaircam h, AltaircamAfParam* pA
 #define ALTAIRCAM_IOCONTROLTYPE_SET_STROBEDELAYTIME         0x24
 #define ALTAIRCAM_IOCONTROLTYPE_GET_STROBEDURATION          0x25 /* Strobe duration time in microseconds, [0, 5000000] */
 #define ALTAIRCAM_IOCONTROLTYPE_SET_STROBEDURATION          0x26
-#define ALTAIRCAM_IOCONTROLTYPE_GET_USERVALUE               0x27 /* 
+#define ALTAIRCAM_IOCONTROLTYPE_GET_USERVALUE               0x27 /*
                                                                   bit0 => Opto-isolated output
                                                                   bit1 => GPIO0 output
                                                                   bit2 => GPIO1 output
@@ -1080,6 +1080,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_IoControl(HAltaircam h, unsigned ioLineNumber,
 ALTAIRCAM_API(HRESULT)  Altaircam_write_UART(HAltaircam h, const unsigned char* pData, unsigned nDataLen);
 ALTAIRCAM_API(HRESULT)  Altaircam_read_UART(HAltaircam h, unsigned char* pBuffer, unsigned nBufferLen);
 
+ALTAIRCAM_API(const AltaircamModelV2**) Altaircam_all_Model(); /* return all supported USB model array */
 ALTAIRCAM_API(const AltaircamModelV2*) Altaircam_query_Model(HAltaircam h);
 ALTAIRCAM_API(const AltaircamModelV2*) Altaircam_get_Model(unsigned short idVendor, unsigned short idProduct);
 
@@ -1217,19 +1218,19 @@ ALTAIRCAM_API(HRESULT)  Altaircam_put_ExpoCallback(HAltaircam h, PIALTAIRCAM_EXP
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_put_ChromeCallback(HAltaircam h, PIALTAIRCAM_CHROME_CALLBACK funChrome, void* ctxChrome);
 
-/* Altaircam_FfcOnePush is obsolete, it's a synonyms for Altaircam_FfcOnce. */
+/* Altaircam_FfcOnePush is obsolete, recommend using Altaircam_FfcOnce. */
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_FfcOnePush(HAltaircam h);
 
-/* Altaircam_DfcOnePush is obsolete, it's a synonyms for Altaircam_DfcOnce. */
+/* Altaircam_DfcOnePush is obsolete, recommend using Altaircam_DfcOnce. */
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_DfcOnePush(HAltaircam h);
 
-/* Altaircam_AwbOnePush is obsolete, it's a synonyms for Altaircam_AwbOnce. */
+/* Altaircam_AwbOnePush is obsolete, recommend using Altaircam_AwbOnce. */
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_AwbOnePush(HAltaircam h, PIALTAIRCAM_TEMPTINT_CALLBACK funTT, void* ctxTT);
 
-/* Altaircam_AbbOnePush is obsolete, it's a synonyms for Altaircam_AbbOnce. */
+/* Altaircam_AbbOnePush is obsolete, recommend using Altaircam_AbbOnce. */
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_AbbOnePush(HAltaircam h, PIALTAIRCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB);
 
@@ -1250,7 +1251,7 @@ ALTAIRCAM_API(void)   Altaircam_HotPlug(PALTAIRCAM_HOTPLUG funHotPlug, void* ctx
 #endif
 
 #if defined(_WIN32)
-/* Altaircam_put_TempTintInit is obsolete, it's a synonyms for Altaircam_AwbOnce. */
+/* Altaircam_put_TempTintInit is obsolete, recommend using Altaircam_AwbOnce. */
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_put_TempTintInit(HAltaircam h, PIALTAIRCAM_TEMPTINT_CALLBACK funTT, void* ctxTT);
 
@@ -1266,7 +1267,7 @@ ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_get_ProcessMode(HAltaircam h, unsigned* pnProcessMode);
 #endif
 
-/* obsolete, please use Altaircam_put_Roi and Altaircam_get_Roi */
+/* obsolete, recommend using Altaircam_put_Roi and Altaircam_get_Roi */
 ALTAIRCAM_DEPRECATED
 ALTAIRCAM_API(HRESULT)  Altaircam_put_RoiMode(HAltaircam h, int bRoiMode, int xOffset, int yOffset);
 ALTAIRCAM_DEPRECATED
