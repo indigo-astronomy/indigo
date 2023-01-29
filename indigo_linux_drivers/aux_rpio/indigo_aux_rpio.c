@@ -25,8 +25,8 @@
 
 #include "indigo_aux_rpio.h"
 
-#define DRIVER_VERSION         0x0005
-#define AUX_DRAGONFLY_NAME     "Raspberry Pi GPIO"
+#define DRIVER_VERSION         0x0006
+#define AUX_RPIO_NAME     "Raspberry Pi GPIO"
 
 #include <stdlib.h>
 #include <string.h>
@@ -1007,7 +1007,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			rpio_pwm_set(1, period, duty_cycle);
 		}
 
-		indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
+		indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(AUX_SENSOR_NAMES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUX_SENSOR_NAMES
@@ -1071,7 +1071,7 @@ static indigo_result aux_detach(indigo_device *device) {
 
 static void create_device() {
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
-		AUX_DRAGONFLY_NAME,
+		AUX_RPIO_NAME,
 		aux_attach,
 		aux_enumerate_properties,
 		aux_change_property,
@@ -1088,7 +1088,7 @@ static void create_device() {
 	}
 
 	device_data.device = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
-	sprintf(device_data.device->name, "%s", AUX_DRAGONFLY_NAME);
+	sprintf(device_data.device->name, "%s", AUX_RPIO_NAME);
 
 	device_data.device->private_data = device_data.private_data;
 	indigo_attach_device(device_data.device);
