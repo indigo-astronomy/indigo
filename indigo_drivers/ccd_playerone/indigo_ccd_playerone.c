@@ -400,7 +400,7 @@ static void exposure_timer_callback(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStartExposure(%d, true)", id);
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target;
-			while (CCD_EXPOSURE_ITEM->number.value > 1) {
+			while (CCD_EXPOSURE_ITEM->number.value >= 1) {
 				if (POAGetCameraState(id, &state) == POA_OK && state != STATE_EXPOSING) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "State != EXPOSING");
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -415,9 +415,11 @@ static void exposure_timer_callback(indigo_device *device) {
 					indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 					break;
 				}
+				PRIVATE_DATA->can_check_temperature = true;
 				indigo_usleep(1000000);
 				CCD_EXPOSURE_ITEM->number.value--;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+				PRIVATE_DATA->can_check_temperature = false;
 			}
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -435,7 +437,9 @@ static void exposure_timer_callback(indigo_device *device) {
 					}
 				}
 			}
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = POAStopExposure(id);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			if (res)
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStopExposure(%d) > %d", id, res);
 			else
@@ -445,7 +449,6 @@ static void exposure_timer_callback(indigo_device *device) {
 		res = POA_ERROR_EXPOSURE_FAILED;
 	}
 	PRIVATE_DATA->can_check_temperature = true;
-	indigo_finalize_video_stream(device);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
