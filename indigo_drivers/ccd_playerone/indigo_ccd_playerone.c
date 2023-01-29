@@ -218,33 +218,45 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStopExposure(%d)", id);
 
-	res = POASetImageBin(id, bin);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageBin(%d, %d) > %d", id, bin, res);
-		return false;
+	int c_bin = 0;
+	POAGetImageBin(id, &c_bin);
+	if (c_bin != bin) {
+		res = POASetImageBin(id, bin);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageBin(%d, %d) > %d", id, bin, res);
+			return false;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageBin(%d, %d)", id, bin);
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageBin(%d, %d)", id, bin);
 
+	int c_fw = 0, c_fh = 0;
+	POAGetImageSize(id, &c_fw, &c_fh);
 	int fw = frame_width / bin;
 	int fh = frame_height / bin;
-	res = POASetImageSize(id, fw, fh);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageSize(%d, %d, %d) > %d", id, fw, fh, res);
-		return false;
+	if (c_fw != fw || c_fh != fh) {
+		res = POASetImageSize(id, fw, fh);
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageSize(%d, %d, %d) > %d", id, fw, fh, res);
+			return false;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageSize(%d, %d, %d)", id, fw, fh);
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageSize(%d, %d, %d)", id, fw, fh);
 
+	int c_fl = 0, c_ft = 0;
+	POAGetImageStartPos(id, &c_fl, &c_ft);
 	int fl = frame_left / bin;
 	int ft = frame_top / bin;
+	if (c_fl != fl || c_ft != ft) {
 	res = POASetImageStartPos(id, fl, ft);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d) > %d", id, fl, ft, res);
-		return false;
+		if (res) {
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d) > %d", id, fl, ft, res);
+			return false;
+		}
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d)", id, fl, ft);
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetImageStartPos(%d, %d, %d)", id, fl, ft);
 
 	int pf = get_pixel_format(device);
 	res = POASetImageFormat(id, pf);
@@ -264,19 +276,10 @@ static bool playerone_setup_exposure(indigo_device *device, double exposure, int
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_EXPOSURE, %d)", id, exposure_value.intValue);
 
-	POAConfigValue gain_value;
-	gain_value.intValue = (long)(CCD_GAIN_ITEM->number.value);
-	res = POASetConfig(id, POA_GAIN, gain_value, POA_FALSE);
-	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GAIN, %d) > %d", id, gain_value.intValue, res);
-		return false;
-	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GAIN, %d)", id, gain_value.intValue);
-
 	PRIVATE_DATA->exp_bin = bin;
-	PRIVATE_DATA->exp_frame_width = frame_width;
-	PRIVATE_DATA->exp_frame_height = frame_height;
+	POAGetImageSize(id, &PRIVATE_DATA->exp_frame_width, &PRIVATE_DATA->exp_frame_height);
+	PRIVATE_DATA->exp_frame_width *= bin;
+	PRIVATE_DATA->exp_frame_height *= bin;
 	PRIVATE_DATA->exp_bpp = (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -424,7 +427,12 @@ static void exposure_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE - 1024, 2000);
+				res = POAGetImageData(
+					id,
+					PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+					(int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_bpp / 8),
+					2000
+				);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
