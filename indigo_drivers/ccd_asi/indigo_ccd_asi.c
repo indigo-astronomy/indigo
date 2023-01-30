@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0024
+#define DRIVER_VERSION 0x0025
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -325,10 +325,20 @@ static bool asi_setup_exposure(indigo_device *device, double exposure, int frame
 		} else INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASISetControlValue(%d, ASI_EXPOSURE) = %d", id, res);
 	}
 
-	PRIVATE_DATA->exp_bin_x = horizontal_bin;
-	PRIVATE_DATA->exp_bin_y = vertical_bin;
-	PRIVATE_DATA->exp_frame_width = frame_width;
-	PRIVATE_DATA->exp_frame_height = frame_height;
+	res = ASIGetROIFormat(id, &c_frame_width, &c_frame_height, &c_bin, &c_pixel_format);
+	if (res) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetROIFormat(%d) = %d", id, res);
+		PRIVATE_DATA->exp_bin_x = horizontal_bin;
+		PRIVATE_DATA->exp_bin_y = vertical_bin;
+		PRIVATE_DATA->exp_frame_width = frame_width;
+		PRIVATE_DATA->exp_frame_height = frame_height;
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetROIFormat(%d, %d, %d, %d, %d, %d)", id, c_frame_left, c_frame_top, c_frame_width, c_frame_height, c_bin);
+		PRIVATE_DATA->exp_bin_x = c_bin;
+		PRIVATE_DATA->exp_bin_y = c_bin;
+		PRIVATE_DATA->exp_frame_width = c_frame_width * c_bin;
+		PRIVATE_DATA->exp_frame_height = c_frame_height * c_bin;
+	}
 	PRIVATE_DATA->exp_bpp = (int)CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
