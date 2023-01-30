@@ -28,6 +28,13 @@
 #define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_ccd_playerone"
 
+/* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
+   Peter insists to have it disabled for MacOS.
+*/
+#if !defined(INDIGO_MACOS)
+#define POA_SAFE_READOUT
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -417,6 +424,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				PRIVATE_DATA->can_check_temperature = false;
 			}
+#ifdef POA_SAFE_READOUT
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				POABool is_ready = POA_FALSE;
 				const int sleep_time = 10000; /* 0.01s */
@@ -437,6 +445,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					exposure_failed = true;
 				}
 			}
+#endif /* POA_SAFE_READOUT */
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -533,10 +542,11 @@ static void streaming_timer_callback(indigo_device *device) {
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 					PRIVATE_DATA->can_check_temperature = false;
 				}
+#ifdef POA_SAFE_READOUT
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					POABool is_ready = POA_FALSE;
-					const int sleep_time = 10000; /* 0.01s */
-					int count = 1000; /* 1000 * 10000us = 10s, so wait 10s for the data to become ready */
+					const int sleep_time = 1000; /* 0.001s */
+					int count = 10000; /* 10000 * 1000us = 10s, so wait 10s for the data to become ready */
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = POAImageReady(id, &is_ready);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -553,6 +563,7 @@ static void streaming_timer_callback(indigo_device *device) {
 						exposure_failed = true;
 					}
 				}
+#endif /* POA_SAFE_READOUT */
 				CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -586,7 +597,6 @@ static void streaming_timer_callback(indigo_device *device) {
 			POAStopExposure(id);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		}
-		//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
 		res = POA_ERROR_EXPOSURE_FAILED;
 		exposure_failed = true;
@@ -1819,8 +1829,11 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 			last_action = action;
 
 			const char *sdk_version = POAGetSDKVersion();
+#ifdef POA_SAFE_READOUT
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s (safe readout enabled)", sdk_version);
+#else
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "POA SDK v. %s", sdk_version);
-
+#endif /* POA_SAFE_READOUT */
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, POA_VENDOR_ID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
