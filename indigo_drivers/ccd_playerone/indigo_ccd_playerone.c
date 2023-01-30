@@ -1358,7 +1358,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
-		/* ASI cameras work with binx = biny for we force it here */
+		/* Player One cameras work with binx = biny for we force it here */
 		if (prev_h_bin != horizontal_bin) {
 			vertical_bin =
 			CCD_BIN_HORIZONTAL_ITEM->number.target =
