@@ -1352,10 +1352,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
+		int prev_h_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int prev_v_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		/* ASI cameras work with binx = biny for we force it here */
+		if (prev_h_bin != horizontal_bin) {
+			vertical_bin =
+			CCD_BIN_HORIZONTAL_ITEM->number.target =
+			CCD_BIN_HORIZONTAL_ITEM->number.value =
+			CCD_BIN_VERTICAL_ITEM->number.target =
+			CCD_BIN_VERTICAL_ITEM->number.value = horizontal_bin;
+		} else if (prev_v_bin != vertical_bin) {
+			horizontal_bin =
+			CCD_BIN_HORIZONTAL_ITEM->number.target =
+			CCD_BIN_HORIZONTAL_ITEM->number.value =
+			CCD_BIN_VERTICAL_ITEM->number.target =
+			CCD_BIN_VERTICAL_ITEM->number.value = vertical_bin;
+		}
 		char name[32] = "";
 		for (int i = 0; i < PIXEL_FORMAT_PROPERTY->count; i++) {
 			if (PIXEL_FORMAT_PROPERTY->items[i].sw.value) {
