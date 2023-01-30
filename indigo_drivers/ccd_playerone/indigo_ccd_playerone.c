@@ -391,6 +391,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	};
 	int id = PRIVATE_DATA->dev_id;
 	POAErrors res = POA_OK;
+	bool exposure_failed = false;
 	POACameraState state;
 	PRIVATE_DATA->can_check_temperature = false;
 	if (playerone_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
@@ -407,22 +408,34 @@ static void exposure_timer_callback(indigo_device *device) {
 				if (POAGetCameraState(id, &state) == POA_OK && state != STATE_EXPOSING) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "State != EXPOSING");
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-					break;
-				}
-				if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					POAStopExposure(PRIVATE_DATA->dev_id);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-					CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+					exposure_failed = true;
 					break;
 				}
 				PRIVATE_DATA->can_check_temperature = true;
-				indigo_usleep(1000000);
+				indigo_usleep(ONE_SECOND_DELAY);
 				CCD_EXPOSURE_ITEM->number.value--;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				PRIVATE_DATA->can_check_temperature = false;
+			}
+			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+				POABool is_ready = POA_FALSE;
+				const int sleep_time = 10000; /* 0.01s */
+				int count = 1000; /* 1000 * 10000us = 10s, so wait 10s for the data to become ready */
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				res = POAImageReady(id, &is_ready);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				while(!is_ready && res == POA_OK && count >= 0) {
+					indigo_usleep(sleep_time);
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					POAImageReady(id, &is_ready);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					count--;
+				}
+				if (res != POA_OK || count < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAImageReady(%d, %d) > %d, count = %d", id, is_ready, res, count);
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					exposure_failed = true;
+				}
 			}
 			CCD_EXPOSURE_ITEM->number.value = 0;
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -436,6 +449,8 @@ static void exposure_timer_callback(indigo_device *device) {
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
+					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					exposure_failed = true;
 				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size, 2000);
 					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
@@ -448,13 +463,17 @@ static void exposure_timer_callback(indigo_device *device) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = POAStopExposure(id);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-			if (res)
+			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAStopExposure(%d) > %d", id, res);
-			else
+				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				exposure_failed = true;
+			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStopExposure(%d)", id);
+			}
 		}
 	} else {
 		res = POA_ERROR_EXPOSURE_FAILED;
+		exposure_failed = true;
 	}
 	PRIVATE_DATA->can_check_temperature = true;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -467,7 +486,11 @@ static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_ALERT_STATE) {
 		indigo_ccd_failure_cleanup(device);
 	}
-	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	if (exposure_failed) {
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed!");
+	} else {
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+	}
 	PRIVATE_DATA->can_check_temperature = true;
 }
 
@@ -482,6 +505,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	};
 	int id = PRIVATE_DATA->dev_id;
 	POAErrors res = POA_OK;
+	bool exposure_failed = false;
 	POACameraState state;
 	PRIVATE_DATA->can_check_temperature = false;
 	if (playerone_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
@@ -494,31 +518,55 @@ static void streaming_timer_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStartExposure(%d, false) > %d", id, res);
 			while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
-				while (CCD_STREAMING_EXPOSURE_ITEM->number.value > 1) {
-					if (POAGetCameraState(id, &state) == POA_OK && state != STATE_EXPOSING) {
+				while (CCD_STREAMING_EXPOSURE_ITEM->number.value >= 1) {
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					res = POAGetCameraState(id, &state);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					if (res == POA_OK && state != STATE_EXPOSING) {
 						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						exposure_failed = true;
 						break;
 					}
-					if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						POAStopExposure(PRIVATE_DATA->dev_id);
-						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-						CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-						break;
-					}
-					indigo_usleep(1000000);
+					PRIVATE_DATA->can_check_temperature = true;
+					indigo_usleep(ONE_SECOND_DELAY);
 					CCD_STREAMING_EXPOSURE_ITEM->number.value--;
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+					PRIVATE_DATA->can_check_temperature = false;
+				}
+				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+					POABool is_ready = POA_FALSE;
+					const int sleep_time = 10000; /* 0.01s */
+					int count = 1000; /* 1000 * 10000us = 10s, so wait 10s for the data to become ready */
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					res = POAImageReady(id, &is_ready);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					while(!is_ready && res == POA_OK && count >= 0) {
+						indigo_usleep(sleep_time);
+						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+						POAImageReady(id, &is_ready);
+						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+						count--;
+					}
+					if (res != POA_OK || count < 0) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAImageReady(%d, %d) > %d, count = %d", id, is_ready, res, count);
+						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						exposure_failed = true;
+					}
 				}
 				CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-					res = POAGetImageData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE - 1024, 2000);
+					res = POAGetImageData(
+						id,
+						PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+						(int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_bpp / 8),
+						2000
+					);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
+						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						exposure_failed = true;
 						break;
 					}
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size, 2000);
@@ -538,9 +586,10 @@ static void streaming_timer_callback(indigo_device *device) {
 			POAStopExposure(id);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		}
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		//pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	} else {
 		res = POA_ERROR_EXPOSURE_FAILED;
+		exposure_failed = true;
 	}
 	PRIVATE_DATA->can_check_temperature = true;
 	indigo_finalize_video_stream(device);
@@ -554,7 +603,13 @@ static void streaming_timer_callback(indigo_device *device) {
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_ALERT_STATE) {
 		indigo_ccd_failure_cleanup(device);
 	}
-	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+	if (exposure_failed) {
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, "Exposure failed!");
+	} else {
+		/* when canceled other drivers set INDIGO_OK_STATE */
+		CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+	}
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
