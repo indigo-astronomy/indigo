@@ -154,6 +154,11 @@
 #define X_CCD_FAN_PROPERTY								(PRIVATE_DATA->fan_property)
 #define X_CCD_FAN_SPEED_ITEM							(X_CCD_FAN_PROPERTY->items + 0)
 
+#define X_CCD_CONVERSION_GAIN_PROPERTY						(PRIVATE_DATA->conversion_gain_property)
+#define X_CCD_CONVERSION_GAIN_LCG_ITEM							(X_CCD_CONVERSION_GAIN_PROPERTY->items + 0)
+#define X_CCD_CONVERSION_GAIN_HCG_ITEM							(X_CCD_CONVERSION_GAIN_PROPERTY->items + 1)
+#define X_CCD_CONVERSION_GAIN_HDR_ITEM							(X_CCD_CONVERSION_GAIN_PROPERTY->items + 2)
+
 typedef struct {
 	SDK_TYPE(DeviceV2) cam;
 	SDK_HANDLE handle;
@@ -170,6 +175,7 @@ typedef struct {
 	pthread_mutex_t mutex;
 	indigo_property *advanced_property;
 	indigo_property *fan_property;
+	indigo_property *conversion_gain_property;
 } DRIVER_PRIVATE_DATA;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -491,7 +497,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_IMAGE_FORMAT_PROPERTY->count = CCD_STREAMING_PROPERTY->hidden ? 5 : 6;
 		CCD_GAIN_PROPERTY->hidden = false;
 		if ((flags & SDK_DEF(FLAG_MONO)) == 0) {
-			X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_MAIN_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
+			X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
 			if (X_CCD_ADVANCED_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", SDK_DEF(CONTRAST_MIN), SDK_DEF(CONTRAST_MAX), 1, SDK_DEF(CONTRAST_DEF));
@@ -504,11 +510,23 @@ static indigo_result ccd_attach(indigo_device *device) {
 			indigo_init_number_item(X_CCD_B_GAIN_ITEM, "B_GAIN", "Blue gain", SDK_DEF(WBGAIN_MIN), SDK_DEF(WBGAIN_MAX), 1, SDK_DEF(WBGAIN_DEF));
 		}
 		if (flags & SDK_DEF(FLAG_FAN)) {
-			X_CCD_FAN_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_FAN", CCD_MAIN_GROUP, "Fan control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			X_CCD_FAN_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_FAN", CCD_ADVANCED_GROUP, "Fan control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (X_CCD_FAN_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(X_CCD_FAN_SPEED_ITEM, "FAN_SPEED", "Fan speed", 0, 0, 1, 0);
 		}
+		if (flags & SDK_DEF(FLAG_CG) || flags & SDK_DEF(FLAG_CGHDR)) {
+			X_CCD_CONVERSION_GAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_CONVERSION_GAIN", CCD_ADVANCED_GROUP, "Gonversion gain", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			if (X_CCD_CONVERSION_GAIN_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_LCG_ITEM, "LCG", "Low conversion gain", true);
+			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_HCG_ITEM, "HCG", "High conversion gain", false);
+			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_HDR_ITEM, "HDR", "High dynamic range", false);
+			if (flags & SDK_DEF(FLAG_CG)) {
+				X_CCD_CONVERSION_GAIN_PROPERTY->count = 2;
+			}
+		}
+
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -523,6 +541,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 		if (X_CCD_FAN_PROPERTY && indigo_property_match(X_CCD_FAN_PROPERTY, property))
 			indigo_define_property(device, X_CCD_FAN_PROPERTY, NULL);
+		if (X_CCD_CONVERSION_GAIN_PROPERTY && indigo_property_match(X_CCD_CONVERSION_GAIN_PROPERTY, property))
+			indigo_define_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -621,6 +641,24 @@ static void ccd_connect_callback(indigo_device *device) {
 				X_CCD_FAN_SPEED_ITEM->number.value = (double)value;
 				indigo_define_property(device, X_CCD_FAN_PROPERTY, NULL);
 			}
+			if (X_CCD_CONVERSION_GAIN_PROPERTY) {
+				int value = 0;
+				result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_CG), &value);
+				if (result >= 0) {
+					switch (value) {
+					case 0:
+						indigo_set_switch(X_CCD_CONVERSION_GAIN_PROPERTY, X_CCD_CONVERSION_GAIN_LCG_ITEM, true);
+						break;
+					case 1:
+						indigo_set_switch(X_CCD_CONVERSION_GAIN_PROPERTY, X_CCD_CONVERSION_GAIN_HCG_ITEM, true);
+						break;
+					case 2:
+						indigo_set_switch(X_CCD_CONVERSION_GAIN_PROPERTY, X_CCD_CONVERSION_GAIN_HDR_ITEM, true);
+						break;
+					}
+				}
+				indigo_define_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
+			}
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
 			result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
@@ -643,6 +681,8 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 		if (X_CCD_FAN_PROPERTY)
 			indigo_delete_property(device, X_CCD_FAN_PROPERTY, NULL);
+		if (X_CCD_CONVERSION_GAIN_PROPERTY)
+			indigo_delete_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -924,6 +964,28 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, X_CCD_FAN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (X_CCD_CONVERSION_GAIN_PROPERTY && indigo_property_match_defined(X_CCD_CONVERSION_GAIN_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CCD_CONVERSION_GAIN
+		indigo_property_copy_values(X_CCD_CONVERSION_GAIN_PROPERTY, property, false);
+		X_CCD_CONVERSION_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		int value = 0;
+		if (X_CCD_CONVERSION_GAIN_LCG_ITEM->sw.value) {
+			value = 0;
+		} else if (X_CCD_CONVERSION_GAIN_HCG_ITEM->sw.value) {
+			value = 1;
+		} else if (X_CCD_CONVERSION_GAIN_HDR_ITEM->sw.value) {
+			value = 2;
+		}
+		result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_CG), value);
+		if (result < 0) {
+			X_CCD_CONVERSION_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Option(OPTION_CG, %d) -> %08x", value, result);
+			indigo_update_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, "Requested conversion gain is not supported");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_CG, %d) -> %08x", value, result);
+			indigo_update_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
@@ -944,6 +1006,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(X_CCD_ADVANCED_PROPERTY);
 	if (X_CCD_FAN_PROPERTY)
 		indigo_release_property(X_CCD_FAN_PROPERTY);
+	if (X_CCD_CONVERSION_GAIN_PROPERTY)
+		indigo_release_property(X_CCD_CONVERSION_GAIN_PROPERTY);
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
