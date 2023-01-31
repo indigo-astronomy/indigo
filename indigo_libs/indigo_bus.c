@@ -108,7 +108,7 @@ indigo_property INDIGO_ALL_PROPERTIES;
 static indigo_log_levels indigo_log_level = INDIGO_LOG_ERROR;
 bool indigo_use_syslog = false;
 
-void (*indigo_log_message_handler)(const char *message) = NULL;
+void (*indigo_log_message_handler)(indigo_log_levels level, const char *message) = NULL;
 
 char indigo_local_service_name[INDIGO_NAME_SIZE] = "";
 bool indigo_reshare_remote_devices = false;
@@ -168,7 +168,8 @@ int clock_gettime(clockid_t clk_id, struct timespec *ts) {
 }
 #endif
 
-void indigo_log_message(const char *format, va_list args) {
+void indigo_log_base(indigo_log_levels level, const char *format, va_list args) {
+
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
 	if (indigo_last_message == NULL) {
@@ -178,7 +179,7 @@ void indigo_log_message(const char *format, va_list args) {
 	vsnprintf(indigo_last_message, LOG_MESSAGE_SIZE, format, args);
 	char *line = indigo_last_message;
 	if (indigo_log_message_handler != NULL) {
-		indigo_log_message_handler(indigo_last_message);
+		indigo_log_message_handler(level, indigo_last_message);
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
   } else if (indigo_use_syslog) {
 		static bool initialize = true;
@@ -251,10 +252,14 @@ void indigo_log_message(const char *format, va_list args) {
 	pthread_mutex_unlock(&log_mutex);
 }
 
+void indigo_log_message(const char *format, va_list args) {
+	indigo_log_base(INDIGO_LOG_PLAIN, format, args);
+}
+
 void indigo_error(const char *format, ...) {
 	va_list argList;
 	va_start(argList, format);
-	indigo_log_message(format, argList);
+	indigo_log_base(INDIGO_LOG_ERROR, format, argList);
 	va_end(argList);
 }
 
@@ -262,7 +267,7 @@ void indigo_log(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_INFO) {
 		va_list argList;
 		va_start(argList, format);
-		indigo_log_message(format, argList);
+		indigo_log_base(INDIGO_LOG_INFO, format, argList);
 		va_end(argList);
 	}
 }
@@ -271,7 +276,7 @@ void indigo_trace(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_TRACE) {
 		va_list argList;
 		va_start(argList, format);
-		indigo_log_message(format, argList);
+		indigo_log_base(INDIGO_LOG_TRACE, format, argList);
 		va_end(argList);
 	}
 }
@@ -280,7 +285,7 @@ void indigo_debug(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_DEBUG) {
 		va_list argList;
 		va_start(argList, format);
-		indigo_log_message(format, argList);
+		indigo_log_base(INDIGO_LOG_DEBUG, format, argList);
 		va_end(argList);
 	}
 }
@@ -392,7 +397,7 @@ indigo_result indigo_attach_device(indigo_device *device) {
 		if (devices[i] == NULL) {
 			if (i > max_index) {
 				max_index = i;
-				indigo_debug("%d devices attached", max_index + 1);
+				INDIGO_TRACE(indigo_trace("%d devices attached", max_index + 1));
 			}
 			devices[i] = device;
 			pthread_mutex_unlock(&device_mutex);
@@ -425,7 +430,7 @@ indigo_result indigo_attach_client(indigo_client *client) {
 		if (clients[i] == NULL) {
 			if (i > max_index) {
 				max_index = i;
-				indigo_debug("%d clients attached", max_index + 1);
+				INDIGO_TRACE(indigo_trace("%d clients attached", max_index + 1));
 			}
 			clients[i] = client;
 			pthread_mutex_unlock(&client_mutex);

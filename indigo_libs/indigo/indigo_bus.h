@@ -202,6 +202,7 @@ typedef enum {
 
 
 typedef enum {
+	INDIGO_LOG_PLAIN = -1,
 	INDIGO_LOG_ERROR,
 	INDIGO_LOG_INFO,
 	INDIGO_LOG_DEBUG,
@@ -383,13 +384,17 @@ extern char indigo_log_name[];
 
 /** If set, handler is used to print message instead of stderr/syslog output.
  */
-extern void (*indigo_log_message_handler)(const char *message);
+extern void (*indigo_log_message_handler)(indigo_log_levels level, const char *message);
 
 /** Get INDIGO version major.minor-build.
  */
 extern void indigo_get_version(int *major, int *minor, int *build);
 
-/** Print diagnostic messages.
+/** Print diagnostic messages - low level.
+ */
+extern void indigo_log_base(indigo_log_levels level, const char *format, va_list args);
+
+/** Print diagnostic messages - plain.
  */
 extern void indigo_log_message(const char *format, va_list args);
 
@@ -402,7 +407,7 @@ extern void indigo_debug(const char *format, ...);
 /** Print diagnostic messages on error level, wrap calls to INDIGO_ERROR() macro.
  */
 extern void indigo_error(const char *format, ...);
-/** Print diagnostic messages on log level, wrap calls to INDIGO_LOG() macro.
+/** Print diagnostic messages on info level, wrap calls to INDIGO_LOG() macro.
  */
 extern void indigo_log(const char *format, ...);
 

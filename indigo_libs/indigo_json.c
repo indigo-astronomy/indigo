@@ -315,7 +315,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			}
 			pointer = buffer;
 			buffer[count] = 0;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", handle, buffer));
 		}
 		switch (state) {
 			case ERROR:

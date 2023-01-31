@@ -186,7 +186,7 @@ static void rotator_connect_callback(indigo_device *device) {
 				X_RATE_PROPERTY->state = INDIGO_OK_STATE;
 			else
 				X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 			tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 			optec_sleep(device);
 			indigo_define_property(device, X_ROTATE_PROPERTY, NULL);
@@ -232,13 +232,13 @@ static void rotator_position_callback(indigo_device *device) {
 						continue;
 					}
 					if (*response == 'F') {
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %d!F", PRIVATE_DATA->handle, steps));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %d!F", PRIVATE_DATA->handle, steps));
 						ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					}
 					if (indigo_select(PRIVATE_DATA->handle, 10000) > 0) {
 						read(PRIVATE_DATA->handle, response + 1, 10);
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 					}
 				}
 			}
@@ -266,7 +266,7 @@ static void rotator_home_callback(indigo_device *device) {
 						continue;
 					}
 					if (*response == 'F') {
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %d!F", PRIVATE_DATA->handle, steps));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %d!F", PRIVATE_DATA->handle, steps));
 						ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = 0;
 						ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 						X_HOME_PROPERTY->state = INDIGO_OK_STATE;
@@ -274,7 +274,7 @@ static void rotator_home_callback(indigo_device *device) {
 					}
 					if (indigo_select(PRIVATE_DATA->handle, 10000) > 0) {
 						read(PRIVATE_DATA->handle, response + 1, 10);
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 					}
 				}
 			}
@@ -297,7 +297,7 @@ static void rotator_rate_callback(indigo_device *device) {
 		X_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	optec_sleep(device);
 	indigo_update_property(device, X_RATE_PROPERTY, NULL);
@@ -312,7 +312,7 @@ static void rotator_rotate_callback(indigo_device *device) {
 		X_ROTATE_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		X_ROTATE_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	optec_sleep(device);
 	X_ROTATE_ITEM->number.target = 0;
