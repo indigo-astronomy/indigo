@@ -1203,7 +1203,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, "Target Temperature = %.2f", PRIVATE_DATA->target_temperature);
 		}
 		return INDIGO_OK;
+		// ------------------------------------------------------------------------------- CCD_OFFSET
 	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, "Exposure in progress, offset can not be changed.");
+			return INDIGO_OK;
+		}
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1212,10 +1218,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		POAErrors res = POASetConfig(PRIVATE_DATA->dev_id, POA_OFFSET, value, POA_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_BLACK_LEVEL, %d) > %d", PRIVATE_DATA->dev_id, value.intValue, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_OFFSET, %d) > %d", PRIVATE_DATA->dev_id, value.intValue, res);
 			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_BLACK_LEVEL, %d)", PRIVATE_DATA->dev_id, value.intValue);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_OFFSET, %d)", PRIVATE_DATA->dev_id, value.intValue);
 			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
