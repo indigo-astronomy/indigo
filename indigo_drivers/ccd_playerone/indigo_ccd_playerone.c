@@ -73,6 +73,19 @@
 #define RAW16_NAME                 "RAW 16"
 #define MONO8_NAME                 "MONO 8"
 
+
+#define POA_PRESETS_PROPERTY      (PRIVATE_DATA->playerone_presets_property)
+
+#define POA_HIGHEST_DR_ITEM       (POA_PRESETS_PROPERTY->items+0)
+#define POA_HIGHEST_DR_NAME       "POA_HIGHEST_DR"
+
+#define POA_LOWEST_RN_ITEM        (POA_PRESETS_PROPERTY->items+1)
+#define POA_LOWEST_RN_NAME        "POA_LOWEST_RN"
+
+#define POA_GAIN_HCG_ITEM         (POA_PRESETS_PROPERTY->items+2)
+#define POA_GAIN_HCG_NAME         "POA_GAIN_HCG"
+
+
 #define POA_ADVANCED_PROPERTY      (PRIVATE_DATA->playerone_advanced_property)
 
 // gp_bits is used as boolean
@@ -99,7 +112,14 @@ typedef struct {
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
 	POACameraProperties property;
+	int gain_highest_dr;
+	int offset_highest_dr;
+	int offset_unity_gain;
+	int gain_lowerst_rn;
+	int offset_lowest_rn;
+	int gain_hcg;
 	indigo_property *pixel_format_property;
+	indigo_property *playerone_presets_property;
 	indigo_property *playerone_advanced_property;
 } playerone_private_data;
 
@@ -161,6 +181,8 @@ static indigo_result playerone_enumerate_properties(indigo_device *device, indig
 	if (IS_CONNECTED) {
 		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
 			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+		if (indigo_property_match(POA_PRESETS_PROPERTY, property))
+			indigo_define_property(device, POA_PRESETS_PROPERTY, NULL);
 		if (indigo_property_match(POA_ADVANCED_PROPERTY, property))
 			indigo_define_property(device, POA_ADVANCED_PROPERTY, NULL);
 	}
@@ -796,6 +818,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 			}
 		}
 		CCD_MODE_PROPERTY->count = mode_count;
+
+		// -------------------------------------------------------------------------------- POA_PRESETS
+		POA_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "POA_PRESETS", CCD_ADVANCED_GROUP, "Presets (Gain, Offset)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
+		if (POA_PRESETS_PROPERTY == NULL)
+			return INDIGO_FAILED;
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		CCD_STREAMING_PROPERTY->hidden = false;
 		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
@@ -1067,6 +1094,22 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 	return INDIGO_OK;
 }
 
+static void adjust_preset_switches(indigo_device *device) {
+	POA_HIGHEST_DR_ITEM->sw.value = false;
+	POA_LOWEST_RN_ITEM->sw.value = false;
+	POA_GAIN_HCG_ITEM->sw.value = false;
+
+	if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_highest_dr) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_highest_dr)) {
+		POA_HIGHEST_DR_ITEM->sw.value = true;
+	} else if (((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_lowerst_rn) &&
+	    ((int)CCD_OFFSET_ITEM->number.value == PRIVATE_DATA->offset_lowest_rn)) {
+		POA_LOWEST_RN_ITEM->sw.value = true;
+	} else if ((int)CCD_GAIN_ITEM->number.value == PRIVATE_DATA->gain_hcg) {
+		POA_GAIN_HCG_ITEM->sw.value = true;
+	}
+}
+
 static void handle_ccd_connect_property(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -1079,7 +1122,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				int res = POAGetConfigsCount(id, &ctrl_count);
+				POAErrors res = POAGetConfigsCount(id, &ctrl_count);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res)
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetNumOfControls(%d) > %d", id, res);
@@ -1093,6 +1136,37 @@ static void handle_ccd_connect_property(indigo_device *device) {
 					init_camera_property(device, ctrl_caps);
 				}
 				indigo_define_property(device, POA_ADVANCED_PROPERTY, NULL);
+
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+				res = POAGetGainOffset(
+					id,
+					&PRIVATE_DATA->offset_highest_dr,
+					&PRIVATE_DATA->offset_unity_gain,
+					&PRIVATE_DATA->gain_lowerst_rn,
+					&PRIVATE_DATA->offset_lowest_rn,
+					&PRIVATE_DATA->gain_hcg
+				);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				if (res) {
+					INDIGO_DRIVER_LOG( DRIVER_NAME, "POAGetGainOffset(%d) = %d", id, res);
+				}
+
+				//PRIVATE_DATA->gain_unity_gain = get_unity_gain(device);
+				PRIVATE_DATA->gain_highest_dr = 0;
+
+				char item_desc[100];
+				sprintf(item_desc, "Highest Dynamic Range (%d, %d)", PRIVATE_DATA->gain_highest_dr, PRIVATE_DATA->offset_highest_dr);
+				indigo_init_switch_item(POA_HIGHEST_DR_ITEM, POA_HIGHEST_DR_NAME, item_desc, false);
+
+				sprintf(item_desc, "Lowest Readout Noise (%d, %d)", PRIVATE_DATA->gain_lowerst_rn, PRIVATE_DATA->offset_lowest_rn);
+				indigo_init_switch_item(POA_LOWEST_RN_ITEM, POA_LOWEST_RN_NAME, item_desc, false);
+
+				sprintf(item_desc, "High Conversion Gain (%d)", PRIVATE_DATA->gain_hcg);
+				indigo_init_switch_item(POA_GAIN_HCG_ITEM, POA_GAIN_HCG_NAME, item_desc, false);
+
+				adjust_preset_switches(device);
+				indigo_define_property(device, POA_PRESETS_PROPERTY, NULL);
+
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->has_temperature_sensor) {
@@ -1115,6 +1189,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 			}
 			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
+			indigo_delete_property(device, POA_PRESETS_PROPERTY, NULL);
 			indigo_delete_property(device, POA_ADVANCED_PROPERTY, NULL);
 			playerone_close(device);
 			device->is_connected = false;
@@ -1224,6 +1299,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_OFFSET, %d)", PRIVATE_DATA->dev_id, value.intValue);
 			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		adjust_preset_switches(device);
+		indigo_update_property(device, POA_PRESETS_PROPERTY, NULL);
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_GAIN
@@ -1247,7 +1324,61 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GAIN, %d)", PRIVATE_DATA->dev_id, value.intValue);
 			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		}
+		adjust_preset_switches(device);
+		indigo_update_property(device, POA_PRESETS_PROPERTY, NULL);
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		return INDIGO_OK;
+		// ------------------------------------------------------------------------------- POA_PRESETS
+	} else if (indigo_property_match_changeable(POA_PRESETS_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			POA_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, POA_PRESETS_PROPERTY, "Exposure in progress, gain and offset presets can not be changed.");
+			return INDIGO_OK;
+		}
+		POA_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(POA_PRESETS_PROPERTY, property, false);
+		int gain = 0, offset = 0;
+		if (POA_HIGHEST_DR_ITEM->sw.value) {
+			gain = PRIVATE_DATA->gain_highest_dr;
+			offset = PRIVATE_DATA->offset_highest_dr;
+		} else if (POA_LOWEST_RN_ITEM->sw.value) {
+			gain = PRIVATE_DATA->gain_lowerst_rn;
+			offset = PRIVATE_DATA->offset_lowest_rn;
+		} else if (POA_GAIN_HCG_ITEM->sw.value) {
+			gain = PRIVATE_DATA->gain_hcg;
+			offset = CCD_OFFSET_ITEM->number.value;
+		}
+		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+		POA_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+
+		POAConfigValue value;
+		value.intValue = (long)gain;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		POAErrors res = POASetConfig(PRIVATE_DATA->dev_id, POA_GAIN, value, POA_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_GAIN) = %d", PRIVATE_DATA->dev_id, res);
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			POA_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+
+		value.intValue = (long)offset;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = POASetConfig(PRIVATE_DATA->dev_id, POA_OFFSET, value, POA_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_OFFSET) = %d", PRIVATE_DATA->dev_id, res);
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			POA_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+
+		CCD_GAIN_ITEM->number.value = gain;
+		CCD_OFFSET_ITEM->number.value = offset;
+
+		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+		indigo_update_property(device, POA_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
@@ -1431,6 +1562,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
+	indigo_release_property(POA_PRESETS_PROPERTY);
 	indigo_release_property(POA_ADVANCED_PROPERTY);
 
 	return indigo_ccd_detach(device);
