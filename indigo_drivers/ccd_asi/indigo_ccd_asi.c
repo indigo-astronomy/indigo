@@ -1228,6 +1228,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- ASI_PRESETS
 	} else if (indigo_property_match_changeable(ASI_PRESETS_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			ASI_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ASI_PRESETS_PROPERTY, "Exposure in progress, gain and offset presets can not be changed.");
+			return INDIGO_OK;
+		}
 		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(ASI_PRESETS_PROPERTY, property, false);
 		int gain = 0, offset = 0;
