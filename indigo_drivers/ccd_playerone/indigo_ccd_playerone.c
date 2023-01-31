@@ -1222,6 +1222,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_GAIN
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_GAIN_PROPERTY, "Exposure in progress, gain can not be changed.");
+			return INDIGO_OK;
+		}
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);

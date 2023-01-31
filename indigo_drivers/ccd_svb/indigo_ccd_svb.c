@@ -1183,6 +1183,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_GAMMA
 	} else if (indigo_property_match_changeable(CCD_GAMMA_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_GAMMA_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_GAMMA_PROPERTY, "Exposure in progress, gamma can not be changed.");
+			return INDIGO_OK;
+		}
 		CCD_GAMMA_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAMMA_PROPERTY, property, false);
 		long value = (long)CCD_GAMMA_ITEM->number.value;
@@ -1200,6 +1205,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_OFFSET
 	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_OFFSET_PROPERTY, "Exposure in progress, offset can not be changed.");
+			return INDIGO_OK;
+		}
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 		long value = (long)CCD_OFFSET_ITEM->number.value;
@@ -1217,6 +1227,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_GAIN
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_GAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_GAIN_PROPERTY, "Exposure in progress, gain can not be changed.");
+			return INDIGO_OK;
+		}
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		long value = (long)CCD_GAIN_ITEM->number.value;
