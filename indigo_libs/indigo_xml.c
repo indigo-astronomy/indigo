@@ -1364,7 +1364,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			pointer = buffer;
 			buffer_end = buffer + count;
 			buffer[count] = 0;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", handle, buffer));
 		}
 		if (c == '&') {
 			entity_pointer = entity_buffer;

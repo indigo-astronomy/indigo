@@ -201,9 +201,9 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			break;
 	}
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {
@@ -336,9 +336,9 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 			break;
 	}
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {
@@ -383,9 +383,9 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	else
 		indigo_write(handle, output_buffer, size);
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {
@@ -412,9 +412,9 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	char *pnt = output_buffer;
 	int size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {

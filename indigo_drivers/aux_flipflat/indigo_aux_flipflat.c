@@ -144,11 +144,11 @@ static void aux_connection_handler(indigo_device *device) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected on %s", DEVICE_PORT_ITEM->text.value);
 				int bits = TIOCM_DTR;
 				int result = ioctl(PRIVATE_DATA->handle, TIOCMBIS, &bits);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← DTR %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "set");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- DTR %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "set");
 				indigo_usleep(100000);
 				bits = TIOCM_RTS;
 				result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d ← RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
 				indigo_usleep(2 * ONE_SECOND_DELAY);
 				if (flipflat_command(PRIVATE_DATA->handle, ">P000", response) && *response == '*') {
 					if (sscanf(response, "*P%02d000", &PRIVATE_DATA->type) != 1)
