@@ -895,7 +895,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		return INDIGO_OK;
 	}
 
-	if (ctrl_caps.ControlType == ASI_BRIGHTNESS) {
+	if (ctrl_caps.ControlType == ASI_OFFSET) {
 		CCD_OFFSET_PROPERTY->hidden = false;
 		if(ctrl_caps.IsWritable)
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
@@ -905,9 +905,9 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		CCD_OFFSET_ITEM->number.min = ctrl_caps.MinValue;
 		CCD_OFFSET_ITEM->number.max = ctrl_caps.MaxValue;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASIGetControlValue(id, ASI_BRIGHTNESS, &value, &unused);
+		res = ASIGetControlValue(id, ASI_OFFSET, &value, &unused);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_BRIGHTNESS) = %d", id, res);
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_OFFSET) = %d", id, res);
 		CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = value;
 		CCD_OFFSET_ITEM->number.step = 1;
 		return INDIGO_OK;
@@ -1185,10 +1185,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_BRIGHTNESS, (long)(CCD_OFFSET_ITEM->number.value), ASI_FALSE);
+		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_OFFSET, (long)(CCD_OFFSET_ITEM->number.value), ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_OFFSET) = %d", PRIVATE_DATA->dev_id, res);
 			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 			ASI_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
@@ -1256,10 +1256,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_BRIGHTNESS, (long)offset, ASI_FALSE);
+		res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_OFFSET, (long)offset, ASI_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_BRIGHTNESS) = %d", PRIVATE_DATA->dev_id, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_OFFSET) = %d", PRIVATE_DATA->dev_id, res);
 			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
 			ASI_PRESETS_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
