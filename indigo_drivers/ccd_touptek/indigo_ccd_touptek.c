@@ -990,6 +990,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_CCD_ADVANCED_PROPERTY);
+			indigo_save_property(device, NULL, X_CCD_CONVERSION_GAIN_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
