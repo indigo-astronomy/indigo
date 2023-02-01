@@ -466,12 +466,12 @@ bool indigo_printf(int handle, const char *format, ...) {
 		va_start(args, format);
 		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
 		va_end(args);
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d < %s", handle, buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s", handle, buffer));
 		bool result = indigo_write(handle, buffer, length);
 		indigo_free_large_buffer(buffer);
 		return result;
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d < %s", handle, format));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s", handle, format));
 		return indigo_write(handle, format, strlen(format));
 	}
 }
