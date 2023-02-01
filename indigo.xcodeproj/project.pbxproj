@@ -4675,6 +4675,7 @@
 		9DCB036722E9D8D600A7A2E5 /* indigo_windows.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_windows.sln; sourceTree = "<group>"; };
 		9DCBF26527E9CC6C00746580 /* indigo_fits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_fits.h; sourceTree = "<group>"; };
 		9DD01BE6298A63A50044FB3B /* indigo_build.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_build.c; sourceTree = "<group>"; };
+		9DD01BEA298A81DD0044FB3B /* make_indigo_build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = make_indigo_build.sh; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9DDBAE181E2D2099004FE70F /* indigo_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_timer.h; sourceTree = "<group>"; };
 		9DDEFC0121EE35A000657C8F /* libhidapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhidapi.a; path = build/lib/libhidapi.a; sourceTree = "<group>"; };
@@ -7177,6 +7178,7 @@
 				9D7D59191DF6B21B003D2B59 /* rjsmin.py */,
 				599A240D1DBEC5BA0020BF8F /* cltools.sh */,
 				5963BBCD21D2A88100F1EC5A /* metainfo.sh */,
+				9DD01BEA298A81DD0044FB3B /* make_indigo_build.sh */,
 			);
 			path = tools;
 			sourceTree = "<group>";
