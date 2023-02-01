@@ -89,7 +89,7 @@ clean-all: status
 #---------------------------------------------------------------------
 
 version:
-	sh ../tools/make_indigo_build.sh >indigo_build.c
+	sh ../tools/make_indigo_build.sh $(INDIGO_BUILD) >indigo_build.c
 	$(CC) $(CFLAGS) -c indigo_build.c -o indigo_build.o
 
 #---------------------------------------------------------------------
