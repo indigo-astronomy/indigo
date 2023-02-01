@@ -28,7 +28,15 @@
 
 /** INDIGO Build number
  */
-#define INDIGO_BUILD "215"
+#define INDIGO_BUILD indigo_build
+
+/** INDIGO Build commit
+ */
+#define INDIGO_BUILD_COMMIT indigo_build_commit
+
+/** INDIGO Build time
+ */
+#define INDIGO_BUILD_TIME indigo_build_time
 
 /** Conditional compilation wrapper for TRACE log level
  */
@@ -65,5 +73,9 @@
 /** Conditional compilation wrapper for DEBUG log level (for drivers)
  */
 #define INDIGO_DEBUG_DRIVER(c) c
+
+extern char *indigo_build;
+extern char *indigo_build_commit;
+extern char *indigo_build_time;
 
 #endif /* indigo_config_h */
