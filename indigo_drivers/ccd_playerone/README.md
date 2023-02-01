@@ -22,5 +22,8 @@ indigo_server indigo_ccd_playerone
 
 ## Status: Stable
 
-Tested with MARS-C II
+## Tested with:
+
+* MARS-C II
+* Poseidon C Pro
 

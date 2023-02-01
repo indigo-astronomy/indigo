@@ -2,6 +2,63 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-216] - 02 Feb Thu 2023
+### Overall
+- logging cleanup, indigo_log_message_handler signature changed
+- INDIGO_BUILD_COMMIT, INDIGO_BUILD_TIME added in log
+
+### New Drivers:
+- indigo_ccd_omegonpro:
+	- Omegon camera driver based on Touptek
+
+- indigo_ccd_ssg:
+	- Orion StarShootG camera driver based on Touptek
+
+- indigo_ccd_rising:
+	- RisingCam camera driver based on Touptek
+	- also supports Levenhuk and EHD imaging cameras
+	- SDK version 53.22004.20230115
+
+- indigo_ccd_mallin:
+	- MallinCam camera driver based on Touptek
+
+### Driver Fixes:
+- indigo_ccd_touptek & family:
+	- fix exposure problem on linux
+	- fix camera changed (use part of serial number on mac, when sdk is fixed will be used on linux too)
+	- add conversion gain control HCG, LCG and HDR
+
+- indigo_ccd_touptek:
+	- SDK version 53.22004.20230115
+
+- indigo_wheel_asi:
+	- fix error handling at connect
+
+- indigo_wheel_playerone:
+	- issues fixed
+
+- indigo_ccd_altair:
+	- SDK version 53.22004.20230115
+
+- indigo_ccd_playerone:
+	 - update SDK to v.3.1.1
+	 - many bug fixes (including frame readdout. binnig, ROIs, temperatire reading)
+	 - add workaround for a bug in POAGetImageData()
+	 - code refacroring
+	 - added gain/offset presets property
+	 - gain/offset can not be changed while exposure is in progress
+	 - add warning for USB2 connection as some cameras do not work on USB2 (SDK issue)
+
+- indigo_ccd_svbony:
+	- connect bin_x = bin_y as SvBony camseras have one bin
+	- fix frame size when binning
+	- gain/offset can not be changed while exposure is in progress
+
+- indigo_ccd_asi:
+	- fix frame size when binning
+	- gain/offset can not be changed while exposure is in progress
+
+
 # [2.0-214] - 20 Jan Thu 2023
 
 ### Driver Fixes:
