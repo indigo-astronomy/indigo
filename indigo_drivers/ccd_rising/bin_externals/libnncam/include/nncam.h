@@ -1,7 +1,7 @@
 #ifndef __nncam_h__
 #define __nncam_h__
 
-/* Version: 53.21907.20221217 */
+/* Version: 53.22004.20230115 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -260,7 +260,7 @@ typedef struct {
 } NncamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.21907.20221217
+    get the version of this dll/so/dylib, which is: 53.22004.20230115
 */
 #if defined(_WIN32)
 NNCAM_API(const wchar_t*)   Nncam_Version();
@@ -675,7 +675,7 @@ NNCAM_API(HRESULT)  Nncam_get_RealTime(HNncam h, int* val);
 
 /* discard the current internal frame cache.
     If DDR present, also discard the frames in the DDR.
-    Nncam_Flush is obsolete, it's a synonyms for Nncam_put_Option(h, NNCAM_OPTION_FLUSH, 3)
+    Nncam_Flush is obsolete, recommend using Nncam_put_Option(h, NNCAM_OPTION_FLUSH, 3)
 */
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_Flush(HNncam h);
@@ -1043,7 +1043,7 @@ NNCAM_API(HRESULT)  Nncam_get_AfParam(HNncam h, NncamAfParam* pAfParam);
 #define NNCAM_IOCONTROLTYPE_SET_STROBEDELAYTIME         0x24
 #define NNCAM_IOCONTROLTYPE_GET_STROBEDURATION          0x25 /* Strobe duration time in microseconds, [0, 5000000] */
 #define NNCAM_IOCONTROLTYPE_SET_STROBEDURATION          0x26
-#define NNCAM_IOCONTROLTYPE_GET_USERVALUE               0x27 /* 
+#define NNCAM_IOCONTROLTYPE_GET_USERVALUE               0x27 /*
                                                                   bit0 => Opto-isolated output
                                                                   bit1 => GPIO0 output
                                                                   bit2 => GPIO1 output
@@ -1080,6 +1080,7 @@ NNCAM_API(HRESULT)  Nncam_IoControl(HNncam h, unsigned ioLineNumber, unsigned nT
 NNCAM_API(HRESULT)  Nncam_write_UART(HNncam h, const unsigned char* pData, unsigned nDataLen);
 NNCAM_API(HRESULT)  Nncam_read_UART(HNncam h, unsigned char* pBuffer, unsigned nBufferLen);
 
+NNCAM_API(const NncamModelV2**) Nncam_all_Model(); /* return all supported USB model array */
 NNCAM_API(const NncamModelV2*) Nncam_query_Model(HNncam h);
 NNCAM_API(const NncamModelV2*) Nncam_get_Model(unsigned short idVendor, unsigned short idProduct);
 
@@ -1217,19 +1218,19 @@ NNCAM_API(HRESULT)  Nncam_put_ExpoCallback(HNncam h, PINNCAM_EXPOSURE_CALLBACK f
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_put_ChromeCallback(HNncam h, PINNCAM_CHROME_CALLBACK funChrome, void* ctxChrome);
 
-/* Nncam_FfcOnePush is obsolete, it's a synonyms for Nncam_FfcOnce. */
+/* Nncam_FfcOnePush is obsolete, recommend using Nncam_FfcOnce. */
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_FfcOnePush(HNncam h);
 
-/* Nncam_DfcOnePush is obsolete, it's a synonyms for Nncam_DfcOnce. */
+/* Nncam_DfcOnePush is obsolete, recommend using Nncam_DfcOnce. */
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_DfcOnePush(HNncam h);
 
-/* Nncam_AwbOnePush is obsolete, it's a synonyms for Nncam_AwbOnce. */
+/* Nncam_AwbOnePush is obsolete, recommend using Nncam_AwbOnce. */
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_AwbOnePush(HNncam h, PINNCAM_TEMPTINT_CALLBACK funTT, void* ctxTT);
 
-/* Nncam_AbbOnePush is obsolete, it's a synonyms for Nncam_AbbOnce. */
+/* Nncam_AbbOnePush is obsolete, recommend using Nncam_AbbOnce. */
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_AbbOnePush(HNncam h, PINNCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB);
 
@@ -1250,7 +1251,7 @@ NNCAM_API(void)   Nncam_HotPlug(PNNCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
 #if defined(_WIN32)
-/* Nncam_put_TempTintInit is obsolete, it's a synonyms for Nncam_AwbOnce. */
+/* Nncam_put_TempTintInit is obsolete, recommend using Nncam_AwbOnce. */
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_put_TempTintInit(HNncam h, PINNCAM_TEMPTINT_CALLBACK funTT, void* ctxTT);
 
@@ -1266,7 +1267,7 @@ NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_get_ProcessMode(HNncam h, unsigned* pnProcessMode);
 #endif
 
-/* obsolete, please use Nncam_put_Roi and Nncam_get_Roi */
+/* obsolete, recommend using Nncam_put_Roi and Nncam_get_Roi */
 NNCAM_DEPRECATED
 NNCAM_API(HRESULT)  Nncam_put_RoiMode(HNncam h, int bRoiMode, int xOffset, int yOffset);
 NNCAM_DEPRECATED
