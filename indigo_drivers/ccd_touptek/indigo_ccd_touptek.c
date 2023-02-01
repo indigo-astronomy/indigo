@@ -516,7 +516,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			indigo_init_number_item(X_CCD_FAN_SPEED_ITEM, "FAN_SPEED", "Fan speed", 0, 0, 1, 0);
 		}
 		if (flags & SDK_DEF(FLAG_CG) || flags & SDK_DEF(FLAG_CGHDR)) {
-			X_CCD_CONVERSION_GAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_CONVERSION_GAIN", CCD_ADVANCED_GROUP, "Gonversion gain", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+			X_CCD_CONVERSION_GAIN_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_CONVERSION_GAIN", CCD_ADVANCED_GROUP, "Conversion gain", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 			if (X_CCD_CONVERSION_GAIN_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(X_CCD_CONVERSION_GAIN_LCG_ITEM, "LCG", "Low conversion gain", true);
