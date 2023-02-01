@@ -869,6 +869,8 @@
 		9DC496A522C39A170052AB3E /* indigo_aux_sqm.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DC4969A22C39A170052AB3E /* indigo_aux_sqm.c */; };
 		9DCBF26627E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
 		9DCBF26727E9CC6C00746580 /* indigo_fits.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DCBF26527E9CC6C00746580 /* indigo_fits.h */; };
+		9DD01BE7298A63A50044FB3B /* indigo_build.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DD01BE6298A63A50044FB3B /* indigo_build.c */; };
+		9DD01BE8298A63A50044FB3B /* indigo_build.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DD01BE6298A63A50044FB3B /* indigo_build.c */; };
 		9DDBAE191E2D2099004FE70F /* indigo_timer.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DDBAE171E2D2099004FE70F /* indigo_timer.c */; };
 		9DDBAE1A1E2D2099004FE70F /* indigo_timer.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DDBAE181E2D2099004FE70F /* indigo_timer.h */; };
 		9DDEFBF121EE346700657C8F /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 599C9A481DA022C0008BBCC1 /* libindigo.dylib */; };
@@ -4672,6 +4674,7 @@
 		9DCB036622E9D8D600A7A2E5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DCB036722E9D8D600A7A2E5 /* indigo_windows.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_windows.sln; sourceTree = "<group>"; };
 		9DCBF26527E9CC6C00746580 /* indigo_fits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_fits.h; sourceTree = "<group>"; };
+		9DD01BE6298A63A50044FB3B /* indigo_build.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_build.c; sourceTree = "<group>"; };
 		9DDBAE171E2D2099004FE70F /* indigo_timer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_timer.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9DDBAE181E2D2099004FE70F /* indigo_timer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_timer.h; sourceTree = "<group>"; };
 		9DDEFC0121EE35A000657C8F /* libhidapi.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libhidapi.a; path = build/lib/libhidapi.a; sourceTree = "<group>"; };
@@ -9302,6 +9305,7 @@
 				9DCB034622E9B9DE00A7A2E5 /* indigo */,
 				59E2DA0D263837BB00D3D4B5 /* libjpeg */,
 				59D967EE21A2EA930069A64C /* Makefile */,
+				9DD01BE6298A63A50044FB3B /* indigo_build.c */,
 				59D381A81D9592A400E87393 /* indigo_bus.c */,
 				595B88EB242CFEA2008CA4E2 /* indigo_token.c */,
 				9DB918061DFEA42E00678721 /* indigo_io.c */,
@@ -14110,6 +14114,7 @@
 				598A1B63259BA94A00C0B34C /* indigo_ccd_sx.c in Sources */,
 				598A1B64259BA94A00C0B34C /* nex_open.c in Sources */,
 				598A1B65259BA94A00C0B34C /* indigo_mount_simulator.c in Sources */,
+				9DD01BE8298A63A50044FB3B /* indigo_build.c in Sources */,
 				598A1B66259BA94A00C0B34C /* indigo_ptp_sony.c in Sources */,
 				598A1B67259BA94A00C0B34C /* libuvc_stream.c in Sources */,
 				59A413392971E54C00F0A80B /* Makefile.inc in Sources */,
@@ -14455,6 +14460,7 @@
 				59A4132E2971E54C00F0A80B /* indigo_wheel_playerone.c in Sources */,
 				59111CF7285F504300E57194 /* indigocat_neptune.c in Sources */,
 				595F2927211E211200380EF4 /* DDHidKeyboard.m in Sources */,
+				9DD01BE7298A63A50044FB3B /* indigo_build.c in Sources */,
 				590DD87D2127590600F2B978 /* indigo_wheel_optec.c in Sources */,
 				59B81EC523376FE000DFA81B /* indigo_aux_arteskyflat.c in Sources */,
 				59111CFD285F504300E57194 /* indigocat_jupiter.c in Sources */,
