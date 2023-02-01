@@ -20,6 +20,6 @@ INDIGO Astronomy open-source license (3rd party library is closed source).
 
 indigo_server indigo_wheel_playerone
 
-## Status: Under development
+## Status: Stable
 
-* Not tested
+* Phoenix Filter Wheel
