@@ -1,7 +1,7 @@
 #ifndef __toupcam_h__
 #define __toupcam_h__
 
-/* Version: 53.21849.20221208 */
+/* Version: 53.22004.20230115 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -260,7 +260,7 @@ typedef struct {
 } ToupcamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.21849.20221208
+    get the version of this dll/so/dylib, which is: 53.22004.20230115
 */
 #if defined(_WIN32)
 TOUPCAM_API(const wchar_t*)   Toupcam_Version();
@@ -675,7 +675,7 @@ TOUPCAM_API(HRESULT)  Toupcam_get_RealTime(HToupcam h, int* val);
 
 /* discard the current internal frame cache.
     If DDR present, also discard the frames in the DDR.
-    Toupcam_Flush is obsolete, it's a synonyms for Toupcam_put_Option(h, TOUPCAM_OPTION_FLUSH, 3)
+    Toupcam_Flush is obsolete, recommend using Toupcam_put_Option(h, TOUPCAM_OPTION_FLUSH, 3)
 */
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_Flush(HToupcam h);
@@ -1043,7 +1043,7 @@ TOUPCAM_API(HRESULT)  Toupcam_get_AfParam(HToupcam h, ToupcamAfParam* pAfParam);
 #define TOUPCAM_IOCONTROLTYPE_SET_STROBEDELAYTIME         0x24
 #define TOUPCAM_IOCONTROLTYPE_GET_STROBEDURATION          0x25 /* Strobe duration time in microseconds, [0, 5000000] */
 #define TOUPCAM_IOCONTROLTYPE_SET_STROBEDURATION          0x26
-#define TOUPCAM_IOCONTROLTYPE_GET_USERVALUE               0x27 /* 
+#define TOUPCAM_IOCONTROLTYPE_GET_USERVALUE               0x27 /*
                                                                   bit0 => Opto-isolated output
                                                                   bit1 => GPIO0 output
                                                                   bit2 => GPIO1 output
@@ -1080,6 +1080,7 @@ TOUPCAM_API(HRESULT)  Toupcam_IoControl(HToupcam h, unsigned ioLineNumber, unsig
 TOUPCAM_API(HRESULT)  Toupcam_write_UART(HToupcam h, const unsigned char* pData, unsigned nDataLen);
 TOUPCAM_API(HRESULT)  Toupcam_read_UART(HToupcam h, unsigned char* pBuffer, unsigned nBufferLen);
 
+TOUPCAM_API(const ToupcamModelV2**) Toupcam_all_Model(); /* return all supported USB model array */
 TOUPCAM_API(const ToupcamModelV2*) Toupcam_query_Model(HToupcam h);
 TOUPCAM_API(const ToupcamModelV2*) Toupcam_get_Model(unsigned short idVendor, unsigned short idProduct);
 
@@ -1217,19 +1218,19 @@ TOUPCAM_API(HRESULT)  Toupcam_put_ExpoCallback(HToupcam h, PITOUPCAM_EXPOSURE_CA
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_put_ChromeCallback(HToupcam h, PITOUPCAM_CHROME_CALLBACK funChrome, void* ctxChrome);
 
-/* Toupcam_FfcOnePush is obsolete, it's a synonyms for Toupcam_FfcOnce. */
+/* Toupcam_FfcOnePush is obsolete, recommend using Toupcam_FfcOnce. */
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_FfcOnePush(HToupcam h);
 
-/* Toupcam_DfcOnePush is obsolete, it's a synonyms for Toupcam_DfcOnce. */
+/* Toupcam_DfcOnePush is obsolete, recommend using Toupcam_DfcOnce. */
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_DfcOnePush(HToupcam h);
 
-/* Toupcam_AwbOnePush is obsolete, it's a synonyms for Toupcam_AwbOnce. */
+/* Toupcam_AwbOnePush is obsolete, recommend using Toupcam_AwbOnce. */
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_AwbOnePush(HToupcam h, PITOUPCAM_TEMPTINT_CALLBACK funTT, void* ctxTT);
 
-/* Toupcam_AbbOnePush is obsolete, it's a synonyms for Toupcam_AbbOnce. */
+/* Toupcam_AbbOnePush is obsolete, recommend using Toupcam_AbbOnce. */
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_AbbOnePush(HToupcam h, PITOUPCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB);
 
@@ -1250,7 +1251,7 @@ TOUPCAM_API(void)   Toupcam_HotPlug(PTOUPCAM_HOTPLUG funHotPlug, void* ctxHotPlu
 #endif
 
 #if defined(_WIN32)
-/* Toupcam_put_TempTintInit is obsolete, it's a synonyms for Toupcam_AwbOnce. */
+/* Toupcam_put_TempTintInit is obsolete, recommend using Toupcam_AwbOnce. */
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_put_TempTintInit(HToupcam h, PITOUPCAM_TEMPTINT_CALLBACK funTT, void* ctxTT);
 
@@ -1266,7 +1267,7 @@ TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_get_ProcessMode(HToupcam h, unsigned* pnProcessMode);
 #endif
 
-/* obsolete, please use Toupcam_put_Roi and Toupcam_get_Roi */
+/* obsolete, recommend using Toupcam_put_Roi and Toupcam_get_Roi */
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_put_RoiMode(HToupcam h, int bRoiMode, int xOffset, int yOffset);
 TOUPCAM_DEPRECATED
