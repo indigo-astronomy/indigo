@@ -1379,7 +1379,7 @@ static void add_drivers(const char *folder) {
 static void server_main() {
 	indigo_start_usb_event_handler();
 	indigo_start();
-	indigo_log("INDIGO server %d.%d-%s built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
+	indigo_log("INDIGO server %d.%d-%s built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, INDIGO_BUILD_TIME, INDIGO_BUILD_COMMIT);
 
 	indigo_use_blob_caching = true;
 
