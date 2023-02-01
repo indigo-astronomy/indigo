@@ -1208,6 +1208,12 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				adjust_preset_switches(device);
 				indigo_define_property(device, POA_PRESETS_PROPERTY, NULL);
 
+				POACameraProperties properties = {0};
+				POAGetCameraProperties(id, &properties);
+				if (!properties.isUSB3Speed) {
+					indigo_send_message(device, "[Warning] Camera is connected to USB2 port and it may not work.", device->name);
+				}
+
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->has_temperature_sensor) {

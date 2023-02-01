@@ -1,3 +1,7 @@
+2023.01.18(3.1.1)
+- Optimize gain settings for Poseidon series 
+- Fix that on PI, Snap Mode exposure, after stop exposure manually, start exposure again, can not get data from camera
+
 2022.12.02(3.1.0)
 - Enhance the stability of camera output data when using USB HUB
 - Optimize the cooling logic of cooled camera
