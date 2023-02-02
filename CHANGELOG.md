@@ -36,6 +36,7 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_wheel_playerone:
 	- issues fixed
+	- SDK version 1.1.1
 
 - indigo_ccd_altair:
 	- SDK version 53.22004.20230115
