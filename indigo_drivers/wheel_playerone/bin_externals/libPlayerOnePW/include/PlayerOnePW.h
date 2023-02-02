@@ -120,7 +120,7 @@ POA_PW_API  PWErrors POAGetPWPropertiesByHandle(int Handle, PWProperties *pProp)
 
 
 /**
- * @brief POAOpenPW open the PW, note: the following API functions need to open the PW first, NOTE: When opened successfully, phoenix filter wheel will goto 1st position.
+ * @brief POAOpenPW open the PW, note: the following API functions need to open the PW first
  *
  * @param Handle (input), get from in the PWProperties structure, use POAGetPWProperties function
  *
@@ -156,6 +156,7 @@ POA_PW_API  PWErrors POAClosePW(int Handle);
  *         PW_ERROR_NOT_OPENED: the PW is not opened
  *         PW_ERROR_IS_MOVING: the PW is moving
  *         PW_ERROR_OPERATION_FAILED: operation failed
+ *         PW_ERROR_FIRMWARE_ERROR: firmware error,may be filter position and hole are not aligned, please call POAResetPW
  */
 POA_PW_API  PWErrors POAGetCurrentPosition(int Handle, int *pPosition);
 
