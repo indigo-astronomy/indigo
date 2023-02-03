@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -72,9 +72,18 @@ static int find_index_by_device_handle(int handle);
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	int res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &(PRIVATE_DATA->current_slot));
+	if (res != PW_OK && res != PW_ERROR_IS_MOVING) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->current_slot, res);
+		WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, WHEEL_SLOT_PROPERTY, "Set filter failed");
+		return;
+	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->current_slot, res);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	PRIVATE_DATA->current_slot++;
+	/* PRIVATE_DATA->current_slot is modified only if PW_OK is returned,
+	   this prevents counting while FW is moving
+	*/
+	if (res == PW_OK) PRIVATE_DATA->current_slot++;
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 	if (PRIVATE_DATA->current_slot == PRIVATE_DATA->target_slot) {
 		WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
