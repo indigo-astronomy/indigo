@@ -379,7 +379,7 @@ int indigo_read(int handle, char *buffer, long length) {
 #endif
 		if (bytes_read <= 0) {
 			if (bytes_read < 0)
-				INDIGO_ERROR(indigo_error("%s(): %s", __FUNCTION__, strerror(errno)));
+				INDIGO_ERROR(indigo_error("%d -> // %s", strerror(errno)));
 			return (int)bytes_read;
 		}
 		total_bytes += bytes_read;
@@ -430,7 +430,7 @@ int indigo_read_line(int handle, char *buffer, int length) {
 				break;
 		} else {
 			errno = ECONNRESET;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> Connection reset", handle));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> // Connection reset", handle));
 			return -1;
 		}
 	}
@@ -449,7 +449,7 @@ bool indigo_write(int handle, const char *buffer, long length) {
 		long bytes_written = write(handle, buffer, remains);
 #endif
 		if (bytes_written < 0) {
-			INDIGO_ERROR(indigo_error("%s(%d): %s", __FUNCTION__, handle, strerror(errno)));
+			INDIGO_ERROR(indigo_error("%d <- // %s", handle, strerror(errno)));
 			return false;
 		}
 		if (bytes_written == remains)

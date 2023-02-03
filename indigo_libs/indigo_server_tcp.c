@@ -90,7 +90,7 @@ static struct resource {
 
 static void start_worker_thread(int *client_socket) {
 	int socket = *client_socket;
-	INDIGO_LOG(indigo_log("Worker thread started socket = %d", socket));
+	INDIGO_LOG(indigo_log("%d <- // Worker thread started", socket));
 	server_callback(++client_count);
 	int res = 0;
 	char c;
@@ -99,7 +99,7 @@ static void start_worker_thread(int *client_socket) {
 
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
-			INDIGO_LOG(indigo_log("Protocol switched to XML"));
+			INDIGO_LOG(indigo_log("%d <- // Protocol switched to XML", socket));
 			indigo_client *protocol_adapter = indigo_xml_device_adapter(socket, socket);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
@@ -107,7 +107,7 @@ static void start_worker_thread(int *client_socket) {
 			indigo_detach_client(protocol_adapter);
 			indigo_release_xml_device_adapter(protocol_adapter);
 		} else if (c == '{') {
-			INDIGO_LOG(indigo_log("Protocol switched to JSON"));
+			INDIGO_LOG(indigo_log("%d <- // Protocol switched to JSON", socket));
 			indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, false);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
@@ -157,7 +157,7 @@ static void start_worker_thread(int *client_socket) {
 							base64_encode((unsigned char *)websocket_key, shaHash, 20);
 							INDIGO_PRINTF(socket, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
 							INDIGO_PRINTF(socket, "\r\n");
-							INDIGO_LOG(indigo_log("Protocol switched to JSON-over-WebSockets"));
+							INDIGO_LOG(indigo_log("%d <- // Protocol switched to JSON-over-WebSockets", socket));
 							indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
 							assert(protocol_adapter != NULL);
 							indigo_attach_client(protocol_adapter);
@@ -188,7 +188,7 @@ static void start_worker_thread(int *client_socket) {
 									working_size = entry->size = item_copy.blob.size;
 									entry->content = item_copy.blob.value;
 								} else {
-									INDIGO_ERROR(indigo_error("Failed to populate BLOB"));
+									INDIGO_ERROR(indigo_error("%d <- // Failed to populate BLOB", socket));
 								}
 							}
 							void *working_copy = indigo_use_blob_buffering ? (free_on_exit = malloc(working_size)) : entry->content;
@@ -221,9 +221,9 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(socket, "Content-Length: %ld\r\n", working_size);
 								INDIGO_PRINTF(socket, "\r\n");
 								if (indigo_write(socket, working_copy, working_size)) {
-									INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, working_size));
+									INDIGO_LOG(indigo_log("%d <- // %ld bytes", socket, working_size));
 								} else {
-									INDIGO_ERROR(indigo_error("%s -> Failed (%s)", request, strerror(errno)));
+									INDIGO_ERROR(indigo_error("%d <- // %s", socket, strerror(errno)));
 									goto failure;
 								}
 								if (indigo_use_blob_buffering) {
@@ -240,7 +240,7 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(socket, "\r\n");
 								INDIGO_PRINTF(socket, "Out of buffer memory!\r\n");
-								INDIGO_LOG(indigo_log("%s -> Failed", request));
+								INDIGO_LOG(indigo_log("%d <- // Out of buffer memory", socket));
 								goto failure;
 							}
 						} else {
@@ -248,7 +248,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_PRINTF(socket, "BLOB not found!\r\n");
-							INDIGO_LOG(indigo_log("%s -> Failed", request));
+							INDIGO_LOG(indigo_log("%d <- // BLOB not found", socket));
 							goto failure;
 						}
 					} else {
@@ -265,7 +265,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_PRINTF(socket, "%s not found!\r\n", path);
-							INDIGO_LOG(indigo_log("%s -> Failed", request));
+							INDIGO_LOG(indigo_log("%d <- // %s not found", socket, path));
 							goto failure;
 						} else if (resource->handler) {
 							keep_alive = resource->handler(socket, use_imagebytes ? "GET/IMAGEBYTES" : (use_gzip ? "GET/GZIP" : "GET"), path, params);
@@ -277,7 +277,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "Content-Encoding: gzip\r\n");
 							INDIGO_PRINTF(socket, "\r\n");
 							indigo_write(socket, (const char *)resource->data, resource->length);
-							INDIGO_LOG(indigo_log("%s -> OK (%d bytes)", request, resource->length));
+							INDIGO_LOG(indigo_log("%d <- // %d bytes", socket, resource->length));
 						} else if (resource->file_name) {
 							char file_name[256];
 							struct stat file_stat;
@@ -288,7 +288,7 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(socket, "\r\n");
 								INDIGO_PRINTF(socket, "%s not found (%s)\r\n", file_name, strerror(errno));
-								INDIGO_LOG(indigo_log("%s -> Failed to stat/open file (%s, %s)", request, file_name, strerror(errno)));
+								INDIGO_LOG(indigo_log("%d <- // Failed to stat/open file (%s, %s)", socket, file_name, strerror(errno)));
 								goto failure;
 							} else {
 								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
@@ -301,13 +301,13 @@ static void start_worker_thread(int *client_socket) {
 								while (remaining > 0) {
 									long count = read(handle, buffer, remaining < sizeof(buffer) ? remaining : sizeof(buffer));
 									if (count < 0) {
-										INDIGO_LOG(indigo_log("%s -> Failed to read file (%s)", request, strerror(errno)));
+										INDIGO_LOG(indigo_log("%d -> // %s", socket, strerror(errno)));
 										break;
 									}
 									if (indigo_write(socket, buffer, count)) {
-										INDIGO_LOG(indigo_log("%s -> OK (%ld bytes)", request, count));
+										INDIGO_LOG(indigo_log("%d <- // %ld bytes", socket, count));
 									} else {
-										INDIGO_LOG(indigo_log("%s -> Failed (%s)", request, strerror(errno)));
+										INDIGO_LOG(indigo_log("%d <- // %s", socket, strerror(errno)));
 										goto failure;
 									}
 									remaining -= count;
@@ -348,7 +348,7 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(socket, "\r\n");
 								INDIGO_PRINTF(socket, "Out of buffer memory!\r\n");
-								INDIGO_LOG(indigo_log("%s -> Failed", request));
+								INDIGO_LOG(indigo_log("%d <- // Out of buffer memory", socket));
 								goto failure;
 							}
 						} else {
@@ -356,7 +356,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_PRINTF(socket, "BLOB not found!\r\n");
-							INDIGO_LOG(indigo_log("%s -> Failed", request));
+							INDIGO_LOG(indigo_log("%d <- // BLOB not found", socket));
 							goto failure;
 						}
 					} else {
@@ -373,7 +373,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_PRINTF(socket, "%s not found!\r\n", path);
-							INDIGO_LOG(indigo_log("%s -> Failed", request));
+							INDIGO_LOG(indigo_log("%d <- // %s not found", socket, path));
 							goto failure;
 						} else if (resource->handler) {
 							keep_alive = resource->handler(socket, "PUT", path, NULL);
@@ -385,7 +385,7 @@ static void start_worker_thread(int *client_socket) {
 				}
 			}
 		} else {
-			INDIGO_LOG(indigo_log("Unrecognised protocol"));
+			INDIGO_LOG(indigo_log("%d -> // Unrecognised protocol", socket));
 		}
 	}
 failure:
@@ -398,7 +398,7 @@ failure:
 		free(free_on_exit);
 	if (unlock_at_exit)
 		pthread_mutex_unlock(unlock_at_exit);
-	INDIGO_LOG(indigo_log("Worker thread finished"));
+	INDIGO_LOG(indigo_log("%d <- // Worker thread finished", socket));
 }
 
 void indigo_server_shutdown() {
