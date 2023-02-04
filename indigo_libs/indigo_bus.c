@@ -184,7 +184,7 @@ void indigo_log_base(indigo_log_levels level, const char *format, va_list args) 
 	if (arrow && arrow - line < 16) {
 		strncpy(prefix, line, arrow - line + 4);
 	} else {
-		arrow = strnstr(line, " <- ", 16);
+		arrow = strstr(line, " <- ");
 		if (arrow && arrow - line < 16) {
 			strncpy(prefix, line, arrow - line + 4);
 		}
