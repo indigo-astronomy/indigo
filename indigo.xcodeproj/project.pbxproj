@@ -629,10 +629,7 @@
 		59A413372971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */; };
 		59A413382971E54C00F0A80B /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A4132D2971E54C00F0A80B /* Makefile.inc */; };
 		59A413392971E54C00F0A80B /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A4132D2971E54C00F0A80B /* Makefile.inc */; };
-		59A4133A2971E76700F0A80B /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; };
 		59A4133B2971E76800F0A80B /* libPlayerOnePW.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		59A4133D2971E76D00F0A80B /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; };
-		59A4133E2971E79700F0A80B /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; };
 		59A4133F2971FBA400F0A80B /* libPlayerOneCamera.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */; };
 		59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D3F21A330FB000B6F27 /* sbigudrv.h */; };
 		59A52D6521A33617000B6F27 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D5721A3360B000B6F27 /* gxccd.h */; };
@@ -4745,13 +4742,10 @@
 				598A1C0D259BA94A00C0B34C /* libdsusb.a in Frameworks */,
 				598A1C0F259BA94A00C0B34C /* libhidapi.a in Frameworks */,
 				598A1C11259BA94A00C0B34C /* libapogee.a in Frameworks */,
-				59A4133E2971E79700F0A80B /* libPlayerOnePW.dylib in Frameworks */,
 				598A1C13259BA94A00C0B34C /* libdc1394.dylib in Frameworks */,
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
 				598A1C18259BA94A00C0B34C /* libc++.tbd in Frameworks */,
 				598A1C19259BA94A00C0B34C /* libusb-1.0.0.dylib in Frameworks */,
-				59A4133A2971E76700F0A80B /* libPlayerOnePW.dylib in Frameworks */,
-				59A4133D2971E76D00F0A80B /* libPlayerOnePW.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -13949,7 +13943,7 @@
 			isa = PBXProject;
 			attributes = {
 				LastSwiftUpdateCheck = 0800;
-				LastUpgradeCheck = 1240;
+				LastUpgradeCheck = 1420;
 				ORGANIZATIONNAME = "CloudMakers, s. r. o.";
 				TargetAttributes = {
 					598A1B51259BA94A00C0B34C = {
@@ -14629,6 +14623,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -14636,7 +14631,7 @@
 					"$(PROJECT_DIR)/build/lib",
 					"$(PROJECT_DIR)/build/drivers",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "indigo/**";
@@ -14647,6 +14642,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -14654,7 +14650,7 @@
 					"$(PROJECT_DIR)/build/lib",
 					"$(PROJECT_DIR)/build/drivers",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				USER_HEADER_SEARCH_PATHS = "indigo/**";
@@ -14696,6 +14692,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -14767,6 +14764,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_IDENTITY = "-";
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -14803,13 +14801,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/build/lib",
 					"$(PROJECT_DIR)/build/drivers",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -14818,13 +14817,14 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/lib",
 					"$(PROJECT_DIR)/build/lib",
 					"$(PROJECT_DIR)/build/drivers",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -14832,6 +14832,7 @@
 		598A1C9B259BA94A00C0B34C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
 				LIBRARY_SEARCH_PATHS = (
@@ -14884,6 +14885,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 				);
 				MACH_O_TYPE = mh_dylib;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
@@ -14905,6 +14907,7 @@
 		598A1C9C259BA94A00C0B34C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
 				LIBRARY_SEARCH_PATHS = (
@@ -14957,6 +14960,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 				);
 				MACH_O_TYPE = mh_dylib;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					indigo_drivers/ccd_iidc/externals/libdc1394,
@@ -14978,6 +14982,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -14997,7 +15002,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-w",
@@ -15011,6 +15016,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -15030,7 +15036,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				OTHER_LDFLAGS = (
 					"-w",
 					"-Wl,-stack_size,0x10000000",
@@ -15042,6 +15048,7 @@
 		599C9A4A1DA022C0008BBCC1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
 				LIBRARY_SEARCH_PATHS = (
@@ -15085,6 +15092,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_rising/bin_externals/libnncam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-w",
@@ -15110,6 +15118,7 @@
 		599C9A4B1DA022C0008BBCC1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
 				LIBRARY_SEARCH_PATHS = (
@@ -15153,6 +15162,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_rising/bin_externals/libnncam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				OTHER_LDFLAGS = (
 					"-w",
 					"-allow-multiple-definition",
@@ -15177,10 +15187,11 @@
 		9D1880BC1E534B5E002F75D7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
-				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -15190,7 +15201,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 					"$(PROJECT_DIR)/build/lib",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_BUNDLE_IDENTIFIER = "eu.cloudmakers.indigo-prop-tool";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -15200,10 +15211,11 @@
 		9D1880BD1E534B5E002F75D7 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
-				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_HARDENED_RUNTIME = YES;
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_atik/bin_externals/libatik",
@@ -15213,7 +15225,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_asi/bin_externals/libEFWFilter/lib/mac",
 					"$(PROJECT_DIR)/build/lib",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_BUNDLE_IDENTIFIER = "eu.cloudmakers.indigo-prop-tool";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -15224,6 +15236,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -15243,7 +15256,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-w",
@@ -15257,6 +15270,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
+				DEAD_CODE_STRIPPING = YES;
 				LD_RUNPATH_SEARCH_PATHS = "$(PROJECT_DIR)/build/lib";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -15276,7 +15290,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_asi/bin_externals/libasicamera/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_qsi/externals/qsiapi-7.6.0/lib/.libs",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 10.9;
+				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				OTHER_LDFLAGS = (
 					"-w",
 					"-Wl,-stack_size,0x10000000",
