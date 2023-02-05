@@ -32,18 +32,20 @@
 
 /** INDIGO Build commit
  */
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#define INDIGO_BUILD_COMMIT indigo_build_commit
-#else
+#if defined(INDIGO_WINDOWS)
 #define INDIGO_BUILD_COMMIT ""
+#else
+#define INDIGO_BUILD_COMMIT indigo_build_commit
+extern char *indigo_build_commit;
 #endif
 
 /** INDIGO Build time
  */
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#define INDIGO_BUILD_TIME indigo_build_time
-#else
+#if defined(INDIGO_WINDOWS)
 #define INDIGO_BUILD_TIME __DATE__
+#else
+#define INDIGO_BUILD_TIME indigo_build_time
+extern char *indigo_build_time;
 #endif
 /** Conditional compilation wrapper for TRACE log level
  */
@@ -80,9 +82,5 @@
 /** Conditional compilation wrapper for DEBUG log level (for drivers)
  */
 #define INDIGO_DEBUG_DRIVER(c) c
-
-extern char *indigo_build;
-extern char *indigo_build_commit;
-extern char *indigo_build_time;
 
 #endif /* indigo_config_h */
