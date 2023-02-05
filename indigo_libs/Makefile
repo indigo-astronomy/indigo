@@ -88,9 +88,13 @@ clean-all: status
 #
 #---------------------------------------------------------------------
 
-version:
-	sh ../tools/make_indigo_build.sh $(INDIGO_BUILD) >indigo_build.c
+indigo_build_c:
+	sh ../tools/make_indigo_build.sh >indigo_build.c
 	$(CC) $(CFLAGS) -c indigo_build.c -o indigo_build.o
+
+indigo_config.h:	../Makefile.inc
+	cp indigo/indigo_config.h indigo/indigo_config.h.orig
+	sed 's/INDIGO_BUILD\s.*/INDIGO_BUILD "$(INDIGO_BUILD)"/' indigo/indigo_config.h.orig >indigo/indigo_config.h
 
 #---------------------------------------------------------------------
 #
@@ -98,7 +102,7 @@ version:
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: indigo_build_c indigo_config.h libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
