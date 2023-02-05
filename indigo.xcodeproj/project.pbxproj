@@ -132,6 +132,11 @@
 		59463C1920DE6781004950F2 /* indigo_focuser_wemacro_bt.h in Headers */ = {isa = PBXBuildFile; fileRef = 59463C1520DE6781004950F2 /* indigo_focuser_wemacro_bt.h */; };
 		59463C1B20DE6781004950F2 /* indigo_focuser_wemacro_bt.m in Sources */ = {isa = PBXBuildFile; fileRef = 59463C1820DE6781004950F2 /* indigo_focuser_wemacro_bt.m */; };
 		59463C1C20DE7D16004950F2 /* indigo_focuser_wemacro.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C4C88320CEF107007EE330 /* indigo_focuser_wemacro.c */; };
+		5947BB902990270000040E99 /* libPlayerOneCamera.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5947BB8E2990270000040E99 /* libPlayerOneCamera.dylib */; };
+		5947BB912990270000040E99 /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5947BB8F2990270000040E99 /* libPlayerOnePW.dylib */; };
+		5947BB922990272400040E99 /* libPlayerOneCamera.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5947BB8E2990270000040E99 /* libPlayerOneCamera.dylib */; };
+		5947BB932990272400040E99 /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5947BB8F2990270000040E99 /* libPlayerOnePW.dylib */; };
+		5947BB942990272400040E99 /* libSVBCameraSDK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A68E37277DF2B0000439CC /* libSVBCameraSDK.dylib */; };
 		59487D6E221B3C19007027AE /* indigocat_star.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C6F75321FE214D0043DC52 /* indigocat_star.h */; };
 		5949DCAE265B990D00F83B7E /* indigo_bus.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381A81D9592A400E87393 /* indigo_bus.c */; };
 		5949DCAF265B991000F83B7E /* indigo_token.c in Sources */ = {isa = PBXBuildFile; fileRef = 595B88EB242CFEA2008CA4E2 /* indigo_token.c */; };
@@ -623,14 +628,10 @@
 		59A4132F2971E54C00F0A80B /* indigo_wheel_playerone.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A413172971E54C00F0A80B /* indigo_wheel_playerone.c */; };
 		59A413322971E54C00F0A80B /* PlayerOnePW.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4131D2971E54C00F0A80B /* PlayerOnePW.h */; };
 		59A413332971E54C00F0A80B /* PlayerOnePW.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4131D2971E54C00F0A80B /* PlayerOnePW.h */; };
-		59A413342971E54C00F0A80B /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; };
-		59A413352971E54C00F0A80B /* libPlayerOnePW.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; };
 		59A413362971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */; };
 		59A413372971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */; };
 		59A413382971E54C00F0A80B /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A4132D2971E54C00F0A80B /* Makefile.inc */; };
 		59A413392971E54C00F0A80B /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A4132D2971E54C00F0A80B /* Makefile.inc */; };
-		59A4133B2971E76800F0A80B /* libPlayerOnePW.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59A413212971E54C00F0A80B /* libPlayerOnePW.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		59A4133F2971FBA400F0A80B /* libPlayerOneCamera.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */; };
 		59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D3F21A330FB000B6F27 /* sbigudrv.h */; };
 		59A52D6521A33617000B6F27 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D5721A3360B000B6F27 /* gxccd.h */; };
 		59A52DF121A33E4C000B6F27 /* libfli.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52DCF21A33E34000B6F27 /* libfli.h */; };
@@ -757,7 +758,6 @@
 		59F7E5ED245878C700EF273A /* indigo_token.h in Headers */ = {isa = PBXBuildFile; fileRef = 59F7E5EC245878C700EF273A /* indigo_token.h */; };
 		59F871BD26A87162007DF91C /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
 		59F871BF26A871B6007DF91C /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
-		59F9615F293A0CB500294D7D /* libSVBCameraSDK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A68E0E277DC3D0000439CC /* libSVBCameraSDK.dylib */; };
 		59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */; };
 		59FA0B2022FCACC700A15D19 /* indigo_ptp_canon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FA0B1E22FCACC600A15D19 /* indigo_ptp_canon.c */; };
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
@@ -771,7 +771,6 @@
 		59FFB068288D3D5C00F172AC /* indigo_ccd_playerone.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */; };
 		59FFB069288D3D6500F172AC /* PlayerOneCamera.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB050288D3CB900F172AC /* PlayerOneCamera.h */; };
 		59FFB06A288D3D6600F172AC /* PlayerOneCamera.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB050288D3CB900F172AC /* PlayerOneCamera.h */; };
-		59FFB06D288D542F00F172AC /* libPlayerOneCamera.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59FFB053288D3CB900F172AC /* libPlayerOneCamera.dylib */; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */; };
 		9D35EA2B23CDB27D00B6A41F /* indigo_gps_gpsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D35EA0023CDB27D00B6A41F /* indigo_gps_gpsd.c */; };
@@ -930,17 +929,6 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		59A4133C2971E76800F0A80B /* Embed Libraries */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 10;
-			files = (
-				59A4133B2971E76800F0A80B /* libPlayerOnePW.dylib in Embed Libraries */,
-			);
-			name = "Embed Libraries";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		9D1880BA1E534B5E002F75D7 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -1191,6 +1179,8 @@
 		59463C1620DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main_bt.c; sourceTree = "<group>"; };
 		59463C1720DE6781004950F2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59463C1820DE6781004950F2 /* indigo_focuser_wemacro_bt.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_focuser_wemacro_bt.m; sourceTree = "<group>"; };
+		5947BB8E2990270000040E99 /* libPlayerOneCamera.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libPlayerOneCamera.dylib; path = build/lib/libPlayerOneCamera.dylib; sourceTree = "<group>"; };
+		5947BB8F2990270000040E99 /* libPlayerOnePW.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libPlayerOnePW.dylib; path = build/lib/libPlayerOnePW.dylib; sourceTree = "<group>"; };
 		5949DCBD265B99B600F83B7E /* libusb-1.0.la */ = {isa = PBXFileReference; lastKnownFileType = text; name = "libusb-1.0.la"; path = "build/lib/libusb-1.0.la"; sourceTree = "<group>"; };
 		5949DCBE265B9AC400F83B7E /* libusb-1.0.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libusb-1.0.a"; path = "build/lib/libusb-1.0.a"; sourceTree = "<group>"; };
 		594A912925F4D1EB002691D0 /* common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = common.h; sourceTree = "<group>"; };
@@ -4727,13 +4717,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5947BB902990270000040E99 /* libPlayerOneCamera.dylib in Frameworks */,
+				5947BB912990270000040E99 /* libPlayerOnePW.dylib in Frameworks */,
 				59D138A3283E5A9C00FCC514 /* libraw.a in Frameworks */,
-				59A4133F2971FBA400F0A80B /* libPlayerOneCamera.dylib in Frameworks */,
 				598A1D02259BAE0800C0B34C /* libatik.a in Frameworks */,
 				598A1CFB259BADCE00C0B34C /* libgps.a in Frameworks */,
 				598A1CF3259BAD9A00C0B34C /* libfli.a in Frameworks */,
 				598A1C05259BA94A00C0B34C /* libtiff.a in Frameworks */,
-				59A413352971E54C00F0A80B /* libPlayerOnePW.dylib in Frameworks */,
 				598A1C07259BA94A00C0B34C /* libfcusb.a in Frameworks */,
 				598A1C08259BA94A00C0B34C /* libgpusb.a in Frameworks */,
 				598A1C0B259BA94A00C0B34C /* libjpeg.a in Frameworks */,
@@ -4764,7 +4754,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				597C7223293CFBD80016D45A /* libjpeg.a in Frameworks */,
-				59F9615F293A0CB500294D7D /* libSVBCameraSDK.dylib in Frameworks */,
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
 				59A3219821D534FC00EC0F4A /* libEFWFilter.a in Frameworks */,
@@ -4793,9 +4782,10 @@
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
 				59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
-				59FFB06D288D542F00F172AC /* libPlayerOneCamera.dylib in Frameworks */,
 				9D495737245601B400674101 /* libusb-1.0.0.dylib in Frameworks */,
-				59A413342971E54C00F0A80B /* libPlayerOnePW.dylib in Frameworks */,
+				5947BB922990272400040E99 /* libPlayerOneCamera.dylib in Frameworks */,
+				5947BB932990272400040E99 /* libPlayerOnePW.dylib in Frameworks */,
+				5947BB942990272400040E99 /* libSVBCameraSDK.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -13151,6 +13141,8 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				5947BB8E2990270000040E99 /* libPlayerOneCamera.dylib */,
+				5947BB8F2990270000040E99 /* libPlayerOnePW.dylib */,
 				591CD0F129805E30003243AE /* libnncam.dylib */,
 				591CD0F029805E30003243AE /* libomegonprocam.dylib */,
 				591CD0EF29805E30003243AE /* libstarshootg.dylib */,
@@ -13852,7 +13844,6 @@
 				598A1B53259BA94A00C0B34C /* Sources */,
 				598A1C01259BA94A00C0B34C /* Frameworks */,
 				598A1C1A259BA94A00C0B34C /* Headers */,
-				59A4133C2971E76800F0A80B /* Embed Libraries */,
 			);
 			buildRules = (
 				598A1C99259BA94A00C0B34C /* PBXBuildRule */,
