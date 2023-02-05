@@ -49,8 +49,8 @@
 #define IMAGER_HEIGHT       		1200
 #define DSLR_WIDTH        			1600
 #define DSLR_HEIGHT       			1200
-#define GUIDER_WIDTH        		16000
-#define GUIDER_HEIGHT       		12000
+#define GUIDER_WIDTH        		1600
+#define GUIDER_HEIGHT       		1200
 
 // can be changed
 #define GUIDER_MAX_MAG					8
@@ -294,7 +294,6 @@ static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 
 static void create_frame(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->image_mutex);
-	simulator_private_data *private_data = PRIVATE_DATA;
 	if (device == PRIVATE_DATA->dslr) {
 		unsigned char *raw = (unsigned char *)(PRIVATE_DATA->dslr_image + FITS_HEADER_SIZE);
 		int size = DSLR_WIDTH * DSLR_HEIGHT * 3;
@@ -307,7 +306,7 @@ static void create_frame(indigo_device *device) {
 		}
 		void *data_out;
 		unsigned long size_out;
-		indigo_raw_to_jpeg(device, private_data->dslr_image, DSLR_WIDTH, DSLR_HEIGHT, 24, true, true, &data_out, &size_out, NULL, NULL);
+		indigo_raw_to_jpeg(device, PRIVATE_DATA->dslr_image, DSLR_WIDTH, DSLR_HEIGHT, 24, true, true, &data_out, &size_out, NULL, NULL);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value)
 			indigo_process_dslr_preview_image(device, data_out, (int)size_out);
 		indigo_process_dslr_image(device, data_out, (int)size_out, ".jpeg", CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
@@ -347,7 +346,7 @@ static void create_frame(indigo_device *device) {
 #endif
 		indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 	} else {
-		uint16_t *raw = (uint16_t *)((device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image) + FITS_HEADER_SIZE);
+		uint16_t *raw = (uint16_t *)((device == PRIVATE_DATA->guider ? PRIVATE_DATA->guider_image : PRIVATE_DATA->imager_image) + FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		int frame_left = (int)CCD_FRAME_LEFT_ITEM->number.value / horizontal_bin;
@@ -393,19 +392,19 @@ static void create_frame(indigo_device *device) {
 			bool y_flip = GUIDER_MODE_FLIP_STARS_ITEM->sw.value;
 			if (GUIDER_MODE_STARS_ITEM->sw.value || y_flip) {
 				for (int i = 0; i < PRIVATE_DATA->star_count; i++) {
-					double center_x = (private_data->star_x[i] + x_offset) / horizontal_bin;
+					double center_x = (PRIVATE_DATA->star_x[i] + x_offset) / horizontal_bin;
 					if (center_x < 0)
 						center_x += GUIDER_IMAGE_WIDTH_ITEM->number.target;
 					if (center_x >= GUIDER_IMAGE_WIDTH_ITEM->number.target)
 						center_x -= GUIDER_IMAGE_WIDTH_ITEM->number.target;
-					double center_y = (private_data->star_y[i] + (y_flip ? -y_offset : y_offset)) / vertical_bin;
+					double center_y = (PRIVATE_DATA->star_y[i] + (y_flip ? -y_offset : y_offset)) / vertical_bin;
 					if (center_y < 0)
 						center_y += GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 					if (center_y >= GUIDER_IMAGE_HEIGHT_ITEM->number.target)
 						center_y -= GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 					center_x -= frame_left;
 					center_y -= frame_top;
-					int a = private_data->star_a[i];
+					int a = PRIVATE_DATA->star_a[i];
 					int xMax = (int)round(center_x) + 8 / horizontal_bin;
 					int yMax = (int)round(center_y) + 8 / vertical_bin;
 					for (int y = yMax - 16 / vertical_bin; y <= yMax; y++) {
@@ -487,8 +486,8 @@ static void create_frame(indigo_device *device) {
 		}
 
 		for (int i = 0; i <= GUIDER_IMAGE_HOTPIXELS_ITEM->number.target; i++) {
-			unsigned x = private_data->hotpixel_x[i] / horizontal_bin - frame_left;
-			unsigned y = private_data->hotpixel_y[i] / vertical_bin - frame_top;
+			unsigned x = PRIVATE_DATA->hotpixel_x[i] / horizontal_bin - frame_left;
+			unsigned y = PRIVATE_DATA->hotpixel_y[i] / vertical_bin - frame_top;
 			if (x < 0 || x >= frame_width || y < 0 || y > frame_height)
 				continue;
 			if (i) {
@@ -516,7 +515,7 @@ static void create_frame(indigo_device *device) {
 			indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
 		}
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			indigo_process_image(device, device == PRIVATE_DATA->guider ? private_data->guider_image : private_data->imager_image, frame_width, frame_height, bpp, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
+			indigo_process_image(device, device == PRIVATE_DATA->guider ? PRIVATE_DATA->guider_image : PRIVATE_DATA->imager_image, frame_width, frame_height, bpp, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->image_mutex);
