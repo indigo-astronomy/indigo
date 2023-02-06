@@ -2,6 +2,11 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-218] - 06 Feb Mon 2023
+### Overall
+- revert timer issue introdiced in Januaryc + another approach to fix the race
+
+
 # [2.0-216] - 02 Feb Thu 2023
 ### Overall
 - logging cleanup, indigo_log_message_handler signature changed
