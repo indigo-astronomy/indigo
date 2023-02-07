@@ -2,6 +2,10 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-220] - 08 Feb Wed 2023
+### Overall
+- fixed the timer race that we were chading for months!
+
 # [2.0-218] - 06 Feb Mon 2023
 ### Overall
 - revert timer issue introdiced in Januaryc + another approach to fix the race
