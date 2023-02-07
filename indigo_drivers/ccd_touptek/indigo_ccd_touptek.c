@@ -180,6 +180,16 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
+static void fnish_exposure_async(indigo_device *device) {
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+}
+
+static void finish_streaming_async(indigo_device *device) {
+	CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+}
+
 static void pull_callback(unsigned event, void* callbackCtx) {
 	SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
 	HRESULT result;
@@ -198,16 +208,16 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 					if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, NULL, false);
 						CCD_EXPOSURE_ITEM->number.value = 0;
-						CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+						indigo_set_timer(device, 0, fnish_exposure_async, NULL);
 					} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, NULL, true);
 						if (--CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 							indigo_finalize_video_stream(device);
-							CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-						} else if (CCD_STREAMING_COUNT_ITEM->number.value < -1)
+							indigo_set_timer(device, 0, finish_streaming_async, NULL);
+						} else if (CCD_STREAMING_COUNT_ITEM->number.value < -1) {
 							CCD_STREAMING_COUNT_ITEM->number.value = -1;
-						indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+							indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+						}
 					}
 				}
 			} else {
