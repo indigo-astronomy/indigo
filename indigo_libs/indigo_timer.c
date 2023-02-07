@@ -144,14 +144,14 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 	int retry = 0;
 	// This is to fix the race between end of process, e.g. exposure, and end of its timer handler
 	while (timer && *timer) {
-		if (retry++ == 500) {
+		if (retry++ == 1000) {
 			indigo_error("Attempt to set timer with non-NULL reference");
 			return false;
 		}
-		indigo_usleep(1000);
+		indigo_usleep(100);
 	}
 	if (retry) {
-		double retry_time = 0.001 * retry;
+		double retry_time = 0.0001 * retry;
 		indigo_error("Spent %gs waiting for the timer reference", retry_time);
 		delay -= retry_time;
 		if (delay < 0) {
