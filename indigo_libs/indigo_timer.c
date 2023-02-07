@@ -141,9 +141,13 @@ bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback
 
 bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data) {
 	indigo_timer *t = NULL;
-	if (timer && *timer) {
-		indigo_error("Attempt to set timer with non-NULL reference");
-		return false;
+	int retry = 5;
+	while (timer && *timer) {
+		if (--retry == 0) {
+			indigo_error("Attempt to set timer with non-NULL reference");
+			return false;
+		}
+		indigo_usleep(100000);
 	}
 	pthread_mutex_lock(&free_timer_mutex);
 	if (free_timer != NULL) {
