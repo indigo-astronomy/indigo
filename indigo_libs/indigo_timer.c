@@ -150,9 +150,13 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 		}
 		indigo_usleep(5000);
 	}
-	delay -= 0.005 * retry;
-	if (delay < 0)
-		delay = 0;
+	if (retry) {
+		double retry_time = 0.005 * retry;
+		indigo_error("Spent %gs by waiting for timer reference", retry_time);
+		delay -= retry_time;
+		if (delay < 0)
+			delay = 0;
+	}
 	pthread_mutex_lock(&free_timer_mutex);
 	if (free_timer != NULL) {
 		t = free_timer;
