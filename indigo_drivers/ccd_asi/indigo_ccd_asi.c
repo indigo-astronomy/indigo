@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0025
+#define DRIVER_VERSION 0x0026
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -92,6 +92,7 @@
 typedef struct {
 	int dev_id;
 	int count_open;
+	char serial_number[17];
 	int exp_bin_x, exp_bin_y;
 	int exp_frame_width, exp_frame_height;
 	int exp_bpp;
@@ -724,6 +725,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 		char *sdk_version = ASIGetSDKVersion();
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+
+		if (PRIVATE_DATA->serial_number[0] != '\0') {
+			INFO_PROPERTY->count = 8;
+			indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, PRIVATE_DATA->serial_number);
+		}
 
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->info.MaxWidth;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->info.MaxHeight;
@@ -1746,12 +1752,48 @@ static void process_plug_event(indigo_device *unused) {
 	char *p = strstr(info.Name, "(CAM");
 	if (p != NULL) *p = '\0';
 
+	ASI_SN serial = {0};
+	char serial_number[17] = {0};
+	char identifier[17] = {0};
+	int res = ASIOpenCamera(id);
+	if (res == ASI_SUCCESS) {
+		res = ASIGetID(id, &serial);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetID(%d) = %d", id, res);
+		if (res == ASI_SUCCESS) {
+			memcpy(identifier, serial.id, 8);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera identifier = '%s'", identifier);
+		}
+		res = ASIGetSerialNumber(id, &serial);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetSerialNumber(%d) = %d", id, res);
+		if (res == ASI_SUCCESS) {
+			snprintf(
+				serial_number,
+				sizeof(serial_number),
+				"%02x%02x%02x%02x%02x%02x%02x%02x",
+				serial.id[0],
+				serial.id[1],
+				serial.id[2],
+				serial.id[3],
+				serial.id[4],
+				serial.id[5],
+				serial.id[6],
+				serial.id[7]
+			);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera serial = %s", serial_number);
+		}
+		ASICloseCamera(id);
+	}
+	if (identifier[0] == '\0') {
+		snprintf(identifier, sizeof(identifier), "%d", id);
+	}
+
 	device->master_device = master_device;
-	sprintf(device->name, "%s #%d", info.Name, id);
+	sprintf(device->name, "%s #%s", info.Name, identifier);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
 	memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
+	strncpy(private_data->serial_number, serial_number, sizeof(private_data->serial_number));
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
@@ -1764,7 +1806,7 @@ static void process_plug_event(indigo_device *unused) {
 		}
 		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 		device->master_device = master_device;
-		sprintf(device->name, "%s Guider #%d", info.Name, id);
+		sprintf(device->name, "%s Guider #%s", info.Name, identifier);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
 		indigo_attach_device(device);
