@@ -1796,7 +1796,7 @@ static void process_plug_event(indigo_device *unused) {
 	char device_name[INDIGO_NAME_SIZE] = {0};
 	char guider_device_name[INDIGO_NAME_SIZE] = {0};
 	bool name_collision = false;
-	if (identifier[0] == '\0') {
+	if (identifier[0] == 0) {
 		if (device_name_exists(info.Name)) {
 			name_collision = true;
 			sprintf(device_name, "%s #%d", info.Name, id);
@@ -1806,8 +1806,8 @@ static void process_plug_event(indigo_device *unused) {
 			sprintf(guider_device_name, "%s (guider)", info.Name);
 		}
 	} else {
-		sprintf(device_name, "%s #%s", info.Name, identifier);
-		sprintf(guider_device_name, "%s (guider) #%s", info.Name, identifier);
+		sprintf(device_name, "%s #%d", info.Name, identifier[0]);
+		sprintf(guider_device_name, "%s (guider) #%d", info.Name, identifier[0]);
 	}
 
 	device->master_device = master_device;
