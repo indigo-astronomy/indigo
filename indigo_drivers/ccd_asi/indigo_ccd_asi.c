@@ -1682,6 +1682,16 @@ static int find_device_slot(int id) {
 }
 
 
+static bool device_name_exists(char *name) {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
+		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) return true;
+	}
+	return false;
+}
+
+
 static int find_unplugged_device_id() {
 	bool dev_tmp[ASICAMERA_ID_MAX] = {false};
 	int i;
@@ -1783,12 +1793,25 @@ static void process_plug_event(indigo_device *unused) {
 		}
 		ASICloseCamera(id);
 	}
+	char device_name[INDIGO_NAME_SIZE] = {0};
+	char guider_device_name[INDIGO_NAME_SIZE] = {0};
+	bool name_collision = false;
 	if (identifier[0] == '\0') {
-		snprintf(identifier, sizeof(identifier), "%d", id);
+		if (device_name_exists(info.Name)) {
+			name_collision = true;
+			sprintf(device_name, "%s #%d", info.Name, id);
+			sprintf(guider_device_name, "%s (guider) #%d", info.Name, id);
+		} else {
+			strncpy(device_name, info.Name, INDIGO_NAME_SIZE);
+			sprintf(guider_device_name, "%s (guider)", info.Name);
+		}
+	} else {
+		sprintf(device_name, "%s #%s", info.Name, identifier);
+		sprintf(guider_device_name, "%s (guider) #%s", info.Name, identifier);
 	}
 
 	device->master_device = master_device;
-	sprintf(device->name, "%s #%s", info.Name, identifier);
+	strncpy(device->name, device_name, sizeof(device->name));
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
@@ -1796,6 +1819,9 @@ static void process_plug_event(indigo_device *unused) {
 	strncpy(private_data->serial_number, serial_number, sizeof(private_data->serial_number));
 	device->private_data = private_data;
 	indigo_attach_device(device);
+	if (name_collision) {
+		indigo_send_message(device,"Warning: Camera model '%s' is already attached, please condsider changing the camera identifier", info.Name);
+	}
 	devices[slot]=device;
 	if (info.ST4Port) {
 		slot = find_available_device_slot();
@@ -1806,7 +1832,7 @@ static void process_plug_event(indigo_device *unused) {
 		}
 		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 		device->master_device = master_device;
-		sprintf(device->name, "%s Guider #%s", info.Name, identifier);
+		strncpy(device->name, guider_device_name, sizeof(device->name));
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
 		indigo_attach_device(device);
