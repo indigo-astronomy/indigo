@@ -25,7 +25,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -88,6 +88,9 @@
 #define POA_GAIN_HCG_ITEM         (POA_PRESETS_PROPERTY->items+3)
 #define POA_GAIN_HCG_NAME         "POA_GAIN_HCG"
 
+#define POA_CUSTOM_ID_PROPERTY     (PRIVATE_DATA->playerone_custom_id_property)
+#define POA_CUSTOM_ID_ITEM         (POA_CUSTOM_ID_PROPERTY->items+0)
+#define POA_CUSTOM_ID_NAME         "ID"
 
 #define POA_ADVANCED_PROPERTY      (PRIVATE_DATA->playerone_advanced_property)
 
@@ -125,6 +128,7 @@ typedef struct {
 	indigo_property *pixel_format_property;
 	indigo_property *playerone_presets_property;
 	indigo_property *playerone_advanced_property;
+	indigo_property *playerone_custom_id_property;
 } playerone_private_data;
 
 static int get_unity_gain(int device_id) {
@@ -218,6 +222,8 @@ static indigo_result playerone_enumerate_properties(indigo_device *device, indig
 			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 		if (indigo_property_match(POA_PRESETS_PROPERTY, property))
 			indigo_define_property(device, POA_PRESETS_PROPERTY, NULL);
+		if (indigo_property_match(POA_CUSTOM_ID_PROPERTY, property))
+			indigo_define_property(device, POA_CUSTOM_ID_PROPERTY, NULL);
 		if (indigo_property_match(POA_ADVANCED_PROPERTY, property))
 			indigo_define_property(device, POA_ADVANCED_PROPERTY, NULL);
 	}
@@ -858,6 +864,11 @@ static indigo_result ccd_attach(indigo_device *device) {
 		POA_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, "POA_PRESETS", CCD_ADVANCED_GROUP, "Presets (Gain, Offset)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 4);
 		if (POA_PRESETS_PROPERTY == NULL)
 			return INDIGO_FAILED;
+		// --------------------------------------------------------------------------------- POA_CUSTOM_ID
+		POA_CUSTOM_ID_PROPERTY = indigo_init_text_property(NULL, device->name, "POA_CUSTOM_ID", CCD_ADVANCED_GROUP, "Camera name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (POA_CUSTOM_ID_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(POA_CUSTOM_ID_ITEM, POA_CUSTOM_ID_NAME, "Suffix", PRIVATE_DATA->property.userCustomID);
 		// -------------------------------------------------------------------------------- CCD_STREAMING
 		CCD_STREAMING_PROPERTY->hidden = false;
 		CCD_IMAGE_FORMAT_PROPERTY->count = 7;
@@ -1208,6 +1219,8 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				adjust_preset_switches(device);
 				indigo_define_property(device, POA_PRESETS_PROPERTY, NULL);
 
+				indigo_define_property(device, POA_CUSTOM_ID_PROPERTY, NULL);
+
 				POACameraProperties properties = {0};
 				POAGetCameraProperties(id, &properties);
 				if (!properties.isUSB3Speed) {
@@ -1237,6 +1250,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 			}
 			indigo_delete_property(device, PIXEL_FORMAT_PROPERTY, NULL);
 			indigo_delete_property(device, POA_PRESETS_PROPERTY, NULL);
+			indigo_delete_property(device, POA_CUSTOM_ID_PROPERTY, NULL);
 			indigo_delete_property(device, POA_ADVANCED_PROPERTY, NULL);
 			playerone_close(device);
 			device->is_connected = false;
@@ -1430,6 +1444,38 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		indigo_update_property(device, POA_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
+		// ------------------------------------------------------------------------------- POA_CUSTOM_ID
+	} else if (indigo_property_match_changeable(POA_CUSTOM_ID_PROPERTY, property)) {
+		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, POA_CUSTOM_ID_PROPERTY, "Exposure in progress, custom camera ID can not be changed.");
+			return INDIGO_OK;
+		}
+		POA_CUSTOM_ID_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(POA_CUSTOM_ID_PROPERTY, property, false);
+		int length = strlen(POA_CUSTOM_ID_ITEM->text.value);
+		if (length > 16) {
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, POA_CUSTOM_ID_PROPERTY, "Custom ID is too long.");
+			return INDIGO_OK;
+		}
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		POAErrors res = POASetUserCustomID(PRIVATE_DATA->dev_id, POA_CUSTOM_ID_ITEM->text.value, length);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetUserCustomID(%d, \"%s\", %d) > %d", PRIVATE_DATA->dev_id, POA_CUSTOM_ID_ITEM->text.value, length, res);
+			CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, POA_CUSTOM_ID_PROPERTY, NULL);
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetUserCustomID(%d, \"%s\", %d) > %d", PRIVATE_DATA->dev_id, POA_CUSTOM_ID_ITEM->text.value, length, res);
+			CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+			if (length > 0) {
+				indigo_update_property(device, POA_CUSTOM_ID_PROPERTY, "Camera name suffix '[%s]' will be used on replug", POA_CUSTOM_ID_ITEM->text.value);
+			} else {
+				indigo_update_property(device, POA_CUSTOM_ID_PROPERTY, "Camera name suffix cleared, will be used on replug", POA_CUSTOM_ID_ITEM->text.value);
+			}
+		}
+		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- CCD_FRAME
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);
@@ -1613,6 +1659,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
 	indigo_release_property(POA_PRESETS_PROPERTY);
+	indigo_release_property(POA_CUSTOM_ID_PROPERTY);
 	indigo_release_property(POA_ADVANCED_PROPERTY);
 
 	return indigo_ccd_detach(device);
@@ -1817,6 +1864,16 @@ static int find_device_slot(int id) {
 }
 
 
+static bool device_name_exists(const char *name) {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
+		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) return true;
+	}
+	return false;
+}
+
+
 static int find_unplugged_device_id() {
 	bool dev_tmp[MAX_DEVICES] = { false };
 	int i;
@@ -1888,12 +1945,16 @@ static void process_plug_event(indigo_device *unused) {
 			POACloseCamera(property.cameraID);
 		}
 	}
+
+	bool device_exists = device_name_exists(property.cameraModelName);
+
 	if (res == POA_OK) {
-//		char *p = strstr(info.FriendlyName, "(CAM");
-//		if (p != NULL)
-//			*p = '\0';
 		device->master_device = master_device;
-		sprintf(device->name, "%s #%d", property.cameraModelName, id);
+		if (device_exists) {
+			sprintf(device->name, "%s #%d", property.cameraModelName, id);
+		} else {
+			sprintf(device->name, "%s", property.cameraModelName);
+		}
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		playerone_private_data *private_data = indigo_safe_malloc(sizeof(playerone_private_data));
 		private_data->dev_id = id;
@@ -1910,7 +1971,11 @@ static void process_plug_event(indigo_device *unused) {
 			}
 			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			device->master_device = master_device;
-			sprintf(device->name, "%s Guider #%d", property.cameraModelName, id);
+			if (device_exists) {
+				sprintf(device->name, "%s (guider) #%d", property.cameraModelName, id);
+			} else {
+				sprintf(device->name, "%s (guider)", property.cameraModelName);
+			}
 			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 			device->private_data = private_data;
 			indigo_attach_device(device);

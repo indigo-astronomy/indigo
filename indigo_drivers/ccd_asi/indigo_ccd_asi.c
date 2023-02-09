@@ -1682,7 +1682,7 @@ static int find_device_slot(int id) {
 }
 
 
-static bool device_name_exists(char *name) {
+static bool device_name_exists(const char *name) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
 		if (device == NULL) continue;
