@@ -1258,6 +1258,7 @@ static void process_plug_event(indigo_device *unusued) {
 			snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
 #else
 			snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
+			indigo_make_name_unique(camera->name, NULL);
 #endif
 			camera->private_data = private_data;
 			camera->master_device = camera;
@@ -1282,6 +1283,7 @@ static void process_plug_event(indigo_device *unusued) {
 				snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider) #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
 #else
 				snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider)", CAMERA_NAME_PREFIX, cam.displayname);
+				indigo_make_name_unique(guider->name, NULL);
 #endif
 				guider->private_data = private_data;
 				guider->master_device = camera;

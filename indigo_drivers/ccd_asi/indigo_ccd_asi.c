@@ -1732,16 +1732,6 @@ static int find_device_slot(int id) {
 }
 
 
-static bool device_name_exists(const char *name) {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
-		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) return true;
-	}
-	return false;
-}
-
-
 static int find_unplugged_device_id() {
 	bool dev_tmp[ASICAMERA_ID_MAX] = {false};
 	int i;
@@ -1846,7 +1836,7 @@ static void process_plug_event(indigo_device *unused) {
 	char guider_device_name[INDIGO_NAME_SIZE] = {0};
 	bool name_collision = false;
 	if (custom_id.id[0] == 0) {
-		if (device_name_exists(info.Name)) {
+		if (indigo_device_name_exists(info.Name)) {
 			name_collision = true;
 			sprintf(device_name, "%s #%d", info.Name, id);
 			sprintf(guider_device_name, "%s (guider) #%d", info.Name, id);

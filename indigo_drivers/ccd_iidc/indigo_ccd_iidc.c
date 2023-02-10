@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -683,7 +683,8 @@ static void process_plug_event(libusb_device *dev) {
 				private_data->guid = guid;
 				private_data->unit = unit;
 				indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s #%0llx", camera->model, camera->guid);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s", camera->model);
+				indigo_make_name_unique(device->name, "%0llx", camera->guid);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {

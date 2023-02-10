@@ -23,7 +23,7 @@
  \file indigo_ccd_sx.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_ccd_sx"
 
 #include <stdlib.h>
@@ -1148,7 +1148,8 @@ static void process_plug_event(libusb_device *dev) {
 			device->master_device = master_device;
 			char usb_path[INDIGO_NAME_SIZE];
 			indigo_get_usb_path(dev, usb_path);
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", SX_PRODUCTS[i].name, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s", SX_PRODUCTS[i].name);
+			indigo_make_name_unique(device->name, "%s", usb_path);
 			device->private_data = private_data;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {
@@ -1158,7 +1159,8 @@ static void process_plug_event(libusb_device *dev) {
 			}
 			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			device->master_device = master_device;
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", SX_PRODUCTS[i].name, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider)", SX_PRODUCTS[i].name);
+			indigo_make_name_unique(device->name, "%s", usb_path);
 			device->private_data = private_data;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {
