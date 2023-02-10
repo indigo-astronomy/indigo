@@ -1040,7 +1040,6 @@
 		59118C172996EB440004BEC8 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59118C1C2996EB440004BEC8 /* ogmacam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ogmacam.h; sourceTree = "<group>"; };
 		59118C1D2996EB440004BEC8 /* en.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
-		59118C1E2996EB440004BEC8 /* 99-ogmacam.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "99-ogmacam.rules"; sourceTree = "<group>"; };
 		59118C212996EB440004BEC8 /* libogmacam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libogmacam.dylib; sourceTree = "<group>"; };
 		59118C252996EB440004BEC8 /* libogmacam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libogmacam.so; sourceTree = "<group>"; };
 		59118C282996EB440004BEC8 /* libogmacam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libogmacam.so; sourceTree = "<group>"; };
@@ -4986,7 +4985,6 @@
 			children = (
 				59118C1A2996EB440004BEC8 /* include */,
 				59118C1D2996EB440004BEC8 /* en.html */,
-				59118C1E2996EB440004BEC8 /* 99-ogmacam.rules */,
 				59118C1F2996EB440004BEC8 /* lib */,
 			);
 			path = libogmacam;
