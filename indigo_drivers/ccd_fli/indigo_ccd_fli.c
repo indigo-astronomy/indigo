@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -1018,7 +1018,8 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-	sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
+	snprintf(device->name, INDIGO_NAME_SIZE, "%s", fli_dev_names[idx]);
+	indigo_make_name_unique(device->name, "%d", slot);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
 	fli_private_data *private_data = indigo_safe_malloc(sizeof(fli_private_data));
 	private_data->dev_id = 0;

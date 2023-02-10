@@ -632,12 +632,14 @@ static void process_plug_event(libusb_device *dev) {
 			device->master_device = device;
 			char usb_path[INDIGO_NAME_SIZE];
 			indigo_get_usb_path(dev, usb_path);
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", CAMERA[i].name, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s", CAMERA[i].name);
+			indigo_make_name_unique(device->name, "%s", usb_path);
 			device->private_data = private_data;
 			if (private_data->focus) {
 				indigo_device *focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 				focuser->master_device = device;
-				snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser) #%s", CAMERA[i].name, usb_path);
+				snprintf(focuser->name, INDIGO_NAME_SIZE, "%s (focuser)", CAMERA[i].name);
+				indigo_make_name_unique(device->name, "%s", usb_path);
 				focuser->private_data = private_data;
 				private_data->focuser = focuser;
 			}

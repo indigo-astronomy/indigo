@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -705,7 +705,8 @@ static void process_plug_event(libusb_device *dev) {
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
 			device->master_device = master_device;
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%d", name, new_eid);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s", name);
+			indigo_make_name_unique(device->name, "%d", new_eid);
 			device->private_data = private_data;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {
@@ -716,7 +717,8 @@ static void process_plug_event(libusb_device *dev) {
 			if (is_guider) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%d", name, new_eid);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider)", name);
+				indigo_make_name_unique(device->name, "%d", new_eid);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -728,7 +730,8 @@ static void process_plug_event(libusb_device *dev) {
 			if (has_wheel) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%d", name, new_eid);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel)", name);
+				indigo_make_name_unique(device->name, "%d", new_eid);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {

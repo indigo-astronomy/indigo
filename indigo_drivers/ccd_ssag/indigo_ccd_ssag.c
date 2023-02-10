@@ -26,7 +26,7 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
@@ -610,7 +610,8 @@ static void process_plug_event(libusb_device *dev) {
 		indigo_device *master_device = device;
 		char usb_path[INDIGO_NAME_SIZE];
 		indigo_get_usb_path(dev, usb_path);
-		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG #%s", usb_path);
+		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG");
+		indigo_make_name_unique(device->name, "%s", usb_path);
 		device->private_data = private_data;
 		device->master_device = master_device;
 		for (int j = 0; j < MAX_DEVICES; j++) {
@@ -620,7 +621,8 @@ static void process_plug_event(libusb_device *dev) {
 			}
 		}
 		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG (guider) #%s", usb_path);
+		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG (guider)");
+		indigo_make_name_unique(device->name, "%s", usb_path);
 		device->private_data = private_data;
 		device->master_device = master_device;
 		for (int j = 0; j < MAX_DEVICES; j++) {

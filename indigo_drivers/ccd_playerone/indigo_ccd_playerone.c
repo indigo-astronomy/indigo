@@ -1864,16 +1864,6 @@ static int find_device_slot(int id) {
 }
 
 
-static bool device_name_exists(const char *name) {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
-		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) return true;
-	}
-	return false;
-}
-
-
 static int find_unplugged_device_id() {
 	bool dev_tmp[MAX_DEVICES] = { false };
 	int i;
@@ -1947,12 +1937,8 @@ static void process_plug_event(indigo_device *unused) {
 	}
 	if (res == POA_OK) {
 		device->master_device = master_device;
-		bool device_exists = device_name_exists(property.cameraModelName);
-		if (device_exists) {
-			sprintf(device->name, "%s #%d", property.cameraModelName, id);
-		} else {
-			sprintf(device->name, "%s", property.cameraModelName);
-		}
+		sprintf(device->name, "%s", property.cameraModelName);
+		indigo_make_name_unique(device->name, "%d", id);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		playerone_private_data *private_data = indigo_safe_malloc(sizeof(playerone_private_data));
 		private_data->dev_id = id;
@@ -1969,11 +1955,8 @@ static void process_plug_event(indigo_device *unused) {
 			}
 			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			device->master_device = master_device;
-			if (device_exists) {
-				sprintf(device->name, "%s (guider) #%d", property.cameraModelName, id);
-			} else {
-				sprintf(device->name, "%s (guider)", property.cameraModelName);
-			}
+			sprintf(device->name, "%s (guider)", property.cameraModelName);
+			indigo_make_name_unique(device->name, "%d", id);
 			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 			device->private_data = private_data;
 			indigo_attach_device(device);

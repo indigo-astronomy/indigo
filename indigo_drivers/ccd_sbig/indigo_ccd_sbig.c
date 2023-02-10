@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -2308,7 +2308,8 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 	}
 
 	private_data->imager_abg_state = ABG_LOW7;
-	sprintf(device->name, "SBIG %s CCD #%s", cam_name, device_index_str);
+	sprintf(device->name, "SBIG %s", cam_name);
+	indigo_make_name_unique(device->name, "%s", device_index_str);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	set_primary_ccd_flag(device);
 	strncpy(private_data->dev_name, cam_name, MAX_PATH);
@@ -2325,7 +2326,8 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		return false;
 	}
 	device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-	sprintf(device->name, "SBIG %s Guider Port #%s", cam_name, device_index_str);
+	sprintf(device->name, "SBIG %s (guider)", cam_name);
+	indigo_make_name_unique(device->name, "%s", device_index_str);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	device->private_data = private_data;
 	device->master_device = master_device;
@@ -2346,7 +2348,8 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 			return false;
 		}
 		device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-		sprintf(device->name, "SBIG %s Guider CCD #%s", cam_name, device_index_str);
+		sprintf(device->name, "SBIG %s (guider CCD)", cam_name);
+		indigo_make_name_unique(device->name, "%s", device_index_str);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		device->private_data = private_data;
 		device->master_device = master_device;
@@ -2395,7 +2398,8 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				}
 
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-				sprintf(device->name, "SBIG %s #%s", cfw_type[cfwr.cfwModel], device_index_str);
+				sprintf(device->name, "SBIG %s", cfw_type[cfwr.cfwModel]);
+				indigo_make_name_unique(device->name, "%s", device_index_str);
 				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				private_data->fw_device = cfwr.cfwModel;
 				private_data->fw_count = (int)cfwr.cfwResult2;
@@ -2428,7 +2432,8 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 				}
 
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
-				sprintf(device->name, "SBIG AO #%s", device_index_str);
+				sprintf(device->name, "SBIG AO");
+				indigo_make_name_unique(device->name, "%s", device_index_str);
 				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 				private_data->ao_x_deflection = private_data->ao_y_deflection = 0;
 				device->private_data = private_data;
