@@ -117,6 +117,22 @@
 #include <mallincam.h>
 #include "../ccd_mallin/indigo_ccd_mallin.h"
 
+#elif defined(OGMA)
+
+#define ENTRY_POINT						indigo_ccd_ogma
+#define CAMERA_NAME_PREFIX		"OGMA"
+#define DRIVER_LABEL					"OGMA Camera"
+#define DRIVER_NAME						"indigo_ccd_ogma"
+#define DRIVER_PRIVATE_DATA		ogma_private_data
+
+#define SDK_CALL(x)						Ogmacam_##x
+#define SDK_DEF(x)						OGMACAM_##x
+#define SDK_TYPE(x)						Ogmacam##x
+#define SDK_HANDLE						HOgmacam
+
+#include <ogmacam.h>
+#include "../ccd_ogma/indigo_ccd_ogma.h"
+
 #else
 
 #define TOUPTEK
@@ -137,7 +153,7 @@
 
 #endif
 
-#if !(defined(__APPLE__) && defined(__arm64__))
+#if !(defined(__APPLE__) && defined(__arm64__)) || defined(OGMA)
 
 #define PRIVATE_DATA        							((DRIVER_PRIVATE_DATA *)device->private_data)
 
@@ -1349,6 +1365,13 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 			for (int i = 0; i < SDK_DEF(MAX); i++)
 				devices[i] = NULL;
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "SDK version %s", SDK_CALL(Version)());
+//	dump cameras supported by SDK
+//			for (int i = 0; i < 0xFFFF; i++) {
+//				SDK_TYPE(ModelV2) *model = SDK_CALL(get_Model)(0x0547, i);
+//				if (model) {
+//					printf("%04x %s\n", i, model->name);
+//				}
+//			}
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
