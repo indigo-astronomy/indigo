@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -1617,6 +1617,16 @@ static int find_available_device_slot() {
 }
 
 
+static bool device_name_exists(const char *name) {
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL) continue;
+		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) return true;
+	}
+	return false;
+}
+
+
 static int find_device_slot(int id) {
 	for (int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
@@ -1709,8 +1719,14 @@ static void process_plug_event(indigo_device *unused) {
 		char *p = strstr(info.FriendlyName, "(CAM");
 		if (p != NULL)
 			*p = '\0';
+
 		device->master_device = master_device;
-		sprintf(device->name, "%s #%d", info.FriendlyName, id);
+		bool device_exists = device_name_exists(info.FriendlyName);
+		if (device_exists) {
+			sprintf(device->name, "%s #%d", info.FriendlyName, id);
+		} else {
+			sprintf(device->name, "%s", info.FriendlyName);
+		}
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		svb_private_data *private_data = indigo_safe_malloc(sizeof(svb_private_data));
 		private_data->dev_id = id;
@@ -1728,7 +1744,11 @@ static void process_plug_event(indigo_device *unused) {
 			}
 			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			device->master_device = master_device;
-			sprintf(device->name, "%s Guider #%d", info.FriendlyName, id);
+			if (device_exists) {
+				sprintf(device->name, "%s (guider) #%d", info.FriendlyName, id);
+			} else {
+				sprintf(device->name, "%s (guider)", info.FriendlyName);
+			}
 			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 			//if (strstr("SV305", info.FriendlyName)) private_data->is_sv305 = true;
 			device->private_data = private_data;
