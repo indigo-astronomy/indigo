@@ -1945,11 +1945,9 @@ static void process_plug_event(indigo_device *unused) {
 			POACloseCamera(property.cameraID);
 		}
 	}
-
-	bool device_exists = device_name_exists(property.cameraModelName);
-
 	if (res == POA_OK) {
 		device->master_device = master_device;
+		bool device_exists = device_name_exists(property.cameraModelName);
 		if (device_exists) {
 			sprintf(device->name, "%s #%d", property.cameraModelName, id);
 		} else {
