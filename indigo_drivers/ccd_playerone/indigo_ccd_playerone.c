@@ -1467,12 +1467,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetUserCustomID(%d, \"%s\", %d) > %d", PRIVATE_DATA->dev_id, POA_CUSTOM_SUFFIX_ITEM->text.value, length, res);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetUserCustomID(%d, \"%s\", %d) > %d", PRIVATE_DATA->dev_id, POA_CUSTOM_SUFFIX_ITEM->text.value, length, res);
 			POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 			if (length > 0) {
 				indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "Camera name suffix '[%s]' will be used on replug", POA_CUSTOM_SUFFIX_ITEM->text.value);
 			} else {
-				indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "Camera name suffix cleared, will be used on replug", POA_CUSTOM_SUFFIX_ITEM->text.value);
+				indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "Camera name suffix cleared, will be used on replug");
 			}
 		}
 		return INDIGO_OK;
