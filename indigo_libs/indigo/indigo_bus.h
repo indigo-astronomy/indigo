@@ -817,6 +817,14 @@ extern void indigo_free_large_buffer(void *large_buffer);
  */
 extern double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
 
+/** Check for duplicate device name
+ */
+extern bool indigo_device_name_exists(const char *name);
+
+/** Fix device name to be unique with #number suffix
+ */
+extern bool indigo_make_name_unique(char *name, const char *format, ...);
+
 #ifdef __cplusplus
 }
 #endif

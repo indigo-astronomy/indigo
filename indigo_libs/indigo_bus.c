@@ -1836,3 +1836,67 @@ double indigo_pixel_scale(double focal_length_cm, double pixel_size_um) {
 		return 0;
 	}
 }
+
+bool indigo_device_name_exists(const char *name) {
+	pthread_mutex_lock(&device_mutex);
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL)
+			continue;
+		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) {
+			pthread_mutex_unlock(&device_mutex);
+			return true;
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+	return false;
+}
+
+bool indigo_make_name_unique(char *name, const char *format, ...) {
+	bool used_suffix[MAX_DEVICES - 1] = { false };
+	bool is_duplicate = false;
+	pthread_mutex_lock(&device_mutex);
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL)
+			continue;
+		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) {
+			is_duplicate = true;
+			continue;
+		}
+		if (format == NULL) {
+			// if no default value, reuse gap in sequence
+			char *separator = strstr(device->name, " #");
+			if (separator) {
+				if (!strncmp(device->name, name, separator - device->name)) {
+					int suffix = atoi(separator + 2);
+					if (suffix > 0 && suffix < MAX_DEVICES - 1)
+						used_suffix[suffix - 1] = true;
+					continue;
+				}
+			}
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+	if (!is_duplicate)
+		return true;
+	char tmp[64];
+	if (format == NULL) {
+		for (int i = 1; i < MAX_DEVICES; i++) {
+			if (!used_suffix[i - 1]) {
+				snprintf(tmp, sizeof(tmp), " #%d", i);
+				strcat(name, tmp);
+				return true;
+			}
+		}
+		indigo_error("Can't make unique name for device %s", name);
+		return false;
+	}
+	va_list args;
+	va_start(args, format);
+	vsnprintf(tmp, sizeof(tmp), format, args);
+	va_end(args);
+	strcat(name, " #");
+	strcat(name, tmp);
+	return true;
+}
