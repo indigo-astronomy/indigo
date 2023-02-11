@@ -705,6 +705,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		sx_clear_regs(device);
+		PRIVATE_DATA->exposure_timer = NULL;
 		indigo_set_timer(device, 3, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	} else {
 		PRIVATE_DATA->exposure_timer = NULL;
