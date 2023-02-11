@@ -903,6 +903,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->imager_no_check_temperature = true;
+		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 		indigo_set_timer(device, 4, imager_ccd_exposure_timer_callback, &PRIVATE_DATA->imager_ccd_exposure_timer);
 	} else {
 		PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
