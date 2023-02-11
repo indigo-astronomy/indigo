@@ -24,7 +24,7 @@
  \file indigo_ccd_dsi.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME		"indigo_ccd_dsi"
 
 #include <stdlib.h>
@@ -200,6 +200,7 @@ static void camera_close(indigo_device *device) {
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->exposure_timer = NULL;
+	PRIVATE_DATA->can_check_temperature = true;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -243,18 +244,6 @@ static void exposure_timer_callback(indigo_device *device) {
 		}
 	}
 	PRIVATE_DATA->can_check_temperature = true;
-}
-
-
-// callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
-static void clear_reg_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->can_check_temperature = false;
-		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else {
-		PRIVATE_DATA->exposure_timer = NULL;
-	}
 }
 
 
@@ -305,12 +294,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 		}
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (CCD_EXPOSURE_ITEM->number.target > 4) {
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
-		} else {
-			PRIVATE_DATA->can_check_temperature = false;
-			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-		}
+		indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 
 	} else {
 		indigo_ccd_failure_cleanup(device);
@@ -630,7 +614,8 @@ static void process_plug_event(indigo_device *unusued) {
 	indigo_device *device = (indigo_device*)malloc(sizeof(indigo_device));
 	assert(device != NULL);
 	memcpy(device, &ccd_template, sizeof(indigo_device));
-	sprintf(device->name, "%s #%s", dev_name, sid);
+	snprintf(device->name, INDIGO_NAME_SIZE, "%s", dev_name);
+	indigo_make_name_unique(device->name, "%s", sid);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	dsi_private_data *private_data = indigo_safe_malloc(sizeof(dsi_private_data));
 	assert(private_data);
