@@ -53,7 +53,6 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_ra_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->ra_guider_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 	libgpusb_set(PRIVATE_DATA->device_context, 0);
@@ -67,7 +66,6 @@ static void guider_ra_timer_callback(indigo_device *device) {
 }
 
 static void guider_dec_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->dec_guider_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 	libgpusb_set(PRIVATE_DATA->device_context, 0);

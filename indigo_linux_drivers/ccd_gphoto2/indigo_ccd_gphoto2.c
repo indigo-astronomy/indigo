@@ -1159,8 +1159,6 @@ static void exposure_timer_callback(indigo_device *device)
 {
 	void *retval;
 
-	PRIVATE_DATA->counter_timer = NULL;
-	PRIVATE_DATA->exposure_timer = NULL;
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;

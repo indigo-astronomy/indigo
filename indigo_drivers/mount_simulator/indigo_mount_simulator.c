@@ -142,7 +142,6 @@ static void move_timer_callback(indigo_device *device) {
 		raStep = -speed;
 	if (raStep == 0 && decStep == 0) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = MOUNT_RAW_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		PRIVATE_DATA->move_timer = NULL;
 	} else {
 		MOUNT_RAW_COORDINATES_RA_ITEM->number.target = MOUNT_RAW_COORDINATES_RA_ITEM->number.value = fmod(MOUNT_RAW_COORDINATES_RA_ITEM->number.value + raStep * speed + 24, 24);
 		MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = fmod(MOUNT_RAW_COORDINATES_DEC_ITEM->number.value + decStep * speed + 360 + 180, 360) - 180;
@@ -390,7 +389,6 @@ static indigo_result mount_detach(indigo_device *device) {
 
 static void guider_ra_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
-	PRIVATE_DATA->ra_guider_timer = NULL;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -402,7 +400,6 @@ static void guider_ra_timer_callback(indigo_device *device) {
 
 static void guider_dec_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->position_mutex);
-	PRIVATE_DATA->dec_guider_timer = NULL;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;

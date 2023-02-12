@@ -561,7 +561,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 
