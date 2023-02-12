@@ -2,6 +2,18 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-222] - 12 Feb Wed 2023
+### Overall
+- fixed reseting of timer reference while callback is still executed
+
+### Driver Fixes:
+- indigo_ccd_sx
+	- long exposure fixed
+- indigo_ccd_fli
+	- long exposure fixed
+- indigo_ccd_qhy
+	- long exposure fixed
+ 
 # [2.0-220] - 08 Feb Wed 2023
 ### Overall
 - fixed the timer race that we were chading for months!
