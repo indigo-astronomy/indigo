@@ -322,16 +322,16 @@ static bool fli_read_pixels(indigo_device *device) {
 	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
 
 	bool success = true;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	for (int i = 0; i < height; i++) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = FLIGrabRow(id, image + (i * row_size), width);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			/* print this error once but read to the end to flush the array */
 			if (success) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGrabRow(%d) = %d at row %d.", id, res, i);
 			success = false;
 		}
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	return success;
 }
@@ -339,7 +339,6 @@ static bool fli_read_pixels(indigo_device *device) {
 
 static bool fli_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 	long err = FLICancelExposure(PRIVATE_DATA->dev_id);
 	FLICancelExposure(PRIVATE_DATA->dev_id);
 	FLICancelExposure(PRIVATE_DATA->dev_id);
@@ -430,13 +429,13 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 				                       CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
 				                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
 				{
-					if(PRIVATE_DATA->abort_flag) return;
 					fli_read_pixels(device);
+					if(PRIVATE_DATA->abort_flag) return;
 				}
 			}
 
-			if(PRIVATE_DATA->abort_flag) return;
 			PRIVATE_DATA->can_check_temperature = true;
+			if(PRIVATE_DATA->abort_flag) return;
 			indigo_ccd_resume_countdown(device);
 			/* The sensor is flushed -> start real exposure */
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Taking exposure...");
