@@ -345,7 +345,6 @@ static bool fli_abort_exposure(indigo_device *device) {
 	FLICancelExposure(PRIVATE_DATA->dev_id);
 	PRIVATE_DATA->can_check_temperature = true;
 	PRIVATE_DATA->abort_flag = true;
-
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if(err) return false;
 	else return true;
@@ -450,7 +449,6 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 				if(PRIVATE_DATA->abort_flag) return;
 				PRIVATE_DATA->exposure_timer = NULL;
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-
 			} else {
 				indigo_ccd_failure_cleanup(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -747,6 +745,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				fli_abort_exposure(device);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 			}
 			indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 			indigo_delete_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
@@ -782,6 +781,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			fli_abort_exposure(device);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
