@@ -487,7 +487,6 @@ static void qhy_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -565,8 +564,6 @@ static void clear_reg_timer_callback(indigo_device *device) {
 		PRIVATE_DATA->can_check_temperature = false;
 		PRIVATE_DATA->exposure_timer = NULL;
 		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else {
-		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 

@@ -683,7 +683,6 @@ static void sx_close(indigo_device *device) {
 
 static void exposure_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -707,8 +706,6 @@ static void clear_reg_timer_callback(indigo_device *device) {
 		sx_clear_regs(device);
 		PRIVATE_DATA->exposure_timer = NULL;
 		indigo_set_timer(device, 3, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else {
-		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 
