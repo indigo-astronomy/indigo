@@ -445,8 +445,7 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 			                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
 			{
 				if(PRIVATE_DATA->abort_flag) return;
-				PRIVATE_DATA->exposure_timer = NULL;
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+				indigo_reschedule_timer_with_callback(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			} else {
 				indigo_ccd_failure_cleanup(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;

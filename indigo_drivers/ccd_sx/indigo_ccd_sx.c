@@ -704,8 +704,7 @@ static void clear_reg_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		sx_clear_regs(device);
-		PRIVATE_DATA->exposure_timer = NULL;
-		indigo_set_timer(device, 3, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+		indigo_reschedule_timer_with_callback(device, 3, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 	}
 }
 
@@ -842,11 +841,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer)) {
 			sx_abort_exposure(device);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
-		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
 		indigo_property_copy_values(CCD_FRAME_PROPERTY, property, false);

@@ -213,6 +213,15 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 // TODO: do we need device?
 
 bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer) {
+	if (*timer != NULL) {
+		return indigo_reschedule_timer_with_callback(device, delay, (*timer)->callback, timer);
+	} else {
+		indigo_error("Attempt to reschedule timer without reference!");
+		return false;
+	}
+}
+	
+bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer) {
 	bool result = false;
 	pthread_mutex_lock(&cancel_timer_mutex);
 	if (*timer != NULL && (*timer)->canceled == false) {
@@ -222,8 +231,11 @@ bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer *
 			INDIGO_TRACE(indigo_trace("timer #%d - rescheduled for %gs", (*timer)->timer_id, (*timer)->delay));
 			(*timer)->delay = delay;
 			(*timer)->scheduled = true;
+			(*timer)->callback = callback;
 			result = true;
 		}
+	} else {
+		indigo_error("Attempt to reschedule timer without reference or canceled timer!");
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
 	return result;
@@ -248,6 +260,8 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 			*timer = NULL;
 			result = true;
 		}
+	} else {
+		indigo_error("Attempt to cancel timer without reference!");
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
 	return result;
