@@ -2,18 +2,49 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-222] - 12 Feb Wed 2023
+# [2.0-222] - 12 Feb Sun 2023
 ### Overall
+- add indigo_device_name_exists() and indigo_make_name_unique()
+- add indigo_reschedule_timer_with_callback()
+
+#All drivers:
+- use indigo_device_name_exists() and indigo_make_name_unique() to make device names unique - prmanent where devices support it
+- for hotplug drivers, the first device of a type will not have a suffix #XXX (unless it has permaned suffix added, only ASI and Player one support it)
 - fixed reseting of timer reference while callback is still executed
 
+### New Drivers:
+- indigo ccd_ogma:
+	- OMGA Camera driver added - toupteck clone
+
 ### Driver Fixes:
-- indigo_ccd_sx
-	- long exposure fixed
-- indigo_ccd_fli
-	- long exposure fixed
-- indigo_ccd_qhy
-	- long exposure fixed
+- indigo_ccd_sx:
+	- long exposure fixed - regression
+
+- indigo_ccd_fli:
+	- long exposure fixed - regression
+	- small fixes
+
+- indigo_ccd_qhy:
+	- long exposure fixed - regression
+
+- indigo_ccd_dsi:
+	- long exposure fixed - regression
+
+- indigo_ccd_sbig:
+	- long exposure fixed - regression
+
+- indigo_ccd_playerone:
+	- add permanent user defined camera suffix
+	- exposure countdown fixed
+
+- indigo_wheel_playerone:
+	- add permanent user defined camera suffix
+
+- indigo_ccd_asi:
+	- libasicamera v.1.28
+	- add permaned user defined camera suffix
  
+
 # [2.0-220] - 08 Feb Wed 2023
 ### Overall
 - fixed the timer race that we were chading for months!
