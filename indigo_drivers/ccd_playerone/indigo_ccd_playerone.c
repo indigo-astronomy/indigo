@@ -484,6 +484,8 @@ static void exposure_timer_callback(indigo_device *device) {
 				PRIVATE_DATA->can_check_temperature = true;
 				indigo_usleep(ONE_SECOND_DELAY);
 				CCD_EXPOSURE_ITEM->number.value--;
+				if (CCD_EXPOSURE_ITEM->number.value < 0)
+					CCD_EXPOSURE_ITEM->number.value = 0;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				PRIVATE_DATA->can_check_temperature = false;
 			}
