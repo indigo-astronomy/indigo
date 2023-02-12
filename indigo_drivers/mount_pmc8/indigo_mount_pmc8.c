@@ -549,7 +549,6 @@ static void mount_connect_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-		PRIVATE_DATA->position_timer = NULL;
 		pmc8_close(device);
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;

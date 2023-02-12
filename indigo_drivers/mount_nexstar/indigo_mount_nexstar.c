@@ -279,7 +279,6 @@ static void park_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->park_in_progress) {
 		indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->park_timer);
 	} else {
-		PRIVATE_DATA->park_timer = NULL;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount Parked.");
 	}
 }

@@ -1271,7 +1271,6 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-		PRIVATE_DATA->position_timer = NULL;
 		indigo_delete_property(device, TIMEZONE_PROPERTY, NULL);
 		indigo_delete_property(device, RESET_PROPERTY, NULL);
 		if (--PRIVATE_DATA->device_count == 0) {
@@ -1516,7 +1515,6 @@ static void guider_connect_callback(indigo_device *device) {
 }
 
 static void guider_ra_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->ra_guider_timer = NULL;
 	if (GUIDER_GUIDE_EAST_ITEM->number.value != 0 || GUIDER_GUIDE_WEST_ITEM->number.value != 0) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -1526,7 +1524,6 @@ static void guider_ra_timer_callback(indigo_device *device) {
 }
 
 static void guider_dec_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->dec_guider_timer = NULL;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;

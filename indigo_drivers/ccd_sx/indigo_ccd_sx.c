@@ -920,7 +920,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 
 static void guider_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-	PRIVATE_DATA->guider_timer = NULL;
 	sx_guide_relays(device, 0);
 	if (PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;

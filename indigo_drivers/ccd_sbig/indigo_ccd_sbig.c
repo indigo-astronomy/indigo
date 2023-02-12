@@ -865,7 +865,6 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
-	PRIVATE_DATA->imager_ccd_exposure_timer = NULL;
 	PRIVATE_DATA->imager_no_check_temperature = true;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;

@@ -439,7 +439,6 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
-		PRIVATE_DATA->position_timer = NULL;
 		indigo_delete_property(device, CORRECTION_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, HIGH_SPEED_PROPERTY, NULL);
 		indigo_delete_property(device, ZENITH_PROPERTY, NULL);
