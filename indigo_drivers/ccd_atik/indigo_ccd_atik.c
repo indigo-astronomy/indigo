@@ -100,7 +100,6 @@ static void debug_log(const char *message) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	CCD_EXPOSURE_ITEM->number.value = 0;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);

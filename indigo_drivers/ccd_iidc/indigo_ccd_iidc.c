@@ -197,7 +197,6 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	CCD_EXPOSURE_ITEM->number.value = 0;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {

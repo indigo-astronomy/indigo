@@ -600,7 +600,6 @@ static void apogee_close(indigo_device *device) {
 
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
 	PRIVATE_DATA->can_check_temperature = false;
