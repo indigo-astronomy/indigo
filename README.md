@@ -132,6 +132,7 @@ This is the list of requirements taken into the consideration:
 102. MallinCam CCD driver
 103. RisingCam CCD driver
 104. Orion StarShotG CCD driver
+105. OGMA CCD driver
 
 ## This is under development
 1. a-Box Adaptive optics driver
