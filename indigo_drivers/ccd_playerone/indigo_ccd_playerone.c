@@ -144,7 +144,7 @@ static int get_unity_gain(int device_id) {
 	}
 
 	res = POAGetConfig(device_id, POA_GAIN, &value, &unused);
-	int gain = value.intValue;
+	int gain = (int)value.intValue;
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_GAIN) > %d", device_id, res);
 		return 0;
@@ -484,8 +484,9 @@ static void exposure_timer_callback(indigo_device *device) {
 				PRIVATE_DATA->can_check_temperature = true;
 				indigo_usleep(ONE_SECOND_DELAY);
 				CCD_EXPOSURE_ITEM->number.value--;
-				if (CCD_EXPOSURE_ITEM->number.value < 0)
+				if (CCD_EXPOSURE_ITEM->number.value < 0) {
 					CCD_EXPOSURE_ITEM->number.value = 0;
+				}
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 				PRIVATE_DATA->can_check_temperature = false;
 			}
@@ -1455,7 +1456,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(POA_CUSTOM_SUFFIX_PROPERTY, property, false);
-		int length = strlen(POA_CUSTOM_SUFFIX_ITEM->text.value);
+		int length = (int)strlen(POA_CUSTOM_SUFFIX_ITEM->text.value);
 		if (length > 16) {
 			POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "Custom suffix is too long.");
