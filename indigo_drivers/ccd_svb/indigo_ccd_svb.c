@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -209,6 +209,20 @@ static bool svb_open(indigo_device *device) {
 			return false;
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBOpenCamera(%d) = %d", id, res);
+
+		char min_version[64] = {0};
+		SVB_BOOL is_update_needed;
+		res = SVBIsCameraNeedToUpgrade(id, &is_update_needed, min_version);
+		if (res == SVB_SUCCESS && is_update_needed) {
+			indigo_send_message(device, "Warning: Camera firmware needs to be updated. Minimal required version: %s", min_version);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s firmware needs to be updated. Minimal required version: %s", device->name, min_version);
+		} else {
+			if (res == SVB_SUCCESS) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s firmware update not needed. Minimal required version: %s", device->name, min_version);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBIsCameraNeedToUpgrade(%d) = %d", id, res);
+			}
+		}
 
 		/* disable saving config - seems it leads to a deadlock */
 		res = SVBSetAutoSaveParam(id, SVB_FALSE);
