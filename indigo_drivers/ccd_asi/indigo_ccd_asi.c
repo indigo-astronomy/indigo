@@ -1321,11 +1321,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int res = ASISetID(PRIVATE_DATA->dev_id, asi_id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, %s) = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
 			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, NULL);
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, %s) = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
 			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 			if (strlen(ASI_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
 				indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Camera name suffix '#%s' will be used on replug", ASI_CUSTOM_SUFFIX_ITEM->text.value);
