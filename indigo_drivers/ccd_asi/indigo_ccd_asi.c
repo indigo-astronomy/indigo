@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0027
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -97,7 +97,7 @@ typedef struct {
 	int dev_id;
 	int count_open;
 	char serial_number[17];
-	ASI_ID custom_id;
+	char custom_suffix[9];
 	int exp_bin_x, exp_bin_y;
 	int exp_frame_width, exp_frame_height;
 	int exp_bpp;
@@ -804,10 +804,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (ASI_PRESETS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		// --------------------------------------------------------------------------------- ASI_CUSTOM_SUFFIX
-		ASI_CUSTOM_SUFFIX_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_CUSTOM_SUFFIX", CCD_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		ASI_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "ASI_CUSTOM_SUFFIX", CCD_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (ASI_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(ASI_CUSTOM_SUFFIX_ITEM, ASI_CUSTOM_SUFFIX_NAME, "Suffix [0-255] (0 - clear)", 0, 255, 1, (double)PRIVATE_DATA->custom_id.id[0]);
+		indigo_init_text_item(ASI_CUSTOM_SUFFIX_ITEM, ASI_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 		// -------------------------------------------------------------------------------- ASI_ADVANCED
 		ASI_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "ASI_ADVANCED", CCD_ADVANCED_GROUP, "Advanced", INDIGO_OK_STATE, INDIGO_RW_PERM, 0);
 		if (ASI_ADVANCED_PROPERTY == NULL)
@@ -1309,26 +1309,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(ASI_CUSTOM_SUFFIX_PROPERTY, property, false);
-		int value = ASI_CUSTOM_SUFFIX_ITEM->number.target;
-		if (value < 0 || value > 255) {
+		if (strlen(ASI_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
 			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Custom suffix out of range [0-255]");
+			indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
 			return INDIGO_OK;
 		}
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ID asi_id = {0};
-		asi_id.id[0] = (unsigned char)value;
+		memcpy(asi_id.id, ASI_CUSTOM_SUFFIX_ITEM->text.value, 8);
+		memcpy(PRIVATE_DATA->custom_suffix, ASI_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix));
 		int res = ASISetID(PRIVATE_DATA->dev_id, asi_id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, %d) = %d", PRIVATE_DATA->dev_id, asi_id.id[0], res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, %s) = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
 			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, NULL);
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, %d) = %d", PRIVATE_DATA->dev_id, asi_id.id[0], res);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetID(%d, %s) = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
 			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
-			if (value > 0) {
-				indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Camera name suffix '#%d' will be used on replug", value);
+			if (strlen(ASI_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
+				indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Camera name suffix '#%s' will be used on replug", ASI_CUSTOM_SUFFIX_ITEM->text.value);
 			} else {
 				indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Camera name suffix cleared, will be used on replug");
 			}
@@ -1803,13 +1803,15 @@ static void process_plug_event(indigo_device *unused) {
 
 	ASI_SN serial = {0};
 	char serial_number[17] = {0};
+	char custom_suffix[9] = {0};
 	ASI_ID custom_id = {0};
 	int res = ASIOpenCamera(id);
 	if (res == ASI_SUCCESS) {
 		res = ASIGetID(id, &custom_id);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetID(%d) = %d", id, res);
 		if (res == ASI_SUCCESS) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera identifier = '%d'", custom_id.id[0]);
+			memcpy(custom_suffix, custom_id.id, 8);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera identifier = '%s'", custom_suffix);
 		}
 		res = ASIGetSerialNumber(id, &serial);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetSerialNumber(%d) = %d", id, res);
@@ -1834,7 +1836,7 @@ static void process_plug_event(indigo_device *unused) {
 	char device_name[INDIGO_NAME_SIZE] = {0};
 	char guider_device_name[INDIGO_NAME_SIZE] = {0};
 	bool name_collision = false;
-	if (custom_id.id[0] == 0) {
+	if (strlen(custom_suffix) < 1) {
 		if (indigo_device_name_exists(info.Name)) {
 			name_collision = true;
 			sprintf(device_name, "%s #%d", info.Name, id);
@@ -1844,8 +1846,8 @@ static void process_plug_event(indigo_device *unused) {
 			sprintf(guider_device_name, "%s (guider)", info.Name);
 		}
 	} else {
-		sprintf(device_name, "%s #%d", info.Name, custom_id.id[0]);
-		sprintf(guider_device_name, "%s (guider) #%d", info.Name, custom_id.id[0]);
+		sprintf(device_name, "%s #%s", info.Name, custom_suffix);
+		sprintf(guider_device_name, "%s (guider) #%s", info.Name, custom_suffix);
 	}
 
 	device->master_device = master_device;
@@ -1854,7 +1856,7 @@ static void process_plug_event(indigo_device *unused) {
 	asi_private_data *private_data = indigo_safe_malloc(sizeof(asi_private_data));
 	private_data->dev_id = id;
 	memcpy(&(private_data->info), &info, sizeof(ASI_CAMERA_INFO));
-	memcpy(&(private_data->custom_id), &custom_id, sizeof(ASI_ID));
+	strcpy(private_data->custom_suffix, custom_suffix);
 	strncpy(private_data->serial_number, serial_number, sizeof(private_data->serial_number));
 	device->private_data = private_data;
 	indigo_attach_device(device);
