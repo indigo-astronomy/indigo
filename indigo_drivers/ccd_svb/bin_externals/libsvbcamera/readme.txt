@@ -254,3 +254,16 @@ Date: 2022-12-07
 2. Fixed the issue that SV605CC triggers the photo time
 3. Fix some bugs
 4. Add new API interface functions SVBGetCameraFirmwareVersion and SVBIsCameraNeedToUpgrade
+
+
+##########################################################
+版本:v1.10.1
+日期:2023-02-10
+1.新增动态坏点自动修正的开关
+2.增加API接口函数SVBRestoreDefaultParam，可恢复相机默认参数
+
+Version: v1.10.1
+Date: 2023-02-10
+1. Added a switch for automatic correction of dynamic dead pixels
+2. Add the API interface function SVBRestoreDefaultParam, which can restore the default parameters of the camera
+
