@@ -23,7 +23,7 @@
  \file indigo_wheel_asi.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_wheel_asi"
 
 #include <stdlib.h>
@@ -155,11 +155,11 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static void wheel_connect_callback(indigo_device *device) {
 	EFW_INFO info;
-	int index = find_index_by_device_id(PRIVATE_DATA->dev_id);
-	if (index < 0) {
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
+	int index;
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		index = find_index_by_device_id(PRIVATE_DATA->dev_id);
+		if (index >= 0) {
 			if (!device->is_connected) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
@@ -196,19 +196,19 @@ static void wheel_connect_callback(indigo_device *device) {
 					}
 				}
 			}
-		} else {
-			if (device->is_connected) {
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				int res = EFWClose(PRIVATE_DATA->dev_id);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
-				res = EFWGetID(index, &(PRIVATE_DATA->dev_id));
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
-				indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
-				indigo_global_unlock(device);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			}
+		}
+	} else {
+		if (device->is_connected) {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			int res = EFWClose(PRIVATE_DATA->dev_id);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
+			res = EFWGetID(index, &(PRIVATE_DATA->dev_id));
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetID(%d, -> %d) = %d", index, PRIVATE_DATA->dev_id, res);
+			indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
+			indigo_global_unlock(device);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
