@@ -71,6 +71,7 @@
 typedef struct {
 	int dev_id;
 	EAF_INFO info;
+	char model[64];
 	char custom_suffix[9];
 	int current_position, target_position, max_position, backlash;
 	double prev_temp;
@@ -234,6 +235,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
+
+		INFO_PROPERTY->count = 5;
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
@@ -586,7 +590,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
 		return INDIGO_OK;
-			// ------------------------------------------------------------------------------- EAF_CUSTOM_SUFFIX
+		// ------------------------------------------------------------------------------- EAF_CUSTOM_SUFFIX
 	} else if (indigo_property_match_changeable(EAF_CUSTOM_SUFFIX_PROPERTY, property)) {
 		EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(EAF_CUSTOM_SUFFIX_PROPERTY, property, false);
@@ -841,6 +845,7 @@ static void process_plug_event(indigo_device *unused) {
 	private_data->dev_id = id;
 	private_data->info = info;
 	strncpy(private_data->custom_suffix, suffix, 9);
+	strncpy(private_data->model, name, 64);
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
