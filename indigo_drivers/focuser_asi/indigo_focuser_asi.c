@@ -303,9 +303,9 @@ static void focuser_connect_callback(indigo_device *device) {
 				} else {
 					EAFGetID(index, &(PRIVATE_DATA->dev_id));
 					int res = EAFOpen(PRIVATE_DATA->dev_id);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (!res) {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFOpen(%d) = %d", PRIVATE_DATA->dev_id, res);
 						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 						res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
 						if (res != EAF_SUCCESS) {
@@ -341,7 +341,6 @@ static void focuser_connect_callback(indigo_device *device) {
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 						indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
-
 						indigo_define_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, NULL);
 
 						PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
