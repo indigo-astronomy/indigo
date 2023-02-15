@@ -60,10 +60,10 @@
 #define EAF_BEEP_ON_ITEM_NAME           "ON"
 #define EAF_BEEP_OFF_ITEM_NAME          "OFF"
 
-#define ASI_CUSTOM_SUFFIX_PROPERTY     (PRIVATE_DATA->asi_custom_suffix_property)
-#define ASI_CUSTOM_SUFFIX_ITEM         (ASI_CUSTOM_SUFFIX_PROPERTY->items+0)
-#define ASI_CUSTOM_SUFFIX_PROPERTY_NAME   "ASI_CUSTOM_SUFFIX"
-#define ASI_CUSTOM_SUFFIX_NAME         "SUFFIX"
+#define EAF_CUSTOM_SUFFIX_PROPERTY     (PRIVATE_DATA->custom_suffix_property)
+#define EAF_CUSTOM_SUFFIX_ITEM         (EAF_CUSTOM_SUFFIX_PROPERTY->items+0)
+#define EAF_CUSTOM_SUFFIX_PROPERTY_NAME   "EAF_CUSTOM_SUFFIX"
+#define EAF_CUSTOM_SUFFIX_NAME         "SUFFIX"
 
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
@@ -77,7 +77,7 @@ typedef struct {
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t usb_mutex;
 	indigo_property *beep_property;
-	indigo_property *asi_custom_suffix_property;
+	indigo_property *custom_suffix_property;
 } asi_private_data;
 
 static int find_index_by_device_id(int id);
@@ -222,8 +222,8 @@ static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
 			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
-		if (indigo_property_match(ASI_CUSTOM_SUFFIX_PROPERTY, property))
-			indigo_define_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, NULL);
+		if (indigo_property_match(EAF_CUSTOM_SUFFIX_PROPERTY, property))
+			indigo_define_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -275,11 +275,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		indigo_init_switch_item(EAF_BEEP_ON_ITEM, EAF_BEEP_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(EAF_BEEP_OFF_ITEM, EAF_BEEP_OFF_ITEM_NAME, "Off", true);
-		// --------------------------------------------------------------------------------- ASI_CUSTOM_SUFFIX
-		ASI_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "ASI_CUSTOM_SUFFIX", "Advanced", "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (ASI_CUSTOM_SUFFIX_PROPERTY == NULL)
+		// --------------------------------------------------------------------------------- EAF_CUSTOM_SUFFIX
+		EAF_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "EAF_CUSTOM_SUFFIX", "Advanced", "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (EAF_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(ASI_CUSTOM_SUFFIX_ITEM, ASI_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
+		indigo_init_text_item(EAF_CUSTOM_SUFFIX_ITEM, EAF_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 		// --------------------------------------------------------------------------
 		return indigo_focuser_enumerate_properties(device, NULL, NULL);
 	}
@@ -341,7 +341,7 @@ static void focuser_connect_callback(indigo_device *device) {
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 						indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
-						indigo_define_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, NULL);
+						indigo_define_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 
 						PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */
 						device->is_connected = true;
@@ -361,7 +361,7 @@ static void focuser_connect_callback(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			indigo_delete_property(device, EAF_BEEP_PROPERTY, NULL);
-			indigo_delete_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, NULL);
+			indigo_delete_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = EAFStop(PRIVATE_DATA->dev_id);
 			res = EAFClose(PRIVATE_DATA->dev_id);
@@ -586,32 +586,32 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
 		return INDIGO_OK;
-			// ------------------------------------------------------------------------------- ASI_CUSTOM_SUFFIX
-	} else if (indigo_property_match_changeable(ASI_CUSTOM_SUFFIX_PROPERTY, property)) {
-		ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_property_copy_values(ASI_CUSTOM_SUFFIX_PROPERTY, property, false);
-		if (strlen(ASI_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
-			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
+			// ------------------------------------------------------------------------------- EAF_CUSTOM_SUFFIX
+	} else if (indigo_property_match_changeable(EAF_CUSTOM_SUFFIX_PROPERTY, property)) {
+		EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(EAF_CUSTOM_SUFFIX_PROPERTY, property, false);
+		if (strlen(EAF_CUSTOM_SUFFIX_ITEM->text.value) > 8) {
+			EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Custom suffix too long");
 			return INDIGO_OK;
 		}
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		EAF_ID eaf_id = {0};
-		memcpy(eaf_id.id, ASI_CUSTOM_SUFFIX_ITEM->text.value, 8);
-		memcpy(PRIVATE_DATA->custom_suffix, ASI_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix));
+		memcpy(eaf_id.id, EAF_CUSTOM_SUFFIX_ITEM->text.value, 8);
+		memcpy(PRIVATE_DATA->custom_suffix, EAF_CUSTOM_SUFFIX_ITEM->text.value, sizeof(PRIVATE_DATA->custom_suffix));
 		int res = EAFSetID(PRIVATE_DATA->dev_id, eaf_id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
-			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, NULL);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, EAF_CUSTOM_SUFFIX_ITEM->text.value, res);
+			EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, ASI_CUSTOM_SUFFIX_ITEM->text.value, res);
-			ASI_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
-			if (strlen(ASI_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
-				indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix '#%s' will be used on replug", ASI_CUSTOM_SUFFIX_ITEM->text.value);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, EAF_CUSTOM_SUFFIX_ITEM->text.value, res);
+			EAF_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
+			if (strlen(EAF_CUSTOM_SUFFIX_ITEM->text.value) > 0) {
+				indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix '#%s' will be used on replug", EAF_CUSTOM_SUFFIX_ITEM->text.value);
 			} else {
-				indigo_update_property(device, ASI_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix cleared, will be used on replug");
+				indigo_update_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, "Focuser name suffix cleared, will be used on replug");
 			}
 		}
 		return INDIGO_OK;
@@ -662,7 +662,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		focuser_connect_callback(device);
 	}
 	indigo_release_property(EAF_BEEP_PROPERTY);
-	indigo_release_property(ASI_CUSTOM_SUFFIX_PROPERTY);
+	indigo_release_property(EAF_CUSTOM_SUFFIX_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
