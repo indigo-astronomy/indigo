@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -70,9 +70,8 @@ typedef struct {
 	indigo_property *playerone_custom_suffix_property;
 } pone_private_data;
 
-static int find_index_by_device_handle(int handle);
-// -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
+// -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -131,91 +130,87 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static void wheel_connect_callback(indigo_device *device) {
 	PWProperties info;
-	int index = find_index_by_device_handle(PRIVATE_DATA->dev_handle);
-	if (index < 0) {
-		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-	} else {
-		if (CONNECTION_CONNECTED_ITEM->sw.value) {
-			if (!device->is_connected) {
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (!device->is_connected) {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
-				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
-					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-				} else {
-					int res = POAGetPWPropertiesByHandle(PRIVATE_DATA->dev_handle, &info);
-					if (res != PW_OK) {
-						info.Handle = -1;
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d) = %d", PRIVATE_DATA->dev_handle, res);
-					}
-					PRIVATE_DATA->dev_handle = info.Handle;
-					res = POAOpenPW(PRIVATE_DATA->dev_handle);
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
-					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res == PW_OK) {
-						pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-						WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count = info.PositionCount;
-
-						/* On connect wheel goes to position 1 - we need to wait while moving but not more than 15s */
-						PWState state;
-						const int max_wait = 30;
-						const float retry_delay = 0.5;
-						int count = 0;
-						do {
-							indigo_usleep(retry_delay * ONE_SECOND_DELAY);
-							PWErrors res = POAGetPWState(PRIVATE_DATA->dev_handle, &state);
-							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWState(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, state, res);
-							count++;
-						} while (state == PW_STATE_MOVING && count < max_wait);
-
-						if (count >= max_wait) {
-							indigo_update_property(device, CONNECTION_PROPERTY, "WARNING: Did not move to initial position in %.0f seconds.", max_wait * retry_delay);
-						}
-
-						res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &(PRIVATE_DATA->target_slot));
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot, res);
-						pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-						PRIVATE_DATA->target_slot++;
-						WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot;
-
-						res = POAGetPWCustomName(PRIVATE_DATA->dev_handle, POA_CUSTOM_SUFFIX_ITEM->text.value, INDIGO_NAME_SIZE);
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWCustomName(%d, -> '%s') = %d", PRIVATE_DATA->dev_handle, POA_CUSTOM_SUFFIX_ITEM->text.value, res);
-						indigo_define_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
-
-						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-						device->is_connected = true;
-						indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d) = %d", index, res);
-						indigo_global_unlock(device);
-						CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
-						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-					}
-				}
-			}
-		} else {
-			if (device->is_connected) {
-				indigo_delete_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				int res = POAClosePW(PRIVATE_DATA->dev_handle);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAClosePW(%d) = %d", PRIVATE_DATA->dev_handle, res);
-				res = POAGetPWPropertiesByHandle(PRIVATE_DATA->dev_handle, &info);
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			} else {
+				int res = POAGetPWPropertiesByHandle(PRIVATE_DATA->dev_handle, &info);
 				if (res != PW_OK) {
 					info.Handle = -1;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d) = %d", PRIVATE_DATA->dev_handle, res);
-				} else {
-					PRIVATE_DATA->dev_handle = info.Handle;
 				}
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d, -> %d) = %d", index, PRIVATE_DATA->dev_handle, res);
-				indigo_global_unlock(device);
+				PRIVATE_DATA->dev_handle = info.Handle;
+				res = POAOpenPW(PRIVATE_DATA->dev_handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-				device->is_connected = false;
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				if (res == PW_OK) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+					WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->count = info.PositionCount;
+
+					/* On connect wheel goes to position 1 - we need to wait while moving but not more than 15s */
+					PWState state;
+					const int max_wait = 30;
+					const float retry_delay = 0.5;
+					int count = 0;
+					do {
+						indigo_usleep(retry_delay * ONE_SECOND_DELAY);
+						PWErrors res = POAGetPWState(PRIVATE_DATA->dev_handle, &state);
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWState(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, state, res);
+						count++;
+					} while (state == PW_STATE_MOVING && count < max_wait);
+
+					if (count >= max_wait) {
+						indigo_update_property(device, CONNECTION_PROPERTY, "WARNING: Did not move to initial position in %.0f seconds.", max_wait * retry_delay);
+					}
+
+					res = POAGetCurrentPosition(PRIVATE_DATA->dev_handle, &(PRIVATE_DATA->target_slot));
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetCurrentPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot, res);
+					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+					PRIVATE_DATA->target_slot++;
+					WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot;
+
+					res = POAGetPWCustomName(PRIVATE_DATA->dev_handle, POA_CUSTOM_SUFFIX_ITEM->text.value, INDIGO_NAME_SIZE);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWCustomName(%d, -> '%s') = %d", PRIVATE_DATA->dev_handle, POA_CUSTOM_SUFFIX_ITEM->text.value, res);
+					indigo_define_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
+
+					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+					device->is_connected = true;
+					indigo_set_timer(device, 0.5, wheel_timer_callback, &PRIVATE_DATA->wheel_timer);
+				} else {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+					indigo_global_unlock(device);
+					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+					indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+				}
 			}
+		}
+	} else {
+		if (device->is_connected) {
+			indigo_delete_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			int res = POAClosePW(PRIVATE_DATA->dev_handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAClosePW(%d) = %d", PRIVATE_DATA->dev_handle, res);
+			res = POAGetPWPropertiesByHandle(PRIVATE_DATA->dev_handle, &info);
+			if (res != PW_OK) {
+				info.Handle = -1;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d) = %d", PRIVATE_DATA->dev_handle, res);
+			} else {
+				PRIVATE_DATA->dev_handle = info.Handle;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWPropertiesByHandle(%d) = %d", PRIVATE_DATA->dev_handle, res);
+			}
+			indigo_global_unlock(device);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+			device->is_connected = false;
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -311,19 +306,6 @@ const int pw_pid_count = 1;
 static indigo_device *devices[MAX_DEVICES] = {NULL};
 static bool connected_handles[PONE_HANDLE_MAX];
 
-static int find_index_by_device_handle(int handle) {
-	int count = POAGetPWCount();
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWCount() = %d", count);
-	PWProperties props;
-	for (int index = 0; index < count; index++) {
-		int res = POAGetPWProperties(index, &props);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWProperties(%d, -> %d) = %d", index, props.Handle, res);
-		if (res == PW_OK && props.Handle == handle) {
-			return index;
-		}
-	}
-	return -1;
-}
 
 static int find_plugged_device_handle() {
 	int new_handle = NO_DEVICE;
