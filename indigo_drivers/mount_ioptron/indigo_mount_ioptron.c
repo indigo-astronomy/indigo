@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0025
+#define DRIVER_VERSION 0x0026
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -51,6 +51,26 @@
 #define MOUNT_HOME_SEARCH_ITEM				(MOUNT_HOME_PROPERTY->items+1)
 #define MOUNT_HOME_SEARCH_ITEM_NAME		"SEARCH"
 
+#define MOUNT_PROTOCOL_PROPERTY       (PRIVATE_DATA->protocol_property)
+#define PROTOCOL_AUTO_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+0)
+#define PROTOCOL_8406_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+1)
+#define PROTOCOL_8407_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+2)
+#define PROTOCOL_0000_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+3)
+#define PROTOCOL_0100_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+4)
+#define PROTOCOL_0200_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+5)
+#define PROTOCOL_0205_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+6)
+#define PROTOCOL_0300_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+7)
+
+#define MOUNT_PROTOCOL_PROPERTY_NAME	"PROTOCOL_VERSION"
+#define PROTOCOL_AUTO_ITEM_NAME       "AUTO"
+#define PROTOCOL_8406_ITEM_NAME       "8406"
+#define PROTOCOL_8407_ITEM_NAME       "8407"
+#define PROTOCOL_0000_ITEM_NAME       "0000"
+#define PROTOCOL_0100_ITEM_NAME       "0100"
+#define PROTOCOL_0200_ITEM_NAME       "0200"
+#define PROTOCOL_0205_ITEM_NAME       "0205"
+#define PROTOCOL_0300_ITEM_NAME       "0300"
+
 #define RA_MIN_DIF					0.1
 #define DEC_MIN_DIF					0.1
 
@@ -69,6 +89,7 @@ typedef struct {
 	bool hc8406;
 	bool hc8407;
 	bool no_park;
+	indigo_property *protocol_property;
 } ioptron_private_data;
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
@@ -879,6 +900,38 @@ static void mount_connect_callback(indigo_device *device) {
 						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM26");
 					}
 				}
+			}
+			if (PROTOCOL_8406_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = true;
+				PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = -1;
+			} else if (PROTOCOL_8407_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = false;
+				PRIVATE_DATA->hc8407 = true;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = -1;
+			} else if (PROTOCOL_0000_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0000;
+			} else if (PROTOCOL_0100_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0100;
+			} else if (PROTOCOL_0200_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0200;
+			} else if (PROTOCOL_0205_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0205;
+			} else if (PROTOCOL_0300_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0300;
 			}
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s (%s), firmware %s, protocol %d.%d %s", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF, PRIVATE_DATA->hc8406 ? "HC8406" : (PRIVATE_DATA->hc8407 ? "HC8407" : "" ));
 			if (PRIVATE_DATA->hc8406) {
@@ -1834,6 +1887,18 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_HOME_SEARCH_ITEM, MOUNT_HOME_SEARCH_ITEM_NAME, "Search mechanical zero position", false);
 		MOUNT_HOME_PROPERTY->count = 1;
+		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL
+		MOUNT_PROTOCOL_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PROTOCOL_PROPERTY_NAME, MAIN_GROUP, "Mount protocol version", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		if (MOUNT_PROTOCOL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(PROTOCOL_AUTO_ITEM, PROTOCOL_AUTO_ITEM_NAME, "Autodetection", true);
+		indigo_init_switch_item(PROTOCOL_8406_ITEM, PROTOCOL_8406_ITEM_NAME, "HC 8406", false);
+		indigo_init_switch_item(PROTOCOL_8407_ITEM, PROTOCOL_8407_ITEM_NAME, "HC 8407", false);
+		indigo_init_switch_item(PROTOCOL_0000_ITEM, PROTOCOL_0000_ITEM_NAME, "0.0 (unknown)", false);
+		indigo_init_switch_item(PROTOCOL_0100_ITEM, PROTOCOL_0100_ITEM_NAME, "1.0", false);
+		indigo_init_switch_item(PROTOCOL_0200_ITEM, PROTOCOL_0200_ITEM_NAME, "2.0", false);
+		indigo_init_switch_item(PROTOCOL_0205_ITEM, PROTOCOL_0205_ITEM_NAME, "2.5", false);
+		indigo_init_switch_item(PROTOCOL_0300_ITEM, PROTOCOL_0300_ITEM_NAME, "3.0", false);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1843,6 +1908,7 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	indigo_define_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
@@ -1987,6 +2053,17 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_guide_rate_callback, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_PROTOCOL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL
+		indigo_property_copy_values(MOUNT_PROTOCOL_PROPERTY, property, false);
+		MOUNT_PROTOCOL_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, MOUNT_PROTOCOL_PROPERTY);
+		}
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -1998,6 +2075,7 @@ static indigo_result mount_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		mount_connect_callback(device);
 	}
+	indigo_release_property(MOUNT_PROTOCOL_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
