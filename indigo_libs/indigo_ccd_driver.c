@@ -521,6 +521,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, CCD_GAIN_PROPERTY);
 			indigo_save_property(device, NULL, CCD_FRAME_TYPE_PROPERTY);
 			char name_backup[INDIGO_VALUE_SIZE], value_backup[INDIGO_VALUE_SIZE];
+			strcpy(name_backup, CCD_SET_FITS_HEADER_NAME_ITEM->text.value);
+			strcpy(value_backup, CCD_SET_FITS_HEADER_VALUE_ITEM->text.value);
 			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 				indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 				strcpy(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, item->name);
@@ -724,20 +726,17 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_SET_FITS_HEADER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_SET_FITS_HEADER
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			if (!strcmp(item->name, CCD_SET_FITS_HEADER_KEYWORD_ITEM_NAME) && strlen(item->text.value) > 8) {
-				CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Keyword is too long");
-				return INDIGO_OK;
-			}
-			if (!strcmp(item->name, CCD_SET_FITS_HEADER_VALUE_ITEM_NAME) && strlen(item->text.value) > 58) {
-				CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Keyword value is too long");
-				return INDIGO_OK;
-			}
-		}
 		indigo_property_copy_values(CCD_SET_FITS_HEADER_PROPERTY, property, false);
+		if (strlen(CCD_SET_FITS_HEADER_NAME_ITEM->text.value) > 8) {
+			CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Keyword is too long");
+			return INDIGO_OK;
+		}
+		if (strlen(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value) > 58) {
+			CCD_SET_FITS_HEADER_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CCD_SET_FITS_HEADER_PROPERTY, "Keyword value is too long");
+			return INDIGO_OK;
+		}
 		bool found = false;
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
