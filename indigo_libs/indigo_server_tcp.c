@@ -45,7 +45,12 @@
 #include <netinet/tcp.h>
 #endif
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <dns_sd.h>
+#endif
+
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_client.h>
 #include <indigo/indigo_server_tcp.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_driver_json.h>
@@ -65,11 +70,13 @@
 void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n);
 
 static int server_socket;
+static bool startup_initiated = true;
 static bool shutdown_initiated = false;
 static int client_count = 0;
 static indigo_server_tcp_callback server_callback;
 
 int indigo_server_tcp_port = 7624;
+bool indigo_use_bonjour = true;
 bool indigo_is_ephemeral_port = false;
 bool indigo_use_blob_buffering = true;
 bool indigo_use_blob_compression = false;
@@ -483,9 +490,34 @@ void indigo_server_remove_resources(void) {
 	pthread_mutex_unlock(&resource_list_mutex);
 }
 
+static void default_server_callback(int count) {
+	static DNSServiceRef sd_http;
+	static DNSServiceRef sd_indigo;
+	if (startup_initiated) {
+		if (indigo_use_bonjour) {
+			/* UGLY but the only way to suppress compat mode warning messages on Linux */
+			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
+			DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			INDIGO_LOG(indigo_log("INDIGO service registered as %s", indigo_local_service_name));
+		}
+	} else if (shutdown_initiated) {
+		if (indigo_use_bonjour) {
+			DNSServiceRefDeallocate(sd_indigo);
+			DNSServiceRefDeallocate(sd_http);
+		}
+		INDIGO_LOG(indigo_log("INDIGO service unregistered"));
+	} else {
+		INDIGO_LOG(indigo_log("%d clients", count));
+	}
+}
+
+
 indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	indigo_use_blob_caching = true;
-	server_callback = callback;
+	startup_initiated = true;
+	shutdown_initiated = false;
+	server_callback = callback ? callback : default_server_callback;
 	int client_socket;
 	server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (server_socket == -1) {
@@ -529,7 +561,8 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	indigo_is_ephemeral_port = indigo_server_tcp_port == 0;
 	indigo_server_tcp_port = ntohs(server_address.sin_port);
 	INDIGO_LOG(indigo_log("Server started on %d", indigo_server_tcp_port));
-	server_callback(client_count);
+	server_callback(0);
+	startup_initiated = false;
 	signal(SIGPIPE, SIG_IGN);
 	while (1) {
 		client_socket = accept(server_socket, (struct sockaddr *)&client_name, &name_len);
@@ -553,6 +586,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		}
 	}
 	shutdown_initiated = false;
+	server_callback(0);
 	return INDIGO_OK;
 }
 
