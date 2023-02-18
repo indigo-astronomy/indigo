@@ -42,6 +42,10 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <dns_sd.h>
+#endif
+#ifdef INDIGO_MACOS
+#include <CoreFoundation/CoreFoundation.h>
 #endif
 #if defined(INDIGO_WINDOWS)
 #include <io.h>
@@ -507,6 +511,32 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 		*server = &indigo_available_servers[empty_slot];
 	return INDIGO_OK;
 }
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
+static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interfaceIndex, DNSServiceErrorType errorCode, const char *fullname, const char *hosttarget, uint16_t port, uint16_t txtLen, const unsigned char *txtRecord, void *context) {
+	indigo_server_entry **server = (indigo_server_entry **)context;
+	if (*server == NULL) {
+		char name[INDIGO_NAME_SIZE], *dot;
+		indigo_copy_name(name, fullname);
+		if ((dot = strchr(name, '.')))
+			*dot = 0;
+		indigo_connect_server(name, hosttarget, ntohs(port), server);
+	}
+}
+
+indigo_result indigo_connect_server_resolve(const char *name, const char *type, const char *domain, indigo_server_entry **server) {
+	DNSServiceRef sd_ref = NULL;
+	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, 0, name, type, domain, resolver_callback, server);
+	if (result) {
+		return INDIGO_FAILED;
+	}
+	result = DNSServiceProcessResult(sd_ref); // TODO: - it will wait forever
+	DNSServiceRefDeallocate(sd_ref);
+	return *server ? INDIGO_OK : INDIGO_NOT_FOUND;
+}
+
+#endif
 
 bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
 	bool connected = false;

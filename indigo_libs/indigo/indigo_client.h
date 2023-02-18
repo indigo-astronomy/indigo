@@ -130,6 +130,10 @@ void indigo_service_name(const char *host, int port, char *name);
 extern indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server);
 extern indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server);
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+extern indigo_result indigo_connect_server_resolve(const char *name, const char *type, const char *domain, indigo_server_entry **server);
+#endif
+
 /** If connected to the server returns true else returns false and last_error (if not NULL) will contain the last error
     reported within client thread. Last_error should have length of 256.
  */
