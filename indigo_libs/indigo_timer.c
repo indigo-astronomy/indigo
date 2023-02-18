@@ -260,8 +260,6 @@ bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer) {
 			*timer = NULL;
 			result = true;
 		}
-	} else {
-		indigo_error("Attempt to cancel timer without reference!");
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
 	return result;
