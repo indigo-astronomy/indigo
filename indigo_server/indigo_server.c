@@ -1596,7 +1596,7 @@ static void server_main() {
 	indigo_attach_device(&server_device);
 
 #ifdef INDIGO_LINUX
-	indigo_server_start(server_callback);
+	indigo_server_start(NULL);
 #endif
 #ifdef INDIGO_MACOS
 	if (!indigo_async((void * (*)(void *))indigo_server_start, NULL)) {
