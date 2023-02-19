@@ -108,7 +108,11 @@ $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(LIBINDIGO_FILES)
+ifeq ($(OS_DETECTED),Darwin)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a $(FORCE_ALL_ON) $(LIBHIDAPI).a $(FORCE_ALL_OFF) -ldl -lusb-1.0 -lz -lstdc++
+else
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a $(FORCE_ALL_ON) $(LIBHIDAPI).a $(FORCE_ALL_OFF) -ldl -lusb-1.0 -ldns_sd -lz -lstdc++
+endif
 
 #---------------------------------------------------------------------
 #
