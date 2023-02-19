@@ -384,13 +384,16 @@ static void *server_thread(indigo_server_entry *server) {
 			INDIGO_LOG(indigo_log("Can't create socket (%s)", strerror(errno)));
 			pthread_mutex_lock(&mutex);
 			strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
-			server->socket = socket_buffer;
 			pthread_mutex_unlock(&mutex);
 		} else {
 			((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
 			result = connect(socket_buffer, address->ai_addr, address->ai_addrlen);
 			pthread_mutex_lock(&mutex);
-			server->socket = socket_buffer;
+			if (server->socket >= 0) {
+				server->socket = socket_buffer;
+			} else {
+				reset_socket(server, 0);
+			}
 			pthread_mutex_unlock(&mutex);
 #if defined(INDIGO_WINDOWS)
 			if (is_pre_vista()) {
@@ -410,7 +413,7 @@ static void *server_thread(indigo_server_entry *server) {
 #else
 			inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
 #endif
-			if (result < 0) {
+			if (result < 0 && server->socket == 0) {
 				INDIGO_LOG(indigo_log("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
 				pthread_mutex_lock(&mutex);
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
@@ -456,6 +459,8 @@ static void *server_thread(indigo_server_entry *server) {
 #endif
 		} else if (server->socket == 0) {
 			indigo_usleep(5 * ONE_SECOND_DELAY);
+		} else {
+			break;
 		}
 	}
 	server->thread_started = false;
