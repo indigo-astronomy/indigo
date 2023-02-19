@@ -517,7 +517,7 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 	return INDIGO_OK;
 }
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#if defined(INDIGO_MACOS)
 
 static void *service_process_result_handler(DNSServiceRef s_ref) {
 	DNSServiceErrorType result = DNSServiceProcessResult(s_ref);
