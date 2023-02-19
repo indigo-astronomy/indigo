@@ -131,7 +131,9 @@ extern indigo_result indigo_connect_server(const char *name, const char *host, i
 extern indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server);
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-extern indigo_result indigo_connect_server_resolve(const char *name, const char *type, const char *domain, indigo_server_entry **server);
+extern indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port));
+extern indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name));
+extern void indigo_stop_service_browser(void);
 #endif
 
 /** If connected to the server returns true else returns false and last_error (if not NULL) will contain the last error
