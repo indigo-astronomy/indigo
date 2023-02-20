@@ -49,6 +49,11 @@ then
 	description="\"Orion StarShotG Camera\""
 else
 
+if [ "$name" = "indigo_ccd_ogma" ]
+then
+	description="\"OGMA Camera\""
+else
+
 if [ "$name" = "indigo_ccd_touptek" ]
 then
 	description="\"Touptek Camera\""
@@ -59,6 +64,7 @@ else
 	then
 		description=`grep "define $description" *.c *.cpp *.m *.h | awk '{$1="";$2=""}1'`
 	fi
+fi
 fi
 fi
 fi
