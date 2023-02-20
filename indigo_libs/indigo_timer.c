@@ -161,7 +161,7 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 	pthread_mutex_lock(&free_timer_mutex);
 	if (free_timer != NULL) {
 		t = free_timer;
-		INDIGO_TRACE(indigo_trace("timer #%d - reusing (%p)", t->timer_id, timer));
+		INDIGO_TRACE(indigo_trace("timer #%d - reusing (%p)", t->timer_id, t));
 		free_timer = free_timer->next;
 		t->wake = true;
 		t->callback_running = false;
@@ -182,7 +182,7 @@ bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_time
 	} else {
 		t = indigo_safe_malloc(sizeof(indigo_timer));
 		t->timer_id = timer_count++;
-		INDIGO_TRACE(indigo_trace("timer #%d - allocating (%p)", t->timer_id, timer));
+		INDIGO_TRACE(indigo_trace("timer #%d - allocating (%p)", t->timer_id, t));
 		pthread_mutex_init(&t->mutex, NULL);
 		pthread_mutex_init(&t->callback_mutex, NULL);
 		pthread_cond_init(&t->cond, NULL);
