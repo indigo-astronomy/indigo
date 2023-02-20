@@ -43,4 +43,5 @@ Driver is developed and tested with:
 * LX200GPS
 * EQMac
 * ZWO AM5
+* Pegasus NYX-101
 * Simulators
