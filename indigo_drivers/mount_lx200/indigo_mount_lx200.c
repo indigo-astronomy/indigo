@@ -106,6 +106,28 @@
 #define ZWO_BUZZER_LOW_ITEM_NAME		"LOW"
 #define ZWO_BUZZER_HIGH_ITEM_NAME		"HIGH"
 
+#define NYX_WIFI_AP_PROPERTY				(PRIVATE_DATA->nyx_wifi_ap_property)
+#define NYX_WIFI_AP_SSID_ITEM				(NYX_WIFI_AP_PROPERTY->items+0)
+#define NYX_WIFI_AP_PASSWORD_ITEM		(NYX_WIFI_AP_PROPERTY->items+1)
+
+#define NYX_WIFI_CL_PROPERTY				(PRIVATE_DATA->nyx_wifi_cl_property)
+#define NYX_WIFI_CL_SSID_ITEM				(NYX_WIFI_CL_PROPERTY->items+0)
+#define NYX_WIFI_CL_PASSWORD_ITEM		(NYX_WIFI_CL_PROPERTY->items+1)
+
+#define NYX_WIFI_RESET_PROPERTY			(PRIVATE_DATA->nyx_wifi_reset_property)
+#define NYX_WIFI_RESET_ITEM					(NYX_WIFI_RESET_PROPERTY->items+0)
+
+#define NYX_WIFI_AP_PROPERTY_NAME				"X_NYX_WIFI_AP"
+#define NYX_WIFI_AP_SSID_ITEM_NAME			"AP_SSID"
+#define NYX_WIFI_AP_PASSWORD_ITEM_NAME	"AP_PASSWORD"
+
+#define NYX_WIFI_CL_PROPERTY_NAME				"X_NYX_WIFI_CL"
+#define NYX_WIFI_CL_SSID_ITEM_NAME			"CL_SSID"
+#define NYX_WIFI_CL_PASSWORD_ITEM_NAME	"CL_PASSWORD"
+
+#define NYX_WIFI_RESET_PROPERTY_NAME		"X_NYX_WIFI_RESET"
+#define NYX_WIFI_RESET_ITEM_NAME				"RESET"
+
 #define IS_PARKED (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
 
 typedef struct {
@@ -123,6 +145,9 @@ typedef struct {
 	indigo_property *force_flip_property;
 	indigo_property *mount_type_property;
 	indigo_property *zwo_buzzer_property;
+	indigo_property *nyx_wifi_ap_property;
+	indigo_property *nyx_wifi_cl_property;
+	indigo_property *nyx_wifi_reset_property;
 	indigo_timer *focuser_timer;
 	bool use_dst_commands;
 	bool park_changed;
@@ -1405,6 +1430,9 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	MOUNT_HOME_SET_PROPERTY->count = 1;
 	MOUNT_MODE_PROPERTY->hidden = true;
 	FORCE_FLIP_PROPERTY->hidden = true;
+	NYX_WIFI_AP_PROPERTY->hidden = false;
+	NYX_WIFI_CL_PROPERTY->hidden = false;
+	NYX_WIFI_RESET_PROPERTY->hidden = false;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "PegasusAstro");
 	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
@@ -1420,6 +1448,15 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	if (!meade_command(device, ":SX91,U#", response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't unlock brake");
 	}
+	char *colon = NULL;
+	if (meade_command(device, ":WL>#", response, sizeof(response), 0) && (colon = strchr(response, ':'))) {
+		*colon++ = 0;
+		strncpy(NYX_WIFI_AP_SSID_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+		strncpy(NYX_WIFI_AP_PASSWORD_ITEM->text.value, colon, INDIGO_VALUE_SIZE);
+	}
+	indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+	indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+	indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
@@ -2249,6 +2286,48 @@ static void zwo_buzzer_callback(indigo_device *device) {
 	indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
 }
 
+static void nyx_ap_callback(indigo_device *device) {
+	char command[64], response[64];
+	snprintf(command, sizeof(command), ":WA%s#", NYX_WIFI_AP_SSID_ITEM->text.value);
+	NYX_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
+		snprintf(command, sizeof(command), ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value);
+		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
+			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
+				indigo_send_message(device, "Access point SSID and password set!");
+				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+	}
+	indigo_update_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+}
+
+static void nyx_cl_callback(indigo_device *device) {
+	char command[64], response[64];
+	snprintf(command, sizeof(command), ":WS%s#", NYX_WIFI_CL_SSID_ITEM->text.value);
+	NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
+		snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
+		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
+			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
+				indigo_send_message(device, "Client SSID and password set!");
+				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
+			}
+		}
+	}
+	indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+}
+
+static void nyx_reset_callback(indigo_device *device) {
+	char response[64];
+	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+	if (meade_command(device, ":WLZ#", response, sizeof(response), 5 * ONE_SECOND_DELAY) && *response == '1') {
+		indigo_send_message(device, "WiFi reset!");
+	NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+}
+
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
 static indigo_result mount_attach(indigo_device *device) {
@@ -2301,6 +2380,26 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(ZWO_BUZZER_LOW_ITEM, ZWO_BUZZER_LOW_ITEM_NAME, "Low", false);
 		indigo_init_switch_item(ZWO_BUZZER_HIGH_ITEM, ZWO_BUZZER_HIGH_ITEM_NAME, "High", false);
 		ZWO_BUZZER_PROPERTY->hidden = true;
+		// ---------------------------------------------------------------------------- NYX_WIFI_AP
+		NYX_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_AP_PROPERTY_NAME, "Advanced", "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (NYX_WIFI_AP_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NYX_WIFI_AP_PROPERTY->hidden = true;
+		indigo_init_switch_item(NYX_WIFI_AP_SSID_ITEM, NYX_WIFI_AP_SSID_ITEM_NAME, "SSID", "");
+		indigo_init_switch_item(NYX_WIFI_AP_PASSWORD_ITEM, NYX_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
+		// ---------------------------------------------------------------------------- NYX_WIFI_CL
+		NYX_WIFI_CL_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_CL_PROPERTY_NAME, "Advanced", "Client WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (NYX_WIFI_CL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NYX_WIFI_CL_PROPERTY->hidden = true;
+		indigo_init_switch_item(NYX_WIFI_CL_SSID_ITEM, NYX_WIFI_CL_SSID_ITEM_NAME, "SSID", "");
+		indigo_init_switch_item(NYX_WIFI_CL_PASSWORD_ITEM, NYX_WIFI_CL_PASSWORD_ITEM_NAME, "Password", "");
+		// ---------------------------------------------------------------------------- NYX_WIFI_RESET
+		NYX_WIFI_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, NYX_WIFI_RESET_PROPERTY_NAME, "Advanced", "Reset WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (NYX_WIFI_RESET_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NYX_WIFI_RESET_PROPERTY->hidden = true;
+		indigo_init_switch_item(NYX_WIFI_RESET_ITEM, NYX_WIFI_RESET_ITEM_NAME, "Reset", false);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
@@ -2320,6 +2419,12 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, FORCE_FLIP_PROPERTY, NULL);
 		if (indigo_property_match(ZWO_BUZZER_PROPERTY, property))
 			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
+		if (indigo_property_match(NYX_WIFI_AP_PROPERTY, property))
+			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+		if (indigo_property_match(NYX_WIFI_CL_PROPERTY, property))
+			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+		if (indigo_property_match(NYX_WIFI_RESET_PROPERTY, property))
+			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -2507,11 +2612,32 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ZWO_BUZZER_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FORCE_FLIP
+		// -------------------------------------------------------------------------------- ZWO_BUZZER
 		indigo_property_copy_values(ZWO_BUZZER_PROPERTY, property, false);
 		ZWO_BUZZER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ZWO_BUZZER_PROPERTY, NULL);
 		indigo_set_timer(device, 0, zwo_buzzer_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(NYX_WIFI_AP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NYX_WIFI_AP
+		indigo_property_copy_values(NYX_WIFI_AP_PROPERTY, property, false);
+		NYX_WIFI_AP_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+		indigo_set_timer(device, 0, nyx_ap_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(NYX_WIFI_CL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NYX_WIFI_CL
+		indigo_property_copy_values(NYX_WIFI_CL_PROPERTY, property, false);
+		NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+		indigo_set_timer(device, 0, nyx_cl_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(NYX_WIFI_RESET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- NYX_WIFI_RESET
+		indigo_property_copy_values(NYX_WIFI_RESET_PROPERTY, property, false);
+		NYX_WIFI_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, nyx_reset_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
@@ -2533,6 +2659,9 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_MODE_PROPERTY);
 	indigo_release_property(FORCE_FLIP_PROPERTY);
 	indigo_release_property(ZWO_BUZZER_PROPERTY);
+	indigo_release_property(NYX_WIFI_AP_PROPERTY);
+	indigo_release_property(NYX_WIFI_CL_PROPERTY);
+	indigo_release_property(NYX_WIFI_RESET_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
