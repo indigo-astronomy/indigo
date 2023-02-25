@@ -664,8 +664,15 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 	return false;
 }
 
+static bool meade_set_tracking(indigo_device *device, bool on);
+
 static bool meade_slew(indigo_device *device, double ra, double dec) {
 	char command[128], response[128];
+	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
+		if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+			meade_set_tracking(device, true);
+		}
+	}
 	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
 	if (!meade_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
@@ -793,7 +800,7 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			return gemini_set(device, 192, "");
 		} else if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 			return meade_command(device, ":X122#", NULL, 0, 0);
-		} if (MOUNT_TYPE_AP_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
 				return meade_command(device, ":RT2#", NULL, 0, 0);
 			} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
@@ -801,8 +808,18 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
 				return meade_command(device, ":RT0#", NULL, 0, 0);
 			}
-		} if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value) {
 			return meade_command(device, ":Te#", response, sizeof(response), 0) && *response == '1';
+		} else if (MOUNT_TYPE_NYX_ITEM->sw.value) {
+			if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+				return meade_command(device, ":TQ#:Te#", response, sizeof(response), 0) && *response == '1';
+			} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+				return meade_command(device, ":TS#:Te#", response, sizeof(response), 0) && *response == '1';
+			} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
+				return meade_command(device, ":TL#:Te#", response, sizeof(response), 0) && *response == '1';
+			} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
+				return meade_command(device, ":TK#:Te#", response, sizeof(response), 0) && *response == '1';
+			}
 		} else {
 			return meade_command(device, ":AP#", NULL, 0, 0);
 		}
@@ -811,9 +828,9 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			return gemini_set(device, 191, "");
 		} else if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 			return meade_command(device, ":X120#", NULL, 0, 0);
-		} if (MOUNT_TYPE_AP_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			return meade_command(device, ":RT9#", NULL, 0, 0);
-		} if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
 			return meade_command(device, ":Td#", NULL, 0, 0);
 		} else {
 			return meade_command(device, ":AL#", NULL, 0, 0);
@@ -1452,6 +1469,8 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	MOUNT_HOME_SET_PROPERTY->count = 1;
 	MOUNT_MODE_PROPERTY->hidden = true;
 	FORCE_FLIP_PROPERTY->hidden = true;
+	MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+	MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 	NYX_WIFI_AP_PROPERTY->hidden = false;
 	NYX_WIFI_CL_PROPERTY->hidden = false;
 	NYX_WIFI_RESET_PROPERTY->hidden = false;
@@ -1471,20 +1490,34 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	if (!meade_command(device, ":SX91,U#", response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't unlock brake");
 	}
-	char *colon = NULL;
-	if (meade_command(device, ":WL>#", response, sizeof(response), 0) && (colon = strchr(response, ':'))) {
-		*colon++ = 0;
+	char *separator = NULL;
+	*NYX_WIFI_AP_SSID_ITEM->text.value = 0;
+	*NYX_WIFI_AP_PASSWORD_ITEM->text.value = 0;
+	if (meade_command(device, ":WL>#", response, sizeof(response), 0) && (separator = strchr(response, ':'))) {
+		*separator++ = 0;
 		strncpy(NYX_WIFI_AP_SSID_ITEM->text.value, response, INDIGO_VALUE_SIZE);
-		strncpy(NYX_WIFI_AP_PASSWORD_ITEM->text.value, colon, INDIGO_VALUE_SIZE);
 	}
-	if (meade_command(device, ":GX9D#", response, sizeof(response), 0) && (colon = strchr(response, ':'))) {
-		*colon++ = 0;
+	*NYX_WIFI_CL_SSID_ITEM->text.value = 0;
+	*NYX_WIFI_CL_PASSWORD_ITEM->text.value = 0;
+	if (meade_command(device, ":WLD#", response, sizeof(response), 0) && *response != ':' && (separator = strchr(response, ':'))) {
+		*separator++ = 0;
+		strncpy(NYX_WIFI_CL_SSID_ITEM->text.value, response, INDIGO_VALUE_SIZE);
+		indigo_send_message(device, "Mount is connected to network '%s' with IP address %s", response, separator);
+	}
+
+	
+	if (meade_command(device, ":GX9D#", response, sizeof(response), 0) && (separator = strchr(response, ':'))) {
+		*separator++ = 0;
 		NYX_LEVELER_PICH_ITEM->number.value = atof(response);
-		NYX_LEVELER_ROLL_ITEM->number.value = atof(colon);
+		NYX_LEVELER_ROLL_ITEM->number.value = atof(separator);
 	}
 	if (meade_command(device, ":GX9E#", response, sizeof(response), 0)) {
 		NYX_LEVELER_COMPASS_ITEM->number.value = atof(response);
 	}
+	meade_command(device, ":RE00.03#:RA00.03#", NULL, 0, 0);
+	time_t secs = time(NULL);
+	int utc_offset = indigo_get_utc_offset();
+	meade_set_utc(device, &secs, utc_offset);
 	indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 	indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 	indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
@@ -1948,7 +1981,21 @@ static void meade_update_nyx_state(indigo_device *device) {
 				PRIVATE_DATA->tracking_rate_changed = true;
 			}
 		}
-
+		if (strchr(response, 'W')) {
+			if (!MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		} else if (strchr(response, 'T')) {
+			if (!MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		} else if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value || MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+			MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = false;
+			MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = false;
+			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+		}
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -2357,7 +2404,7 @@ static void nyx_ap_callback(indigo_device *device) {
 		snprintf(command, sizeof(command), ":WB%s#", NYX_WIFI_AP_PASSWORD_ITEM->text.value);
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
-				indigo_send_message(device, "Access point SSID and password set!");
+				indigo_send_message(device, "Created access point with SSID %s", NYX_WIFI_CL_SSID_ITEM->text.value);
 				NYX_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
 			}
 		}
@@ -2373,8 +2420,19 @@ static void nyx_cl_callback(indigo_device *device) {
 		snprintf(command, sizeof(command), ":WP%s#", NYX_WIFI_CL_PASSWORD_ITEM->text.value);
 		if (meade_command(device, command, response, sizeof(response), 0) && *response == '1') {
 			if (meade_command(device, ":WLC#", response, sizeof(response), 0) && *response == '1') {
-				indigo_send_message(device, "Client SSID and password set!");
-				NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
+				NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+				for (int i = 0; i < 10; i++) {
+					indigo_usleep(ONE_SECOND_DELAY);
+					if (meade_command(device, ":WLI#", response, sizeof(response), 0) && !strncmp(response, NYX_WIFI_CL_SSID_ITEM->text.value, strlen(NYX_WIFI_CL_SSID_ITEM->text.value))) {
+						indigo_send_message(device, "Connected to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
+						NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+						return;
+					}
+				}
+				indigo_send_message(device, "Failed to connect to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
+				NYX_WIFI_CL_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		}
 	}
@@ -2448,15 +2506,15 @@ static indigo_result mount_attach(indigo_device *device) {
 		if (NYX_WIFI_AP_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NYX_WIFI_AP_PROPERTY->hidden = true;
-		indigo_init_switch_item(NYX_WIFI_AP_SSID_ITEM, NYX_WIFI_AP_SSID_ITEM_NAME, "SSID", "");
-		indigo_init_switch_item(NYX_WIFI_AP_PASSWORD_ITEM, NYX_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
+		indigo_init_text_item(NYX_WIFI_AP_SSID_ITEM, NYX_WIFI_AP_SSID_ITEM_NAME, "SSID", "");
+		indigo_init_text_item(NYX_WIFI_AP_PASSWORD_ITEM, NYX_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
 		// ---------------------------------------------------------------------------- NYX_WIFI_CL
 		NYX_WIFI_CL_PROPERTY = indigo_init_text_property(NULL, device->name, NYX_WIFI_CL_PROPERTY_NAME, "Advanced", "Client WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (NYX_WIFI_CL_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NYX_WIFI_CL_PROPERTY->hidden = true;
-		indigo_init_switch_item(NYX_WIFI_CL_SSID_ITEM, NYX_WIFI_CL_SSID_ITEM_NAME, "SSID", "");
-		indigo_init_switch_item(NYX_WIFI_CL_PASSWORD_ITEM, NYX_WIFI_CL_PASSWORD_ITEM_NAME, "Password", "");
+		indigo_init_text_item(NYX_WIFI_CL_SSID_ITEM, NYX_WIFI_CL_SSID_ITEM_NAME, "SSID", "");
+		indigo_init_text_item(NYX_WIFI_CL_PASSWORD_ITEM, NYX_WIFI_CL_PASSWORD_ITEM_NAME, "Password", "");
 		// ---------------------------------------------------------------------------- NYX_WIFI_RESET
 		NYX_WIFI_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, NYX_WIFI_RESET_PROPERTY_NAME, "Advanced", "Reset WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (NYX_WIFI_RESET_PROPERTY == NULL)
@@ -2468,9 +2526,9 @@ static indigo_result mount_attach(indigo_device *device) {
 		if (NYX_LEVELER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		NYX_LEVELER_PROPERTY->hidden = true;
-		indigo_init_number_item(NYX_LEVELER_PICH_ITEM, NYX_LEVELER_PICH_ITEM_NAME, "Pitch", 0, 360, 0, 0);
-		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll", 0, 360, 0, 0);
-		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compas", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_PICH_ITEM, NYX_LEVELER_PICH_ITEM_NAME, "Pitch [°]", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll [°]", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compas [°]", 0, 360, 0, 0);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
