@@ -25,5 +25,6 @@ indigo_server indigo_ccd_playerone
 ## Tested with:
 
 * MARS-C II
-* Poseidon C Pro
+* Poseidon-C Pro
+* Sedna-M
 
