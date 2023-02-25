@@ -124,42 +124,12 @@ typedef struct {
 	int gain_lowerst_rn;
 	int offset_lowest_rn;
 	int gain_hcg;
+	int offset_hcg;
 	indigo_property *pixel_format_property;
 	indigo_property *playerone_presets_property;
 	indigo_property *playerone_advanced_property;
 	indigo_property *playerone_custom_suffix_property;
 } playerone_private_data;
-
-static int get_unity_gain(int device_id) {
-	int unity_gain = 0;
-	POAConfigValue value;
-	POABool unused;
-
-	POAErrors res = POAGetConfig(device_id, POA_EGAIN, &value, &unused);
-	double eADU = value.floatValue;
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", device_id, res);
-		return 0;
-	}
-
-	res = POAGetConfig(device_id, POA_GAIN, &value, &unused);
-	int gain = (int)value.intValue;
-	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_GAIN) > %d", device_id, res);
-		return 0;
-	}
-
-	double e_per_adu = eADU * pow(10.0, gain/200.0);
-	if (e_per_adu > 0) {
-		unity_gain = (int)round(200 * log10(e_per_adu));
-	}
-	if (unity_gain < 0) {
-		unity_gain = 0;
-	}
-
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "eADU = %f, gain = %d, unity_gain = %d", eADU, gain, unity_gain);
-	return unity_gain;
-}
 
 static int get_pixel_depth(indigo_device *device) {
 	int item = 0;
@@ -1189,20 +1159,22 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				}
 				indigo_define_property(device, POA_ADVANCED_PROPERTY, NULL);
 
-				PRIVATE_DATA->gain_highest_dr = 0;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = POAGetGainOffset(
+				res = POAGetGainsAndOffsets(
 					id,
-					&PRIVATE_DATA->offset_highest_dr,
-					&PRIVATE_DATA->offset_unity_gain,
+					&PRIVATE_DATA->gain_highest_dr,
+					&PRIVATE_DATA->gain_hcg,
+					&PRIVATE_DATA->gain_unity_gain,
 					&PRIVATE_DATA->gain_lowerst_rn,
-					&PRIVATE_DATA->offset_lowest_rn,
-					&PRIVATE_DATA->gain_hcg
+					&PRIVATE_DATA->offset_highest_dr,
+					&PRIVATE_DATA->offset_hcg,
+					&PRIVATE_DATA->offset_unity_gain,
+					&PRIVATE_DATA->offset_lowest_rn
 				);
-				PRIVATE_DATA->gain_unity_gain = get_unity_gain(PRIVATE_DATA->dev_id);
+
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
-					INDIGO_DRIVER_LOG( DRIVER_NAME, "POAGetGainOffset(%d) = %d", id, res);
+					INDIGO_DRIVER_LOG( DRIVER_NAME, "POAGetGainsAndOffsets(%d) = %d", id, res);
 				}
 
 				char item_desc[100];
