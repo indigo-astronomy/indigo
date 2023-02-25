@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -62,6 +62,7 @@
 #define is_connected                    gp_bits
 
 typedef struct {
+	char model[256];
 	int dev_handle;
 	int current_slot, target_slot;
 	int count;
@@ -116,6 +117,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		const char *sdk_version = POAGetPWSDKVer();
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 
 		// --------------------------------------------------------------------------------- POA_CUSTOM_SUFFIX
 		POA_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "POA_CUSTOM_SUFFIX", WHEEL_MAIN_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
@@ -375,6 +377,33 @@ static int find_unplugged_device_handle() {
 	return handle;
 }
 
+static void split_device_name(const char *fill_device_name, char *device_name, char *suffix) {
+	if (fill_device_name == NULL || device_name == NULL || suffix == NULL) {
+		return;
+	}
+
+	char name_buf[256];
+	strncpy(name_buf, fill_device_name, sizeof(name_buf));
+	char *suffix_start = strchr(name_buf, '[');
+	char *suffix_end = strrchr(name_buf, ']');
+
+	if (suffix_start == NULL || suffix_end == NULL) {
+		strncpy(device_name, name_buf, 256);
+		suffix[0] = '\0';
+		return;
+	}
+	suffix_start[0] = '\0';
+	/* remove pace id name and suffix are space separated */
+	if (suffix_start > name_buf && suffix_start[-1] == ' ') {
+		suffix_start[-1] = '\0';
+	}
+	suffix_end[0] = '\0';
+	suffix_start++;
+
+	strncpy(device_name, name_buf, 256);
+	strncpy(suffix, suffix_start, 16);
+}
+
 static void process_plug_event(indigo_device *unused) {
 	PWProperties info;
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
@@ -421,14 +450,21 @@ static void process_plug_event(indigo_device *unused) {
 		indigo_usleep(ONE_SECOND_DELAY);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-	if (device_name_exists(info.Name)) {
-		sprintf(device->name, "%s #%d", info.Name, handle);
+	char name[256] = {0};
+	char suffix[16] = {0};
+	char device_name[INDIGO_NAME_SIZE] = {0};
+	split_device_name(info.Name, name, suffix);
+	if (suffix[0] != '\0') {
+		snprintf(device_name, INDIGO_NAME_SIZE, "%s #%s", name, suffix);
 	} else {
-		sprintf(device->name, "%s", info.Name);
+		snprintf(device_name, INDIGO_NAME_SIZE, "%s", name);
 	}
+	sprintf(device->name, "%s", device_name);
+	indigo_make_name_unique(device->name, "%d", handle);
 	INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 	pone_private_data *private_data = indigo_safe_malloc(sizeof(pone_private_data));
 	private_data->dev_handle = handle;
+	strncpy(private_data->model, name, sizeof(private_data->model));
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
