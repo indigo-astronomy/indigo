@@ -117,6 +117,11 @@
 #define NYX_WIFI_RESET_PROPERTY			(PRIVATE_DATA->nyx_wifi_reset_property)
 #define NYX_WIFI_RESET_ITEM					(NYX_WIFI_RESET_PROPERTY->items+0)
 
+#define NYX_LEVELER_PROPERTY				(PRIVATE_DATA->nyx_leveler_property)
+#define NYX_LEVELER_PICH_ITEM				(NYX_LEVELER_PROPERTY->items+0)
+#define NYX_LEVELER_ROLL_ITEM				(NYX_LEVELER_PROPERTY->items+1)
+#define NYX_LEVELER_COMPASS_ITEM		(NYX_LEVELER_PROPERTY->items+2)
+
 #define NYX_WIFI_AP_PROPERTY_NAME				"X_NYX_WIFI_AP"
 #define NYX_WIFI_AP_SSID_ITEM_NAME			"AP_SSID"
 #define NYX_WIFI_AP_PASSWORD_ITEM_NAME	"AP_PASSWORD"
@@ -127,6 +132,19 @@
 
 #define NYX_WIFI_RESET_PROPERTY_NAME		"X_NYX_WIFI_RESET"
 #define NYX_WIFI_RESET_ITEM_NAME				"RESET"
+
+#define NYX_LEVELER_PROPERTY_NAME				"X_NYX_LEVELER"
+#define NYX_LEVELER_PICH_ITEM_NAME			"PICH"
+#define NYX_LEVELER_ROLL_ITEM_NAME			"ROLL"
+#define NYX_LEVELER_COMPASS_ITEM_NAME		"COMPASS"
+
+#define AUX_WEATHER_PROPERTY            (PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_TEMPERATURE_ITEM    (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_PRESSURE_ITEM				(AUX_WEATHER_PROPERTY->items + 1)
+
+#define AUX_INFO_PROPERTY								(PRIVATE_DATA->info_property)
+#define AUX_INFO_VOLTAGE_ITEM						(AUX_INFO_PROPERTY->items + 0)
+
 
 #define IS_PARKED (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
 
@@ -148,7 +166,11 @@ typedef struct {
 	indigo_property *nyx_wifi_ap_property;
 	indigo_property *nyx_wifi_cl_property;
 	indigo_property *nyx_wifi_reset_property;
+	indigo_property *nyx_leveler_property;
+	indigo_property *weather_property;
+	indigo_property *info_property;
 	indigo_timer *focuser_timer;
+	indigo_timer *aux_timer;
 	bool use_dst_commands;
 	bool park_changed;
 	bool home_changed;
@@ -1433,6 +1455,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	NYX_WIFI_AP_PROPERTY->hidden = false;
 	NYX_WIFI_CL_PROPERTY->hidden = false;
 	NYX_WIFI_RESET_PROPERTY->hidden = false;
+	NYX_LEVELER_PROPERTY->hidden = false;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "PegasusAstro");
 	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
@@ -1454,9 +1477,18 @@ static void meade_init_nyx_mount(indigo_device *device) {
 		strncpy(NYX_WIFI_AP_SSID_ITEM->text.value, response, INDIGO_VALUE_SIZE);
 		strncpy(NYX_WIFI_AP_PASSWORD_ITEM->text.value, colon, INDIGO_VALUE_SIZE);
 	}
+	if (meade_command(device, ":GX9D#", response, sizeof(response), 0) && (colon = strchr(response, ':'))) {
+		*colon++ = 0;
+		NYX_LEVELER_PICH_ITEM->number.value = atof(response);
+		NYX_LEVELER_ROLL_ITEM->number.value = atof(colon);
+	}
+	if (meade_command(device, ":GX9E#", response, sizeof(response), 0)) {
+		NYX_LEVELER_COMPASS_ITEM->number.value = atof(response);
+	}
 	indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
 	indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 	indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+	indigo_define_property(device, NYX_LEVELER_PROPERTY, NULL);
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
@@ -1475,6 +1507,11 @@ static void meade_init_generic_mount(indigo_device *device) {
 }
 
 static void meade_init_mount(indigo_device *device) {
+	ZWO_BUZZER_PROPERTY->hidden = true;
+	NYX_WIFI_AP_PROPERTY->hidden = true;
+	NYX_WIFI_CL_PROPERTY->hidden = true;
+	NYX_WIFI_RESET_PROPERTY->hidden = true;
+	NYX_LEVELER_PROPERTY->hidden = true;
 	if (MOUNT_TYPE_MEADE_ITEM->sw.value)
 		meade_init_meade_mount(device);
 	else if (MOUNT_TYPE_EQMAC_ITEM->sw.value)
@@ -1915,6 +1952,28 @@ static void meade_update_nyx_state(indigo_device *device) {
 	} else {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	char *colon;
+	bool leveler_change = false;
+	if (meade_command(device, ":GX9D#", response, sizeof(response), 0) && (colon = strchr(response, ':'))) {
+		*colon++ = 0;
+		double pitch = atof(response);
+		double roll = atof(colon);
+		if (NYX_LEVELER_PICH_ITEM->number.value != pitch || NYX_LEVELER_ROLL_ITEM->number.value != roll) {
+			NYX_LEVELER_PICH_ITEM->number.value = pitch;
+			NYX_LEVELER_ROLL_ITEM->number.value = roll;
+			leveler_change = true;
+		}
+	}
+	if (meade_command(device, ":GX9E#", response, sizeof(response), 0)) {
+		double compass = atof(response);
+		if (NYX_LEVELER_COMPASS_ITEM->number.value != compass) {
+			NYX_LEVELER_COMPASS_ITEM->number.value = compass;
+			leveler_change = true;
+		}
+	}
+	if (leveler_change) {
+		indigo_update_property(device, NYX_LEVELER_PROPERTY, NULL);
+	}
 }
 
 static void meade_update_generic_state(indigo_device *device) {
@@ -2037,6 +2096,10 @@ static void mount_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, MOUNT_MODE_PROPERTY, NULL);
 		indigo_delete_property(device, FORCE_FLIP_PROPERTY, NULL);
 		indigo_delete_property(device, ZWO_BUZZER_PROPERTY, NULL);
+		indigo_delete_property(device, NYX_WIFI_AP_PROPERTY, NULL);
+		indigo_delete_property(device, NYX_WIFI_CL_PROPERTY, NULL);
+		indigo_delete_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		indigo_delete_property(device, NYX_LEVELER_PROPERTY, NULL);
 		MOUNT_TYPE_PROPERTY->perm = INDIGO_RW_PERM;
 		indigo_delete_property(device, MOUNT_TYPE_PROPERTY, NULL);
 		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
@@ -2400,6 +2463,14 @@ static indigo_result mount_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		NYX_WIFI_RESET_PROPERTY->hidden = true;
 		indigo_init_switch_item(NYX_WIFI_RESET_ITEM, NYX_WIFI_RESET_ITEM_NAME, "Reset", false);
+		// ---------------------------------------------------------------------------- NYX_LEVELER
+		NYX_LEVELER_PROPERTY = indigo_init_number_property(NULL, device->name, NYX_LEVELER_PROPERTY_NAME, "Advanced", "Leveler", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		if (NYX_LEVELER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		NYX_LEVELER_PROPERTY->hidden = true;
+		indigo_init_number_item(NYX_LEVELER_PICH_ITEM, NYX_LEVELER_PICH_ITEM_NAME, "Pitch", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_ROLL_ITEM, NYX_LEVELER_ROLL_ITEM_NAME, "Roll", 0, 360, 0, 0);
+		indigo_init_number_item(NYX_LEVELER_COMPASS_ITEM, NYX_LEVELER_COMPASS_ITEM_NAME, "Compas", 0, 360, 0, 0);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
@@ -2424,6 +2495,8 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 		if (indigo_property_match(NYX_WIFI_CL_PROPERTY, property))
 			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 		if (indigo_property_match(NYX_WIFI_RESET_PROPERTY, property))
+			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		if (indigo_property_match(NYX_LEVELER_PROPERTY, property))
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
@@ -2662,6 +2735,7 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(NYX_WIFI_AP_PROPERTY);
 	indigo_release_property(NYX_WIFI_CL_PROPERTY);
 	indigo_release_property(NYX_WIFI_RESET_PROPERTY);
+	indigo_release_property(NYX_LEVELER_PROPERTY);
 	indigo_release_property(MOUNT_TYPE_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
@@ -2907,6 +2981,153 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return indigo_focuser_detach(device);
 }
 
+static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result aux_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX | INDIGO_INTERFACE_AUX_WEATHER) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- WEATHER
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Info", "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		if (AUX_WEATHER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Pressure [mb]", 0, 2000, 0, 0);
+		// -------------------------------------------------------------------------------- INFO
+		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Info", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+		if (AUX_INFO_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
+		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
+		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+		DEVICE_PORT_PROPERTY->hidden = false;
+		DEVICE_PORTS_PROPERTY->hidden = false;
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return aux_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (IS_CONNECTED) {
+		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
+		if (indigo_property_match(AUX_INFO_PROPERTY, property))
+			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+	}
+	return indigo_aux_enumerate_properties(device, NULL, NULL);
+}
+
+static void aux_timer_callback(indigo_device *device) {
+	if (!IS_CONNECTED)
+		return;
+	char response[128];
+	bool updateWeather = false;
+	bool updateInfo = false;
+	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
+		if (meade_command(device, ":GX9A#", response, sizeof(response), 0)) {
+			double temperature = atof(response);
+			if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != temperature) {
+				AUX_WEATHER_TEMPERATURE_ITEM->number.value = temperature;
+				updateWeather = true;
+			}
+		}
+		if (meade_command(device, ":GX9B#", response, sizeof(response), 0)) {
+			double pressure = atof(response);
+			if (AUX_WEATHER_PRESSURE_ITEM->number.value != pressure) {
+				AUX_WEATHER_PRESSURE_ITEM->number.value = pressure;
+				updateWeather = true;
+			}
+		}
+		if (meade_command(device, ":GX9V#", response, sizeof(response), 0)) {
+			double voltage = atof(response);
+			if (AUX_INFO_VOLTAGE_ITEM->number.value != voltage) {
+				AUX_INFO_VOLTAGE_ITEM->number.value = voltage;
+				updateInfo = true;
+			}
+		}
+	}
+	if (updateWeather) {
+		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+	}
+	if (updateInfo) {
+		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	}
+	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
+}
+
+static void aux_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+			result = meade_open(device->master_device);
+		}
+		if (result) {
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value)
+				meade_detect_mount(device->master_device);
+			if (MOUNT_TYPE_NYX_ITEM->sw.value) {
+				indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
+				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+				indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				PRIVATE_DATA->device_count--;
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		} else {
+			PRIVATE_DATA->device_count--;
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
+		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		if (--PRIVATE_DATA->device_count == 0) {
+			meade_close(device);
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
+}
+
+static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_connect_callback, NULL);
+		return INDIGO_OK;
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_aux_change_property(device, client, property);
+}
+
+static indigo_result aux_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		aux_connect_callback(device);
+	}
+	indigo_release_property(AUX_WEATHER_PROPERTY);
+	indigo_release_property(AUX_INFO_PROPERTY);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_aux_detach(device);
+}
+
 static void device_network_disconnection(indigo_device* device, indigo_timer_callback callback) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -2926,6 +3147,7 @@ static lx200_private_data *private_data = NULL;
 static indigo_device *mount = NULL;
 static indigo_device *mount_guider = NULL;
 static indigo_device *mount_focuser = NULL;
+static indigo_device *mount_aux = NULL;
 
 static void network_disconnection(__attribute__((unused)) indigo_device* device) {
 	// Since all three devices share the same TCP connection,
@@ -2960,6 +3182,14 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 	 NULL,
 	 focuser_detach
 	 );
+	static indigo_device mount_aux_template = INDIGO_DEVICE_INITIALIZER(
+	 MOUNT_LX200_AUX_NAME,
+	 aux_attach,
+	 aux_enumerate_properties,
+	 aux_change_property,
+	 NULL,
+	 aux_detach
+	 );
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
@@ -2985,12 +3215,17 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 			mount_focuser->private_data = private_data;
 			mount_focuser->master_device = mount;
 			indigo_attach_device(mount_focuser);
+			mount_aux = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_aux_template);
+			mount_aux->private_data = private_data;
+			mount_aux->master_device = mount;
+			indigo_attach_device(mount_aux);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(mount);
 			VERIFY_NOT_CONNECTED(mount_guider);
 			VERIFY_NOT_CONNECTED(mount_focuser);
+			VERIFY_NOT_CONNECTED(mount_aux);
 			last_action = action;
 			if (mount != NULL) {
 				indigo_detach_device(mount);
@@ -3006,6 +3241,11 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 				indigo_detach_device(mount_focuser);
 				free(mount_focuser);
 				mount_focuser = NULL;
+			}
+			if (mount_aux != NULL) {
+				indigo_detach_device(mount_aux);
+				free(mount_aux);
+				mount_aux = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);
