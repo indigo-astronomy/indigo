@@ -19,13 +19,12 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu> (refactored from ASI driver by Rumen G. Bogdanovski)
-// 2.1 by Sven Kreiensen <s.kreiensen@lyconsys.com> (modified playerone_setup_exposure(), exposure_timer_callback() and streaming_timer_callback())
 
 /** INDIGO Player One CCD driver
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -1223,12 +1222,6 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				indigo_define_property(device, POA_PRESETS_PROPERTY, NULL);
 
 				indigo_define_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
-
-				POACameraProperties properties = {0};
-				POAGetCameraProperties(id, &properties);
-				if (!properties.isUSB3Speed) {
-					indigo_send_message(device, "[Warning] Camera is connected to USB2 port and it may not work.", device->name);
-				}
 
 				device->is_connected = true;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

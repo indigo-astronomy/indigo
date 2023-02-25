@@ -1,6 +1,6 @@
 ﻿/****************************************************************************
 **
-** Copyright (C) 2022 The Player One Astronomy Co., Ltd.
+** Copyright (C) 2023 The Player One Astronomy Co., Ltd.
 ** This software is the secondary software development kit (SDK) for
 ** the astronomy cameras made by Player One Astronomy Co., Ltd.
 ** Player One Astronomy Co., Ltd (hereinafter referred to as "the company") owns its copyright.
@@ -129,11 +129,11 @@ typedef enum _POAConfig                 ///< Camera Config Definition
 typedef struct _POACameraProperties     ///< Camera Properties Definition
 {
     char cameraModelName[256];          ///< the camera name
-    char userCustomID[16];              ///< user custom name, it will be will be added after the camera name, max len 16 bytes,like:Mars-C[Juno], default is empty
+    char userCustomID[16];              ///< user custom name, it will be will be added after the camera name, max len 16 bytes,like:Mars-C [Juno], default is empty
     int cameraID;                       ///< it's unique,camera can be controlled and set by the cameraID
     int maxWidth;                       ///< max width of the camera
     int maxHeight;                      ///< max height of the camera
-    int bitDepth;                       ///< ADC depth of image sensor
+    int bitDepth;                       ///< ADC depth of CMOS sensor
     POABool isColorCamera;              ///< is a color camera or not
     POABool isHasST4Port;               ///< does the camera have ST4 port, if not, camera don't support ST4 guide
     POABool isHasCooler;                ///< does the camera have cooler, generally, the cool camera with cooler
@@ -727,6 +727,23 @@ POACAMERA_API  POAErrors POASetUserCustomID(int nCameraID, const char* pCustomID
  */
 POACAMERA_API  POAErrors POAGetGainOffset(int nCameraID, int *pOffsetHighestDR, int *pOffsetUnityGain, int *pGainLowestRN, int *pOffsetLowestRN, int *pHCGain);
 
+/**
+ * @brief POAGetGainsAndOffsets: get some preset values of gain and offset
+ * @param nCameraID (input), get from in the POACameraProperties structure, use POAGetCameraProperties function
+ * @param pGainHighestDR (output), gain at highest dynamic range, in most cases, this gain is 0
+ * @param pHCGain (output), gain at HCG Mode(High Conversion Gain)
+ * @param pUnityGain (output), unity gain(or standard gain), with this gain, e/ADC will be 1
+ * @param pGainLowestRN (output), aka Maximum Analog Gain, gain at lowest read noise
+ * @param pOffsetHighestDR (output), offset at highest dynamic range
+ * @param pOffsetHCGain (output), offset at HCG Mode
+ * @param pOffsetUnityGain (output), offset at unity gain
+ * @param pOffsetLowestRN (output), offset at lowest read noise
+ * @return POA_OK: operation successful
+ *         POA_ERROR_INVALID_ID: no camera with this ID was found or the ID is out of boundary
+ */
+POACAMERA_API  POAErrors POAGetGainsAndOffsets(int nCameraID, int*pGainHighestDR, int *pHCGain, int *pUnityGain, int *pGainLowestRN,
+                                               int *pOffsetHighestDR, int *pOffsetHCGain, int *pOffsetUnityGain, int *pOffsetLowestRN);
+
 
 /**
  * @brief POAGetErrorString: convert POAErrors enum to char *, it is convenient to print or display errors
@@ -749,7 +766,7 @@ POACAMERA_API int POAGetAPIVersion();
 /**
  * @brief POAGetSDKVersion: get the sdk version
  *
- * @return  point to const char* version, eg: 1.0.11.17
+ * @return  point to const char* version, eg: 1.0.1
  */
 POACAMERA_API const char* POAGetSDKVersion();
 
