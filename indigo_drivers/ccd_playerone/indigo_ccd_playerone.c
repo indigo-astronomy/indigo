@@ -102,6 +102,7 @@
 #define s2us(us) ((us) * 1000000)
 
 typedef struct {
+	char model[256];
 	int dev_id;
 	int count_open;
 	int exp_bin;
@@ -771,7 +772,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		PIXEL_FORMAT_PROPERTY->count = format_count;
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 8;
-		snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "%s (%s)", PRIVATE_DATA->property.cameraModelName, PRIVATE_DATA->property.sensorModelName);
+		snprintf(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_NAME_SIZE, "%s (%s)", PRIVATE_DATA->model, PRIVATE_DATA->property.sensorModelName);
 		snprintf(INFO_DEVICE_FW_REVISION_ITEM->text.value, INDIGO_NAME_SIZE, "SDK %s, API %d", POAGetSDKVersion(), POAGetAPIVersion());
 		snprintf(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, INDIGO_NAME_SIZE, "%s", PRIVATE_DATA->property.SN);
 		// -------------------------------------------------------------------------------- CCD_INFO
@@ -1640,7 +1641,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 5;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->property.cameraModelName);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -1854,6 +1855,33 @@ static int find_unplugged_device_id() {
 	return id;
 }
 
+static void split_device_name(const char *fill_device_name, char *device_name, char *suffix) {
+	if (fill_device_name == NULL || device_name == NULL || suffix == NULL) {
+		return;
+	}
+
+	char name_buf[256];
+	strncpy(name_buf, fill_device_name, sizeof(name_buf));
+	char *suffix_start = strchr(name_buf, '[');
+	char *suffix_end = strrchr(name_buf, ']');
+
+	if (suffix_start == NULL || suffix_end == NULL) {
+		strncpy(device_name, name_buf, 256);
+		suffix[0] = '\0';
+		return;
+	}
+	suffix_start[0] = '\0';
+	/* remove pace id name and suffix are space separated */
+	if (suffix_start > name_buf && suffix_start[-1] == ' ') {
+		suffix_start[-1] = '\0';
+	}
+	suffix_end[0] = '\0';
+	suffix_start++;
+
+	strncpy(device_name, name_buf, 256);
+	strncpy(suffix, suffix_start, 16);
+}
+
 static void process_plug_event(indigo_device *unused) {
 	POACameraProperties property;
 
@@ -1905,12 +1933,25 @@ static void process_plug_event(indigo_device *unused) {
 	}
 	if (res == POA_OK) {
 		device->master_device = master_device;
-		sprintf(device->name, "%s", property.cameraModelName);
+		char name[256] = {0};
+		char suffix[16] = {0};
+		char camera_device_name[INDIGO_NAME_SIZE] = {0};
+		char guider_device_name[INDIGO_NAME_SIZE] = {0};
+		split_device_name(property.cameraModelName, name, suffix);
+		if (suffix[0] != '\0') {
+			snprintf(camera_device_name, INDIGO_NAME_SIZE, "%s #%s", name, suffix);
+			snprintf(guider_device_name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, suffix);
+		} else {
+			snprintf(camera_device_name, INDIGO_NAME_SIZE, "%s", name);
+			snprintf(guider_device_name, INDIGO_NAME_SIZE, "%s (guider)", name);
+		}
+		sprintf(device->name, "%s", camera_device_name);
 		indigo_make_name_unique(device->name, "%d", id);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		playerone_private_data *private_data = indigo_safe_malloc(sizeof(playerone_private_data));
 		private_data->dev_id = id;
 		memcpy(&(private_data->property), &property, sizeof(POACameraProperties));
+		strncpy(private_data->model, name, sizeof(private_data->model));
 		device->private_data = private_data;
 		indigo_attach_device(device);
 		devices[slot]=device;
@@ -1923,7 +1964,7 @@ static void process_plug_event(indigo_device *unused) {
 			}
 			device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			device->master_device = master_device;
-			sprintf(device->name, "%s (guider)", property.cameraModelName);
+			sprintf(device->name, "%s", guider_device_name);
 			indigo_make_name_unique(device->name, "%d", id);
 			INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 			device->private_data = private_data;
