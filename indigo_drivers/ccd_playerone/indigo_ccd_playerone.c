@@ -2089,7 +2089,6 @@ indigo_result indigo_ccd_playerone(indigo_driver_action action, indigo_driver_in
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "devices[%d] = %p", i, devices[i]);
 				VERIFY_NOT_CONNECTED(devices[i]);
 				//if (devices[i] && devices[i]->is_connected > 0) return INDIGO_BUSY;
 			}
