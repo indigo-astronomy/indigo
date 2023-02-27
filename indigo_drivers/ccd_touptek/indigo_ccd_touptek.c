@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 
 #include <stdlib.h>
 #include <string.h>
@@ -180,6 +180,7 @@ typedef struct {
 	SDK_HANDLE handle;
 	bool present;
 	indigo_device *camera;
+	char bayer_pattern[5];
 	indigo_device *guider;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	double current_temperature;
@@ -195,6 +196,31 @@ typedef struct {
 } DRIVER_PRIVATE_DATA;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
+#ifndef MAKEFOURCC
+#define MAKEFOURCC(a, b, c, d) ((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) << 8) | ((unsigned)(unsigned char)(c) << 16) | ((unsigned)(unsigned char)(d) << 24))
+#endif
+
+static void get_bayer_pattern(indigo_device *device, char *bayer_pattern) {
+	unsigned fourcc = 0, bitspp = 0;
+	HRESULT result = SDK_CALL(get_RawFormat)(PRIVATE_DATA->handle, &fourcc, &bitspp);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_RawFormat(->%x, -> %d) = %d", fourcc, bitspp, result);
+	switch (fourcc) {
+		case MAKEFOURCC('G', 'B', 'R', 'G'):
+			strncpy(PRIVATE_DATA->bayer_pattern,"GBRG", 5);
+			break;
+		case MAKEFOURCC('R', 'G', 'G', 'B'):
+			strncpy(PRIVATE_DATA->bayer_pattern,"RGGB", 5);
+			break;
+		case MAKEFOURCC('B', 'G', 'G', 'R'):
+			strncpy(PRIVATE_DATA->bayer_pattern,"BGGR", 5);
+			break;
+		case MAKEFOURCC('G', 'R', 'B', 'G'):
+			strncpy(PRIVATE_DATA->bayer_pattern,"GRBG", 5);
+			break;
+		default:
+			strncpy(PRIVATE_DATA->bayer_pattern,"", 5);
+	}
+}
 
 static void fnish_exposure_async(indigo_device *device) {
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -209,8 +235,21 @@ static void finish_streaming_async(indigo_device *device) {
 static void pull_callback(unsigned event, void* callbackCtx) {
 	SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
 	HRESULT result;
-	indigo_device *device = (indigo_device *)callbackCtx;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback(%04x) called", event);
+
+	indigo_device *device = (indigo_device *)callbackCtx;
+
+	indigo_fits_keyword keywords[] = {
+		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
+		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
+		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
+		{ 0 }
+	};
+	indigo_fits_keyword *fits_keywords = NULL;
+	if (PRIVATE_DATA->bayer_pattern[0] != '\0' && PRIVATE_DATA->bits != 24 && PRIVATE_DATA->bits != 48) {
+		fits_keywords = keywords;
+	}
+
 	switch (event) {
 		case SDK_DEF(EVENT_IMAGE): {
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -222,11 +261,11 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 					indigo_finalize_video_stream(device);
 				} else {
 					if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, NULL, false);
+						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, fits_keywords, false);
 						CCD_EXPOSURE_ITEM->number.value = 0;
 						indigo_set_timer(device, 0, fnish_exposure_async, NULL);
 					} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, NULL, true);
+						indigo_process_image(device, PRIVATE_DATA->buffer, frameInfo.width, frameInfo.height, PRIVATE_DATA->bits > 8 && PRIVATE_DATA->bits <= 16 ? 16 : PRIVATE_DATA->bits, true, true, fits_keywords, true);
 						if (--CCD_STREAMING_COUNT_ITEM->number.value == 0) {
 							indigo_finalize_video_stream(device);
 							indigo_set_timer(device, 0, finish_streaming_async, NULL);
@@ -611,6 +650,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			result = SDK_CALL(get_FwVersion)(PRIVATE_DATA->handle, INFO_DEVICE_FW_REVISION_ITEM->text.value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_FwVersion() -> %08x", result);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
+			get_bayer_pattern(device, PRIVATE_DATA->bayer_pattern);
 			int bitDepth = 0;
 			unsigned resolutionIndex = 0;
 			char name[16];
