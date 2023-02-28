@@ -200,6 +200,8 @@ typedef struct {
 #define MAKEFOURCC(a, b, c, d) ((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) << 8) | ((unsigned)(unsigned char)(c) << 16) | ((unsigned)(unsigned char)(d) << 24))
 #endif
 
+#define ROUND_BIN(dimention, bin) (2 * ((unsigned)(dimention) / (unsigned)(bin) / 2));
+
 static void get_bayer_pattern(indigo_device *device, char *bayer_pattern) {
 	unsigned fourcc = 0, bitspp = 0;
 	HRESULT result = SDK_CALL(get_RawFormat)(PRIVATE_DATA->handle, &fourcc, &bitspp);
@@ -348,16 +350,16 @@ static void ccd_temperature_callback(indigo_device *device) {
 
 static void setup_exposure(indigo_device *device) {
 	HRESULT result;
-	unsigned resolution_index = 0;
+	unsigned binning = 1;
 	for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 		indigo_item *item = CCD_MODE_PROPERTY->items + i;
 		if (item->sw.value) {
-			resolution_index = atoi(strchr(item->name, '_') + 1);
+			binning = atoi(strchr(item->name, '_') + 1);
 			if (PRIVATE_DATA->mode != i) {
 				result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
-				result = SDK_CALL(put_eSize)(PRIVATE_DATA->handle, resolution_index);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_eSize(%d) -> %08x", resolution_index, result);
+				result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), 0x40 | binning);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(%d) -> %08x", binning, result);
 				if (strncmp(item->name, "RAW08", 5) == 0 || strncmp(item->name, "MON08", 5) == 0) {
 					result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_RAW), 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_RAW, 1) -> %08x", result);
@@ -393,16 +395,16 @@ static void setup_exposure(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_ROI_HARDWARE)) {
-		unsigned left = 2 * ((unsigned)CCD_FRAME_LEFT_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
-		unsigned top = 2 * ((unsigned)CCD_FRAME_TOP_ITEM->number.value / (unsigned)CCD_BIN_VERTICAL_ITEM->number.value / 2);
-		unsigned width = 2 * ((unsigned)CCD_FRAME_WIDTH_ITEM->number.value / (unsigned)CCD_BIN_HORIZONTAL_ITEM->number.value / 2);
+		unsigned left = ROUND_BIN(CCD_FRAME_LEFT_ITEM->number.value, 1);
+		unsigned top = ROUND_BIN(CCD_FRAME_TOP_ITEM->number.value, 1);
+		unsigned width = ROUND_BIN(CCD_FRAME_WIDTH_ITEM->number.value, 1);
 		if (width < 16)
 			width = 16;
-		unsigned height = 2 * ((unsigned)CCD_FRAME_HEIGHT_ITEM->number.value / (unsigned)CCD_BIN_VERTICAL_ITEM->number.value / 2);
+		unsigned height = ROUND_BIN(CCD_FRAME_HEIGHT_ITEM->number.value, 1);
 		if (height < 16)
 			height = 16;
-		int max_width = PRIVATE_DATA->cam.model->res[resolution_index].width;
-		int max_height = PRIVATE_DATA->cam.model->res[resolution_index].height;
+		int max_width = CCD_INFO_WIDTH_ITEM->number.value;
+		int max_height = CCD_INFO_HEIGHT_ITEM->number.value;
 		if (left + width > max_width || top + height > max_height) {
 			left = top = 0;
 			width = max_width;
@@ -444,19 +446,25 @@ static indigo_result ccd_attach(indigo_device *device) {
 		for (int i = 0; i < PRIVATE_DATA->cam.model->preview; i++) {
 			int frame_width = PRIVATE_DATA->cam.model->res[i].width;
 			int frame_height = PRIVATE_DATA->cam.model->res[i].height;
-			if (frame_width > CCD_INFO_WIDTH_ITEM->number.value)
+			if (frame_width > CCD_INFO_WIDTH_ITEM->number.value) {
 				CCD_INFO_WIDTH_ITEM->number.value = frame_width;
-			if (frame_height > CCD_INFO_HEIGHT_ITEM->number.value)
+			}
+			if (frame_height > CCD_INFO_HEIGHT_ITEM->number.value) {
 				CCD_INFO_HEIGHT_ITEM->number.value = frame_height;
+			}
+		}
+		for (int bin = 1; bin <= 8; bin++) {
+			int frame_width = ROUND_BIN(CCD_INFO_WIDTH_ITEM->number.value, bin);
+			int frame_height = ROUND_BIN(CCD_INFO_HEIGHT_ITEM->number.value, bin);
 			if ((flags & SDK_DEF(FLAG_MONO)) == 0) {
 				if (flags & SDK_DEF(FLAG_RAW8)) {
-					snprintf(name, sizeof(name), "RAW08_%d", i);
+					snprintf(name, sizeof(name), "RAW08_%d", bin);
 					snprintf(label, sizeof(label), "RAW 8 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW10)) {
-					snprintf(name, sizeof(name), "RAW10_%d", i);
+					snprintf(name, sizeof(name), "RAW10_%d", bin);
 					snprintf(label, sizeof(label), "RAW 10 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max < 10)
@@ -464,7 +472,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW12)) {
-					snprintf(name, sizeof(name), "RAW12_%d", i);
+					snprintf(name, sizeof(name), "RAW12_%d", bin);
 					snprintf(label, sizeof(label), "RAW 12 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12)
@@ -472,7 +480,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW14)) {
-					snprintf(name, sizeof(name), "RAW14_%d", i);
+					snprintf(name, sizeof(name), "RAW14_%d", bin);
 					snprintf(label, sizeof(label), "RAW 14 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14)
@@ -480,26 +488,26 @@ static indigo_result ccd_attach(indigo_device *device) {
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW16)) {
-					snprintf(name, sizeof(name), "RAW16_%d", i);
+					snprintf(name, sizeof(name), "RAW16_%d", bin);
 					snprintf(label, sizeof(label), "RAW 16 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16)
 						CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = 16;
 					CCD_MODE_PROPERTY->count++;
 				}
-				snprintf(name, sizeof(name), "RGB08_%d", i);
+				snprintf(name, sizeof(name), "RGB08_%d", bin);
 				snprintf(label, sizeof(label), "RGB 24 %dx%d", frame_width, frame_height);
 				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 				CCD_MODE_PROPERTY->count++;
 			} else {
 				if (flags & SDK_DEF(FLAG_RAW8)) {
-					snprintf(name, sizeof(name), "MON08_%d", i);
+					snprintf(name, sizeof(name), "MON08_%d", bin);
 					snprintf(label, sizeof(label), "MON 8 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW10)) {
-					snprintf(name, sizeof(name), "MON10_%d", i);
+					snprintf(name, sizeof(name), "MON10_%d", bin);
 					snprintf(label, sizeof(label), "MON 10 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 10)
@@ -507,7 +515,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW12)) {
-					snprintf(name, sizeof(name), "MON12_%d", i);
+					snprintf(name, sizeof(name), "MON12_%d", bin);
 					snprintf(label, sizeof(label), "MON 12 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 12)
@@ -515,7 +523,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW14)) {
-					snprintf(name, sizeof(name), "MON14_%d", i);
+					snprintf(name, sizeof(name), "MON14_%d", bin);
 					snprintf(label, sizeof(label), "MON 14 %dx%d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 14)
@@ -523,7 +531,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 					CCD_MODE_PROPERTY->count++;
 				}
 				if (flags & SDK_DEF(FLAG_RAW16)) {
-					snprintf(name, sizeof(name), "MON16_%d", i);
+					snprintf(name, sizeof(name), "MON16_%d", bin);
 					snprintf(label, sizeof(label), "MON 16 %d x %d", frame_width, frame_height);
 					indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, label, false);
 					if (CCD_INFO_BITS_PER_PIXEL_ITEM->number.value < 16)
@@ -534,14 +542,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 		}
 		CCD_MODE_ITEM->sw.value = true;
 		CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
-		for (int i = 0; i < PRIVATE_DATA->cam.model->preview; i++) {
-			int horizontal_bin = CCD_INFO_WIDTH_ITEM->number.value / PRIVATE_DATA->cam.model->res[i].width;
-			int vertical_bin = CCD_INFO_HEIGHT_ITEM->number.value / PRIVATE_DATA->cam.model->res[i].height;
-			if (horizontal_bin > CCD_BIN_HORIZONTAL_ITEM->number.max)
-				CCD_BIN_HORIZONTAL_ITEM->number.max = horizontal_bin;
-			if (vertical_bin > CCD_BIN_VERTICAL_ITEM->number.max)
-				CCD_BIN_VERTICAL_ITEM->number.max = vertical_bin;
-		}
+		CCD_BIN_HORIZONTAL_ITEM->number.min = CCD_BIN_VERTICAL_ITEM->number.min = 1;
+		CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_BIN_VERTICAL_ITEM->number.max = 8;
 		CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_INFO_WIDTH_ITEM->number.value;
 		CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_INFO_HEIGHT_ITEM->number.value;
 		if ((flags & SDK_DEF(FLAG_ROI_HARDWARE)) == 0) {
@@ -679,8 +681,13 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 			}
 			PRIVATE_DATA->mode = PRIVATE_DATA->left = PRIVATE_DATA->top = PRIVATE_DATA->width = PRIVATE_DATA->height = -1;
-			CCD_BIN_HORIZONTAL_ITEM->number.value = (int)(CCD_INFO_WIDTH_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].width);
-			CCD_BIN_VERTICAL_ITEM->number.value = (int)(CCD_INFO_HEIGHT_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].height);
+			unsigned binning = 1;
+			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), &binning);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_BINNING, ->%d) -> %08x", binning, result);
+			CCD_BIN_HORIZONTAL_ITEM->number.value =
+			CCD_BIN_HORIZONTAL_ITEM->number.target =
+			CCD_BIN_VERTICAL_ITEM->number.value =
+			CCD_BIN_VERTICAL_ITEM->number.target = binning;
 			uint32_t min, max, current;
 			SDK_CALL(get_ExpTimeRange)(PRIVATE_DATA->handle, &min, &max, &current);
 			CCD_EXPOSURE_ITEM->number.min = CCD_STREAMING_EXPOSURE_ITEM->number.min = min / 1000000.0;
@@ -786,11 +793,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			if (item->sw.value) {
 				char *underscore = strchr(item->name, '_');
-				unsigned resolutionIndex = atoi(underscore + 1);
+				unsigned binning = atoi(underscore + 1);
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = atoi(item->name + 3);
 				CCD_FRAME_PROPERTY->state = INDIGO_OK_STATE;
-				CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_HORIZONTAL_ITEM->number.value = (int)(CCD_INFO_WIDTH_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].width);
-				CCD_BIN_VERTICAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = (int)(CCD_INFO_HEIGHT_ITEM->number.value / PRIVATE_DATA->cam.model->res[resolutionIndex].height);
+				CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_HORIZONTAL_ITEM->number.value = binning;
+				CCD_BIN_VERTICAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = binning;
 				CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
 				CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
 				break;
@@ -802,31 +809,46 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
+		int prev_h_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int prev_v_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		PRIVATE_DATA->mode = PRIVATE_DATA->left = PRIVATE_DATA->top = PRIVATE_DATA->width = PRIVATE_DATA->height = -1;
-		int width = (int)(CCD_INFO_WIDTH_ITEM->number.value / CCD_BIN_HORIZONTAL_ITEM->number.value);
-		int height = (int)(CCD_INFO_HEIGHT_ITEM->number.value / CCD_BIN_VERTICAL_ITEM->number.value);
-		char name[INDIGO_NAME_SIZE];
-		for (int i = 0; i < PRIVATE_DATA->cam.model->preview; i++) {
-			if (PRIVATE_DATA->cam.model->res[i].width == width && PRIVATE_DATA->cam.model->res[i].height == height) {
-				for (int j = 0; j < CCD_MODE_PROPERTY->count; j++) {
-					indigo_item *item = &CCD_MODE_PROPERTY->items[j];
-					if (item->sw.value) {
-						strcpy(name, item->name);
-						sprintf(name + 6, "%d", i);
-						for (int k = 0; k < CCD_MODE_PROPERTY->count; k++) {
-							item = &CCD_MODE_PROPERTY->items[k];
-							if (!strcmp(name, item->name)) {
-								indigo_set_switch(CCD_MODE_PROPERTY, item, true);
-								CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
-								CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
-								indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
-								indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
-								return INDIGO_OK;
-							}
-						}
-					}
-				}
+		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
+		/* Touptek (& family) cameras work with binx = biny for we force it here */
+		if (prev_h_bin != horizontal_bin) {
+			vertical_bin =
+			CCD_BIN_HORIZONTAL_ITEM->number.target =
+			CCD_BIN_HORIZONTAL_ITEM->number.value =
+			CCD_BIN_VERTICAL_ITEM->number.target =
+			CCD_BIN_VERTICAL_ITEM->number.value = horizontal_bin;
+		} else if (prev_v_bin != vertical_bin) {
+			horizontal_bin =
+			CCD_BIN_HORIZONTAL_ITEM->number.target =
+			CCD_BIN_HORIZONTAL_ITEM->number.value =
+			CCD_BIN_VERTICAL_ITEM->number.target =
+			CCD_BIN_VERTICAL_ITEM->number.value = vertical_bin;
+		}
+		char *selected_name = CCD_MODE_PROPERTY->items[0].name;
+		for (int k = 0; k < CCD_MODE_PROPERTY->count; k++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[k];
+			if (item->sw.value) {
+				selected_name = item->name;
+				break;
+			}
+		}
+		for (int k = 0; k < CCD_MODE_PROPERTY->count; k++) {
+			indigo_item *item = &CCD_MODE_PROPERTY->items[k];
+			char *underscore = strchr(item->name, '_');
+			unsigned bin = atoi(underscore + 1);
+			if (bin == horizontal_bin && !strncmp(item->name, selected_name, 5)) {
+				indigo_set_switch(CCD_MODE_PROPERTY, item, true);
+				CCD_MODE_PROPERTY->state = INDIGO_OK_STATE;
+				CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_MODE_PROPERTY, NULL);
+				indigo_update_property(device, CCD_BIN_PROPERTY, NULL);
+				return INDIGO_OK;
 			}
 		}
 		CCD_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
