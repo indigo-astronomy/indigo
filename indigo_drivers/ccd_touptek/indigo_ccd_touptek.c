@@ -175,6 +175,11 @@
 #define X_CCD_CONVERSION_GAIN_HCG_ITEM							(X_CCD_CONVERSION_GAIN_PROPERTY->items + 1)
 #define X_CCD_CONVERSION_GAIN_HDR_ITEM							(X_CCD_CONVERSION_GAIN_PROPERTY->items + 2)
 
+#define X_CCD_BIN_MODE_PROPERTY									(PRIVATE_DATA->bin_mode_property)
+#define X_CCD_BIN_MODE_SATURATE_ITEM							(X_CCD_BIN_MODE_PROPERTY->items + 0)
+#define X_CCD_BIN_MODE_EXPAND_ITEM								(X_CCD_BIN_MODE_PROPERTY->items + 1)
+#define X_CCD_BIN_MODE_AVERAGE_ITEM								(X_CCD_BIN_MODE_PROPERTY->items + 2)
+
 typedef struct {
 	SDK_TYPE(DeviceV2) cam;
 	SDK_HANDLE handle;
@@ -185,6 +190,7 @@ typedef struct {
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	double current_temperature;
 	unsigned char *buffer;
+	unsigned bin_mode;
 	int bits;
 	int mode;
 	int left, top, width, height;
@@ -193,6 +199,7 @@ typedef struct {
 	indigo_property *advanced_property;
 	indigo_property *fan_property;
 	indigo_property *conversion_gain_property;
+	indigo_property *bin_mode_property;
 } DRIVER_PRIVATE_DATA;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -377,8 +384,8 @@ static void setup_exposure(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BITDEPTH, 0) -> %08x", result);
 					PRIVATE_DATA->bits = 24;
 				}
-				result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), 0x40 | binning);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BINNING, %x) -> %08x", 0x40 | binning, result);
+				result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), PRIVATE_DATA->bin_mode | binning);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BINNING, %x) -> %08x", PRIVATE_DATA->bin_mode | binning, result);
 				result = SDK_CALL(put_Speed)(PRIVATE_DATA->handle, 0);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Speed(0) -> %08x", result);
 				result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
@@ -594,6 +601,13 @@ static indigo_result ccd_attach(indigo_device *device) {
 			}
 		}
 
+		X_CCD_BIN_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_BIN_MODE", CCD_ADVANCED_GROUP, "Binning mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_CCD_BIN_MODE_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_CCD_BIN_MODE_SATURATE_ITEM, "SATURATE", "Sum and saturate", true);
+		indigo_init_switch_item(X_CCD_BIN_MODE_EXPAND_ITEM, "EXPAND", "Sum and expand to 16-bits (10, 12 and 14-bit data)", false);
+		indigo_init_switch_item(X_CCD_BIN_MODE_AVERAGE_ITEM, "AVERAGE", "Average", false);
+
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -610,6 +624,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, X_CCD_FAN_PROPERTY, NULL);
 		if (X_CCD_CONVERSION_GAIN_PROPERTY && indigo_property_match(X_CCD_CONVERSION_GAIN_PROPERTY, property))
 			indigo_define_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
+		if (X_CCD_BIN_MODE_PROPERTY && indigo_property_match(X_CCD_BIN_MODE_PROPERTY, property))
+			indigo_define_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -754,6 +770,8 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CCD_FAN_PROPERTY, NULL);
 		if (X_CCD_CONVERSION_GAIN_PROPERTY)
 			indigo_delete_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
+		if (X_CCD_BIN_MODE_PROPERTY)
+			indigo_delete_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -1072,11 +1090,26 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match_defined(X_CCD_BIN_MODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CCD_BIN_MODE
+		indigo_property_copy_values(X_CCD_BIN_MODE_PROPERTY, property, false);
+		PRIVATE_DATA->mode = -1;
+		if (X_CCD_BIN_MODE_SATURATE_ITEM->sw.value) {
+			PRIVATE_DATA->bin_mode = 0x00;
+		} else if (X_CCD_BIN_MODE_EXPAND_ITEM->sw.value) {
+			PRIVATE_DATA->bin_mode = 0x40;
+		} else if (X_CCD_BIN_MODE_AVERAGE_ITEM->sw.value) {
+			PRIVATE_DATA->bin_mode = 0x80;
+		}
+		X_CCD_BIN_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, X_CCD_ADVANCED_PROPERTY);
 			indigo_save_property(device, NULL, X_CCD_CONVERSION_GAIN_PROPERTY);
+			indigo_save_property(device, NULL, X_CCD_BIN_MODE_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -1095,6 +1128,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(X_CCD_FAN_PROPERTY);
 	if (X_CCD_CONVERSION_GAIN_PROPERTY)
 		indigo_release_property(X_CCD_CONVERSION_GAIN_PROPERTY);
+	if (X_CCD_BIN_MODE_PROPERTY)
+		indigo_release_property(X_CCD_BIN_MODE_PROPERTY);
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
