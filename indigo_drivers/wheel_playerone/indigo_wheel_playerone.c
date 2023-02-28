@@ -271,7 +271,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetPWCustomName(%d, \"%s\", %d) > %d", PRIVATE_DATA->dev_handle, POA_CUSTOM_SUFFIX_ITEM->text.value, length, res);
 			POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 			if (length > 0) {
-				indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "FW name suffix '[%s]' will be used on replug", POA_CUSTOM_SUFFIX_ITEM->text.value);
+				indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "FW name suffix '#%s' will be used on replug", POA_CUSTOM_SUFFIX_ITEM->text.value);
 			} else {
 				indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "FW name suffix cleared, will be used on replug");
 			}
