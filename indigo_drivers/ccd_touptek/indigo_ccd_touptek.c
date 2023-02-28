@@ -358,8 +358,6 @@ static void setup_exposure(indigo_device *device) {
 			if (PRIVATE_DATA->mode != i) {
 				result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
-				result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), 0x40 | binning);
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(%d) -> %08x", binning, result);
 				if (strncmp(item->name, "RAW08", 5) == 0 || strncmp(item->name, "MON08", 5) == 0) {
 					result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_RAW), 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_RAW, 1) -> %08x", result);
@@ -379,6 +377,8 @@ static void setup_exposure(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BITDEPTH, 0) -> %08x", result);
 					PRIVATE_DATA->bits = 24;
 				}
+				result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), 0x40 | binning);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BINNING, %x) -> %08x", 0x40 | binning, result);
 				result = SDK_CALL(put_Speed)(PRIVATE_DATA->handle, 0);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Speed(0) -> %08x", result);
 				result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
