@@ -1,3 +1,8 @@
+2023.03.01(3.2.1)
+- Fix the issue that get iamge data failed when switching RAW8 to RAW16 on linux and mac
+- Fix some cameras hot pixels increase issue when bin3
+- Add static version library
+
 2023.02.24(3.2.0)
 - Support PlayerOne new camera model(Artemis series)
 - Enhance the stability of data transmission when using USB2.0 on the linux and mac
