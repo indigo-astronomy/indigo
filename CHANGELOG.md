@@ -2,12 +2,69 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-224] - 01 Mar Wed 2023
+### Overall
+- CCD_SET_FITS_HEADER random content issue fixed
+- removed misleading log messages
+- experimental client side bonjour support added (macOS only first)
+- default server callback added to tcp server
+- indigo_disconnect_server behaviour fixed
+- tcp server: less verbose logging
+- Avahi dependency moved from indigo_server to libindigo
+- indigo_server_start fixed for linux
+- timers: logging fixed
+
+### Driver Fixes
+- indigo_ccd_asi:
+	- custom suffix changed to string to string
+	- logging fixes
+
+- indigo_focuser_asi:
+	- add support for custom device name suffix
+	- fix crash when unpluging connected device
+	- rename custom proeprtyies to follow the driver convention
+	- show device name in INFO proeprty
+	- logging fixes
+
+- indigo_wheel_asi:
+	- hot plug fixes
+	- show device name in INFO proeprty
+	- add support for custom device name suffix
+
+- indigo_ccd_svb:
+	- update SDK to v1.10.1
+	- show warning if the camera firmware needs update
+
+- indigo_wheel_playerone:
+	- use 'model #suffix' custom device name format
+	- code clenup
+
+- indigo_ccd_playerone:
+	- update SDK to v.3.2.1
+	- remove USB2.0 warning as SDK is fixed
+	- use gain/offset ptesets from the SDK
+	- use 'name #suffix' custom device name format
+
+- indigo_mount_ioptron:
+	- protocol version can be forced manually
+
+- indigo_mount_lx200:
+	- Pegasus NYX support added
+	- initialization fixed
+
+- indigo_ccd_touptec & familly:
+	- add bayer pattern in FITS header
+	- binning and subframing rewrite and fix
+	- add binning mode support - average, clip or expand to 16bit (for 10, 12 and 14-bit data)
+	- add sensor window heater control support
+	- remove odd coller conrol from setup_exposure()
+
 # [2.0-222] - 12 Feb Sun 2023
 ### Overall
 - add indigo_device_name_exists() and indigo_make_name_unique()
 - add indigo_reschedule_timer_with_callback()
 
-#All drivers:
+### All drivers:
 - use indigo_device_name_exists() and indigo_make_name_unique() to make device names unique - prmanent where devices support it
 - for hotplug drivers, the first device of a type will not have a suffix #XXX (unless it has permaned suffix added, only ASI and Player one support it)
 - fixed reseting of timer reference while callback is still executed
