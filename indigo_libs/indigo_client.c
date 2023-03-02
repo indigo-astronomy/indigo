@@ -382,6 +382,7 @@ static void *server_thread(indigo_server_entry *server) {
 			inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
 #endif
 			if (result < 0) {
+				server->socket = 0;
 				INDIGO_LOG(indigo_log("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
 			}
@@ -422,10 +423,15 @@ static void *server_thread(indigo_server_entry *server) {
 #if defined(INDIGO_WINDOWS)
 			indigo_send_message(server->protocol_adapter, "disconnected");
 #endif
-		}
-		int timeout = 50;
-		while (!server->shutdown && timeout--) {
-			indigo_usleep(0.1 * ONE_SECOND_DELAY);
+			int timeout = 10;
+			while (!server->shutdown && timeout--) {
+				indigo_usleep(0.1 * ONE_SECOND_DELAY);
+			}
+		} else {
+			int timeout = 50;
+			while (!server->shutdown && timeout--) {
+				indigo_usleep(0.1 * ONE_SECOND_DELAY);
+			}
 		}
 	}
 	server->thread_started = false;
