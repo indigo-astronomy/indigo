@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x001A
 
 #include <stdlib.h>
 #include <string.h>
@@ -190,7 +190,7 @@ typedef struct {
 	indigo_device *camera;
 	char bayer_pattern[5];
 	indigo_device *guider;
-	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
+	indigo_timer *exposure_timer, *temperature_timer, *guider_timer, *guider_timer_ra, *guider_timer_dec;
 	double current_temperature;
 	unsigned char *buffer;
 	unsigned bin_mode;
@@ -1220,6 +1220,8 @@ static void guider_connect_callback(indigo_device *device) {
 			device->gp_bits = 0;
 		}
 	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_ra);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -1234,6 +1236,26 @@ static void guider_connect_callback(indigo_device *device) {
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
 	indigo_unlock_master_device(device);
+}
+
+static void guider_timer_callback_ra(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
+	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
+	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+}
+
+static void guider_timer_callback_dec(indigo_device *device) {
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
+	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1253,23 +1275,37 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		HRESULT result = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0)
-			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 0, GUIDER_GUIDE_NORTH_ITEM->number.value);
-		else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0)
-			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 1, GUIDER_GUIDE_SOUTH_ITEM->number.value);
-		GUIDER_GUIDE_DEC_PROPERTY->state = SUCCEEDED(result) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		int pulse_length = 0;
+		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
+			pulse_length = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
+			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 0, pulse_length);
+		} else if (GUIDER_GUIDE_SOUTH_ITEM->number.value > 0) {
+			pulse_length = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 1, pulse_length);
+		}
+		GUIDER_GUIDE_DEC_PROPERTY->state = SUCCEEDED(result) ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		if (GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_set_timer(device, pulse_length / 1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		HRESULT result = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		if (GUIDER_GUIDE_EAST_ITEM->number.value > 0)
-			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 2, GUIDER_GUIDE_EAST_ITEM->number.value);
-		else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0)
-			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 3, GUIDER_GUIDE_WEST_ITEM->number.value);
-		GUIDER_GUIDE_RA_PROPERTY->state = SUCCEEDED(result) ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		int pulse_length = 0;
+		if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
+			pulse_length = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
+			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 2, pulse_length);
+		} else if (GUIDER_GUIDE_WEST_ITEM->number.value > 0) {
+			pulse_length = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
+			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 3, pulse_length);
+		}
+		GUIDER_GUIDE_RA_PROPERTY->state = SUCCEEDED(result) ? INDIGO_BUSY_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		if (GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_set_timer(device, pulse_length / 1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
+		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
