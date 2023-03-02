@@ -1273,9 +1273,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
-		HRESULT result = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
+		HRESULT result = 0;
 		int pulse_length = 0;
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		if (GUIDER_GUIDE_NORTH_ITEM->number.value > 0) {
 			pulse_length = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 0, pulse_length);
@@ -1291,9 +1292,10 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
-		HRESULT result = 0;
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
+		HRESULT result = 0;
 		int pulse_length = 0;
+		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		if (GUIDER_GUIDE_EAST_ITEM->number.value > 0) {
 			pulse_length = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 			result = SDK_CALL(ST4PlusGuide)(PRIVATE_DATA->handle, 2, pulse_length);
