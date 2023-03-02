@@ -292,7 +292,8 @@ static int open_socket(const char *host, int port, int type) {
 	srv_info.sin_family = AF_INET;
 	srv_info.sin_port = htons(port);
 	srv_info.sin_addr = *((struct in_addr *)he->h_addr);
-	if (connect(sock, (struct sockaddr *)&srv_info, sizeof(struct sockaddr))<0) {
+	if (connect(sock, (struct sockaddr *)&srv_info, sizeof(struct sockaddr)) < 0) {
+		close(sock);
 		return -1;
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
