@@ -40,7 +40,7 @@ This is the list of requirements taken into the consideration:
 10. IIDC CCD driver
 11. ASI CCD driver
 12. NexStar mount driver (supports Celestron NexStar and Sky-Watcher mounts)
-13. LX200 mount driver (supports Meade mounts and EQMac)
+13. LX200 mount driver (supports Meade, Avalon, Losmandy, 10microns, AstroPhysics, ZWO and PegasusAstro mounts and EQMac)
 14. FLI filter wheel driver
 15. FLI CCD driver
 16. FLI focuser driver (testers needed)
@@ -133,7 +133,6 @@ This is the list of requirements taken into the consideration:
 103. RisingCam CCD driver
 104. Orion StarShotG CCD driver
 105. OGMA CCD driver
-106. PegasusAstro NYX-101
 
 ## This is under development
 1. a-Box Adaptive optics driver
