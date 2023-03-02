@@ -114,6 +114,7 @@ typedef struct {
 	int socket;                             ///< stream socket
 	indigo_device *protocol_adapter;        ///< server protocol adapter
 	char last_error[256];										///< last error reported within client thread
+	bool shutdown;													///< request shutdown
 } indigo_server_entry;
 
 
