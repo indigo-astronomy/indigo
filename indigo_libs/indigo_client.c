@@ -418,9 +418,9 @@ static void *server_thread(indigo_server_entry *server) {
 #else
 		close(server->socket);
 #endif
-			INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
+		INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
 #if defined(INDIGO_WINDOWS)
-			indigo_send_message(server->protocol_adapter, "disconnected");
+		indigo_send_message(server->protocol_adapter, "disconnected");
 #endif
 		} else if (!server->shutdown) {
 			indigo_usleep(5 * ONE_SECOND_DELAY);
@@ -595,6 +595,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 		pthread_mutex_unlock(&mutex);
 		indigo_usleep(0.1 * ONE_SECOND_DELAY);
 	}
+	server->socket = 0;
 	return INDIGO_OK;
 }
 
