@@ -414,15 +414,16 @@ static void *server_thread(indigo_server_entry *server) {
 			}
 			server->protocol_adapter = NULL;
 #if defined(INDIGO_WINDOWS)
-		closesocket(server->socket);
+			closesocket(server->socket);
 #else
-		close(server->socket);
+			close(server->socket);
 #endif
-		INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
+			INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
 #if defined(INDIGO_WINDOWS)
-		indigo_send_message(server->protocol_adapter, "disconnected");
+			indigo_send_message(server->protocol_adapter, "disconnected");
 #endif
-		} else if (!server->shutdown) {
+		}
+		if (!server->shutdown) {
 			indigo_usleep(5 * ONE_SECOND_DELAY);
 		}
 	}
