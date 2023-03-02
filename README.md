@@ -133,6 +133,7 @@ This is the list of requirements taken into the consideration:
 103. RisingCam CCD driver
 104. Orion StarShotG CCD driver
 105. OGMA CCD driver
+106. PegasusAstro NYX-101
 
 ## This is under development
 1. a-Box Adaptive optics driver
