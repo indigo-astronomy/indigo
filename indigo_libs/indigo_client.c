@@ -346,52 +346,23 @@ void indigo_service_name(const char *host, int port, char *name) {
   }
 }
 
-static void reset_socket(indigo_server_entry *server, int new_socket) {
-	if (server->socket > 0) {
-#if defined(INDIGO_WINDOWS)
-		closesocket(server->socket);
-#else
-		close(server->socket);
-#endif
-	}
-	if (server->socket != -1)
-		server->socket = new_socket;
-}
-
-
 static void *server_thread(indigo_server_entry *server) {
 	INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
 	pthread_detach(pthread_self());
-	while (server->socket >= 0) {
-		pthread_mutex_lock(&mutex);
-		reset_socket(server, 0);
-		pthread_mutex_unlock(&mutex);
+	while (!server->shutdown) {
 		char text[INET_ADDRSTRLEN];
 		struct addrinfo hints = { 0 }, *address = NULL;
 		int result;
-		/* server->socket > 0 is indication if connected,
-		   we need a buffer as between socket() and connect()
-		   server->socket > 0 but it is not connected.
-		*/
-		int socket_buffer;
 		hints.ai_family = AF_INET;
 		if ((result = getaddrinfo(server->host, NULL, &hints, &address))) {
 			INDIGO_LOG(indigo_log("Can't resolve host name %s (%s)", server->host, gai_strerror(result)));
-			pthread_mutex_lock(&mutex);
 			strncpy(server->last_error, gai_strerror(result), sizeof(server->last_error));
-			pthread_mutex_unlock(&mutex);
-		} else if ((socket_buffer = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
+		} else if ((server->socket = socket(address->ai_family, SOCK_STREAM, 0)) < 0) {
 			INDIGO_LOG(indigo_log("Can't create socket (%s)", strerror(errno)));
-			pthread_mutex_lock(&mutex);
 			strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
-			server->socket = socket_buffer;
-			pthread_mutex_unlock(&mutex);
 		} else {
 			((struct sockaddr_in *)address->ai_addr)->sin_port = htons(server->port);
-			result = connect(socket_buffer, address->ai_addr, address->ai_addrlen);
-			pthread_mutex_lock(&mutex);
-			server->socket = socket_buffer;
-			pthread_mutex_unlock(&mutex);
+			result = connect(server->socket, address->ai_addr, address->ai_addrlen);
 #if defined(INDIGO_WINDOWS)
 			if (is_pre_vista()) {
 				char *p;
@@ -412,10 +383,7 @@ static void *server_thread(indigo_server_entry *server) {
 #endif
 			if (result < 0) {
 				INDIGO_LOG(indigo_log("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
-				pthread_mutex_lock(&mutex);
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
-				reset_socket(server, 0);
-				pthread_mutex_unlock(&mutex);
 			}
 		}
 		if (address) {
@@ -424,9 +392,7 @@ static void *server_thread(indigo_server_entry *server) {
 			strncpy(text, server->host, sizeof(text));
 		}
 		if (server->socket > 0) {
-			pthread_mutex_lock(&mutex);
 			server->last_error[0] = '\0';
-			pthread_mutex_unlock(&mutex);
 			if (*server->name == 0) {
 				indigo_service_name(server->host, server->port, server->name);
 			}
@@ -447,14 +413,16 @@ static void *server_thread(indigo_server_entry *server) {
 				free(server->protocol_adapter);
 			}
 			server->protocol_adapter = NULL;
-			pthread_mutex_lock(&mutex);
-			reset_socket(server, 0);
-			pthread_mutex_unlock(&mutex);
+#if defined(INDIGO_WINDOWS)
+		closesocket(server->socket);
+#else
+		close(server->socket);
+#endif
 			INDIGO_LOG(indigo_log("Server %s:%d disconnected", server->host, server->port));
 #if defined(INDIGO_WINDOWS)
 			indigo_send_message(server->protocol_adapter, "disconnected");
 #endif
-		} else if (server->socket == 0) {
+		} else if (!server->shutdown) {
 			indigo_usleep(5 * ONE_SECOND_DELAY);
 		}
 	}
@@ -499,6 +467,7 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 	indigo_available_servers[empty_slot].socket = 0;
 	indigo_available_servers[empty_slot].connection_id = connection_id;
 	*indigo_available_servers[empty_slot].last_error = 0;
+	indigo_available_servers[empty_slot].shutdown = false;
 	if (pthread_create(&indigo_available_servers[empty_slot].thread, NULL, (void*) (void *) server_thread, &indigo_available_servers[empty_slot]) != 0) {
 		pthread_mutex_unlock(&mutex);
 		return INDIGO_FAILED;
@@ -616,7 +585,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 		Sleep(500);
 #endif
 	}
-	reset_socket(server, -1);
+	server->shutdown = true;
 	bool thread_runing = server->thread_started;
 	pthread_mutex_unlock(&mutex);
 	int timeout = 5;
