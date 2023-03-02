@@ -423,8 +423,9 @@ static void *server_thread(indigo_server_entry *server) {
 			indigo_send_message(server->protocol_adapter, "disconnected");
 #endif
 		}
-		if (!server->shutdown) {
-			indigo_usleep(5 * ONE_SECOND_DELAY);
+		int timeout = 50;
+		while (!server->shutdown && timeout--) {
+			indigo_usleep(0.1 * ONE_SECOND_DELAY);
 		}
 	}
 	server->thread_started = false;
