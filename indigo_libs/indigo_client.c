@@ -382,7 +382,7 @@ static void *server_thread(indigo_server_entry *server) {
 			inet_ntop(AF_INET, &((struct sockaddr_in *)address->ai_addr)->sin_addr, text, sizeof(text));
 #endif
 			if (result < 0) {
-				server->socket = 0;
+				server->socket = -1;
 				INDIGO_LOG(indigo_log("Can't connect to socket %s:%d (%s)", text, ntohs(((struct sockaddr_in *)address->ai_addr)->sin_port), strerror(errno)));
 				strncpy(server->last_error, strerror(errno), sizeof(server->last_error));
 			}
@@ -392,7 +392,7 @@ static void *server_thread(indigo_server_entry *server) {
 		} else {
 			strncpy(text, server->host, sizeof(text));
 		}
-		if (server->socket > 0) {
+		if (server->socket >= 0) {
 			server->last_error[0] = '\0';
 			if (*server->name == 0) {
 				indigo_service_name(server->host, server->port, server->name);
@@ -472,7 +472,7 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 	}
 	indigo_copy_name(indigo_available_servers[empty_slot].host, host);
 	indigo_available_servers[empty_slot].port = port;
-	indigo_available_servers[empty_slot].socket = 0;
+	indigo_available_servers[empty_slot].socket = -1;
 	indigo_available_servers[empty_slot].connection_id = connection_id;
 	*indigo_available_servers[empty_slot].last_error = 0;
 	indigo_available_servers[empty_slot].shutdown = false;
@@ -574,7 +574,7 @@ bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
 	if (server == NULL) return false;
 
 	pthread_mutex_lock(&mutex);
-	if (server->socket > 0) connected = true;
+	if (server->socket >= 0) connected = true;
 	if (last_error != NULL) strncpy(last_error, server->last_error, sizeof(server->last_error));
 	pthread_mutex_unlock(&mutex);
 
@@ -584,7 +584,7 @@ bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
 indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 	assert(server != NULL);
 	pthread_mutex_lock(&mutex);
-	if (server->socket > 0) {
+	if (server->socket >= 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		shutdown(server->socket, SHUT_RDWR);
 #endif
@@ -603,7 +603,7 @@ indigo_result indigo_disconnect_server(indigo_server_entry *server) {
 		pthread_mutex_unlock(&mutex);
 		indigo_usleep(0.1 * ONE_SECOND_DELAY);
 	}
-	server->socket = 0;
+	server->socket = -1;
 	return INDIGO_OK;
 }
 
