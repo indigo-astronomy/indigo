@@ -141,20 +141,20 @@ static void free_log_buffers() {
 // https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
 
 int gettimeofday(struct timeval * tp, struct timezone * tzp) {
-  static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
+	static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
 
-  SYSTEMTIME  system_time;
-  FILETIME    file_time;
-  uint64_t    time;
+	SYSTEMTIME  system_time;
+	FILETIME    file_time;
+	uint64_t    time;
 
-  GetSystemTime(&system_time);
-  SystemTimeToFileTime(&system_time, &file_time);
-  time = ((uint64_t) file_time.dwLowDateTime);
-  time += ((uint64_t) file_time.dwHighDateTime) << 32;
+	GetSystemTime(&system_time);
+	SystemTimeToFileTime(&system_time, &file_time);
+	time = ((uint64_t) file_time.dwLowDateTime);
+	time += ((uint64_t) file_time.dwHighDateTime) << 32;
 
-  tp->tv_sec = (long) ((time - EPOCH) / 10000000L);
-  tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
-  return 0;
+	tp->tv_sec = (long) ((time - EPOCH) / 10000000L);
+	tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
+	return 0;
 }
 #endif
 
@@ -189,83 +189,89 @@ void indigo_log_base(indigo_log_levels level, const char *format, va_list args) 
 			strncpy(prefix, line, arrow - line + 4);
 		}
 	}
-	if (indigo_log_message_handler != NULL) {
-		indigo_log_message_handler(level, indigo_last_message);
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-  } else if (indigo_use_syslog) {
+	if (indigo_use_syslog) {
 		static bool initialize = true;
-		if (initialize)
+		if (initialize) {
 			openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
-		while (line) {
-			char *eol = strchr(line, '\n');
-			if (eol)
-				*eol = 0;
-			if (eol > line)
-				syslog (LOG_NOTICE, "%s", indigo_last_message);
-			syslog (LOG_NOTICE, "%s", line);
-			if (eol)
-				line = eol + 1;
-			else
-				line = NULL;
+			initialize = false;
 		}
+	}
 #endif
-	} else {
-		char timestamp[16];
-		struct timeval tmnow;
-		gettimeofday(&tmnow, NULL);
+	char timestamp[16];
+	struct timeval tmnow;
+	gettimeofday(&tmnow, NULL);
 #if defined(INDIGO_WINDOWS)
-		struct tm *lt;
-		time_t rawtime;
-		lt = localtime((const time_t *) &(tmnow.tv_sec));
-		if (lt == NULL) {
-			time(&rawtime);
-			lt = localtime(&rawtime);
-		}
-		strftime (timestamp, 9, "%H:%M:%S", lt);
+	struct tm *lt;
+	time_t rawtime;
+	lt = localtime((const time_t *) &(tmnow.tv_sec));
+	if (lt == NULL) {
+		time(&rawtime);
+		lt = localtime(&rawtime);
+	}
+	strftime (timestamp, 9, "%H:%M:%S", lt);
 #else
-		strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
+	strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
 #endif
 
 #ifdef INDIGO_MACOS
-		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
+	snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
 #else
-		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
+	snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
 #endif
-		if (indigo_log_name[0] == '\0') {
-			if (indigo_main_argc == 0) {
-				strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
-			} else {
+	if (indigo_log_name[0] == '\0') {
+		if (indigo_main_argc == 0) {
+			strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
+		} else {
 #if defined(INDIGO_WINDOWS)
-        char *name = strrchr(indigo_main_argv[0], '\\');
+			char *name = strrchr(indigo_main_argv[0], '\\');
 #else
-        char *name = strrchr(indigo_main_argv[0], '/');
+			char *name = strrchr(indigo_main_argv[0], '/');
 #endif
-        if (name != NULL) {
-					name++;
-				} else {
-					name = (char *)indigo_main_argv[0];
-				}
-				strncpy(indigo_log_name, name, sizeof(indigo_log_name));
+			if (name != NULL) {
+				name++;
+			} else {
+				name = (char *)indigo_main_argv[0];
 			}
+			strncpy(indigo_log_name, name, sizeof(indigo_log_name));
 		}
-		bool first_line = true;
-		while (line) {
-			char *eol = strchr(line, '\n');
-			if (eol)
-				*eol = 0;
-			if (*line) {
-				if (first_line || *prefix == 0) {
+	}
+	bool first_line = true;
+	static char tmp[128];
+	while (line) {
+		char *eol = strchr(line, '\n');
+		if (eol)
+			*eol = 0;
+		if (*line) {
+			if (first_line || *prefix == 0) {
+				if (indigo_log_message_handler != NULL) {
+					indigo_log_message_handler(level, line);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+				} else if (indigo_use_syslog) {
+					syslog(LOG_NOTICE, "%s", line);
+#endif
+				} else {
 					fprintf(stderr, "%s %s: %s\n", timestamp, indigo_log_name, line);
-					first_line = false;
+				}
+				first_line = false;
+			} else {
+				if (indigo_log_message_handler != NULL) {
+					snprintf(tmp, sizeof(tmp), "%s%s", prefix, line);
+					indigo_log_message_handler(level, tmp);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+				} else if (indigo_use_syslog) {
+					snprintf(tmp, sizeof(tmp), "%s%s", prefix, line);
+					syslog(LOG_NOTICE, "%s", line);
+#endif
 				} else {
 					fprintf(stderr, "%s %s: %s%s\n", timestamp, indigo_log_name, prefix, line);
 				}
 			}
-			if (eol)
-				line = eol + 1;
-			else
-				line = NULL;
 		}
+		if (eol)
+			line = eol + 1;
+		else
+			line = NULL;
 	}
 	pthread_mutex_unlock(&log_mutex);
 }
@@ -393,9 +399,9 @@ indigo_result indigo_start() {
 		is_started = true;
 	}
 #if defined(INDIGO_WINDOWS)
-  WORD version_requested = MAKEWORD(1, 1);
-  WSADATA data;
-  WSAStartup(version_requested, &data);
+	WORD version_requested = MAKEWORD(1, 1);
+	WSADATA data;
+	WSAStartup(version_requested, &data);
 #endif
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
@@ -1207,24 +1213,24 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	indigo_compress("image", blob_item->blob.value, (unsigned int)blob_item->blob.size, out_buffer, &out_size);
 	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nX-Uncompressed-Content-Length: %ld\r\n\r\n", file, out_size, blob_item->blob.size);
 	INDIGO_TRACE(indigo_trace("%d <- %s", request));
-  res = indigo_write(socket, request, strlen(request));
-  if (res == false)
-    goto clean_return;
+	res = indigo_write(socket, request, strlen(request));
+	if (res == false)
+		goto clean_return;
 	INDIGO_TRACE(indigo_trace("%d <- // %d bytes", socket, blob_item->blob.size));
 	res = indigo_write(socket, (const char *)out_buffer, out_size);
 	indigo_safe_free(out_buffer);
-  if (res == false)
-    goto clean_return;
+	if (res == false)
+		goto clean_return;
 #else
 	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Length: %ld\r\n\r\n", file, blob_item->blob.size);
 	INDIGO_TRACE(indigo_trace("%d <- %s", socket, request));
-  res = indigo_write(socket, request, strlen(request));
-  if (res == false)
-    goto clean_return;
+	res = indigo_write(socket, request, strlen(request));
+	if (res == false)
+		goto clean_return;
 	INDIGO_TRACE(indigo_trace("%d <- // %d bytes", socket, blob_item->blob.size));
 	res = indigo_write(socket, blob_item->blob.value, blob_item->blob.size);
-  if (res == false)
-    goto clean_return;
+	if (res == false)
+		goto clean_return;
 #endif
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
