@@ -797,7 +797,7 @@ static void print_help(const char *name) {
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("       %s list_state [options] [device[.property]]\n", name);
-	printf("       %s browse [options]\n", name);
+	printf("       %s discover [options]\n", name);
 	printf("set write-only BLOBs:\n");
 	printf("       %s set [options] device.property.item=filename[;NAME=filename]\n", name);
 	printf("options:\n"
