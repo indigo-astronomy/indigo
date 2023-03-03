@@ -48,19 +48,19 @@ static AvahiClient *client = NULL;
 static AvahiServiceBrowser *sb = NULL;
 
 static void resolve_callback(
-	AvahiServiceResolver *r,
-	AVAHI_GCC_UNUSED AvahiIfIndex interface,
-	AVAHI_GCC_UNUSED AvahiProtocol protocol,
-	AvahiResolverEvent event,
-	const char *name,
-	AVAHI_GCC_UNUSED const char *type,
-	AVAHI_GCC_UNUSED const char *domain,
-	const char *host_name,
-	AVAHI_GCC_UNUSED const AvahiAddress *address,
-	uint16_t port,
-	AVAHI_GCC_UNUSED AvahiStringList *txt,
-	AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
-	void* callback) {
+														 AvahiServiceResolver *r,
+														 AVAHI_GCC_UNUSED AvahiIfIndex interface,
+														 AVAHI_GCC_UNUSED AvahiProtocol protocol,
+														 AvahiResolverEvent event,
+														 const char *name,
+														 AVAHI_GCC_UNUSED const char *type,
+														 AVAHI_GCC_UNUSED const char *domain,
+														 const char *host_name,
+														 AVAHI_GCC_UNUSED const AvahiAddress *address,
+														 uint16_t port,
+														 AVAHI_GCC_UNUSED AvahiStringList *txt,
+														 AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
+														 void* callback) {
 	assert(r);
 	/* Called whenever a service has been resolved successfully or timed out */
 	switch (event) {
@@ -77,19 +77,19 @@ static void resolve_callback(
 }
 
 static void browse_callback(
-	AvahiServiceBrowser *b,
-	AvahiIfIndex interface,
-	AvahiProtocol protocol,
-	AvahiBrowserEvent event,
-	const char *name,
-	const char *type,
-	const char *domain,
-	AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
-	void* userdata) {
+														AvahiServiceBrowser *b,
+														AvahiIfIndex interface,
+														AvahiProtocol protocol,
+														AvahiBrowserEvent event,
+														const char *name,
+														const char *type,
+														const char *domain,
+														AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
+														void* userdata) {
 	assert(b);
 	switch (event) {
 		case AVAHI_BROWSER_FAILURE:
-            INDIGO_ERROR(indigo_error("avahi: %s\n", avahi_strerror(avahi_client_errno(avahi_service_browser_get_client(b)))));
+			INDIGO_ERROR(indigo_error("avahi: %s\n", avahi_strerror(avahi_client_errno(avahi_service_browser_get_client(b)))));
 			avahi_simple_poll_quit(simple_poll);
 			return;
 		case AVAHI_BROWSER_NEW:
@@ -143,20 +143,20 @@ indigo_result indigo_start_service_browser(void (*callback)(bool added, const ch
 		INDIGO_ERROR(indigo_error("avahi: Failed to create simple poll object.\n"));
 		indigo_stop_service_browser();
 		return INDIGO_FAILED;
-    }
-
+	}
+	
 	client = avahi_client_new(avahi_simple_poll_get(simple_poll), 0, client_callback, NULL, &error);
 	if (!client) {
 		INDIGO_ERROR(indigo_error("avahi:Failed to create client: %s\n", avahi_strerror(error)));
 		indigo_stop_service_browser();
 		return INDIGO_FAILED;
 	}
-
-    if (!(sb = avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, "_indigo._tcp", NULL, 0, browse_callback, callback))) {
+	
+	if (!(sb = avahi_service_browser_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, "_indigo._tcp", NULL, 0, browse_callback, callback))) {
 		INDIGO_ERROR(indigo_error("avahi: Failed to create service browser: %s\n", avahi_strerror(avahi_client_errno(client))));
 		indigo_stop_service_browser();
 		return INDIGO_FAILED;
-    }
+	}
 	/* Run the main loop in a separate thread */
 	indigo_async((void * (*)(void*))avahi_simple_poll_loop, simple_poll);
 	return INDIGO_OK;
@@ -192,7 +192,7 @@ static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32
 indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port)) {
 	INDIGO_LOG(indigo_log("Resolving service %s", name));
 	DNSServiceRef sd_ref = NULL;
-	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, kDNSServiceInterfaceIndexP2P, name, "_indigo._tcp", "local.", resolver_callback, callback);
+	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, kDNSServiceInterfaceIndexAny, name, "_indigo._tcp", "local.", resolver_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_process_result_handler, sd_ref);
 		return INDIGO_OK;
