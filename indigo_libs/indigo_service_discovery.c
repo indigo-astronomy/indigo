@@ -97,7 +97,7 @@ static void browse_callback(
 			((void (*)(bool added, const char *name))userdata)(true, name);
 			break;
 		case AVAHI_BROWSER_REMOVE:
-			INDIGO_LOG(indigo_log("Service %s added", name));
+			INDIGO_LOG(indigo_log("Service %s removed", name));
 			((void (*)(bool added, const char *name))userdata)(false, name);
 			break;
 	}
@@ -112,7 +112,7 @@ static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UN
 }
 
 indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port)) {
-	if (!(avahi_service_resolver_new(client, AVAHI_PROTO_UNSPEC, AVAHI_PROTO_UNSPEC, name, "_indigo._tcp", NULL, AVAHI_PROTO_UNSPEC, AVAHI_LOOKUP_RESULT_LOCAL, resolve_callback, callback))) {
+	if (!(avahi_service_resolver_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, name, "_indigo._tcp", NULL, AVAHI_PROTO_UNSPEC, AVAHI_LOOKUP_RESULT_LOCAL, resolve_callback, callback))) {
 		INDIGO_ERROR(indigo_error("avahi: Failed to resolve service '%s': %s\n", name, avahi_strerror(avahi_client_errno(client))));
 		return INDIGO_FAILED;
 	}
