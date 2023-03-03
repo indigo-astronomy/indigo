@@ -34,6 +34,7 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
+#include <indigo/indigo_service_discovery.h>
 #include <indigo/indigo_xml.h>
 
 #define INDIGO_DEFAULT_PORT 7624
@@ -50,6 +51,7 @@ static bool list_state_requested = false;
 static bool get_state_requested = false;
 static bool print_verbose = false;
 static bool save_blobs = false;
+static bool discover_requested = false;
 
 typedef struct {
 	int item_count;
@@ -776,6 +778,15 @@ static indigo_client client = {
 	client_detach
 };
 
+void resolve_callback(const char *name, const char *host, int port) {
+	printf("%s -> %s:%u \n", name, host, port);
+}
+
+void discover_callback(bool added, const char *service_name) {
+	if (added) {
+		indigo_resolve_service(service_name, resolve_callback);
+	}
+}
 
 static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
@@ -786,6 +797,7 @@ static void print_help(const char *name) {
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("       %s list_state [options] [device[.property]]\n", name);
+	printf("       %s browse [options]\n", name);
 	printf("set write-only BLOBs:\n");
 	printf("       %s set [options] device.property.item=filename[;NAME=filename]\n", name);
 	printf("options:\n"
@@ -843,6 +855,10 @@ int main(int argc, const char * argv[]) {
 	} else if (!strcmp(argv[1], "set_script")) {
 		set_requested = true;
 		set_script_requested = true;
+		arg_base = 2;
+	} else if (!strcmp(argv[1], "discover")) {
+		set_requested = false;
+		discover_requested = true;
 		arg_base = 2;
 	}
 
@@ -949,6 +965,11 @@ int main(int argc, const char * argv[]) {
 		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 		#endif
+	} else if (discover_requested) {
+		indigo_start_service_browser(discover_callback);
+		indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
+		indigo_stop_service_browser();
+		return 0;
 	} else {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");
