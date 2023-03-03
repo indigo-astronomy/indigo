@@ -225,7 +225,7 @@ static void *service_browser_handler(void *data) {
 }
 
 indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name)) {
-	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexP2P, "_indigo._tcp", "local.", browser_callback, callback);
+	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexAny, "_indigo._tcp", "local.", browser_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_browser_handler, NULL);
 		return INDIGO_OK;
