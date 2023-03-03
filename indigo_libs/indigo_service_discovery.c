@@ -49,7 +49,7 @@ static AvahiServiceBrowser *sb = NULL;
 
 static void resolve_callback(
 	AvahiServiceResolver *r,
-	AVAHI_GCC_UNUSED AvahiIfIndex interface,
+	AvahiIfIndex interface,
 	AVAHI_GCC_UNUSED AvahiProtocol protocol,
 	AvahiResolverEvent event,
 	const char *name,
@@ -69,7 +69,7 @@ static void resolve_callback(
 			break;
 		case AVAHI_RESOLVER_FOUND: {
 			INDIGO_DEBUG(indigo_debug("Service '%s' hostname '%s:%u'\n", name, host_name, port));
-			((void (*)(const char *name, const char *host, int port))callback)(name, host_name, port);
+			((void (*)(const char *name, const char *host, int port, uint32_t interface))callback)(name, host_name, port, (uint32_t)interface);
 			break;
 		}
 	}
@@ -111,8 +111,8 @@ static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UN
 	}
 }
 
-indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port)) {
-	if (!(avahi_service_resolver_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, name, "_indigo._tcp", NULL, AVAHI_PROTO_UNSPEC, AVAHI_LOOKUP_RESULT_LOCAL, resolve_callback, callback))) {
+indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port, uint32_t interface)) {
+	if (!(avahi_service_resolver_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, name, "_indigo._tcp", NULL, AVAHI_PROTO_UNSPEC, 0, resolve_callback, callback))) {
 		INDIGO_ERROR(indigo_error("avahi: Failed to resolve service '%s': %s\n", name, avahi_strerror(avahi_client_errno(client))));
 		return INDIGO_FAILED;
 	}
@@ -185,11 +185,11 @@ static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32
 			*dot = 0;
 		port = ntohs(port);
 		INDIGO_LOG(indigo_log("Service %s resolved to %s:%d", name, host, port));
-		((void (*)(const char *name, const char *host, int port))context)(name, host, port);
+		((void (*)(const char *name, const char *host, int port, uint32_t interface_index))context)(name, host, port, interface_index);
 	}
 }
 
-indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port)) {
+indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port, uint32_t interface_index)) {
 	INDIGO_LOG(indigo_log("Resolving service %s", name));
 	DNSServiceRef sd_ref = NULL;
 	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, kDNSServiceInterfaceIndexAny, name, "_indigo._tcp", "local.", resolver_callback, callback);
