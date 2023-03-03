@@ -32,6 +32,8 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+#include <net/if.h>
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_service_discovery.h>
@@ -778,8 +780,10 @@ static indigo_client client = {
 	client_detach
 };
 
-void resolve_callback(const char *name, const char *host, int port) {
-	printf("%s -> %s:%u \n", name, host, port);
+void resolve_callback(const char *name, const char *host, int port, uint32_t interface) {
+	char ifname[255] = {0};
+	if_indextoname(interface, ifname);
+	printf("%s: %s -> %s:%u \n",ifname , name, host, port);
 }
 
 void discover_callback(bool added, const char *service_name) {

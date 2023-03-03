@@ -30,7 +30,7 @@ extern "C" {
 #endif
 
 #if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
-extern indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port));
+extern indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port, uint32_t interface));
 extern indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name));
 extern void indigo_stop_service_browser(void);
 #endif
