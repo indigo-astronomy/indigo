@@ -42,7 +42,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <dns_sd.h>
 #endif
 #ifdef INDIGO_MACOS
 #include <CoreFoundation/CoreFoundation.h>
@@ -489,92 +488,6 @@ indigo_result indigo_connect_server_id(const char *name, const char *host, int p
 		*server = &indigo_available_servers[empty_slot];
 	return INDIGO_OK;
 }
-
-#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
-
-static void *service_process_result_handler(DNSServiceRef s_ref) {
-	DNSServiceErrorType result = DNSServiceProcessResult(s_ref);
-	if (result != kDNSServiceErr_NoError) {
-		indigo_error("Failed to process result (%d)", result);
-	}
-	DNSServiceRefDeallocate(s_ref);
-	return NULL;
-}
-
-static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *context) {
-	if ((flags & kDNSServiceFlagsMoreComing) == 0) {
-		char name[INDIGO_NAME_SIZE], host[INDIGO_NAME_SIZE], *dot;
-		indigo_copy_name(name, full_name);
-		if ((dot = strchr(name, '.')))
-			*dot = 0;
-		indigo_copy_name(host, host_name);
-		if (*(dot = host + strlen(host) - 1) == '.')
-			*dot = 0;
-		port = ntohs(port);
-		INDIGO_LOG(indigo_log("Service %s resolved to %s:%d", name, host, port));
-		((void (*)(const char *name, const char *host, int port))context)(name, host, port);
-	}
-}
-
-indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port)) {
-	INDIGO_LOG(indigo_log("Resolving service %s", name));
-	DNSServiceRef sd_ref = NULL;
-#if defined(INDIGO_MACOS)
-	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, kDNSServiceInterfaceIndexP2P, name, "_indigo._tcp", "local.", resolver_callback, callback);
-#elif defined(INDIGO_LINUX)
-	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, kDNSServiceInterfaceIndexAny, name, "_indigo._tcp", "local.", resolver_callback, callback);
-#endif
-	if (result == kDNSServiceErr_NoError) {
-		indigo_async((void *(*)(void *))service_process_result_handler, sd_ref);
-		return INDIGO_OK;
-	}
-	indigo_error("Failed to resolve %s (%d)", name, result);
-	return INDIGO_FAILED;
-}
-
-static DNSServiceRef browser_sd = NULL;
-
-static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *context) {
-	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
-		if (flags & kDNSServiceFlagsAdd) {
-			INDIGO_LOG(indigo_log("Service %s added", name));
-			((void (*)(bool added, const char *name))context)(true, name);
-		} else {
-			INDIGO_LOG(indigo_log("Service %s removed", name));
-			((void (*)(bool added, const char *name))context)(false, name);
-		}
-	}
-}
-
-static void *service_browser_handler(void *data) {
-	INDIGO_LOG(indigo_log("Service browser started"));
-	while (browser_sd) {
-		DNSServiceProcessResult(browser_sd);
-	}
-	INDIGO_LOG(indigo_log("Service browser stopped"));
-	return NULL;
-}
-
-indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name)) {
-#if defined(INDIGO_MACOS)
-	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexP2P, "_indigo._tcp", "local.", browser_callback, callback);
-#elif defined(INDIGO_LINUX)
-	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexAny, "_indigo._tcp", "local.", browser_callback, callback);
-#endif
-	if (result == kDNSServiceErr_NoError) {
-		indigo_async((void *(*)(void *))service_browser_handler, NULL);
-		return INDIGO_OK;
-	}
-	indigo_error("Failed to start service browser (%d)", result);
-	return INDIGO_FAILED;
-}
-
-void indigo_stop_service_browser(void) {
-	DNSServiceRefDeallocate(browser_sd);
-	browser_sd = NULL;
-}
-
-#endif
 
 bool indigo_connection_status(indigo_server_entry *server, char *last_error) {
 	bool connected = false;
