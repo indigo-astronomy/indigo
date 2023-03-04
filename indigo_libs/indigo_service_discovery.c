@@ -337,7 +337,6 @@ indigo_result indigo_start_service_browser(void (*callback)(bool added, const ch
 void indigo_stop_service_browser(void) {
 	DNSServiceRefDeallocate(browser_sd);
 	browser_sd = NULL;
-	clear_services();
 }
 
 #endif /* INDIGO_MACOS */
