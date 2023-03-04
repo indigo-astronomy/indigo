@@ -29,20 +29,25 @@
 extern "C" {
 #endif
 
-#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
+#if defined(INDIGO_MACOS) || defined(INDIGO_WINDOWS)
+#define INDIGO_INTERFACE_ANY 0
+#endif
+
+#if defined(INDIGO_LINUX)
+#define INDIGO_INTERFACE_ANY ((uint32_t) -1)
+#endif
 
 typedef enum {
 	INDIGO_SERVICE_ADDED,
-	INDIGO_SERVICE_ADDED_UNIQUE,
+	INDIGO_SERVICE_ADDED_GROUPED,
 	INDIGO_SERVICE_REMOVED,
-	INDIGO_SERVICE_REMOVED_UNIQUE,
+	INDIGO_SERVICE_REMOVED_GROUPED,
 	INDIGO_SERVICE_END_OF_RECORD
 } indigo_service_discovery_event;
 
-extern indigo_result indigo_resolve_service(const char *name, uint32_t interface, void (*callback)(const char *name, uint32_t interface, const char *host, int port));
-extern indigo_result indigo_start_service_browser(void (*callback)(indigo_service_discovery_event event, const char *name, uint32_t interface));
+extern indigo_result indigo_resolve_service(const char *name, uint32_t interface_index, void (*callback)(const char *name, uint32_t interface_index, const char *host, int port));
+extern indigo_result indigo_start_service_browser(void (*callback)(indigo_service_discovery_event event, const char *name, uint32_t interface_index));
 extern void indigo_stop_service_browser(void);
-#endif
 
 #ifdef __cplusplus
 }

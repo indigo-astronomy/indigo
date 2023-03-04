@@ -787,7 +787,7 @@ void resolve_callback(const char *name, uint32_t interface, const char *host, in
 }
 
 void discover_callback(indigo_service_discovery_event event, const char *service_name, uint32_t interface) {
-	if (event == INDIGO_SERVICE_ADDED_UNIQUE) {
+	if (event == INDIGO_SERVICE_ADDED) {
 		indigo_resolve_service(service_name, interface, resolve_callback);
 	}
 }
