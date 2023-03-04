@@ -93,12 +93,12 @@ static void browse_callback(
 			avahi_simple_poll_quit(simple_poll);
 			return;
 		case AVAHI_BROWSER_NEW:
-			INDIGO_DEBUG(indigo_debug("Service %s added", name));
-			((void (*)(bool added, const char *name))userdata)(true, name);
+			INDIGO_DEBUG(indigo_debug("Service %s added %d", name, interface));
+			((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, interface);
 			break;
 		case AVAHI_BROWSER_REMOVE:
 			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
-			((void (*)(bool added, const char *name))userdata)(false, name);
+			((void (*)(bool added, const char *name, uint32_t interface))userdata)(false, name, interface);
 			break;
 	}
 }
@@ -111,8 +111,8 @@ static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UN
 	}
 }
 
-indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port, uint32_t interface)) {
-	if (!(avahi_service_resolver_new(client, AVAHI_IF_UNSPEC, AVAHI_PROTO_UNSPEC, name, "_indigo._tcp", NULL, AVAHI_PROTO_UNSPEC, 0, resolve_callback, callback))) {
+indigo_result indigo_resolve_service(const char *name, uint32_t interface, void (*callback)(const char *name, const char *host, int port, uint32_t interface)) {
+	if (!(avahi_service_resolver_new(client, interface, AVAHI_PROTO_UNSPEC, name, "_indigo._tcp", NULL, AVAHI_PROTO_UNSPEC, 0, resolve_callback, callback))) {
 		INDIGO_ERROR(indigo_error("avahi: Failed to resolve service '%s': %s\n", name, avahi_strerror(avahi_client_errno(client))));
 		return INDIGO_FAILED;
 	}
@@ -137,7 +137,7 @@ void indigo_stop_service_browser(void) {
 	}
 }
 
-indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name)) {
+indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name, uint32_t interface)) {
 	int error;
 	if (!(simple_poll = avahi_simple_poll_new())) {
 		INDIGO_ERROR(indigo_error("avahi: Failed to create simple poll object.\n"));
@@ -174,7 +174,7 @@ static void *service_process_result_handler(DNSServiceRef s_ref) {
 	return NULL;
 }
 
-static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *context) {
+static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *context) {
 	if ((flags & kDNSServiceFlagsMoreComing) == 0) {
 		char name[INDIGO_NAME_SIZE], host[INDIGO_NAME_SIZE], *dot;
 		indigo_copy_name(name, full_name);
@@ -185,14 +185,14 @@ static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32
 			*dot = 0;
 		port = ntohs(port);
 		INDIGO_DEBUG(indigo_debug("Service %s resolved to %s:%d", name, host, port));
-		((void (*)(const char *name, const char *host, int port, uint32_t interface_index))context)(name, host, port, interface_index);
+		((void (*)(const char *name, const char *host, int port, uint32_t interface))context)(name, host, port, interface);
 	}
 }
 
-indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port, uint32_t interface_index)) {
+indigo_result indigo_resolve_service(const char *name, uint32_t interface, void (*callback)(const char *name, const char *host, int port, uint32_t interface_index)) {
 	INDIGO_DEBUG(indigo_debug("Resolving service %s", name));
 	DNSServiceRef sd_ref = NULL;
-	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, kDNSServiceInterfaceIndexAny, name, "_indigo._tcp", "local.", resolver_callback, callback);
+	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, interface, name, "_indigo._tcp", "local.", resolver_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_process_result_handler, sd_ref);
 		return INDIGO_OK;
@@ -203,14 +203,14 @@ indigo_result indigo_resolve_service(const char *name, void (*callback)(const ch
 
 static DNSServiceRef browser_sd = NULL;
 
-static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *context) {
+static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *context) {
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
 		if (flags & kDNSServiceFlagsAdd) {
 			INDIGO_DEBUG(indigo_debug("Service %s added", name));
-			((void (*)(bool added, const char *name))context)(true, name);
+			((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, interface);
 		} else {
 			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
-			((void (*)(bool added, const char *name))context)(false, name);
+			((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, interface);
 		}
 	}
 }
@@ -224,7 +224,7 @@ static void *service_browser_handler(void *data) {
 	return NULL;
 }
 
-indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name)) {
+indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name, uint32_t interface)) {
 	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexAny, "_indigo._tcp", "local.", browser_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_browser_handler, NULL);
