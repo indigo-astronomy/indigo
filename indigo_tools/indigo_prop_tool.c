@@ -780,15 +780,14 @@ static indigo_client client = {
 	client_detach
 };
 
-void resolve_callback(const char *name, const char *host, int port, uint32_t interface) {
+void resolve_callback(const char *name, uint32_t interface, const char *host, int port) {
 	char ifname[255] = {0};
 	if_indextoname(interface, ifname);
-	printf("%s: %s -> %s:%u \n",ifname , name, host, port);
+	printf("%s: %s -> %s:%u \n", ifname , name, host, port);
 }
 
-void discover_callback(bool added, const char *service_name, uint32_t interface) {
-	if (interface == INDIGO_INTERFACE_ANY) return;
-	if (added) {
+void discover_callback(indigo_service_discovery_event event, const char *service_name, uint32_t interface) {
+	if (event == INDIGO_SERVICE_ADDED_UNIQUE) {
 		indigo_resolve_service(service_name, interface, resolve_callback);
 	}
 }

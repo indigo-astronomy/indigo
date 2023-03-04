@@ -232,6 +232,7 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
+		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
 		5973456F256704D6001741D4 /* indigo_focuser_mypro2.c in Sources */ = {isa = PBXBuildFile; fileRef = 5973456B256704CB001741D4 /* indigo_focuser_mypro2.c */; };
 		59790B2D29B2796300F73B1D /* indigo_service_discovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 59790B2C29B2796300F73B1D /* indigo_service_discovery.h */; };
@@ -14739,6 +14740,7 @@
 				5949DCB5265B993500F83B7E /* indigo_tiff.c in Sources */,
 				9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */,
 				5949DCAF265B991000F83B7E /* indigo_token.c in Sources */,
+				5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */,
 				5949DCB1265B991900F83B7E /* indigo_version.c in Sources */,
 				5949DCB6265B993500F83B7E /* indigo_ser.c in Sources */,
 				5949DCB2265B993500F83B7E /* indigo_json.c in Sources */,
