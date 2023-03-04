@@ -33,6 +33,7 @@
 #endif
 #if defined(INDIGO_MACOS)
 #include <dns_sd.h>
+#include <net/if.h>
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
@@ -40,6 +41,41 @@
 #include <pthread.h>
 
 #include <indigo/indigo_service_discovery.h>
+
+struct service_struct {
+	char name[INDIGO_NAME_SIZE];
+	int count;
+	struct service_struct *next;
+} *services;
+
+/* returns number of service instances exists */
+
+static int add_service(const char *name) {
+	struct service_struct *service = services;
+	while (service) {
+		if (!strncmp(name, service->name, INDIGO_NAME_SIZE)) {
+			return ++service->count;
+		}
+	}
+	service = indigo_safe_malloc(sizeof(struct service_struct));
+	strncpy(service->name, name, INDIGO_NAME_SIZE);
+	service->next = services;
+	services = service;
+	return ++service->count;
+}
+
+/* returns number of service instances exists */
+
+static int remove_service(const char *name) {
+	struct service_struct *service = services;
+	while (service) {
+		if (!strncmp(name, service->name, INDIGO_NAME_SIZE)) {
+			// TBD remove instance from list if needed
+			return --service->count;
+		}
+	}
+	return 0;
+}
 
 #if defined(INDIGO_LINUX)
 
@@ -94,11 +130,17 @@ static void browse_callback(
 			return;
 		case AVAHI_BROWSER_NEW:
 			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
+			if (add_service(name)) {
+				((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, INDIGO_INTERFACE_ANY);
+			}
 			((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, interface);
 			break;
 		case AVAHI_BROWSER_REMOVE:
 			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
 			((void (*)(bool added, const char *name, uint32_t interface))userdata)(false, name, interface);
+			if (remove_service(name) == 0) {
+				((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, INDIGO_INTERFACE_ANY);
+			}
 			break;
 	}
 }
@@ -205,12 +247,20 @@ static DNSServiceRef browser_sd = NULL;
 
 static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *context) {
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
+		char in[32];
+		if_indextoname(interface, in);
 		if (flags & kDNSServiceFlagsAdd) {
-			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
+			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d %s)", name, interface, in));
+			if (add_service(name)) {
+				((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, INDIGO_INTERFACE_ANY);
+			}
 			((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, interface);
 		} else {
-			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
+			INDIGO_DEBUG(indigo_debug("Service %s removed (interface %d %s)", name, interface, in));
 			((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, interface);
+			if (remove_service(name) == 0) {
+				((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, INDIGO_INTERFACE_ANY);
+			}
 		}
 	}
 }
