@@ -46,7 +46,7 @@ struct service_struct {
 	char name[INDIGO_NAME_SIZE];
 	int count;
 	struct service_struct *next;
-} *services;
+} *services = NULL;
 
 /* returns number of service instances exists */
 
