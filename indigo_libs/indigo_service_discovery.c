@@ -33,7 +33,6 @@
 #endif
 #if defined(INDIGO_MACOS)
 #include <dns_sd.h>
-#include <net/if.h>
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
