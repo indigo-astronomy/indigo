@@ -280,7 +280,7 @@ static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32
 indigo_result indigo_resolve_service(const char *name, uint32_t interface_index, void (*callback)(const char *name, uint32_t interface_index, const char *host, int port)) {
 	INDIGO_DEBUG(indigo_debug("Resolving service %s", name));
 	DNSServiceRef sd_ref = NULL;
-	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, interface, name, "_indigo._tcp", "local.", resolver_callback, callback);
+	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, interface_index, name, "_indigo._tcp", "local.", resolver_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_process_result_handler, sd_ref);
 		return INDIGO_OK;
@@ -297,18 +297,18 @@ static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_
 		if (flags & kDNSServiceFlagsAdd) {
 			if ((count = add_service(name)) == 1) {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) added", name, count));
-				((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_ADDED, name, INDIGO_INTERFACE_ANY);
+				((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_ADDED_GROUPED, name, INDIGO_INTERFACE_ANY);
 			} else {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
-			INDIGO_DEBUG(indigo_debug("Service '%s' added (interface %d)", name, interface));
-			((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_ADDED_UNIQUE, name, interface_index);
+			INDIGO_DEBUG(indigo_debug("Service '%s' added (interface %d)", name, interface_index));
+			((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_ADDED, name, interface_index);
 		} else {
-			INDIGO_DEBUG(indigo_debug("Service '%s' removed (interface %d)", name, interface));
-			((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_REMOVED_UNIQUE, name, interface_index;
+			INDIGO_DEBUG(indigo_debug("Service '%s' removed (interface %d)", name, interface_index));
+			((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_REMOVED, name, interface_index);
 			if ((count = remove_service(name)) == 0) {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) removed", name, count));
-				((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_REMOVED, name, INDIGO_INTERFACE_ANY);
+				((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface_index))callback)(INDIGO_SERVICE_REMOVED_GROUPED, name, INDIGO_INTERFACE_ANY);
 			} else {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
