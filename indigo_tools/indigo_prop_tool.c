@@ -787,6 +787,7 @@ void resolve_callback(const char *name, const char *host, int port, uint32_t int
 }
 
 void discover_callback(bool added, const char *service_name, uint32_t interface) {
+	if (interface == INDIGO_INTERFACE_ANY) return;
 	if (added) {
 		indigo_resolve_service(service_name, interface, resolve_callback);
 	}
