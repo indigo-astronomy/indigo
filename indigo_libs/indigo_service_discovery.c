@@ -140,7 +140,7 @@ static void resolve_callback(
 			break;
 		case AVAHI_RESOLVER_FOUND: {
 			INDIGO_DEBUG(indigo_debug("Service '%s' hostname '%s:%u'\n", name, host_name, port));
-			((void (*)(const char *name, const char *host, int port, uint32_t interface))callback)(name, host_name, port, (uint32_t)interface);
+			((void (*)(const char *name, uint32_t interface, const char *host, int port))callback)(name, (uint32_t)interface, host_name, port);
 			break;
 		}
 	}
@@ -167,22 +167,25 @@ static void browse_callback(
 		case AVAHI_BROWSER_NEW:
 			if ((count = add_service(name)) == 1) {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) added", name, count));
-				((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, INDIGO_INTERFACE_ANY);
+				((void (*)(INDIGO_SERVICE_ADDED, const char *name, uint32_t interface))callback)(true, name, 0);
 			} else {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
 			INDIGO_DEBUG(indigo_debug("Service '%s' added (interface %d)", name, interface));
-			((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, interface);
+			((void (*)(INDIGO_SERVICE_ADDED_UNIQUE, const char *name, uint32_t interface))callback)(true, name, interface);
 			break;
 		case AVAHI_BROWSER_REMOVE:
 			INDIGO_DEBUG(indigo_debug("Service '%s' removed (interface %d)", name, interface));
-			((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, interface);
+			((void (*)(INDIGO_SERVICE_REMOVED, const char *name, uint32_t interface))callback)(false, name, interface);
 			if ((count = remove_service(name)) == 0) {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) removed", name, count));
-				((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, INDIGO_INTERFACE_ANY);
+				((void (*)(INDIGO_SERVICE_REMOVED_UNIQUE, const char *name, uint32_t interface))callback)(false, name, 0);
 			} else {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
+			break;
+		case AVAHI_BROWSER_ALL_FOR_NOW:
+			((void (*)(INDIGO_SERVICE_END_OF_RECORD, const char *name, uint32_t interface))callback)(false, name, 0);
 			break;
 	}
 }
@@ -195,7 +198,7 @@ static void client_callback(AvahiClient *c, AvahiClientState state, AVAHI_GCC_UN
 	}
 }
 
-indigo_result indigo_resolve_service(const char *name, uint32_t interface, void (*callback)(const char *name, const char *host, int port, uint32_t interface)) {
+indigo_result indigo_resolve_service(const char *name, uint32_t interface, void (*callback)(const char *name, uint32_t interface, const char *host, int port)) {
 	if (!(avahi_service_resolver_new(client, interface, AVAHI_PROTO_UNSPEC, name, "_indigo._tcp", NULL, AVAHI_PROTO_UNSPEC, 0, resolve_callback, callback))) {
 		INDIGO_ERROR(indigo_error("avahi: Failed to resolve service '%s': %s\n", name, avahi_strerror(avahi_client_errno(client))));
 		return INDIGO_FAILED;
@@ -271,11 +274,11 @@ static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32
 			*dot = 0;
 		port = ntohs(port);
 		INDIGO_DEBUG(indigo_debug("Service %s resolved to %s:%d", name, host, port));
-		((void (*)(const char *name, const char *host, int port, uint32_t interface))context)(name, host, port, interface);
+		((void (*)(const char *name, uint32_t interface, const char *host, int port))context)(name, interface, host, port);
 	}
 }
 
-indigo_result indigo_resolve_service(const char *name, uint32_t interface, void (*callback)(const char *name, const char *host, int port, uint32_t interface_index)) {
+indigo_result indigo_resolve_service(const char *name, uint32_t interface, void (*callback)(const char *name, uint32_t interface, const char *host, int port)) {
 	INDIGO_DEBUG(indigo_debug("Resolving service %s", name));
 	DNSServiceRef sd_ref = NULL;
 	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, interface, name, "_indigo._tcp", "local.", resolver_callback, callback);
@@ -295,21 +298,24 @@ static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_
 		if (flags & kDNSServiceFlagsAdd) {
 			if ((count = add_service(name)) == 1) {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) added", name, count));
-				((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, INDIGO_INTERFACE_ANY);
+				((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface))callback)(INDIGO_SERVICE_ADDED, name, 0);
 			} else {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
 			INDIGO_DEBUG(indigo_debug("Service '%s' added (interface %d)", name, interface));
-			((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, interface);
+			((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface))callback)(INDIGO_SERVICE_ADDED_UNIQUE, name, interface);
 		} else {
 			INDIGO_DEBUG(indigo_debug("Service '%s' removed (interface %d)", name, interface));
-			((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, interface);
+			((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface))callback)(INDIGO_SERVICE_REMOVED_UNIQUE, name, interface);
 			if ((count = remove_service(name)) == 0) {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) removed", name, count));
-				((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, INDIGO_INTERFACE_ANY);
+				((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface))callback)(INDIGO_SERVICE_REMOVED, name, 0);
 			} else {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
+		}
+		if ((flags & kDNSServiceFlagsMoreComing) == 0) {
+			((void (*)(indigo_service_discovery_event event, const char *name, uint32_t interface))callback)(INDIGO_SERVICE_END_OF_RECORD, name, 0);
 		}
 	}
 }
@@ -324,7 +330,7 @@ static void *service_browser_handler(void *data) {
 	return NULL;
 }
 
-indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name, uint32_t interface)) {
+indigo_result indigo_start_service_browser(void (*callback)(indigo_service_discovery_event event, const char *name, uint32_t interface)) {
 	clear_services();
 	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexAny, "_indigo._tcp", "local.", browser_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
