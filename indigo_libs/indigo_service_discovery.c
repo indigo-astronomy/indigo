@@ -131,7 +131,7 @@ static void browse_callback(
 		case AVAHI_BROWSER_NEW:
 			if (add_service(name)) {
 				INDIGO_DEBUG(indigo_debug("Service %s added", name));
-				((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, INDIGO_INTERFACE_ANY);
+				((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, INDIGO_INTERFACE_ANY);
 			}
 			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
 			((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, interface);
@@ -141,7 +141,7 @@ static void browse_callback(
 			((void (*)(bool added, const char *name, uint32_t interface))userdata)(false, name, interface);
 			if (remove_service(name) == 0) {
 				INDIGO_DEBUG(indigo_debug("Service %s removed", name));
-				((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, INDIGO_INTERFACE_ANY);
+				((void (*)(bool added, const char *name, uint32_t interface))userdata)(false, name, INDIGO_INTERFACE_ANY);
 			}
 			break;
 	}
