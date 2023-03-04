@@ -786,9 +786,9 @@ void resolve_callback(const char *name, const char *host, int port, uint32_t int
 	printf("%s: %s -> %s:%u \n",ifname , name, host, port);
 }
 
-void discover_callback(bool added, const char *service_name) {
+void discover_callback(bool added, const char *service_name, uint32_t interface) {
 	if (added) {
-		indigo_resolve_service(service_name, resolve_callback);
+		indigo_resolve_service(service_name, interface, resolve_callback);
 	}
 }
 
