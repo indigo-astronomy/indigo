@@ -42,40 +42,76 @@
 
 #include <indigo/indigo_service_discovery.h>
 
-struct service_struct {
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static struct service_struct {
 	char name[INDIGO_NAME_SIZE];
 	int count;
 	struct service_struct *next;
 } *services = NULL;
 
 /* returns number of service instances exists */
-
 static int add_service(const char *name) {
+	pthread_mutex_lock(&mutex);
 	struct service_struct *service = services;
 	while (service) {
 		if (!strncmp(name, service->name, INDIGO_NAME_SIZE)) {
-			return ++service->count;
+			int count = ++service->count;
+			pthread_mutex_unlock(&mutex);
+			return count;
 		}
+		service = service->next;
 	}
 	service = indigo_safe_malloc(sizeof(struct service_struct));
 	strncpy(service->name, name, INDIGO_NAME_SIZE);
 	service->next = services;
 	services = service;
-	return ++service->count;
+	int count = ++service->count;
+	pthread_mutex_unlock(&mutex);
+	return count;
 }
 
 /* returns number of service instances exists */
-
 static int remove_service(const char *name) {
+	pthread_mutex_lock(&mutex);
 	struct service_struct *service = services;
-	while (service) {
-		if (!strncmp(name, service->name, INDIGO_NAME_SIZE)) {
-			// TBD remove instance from list if needed
-			return --service->count;
+	if (service && !strncmp(name, service->name, INDIGO_NAME_SIZE)) {
+			int count = --service->count;
+			if (count == 0) {
+				struct service_struct *buf = service;
+				services = buf->next;
+				indigo_safe_free(buf);
+			}
+			pthread_mutex_unlock(&mutex);
+			return count;
 		}
+	while (service->next) {
+		if (!strncmp(name, service->next->name, INDIGO_NAME_SIZE)) {
+			int count = --service->next->count;
+			if (count == 0) {
+				struct service_struct *buf = service->next;
+				service->next = buf->next;
+				indigo_safe_free(buf);
+			}
+			pthread_mutex_unlock(&mutex);
+			return count;
+		}
+		service = service->next;
 	}
+	pthread_mutex_unlock(&mutex);
 	return 0;
 }
+
+static void clear_services() {
+	pthread_mutex_lock(&mutex);
+	while (services) {
+		struct service_struct *buf = services;
+		services = buf->next;
+		indigo_safe_free(buf);
+	}
+	pthread_mutex_unlock(&mutex);
+}
+
 
 #if defined(INDIGO_LINUX)
 
@@ -121,27 +157,32 @@ static void browse_callback(
 	const char *type,
 	const char *domain,
 	AVAHI_GCC_UNUSED AvahiLookupResultFlags flags,
-	void* userdata) {
+	void* callback) {
 	assert(b);
+	int count = 0;
 	switch (event) {
 		case AVAHI_BROWSER_FAILURE:
 			INDIGO_ERROR(indigo_error("avahi: %s\n", avahi_strerror(avahi_client_errno(avahi_service_browser_get_client(b)))));
 			avahi_simple_poll_quit(simple_poll);
 			return;
 		case AVAHI_BROWSER_NEW:
-			if (add_service(name)) {
-				INDIGO_DEBUG(indigo_debug("Service %s added", name));
-				((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, INDIGO_INTERFACE_ANY);
+			if ((count = add_service(name)) == 1) {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) added", name, count));
+				((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, INDIGO_INTERFACE_ANY);
+			} else {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
-			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
-			((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, interface);
+			INDIGO_DEBUG(indigo_debug("Service '%s' added (interface %d)", name, interface));
+			((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, interface);
 			break;
 		case AVAHI_BROWSER_REMOVE:
-			INDIGO_DEBUG(indigo_debug("Service %s removed (interface %d)", name, interface));
-			((void (*)(bool added, const char *name, uint32_t interface))userdata)(false, name, interface);
-			if (remove_service(name) == 0) {
-				INDIGO_DEBUG(indigo_debug("Service %s removed", name));
-				((void (*)(bool added, const char *name, uint32_t interface))userdata)(false, name, INDIGO_INTERFACE_ANY);
+			INDIGO_DEBUG(indigo_debug("Service '%s' removed (interface %d)", name, interface));
+			((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, interface);
+			if ((count = remove_service(name)) == 0) {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) removed", name, count));
+				((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, INDIGO_INTERFACE_ANY);
+			} else {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
 			break;
 	}
@@ -179,10 +220,12 @@ void indigo_stop_service_browser(void) {
 		avahi_simple_poll_free(simple_poll);
 		simple_poll = NULL;
 	}
+	clear_services();
 }
 
 indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name, uint32_t interface)) {
 	int error;
+	clear_services();
 	if (!(simple_poll = avahi_simple_poll_new())) {
 		INDIGO_ERROR(indigo_error("avahi: Failed to create simple poll object.\n"));
 		indigo_stop_service_browser();
@@ -247,23 +290,27 @@ indigo_result indigo_resolve_service(const char *name, uint32_t interface, void 
 
 static DNSServiceRef browser_sd = NULL;
 
-static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *context) {
+static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *callback) {
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
 		char in[32];
 		if_indextoname(interface, in);
 		if (flags & kDNSServiceFlagsAdd) {
-			if (add_service(name)) {
-				INDIGO_DEBUG(indigo_debug("Service %s added", name));
-				((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, INDIGO_INTERFACE_ANY);
+			if ((count = add_service(name)) == 1) {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) added", name, count));
+				((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, INDIGO_INTERFACE_ANY);
+			} else {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
-			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d %s)", name, interface, in));
-			((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, interface);
+			INDIGO_DEBUG(indigo_debug("Service '%s' added (interface %d)", name, interface));
+			((void (*)(bool added, const char *name, uint32_t interface))callback)(true, name, interface);
 		} else {
-			INDIGO_DEBUG(indigo_debug("Service %s removed (interface %d %s)", name, interface, in));
-			((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, interface);
-			if (remove_service(name) == 0) {
-				INDIGO_DEBUG(indigo_debug("Service %s removed", name));
-				((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, INDIGO_INTERFACE_ANY);
+			INDIGO_DEBUG(indigo_debug("Service '%s' removed (interface %d)", name, interface));
+			((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, interface);
+			if ((count = remove_service(name)) == 0) {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) removed", name, count));
+				((void (*)(bool added, const char *name, uint32_t interface))callback)(false, name, INDIGO_INTERFACE_ANY);
+			} else {
+				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d)", name, count));
 			}
 		}
 	}
@@ -279,6 +326,7 @@ static void *service_browser_handler(void *data) {
 }
 
 indigo_result indigo_start_service_browser(void (*callback)(bool added, const char *name, uint32_t interface)) {
+	clear_services();
 	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexAny, "_indigo._tcp", "local.", browser_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_browser_handler, NULL);
@@ -291,6 +339,7 @@ indigo_result indigo_start_service_browser(void (*callback)(bool added, const ch
 void indigo_stop_service_browser(void) {
 	DNSServiceRefDeallocate(browser_sd);
 	browser_sd = NULL;
+	clear_services();
 }
 
 #endif /* INDIGO_MACOS */
