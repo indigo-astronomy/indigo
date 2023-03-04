@@ -129,16 +129,18 @@ static void browse_callback(
 			avahi_simple_poll_quit(simple_poll);
 			return;
 		case AVAHI_BROWSER_NEW:
-			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
 			if (add_service(name)) {
+				INDIGO_DEBUG(indigo_debug("Service %s added", name));
 				((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, INDIGO_INTERFACE_ANY);
 			}
+			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
 			((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, interface);
 			break;
 		case AVAHI_BROWSER_REMOVE:
-			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
+			INDIGO_DEBUG(indigo_debug("Service %s removed (interface %d)", name, interface));
 			((void (*)(bool added, const char *name, uint32_t interface))userdata)(false, name, interface);
 			if (remove_service(name) == 0) {
+				INDIGO_DEBUG(indigo_debug("Service %s removed", name));
 				((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, INDIGO_INTERFACE_ANY);
 			}
 			break;
@@ -250,15 +252,17 @@ static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_
 		char in[32];
 		if_indextoname(interface, in);
 		if (flags & kDNSServiceFlagsAdd) {
-			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d %s)", name, interface, in));
 			if (add_service(name)) {
+				INDIGO_DEBUG(indigo_debug("Service %s added", name));
 				((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, INDIGO_INTERFACE_ANY);
 			}
+			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d %s)", name, interface, in));
 			((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, interface);
 		} else {
 			INDIGO_DEBUG(indigo_debug("Service %s removed (interface %d %s)", name, interface, in));
 			((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, interface);
 			if (remove_service(name) == 0) {
+				INDIGO_DEBUG(indigo_debug("Service %s removed", name));
 				((void (*)(bool added, const char *name, uint32_t interface))context)(false, name, INDIGO_INTERFACE_ANY);
 			}
 		}
