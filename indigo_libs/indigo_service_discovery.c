@@ -35,6 +35,9 @@
 #include <dns_sd.h>
 #include <CoreFoundation/CoreFoundation.h>
 #endif
+#if defined(INDIGO_WINDOWS)
+#include <dns_sd.h>
+#endif
 
 #include <pthread.h>
 

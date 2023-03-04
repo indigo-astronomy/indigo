@@ -34,9 +34,9 @@
     <ClCompile Include="..\..\indigo_libs\indigo_xml.c">
       <Filter>indigo</Filter>
     </ClCompile>
-		<ClCompile Include="..\..\indigo_libs\indigo_token.c">
-			<Filter>indigo</Filter>
-		</ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_token.c">
+      <Filter>indigo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\indigo_client\externals\pthreads4w\include\_ptw32.h">
@@ -60,11 +60,9 @@
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_io.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_version.h" />
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h" />
-		<ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h" />
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h" />
   </ItemGroup>
   <ItemGroup>
-    <Library Include="..\indigo_client\externals\pthreads4w\lib\x86\libpthreadVC3.lib">
-      <Filter>indigo</Filter>
-    </Library>
+    <Library Include="..\indigo_client\externals\pthreads4w\lib\x86\libpthreadVC3.lib" />
   </ItemGroup>
 </Project>

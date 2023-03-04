@@ -60,9 +60,24 @@
     <ClInclude Include="..\..\indigo_libs\indigo\indigo_xml.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-		<ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h">
-			<Filter>Header Files</Filter>
-		</ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_token.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\indigo_libs\indigo\indigo_service_discovery.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\bonjour-sdk\CommonServices.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\bonjour-sdk\DebugServices.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\bonjour-sdk\dns_sd.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="externals\bonjour-sdk\dnssd_ipc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -92,8 +107,20 @@
     <ClCompile Include="..\..\indigo_libs\indigo_base64.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-		<ClCompile Include="..\..\indigo_libs\indigo_token.c">
-			<Filter>Source Files</Filter>
-		</ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_token.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\indigo_libs\indigo_service_discovery.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="externals\bonjour-sdk\dnssd_clientlib.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="externals\bonjour-sdk\dnssd_clientstub.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="externals\bonjour-sdk\dnssd_ipc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
