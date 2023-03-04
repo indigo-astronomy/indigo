@@ -319,6 +319,7 @@ static void *service_browser_handler(void *data) {
 	while (browser_sd) {
 		DNSServiceProcessResult(browser_sd);
 	}
+	clear_services();
 	INDIGO_DEBUG(indigo_debug("Service browser stopped"));
 	return NULL;
 }
