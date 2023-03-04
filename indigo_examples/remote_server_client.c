@@ -156,9 +156,9 @@ static indigo_client client = {
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-#if defined(INDIGO_WINDOWS)
-	freopen("indigo.log", "w", stderr);
-#endif
+//#if defined(INDIGO_WINDOWS)
+//	freopen("indigo.log", "w", stderr);
+//#endif
 
 	indigo_set_log_level(INDIGO_LOG_INFO);
 	indigo_start();
