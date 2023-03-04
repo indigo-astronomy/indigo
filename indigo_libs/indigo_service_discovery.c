@@ -93,11 +93,11 @@ static void browse_callback(
 			avahi_simple_poll_quit(simple_poll);
 			return;
 		case AVAHI_BROWSER_NEW:
-			INDIGO_LOG(indigo_log("Service %s added", name));
+			INDIGO_DEBUG(indigo_debug("Service %s added", name));
 			((void (*)(bool added, const char *name))userdata)(true, name);
 			break;
 		case AVAHI_BROWSER_REMOVE:
-			INDIGO_LOG(indigo_log("Service %s removed", name));
+			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
 			((void (*)(bool added, const char *name))userdata)(false, name);
 			break;
 	}
@@ -168,7 +168,7 @@ indigo_result indigo_start_service_browser(void (*callback)(bool added, const ch
 static void *service_process_result_handler(DNSServiceRef s_ref) {
 	DNSServiceErrorType result = DNSServiceProcessResult(s_ref);
 	if (result != kDNSServiceErr_NoError) {
-		indigo_error("Failed to process result (%d)", result);
+		INDIGO_ERROR(indigo_error("Failed to process result (%d)", result));
 	}
 	DNSServiceRefDeallocate(s_ref);
 	return NULL;
@@ -184,20 +184,20 @@ static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32
 		if (*(dot = host + strlen(host) - 1) == '.')
 			*dot = 0;
 		port = ntohs(port);
-		INDIGO_LOG(indigo_log("Service %s resolved to %s:%d", name, host, port));
+		INDIGO_DEBUG(indigo_debug("Service %s resolved to %s:%d", name, host, port));
 		((void (*)(const char *name, const char *host, int port, uint32_t interface_index))context)(name, host, port, interface_index);
 	}
 }
 
 indigo_result indigo_resolve_service(const char *name, void (*callback)(const char *name, const char *host, int port, uint32_t interface_index)) {
-	INDIGO_LOG(indigo_log("Resolving service %s", name));
+	INDIGO_DEBUG(indigo_debug("Resolving service %s", name));
 	DNSServiceRef sd_ref = NULL;
 	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, kDNSServiceInterfaceIndexAny, name, "_indigo._tcp", "local.", resolver_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_process_result_handler, sd_ref);
 		return INDIGO_OK;
 	}
-	indigo_error("Failed to resolve %s (%d)", name, result);
+	INDIGO_ERROR(indigo_error("Failed to resolve %s (%d)", name, result));
 	return INDIGO_FAILED;
 }
 
@@ -206,21 +206,21 @@ static DNSServiceRef browser_sd = NULL;
 static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *context) {
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
 		if (flags & kDNSServiceFlagsAdd) {
-			INDIGO_LOG(indigo_log("Service %s added", name));
+			INDIGO_DEBUG(indigo_debug("Service %s added", name));
 			((void (*)(bool added, const char *name))context)(true, name);
 		} else {
-			INDIGO_LOG(indigo_log("Service %s removed", name));
+			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
 			((void (*)(bool added, const char *name))context)(false, name);
 		}
 	}
 }
 
 static void *service_browser_handler(void *data) {
-	INDIGO_LOG(indigo_log("Service browser started"));
+	INDIGO_DEBUG(indigo_debug("Service browser started"));
 	while (browser_sd) {
 		DNSServiceProcessResult(browser_sd);
 	}
-	INDIGO_LOG(indigo_log("Service browser stopped"));
+	INDIGO_DEBUG(indigo_debug("Service browser stopped"));
 	return NULL;
 }
 

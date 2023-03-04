@@ -970,9 +970,11 @@ int main(int argc, const char * argv[]) {
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 		#endif
 	} else if (discover_requested) {
+		indigo_start();
 		indigo_start_service_browser(discover_callback);
 		indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
 		indigo_stop_service_browser();
+		indigo_stop();
 		return 0;
 	} else {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
