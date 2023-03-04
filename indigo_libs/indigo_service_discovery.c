@@ -93,7 +93,7 @@ static void browse_callback(
 			avahi_simple_poll_quit(simple_poll);
 			return;
 		case AVAHI_BROWSER_NEW:
-			INDIGO_DEBUG(indigo_debug("Service %s added %d", name, interface));
+			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
 			((void (*)(bool added, const char *name, uint32_t interface))userdata)(true, name, interface);
 			break;
 		case AVAHI_BROWSER_REMOVE:
@@ -206,7 +206,7 @@ static DNSServiceRef browser_sd = NULL;
 static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *context) {
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
 		if (flags & kDNSServiceFlagsAdd) {
-			INDIGO_DEBUG(indigo_debug("Service %s added", name));
+			INDIGO_DEBUG(indigo_debug("Service %s added (interface %d)", name, interface));
 			((void (*)(bool added, const char *name, uint32_t interface))context)(true, name, interface);
 		} else {
 			INDIGO_DEBUG(indigo_debug("Service %s removed", name));
