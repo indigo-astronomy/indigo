@@ -292,8 +292,7 @@ static DNSServiceRef browser_sd = NULL;
 
 static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *callback) {
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
-		char in[32];
-		if_indextoname(interface, in);
+		int count = 0;
 		if (flags & kDNSServiceFlagsAdd) {
 			if ((count = add_service(name)) == 1) {
 				INDIGO_DEBUG(indigo_debug("Service '%s' (count = %d) added", name, count));
