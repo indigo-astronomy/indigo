@@ -38,11 +38,11 @@ extern "C" {
 #endif
 
 typedef enum {
-	INDIGO_SERVICE_ADDED,
-	INDIGO_SERVICE_ADDED_GROUPED,
-	INDIGO_SERVICE_REMOVED,
-	INDIGO_SERVICE_REMOVED_GROUPED,
-	INDIGO_SERVICE_END_OF_RECORD
+	INDIGO_SERVICE_ADDED,             /* added service is reported many times, once per interface */
+	INDIGO_SERVICE_ADDED_GROUPED,     /* added service is reported once, interface is set to INDIGO_INTERFACE_ANY */
+	INDIGO_SERVICE_REMOVED,           /* removed service is reported many times, once per interface */
+	INDIGO_SERVICE_REMOVED_GROUPED,   /* removed service is reported once, interface is set to INDIGO_INTERFACE_ANY */
+	INDIGO_SERVICE_END_OF_RECORD      /* no more visible services at this time */
 } indigo_service_discovery_event;
 
 extern indigo_result indigo_resolve_service(const char *name, uint32_t interface_index, void (*callback)(const char *name, uint32_t interface_index, const char *host, int port));
