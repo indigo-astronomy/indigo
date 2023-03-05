@@ -283,7 +283,7 @@ static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32
 indigo_result indigo_resolve_service(const char *name, uint32_t interface_index, void (*callback)(const char *name, uint32_t interface_index, const char *host, int port)) {
 	INDIGO_DEBUG(indigo_debug("Resolving service %s", name));
 	DNSServiceRef sd_ref = NULL;
-	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, interface_index, name, "_indigo._tcp", "local.", (DNSServiceResolveReply)resolver_callback, callback);
+	DNSServiceErrorType result = DNSServiceResolve(&sd_ref, 0, interface_index, name, "_indigo._tcp", "local.", resolver_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_process_result_handler, sd_ref);
 		return INDIGO_OK;
@@ -334,7 +334,7 @@ static void *service_browser_handler(void *data) {
 
 indigo_result indigo_start_service_browser(void (*callback)(indigo_service_discovery_event event, const char *name, uint32_t interface_index)) {
 	clear_services();
-	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexAny, "_indigo._tcp", "local.", (DNSServiceBrowseReply)browser_callback, callback);
+	DNSServiceErrorType result = DNSServiceBrowse(&browser_sd, 0, kDNSServiceInterfaceIndexAny, "_indigo._tcp", "local.", browser_callback, callback);
 	if (result == kDNSServiceErr_NoError) {
 		indigo_async((void *(*)(void *))service_browser_handler, NULL);
 		return INDIGO_OK;
