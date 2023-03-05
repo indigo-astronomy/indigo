@@ -105,3 +105,6 @@ indigo_string_to_token
 base64_decode_fast
 base64_decode_fast_nl
 base64_encode
+indigo_resolve_service
+indigo_start_service_browser
+indigo_stop_service_browser
