@@ -781,13 +781,19 @@ static indigo_client client = {
 };
 
 void resolve_callback(const char *name, uint32_t interface_index, const char *host, int port) {
-	char ifname[255] = {0};
-	if_indextoname(interface_index, ifname);
-	printf("%s: %s -> %s:%u \n", ifname, name, host, port);
+	if (print_verbose) {
+		char ifname[255] = {0};
+		if_indextoname(interface_index, ifname);
+		printf("%s: %s -> %s:%u \n", ifname, name, host, port);
+	} else {
+		printf("%s -> %s:%u \n", name, host, port);
+	}
 }
 
 void discover_callback(indigo_service_discovery_event event, const char *service_name, uint32_t interface_index) {
-	if (event == INDIGO_SERVICE_ADDED) {
+	if (event == INDIGO_SERVICE_ADDED && print_verbose) {
+		indigo_resolve_service(service_name, interface_index, resolve_callback);
+	} else if (event == INDIGO_SERVICE_ADDED_GROUPED && !print_verbose) {
 		indigo_resolve_service(service_name, interface_index, resolve_callback);
 	}
 }
