@@ -101,7 +101,7 @@ The commands are self-explanatory:
 - **get** - get listed item values
 - **get_state** - get the property state
 - **list_state** - list the state of the properties
-- **discover** - auto discover and list INDIGO services in the network
+- **discover** - auto discover and list INDIGO services visible on the network
 
 ### Listing and Getting Item Values and Property States
 
