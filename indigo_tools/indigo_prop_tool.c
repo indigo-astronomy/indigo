@@ -32,7 +32,9 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+#if !defined(INDIGO_WINDOWS)
 #include <net/if.h>
+#endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
@@ -782,9 +784,13 @@ static indigo_client client = {
 
 void resolve_callback(const char *name, uint32_t interface_index, const char *host, int port) {
 	if (print_verbose) {
+#if !defined(INDIGO_WINDOWS)
 		char ifname[255] = {0};
 		if_indextoname(interface_index, ifname);
 		printf("%s: %s -> %s:%u \n", ifname, name, host, port);
+#else
+		printf("%d: %s -> %s:%u \n", interface_index, name, host, port);
+#endif
 	} else {
 		printf("%s -> %s:%u \n", name, host, port);
 	}
