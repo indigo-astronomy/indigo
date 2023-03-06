@@ -1,0 +1,101 @@
+#---------------------------------------------------------------------
+#
+# Copyright (c) 2023 Rumen G.Bogdanovski
+# All rights reserved.
+#
+# You can use this software under the terms of 'INDIGO Astronomy
+# open-source license' (see LICENSE.md).
+#
+# THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
+# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+# ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+#
+#---------------------------------------------------------------------
+
+LIB_NAME        = libindigo_client
+OBJ_DIR         = ./obj
+LIB_DIR         = ./lib
+MDNS_DIR        = ../externals/bonjour-sdk/
+INDIGO_DIR      = ../../indigo_libs/
+
+CC              = gcc
+MDNS_DEFINES    = -DUNICODE -D_UNICODE -DWIN32 -DMINGW_HAS_SECURE_API=1 -DWIN32 -DNDEBUG -D_WINDOWS -D_USRDLL -DMDNS_DEBUGMSGS=0 -DWIN32_LEAN_AND_MEAN -DUSE_TCP_LOOPBACK -D_CRT_SECURE_NO_DEPRECATE -D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1 -DNOT_HAVE_SA_LEN -DQT_BUILD_ZEROCONF_LIB -DQT_NETWORK_LIB -DQT_CORE_LIB
+MDNS_CFLAGS     = -fno-keep-inline-dllexport -g -Wall -Wextra $(MDNS_DEFINES)
+INDIGO_DEFINES  = -DINDIGO_WINDOWS
+INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES)
+INCPATH         = -I$(INDIGO_DIR) -I$(MDNS_DIR)
+LINKER          = gcc
+LFLAGS          = -shared -Wl,-subsystem,windows -mthreads -Wl,--out-implib,$(LIB_DIR)/$(LIB_NAME).a
+LIBS            = -lws2_32 -lwsock32
+
+MDNS_OBJECTS = $(OBJ_DIR)/dnssd_clientlib.o \
+          $(OBJ_DIR)/dnssd_clientstub.o \
+          $(OBJ_DIR)/dnssd_ipc.o
+
+INDIGO_OBJECTS = $(OBJ_DIR)/indigo_base64.o \
+          $(OBJ_DIR)/indigo_bus.o \
+          $(OBJ_DIR)/indigo_client.o \
+          $(OBJ_DIR)/indigo_client_xml.o \
+          $(OBJ_DIR)/indigo_io.o\
+          $(OBJ_DIR)/indigo_service_discovery.o\
+          $(OBJ_DIR)/indigo_token.o\
+          $(OBJ_DIR)/indigo_xml.o\
+          $(OBJ_DIR)/indigo_version.o
+
+all: $(LIB_DIR)/$(LIB_NAME).dll
+
+$(LIB_DIR)/$(LIB_NAME).dll: $(INDIGO_OBJECTS) $(MDNS_OBJECTS) directories
+	$(LINKER) $(LFLAGS) -o $(LIB_DIR)/$(LIB_NAME).dll $(INDIGO_OBJECTS) $(MDNS_OBJECTS) $(LIBS)
+
+$(OBJ_DIR)/dnssd_clientlib.o: $(MDNS_DIR)/dnssd_clientlib.c $(MDNS_DIR)/dns_sd.h directories
+	$(CC) -c $(MDNS_CFLAGS) $(INCPATH) -o$(OBJ_DIR)/dnssd_clientlib.o $(MDNS_DIR)/dnssd_clientlib.c
+
+$(OBJ_DIR)/dnssd_clientstub.o: $(MDNS_DIR)/dnssd_clientstub.c $(MDNS_DIR)/dnssd_ipc.h $(MDNS_DIR)/dns_sd.h directories
+	$(CC) -c $(MDNS_CFLAGS) $(INCPATH) -o $(OBJ_DIR)/dnssd_clientstub.o $(MDNS_DIR)/dnssd_clientstub.c
+
+$(OBJ_DIR)/dnssd_ipc.o: $(MDNS_DIR)/dnssd_ipc.c $(MDNS_DIR)/dnssd_ipc.h $(MDNS_DIR)/dns_sd.h directories
+	$(CC) -c $(MDNS_CFLAGS) $(INCPATH) -o $(OBJ_DIR)/dnssd_ipc.o $(MDNS_DIR)/dnssd_ipc.c
+
+$(OBJ_DIR)/indigo_base64.o: $(INDIGO_DIR)/indigo_base64.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_bus.o: $(INDIGO_DIR)/indigo_bus.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_client.o: $(INDIGO_DIR)/indigo_client.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_client_xml.o: $(INDIGO_DIR)/indigo_client_xml.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_io.o: $(INDIGO_DIR)/indigo_io.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_service_discovery.o: $(INDIGO_DIR)/indigo_service_discovery.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_token.o: $(INDIGO_DIR)/indigo_token.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_xml.o: $(INDIGO_DIR)/indigo_xml.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+$(OBJ_DIR)/indigo_version.o: $(INDIGO_DIR)/indigo_version.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
+directories:
+	@mkdir -p $(LIB_DIR)
+	@mkdir -p $(OBJ_DIR)
+
+clean:
+	rm -f $(OBJ_DIR)/*.o $(LIB_DIR)/*.a $(LIB_DIR)/*.dll
+
+rebuild: clean build
