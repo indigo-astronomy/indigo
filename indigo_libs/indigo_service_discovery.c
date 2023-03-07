@@ -265,7 +265,7 @@ static void *service_process_result_handler(DNSServiceRef s_ref) {
 	return NULL;
 }
 
-static void resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *callback) {
+static void WINAPI resolver_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *full_name, const char *host_name, uint16_t port, uint16_t txt_len, const unsigned char *txt_record, void *callback) {
 	if ((flags & kDNSServiceFlagsMoreComing) == 0) {
 		char name[INDIGO_NAME_SIZE], host[INDIGO_NAME_SIZE], *dot;
 		indigo_copy_name(name, full_name);
@@ -294,7 +294,7 @@ indigo_result indigo_resolve_service(const char *name, uint32_t interface_index,
 
 static DNSServiceRef browser_sd = NULL;
 
-static void browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *callback) {
+static void WINAPI browser_callback(DNSServiceRef sdRef, DNSServiceFlags flags, uint32_t interface_index, DNSServiceErrorType error_code, const char *name, const char *type, const char *domain, void *callback) {
 	if (strcmp(indigo_local_service_name, name) && !strcmp(domain, "local.")) {
 		int count = 0;
 		if (flags & kDNSServiceFlagsAdd) {
