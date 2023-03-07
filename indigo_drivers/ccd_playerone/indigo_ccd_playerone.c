@@ -24,7 +24,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -488,7 +488,7 @@ static void exposure_timer_callback(indigo_device *device) {
 				res = POAGetImageData(
 					id,
 					PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-					(int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_bpp / 8),
+					PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
 					2000
 				);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -497,7 +497,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 					exposure_failed = true;
 				} else {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size, 2000);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 2000);
 					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
 					} else {
@@ -606,7 +606,7 @@ static void streaming_timer_callback(indigo_device *device) {
 					res = POAGetImageData(
 						id,
 						PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-						(int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin) * (int)(PRIVATE_DATA->exp_bpp / 8),
+						PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
 						2000
 					);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -616,7 +616,7 @@ static void streaming_timer_callback(indigo_device *device) {
 						exposure_failed = true;
 						break;
 					}
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size, 2000);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetImageData(%d, ..., > %d, %d)", id, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 2000);
 					if (PRIVATE_DATA->exp_uses_bayer_pattern && PRIVATE_DATA->bayer_pattern) {
 						indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin), PRIVATE_DATA->exp_bpp, true, false, keywords, true);
 					} else {
