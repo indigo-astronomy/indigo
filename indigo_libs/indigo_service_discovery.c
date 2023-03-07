@@ -24,6 +24,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
+#if !defined(WINAPI)
+#define WINAPI
+#endif
+
 #if defined(INDIGO_LINUX)
 #include <avahi-client/client.h>
 #include <avahi-client/lookup.h>
