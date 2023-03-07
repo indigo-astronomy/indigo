@@ -24,10 +24,6 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#if !defined(WINAPI)
-#define WINAPI
-#endif
-
 #if defined(INDIGO_LINUX)
 #include <avahi-client/client.h>
 #include <avahi-client/lookup.h>
@@ -259,6 +255,10 @@ indigo_result indigo_start_service_browser(void (*callback)(indigo_service_disco
 #endif  /* INDIGO_LINUX */
 
 #if defined(INDIGO_MACOS) || defined(INDIGO_WINDOWS)
+
+#if !defined(WINAPI)
+#define WINAPI
+#endif
 
 static void *service_process_result_handler(DNSServiceRef s_ref) {
 	DNSServiceErrorType result = DNSServiceProcessResult(s_ref);
