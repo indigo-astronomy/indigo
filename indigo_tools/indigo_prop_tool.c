@@ -39,7 +39,6 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
 #include <indigo/indigo_service_discovery.h>
-#include <indigo/indigo_xml.h>
 
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
