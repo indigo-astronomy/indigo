@@ -43,6 +43,11 @@ extern "C" {
 
 #define INDIGO_MAX_SERVERS    10
 
+/** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
+ *  defined in indigo_xml.c
+ */
+extern bool indigo_use_blob_urls;
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #define INDIGO_MAX_DRIVERS    128
 
