@@ -29,6 +29,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_bus.h>
 

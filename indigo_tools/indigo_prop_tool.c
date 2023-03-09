@@ -24,7 +24,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
-#include <pthread.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <ctype.h>
