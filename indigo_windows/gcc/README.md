@@ -4,7 +4,7 @@
 Using the INDIGO Client SDK with MSVC requires several additional headers related to the threads library in addition to the INDIGO Client headers. The compiler must be able to see pthreads*.h headers provided in this bundle. Also the preprocesor definition INDIGO_WINDOWS must be set for the project.
 
 ### Configuring your MSVC project
-Open 'Properties' of youir project and add the folloing configurations:
+Open 'Properties' of your project and add the folloing configurations:
 1. Add "&lt;SDK_DIR&gt;\include\indigo" and "&lt;SDK_DIR&gt;\include\pthread" paths as 'C/C++ -> General -> Additional Include Directories' in your project.
 2. Add "&lt;SDK_DIR&gt;\lib" in 'Linker -> General -> Additional Library Directories'
 3. Add "INDIGO_WINDOWS" to the preprocessor in 'C/C++ -> Preprocessor -> Preprocessor Definitions'
