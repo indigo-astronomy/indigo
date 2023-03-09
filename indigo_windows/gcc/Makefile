@@ -34,7 +34,7 @@ INDIGO_DEFINES  = -DINDIGO_WINDOWS
 INDIGO_CFLAGS   = -O3 -fno-keep-inline-dllexport -g -Wall -Wextra $(INDIGO_DEFINES)
 INCPATH         = -I$(INDIGO_DIR) -I$(MDNS_DIR)
 LINKER          = gcc
-LFLAGS          = -shared -Wl,-subsystem,windows -mthreads -Wl,--out-implib,$(OUTPUT_DIR)/$(LIB_NAME).a
+LFLAGS          = -shared -Wl,-subsystem,windows -mthreads -Wl,--out-implib,$(OUTPUT_DIR)/$(LIB_NAME).lib -Wl,--output-def,$(OUTPUT_DIR)/$(LIB_NAME).def -static-libgcc -static-libstdc++
 LIBS            = -lws2_32 -lwsock32
 
 MDNS_OBJECTS = $(OBJ_DIR)/dnssd_clientlib.o \
@@ -93,11 +93,15 @@ $(OBJ_DIR)/indigo_version.o: $(INDIGO_DIR)/indigo_version.c directories
 	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
 
 $(OUTPUT_DIR)/indigo_prop_tool.exe: $(INDIGO_BASE)/indigo_tools/indigo_prop_tool.c
-	$(CC) $(INDIGO_CFLAGS) $(INCPATH) -o $@ $< $(OUTPUT_DIR)/$(LIB_NAME).a
+	$(CC) $(INDIGO_CFLAGS) $(INCPATH) -o $@ $< $(OUTPUT_DIR)/$(LIB_NAME).lib
 
 BUNDLE_DIR = indigo_client_sdk
+PTHREAD_PATH = $(shell dirname `which $(CC)`)
+PTHREAD_BASE = $(shell dirname $(PTHREAD_PATH))
+PTHREAD_INCLUDE_PATH = $(shell ls -d $(PTHREAD_BASE)/*-w64-mingw32)/include
 bundle: all
 	@mkdir -p $(BUNDLE_DIR)/include/indigo
+	@mkdir -p $(BUNDLE_DIR)/include/pthread
 	@mkdir -p $(BUNDLE_DIR)/lib
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_config.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_names.h $(BUNDLE_DIR)/include/indigo/
@@ -105,9 +109,11 @@ bundle: all
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_client.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_service_discovery.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_token.h $(BUNDLE_DIR)/include/indigo/
-	cp $(OUTPUT_DIR)/$(LIB_NAME).a $(BUNDLE_DIR)/lib/
+	cp $(OUTPUT_DIR)/$(LIB_NAME).lib $(BUNDLE_DIR)/lib/
 	cp $(OUTPUT_DIR)/$(LIB_NAME).dll $(BUNDLE_DIR)/lib/
-	powershell compress-archive  $(BUNDLE_DIR) $(BUNDLE_DIR).zip
+	cp $(PTHREAD_PATH)/libwinpthread-1.dll $(BUNDLE_DIR)/lib/
+	cp $(PTHREAD_INCLUDE_PATH)/pthread* $(BUNDLE_DIR)/include/pthread
+	powershell compress-archive -Force $(BUNDLE_DIR) $(BUNDLE_DIR).zip
 	rm -r $(BUNDLE_DIR)
 
 directories:
@@ -115,6 +121,6 @@ directories:
 	@mkdir -p $(OBJ_DIR)
 
 clean:
-	rm -f $(OBJ_DIR)/*.o $(OUTPUT_DIR)/*.a $(OUTPUT_DIR)/*.dll $(OUTPUT_DIR)/*.exe $(BUNDLE_DIR)
+	rm -f $(OBJ_DIR)/*.o $(OUTPUT_DIR)/*.a $(OUTPUT_DIR)/*.lib $(OUTPUT_DIR)/*.dll $(OUTPUT_DIR)/*.exe $(BUNDLE_DIR)
 
 rebuild: clean build
