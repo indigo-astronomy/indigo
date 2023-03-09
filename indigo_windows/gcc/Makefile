@@ -95,7 +95,7 @@ $(OBJ_DIR)/indigo_version.o: $(INDIGO_DIR)/indigo_version.c directories
 $(OUTPUT_DIR)/indigo_prop_tool.exe: $(INDIGO_BASE)/indigo_tools/indigo_prop_tool.c
 	$(CC) $(INDIGO_CFLAGS) $(INCPATH) -o $@ $< $(OUTPUT_DIR)/$(LIB_NAME).lib
 
-BUNDLE_DIR = indigo_client_sdk
+BUNDLE_DIR = indigo_client_sdk_${VERSION}_${ARCH}
 PTHREAD_PATH = $(shell dirname `which $(CC)`)
 PTHREAD_BASE = $(shell dirname $(PTHREAD_PATH))
 PTHREAD_INCLUDE_PATH = $(shell ls -d $(PTHREAD_BASE)/*-w64-mingw32)/include
@@ -103,6 +103,8 @@ bundle: all
 	@mkdir -p $(BUNDLE_DIR)/include/indigo
 	@mkdir -p $(BUNDLE_DIR)/include/pthread
 	@mkdir -p $(BUNDLE_DIR)/lib
+	@mkdir -p $(BUNDLE_DIR)/doc
+	echo "INDIGO Client SDK for Windows v.${VERSION} ${ARCH}" > $(BUNDLE_DIR)/VERSION
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_config.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_names.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_bus.h $(BUNDLE_DIR)/include/indigo/
@@ -112,7 +114,12 @@ bundle: all
 	cp $(OUTPUT_DIR)/$(LIB_NAME).lib $(BUNDLE_DIR)/lib/
 	cp $(OUTPUT_DIR)/$(LIB_NAME).dll $(BUNDLE_DIR)/lib/
 	cp $(PTHREAD_PATH)/libwinpthread-1.dll $(BUNDLE_DIR)/lib/
+	cp $(OUTPUT_DIR)/indigo_prop_tool.exe $(BUNDLE_DIR)/lib/
 	cp $(PTHREAD_INCLUDE_PATH)/pthread* $(BUNDLE_DIR)/include/pthread
+	cp $(INDIGO_BASE)/indigo_docs/PROPERTY_MANIPULATION.md $(BUNDLE_DIR)/doc
+	cp $(INDIGO_BASE)/indigo_docs/CLIENT_DEVELOPMENT_BASICS.md $(BUNDLE_DIR)/doc
+	cp $(INDIGO_BASE)/LICENSE.md $(BUNDLE_DIR)
+	cp README.md $(BUNDLE_DIR)
 	powershell compress-archive -Force $(BUNDLE_DIR) $(BUNDLE_DIR).zip
 	rm -r $(BUNDLE_DIR)
 
