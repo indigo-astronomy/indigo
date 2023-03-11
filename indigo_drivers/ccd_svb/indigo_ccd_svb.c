@@ -180,7 +180,7 @@ static void svb_clear_video_buffer(indigo_device *device, bool aggressive) {
 		SVBSetControlValue(id, SVB_EXPOSURE, 1, SVB_FALSE);
 		indigo_usleep(10);
 	}
-	while (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100) == SVB_SUCCESS) {
+	while (SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 100) == SVB_SUCCESS) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Clearing video buffer %s", aggressive ? "aggressively" : "relaxed");
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Video buffer clean");
@@ -464,7 +464,7 @@ static void exposure_timer_callback(indigo_device *device) {
 			break;
 		}
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100);
+		res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 100);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res == SVB_SUCCESS) {
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -578,7 +578,7 @@ static void streaming_timer_callback(indigo_device *device) {
 				break;
 			}
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size, 100);
+			res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 100);
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			PRIVATE_DATA->can_check_temperature = true;
 			double remaining = CCD_STREAMING_EXPOSURE_ITEM->number.target - (time(NULL) - start);
