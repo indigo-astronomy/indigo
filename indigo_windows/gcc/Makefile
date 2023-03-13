@@ -50,6 +50,7 @@ INDIGO_OBJECTS = $(OBJ_DIR)/indigo_base64.o \
           $(OBJ_DIR)/indigo_token.o\
           $(OBJ_DIR)/indigo_xml.o\
           $(OBJ_DIR)/indigo_md5.o\
+          $(OBJ_DIR)/indigo_fits.o\
           $(OBJ_DIR)/indigo_version.o
 
 all: $(OUTPUT_DIR)/$(LIB_NAME).dll $(OUTPUT_DIR)/indigo_prop_tool.exe
@@ -93,6 +94,9 @@ $(OBJ_DIR)/indigo_token.o: $(INDIGO_DIR)/indigo_token.c directories
 $(OBJ_DIR)/indigo_xml.o: $(INDIGO_DIR)/indigo_xml.c directories
 	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
 
+$(OBJ_DIR)/indigo_fits.o: $(INDIGO_DIR)/indigo_fits.c directories
+	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
+
 $(OBJ_DIR)/indigo_version.o: $(INDIGO_DIR)/indigo_version.c directories
 	$(CC) -c $(INDIGO_CFLAGS) $(INCPATH) -o $@ $<
 
@@ -116,6 +120,8 @@ bundle: all
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_service_discovery.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_token.h $(BUNDLE_DIR)/include/indigo/
 	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_md5.h $(BUNDLE_DIR)/include/indigo/
+	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_io.h $(BUNDLE_DIR)/include/indigo/
+	cp $(INDIGO_BASE)/indigo_libs/indigo/indigo_fits.h $(BUNDLE_DIR)/include/indigo/
 	cp $(OUTPUT_DIR)/$(LIB_NAME).lib $(BUNDLE_DIR)/lib/
 	cp $(OUTPUT_DIR)/$(LIB_NAME).dll $(BUNDLE_DIR)/lib/
 	cp $(PTHREAD_PATH)/libwinpthread-1.dll $(BUNDLE_DIR)/lib/
