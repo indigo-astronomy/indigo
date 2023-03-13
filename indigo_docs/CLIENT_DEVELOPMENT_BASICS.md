@@ -210,10 +210,10 @@ Properties can be in one of the four states:
 
 Each property has predefined type which is one of the following:
 - *INDIGO_TEXT_VECTOR* - strings of limited width
--	*INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
--	*INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
--	*INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
--	*INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
+- *INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
+- *INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
+- *INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
+- *INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
 
 Properties have permissions assigned to them:
 - *INDIGO_RO_PERM* - Read only permission, which means that the client can not modify their item values
@@ -375,11 +375,11 @@ void discover_callback(indigo_service_discovery_event event, const char *service
 *service_name* is the name of the discovered or removed service and *interface_index* is the number of the network interface where the service is available.
 
 ### Resolver callback
-This function is user defined and will be called by the framework when a service us resolved by *indigo_resolve_service()*
+This function is user defined and will be called by the framework when a service is resolved by *indigo_resolve_service()*
 ```C
 void resolve_callback(const char *service_name, uint32_t interface_index, const char *host, int port);
 ```
-*service_name* is the name of the service being resolved, *interface_index* is the number of the network interface where the service is available, *host* is the host name and *port* is the TCP port where indigo service is accessible. Use *host* and *port* to connect to this service.
+*service_name* is the name of the service being resolved, *interface_index* is the number of the network interface where the service is available, *host* is the host name and *port* is the TCP port where indigo service is accessible. Use *host* and *port* to connect to this service. In case of resolutuin error the callbck will have *host = NULL* and *port = 0*.
 
 ### Service discovery example
 Working example can be found in [indigo_examples/service_ddiscovery.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/service_discovery.c):
@@ -387,9 +387,13 @@ Working example can be found in [indigo_examples/service_ddiscovery.c](https://g
 #include <stdio.h>
 #include <indigo/indigo_service_discovery.h>
 
-/* This function will be called every time a service is sucessfully resolved by indigo_resolve_service() */
+/* This function will be called every time a service is resolved by indigo_resolve_service() */
 void resolve_callback(const char *service_name, uint32_t interface_index, const char *host, int port) {
-	printf("= %s -> %s:%u (interface %d)\n", service_name, host, port, interface_index);
+	if (host != NULL) {
+		printf("= %s -> %s:%u (interface %d)\n", service_name, host, port, interface_index);
+	} else {
+		fprintf(stderr, "! %s -> service can not be resolved\n", service_name);
+	}
 }
 
 /* This function will be called every time a service is discovered, removed or at the end of the record */

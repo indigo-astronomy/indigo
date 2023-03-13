@@ -781,6 +781,9 @@ static indigo_client client = {
 };
 
 void resolve_callback(const char *name, uint32_t interface_index, const char *host, int port) {
+	if (host == NULL) {
+		return;
+	}
 	if (print_verbose) {
 #if !defined(INDIGO_WINDOWS)
 		char ifname[255] = {0};

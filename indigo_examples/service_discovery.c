@@ -22,9 +22,13 @@
 #include <stdio.h>
 #include <indigo/indigo_service_discovery.h>
 
-/* This function will be called every time a service is sucessfully resolved by indigo_resolve_service() */
+/* This function will be called every time a service is resolved by indigo_resolve_service() */
 void resolve_callback(const char *service_name, uint32_t interface_index, const char *host, int port) {
-	printf("= %s -> %s:%u (interface %d)\n", service_name, host, port, interface_index);
+	if (host != NULL) {
+		printf("= %s -> %s:%u (interface %d)\n", service_name, host, port, interface_index);
+	} else {
+		fprintf(stderr, "! %s -> service can not be resolved\n", service_name);
+	}
 }
 
 /* This function will be called every time a service is discovered, removed or at the end of the record */
