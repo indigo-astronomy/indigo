@@ -1,3 +1,8 @@
+2023.03.13(3.2.2)
+- Fix a issue that In some cases, the frame is incomplete in video mode
+- Add linux x86 lib
+- Add some convenience functions in 'ConvFuncs.h', hope to make it easier for you to use our SDK for development
+
 2023.03.01(3.2.1)
 - Fix the issue that get iamge data failed when switching RAW8 to RAW16 on linux and mac
 - Fix some cameras hot pixels increase issue when bin3
