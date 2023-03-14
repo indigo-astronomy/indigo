@@ -2,6 +2,46 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-226] - 14 Mar Tue 2023
+### Overall
+- indigo_client:
+	- fix disconnect
+	- fix shutdown race
+	- shutdown flag added to remote server
+	- failed socket closed properly
+	- 0 is alowed as a valid socket descriptor
+	- service discovery API added for Linux Windows and MacOS
+	- a lot better indigo_client library for Windows
+	- indigo_client.dll can be built with MSVC and MinGW
+	- building on windows better documented
+
+- overall code cleanup
+- indigo_docs: explain service discovery routines
+- add service_discovery example
+
+- indigo_prop_tool:
+	- add discover command
+	- can be built on windows with MinGW
+
+### Driver Fixes
+- indigo_ccd_touptek & family:
+	- fix guider timer issue
+
+- indigo_ccd_svb:
+	- updated to sdk v.1.10.2
+	- fix image buffer size
+
+- indigo_ccd_playerone:
+	- fix ROI buffer size issue
+	- update to sdk 3.2.2
+	- enable x86 linux build as Player One provided v86 SDK
+
+- indigo_ccd_asi:
+	- fix image buffer size
+
+- indigo_mount_asi:
+	- implement meridian limits and flip (requires yet unreleased firmware)
+
 # [2.0-224] - 01 Mar Wed 2023
 ### Overall
 - CCD_SET_FITS_HEADER random content issue fixed
