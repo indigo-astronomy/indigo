@@ -894,6 +894,7 @@ static void streaming_batch_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
+	indigo_send_message(device, "Streaming started");
 	if (streaming_batch(device)) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Streaming finished");
