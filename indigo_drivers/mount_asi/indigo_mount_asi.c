@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000A
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -520,10 +520,11 @@ static bool asi_get_tracking_status(indigo_device *device, bool *is_tracking, in
 }
 
 static bool asi_set_tracking(indigo_device *device, bool on) {
+	char response[64] = {0};
 	if (on) {
-		return asi_command(device, ":Te#", NULL, 0, 0);
+		return asi_command(device, ":Te#", response, sizeof(response), 0) && *response == '1';
 	} else {
-		return asi_command(device, ":Td#", NULL, 0, 0);
+		return asi_command(device, ":Td#", response, sizeof(response), 0) && *response == '1';
 	}
 }
 
