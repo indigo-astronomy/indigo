@@ -1,8 +1,9 @@
 # ZWO AM5 Undocumented Commands
 ## Altitude limits
+Limits are preserved after power cycle.
 ### **:SLLnn#**
 Set low altitude limit (0-30&deg;).
-Returns "1" on success. Example: :SLL20#
+Returns "1" on success, "0" on error. Example: :SLL20#
 
 ### **:GLL#**
 Get low altitude limit (0-30&deg;).
@@ -10,7 +11,7 @@ Returns **nn#** in degrees
 
 ### **:SLHnn#**
 Set hight altitude limit (60-90&deg;).
-Returns "1" on success. Example: :SLH80#
+Returns "1" on success, "0" on error. Example: :SLH80#
 
 ### **:GLH#**
 Get high altitude limit (60-90&deg;).
@@ -28,14 +29,16 @@ Returns "1" on success.
 Get altitude limits status:
 **0#** - limits disabled, **1#** - limits enabled
 
-## Slew speeds
+## Slew speed
+Slew speed is preserved after power cycle.
+
 ### **:SRlnnnn#**
-Set slew sppeed like: 720, 1440.
-Returns "1" on success.  Example :SRl1440#
+Set slew speed: 720 or 1440. (720 is Low and 1440 is High)
+Returns "1" on success, "0" on error.  Example :SRl1440# or :SRl720#
 
 ### **:GRl#**
-Get slew sppeed.
-Returns **nnnn#** speed like: 720 or 1440
+Get slew speed.
+Returns **nnnn#** speed: 720 or 1440
 
 ## Unknown
 ### **:GFD1#**
@@ -47,6 +50,3 @@ No idea what it does - ASCOM driver issues it with :GR# and :GD# commands every 
 Returns **22438#**
 
 Both GFR1 and GFD1 always return the same value **22438#**
-
-## Open questions
-Needs to be tested what happens if invalid data is provided like: **:SLL45#**. Most likely wrong input will result in **eX#** resonance where X is error code or "0" for failure.
