@@ -22,12 +22,12 @@ Extensions are enabled only in case of succesfull handshake with two possible va
 1. client request INDIGO protocol:
 
 ```
-→ <getProperties version='2.0'/>
+→ <getProperties client='My Client' version='2.0'/>
 ```
 2. client offers INDIGO protocol and server accept it:
 
 ```
-→ <getProperties version='1.7' switch='2.0'>
+→ <getProperties version='1.7' client='My Client' switch='2.0'>
 ← <switchProtocol version='2.0'/>
 ```
 In case of successful handshake for version 2.0 the following extensions can be used:
@@ -84,11 +84,11 @@ The mapping of XML to JSON messages demonstrated on a few examples is as follows
 
 XML message
 ```
-→ <getProperties version='2.0'/>
+→ <getProperties client='My Client' version='2.0'/>
 ```
 is mapped to JSON message
 ```
-→ { "getProperties": { "version": 512 } }
+→ { "getProperties": { "version": 512, "client": "My Client" } }
 ```
 XML message
 ```

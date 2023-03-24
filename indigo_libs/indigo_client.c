@@ -56,6 +56,8 @@
 #include <indigo/indigo_client_xml.h>
 #include <indigo/indigo_client.h>
 
+char *indigo_client_name = NULL;
+
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 #if defined(INDIGO_WINDOWS)

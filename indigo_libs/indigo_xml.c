@@ -228,10 +228,12 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				indigo_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
 				client->version = version;
 			}
-		} else if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
+		} else if (!strcmp(name, "device")) {
 			indigo_copy_name(property->device, value);
-		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
+		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client->version, property, value);;
+		} else if (!strcmp(name, "client")) {
+			indigo_copy_name(client->name, value);
 		}
 	} else if (state == END_TAG) {
 		indigo_enumerate_properties(client, property);
