@@ -364,6 +364,7 @@ indigo_client *indigo_xml_device_adapter(int input, int ouput) {
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
+	snprintf(client->name, sizeof(client->name), "XML Driver Adapter #%d", input);
 	client_context->input = input;
 	client_context->output = ouput;
 	client->client_context = client_context;

@@ -449,6 +449,7 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
+	snprintf(client->name, sizeof(client->name), "JSON Driver Adapter #%d", input);
 	client_context->input = input;
 	client_context->output = ouput;
 	client_context->web_socket = web_socket;
