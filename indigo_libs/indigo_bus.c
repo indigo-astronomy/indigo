@@ -329,14 +329,8 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 		if (defs) {
 			indigo_trace("B <+ %s '%s'.'%s' %s %s %s %d.%d %x %s { // %s", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
 		} else {
-			char client_name[INDIGO_NAME_SIZE] = "";
 			if (client) {
-				if (strstr(client->name, "Driver Adapter")) {
-					snprintf(client_name, sizeof(client_name), "%s #%d", client->name, ((indigo_adapter_context *)(client->client_context))->input);
-				} else {
-					strcpy(client_name, client->name);
-				}
-				indigo_trace("B <+ %s '%s'.'%s' %s %s %s %d.%d %x '%s' {", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, client_name);
+				indigo_trace("B <+ %s '%s'.'%s' %s %s %s %d.%d %x '%s' {", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, client->name);
 			} else {
 				indigo_trace("B <+ %s '%s'.'%s' %s %s %s %d.%d %x {", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token);
 			}
