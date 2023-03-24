@@ -216,7 +216,7 @@ extern "C" {
 
 	/// @brief DLL handle set by ArtemisLoadDLL(). 
 	/// This is irrelevant if you are linking at compile time
-	static HINSTANCE hArtemisDLL = NULL;
+	extern HINSTANCE hArtemisDLL;
 
 	//////////////////////////////////////////////////////////////////////////
 	//
@@ -240,7 +240,7 @@ extern "C" {
 
 	/// @brief Gets whether the connection to the camera is local.
 	/// @return True if the connection is local (E.G. through an USB cable), false otherwise
-	artfn BOOL ArtemisIsLocalConnectivoidon();
+	artfn BOOL ArtemisIsLocalConnection(void);
 
 	/// @brief Allows debug output to be output to standard error.
 	/// @param value Whether to enable the output.
@@ -867,7 +867,7 @@ extern "C" {
 	/// @param serialNumber a pointer to a char array of length 100, which will be set to the serial number of the filter wheel.
 	/// @see ARTEMISERROR, ARTEMISEFWTYPE, ArtemisEFWGetDetails()
 	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure
-artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char * serialNumber);
+	artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char * serialNumber);
 
 	/// @brief Connect to a filter wheel device at the specified index.
 	/// @param i The index of the filter wheel device to connect to.
@@ -1034,7 +1034,7 @@ artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char *
 	/// @param hps This determines what defines a hot pixel. HPS_HIGH will see the most hot pixels,
 	/// but may think that some normal pixels are hot.
 	artfn int ArtemisHotPixelAdvancedRemoval(ArtemisHandle handle, bool on, bool darkFrame, 
-																					 bool checkForAdjacentHotPixels, enum HotPixelSensitivity hps);
+											 bool checkForAdjacentHotPixels, enum HotPixelSensitivity hps);
 
 	/// @brief Will begin the process of calculating the internal array of hot pixels determined using
 	/// the darkFrame option of @ArtemisHotPixelAdvancedRemoval this function needs to be called after any 
@@ -1213,7 +1213,7 @@ artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char *
 	/// This method is only needed if the DLL is linked dynamically.
 	/// This method is part of the DLL example code.
 	/// @see ArtemisLoadDLL()
-	artfn void ArtemisUnLoadDLL(void);
+	artfn void ArtemisUnLoadDLL();
 
 	#undef artfn
 
