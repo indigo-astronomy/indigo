@@ -413,7 +413,7 @@ extern void indigo_log(const char *format, ...);
 
 /** Print diagnostic message on trace level with property value, full property definition and items dump can be requested.
  */
-extern void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items);
+extern void indigo_trace_property(const char *message, indigo_client *client, indigo_property *property, bool defs, bool items);
 
 /** Start bus operation.
  Call has no effect, if bus is already started.
