@@ -130,6 +130,8 @@ static void *get_properties_handler(parser_state state, char *name, char *value,
 	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
 	if (state == NUMBER_VALUE && !strcmp(name, "version")) {
 		client->version = (int)atol(value);
+	} else if (state == TEXT_VALUE && !strcmp(name, "client")) {
+		indigo_copy_name(client->name, value);
 	} else if (state == END_STRUCT) {
 		indigo_enumerate_properties(client, *property_ref);
 		return top_level_handler;

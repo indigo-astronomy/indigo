@@ -48,6 +48,11 @@ extern "C" {
  */
 extern bool indigo_use_blob_urls;
 
+/** Client name used for enumeration requests to set adapter name on server side for client identification in trace logs. Defaults to argv[0]
+ */
+
+extern char *indigo_client_name;
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #define INDIGO_MAX_DRIVERS    128
 
