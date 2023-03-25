@@ -75,7 +75,7 @@ sub parse_record ($){
 				$fields{client} = $1;
 			}
 
-			if ($fields{direction} =~ /\+/) {
+			if ($fields{direction} =~ /\+/ || $line =~ /\{|[^\}]/) {
 				while (my $l = <STDIN>) {
 					if ($l =~ /\}/) {
 						last;
