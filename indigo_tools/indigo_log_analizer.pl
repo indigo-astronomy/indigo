@@ -71,21 +71,29 @@ sub split_line ($){
 			$fields{client} = $1;
 		}
 
-	#	if ($fields{direction} =~ /+$/) {
-	#		foreach my $l (<STDIN>) {
-	#			if ($l =~ /}/) {
-	#				last;
-	#			}
-	#			my @split4 = split (/=/, $l, 6);
-	#			$split
-	#			$fields{items}{} split[1]
-	#		}
-	#	}
+		if ($fields{direction} =~ /\+/) {
+			while (my $l = <STDIN>) {
+				if ($l =~ /\}/) {
+					last;
+				}
+				my @kv = split(/\=/, $l);
+				$kv[0] =~ /.*\'(.*?)\'.*/;
+				my $key = $1;
+				my $value;
+				if ($kv[1] =~ /\'/) {
+					$kv[1] =~ /.*\'(.*?)\'.*/;
+					$value = $1;
+				} else {
+					$kv[1] =~ /^\s+(.*?)\s.*/;
+					$value = $1;
+				}
+				$fields{items}{$key} = $value;
+			}
+		}
 		return %fields;
 	} else {
 		return undef;
 	}
-	#print "$fields{time} + $fields{app} + $fields{socket} + $fields{direction} + $fields{device} + $fields{property} + $fields{permission} + $fields{state}\n";
 }
 
 sub print_line (%$) {
@@ -99,20 +107,58 @@ sub print_line (%$) {
 		$act = "--";
 	}
 
-	my $message = "$fields{time} $act '$fields{device}'.'$fields{property}' $fields{action} -> $fields{state}";
-	if (defined($fields{client})) {
-		$message .= " ($fields{client})\n";
+	if ($verbose) {
+		my $message = "$fields{time} $act $fields{action} -> $fields{state}";
+		if (defined($fields{client})) {
+			$message .= " ($fields{client})\n";
+		} else {
+			$message .= "\n";
+		}
+
+		my $message2 = "    '$fields{device}'.'$fields{property}'\n";
+
+		if ($fields{state} eq "Ok") {
+			print GREEN $message;
+			print GREEN $message2;
+			foreach my $key (keys %{$fields{items}}) {
+				print GREEN "    $key = $fields{items}{$key}\n";
+			}
+		} elsif ($fields{state} eq "Busy"){
+			print YELLOW $message;
+			print YELLOW $message2;
+			foreach my $key (keys %{$fields{items}}) {
+				print YELLOW "    $key = $fields{items}{$key}\n";
+			}
+		} elsif ($fields{state} eq "Alert"){
+			print RED $message;
+			print RED $message2;
+			foreach my $key (keys %{$fields{items}}) {
+				print RED "    $key = $fields{items}{$key}\n";
+			}
+		} else {
+			print WHITE $message;
+			print WHITE $message2;
+			foreach my $key (keys %{$fields{items}}) {
+				print WHITE "    $key = $fields{items}{$key}\n";
+			}
+		}
+		print "\n";
 	} else {
-		$message .= "\n";
-	}
-	if ($fields{state} eq "Ok") {
-		print GREEN $message;
-	} elsif ($fields{state} eq "Busy"){
-		print YELLOW $message;
-	} elsif ($fields{state} eq "Alert"){
-		print RED $message;
-	} else {
-		print WHITE $message;
+		my $message = "$fields{time} $act '$fields{device}'.'$fields{property}' $fields{action} -> $fields{state}";
+		if (defined($fields{client})) {
+			$message .= " ($fields{client})\n";
+		} else {
+			$message .= "\n";
+		}
+		if ($fields{state} eq "Ok") {
+			print GREEN $message;
+		} elsif ($fields{state} eq "Busy"){
+			print YELLOW $message;
+		} elsif ($fields{state} eq "Alert"){
+			print RED $message;
+		} else {
+			print WHITE $message;
+		}
 	}
 }
 
@@ -129,7 +175,7 @@ sub trace {
 		return undef;
 	}
 
-	foreach my $line (<STDIN>) {
+	while (my $line = <STDIN>) {
 		chomp($line);
 		my %fields = split_line($line);
 		if ($#pattern == 1) {
@@ -150,7 +196,7 @@ sub trace {
 sub requests {
 	my @clients = @_;
 
-	foreach my $line (<STDIN>) {
+	while (my $line = <STDIN>) {
 		chomp($line);
 		my %fields = split_line($line);
 		if ($#clients < 0 && $fields{action} eq "Change") {
@@ -163,6 +209,7 @@ sub requests {
 			}
 		}
 	}
+	return 1;
 }
 
 sub match {
@@ -173,7 +220,7 @@ sub match {
 		return undef;
 	}
 
-	foreach my $line (<STDIN>) {
+	while (my $line = <STDIN>) {
 		chomp($line);
 		my $found = 1; 
 		foreach my $patern (@paterns) {
@@ -185,6 +232,7 @@ sub match {
 		}
 		$found && print "$line\n";
 	}
+	return 1;
 }
 
 sub main() {
@@ -209,15 +257,15 @@ sub main() {
 			$verbose && print RED "trace returned error.\n";
 			exit 1;
 		}
-		$verbose && print GREY "match cmplete.\n";
+		$verbose && print WHITE "match cmplete.\n";
 		exit 0;
 
 	} elsif ($command eq "requests") {
 		if (!requests(@ARGV)) {
-			$verbose && print RED "trace returned error.\n";
+			$verbose && print RED "requests returned error.\n";
 			exit 1;
 		}
-		$verbose && print GREY "match cmplete.\n";
+		$verbose && print WHITE "requests cmplete.\n";
 		exit 0;
 
 	} elsif ($command eq "trace") {
@@ -225,7 +273,7 @@ sub main() {
 			$verbose && print RED "trace returned error.\n";
 			exit 1;
 		}
-		$verbose && print GREY "trace cmplete.\n";
+		$verbose && print WHITE "trace cmplete.\n";
 		exit 0;
 
 	} else {
