@@ -39,7 +39,7 @@ my $verbose;
 sub print_help() {
 	my $N = basename($0);
 	print "INDIGO Log Analyzer version $VERSION\n".
-	      "usage: $N trace [options] [device][.property] < logfile\n".
+	      "usage: $N trace [options] [device1][.property1] [device2][.property2] ... < logfile\n".
 		  "       $N match [options] pattern1 [pattern2] ... < logfile\n".
 		  "       $N requests [options] [client1] [client2] ... < logfile\n".
 	      "options:\n".
@@ -76,18 +76,25 @@ sub split_line ($){
 				if ($l =~ /\}/) {
 					last;
 				}
-				my @kv = split(/\=/, $l);
-				$kv[0] =~ /.*\'(.*?)\'.*/;
-				my $key = $1;
-				my $value;
-				if ($kv[1] =~ /\'/) {
-					$kv[1] =~ /.*\'(.*?)\'.*/;
-					$value = $1;
+				if ($fields{type} eq "BLOB") {
+					$l =~ /\'(.*?)\'\s+(.*)/;
+					my $key = $1;
+					my $value = $2;
+					$fields{items}{$1} = $2;
 				} else {
-					$kv[1] =~ /^\s+(.*?)\s.*/;
-					$value = $1;
+					my @kv = split(/\=/, $l);
+					$kv[0] =~ /.*\'(.*?)\'.*/;
+					my $key = $1;
+					my $value;
+					if ($kv[1] =~ /\'/) {
+						$kv[1] =~ /.*\'(.*?)\'.*/;
+						$value = $1;
+					} else {
+						$kv[1] =~ /^\s+(.*?)\s.*/;
+						$value = $1;
+					}
+					$fields{items}{$key} = $value;
 				}
-				$fields{items}{$key} = $value;
 			}
 		}
 		return %fields;
@@ -164,13 +171,8 @@ sub print_line (%$) {
 
 sub trace {
 	my @params = @_;
-	my $property;
-	my @pattern;
 
-	if ($#params == 0) {
-		$property = $params[0];
-		@pattern = split(/\./, $property);
-	} else {
+	if ($#params < 0) {
 		print RED "trace: Wrong parameters.\n";
 		return undef;
 	}
@@ -178,16 +180,21 @@ sub trace {
 	while (my $line = <STDIN>) {
 		chomp($line);
 		my %fields = split_line($line);
-		if ($#pattern == 1) {
-			if (%fields{device} eq $pattern[0] && %fields{property} eq $pattern[1]) {
+		foreach my $property (@params) {
+			my @pattern = split(/\./, $property);
+			if ($#pattern == 1) {
+				if (%fields{device} eq $pattern[0] && %fields{property} eq $pattern[1]) {
+					print_line(%fields);
+					last;
+				}
+			} elsif ($#pattern == 0) {
+				if (%fields{device} eq $pattern[0]) {
+					print_line(%fields);
+					last;
+				}
+			} elsif ($#pattern < 0) {
 				print_line(%fields);
 			}
-		} elsif ($#pattern == 0) {
-			if (%fields{device} eq $pattern[0]) {
-				print_line(%fields);
-			}
-		} elsif ($#pattern < 0) {
-			print_line(%fields);
 		}
 	}
 	return 1;
