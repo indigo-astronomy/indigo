@@ -41,6 +41,7 @@ sub print_help() {
 	print "INDIGO Log Analyzer version $VERSION\n".
 	      "usage: $N trace [options] [device][.property] < logfile\n".
 		  "       $N match [options] pattern1 [pattern2] ... < logfile\n".
+		  "       $N requests [options] [client1] [client2] ... < logfile\n".
 	      "options:\n".
 	      "       -v verbose output\n".
 	      "       -h print help\n";
@@ -51,7 +52,7 @@ sub split_line ($){
 	my %fields;
 
 	my @split1 = split (/\s+/, $line, 6);
-	if (($split1[2] eq "B" || $split1[2] eq "0") && $split1[4] =~ /Define|Delete|Update/) {
+	if (($split1[2] eq "B" || $split1[2] eq "0") && $split1[4] =~ /Define|Remove|Update|Change/ && !($split1[5] =~ /^-/)) {
 		$fields{time} = $split1[0];
 		$fields{app} = $split1[1];
 		$fields{socket} = $split1[2];
@@ -64,6 +65,22 @@ sub split_line ($){
 		$fields{type} = $split3[1];
 		$fields{permission} = $split3[2];
 		$fields{state} = $split3[3];
+
+		$line =~ /.*\'(.*?)\'\s+\{.*/;
+		if ($1 ne "") {
+			$fields{client} = $1;
+		}
+
+	#	if ($fields{direction} =~ /+$/) {
+	#		foreach my $l (<STDIN>) {
+	#			if ($l =~ /}/) {
+	#				last;
+	#			}
+	#			my @split4 = split (/=/, $l, 6);
+	#			$split
+	#			$fields{items}{} split[1]
+	#		}
+	#	}
 		return %fields;
 	} else {
 		return undef;
@@ -72,24 +89,30 @@ sub split_line ($){
 }
 
 sub print_line (%$) {
-	my (%fields, $verbose) = @_;
-	my $act = "??";
+	my (%fields) = @_;
+	my $act = "<>";
 	if ($fields{action} eq "Define") {
 		$act = "++";
 	} elsif ($fields{action} eq "Update") {
 		$act = "==";
-	} elsif ($fields{action} eq "Delete") {
+	} elsif ($fields{action} eq "Remove") {
 		$act = "--";
 	}
-	my $message = "$fields{time} $act '$fields{device}'.'$fields{property}' $fields{action} -> $fields{state}\n";
-	if (%fields{state} eq "Ok") {
+
+	my $message = "$fields{time} $act '$fields{device}'.'$fields{property}' $fields{action} -> $fields{state}";
+	if (defined($fields{client})) {
+		$message .= " ($fields{client})\n";
+	} else {
+		$message .= "\n";
+	}
+	if ($fields{state} eq "Ok") {
 		print GREEN $message;
-	} elsif (%fields{state} eq "Busy"){
+	} elsif ($fields{state} eq "Busy"){
 		print YELLOW $message;
-	} elsif (%fields{state} eq "Alert"){
+	} elsif ($fields{state} eq "Alert"){
 		print RED $message;
 	} else {
-		print GREY $message;
+		print WHITE $message;
 	}
 }
 
@@ -111,17 +134,35 @@ sub trace {
 		my %fields = split_line($line);
 		if ($#pattern == 1) {
 			if (%fields{device} eq $pattern[0] && %fields{property} eq $pattern[1]) {
-				print_line(%fields, $verbose);
+				print_line(%fields);
 			}
 		} elsif ($#pattern == 0) {
 			if (%fields{device} eq $pattern[0]) {
-				print_line(%fields, $verbose);
+				print_line(%fields);
 			}
 		} elsif ($#pattern < 0) {
-			print_line(%fields, $verbose);
+			print_line(%fields);
 		}
 	}
 	return 1;
+}
+
+sub requests {
+	my @clients = @_;
+
+	foreach my $line (<STDIN>) {
+		chomp($line);
+		my %fields = split_line($line);
+		if ($#clients < 0 && $fields{action} eq "Change") {
+			print_line(%fields);
+		}
+		foreach my $client (@clients) {
+			if ($fields{client} eq $client) {
+				print_line(%fields);
+				last;
+			}
+		}
+	}
 }
 
 sub match {
@@ -148,7 +189,6 @@ sub match {
 
 sub main() {
 	my %options = ();
-
 	my $command = shift @ARGV;
 
 	if (getopts("vh", \%options) == undef) {
@@ -166,6 +206,14 @@ sub main() {
 
 	if ($command eq "match") {
 		if (!match(@ARGV)) {
+			$verbose && print RED "trace returned error.\n";
+			exit 1;
+		}
+		$verbose && print GREY "match cmplete.\n";
+		exit 0;
+
+	} elsif ($command eq "requests") {
+		if (!requests(@ARGV)) {
 			$verbose && print RED "trace returned error.\n";
 			exit 1;
 		}
