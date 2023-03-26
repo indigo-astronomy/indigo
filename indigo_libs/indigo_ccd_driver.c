@@ -88,12 +88,15 @@ static void countdown_timer_callback(indigo_device *device) {
 			CCD_EXPOSURE_ITEM->number.value >= 1
 		) {
 			//indigo_error("%lf - %lf = %lf (%f)", CCD_CONTEXT->countdown_endtime, now, CCD_CONTEXT->countdown_endtime - now, ceil(CCD_CONTEXT->countdown_endtime - now));
+			double last_reported = CCD_EXPOSURE_ITEM->number.value;
 			CCD_EXPOSURE_ITEM->number.value = ceil(CCD_CONTEXT->countdown_endtime - now);
 			if (CCD_EXPOSURE_ITEM->number.value <= 0) {
 				CCD_EXPOSURE_ITEM->number.value = 0;
 				CCD_CONTEXT->countdown_endtime = 0;
 			}
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			if (last_reported != CCD_EXPOSURE_ITEM->number.value) {
+				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+			}
 		}
 		indigo_usleep(0.25 * ONE_SECOND_DELAY);
 	}
