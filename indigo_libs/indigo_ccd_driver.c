@@ -78,19 +78,21 @@ static double get_time_hd() {
 }
 
 static void countdown_timer_callback(indigo_device *device) {
+	const double step = 0.25;
 	double now;
 	while(!CCD_CONTEXT->countdown_canceled) {
 		now = get_time_hd();
 		if (
 			CCD_CONTEXT->countdown_enabled &&
-			CCD_CONTEXT->countdown_endtime > 0 &&
+			CCD_CONTEXT->countdown_endtime >= now &&
 			CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE &&
 			CCD_EXPOSURE_ITEM->number.value >= 1
 		) {
 			//indigo_error("%lf - %lf = %lf (%f)", CCD_CONTEXT->countdown_endtime, now, CCD_CONTEXT->countdown_endtime - now, ceil(CCD_CONTEXT->countdown_endtime - now));
 			double last_reported = CCD_EXPOSURE_ITEM->number.value;
-			CCD_EXPOSURE_ITEM->number.value = ceil(CCD_CONTEXT->countdown_endtime - now);
-			if (CCD_EXPOSURE_ITEM->number.value <= 0) {
+			double time_left = CCD_CONTEXT->countdown_endtime - now;
+			CCD_EXPOSURE_ITEM->number.value = ceil(time_left);
+			if (time_left <= step) {
 				CCD_EXPOSURE_ITEM->number.value = 0;
 				CCD_CONTEXT->countdown_endtime = 0;
 			}
@@ -98,7 +100,7 @@ static void countdown_timer_callback(indigo_device *device) {
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			}
 		}
-		indigo_usleep(0.25 * ONE_SECOND_DELAY);
+		indigo_usleep(step * ONE_SECOND_DELAY);
 	}
 }
 
