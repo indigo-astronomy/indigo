@@ -206,7 +206,7 @@ typedef enum {
 	INDIGO_LOG_ERROR,
 	INDIGO_LOG_INFO,
 	INDIGO_LOG_DEBUG,
-	INDIGO_LOG_DEBUG_BUS,
+	INDIGO_LOG_TRACE_BUS,
 	INDIGO_LOG_TRACE
 } indigo_log_levels;
 
@@ -410,7 +410,7 @@ extern void indigo_debug(const char *format, ...);
 /** Print diagnostic messages on debug_bus level, wrap calls to INDIGO_DEBUG() macro.
  */
 
-extern void indigo_debug_bus(const char *format, ...);
+extern void indigo_trace_bus(const char *format, ...);
 /** Print diagnostic messages on error level, wrap calls to INDIGO_ERROR() macro.
  */
 
