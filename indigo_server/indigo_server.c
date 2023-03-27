@@ -389,7 +389,8 @@ static bool runLoop = true;
 #define SERVER_LOG_LEVEL_ERROR_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 0)
 #define SERVER_LOG_LEVEL_INFO_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 1)
 #define SERVER_LOG_LEVEL_DEBUG_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 2)
-#define SERVER_LOG_LEVEL_TRACE_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 3)
+#define SERVER_LOG_LEVEL_DEBUG_BUS_ITEM						(SERVER_LOG_LEVEL_PROPERTY->items + 3)
+#define SERVER_LOG_LEVEL_TRACE_ITEM								(SERVER_LOG_LEVEL_PROPERTY->items + 4)
 
 #define SERVER_BLOB_BUFFERING_PROPERTY						blob_buffering_property
 #define SERVER_BLOB_BUFFERING_DISABLED_ITEM				(SERVER_BLOB_BUFFERING_PROPERTY->items + 0)
@@ -857,10 +858,11 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_text_item(SERVER_UNLOAD_ITEM,SERVER_UNLOAD_ITEM_NAME, "Unload driver", "");
 	SERVER_RESTART_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_RESTART_PROPERTY_NAME, MAIN_GROUP, "Restart", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	indigo_init_switch_item(SERVER_RESTART_ITEM, SERVER_RESTART_ITEM_NAME, "Restart server", false);
-	SERVER_LOG_LEVEL_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_LOG_LEVEL_PROPERTY_NAME, MAIN_GROUP, "Log level", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+	SERVER_LOG_LEVEL_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_LOG_LEVEL_PROPERTY_NAME, MAIN_GROUP, "Log level", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_ERROR_ITEM, SERVER_LOG_LEVEL_ERROR_ITEM_NAME, "Error", false);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_INFO_ITEM, SERVER_LOG_LEVEL_INFO_ITEM_NAME, "Info", false);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_DEBUG_ITEM, SERVER_LOG_LEVEL_DEBUG_ITEM_NAME, "Debug", false);
+	indigo_init_switch_item(SERVER_LOG_LEVEL_DEBUG_BUS_ITEM, SERVER_LOG_LEVEL_DEBUG_BUS_ITEM_NAME, "Debug bus", false);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_TRACE_ITEM, SERVER_LOG_LEVEL_TRACE_ITEM_NAME, "Trace", false);
 	SERVER_BLOB_BUFFERING_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_BLOB_BUFFERING_PROPERTY_NAME, MAIN_GROUP, "BLOB buffering", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 	indigo_init_switch_item(SERVER_BLOB_BUFFERING_DISABLED_ITEM, SERVER_BLOB_BUFFERING_DISABLED_ITEM_NAME, "Disabled", !indigo_use_blob_buffering);
@@ -935,6 +937,9 @@ static indigo_result attach(indigo_device *device) {
 			break;
 		case INDIGO_LOG_DEBUG:
 			SERVER_LOG_LEVEL_DEBUG_ITEM->sw.value = true;
+			break;
+		case INDIGO_LOG_DEBUG_BUS:
+			SERVER_LOG_LEVEL_DEBUG_BUS_ITEM->sw.value = true;
 			break;
 		case INDIGO_LOG_TRACE:
 			SERVER_LOG_LEVEL_TRACE_ITEM->sw.value = true;
@@ -1166,6 +1171,8 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 			indigo_set_log_level(INDIGO_LOG_INFO);
 		} else if (SERVER_LOG_LEVEL_DEBUG_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_DEBUG);
+		} else if (SERVER_LOG_LEVEL_DEBUG_BUS_ITEM->sw.value) {
+			indigo_set_log_level(INDIGO_LOG_DEBUG_BUS);
 		} else if (SERVER_LOG_LEVEL_TRACE_ITEM->sw.value) {
 			indigo_set_log_level(INDIGO_LOG_TRACE);
 		}
@@ -1695,6 +1702,7 @@ int main(int argc, const char * argv[]) {
 #endif /* RPI_MANAGEMENT */
 			       "       -v  | --enable-info\n"
 			       "       -vv | --enable-debug\n"
+						 "       -vvb| --enable-debug-bus\n"
 			       "       -vvv| --enable-trace\n"
 			       "       -r  | --remote-server host[:port]     (default port: 7624)\n"
 			       "       -x  | --enable-blob-proxy\n"
