@@ -57,14 +57,28 @@ EAF_API int EAFGetNum();
 
 /***************************************************************************
 Descriptions:
-Get the product ID of each wheel, at first set pPIDs as 0 and get length and then malloc a buffer to load the PIDs
+Get the product ID of each focuser, at first set pPIDs as 0 and get length and then malloc a buffer to load the PIDs
 
 Paras:
 int* pPIDs: pointer to array of PIDs
 
 Return: length of the array.
+
+Note: This api will be deprecated. Please use EAFCheck instead
 ***************************************************************************/
 EAF_API int EAFGetProductIDs(int* pPIDs);
+
+/***************************************************************************
+Descriptions:
+Check if the device is EAF
+
+Paras:
+int iVID: VID is 0x03C3 for EAF
+int iPID: PID of the device
+
+Return: If the device is EAF, return 1, otherwise return 0
+***************************************************************************/
+EAF_API int EAFCheck(int iVID, int iPID);
 
 /***************************************************************************
 Descriptions:
@@ -303,6 +317,24 @@ EAF_API	EAF_ERROR_CODE EAFGetMaxStep(int ID, int* piVal);
 
 /***************************************************************************
 Descriptions:
+Get the position range
+
+Paras:
+int ID: the ID of focuser
+bool *piVal: pointer to the value
+
+Return: 
+EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_CLOSED: not opened
+EAF_SUCCESS: operation succeeds
+EAF_ERROR_MOVING: focuser is moving, should wait until idle
+EAF_ERROR_ERROR_STATE: focuser is in error state
+EAF_ERROR_REMOVED: focuser is removed
+***************************************************************************/
+EAF_API	EAF_ERROR_CODE EAFStepRange(int ID, int* piVal);
+
+/***************************************************************************
+Descriptions:
 Set moving direction of focuser
 
 Paras:
@@ -344,6 +376,7 @@ int iVal: backlash value.
 
 Return: 
 EAF_ERROR_INVALID_ID: invalid ID value
+EAF_ERROR_INVALID_VALUE: iVal needs to be between 0 and 255
 EAF_ERROR_CLOSED: not opened
 EAF_SUCCESS: operation succeeds
 ***************************************************************************/
@@ -377,6 +410,12 @@ EAF_ERROR_INVALID_ID: invalid ID value
 EAF_SUCCESS: operation succeeds
 ***************************************************************************/
 EAF_API	EAF_ERROR_CODE EAFClose(int ID);
+
+/***************************************************************************
+Descriptions:
+get version string, like "1, 4, 0"
+***************************************************************************/
+EAF_API char* EAFGetSDKVersion();
 
 /***************************************************************************
 Descriptions:
