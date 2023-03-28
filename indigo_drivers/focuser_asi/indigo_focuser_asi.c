@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -236,8 +236,12 @@ static indigo_result focuser_attach(indigo_device *device) {
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 
-		INFO_PROPERTY->count = 5;
+		INFO_PROPERTY->count = 6;
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->model);
+		char *sdk_version = EAFGetSDKVersion();
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, sdk_version);
+		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->label, "SDK version");
+
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
@@ -928,6 +932,10 @@ indigo_result indigo_focuser_asi(indigo_driver_action action, indigo_driver_info
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
+
+		const char *sdk_version = EAFGetSDKVersion();
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "EAF SDK v. %s ", sdk_version);
+
 		for(int index = 0; index < EAF_ID_MAX; index++)
 			connected_ids[index] = false;
 //		eaf_id_count = EAFGetProductIDs(eaf_products);
