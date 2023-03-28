@@ -293,3 +293,15 @@ Version: v1.11.0
 Date: 2023-03-03
 1. Support camera SV305C
 2. Fix the problem that the first line and the last line of the image are incorrect when the mono camera is in 16-bit mode
+
+
+##########################################################
+版本:v1.11.1
+日期:2023-03-27
+1.SV305C支持饱和度参数
+2.提高SV305C在小ROI时的帧率
+
+Version: v1.11.1
+Date: 2023-03-27
+1. SV305C supports saturation
+2. Improve the frame rate of SV305C in small ROI
