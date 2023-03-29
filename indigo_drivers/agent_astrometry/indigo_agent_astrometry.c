@@ -595,6 +595,31 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						pthread_mutex_unlock(&mutex);
 						return;
 					}
+
+					/* basic index file integritiy check as curl saves HTTP
+					   errors like "404: not found" in the output file
+					*/
+					bool failed = false;
+					char signature[7]={0};
+					FILE *fp=fopen(path,"rb");
+					if (fp) {
+						size_t read = fread(signature, 6, 1, fp);
+						fclose(fp);
+						if (strncmp(signature, "SIMPLE", 6)) {
+							failed = true;
+						}
+					} else {
+						failed = true;
+					}
+					if (failed) {
+						unlink(path);
+						item->sw.value = false;
+						property->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, property, "Index download failed: '%s'", path);
+						pthread_mutex_unlock(&mutex);
+						return;
+					}
+
 					indigo_send_message(device, "Done", file_name);
 					add = true;
 					continue;
