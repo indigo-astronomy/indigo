@@ -245,7 +245,7 @@ enum
                              odd pixel */
     GBP_DEBAYER_Y_ODD,             /* true if camera Bayer masks starts on vertical
                              odd pixel */
-    GBP_INTERLACED = 256           /* true if chip is interlaced
+    GBP_INTERLACED = 256,           /* true if chip is interlaced
                              (else progressive) */
     GBP_HEX_VERSION_NUMBER = 1024  /* true if GIP_FIRMWARE_MAJOR should be represented
                                    as hexadecimal number */
