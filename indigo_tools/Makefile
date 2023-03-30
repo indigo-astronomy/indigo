@@ -33,10 +33,10 @@ all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/
 install: all
 	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
 	cp $(BUILD_BIN)/indigo_raw_to_fits $(INSTALL_BIN)
-	cp ./indigo_log_analizer.pl $(INSTALL_BIN)/indigo_log_analizer
+	cp ./indigo_log_analyzer.pl $(INSTALL_BIN)/indigo_log_analyzer
 
 uninstall:
-	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(INSTALL_BIN)/indigo_log_analizer
+	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(INSTALL_BIN)/indigo_log_analyzer
 
 status:
 	@printf "\nindigo_tools -------------------------\n\n"
