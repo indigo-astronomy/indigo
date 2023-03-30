@@ -22,8 +22,6 @@
 
 include ../Makefile.inc
 
-SIMULATOR_LIBS=$(wildcard $(BUILD_DRIVERS)/indigo_*_simulator.a)
-
 ifeq ($(OS_DETECTED),Linux)
 	INDIGO_LIBS = -lindigo
 else
@@ -35,9 +33,10 @@ all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/
 install: all
 	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
 	cp $(BUILD_BIN)/indigo_raw_to_fits $(INSTALL_BIN)
+	cp ./indigo_log_analizer.pl $(INSTALL_BIN)/indigo_log_analizer
 
 uninstall:
-	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits
+	rm -f $(INSTALL_BIN)/indigo_prop_tool $(INSTALL_BIN)/indigo_raw_to_fits $(INSTALL_BIN)/indigo_log_analizer
 
 status:
 	@printf "\nindigo_tools -------------------------\n\n"
