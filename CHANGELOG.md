@@ -2,6 +2,44 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-228] - 14 Mar Tue 2023
+### Overall
+- logging format changes
+
+- indigo_log_analyzer: tool to analyze indigo bus logs
+- indigo_ccd_driver:
+	- CCD_EXPOSURE_PROPERTY updated once a second.
+	- exposure countdown fixed
+
+### Driver Fixes
+- indigo_agent_astrometry:
+	- add basic index file integritiy check when downloaded
+
+- indigo_mount_asi:
+	- proper error handling os ':Te#' and ':Td#'
+
+- indigo_ccd_svb:
+	- SDK updated to v.1.11.1
+	- add natve apple silicon support
+
+- indigo_ccd_atik:
+	- SDK updated to 2023_03_17
+
+- indigo_ccd_touptek & family:
+	- fix bias exposures
+
+- indigo_focuser_asi:
+	- SDK updated to v.1.6
+	- show SDK version
+
+- indigo_ccd_svb:
+	- Updated MI library to 0.8.0/0.7.0
+    - Added support for C2-9000 camera
+
+- indigo_wheel_playerone:
+	- add intel32 support
+	- SDK updated to v.1.2.0
+
 # [2.0-226] - 14 Mar Tue 2023
 ### Overall
 - indigo_client:
