@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -39,8 +39,6 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include "indigo_wheel_playerone.h"
-
-#if !(defined(__linux__) && defined(__i386__))
 
 #if defined(INDIGO_FREEBSD)
 #include <libusb.h>
@@ -573,22 +571,3 @@ indigo_result indigo_wheel_playerone(indigo_driver_action action, indigo_driver_
 
 	return INDIGO_OK;
 }
-
-#else
-
-indigo_result indigo_wheel_playerone(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
-	SET_DRIVER_INFO(info, "Player One Filter Wheel", __FUNCTION__, DRIVER_VERSION, true, last_action);
-
-	switch(action) {
-		case INDIGO_DRIVER_INIT:
-		case INDIGO_DRIVER_SHUTDOWN:
-			return INDIGO_UNSUPPORTED_ARCH;
-		case INDIGO_DRIVER_INFO:
-			break;
-	}
-	return INDIGO_OK;
-}
-
-#endif
