@@ -104,7 +104,7 @@ OPT_VERBOSE=0
 # Valid WIFI channels
 WIFI_CHANNELS=('0' '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '36' '40' '44' '48' '56' '60' '64' '100' '104' '108' '112' '116')
 HT_CAPAB=0
-REQUIRE_HT=0
+REQUIRE_HT=1
 
 HT_CAPAB_HT40='[HT40-][SHORT-GI-20][SHORT-GI-40]'
 
@@ -310,7 +310,6 @@ __set-wifi-server() {
 
     if [[ ${WIFI_AP_CH} -gt 30 ]]; then
         WIFI_HW_MODE="a"
-        REQUIRE_HT=1
         HT_CAPAB=${HT_CAPAB_HT40}
     fi
 
@@ -334,6 +333,7 @@ ieee80211n=1
 ieee80211ac=1
 wmm_enabled=1
 require_ht=${REQUIRE_HT}
+require_vht=${REQUIRE_HT}
 ht_capab=${HT_CAPAB}
 macaddr_acl=0
 auth_algs=1
@@ -416,7 +416,6 @@ __set-wifi-channel() {
 
     if [[ ${WIFI_AP_CH} -gt 30 ]]; then
         WIFI_HW_MODE="a"
-        REQUIRE_HT=1
         HT_CAPAB=${HT_CAPAB_HT40}
     fi
 
