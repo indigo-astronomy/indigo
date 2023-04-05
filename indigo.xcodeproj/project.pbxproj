@@ -1225,6 +1225,7 @@
 		594135682324071E00ED5FF4 /* efa_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = efa_simulator.ino; sourceTree = "<group>"; };
 		5942229C22E34AA4009DAD5C /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "build/lib/libusb-1.0.0.dylib"; sourceTree = "<group>"; };
 		5942229E22E34AA9009DAD5C /* libdc1394.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libdc1394.dylib; path = build/lib/libdc1394.dylib; sourceTree = "<group>"; };
+		5945AC1729DDFF5100B5107D /* 99-uvc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-uvc.rules"; sourceTree = "<group>"; };
 		59463C1520DE6781004950F2 /* indigo_focuser_wemacro_bt.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_wemacro_bt.h; sourceTree = "<group>"; };
 		59463C1620DE6781004950F2 /* indigo_focuser_wemacro_main_bt.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_wemacro_main_bt.c; sourceTree = "<group>"; };
 		59463C1720DE6781004950F2 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -13008,6 +13009,7 @@
 				9D73E61521FF37F9003CEC15 /* libuvc_stream.c */,
 				9D73E62221FF4D72003CEC15 /* Makefile.inc */,
 				59E86E5C236CE83C00727D18 /* USB_Video_Class_1.1.pdf */,
+				5945AC1729DDFF5100B5107D /* 99-uvc.rules */,
 			);
 			path = ccd_uvc;
 			sourceTree = "<group>";
