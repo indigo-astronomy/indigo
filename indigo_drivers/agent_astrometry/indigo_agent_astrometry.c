@@ -694,6 +694,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
 		bool present;
 		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY_NAME, "Index managememt", "Installed Tycho-2 catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 13);
+		strcpy(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->hints,"warn_on_clear:\"Delete Tycho-2 catalog index file?\";");
 		if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		for (int i = 19; i >=7; i--) {
@@ -721,6 +722,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			}
 		}
 		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY_NAME, "Index managememt", "Installed 2MASS catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 20);
+		strcpy(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->hints,"warn_on_clear:\"Delete 2MASS catalog index file?\";");
 		if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		for (int i = 19; i >=0; i--) {
