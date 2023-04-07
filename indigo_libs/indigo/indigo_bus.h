@@ -558,9 +558,9 @@ extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
  */
 extern bool indigo_upload_http_blob_item(indigo_item *blob_item);
 
-/** get proprtly hint value by key, returns false if key is not found, if the key has no value empty string is returned
+/** get property hint value by key, returns false if key is not found, if the key has no value empty string is returned
  */
-extern bool indigo_get_peoperty_hint(indigo_property *property, const char *key, char *value);
+extern bool indigo_get_property_hint(indigo_property *property, const char *key, char *value);
 
 /** get item hint value by key, returns false if key is not found, if the key has no value empty string is returned
  */

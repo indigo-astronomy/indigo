@@ -1367,7 +1367,7 @@ static bool indigo_get_hint(char *hints, const char *key, char *value) {
 	return false;
 }
 
-bool indigo_get_peoperty_hint(indigo_property *property, const char *key, char *value) {
+bool indigo_get_property_hint(indigo_property *property, const char *key, char *value) {
 	return indigo_get_hint(property->hints, key, value);
 }
 
