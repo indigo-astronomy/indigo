@@ -558,6 +558,14 @@ extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
  */
 extern bool indigo_upload_http_blob_item(indigo_item *blob_item);
 
+/** get proprtly hint value by key, returns false if key is not found, if the key has no value empty string is returned
+ */
+extern bool indigo_get_peoperty_hint(indigo_property *property, const char *key, char *value);
+
+/** get item hint value by key, returns false if key is not found, if the key has no value empty string is returned
+ */
+extern bool indigo_get_item_hint(indigo_item *item, const char *key, char *value);
+
 /** Test, if property matches other property.
  */
 extern bool indigo_property_match(indigo_property *property, indigo_property *other);

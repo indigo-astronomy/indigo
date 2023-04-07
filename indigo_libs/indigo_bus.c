@@ -1289,6 +1289,92 @@ clean_return:
 	return res;
 }
 
+static bool indigo_get_hint(char *hints, const char *key, char *value) {
+	bool is_key = true;
+	bool kv_more = true;
+	bool kv_end = false;
+	bool is_quoted = false;
+
+	int i = 0;
+	char *c = hints;
+	char ckey[INDIGO_NAME_SIZE];
+	char cval[INDIGO_VALUE_SIZE];
+
+	INDIGO_DEBUG(indigo_debug("%s(): hints = { %s\n }, key = '%s'", hints, key));
+
+	while (kv_more) {
+		switch (*c) {
+		case '\0':
+			kv_more = false;
+			kv_end = true;
+			if(is_key) {
+				ckey[i] = '\0';
+			} else {
+				cval[i] = '\0';
+			}
+			break;
+		case ':':
+			is_key = false;
+			ckey[i] = '\0';
+			i = 0;
+			break;
+		case ';':
+			is_key = true;
+			kv_end = true;
+			cval[i] = '\0';
+			i = 0;
+			break;
+		case '\\':
+			if(*(c++) == '\0') {
+				continue;
+			} else {
+				if(is_key) {
+					ckey[i++] = *c;
+				} else {
+					cval[i++] = *c;
+				}
+			}
+			break;
+		case '\"':
+			is_quoted = !is_quoted;
+			break;
+		case ' ':
+			if (is_quoted && !is_key) {
+				cval[i++] = *c;
+			}
+			break;
+		default:
+			if(is_key) {
+				ckey[i++] = *c;
+			} else {
+				cval[i++] = *c;
+			}
+		}
+		c++;
+		//printf("kw_end = %d, is_key = %d, is_quoted = %d\n", kv_end, is_key, is_quoted);
+		if(kv_end) {
+			if (!strncmp(ckey, key, INDIGO_NAME_SIZE)) {
+				INDIGO_DEBUG(indigo_debug("%s(): hint found -> %s = %s\n", __FUNCTION__, ckey, cval));
+				strncpy(value, cval, INDIGO_VALUE_SIZE);
+				return true;
+			}
+			i=0;
+			kv_end = 0;
+			ckey[0] = '\0';
+			cval[0] = '\0';
+		}
+	}
+	return false;
+}
+
+bool indigo_get_peoperty_hint(indigo_property *property, const char *key, char *value) {
+	return indigo_get_hint(property->hints, key, value);
+}
+
+bool indigo_get_item_hint(indigo_item *item, const char *key, char *value) {
+	return indigo_get_hint(item->hints, key, value);
+}
+
 bool indigo_property_match(indigo_property *property, indigo_property *other) {
 	if (property == NULL)
 		return false;

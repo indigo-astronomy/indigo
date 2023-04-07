@@ -180,6 +180,22 @@ show or hide target value on client side, value is show or hide; makes a sense o
 widget: list;
 ```
 
+show yes/no warning when the client is going to send property chanage request
+
+```
+warn_on_change: "Warning text";
+```
+
+show yes/no warning when the client is going to send switch item set request
+```
+warn_on_set: "Warning text";
+```
+
+show yes/no warning when the client is going to send switch item unset (clear) request
+```
+warn_on_clear: "Warning text";
+```
+
 GUI widget(s) to use for the items on client side, the list can consist of values edit-box, multiline-edit-box, combo-box, push, radio-button, check-box, slider or stepper
 
 ## References
