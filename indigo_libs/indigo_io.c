@@ -380,7 +380,7 @@ int indigo_read(int handle, char *buffer, long length) {
 #endif
 		if (bytes_read <= 0) {
 			if (bytes_read < 0)
-				INDIGO_ERROR(indigo_error("%d -> // %s", strerror(errno)));
+				INDIGO_ERROR(indigo_error("%d -> // %s", handle, strerror(errno)));
 			return (int)bytes_read;
 		}
 		total_bytes += bytes_read;
