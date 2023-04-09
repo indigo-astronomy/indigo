@@ -1300,7 +1300,7 @@ static bool indigo_get_hint(char *hints, const char *key, char *value) {
 	char ckey[INDIGO_NAME_SIZE];
 	char cval[INDIGO_VALUE_SIZE];
 
-	INDIGO_DEBUG(indigo_debug("%s(): hints = { %s\n }, key = '%s'", hints, key));
+	INDIGO_DEBUG(indigo_debug("%s(): hints = { %s\n }, looking for key '%s'", __FUNCTION__, hints, key));
 
 	while (kv_more) {
 		switch (*c) {
