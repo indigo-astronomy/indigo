@@ -213,6 +213,60 @@ typedef struct {
 
 #define ROUND_BIN(dimention, bin) (2 * ((unsigned)(dimention) / (unsigned)(bin) / 2));
 
+static bool get_blacklevel(indigo_device *device, int *blacklevel, double *scale) {
+	int pixel_format;
+	int blacklevel_raw;
+	int result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_PIXEL_FORMAT), &pixel_format);
+	result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BLACKLEVEL), &blacklevel_raw);
+	if (result < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Option(OPTION_BLACKLEVEL, -> %d) = %d", blacklevel_raw, result);
+		return false;
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_BLACKLEVEL, -> %d) = %d", blacklevel_raw, result);
+	}
+	switch (pixel_format) {
+		case SDK_DEF(PIXELFORMAT_RAW10):
+			*scale = 31.0 / SDK_DEF(BLACKLEVEL10_MAX);
+			break;
+		case SDK_DEF(PIXELFORMAT_RAW12):
+		case SDK_DEF(PIXELFORMAT_GMCY12):
+			*scale = 31.0 / SDK_DEF(BLACKLEVEL12_MAX);
+			break;
+		case SDK_DEF(PIXELFORMAT_RAW14):
+			*scale = 31.0 / SDK_DEF(BLACKLEVEL14_MAX);
+			break;
+		case SDK_DEF(PIXELFORMAT_RAW16):
+			*scale = 31.0 / SDK_DEF(BLACKLEVEL16_MAX);
+			break;
+		default:
+			*scale = 31.0 / SDK_DEF(BLACKLEVEL8_MAX);
+	}
+	*blacklevel = blacklevel_raw;
+	return true;
+}
+
+static void handle_offset(indigo_device *device) {
+	int blacklevel;
+	double scale = 1;
+	if (get_blacklevel(device, &blacklevel, &scale)) {
+		int target_blacklevel = (int)(CCD_OFFSET_ITEM->number.target / scale);
+		if (blacklevel != (target_blacklevel)) {
+			int result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BLACKLEVEL), target_blacklevel);
+			if (result >= 0) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BLACKLEVEL, <- %d) = %d", target_blacklevel, result);
+				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = target_blacklevel * scale;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "set blacklevel=%d, scale=%f => offset=%f", target_blacklevel, scale, CCD_OFFSET_ITEM->number.value);
+				CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Option(OPTION_BLACKLEVEL, <- %d) = %d", target_blacklevel, result);
+				CCD_OFFSET_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_OFFSET_PROPERTY, "Can not set camera offset");
+			}
+		}
+	}
+}
+
 static void get_bayer_pattern(indigo_device *device, char *bayer_pattern) {
 	unsigned fourcc = 0, bitspp = 0;
 	HRESULT result = SDK_CALL(get_RawFormat)(PRIVATE_DATA->handle, &fourcc, &bitspp);
@@ -731,6 +785,19 @@ static void ccd_connect_callback(indigo_device *device) {
 			CCD_GAIN_ITEM->number.min = min;
 			CCD_GAIN_ITEM->number.max = max;
 			CCD_GAIN_ITEM->number.value = current;
+
+			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_BLACKLEVEL)) {
+				CCD_OFFSET_PROPERTY->hidden = false;
+				CCD_OFFSET_ITEM->number.min = SDK_DEF(BLACKLEVEL_MIN);
+				CCD_OFFSET_ITEM->number.max = SDK_DEF(BLACKLEVEL8_MAX);
+				//CCD_OFFSET_ITEM->number.step = 0.01;
+				int blacklevel = 0;
+				double scale = 1;
+				get_blacklevel(device, &blacklevel, &scale);
+				CCD_OFFSET_ITEM->number.value = CCD_OFFSET_ITEM->number.target = blacklevel * scale;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Offset supported: balcklevel=%d, scale=%f", blacklevel, scale);
+			}
+
 			if (X_CCD_ADVANCED_PROPERTY) {
 				indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 			}
@@ -964,6 +1031,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		setup_exposure(device);
+		//int balcklevel;
+		//double scale;
+		//get_blacklevel(device, &balcklevel, &scale);
+		//INDIGO_DRIVER_ERROR(DRIVER_NAME, "EXPOSURE blacklevel= %d, scale=%f => offset = %f", balcklevel, scale, balcklevel * scale);
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_STREAMING_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
@@ -1030,6 +1101,11 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoAGain(%d) -> %08x", (int)CCD_GAIN_ITEM->number.value, result);
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		}
+	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_OFFSET
+		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
+		handle_offset(device);
+		return INDIGO_OK;
 	} else if (X_CCD_ADVANCED_PROPERTY && indigo_property_match_defined(X_CCD_ADVANCED_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CCD_ADVANCED
 		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
