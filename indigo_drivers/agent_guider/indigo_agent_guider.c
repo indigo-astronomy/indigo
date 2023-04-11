@@ -1472,7 +1472,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 20, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, "Edge Clipping (px)", 0, 500, 1, 8);
-		indigo_init_number_item(AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME, "Maximaum number of stars", 1, MAX_MULTISTAR_COUNT, 1, 1);
+		indigo_init_number_item(AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME, "Maximum number of stars", 1, MAX_MULTISTAR_COUNT, 1, 1);
 		for (int i = 0; i < MAX_MULTISTAR_COUNT; i++) {
 			indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 			indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
@@ -1611,6 +1611,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		double dith_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target;
 		double dith_y = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target;
 		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
+		AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value = AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target;
+		AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value = AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.target;
+		AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value = AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.target;
 		if (!AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
 			/* If Dec guiding is not "North and South" do not dither in Dec, however if cos(angle) == 0 we end up in devision by 0.
 			   In this case we set the limits -> DITH_X = 0 and DITH_Y = dith_total.
@@ -1693,6 +1696,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
+		AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target = (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target;
 		if (count != AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value) {
 			indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			AGENT_GUIDER_SELECTION_PROPERTY->count = (AGENT_GUIDER_SELECTION_X_ITEM - AGENT_GUIDER_SELECTION_PROPERTY->items) + 2 * AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
