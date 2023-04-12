@@ -2,6 +2,33 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-230] - 13 Apr Thu 2023
+### Overall
+- indigosky:
+	- better wifi performance in AP mode
+
+- indigo_bus:
+	- add indigo_get_peoperty_hint() and indigo_get_item_hint()
+	- documentatrion added for new hints
+
+- indigo_xml:
+	- fix property hints propagation to client
+
+- fix logging issues
+
+### Driver Fixes
+- indigo_ccd_uvc:
+	-usb rules file added
+
+- indigo_agent_astrometry:
+	- add hints to some properties
+
+- indigo_agent_guider:
+	- enforced rounding for int values
+
+- indigo_ccd_touptek & family:
+	- add camera offset
+
 # [2.0-228] - 14 Mar Tue 2023
 ### Overall
 - logging format changes
