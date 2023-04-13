@@ -669,6 +669,23 @@
 		59A68E33277DE627000439CC /* indigo_ccd_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 590A86411DB80A04002F12FB /* indigo_ccd_asi.h */; };
 		59AA603E25AB10E80065905E /* solver_test_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 59AA603D25AB10E80065905E /* solver_test_image.c */; };
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
+		59B348A029E854080062C2EA /* indigo_focuser_primaluce.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */; };
+		59B348A229E854080062C2EA /* indigo_focuser_primaluce.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */; };
+		59B348A529E85E2F0062C2EA /* jsmn.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B348A329E85E2F0062C2EA /* jsmn.h */; };
+		59B348A729E85F8A0062C2EA /* libaltaircam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; };
+		59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; };
+		59B348AA29E85F8A0062C2EA /* libnncam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59B348AB29E85F8A0062C2EA /* libogmacam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59118C3F2996ED950004BEC8 /* libogmacam.dylib */; };
+		59B348AC29E85F8A0062C2EA /* libomegonprocam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F029805E30003243AE /* libomegonprocam.dylib */; };
+		59B348AD29E85F8A0062C2EA /* libomegonprocam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F029805E30003243AE /* libomegonprocam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59B348AF29E85F8B0062C2EA /* libmallincam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; };
+		59B348B029E85F8B0062C2EA /* libmallincam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59B348B129E85FA80062C2EA /* libSVBCameraSDK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A68E37277DF2B0000439CC /* libSVBCameraSDK.dylib */; };
+		59B348B229E85FA80062C2EA /* libSVBCameraSDK.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59A68E37277DF2B0000439CC /* libSVBCameraSDK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59B348B329E85FA80062C2EA /* libtoupcam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; };
+		59B348B429E85FA80062C2EA /* libtoupcam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59B348B529E85FC50062C2EA /* indigo_focuser_primaluce.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */; };
 		59B51350297066040075C8A1 /* indigo_wheel_indigo.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B51348297066040075C8A1 /* indigo_wheel_indigo.c */; };
 		59B51351297066040075C8A1 /* indigo_wheel_indigo.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B51348297066040075C8A1 /* indigo_wheel_indigo.c */; };
 		59B51352297066040075C8A1 /* indigo_wheel_indigo.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B5134D297066040075C8A1 /* indigo_wheel_indigo.h */; };
@@ -962,6 +979,12 @@
 			dstSubfolderSpec = 10;
 			files = (
 				59118C442996EDA30004BEC8 /* libogmacam.dylib in Embed Libraries */,
+				59B348AD29E85F8A0062C2EA /* libomegonprocam.dylib in Embed Libraries */,
+				59B348B229E85FA80062C2EA /* libSVBCameraSDK.dylib in Embed Libraries */,
+				59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */,
+				59B348B029E85F8B0062C2EA /* libmallincam.dylib in Embed Libraries */,
+				59B348B429E85FA80062C2EA /* libtoupcam.dylib in Embed Libraries */,
+				59B348AA29E85F8A0062C2EA /* libnncam.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2711,6 +2734,13 @@
 		59AF321721F3078D0008CC52 /* mng.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = mng.png; sourceTree = "<group>"; };
 		59AF321821F308870008CC52 /* mng.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mng.html; sourceTree = "<group>"; };
 		59AF6E9E2273881C00B838BF /* guider.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = guider.html; sourceTree = "<group>"; };
+		59B3489429E72A760062C2EA /* primaluce_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = primaluce_simulator.ino; sourceTree = "<group>"; };
+		59B3489C29E853F60062C2EA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_primaluce.h; sourceTree = "<group>"; };
+		59B3489E29E854070062C2EA /* indigo_focuser_primaluce_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_primaluce_main.c; sourceTree = "<group>"; };
+		59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_primaluce.c; sourceTree = "<group>"; };
+		59B348A329E85E2F0062C2EA /* jsmn.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jsmn.h; sourceTree = "<group>"; };
+		59B348AE29E85F8B0062C2EA /* libmallincam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmallincam.dylib; path = build/lib/libmallincam.dylib; sourceTree = "<group>"; };
 		59B51347297066040075C8A1 /* indigo_wheel_indigo_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_indigo_main.c; sourceTree = "<group>"; };
 		59B51348297066040075C8A1 /* indigo_wheel_indigo.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_indigo.c; sourceTree = "<group>"; };
 		59B51349297066040075C8A1 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4773,14 +4803,20 @@
 			files = (
 				5947BB902990270000040E99 /* libPlayerOneCamera.dylib in Frameworks */,
 				5947BB912990270000040E99 /* libPlayerOnePW.dylib in Frameworks */,
+				59B348B129E85FA80062C2EA /* libSVBCameraSDK.dylib in Frameworks */,
 				59D138A3283E5A9C00FCC514 /* libraw.a in Frameworks */,
+				59B348AF29E85F8B0062C2EA /* libmallincam.dylib in Frameworks */,
 				598A1D02259BAE0800C0B34C /* libatik.a in Frameworks */,
 				598A1CFB259BADCE00C0B34C /* libgps.a in Frameworks */,
 				598A1CF3259BAD9A00C0B34C /* libfli.a in Frameworks */,
 				59118C432996EDA30004BEC8 /* libogmacam.dylib in Frameworks */,
 				598A1C05259BA94A00C0B34C /* libtiff.a in Frameworks */,
+				59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */,
+				59B348A729E85F8A0062C2EA /* libaltaircam.dylib in Frameworks */,
 				598A1C07259BA94A00C0B34C /* libfcusb.a in Frameworks */,
+				59B348AB29E85F8A0062C2EA /* libogmacam.dylib in Frameworks */,
 				598A1C08259BA94A00C0B34C /* libgpusb.a in Frameworks */,
+				59B348AC29E85F8A0062C2EA /* libomegonprocam.dylib in Frameworks */,
 				598A1C0B259BA94A00C0B34C /* libjpeg.a in Frameworks */,
 				598A1C0C259BA94A00C0B34C /* libtiffxx.a in Frameworks */,
 				59F871BF26A871B6007DF91C /* libgxccd.a in Frameworks */,
@@ -4791,6 +4827,7 @@
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
 				598A1C18259BA94A00C0B34C /* libc++.tbd in Frameworks */,
 				598A1C19259BA94A00C0B34C /* libusb-1.0.0.dylib in Frameworks */,
+				59B348B329E85FA80062C2EA /* libtoupcam.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -9109,6 +9146,27 @@
 			path = data;
 			sourceTree = "<group>";
 		};
+		59B3489229E728D80062C2EA /* focuser_primaluce */ = {
+			isa = PBXGroup;
+			children = (
+				59B3489C29E853F60062C2EA /* README.md */,
+				59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */,
+				59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */,
+				59B3489E29E854070062C2EA /* indigo_focuser_primaluce_main.c */,
+				59B348A329E85E2F0062C2EA /* jsmn.h */,
+				59B3489329E729380062C2EA /* primaluce_simulator */,
+			);
+			path = focuser_primaluce;
+			sourceTree = "<group>";
+		};
+		59B3489329E729380062C2EA /* primaluce_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				59B3489429E72A760062C2EA /* primaluce_simulator.ino */,
+			);
+			path = primaluce_simulator;
+			sourceTree = "<group>";
+		};
 		59B51346297066040075C8A1 /* wheel_indigo */ = {
 			isa = PBXGroup;
 			children = (
@@ -9585,6 +9643,7 @@
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
 				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
 				59399D882177D316002886CA /* focuser_optec */,
+				59B3489229E728D80062C2EA /* focuser_primaluce */,
 				9D3E906B28995B140093C9EB /* focuser_prodigy */,
 				59F682A3250FD48200ABD731 /* focuser_robofocus */,
 				591FAB761E391AFA0076BD6E /* focuser_fli */,
@@ -13300,6 +13359,7 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				59B348AE29E85F8B0062C2EA /* libmallincam.dylib */,
 				59118C3F2996ED950004BEC8 /* libogmacam.dylib */,
 				5947BB8E2990270000040E99 /* libPlayerOneCamera.dylib */,
 				5947BB8F2990270000040E99 /* libPlayerOnePW.dylib */,
@@ -13888,6 +13948,7 @@
 				5913653728CFB42000ABB99B /* indigo_md5.h in Headers */,
 				595F292D211E211200380EF4 /* DDHidLib.h in Headers */,
 				591CD0AA2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */,
+				59B348A529E85E2F0062C2EA /* jsmn.h in Headers */,
 				595567C624B882DD00DF303D /* config.h in Headers */,
 				59A413362971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */,
 				59F7E5ED245878C700EF273A /* indigo_token.h in Headers */,
@@ -13915,6 +13976,7 @@
 				59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */,
 				9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */,
 				9DAC59DA1DC24E1400AE410D /* indigo_focuser_fcusb.h in Headers */,
+				59B348A029E854080062C2EA /* indigo_focuser_primaluce.h in Headers */,
 				59A68E20277DC3D0000439CC /* SVBCameraSDK.h in Headers */,
 				59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */,
 				599AD8A12552F64A0008D481 /* indigo_mount_nexstaraux.h in Headers */,
@@ -14384,6 +14446,7 @@
 				59540AD726D00D3C000C2A1B /* indigo_aux_geoptikflat.c in Sources */,
 				598A1BB9259BA94A00C0B34C /* indigo_guider_cgusbst4.c in Sources */,
 				598A1BBA259BA94A00C0B34C /* indigo_timer.c in Sources */,
+				59B348B529E85FC50062C2EA /* indigo_focuser_primaluce.c in Sources */,
 				59A4132F2971E54C00F0A80B /* indigo_wheel_playerone.c in Sources */,
 				598A1BBB259BA94A00C0B34C /* indigo_dome_azimuth.c in Sources */,
 				598A1BBC259BA94A00C0B34C /* indigo_mount_pmc8_main.c in Sources */,
@@ -14696,6 +14759,7 @@
 				593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */,
 				595F2930211E211200380EF4 /* DDHidDevice.m in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
+				59B348A229E854080062C2EA /* indigo_focuser_primaluce.c in Sources */,
 				9D3E90762899679A0093C9EB /* indigo_focuser_prodigy.c in Sources */,
 				9D743A5923FD573E0093319F /* indigo_rotator_simulator.c in Sources */,
 				593A8F10285F616F00F6CF1C /* indigocat_precession.c in Sources */,
