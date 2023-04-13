@@ -1,7 +1,7 @@
 #ifndef __toupcam_h__
 #define __toupcam_h__
 
-/* Version: 53.22004.20230115 */
+/* Version: 53.22412.20230409 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -10,7 +10,9 @@
               (c) arm64: Win10 or above
               (d) arm: Win10 or above
        (2) WinRT: x64, x86, arm64, arm; Win10 or above
-       (3) macOS: universal (x64 + x86); macOS 10.10 or above
+       (3) macOS:
+              (a) x64+x86: macOS 10.10 or above
+              (b) x64+arm64: macOS 11.0 or above, support x64 and Apple silicon (such as M1, M2, etc)
        (4) Linux: kernel 2.6.27 or above
               (a) x64: GLIBC 2.14 or above
               (b) x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above
@@ -91,7 +93,7 @@ extern "C" {
 /********************************************************************************/
 #if defined(TOUPCAM_HRESULT_ERRORCODE_NEEDED)
 #define S_OK                0x00000000 /* Success */
-#define S_FALSE             0x00000001 /* Success, something special, such as noop */
+#define S_FALSE             0x00000001 /* Yet another success */
 #define E_UNEXPECTED        0x8000ffff /* Catastrophic failure */
 #define E_NOTIMPL           0x80004001 /* Not supported or not implemented */
 #define E_NOINTERFACE       0x80004002
@@ -102,6 +104,7 @@ extern "C" {
 #define E_FAIL              0x80004005 /* Generic failure */
 #define E_WRONG_THREAD      0x8001010e /* Call function in the wrong thread */
 #define E_GEN_FAILURE       0x8007001f /* Device not functioning */
+#define E_BUSY              0x800700aa /* The requested resource is in use */
 #define E_PENDING           0x8000000a /* The data necessary to complete this operation is not yet available */
 #define E_TIMEOUT           0x8001011f /* This operation returned because the timeout period expired */
 #endif
@@ -156,8 +159,10 @@ typedef struct Toupcam_t { int unused; } *HToupcam, *HToupCam;
 #define TOUPCAM_FLAG_EVENT_HARDWARE      0x0000040000000000  /* hardware event, such as exposure start & stop */
 #define TOUPCAM_FLAG_LIGHTSOURCE         0x0000080000000000  /* light source */
 #define TOUPCAM_FLAG_FILTERWHEEL         0x0000100000000000  /* filter wheel */
-#define TOUPCAM_FLAG_GIGE                0x0000200000000000  /* GigE */
-#define TOUPCAM_FLAG_10GIGE              0x0000400000000000  /* 10 Gige */
+#define TOUPCAM_FLAG_GIGE                0x0000200000000000  /* 1 Gigabit GigE */
+#define TOUPCAM_FLAG_10GIGE              0x0000400000000000  /* 10 Gigabit GigE */
+#define TOUPCAM_FLAG_5GIGE               0x0000800000000000  /* 5 Gigabit GigE */
+#define TOUPCAM_FLAG_25GIGE              0x0001000000000000  /* 2.5 Gigabit GigE */
 
 #define TOUPCAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define TOUPCAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
@@ -220,8 +225,20 @@ typedef struct Toupcam_t { int unused; } *HToupcam, *HToupCam;
 #define TOUPCAM_AE_PERCENT_MIN           0       /* auto exposure percent, 0 => full roi average */
 #define TOUPCAM_AE_PERCENT_MAX           100
 #define TOUPCAM_AE_PERCENT_DEF           10
-#define TOUPCAM_NOPACKET_TIMEOUT_MIN     500     /* 500ms */
-#define TOUPCAM_NOFRAME_TIMEOUT_MIN      500     /* 500ms */
+#define TOUPCAM_NOPACKET_TIMEOUT_MIN     500     /* no packet timeout minimum: 500ms */
+#define TOUPCAM_NOFRAME_TIMEOUT_MIN      500     /* no frame timeout minimum: 500ms */
+#define TOUPCAM_DYNAMIC_DEFECT_T1_MIN    10      /* dynamic defect pixel correction */
+#define TOUPCAM_DYNAMIC_DEFECT_T1_MAX    100
+#define TOUPCAM_DYNAMIC_DEFECT_T1_DEF    13
+#define TOUPCAM_DYNAMIC_DEFECT_T2_MIN    0
+#define TOUPCAM_DYNAMIC_DEFECT_T2_MAX    100
+#define TOUPCAM_DYNAMIC_DEFECT_T2_DEF    100
+#define TOUPCAM_HDR_K_MIN                1       /* HDR synthesize */
+#define TOUPCAM_HDR_K_MAX                25500
+#define TOUPCAM_HDR_B_MIN                0
+#define TOUPCAM_HDR_B_MAX                65535
+#define TOUPCAM_HDR_THRESHOLD_MIN        0
+#define TOUPCAM_HDR_THRESHOLD_MAX        4094
 
 typedef struct {
     unsigned    width;
@@ -260,7 +277,7 @@ typedef struct {
 } ToupcamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.22004.20230115
+    get the version of this dll/so/dylib, which is: 53.22412.20230409
 */
 #if defined(_WIN32)
 TOUPCAM_API(const wchar_t*)   Toupcam_Version();
@@ -304,8 +321,8 @@ TOUPCAM_API(void)     Toupcam_Close(HToupcam h);
 
 #define TOUPCAM_EVENT_EXPOSURE          0x0001    /* exposure time or gain changed */
 #define TOUPCAM_EVENT_TEMPTINT          0x0002    /* white balance changed, Temp/Tint mode */
-#define TOUPCAM_EVENT_IMAGE             0x0004    /* live image arrived, use Toupcam_PullImage to get this image */
-#define TOUPCAM_EVENT_STILLIMAGE        0x0005    /* snap (still) frame arrived, use Toupcam_PullStillImage to get this frame */
+#define TOUPCAM_EVENT_IMAGE             0x0004    /* live image arrived, use Toupcam_PullImageXXXX to get this image */
+#define TOUPCAM_EVENT_STILLIMAGE        0x0005    /* snap (still) frame arrived, use Toupcam_PullStillImageXXXX to get this frame */
 #define TOUPCAM_EVENT_WBGAIN            0x0006    /* white balance changed, RGB Gain mode */
 #define TOUPCAM_EVENT_TRIGGERFAIL       0x0007    /* trigger failed */
 #define TOUPCAM_EVENT_BLACK             0x0008    /* black balance changed */
@@ -449,6 +466,14 @@ TOUPCAM_API(HRESULT)  Toupcam_SnapR(HToupcam h, unsigned nResolutionIndex, unsig
 */
 TOUPCAM_API(HRESULT)  Toupcam_Trigger(HToupcam h, unsigned short nNumber);
 
+/* 
+    trigger synchronously
+    nTimeout:   0:              by default, exposure * 102% + 4000 milliseconds
+                0xffffffff:     wait infinite
+                other:          milliseconds to wait
+*/
+TOUPCAM_API(HRESULT)  Toupcam_TriggerSync(HToupcam h, unsigned nTimeout, void* pImageData, int bits, int rowPitch, ToupcamFrameInfoV3* pInfo);
+
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Toupcam_StartXXXX.
     put_Size use width and height parameters, put_eSize use the index parameter.
@@ -538,6 +563,8 @@ TOUPCAM_API(HRESULT)  Toupcam_get_AutoExpoTarget(HToupcam h, unsigned short* Tar
 TOUPCAM_API(HRESULT)  Toupcam_put_AutoExpoTarget(HToupcam h, unsigned short Target);
 
 /*set the maximum/minimal auto exposure time and agin. The default maximum auto exposure time is 350ms */
+TOUPCAM_API(HRESULT)  Toupcam_put_AutoExpoRange(HToupcam h, unsigned maxTime, unsigned minTime, unsigned short maxGain, unsigned short minGain);
+TOUPCAM_API(HRESULT)  Toupcam_get_AutoExpoRange(HToupcam h, unsigned* maxTime, unsigned* minTime, unsigned short* maxGain, unsigned short* minGain);
 TOUPCAM_API(HRESULT)  Toupcam_put_MaxAutoExpoTimeAGain(HToupcam h, unsigned maxTime, unsigned short maxGain);
 TOUPCAM_API(HRESULT)  Toupcam_get_MaxAutoExpoTimeAGain(HToupcam h, unsigned* maxTime, unsigned short* maxGain);
 TOUPCAM_API(HRESULT)  Toupcam_put_MinAutoExpoTimeAGain(HToupcam h, unsigned minTime, unsigned short minGain);
@@ -757,13 +784,13 @@ TOUPCAM_API(HRESULT)  Toupcam_read_Pipe(HToupcam h, unsigned pipeId, void* pBuff
 TOUPCAM_API(HRESULT)  Toupcam_write_Pipe(HToupcam h, unsigned pipeId, const void* pBuffer, unsigned nBufferLen);
 TOUPCAM_API(HRESULT)  Toupcam_feed_Pipe(HToupcam h, unsigned pipeId);
                                              
-#define TOUPCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* no frame timeout: 0 => disable, positive value (>= 500) => timeout milliseconds. default: disable */
+#define TOUPCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* no frame timeout: 0 => disable, positive value (>= TOUPCAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define TOUPCAM_OPTION_THREAD_PRIORITY        0x02       /* set the priority of the internal thread which grab data from the usb device.
                                                              Win: iValue: 0 = THREAD_PRIORITY_NORMAL; 1 = THREAD_PRIORITY_ABOVE_NORMAL; 2 = THREAD_PRIORITY_HIGHEST; 3 = THREAD_PRIORITY_TIME_CRITICAL; default: 1; see: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority
                                                              Linux & macOS: The high 16 bits for the scheduling policy, and the low 16 bits for the priority; see: https://linux.die.net/man/3/pthread_setschedparam
                                                          */
 #define TOUPCAM_OPTION_PROCESSMODE            0x03       /* obsolete & useless, noop. 0 = better image quality, more cpu usage. this is the default value; 1 = lower image quality, less cpu usage */
-#define TOUPCAM_OPTION_RAW                    0x04       /* raw data mode, read the sensor "raw" data. This can be set only BEFORE Toupcam_StartXXX(). 0 = rgb, 1 = raw, default value: 0 */
+#define TOUPCAM_OPTION_RAW                    0x04       /* raw data mode, read the sensor "raw" data. This can be set only while camea is NOT running. 0 = rgb, 1 = raw, default value: 0 */
 #define TOUPCAM_OPTION_HISTOGRAM              0x05       /* 0 = only one, 1 = continue mode */
 #define TOUPCAM_OPTION_BITDEPTH               0x06       /* 0 = 8 bits mode, 1 = 16 bits mode, subset of TOUPCAM_OPTION_PIXEL_FORMAT */
 #define TOUPCAM_OPTION_FAN                    0x07       /* 0 = turn off the cooling fan, [1, max] = fan speed */
@@ -846,15 +873,15 @@ TOUPCAM_API(HRESULT)  Toupcam_feed_Pipe(HToupcam h, unsigned pipeId);
 #define TOUPCAM_OPTION_AFZONE                 0x26       /* auto focus zone */
 #define TOUPCAM_OPTION_AFFEEDBACK             0x27       /* auto focus information feedback; 0:unknown; 1:focused; 2:focusing; 3:defocus; 4:up; 5:down */
 #define TOUPCAM_OPTION_TESTPATTERN            0x28       /* test pattern:
-                                                            0: TestPattern Off
+                                                            0: off
                                                             3: monochrome diagonal stripes
                                                             5: monochrome vertical stripes
                                                             7: monochrome horizontal stripes
                                                             9: chromatic diagonal stripes
                                                          */
 #define TOUPCAM_OPTION_AUTOEXP_THRESHOLD      0x29       /* threshold of auto exposure, default value: 5, range = [2, 15] */
-#define TOUPCAM_OPTION_BYTEORDER              0x2a       /* Byte order, BGR or RGB: 0 = >RGB, 1 => BGR, default value: 1(Win), 0(macOS, Linux, Android) */
-#define TOUPCAM_OPTION_NOPACKET_TIMEOUT       0x2b       /* no packet timeout: 0 = disable, positive value = timeout milliseconds. default: disable */
+#define TOUPCAM_OPTION_BYTEORDER              0x2a       /* Byte order, BGR or RGB: 0 => RGB, 1 => BGR, default value: 1(Win), 0(macOS, Linux, Android) */
+#define TOUPCAM_OPTION_NOPACKET_TIMEOUT       0x2b       /* no packet timeout: 0 => disable, positive value (>= TOUPCAM_NOPACKET_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define TOUPCAM_OPTION_MAX_PRECISE_FRAMERATE  0x2c       /* get the precise frame rate maximum value in 0.1 fps, such as 115 means 11.5 fps */
 #define TOUPCAM_OPTION_PRECISE_FRAMERATE      0x2d       /* precise frame rate current value in 0.1 fps */
 #define TOUPCAM_OPTION_BANDWIDTH              0x2e       /* bandwidth, [1-100]% */
@@ -937,6 +964,21 @@ TOUPCAM_API(HRESULT)  Toupcam_feed_Pipe(HToupcam h, unsigned pipeId);
                                                                 low 16 bits: min
                                                          */
 #define TOUPCAM_OPTION_HIGH_FULLWELL          0x55       /* high fullwell capacity: 0 => disable, 1 => enable */
+#define TOUPCAM_OPTION_DYNAMIC_DEFECT         0x56       /* dynamic defect pixel correction:
+                                                            threshold:
+                                                                 t1 (high 16 bits): [1, 100]
+                                                                 t2 (low 16 bits): [0, 100]
+                                                         */
+#define TOUPCAM_OPTION_HDR_KB                 0x57       /* HDR synthesize
+                                                                K (high 16 bits): [1, 25500]
+                                                                B (low 16 bits): [0, 65535]
+                                                                0xffffffff => set to default
+                                                         */
+#define TOUPCAM_OPTION_HDR_THRESHOLD          0x58       /* HDR synthesize 
+                                                                threshold: [1, 4095]
+                                                                0xffffffff => set to default
+                                                         */
+#define TOUPCAM_OPTION_ISP                    0x59       /* hardware ISP: on => 1, off => 0 */
 
 /* pixel format */
 #define TOUPCAM_PIXELFORMAT_RAW8              0x00
@@ -1002,7 +1044,7 @@ TOUPCAM_API(HRESULT)  Toupcam_get_AfParam(HToupcam h, ToupcamAfParam* pAfParam);
 #define TOUPCAM_IOCONTROLTYPE_SET_FORMAT                  0x06
 #define TOUPCAM_IOCONTROLTYPE_GET_OUTPUTINVERTER          0x07 /* boolean, only support output signal */
 #define TOUPCAM_IOCONTROLTYPE_SET_OUTPUTINVERTER          0x08
-#define TOUPCAM_IOCONTROLTYPE_GET_INPUTACTIVATION         0x09 /* 0x00 => Positive, 0x01 => Negative */
+#define TOUPCAM_IOCONTROLTYPE_GET_INPUTACTIVATION         0x09 /* 0x00 => Rising edge, 0x01 => Falling edge */
 #define TOUPCAM_IOCONTROLTYPE_SET_INPUTACTIVATION         0x0a
 #define TOUPCAM_IOCONTROLTYPE_GET_DEBOUNCERTIME           0x0b /* debouncer time in microseconds, [0, 20000] */
 #define TOUPCAM_IOCONTROLTYPE_SET_DEBOUNCERTIME           0x0c
@@ -1076,6 +1118,15 @@ TOUPCAM_API(HRESULT)  Toupcam_get_AfParam(HToupcam h, ToupcamAfParam* pAfParam);
     3 => GPIO1
 */
 TOUPCAM_API(HRESULT)  Toupcam_IoControl(HToupcam h, unsigned ioLineNumber, unsigned nType, int outVal, int* inVal);
+
+#define TOUPCAM_FLASH_SIZE      0x00    /* query total size */
+#define TOUPCAM_FLASH_EBLOCK    0x01    /* query erase block size */
+#define TOUPCAM_FLASH_RWBLOCK   0x02    /* query read/write block size */
+#define TOUPCAM_FLASH_STATUS    0x03    /* query status */
+#define TOUPCAM_FLASH_READ      0x04    /* read */
+#define TOUPCAM_FLASH_WRITE     0x05    /* write */
+#define TOUPCAM_FLASH_ERASE     0x06    /* erase */
+TOUPCAM_API(HRESULT)  Toupcam_rwc_Flash(HToupcam h, unsigned action, unsigned addr, unsigned len, void* pData);
 
 TOUPCAM_API(HRESULT)  Toupcam_write_UART(HToupcam h, const unsigned char* pData, unsigned nDataLen);
 TOUPCAM_API(HRESULT)  Toupcam_read_UART(HToupcam h, unsigned char* pBuffer, unsigned nBufferLen);
@@ -1234,8 +1285,10 @@ TOUPCAM_API(HRESULT)  Toupcam_AwbOnePush(HToupcam h, PITOUPCAM_TEMPTINT_CALLBACK
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_AbbOnePush(HToupcam h, PITOUPCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB);
 
+typedef void (__stdcall* PTOUPCAM_HOTPLUG)(void* ctxHotPlug);
+TOUPCAM_API(HRESULT)  Toupcam_GigeEnable(PTOUPCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 /*
-Only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
+USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
        (a) Device Management, https://docs.microsoft.com/en-us/windows/win32/devio/device-management
        (b) Detecting Media Insertion or Removal, https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal
@@ -1245,7 +1298,6 @@ Only available on macOS and Linux, it's unnecessary on Windows & Android. To pro
   (4) On macOS, IONotificationPortCreate series APIs can also be used as an alternative.
 Recommendation: for better rubustness, when notify of device insertion arrives, don't open handle of this device immediately, but open it after delaying a short time (e.g., 200 milliseconds).
 */
-typedef void (*PTOUPCAM_HOTPLUG)(void* ctxHotPlug);
 #if !defined(_WIN32) && !defined(__ANDROID__)
 TOUPCAM_API(void)   Toupcam_HotPlug(PTOUPCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif

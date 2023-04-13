@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Toupcam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 53.22004.20230115</li></ul>
+<hr/><ul><li>Version: 53.22412.20230408</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -20,7 +20,12 @@
         </ul>
       </li>
 	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
-      <li>macOS: universal (x64 + x86); macOS 10.10 or above</li>
+      <li>macOS:
+	  <ul>
+	  <li>x64+x86: macOS 10.10 or above</li>
+	  <li>x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
+	  </ul>
+	  </li>
       <li>Linux: kernel 2.6.27 or above
 	    <ul>
 		  <li>x64: GLIBC 2.14 or above</li>
@@ -30,7 +35,7 @@
 		  <li>armel: GLIBC 2.8 or above; built by arm-linux-gnueabi (version 5.4.0)</li>
 		</ul>
 	  </li>
-      <li>Android: __ANDROID_API__ >= 24 (Android 7.0); built by android-ndk-r18b; see <a href="https://developer.android.com/ndk/guides/abis" target="_blank">here</a>
+      <li>Android: __ANDROID_API__ &gt;= 24 (Android 7.0); built by android-ndk-r18b; see <a href="https://developer.android.com/ndk/guides/abis" target="_blank">here</a>
         <ul>
             <li>arm64: arm64-v8a</li>
             <li>arm: armeabi-v7a</li>
@@ -120,7 +125,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
     </blockquote>
  	</li></ul>
  <ul><li>android: libtoupcam.so for Android on arm, arm64, x86 and x64</li></ul>
- <ul><li>mac: For macOS</li></ul> 
+ <ul><li>mac: For macOS, universal dylib: x64+x86, x64+arm64</li></ul> 
  <ul><li>python: toupcam.py and sample code</li></ul>
  <ul><li>java: toupcam.java and sample code</li></ul>
  <ul><li>doc: User manuals in English and <a href="hans.html" target="_blank">Simplified Chinese</a></li></ul>
@@ -157,7 +162,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr>
  <tr>
    <td>TOUPCAM_EVENT_EXPOSURE</td>
-   <td rowspan="17">Software</td>
+   <td rowspan="18">Software</td>
    <td>exposure time changed</td>
  </tr>
  <tr>
@@ -170,11 +175,11 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr>
  <tr>
    <td>TOUPCAM_EVENT_IMAGE</td>
-   <td>Video image data arrives. Use Toupcam_PullImage(V3/V2) to 'pull' the image data</td>
+   <td>Video image data arrives. Use Toupcam_PullImageXXXX to 'pull' the image data</td>
  </tr>
  <tr>
    <td>TOUPCAM_EVENT_STILLIMAGE</td>
-   <td>Still image which is triggered by function Toupcam_Snap or Toupcam_SnapN or Toupcam_SnapR arrives. Use Toupcam_PullImageV3 or Toupcam_PullStillImage(V2) to 'pull' the image data</td>
+   <td>Still image which is triggered by function Toupcam_Snap or Toupcam_SnapN or Toupcam_SnapR arrives. Use Toupcam_PullImageXXXX to 'pull' the image data</td>
  </tr>
  <tr>
    <td>TOUPCAM_EVENT_ERROR</td>
@@ -185,11 +190,11 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
    <td>Camera disconnected, maybe has been pulled out</td>
  </tr>
   <tr>
-   <td><href id="evnoframe">TOUPCAM_EVENT_NOFRAMETIMEOUT</a></td>
+   <td><a id="evnoframe">TOUPCAM_EVENT_NOFRAMETIMEOUT</a></td>
    <td>No frame was not captured within the specified time. see <a href="#noframe">TOUPCAM_OPTION_NOFRAME_TIMEOUT</a></td>
  </tr>
   <tr>
-   <td><href id="evnopacket">TOUPCAM_EVENT_NOPACKETIMEOUT</a></td>
+   <td><a id="evnopacket">TOUPCAM_EVENT_NOPACKETIMEOUT</a></td>
    <td>No packet was not captured within the specified time. see <a href="#nopacket">TOUPCAM_OPTION_NOPACKET_TIMEOUT</a></td>
  </tr>
   <tr>
@@ -340,69 +345,88 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td width="20%">Name</td>
-        <td width="60%">Description</td>
-		<td width="20%">Value</td>
+        <td width="15%">Name</td>
+        <td width="35%">Description</td>
+		<td width="35%">Remark</td>
+		<td width="15%">Value</td>
       </tr>
 	  <tr>
         <td>S_OK</td>
         <td>Success</td>
+		<td>&nbsp;</td>
 		<td>0x00000000</td>
 	  </tr>
 	  <tr>
         <td>S_FALSE</td>
-        <td>Success, something special, such as noop</td>
+        <td>Yet another success</td>
+		<td>Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop</td>
 		<td>0x00000001</td>
-	  </tr>
-	  <tr>
-        <td>E_FAIL</td>
-        <td>Unspecified failure</td>
-		<td>0x80004005</td>
 	  </tr>
 	  <tr>
         <td>E_ACCESSDENIED</td>
         <td>Permission denied</td>
+		<td>The program on Linux does not have permission to open the USB device, please enable udev rules file or run as root</td>
 		<td>0x80070005</td>
 	  </tr>
 	  <tr>
         <td>E_INVALIDARG</td>
         <td>One or more arguments are not valid</td>
+		<td>&nbsp;</td>
 		<td>0x80070057</td>
 	  </tr>
 	  <tr>
         <td>E_NOTIMPL</td>
         <td>Not supported or not implemented</td>
+		<td>This feature is not supported on this model of camera</td>
 		<td>0x80004001</td>
 	  </tr>
 	  <tr>
         <td>E_POINTER</td>
         <td>Pointer that is not valid</td>
+		<td>Pointer is NULL</td>
 		<td>0x80004003</td>
 	  </tr>
 	  <tr>
         <td>E_UNEXPECTED</td>
         <td>Catastrophic failure</td>
-		<td>0x8000FFFF</td>
+		<td>&nbsp;</td>
+		<td>0x8000ffff</td>
 	  </tr>
 	  <tr>
         <td>E_WRONG_THREAD</td>
         <td>Call function in the wrong thread</td>
-		<td>0x8001010E</td>
+		<td>See <a href="#wrongthread1">here</a>, <a href="#wrongthread2">here</a>, <a href="#wrongthread3">here</a></td>
+		<td>0x8001010e</td>
 	  </tr>
 	  <tr>
         <td>E_GEN_FAILURE</td>
         <td>Device not functioning</td>
-		<td>0x8007001F</td>
+		<td>It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, camera hardware damage, etc</td>
+		<td>0x8007001f</td>
+	  </tr>
+	  <tr>
+        <td>E_BUSY</td>
+        <td>The requested resource is in use</td>
+		<td>The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc</td>
+		<td>0x800700aa</td>
 	  </tr>
 	  <tr>
         <td>E_PENDING</td>
         <td>The data necessary to complete this operation is not yet available</td>
+		<td>No data is available at this time</td>
 		<td>0x8000000a</td>
 	  </tr>
 	  <tr>
         <td>E_TIMEOUT</td>
         <td>This operation returned because the timeout period expired</td>
+		<td>&nbsp;</td>
 		<td>0x8001011f</td>
+	  </tr>
+	  <tr>
+        <td>E_FAIL</td>
+        <td>Unspecified failure</td>
+		<td>&nbsp;</td>
+		<td>0x80004005</td>
 	  </tr>
     </table>
   </div><br/>
@@ -425,12 +449,12 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
     </p>
 	<p><strong>There are limitations in the callback context:</strong></p>
 	<p><strong>(a) Do NOT call Toupcam_Stop and Toupcam_Close in this callback function, otherwise, deadlocks.</strong></p>
-	<p><strong>(b) Do NOT call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</strong></p>
-	<p><strong>(c) Do NOT call Toupcam_put_Roi, it will fail with the error code E_WRONG_THREAD.</strong></p>
+	<p><strong>(b) <a id="wrongthread1">Do NOT call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
+	<p><strong>(c) <a id="wrongthread2">Do NOT call Toupcam_put_Roi, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
 <p>Functions with coordinate parameters, such as Toupcam_put_Roi, Toupcam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
-<p>If the image is upsize down (see <a href="#upsizedown">here</a>), the coordinate must be also upsize down.</p> 
+<p>If the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</p> 
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_EnumV2</font></h2>
     <p><strong>Return value:</strong> non-negative integer, enumerated camera number</p>
@@ -468,12 +492,12 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="44">flag</td>
+   <td width="8%" rowspan="49">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
-   <td>TOUPCAM_FLAG_CMOS</td>
-   <td>cmos sensor</td>
+   <td width="29%">TOUPCAM_FLAG_CMOS</td>
+   <td width="63%">cmos sensor</td>
  </tr>
  <tr>
    <td>TOUPCAM_FLAG_CCD_PROGRESSIVE</td>
@@ -488,60 +512,60 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td>support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
  </tr>
  <tr>
-   <td width="29%">TOUPCAM_FLAG_MONO</td>
-   <td width="63%">monochromatic sensor</td>
+   <td>TOUPCAM_FLAG_MONO</td>
+   <td>monochromatic sensor</td>
  </tr>
   <tr>
-   <td width="29%">TOUPCAM_FLAG_BINSKIP_SUPPORTED</td>
-   <td width="63%">support bin/skip mode, see Toupcam_put_Mode and Toupcam_get_Mode</td>
+   <td>TOUPCAM_FLAG_BINSKIP_SUPPORTED</td>
+   <td>support bin/skip mode, see Toupcam_put_Mode and Toupcam_get_Mode</td>
  </tr>
  <tr>
-   <td width="29%">TOUPCAM_FLAG_USB30</td>
-   <td width="63%">usb3.0</td>
+   <td>TOUPCAM_FLAG_USB30</td>
+   <td>usb3.0</td>
  </tr>
  <tr>
-   <td width="29%">TOUPCAM_FLAG_TEC</td>
-   <td width="63%">Thermoelectric Cooler</td>
+   <td>TOUPCAM_FLAG_TEC</td>
+   <td>Thermoelectric Cooler</td>
  </tr>
  <tr>
-   <td width="29%">TOUPCAM_FLAG_USB30_OVER_USB20</td>
-   <td width="63%">usb3.0 camera connected to usb2.0 port</td>
+   <td>TOUPCAM_FLAG_USB30_OVER_USB20</td>
+   <td>usb3.0 camera connected to usb2.0 port</td>
  </tr>
  <tr>
-   <td width="29%">TOUPCAM_FLAG_ST4</td>
-   <td width="63%">ST4 port</td>
+   <td>TOUPCAM_FLAG_ST4</td>
+   <td>ST4 port</td>
  </tr>
  <tr>
-   <td width="29%">TOUPCAM_FLAG_GETTEMPERATURE</td>
-   <td width="63%">support to get the temperature of the sensor, Toupcam_get_Temperature</td>
+   <td>TOUPCAM_FLAG_GETTEMPERATURE</td>
+   <td>support to get the temperature of the sensor, Toupcam_get_Temperature</td>
  </tr>
  <tr>
-   <td width="29%">TOUPCAM_FLAG_HIGH_FULLWELL</td>
-   <td width="63%">support high fullwell capacity</td>
+   <td>TOUPCAM_FLAG_HIGH_FULLWELL</td>
+   <td>support high fullwell capacity</td>
  </tr>
   <tr>
-   <td width="29%">TOUPCAM_FLAG_RAW10</td>
-   <td width="63%">Pixel format, RAW 10 bits</td>
+   <td>TOUPCAM_FLAG_RAW10</td>
+   <td>Pixel format, RAW 10 bits</td>
  </tr>
   <tr>
-   <td width="29%">TOUPCAM_FLAG_RAW12</td>
-   <td width="63%">Pixel format, RAW 12 bits</td>
+   <td>TOUPCAM_FLAG_RAW12</td>
+   <td>Pixel format, RAW 12 bits</td>
  </tr>
   <tr>
-   <td width="29%">TOUPCAM_FLAG_RAW14</td>
-   <td width="63%">Pixel format, RAW 14 bits</td>
+   <td>TOUPCAM_FLAG_RAW14</td>
+   <td>Pixel format, RAW 14 bits</td>
  </tr>
   <tr>
-   <td width="29%">TOUPCAM_FLAG_RAW16</td>
-   <td width="63%">Pixel format, RAW 16 bits</td>
+   <td>TOUPCAM_FLAG_RAW16</td>
+   <td>Pixel format, RAW 16 bits</td>
  </tr>
   <tr>
-   <td width="29%">TOUPCAM_FLAG_FAN</td>
-   <td width="63%">cooling fan</td>
+   <td>TOUPCAM_FLAG_FAN</td>
+   <td>cooling fan</td>
  </tr>
   <tr>
-   <td width="29%">TOUPCAM_FLAG_TEC_ONOFF</td>
-   <td width="63%">Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
+   <td>TOUPCAM_FLAG_TEC_ONOFF</td>
+   <td>Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
 							TOUPCAM_OPTION_TEC<br/>
 							TOUPCAM_OPTION_TECTARGET</td>
  </tr>
@@ -648,6 +672,22 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <tr>
     <td>TOUPCAM_FLAG_FILTERWHEEL</td>
     <td>filter wheel</td>
+  </tr>
+  <tr>
+    <td>TOUPCAM_FLAG_GIGE</td>
+    <td>1 Gigabit GigE</td>
+  </tr>
+  <tr>
+    <td>TOUPCAM_FLAG_10GIGE</td>
+    <td>10 Gigabit GigE</td>
+  </tr>
+  <tr>
+    <td>TOUPCAM_FLAG_5GIGE</td>
+    <td>5 Gigabit GigE</td>
+  </tr>
+  <tr>
+    <td>TOUPCAM_FLAG_25GIGE</td>
+    <td>2.5 Gigabit GigE</td>
   </tr>
  <tr>
    <td width="8%">maxspeed</td>
@@ -797,7 +837,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bStill: to pull still image, set to 1, otherwise 0</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">TOUPCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
-    <p>int rowPitch: the distance from one row to the next row. rowPitch = 0 means using the default row pitch. rowPitch = -1 means zero padding</p>
+    <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
     <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
 	<p>ToupcamFrameInfoV3/V2* pInfo: out parameter, frame info:</p><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
 #define TOUPCAM_FRAMEINFO_FLAG_SEQ          0x0001 /* frame sequence number */
@@ -850,7 +890,7 @@ typedef struct {
       <tr>
         <td colspan="2">Format</td>
         <td>=0 means Default Row Pitch</td>
-        <td>=-1 means zero paddding</td>
+        <td>=-1 means Minimum Row Pitch (zero paddding)</td>
       </tr>
       <tr>
         <td width="10%" rowspan="6">RGB</td>
@@ -943,7 +983,7 @@ typedef struct {
     <p><strong>Parameters:</strong></p>
     	<blockquote>
     		<p>HToupcam h: camera instance handle</p>
-			<p>int bPause: 1 => pause, 0 => continue</p>
+			<p>int bPause: 1 =&gt; pause, 0 =&gt; continue</p>
     	</blockquote>
     <p><strong>Remarks:</strong> temporarily pause the video stream</p>
 </li></ul>
@@ -1101,6 +1141,12 @@ typedef struct {
           (The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
+        <td><a id="rawo">TOUPCAM_OPTION_ISP</a></td>
+        <td>Hardware ISP: 1 =&gt; on, 0 =&gt; off</td>
+        <td>1</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
       	<td>TOUPCAM_OPTION_BITDEPTH</td>
       	<td>Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.<br/>
       	  0 = use 8 bits depth.<br/>1 = use the maximum bits depth of this camera.</td>
@@ -1119,11 +1165,11 @@ typedef struct {
       <tr>
       	<td><a id="rgb">TOUPCAM_OPTION_RGB</a></td>
       	<td>0 = RGB24<br/>
-			1 = RGB48 format when bitdepth > 8<br/>
+			1 = RGB48 format when bitdepth &gt; 8<br/>
 			2 = RGB32<br/>
 			3 = 8 bits grey (only for mono camera)<br/>
-			4 = 16 bits grey (only for mono camera and bitdepth > 8)<br/>
-            5 = RGB64 format when bitdepth > 8</td>
+			4 = 16 bits grey (only for mono camera and bitdepth &gt; 8)<br/>
+            5 = RGB64 format when bitdepth &gt; 8</td>
       	<td>0</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
@@ -1136,7 +1182,7 @@ typedef struct {
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
       <tr>
-      	<td><a id="upsizedown">TOUPCAM_OPTION_UPSIDE_DOWN</a></td>
+      	<td><a id="upsidedown">TOUPCAM_OPTION_UPSIDE_DOWN</a></td>
       	<td>Upside down:<br/>
 			1: yes<br/>
 			0: no<br/>
@@ -1347,23 +1393,23 @@ typedef struct {
       </tr>
 	  <tr>
       	<td>TOUPCAM_OPTION_TESTPATTERN</td>
-      	<td>test pattern:<br/>0: TestPattern Off<br/>3: monochrome diagonal stripes<br/>5: monochrome vertical stripes<br/>7: monochrome horizontal stripes<br/>9: chromatic diagonal stripes</td>
+      	<td>test pattern:<br/>0: off<br/>3: monochrome diagonal stripes<br/>5: monochrome vertical stripes<br/>7: monochrome horizontal stripes<br/>9: chromatic diagonal stripes</td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
 	  <tr>
         <td><a id="noframe">TTOUPCAM_OPTION_NOFRAME_TIMEOUT</a></td>
         <td>Timeout for grabbing no frame. Trigger an event when no frame is acquired within the set time, see <a href="#evnoframe">TOUPCAM_EVENT_NOFRAMETIMEOUT</a><br/>
-          0 => disable<br/>
-          positive value (>=500) => timeout milliseconds</td>
+          0 =&gt; disable<br/>
+          positive value (&gt;=TOUPCAM_NOFRAME_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
         <td>0</td>
         <td>Yes</td>
       </tr>
 	  <tr>
         <td><a id="nopacket">TOUPCAM_OPTION_NOPACKET_TIMEOUT</a></td>
         <td>Timeout for grabbing no packet. Trigger an event when no packet is acquired within the set time, see <a href="#evnopacket">TOUPCAM_EVENT_NOPACKETTIMEOUT</a><br/>
-          0 = disable<br/>
-          positive value = timeout milliseconds</td>
+          0 =&gt; disable<br/>
+          positive value (&gt;=TOUPCAM_NOPACKET_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
         <td>0</td>
         <td>Yes</td>
       </tr>
@@ -1486,7 +1532,7 @@ typedef struct {
       </tr>
       <tr>
         <td><a id="hwoption">TOUCPAM_OPTION_EVENT_HARDWARE</a></td>
-        <td>enable or disable hardware event notify: 0 => disable, 1 => enable
+        <td>enable or disable hardware event notify: 0 =&gt; disable, 1 =&gt; enable
         <blockquote>(1) iOption = TOUPCAM_OPTION_EVENT_HARDWARE, master switch for notification of all hardware events<br/>
         (2) iOption = TOUPCAM_OPTION_EVENT_HARDWARE | <a href="#hwevent">(event type)</a>, a specific type of sub-switch</blockquote>
         Only if both the master switch and the sub-switch of a specific type remain on are actually enabled for that type of event notification.<br/>
@@ -1503,7 +1549,7 @@ typedef struct {
       </tr>
       <tr>
         <td>TOUPCAM_OPTION_HIGH_FULLWELL</td>
-        <td>high fullwell capacity:<br/>0 => disable, 1 => enable</td>
+        <td>high fullwell capacity:<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td>
 		<td>Yes</td>
       </tr>
@@ -1517,13 +1563,31 @@ typedef struct {
       </tr>
       <tr>
         <td>TOUPCAM_OPTION_DEFECT_PIXEL</td>
-        <td>Defect Pixel Correction<br/>0 => disable, 1 => enable</td>
+        <td>Defect Pixel Correction<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>enable (1)</td>
 		<td>Yes</td>
       </tr>
       <tr>
+        <td>TOUPCAM_OPTION_HDR_KB</td>
+        <td>HDR synthesize<br/>K (high 16 bits): [1, 25500]<br/>B (low 16 bits): [0, 65535]<br/>0xffffffff => set to default</td>
+		<td>Model Specific</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_HDR_THRESHOLD</td>
+        <td>HDR synthesize<br/>threshold: [1, 4095]<br/>0xffffffff => set to default</td>
+		<td>Model Specific</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_DYNAMIC_DEFECT</td>
+        <td>Dynamic Defect Pixel Correction<br/>threshold:<br/>t1 (high 16 bits): [10, 100]<br/>t2 (low 16 bits): [0, 100]</td>
+		<td>disable (t1=0, t2=0)</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td>TOUPCAM_OPTION_ANTI_SHUTTER_EFFECT</td>
-        <td>anti shutter effect: 1 => disable, 0 => disable</td>
+        <td>anti shutter effect: 1 =&gt; disable, 0 =&gt; disable</td>
 		<td>enable (1)</td>
 		<td>Yes</td>
       </tr>
@@ -1699,7 +1763,7 @@ typedef struct {
 					set:
                         <blockquote>-1: calibrate<br/>
                         val &amp; 0xff: position between 0 and N-1, where N is the number of filter slots<br/>
-						(val &gt;&gt; 8) &amp; 0x1: direction, 0 => clockwise spinning, 1 => auto direction spinning</blockquote>                   
+						(val &gt;&gt; 8) &amp; 0x1: direction, 0 =&gt; clockwise spinning, 1 =&gt; auto direction spinning</blockquote>                   
                     get:
                         <blockquote>-1: in motion<br/>
                         val: position arrived</blockquote>
@@ -1712,7 +1776,7 @@ typedef struct {
 <blockquote>
 	<p><strong>Important:</strong></p>
 <p><strong>a. Some options cannot be changed while the camera is running.</strong></p>
-  <p><strong>b. It is forbidden to call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE in the callback context of PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</strong></p>
+  <p><strong>b. <a id="wrongthread3">It is forbidden to call Toupcam_put_Option with TOUPCAM_OPTION_TRIGGER, TOUPCAM_OPTION_BITDEPTH, TOUPCAM_OPTION_PIXEL_FORMAT, TOUPCAM_OPTION_BINNING, TOUPCAM_OPTION_ROTATE in the callback context of PTOUPCAM_EVENT_CALLBACK and PTOUPCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</a></strong></p>
   <p>c. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
 </blockquote>
 </li></ul>
@@ -1732,7 +1796,8 @@ typedef struct {
     <p><strong>Remarks:</strong> If you set RealTime mode as 1, then you get shorter frame delay but lower frame rate which damages fluency. The default value is 0.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_get_AutoExpoEnable<br/>Toupcam_put_AutoExpoEnable<br/>Toupcam_get_AutoExpoTarget<br/>
-Toupcam_put_AutoExpoTarget<br/>Toupcam_put_MaxAutoExpoTimeAGain<br/>Toupcam_get_MaxAutoExpoTimeAGain<br/>Toupcam_put_MinAutoExpoTimeAGain<br/>Toupcam_get_MinAutoExpoTimeAGain</font></h2>
+Toupcam_put_AutoExpoTarget<br/>Toupcam_put_MaxAutoExpoTimeAGain<br/>Toupcam_put_AutoExpoRange<br/>Toupcam_get_AutoExpoRange<br/>
+Toupcam_get_MaxAutoExpoTimeAGain<br/>Toupcam_put_MinAutoExpoTimeAGain<br/>Toupcam_get_MinAutoExpoTimeAGain</font></h2>
     <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -2013,7 +2078,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
       </tr>
       <tr>
         <td>TOUPCAM_IOCONTROLTYPE_GET_INPUTACTIVATION</td>
-        <td>0x00 =&gt; Positive, 0x01 =&gt; Negative</td>
+        <td>0x00 =&gt; Rising edge, 0x01 =&gt; Falling edge</td>
       </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_INPUTACTIVATION</td>
@@ -2157,7 +2222,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE</td>
-   <td>exposure time signal:<br/>0 => specified line<br/>1 => common exposure time</td>
+   <td>exposure time signal:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE</td>
@@ -2165,7 +2230,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE</td>
-   <td>exposure event:<br/>0 => specified line<br/>1 => common exposure time</td>
+   <td>exposure event:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE</td>
@@ -2434,8 +2499,8 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>Exposure Time</td>
     <td rowspan="2">&nbsp;</td>
     <td>350ms</td>
-    <td rowspan="2">Toupcam_get_MaxAutoExpoTimeAGain</td>
-    <td rowspan="2">Toupcam_put_MaxAutoExpoTimeAGain</td>
+    <td rowspan="2">Toupcam_get_AutoExpoRange<br/>Toupcam_get_MaxAutoExpoTimeAGain<br/>Toupcam_get_MinAutoExpoTimeAGain</td>
+    <td rowspan="2">Toupcam_put_AutoExpoRange<br/>Toupcam_put_MaxAutoExpoTimeAGain<br/>Toupcam_put_MinAutoExpoTimeAGain</td>
     <td rowspan="2">&nbsp;</td>
   </tr>
   <tr>
@@ -2513,10 +2578,10 @@ public bool Snap(uint nResolutionIndex)
       </tr>
 	  <tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="5">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="13">C++</td>
-		<td rowspan="5">&nbsp;</td>
-		<td rowspan="5">console</td>
+		<td rowspan="7">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="15">C++</td>
+		<td rowspan="7">&nbsp;</td>
+		<td rowspan="7">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr>
 	  <tr>
@@ -2528,8 +2593,16 @@ public bool Snap(uint nResolutionIndex)
 		<td>simplest sample to demo soft trigger, about 80 lines of code</td>
 	  </tr>
 	  <tr>
+		<td colspan="2">demotriggersync</td>
+		<td>simplest sample to demo soft trigger synchronously (TriggerSync), about 80 lines of code</td>
+	  </tr>
+	  <tr>
 		<td colspan="2">demoexternaltrigger</td>
-		<td>simplest sample to demo external trigger, about 120 lines of code</td>
+		<td>simplest sample to demo external trigger, about 130 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demotriggerout</td>
+		<td>simplest sample to demo output signal, about 150 lines of code</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">demoraw</td>
@@ -2716,7 +2789,7 @@ public bool Snap(uint nResolutionIndex)
 <p>v10: demosaic method: please see <a href="#demosaic">here</a></p>
 <p>v9: change the histogram data type from double to float</p>
 <p>v8: support simulated trigger, please see <a href="#trigger">here</a></p>
-<p>v7: support RGB48 when bit depth > 8, please see <a href="#rgb">here</a></p>
+<p>v7: support RGB48 when bit depth &gt; 8, please see <a href="#rgb">here</a></p>
 <p>v6: support trigger mode, please see <a href="#trigger">here</a></p>
 <p>v5: White Balance: Temp/Tint Mode vs RGB Gain Mode, please see <a href="#wb">here</a></p>
 <p>v4: ROI (Region Of Interest) supported: please see <a href="#roi">here</a></p>
