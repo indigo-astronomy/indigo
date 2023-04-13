@@ -1,41 +1,46 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
 <title>Omegonprocam API Manual</title>
 </head>
 <body>
 <h1 align="center">Omegonprocam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 53.21120.20220710</li></ul>
+<hr/><ul><li>Version: 53.22412.20230408</li></ul>
 <ul>
   <li>Platform
     <ul>
       <li>Win32:
         <ul>
-          <li>x86: XP SP3 or above; CPU supports SSE2 instruction set or above</li>
           <li>x64: Win7 or above</li>
-		  <li>arm: Win10 or above</li>
+          <li>x86: XP SP3 or above; CPU supports SSE2 instruction set or above</li>
 		  <li>arm64: Win10 or above</li>
+		  <li>arm: Win10 or above</li>
         </ul>
       </li>
-	  <li>WinRT: x86, x64, arm, arm64; Windows10 or above</li>
-      <li>macOS: universal (x64 + x86); macOS 10.10 or above</li>
+	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
+      <li>macOS:
+	  <ul>
+	  <li>x64+x86: macOS 10.10 or above</li>
+	  <li>x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
+	  </ul>
+	  </li>
       <li>Linux: kernel 2.6.27 or above
 	    <ul>
-		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
 		  <li>x64: GLIBC 2.14 or above</li>
-		  <li>armel: GLIBC 2.8 or above; built by arm-linux-gnueabi (version 5.4.0)</li>
-		  <li>armhf: GLIBC 2.8 or above; built by arm-linux-gnueabihf (version 5.4.0)</li>
+		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
 		  <li>arm64: GLIBC 2.17 or above; built by aarch64-linux-gnu (version 5.4.0)</li>
+		  <li>armhf: GLIBC 2.8 or above; built by arm-linux-gnueabihf (version 5.4.0)</li>
+		  <li>armel: GLIBC 2.8 or above; built by arm-linux-gnueabi (version 5.4.0)</li>
 		</ul>
 	  </li>
-      <li>Android: built by android-ndk-r18b; __ANDROID_API__ = 23; see <a href="https://developer.android.com/ndk/guides/abis" target="_blank">here</a>
+      <li>Android: __ANDROID_API__ &gt;= 24 (Android 7.0); built by android-ndk-r18b; see <a href="https://developer.android.com/ndk/guides/abis" target="_blank">here</a>
         <ul>
-            <li>arm: armeabi-v7a</li>
             <li>arm64: arm64-v8a</li>
-            <li>x86</li>
+            <li>arm: armeabi-v7a</li>
             <li>x64: x86_64</li>
+            <li>x86</li>
         </ul>
       </li>
     </ul>
@@ -43,7 +48,7 @@
 </ul>
 <hr/><h1><font color="#0000FF">2. Introduction</font></h1><hr/>
 <p>Omegonprocam cameras support various kinds of APIs (Application Program Interface), namely
- Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://docs.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
+ Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
 <ul><li>inc</li></ul>
 <blockquote>
@@ -86,7 +91,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		DLL files for WinRT / UWP (Universal Windows Platform) / Windows Store App.<br/>
 		These dll files are compatible with Windows Runtime, and can be consumed from a Universal Windows Platform app.<br/>
 		If use C# to develop the UWP, omegonprocam.cs wrapper class can be used to P/Invoke into omegonprocam.dll.<br/>
-		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
+		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
 		</blockquote>
 	</li>
      <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)
@@ -120,7 +125,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
     </blockquote>
  	</li></ul>
  <ul><li>android: libomegonprocam.so for Android on arm, arm64, x86 and x64</li></ul>
- <ul><li>mac: For macOS</li></ul> 
+ <ul><li>mac: For macOS, universal dylib: x64+x86, x64+arm64</li></ul> 
  <ul><li>python: omegonprocam.py and sample code</li></ul>
  <ul><li>java: omegonprocam.java and sample code</li></ul>
  <ul><li>doc: User manuals in English and <a href="hans.html" target="_blank">Simplified Chinese</a></li></ul>
@@ -157,7 +162,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr>
  <tr>
    <td>OMEGONPROCAM_EVENT_EXPOSURE</td>
-   <td rowspan="17">Software</td>
+   <td rowspan="18">Software</td>
    <td>exposure time changed</td>
  </tr>
  <tr>
@@ -170,11 +175,11 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr>
  <tr>
    <td>OMEGONPROCAM_EVENT_IMAGE</td>
-   <td>Video image data arrives. Use Omegonprocam_PullImage(V3/V2) to 'pull' the image data</td>
+   <td>Video image data arrives. Use Omegonprocam_PullImageXXXX to 'pull' the image data</td>
  </tr>
  <tr>
    <td>OMEGONPROCAM_EVENT_STILLIMAGE</td>
-   <td>Still image which is triggered by function Omegonprocam_Snap or Omegonprocam_SnapN arrives. Use Omegonprocam_PullImageV3 or Omegonprocam_PullStillImage(V2) to 'pull' the image data</td>
+   <td>Still image which is triggered by function Omegonprocam_Snap or Omegonprocam_SnapN or Omegonprocam_SnapR arrives. Use Omegonprocam_PullImageXXXX to 'pull' the image data</td>
  </tr>
  <tr>
    <td>OMEGONPROCAM_EVENT_ERROR</td>
@@ -185,11 +190,11 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
    <td>Camera disconnected, maybe has been pulled out</td>
  </tr>
   <tr>
-   <td><href id="evnoframe">OMEGONPROCAM_EVENT_NOFRAMETIMEOUT</a></td>
+   <td><a id="evnoframe">OMEGONPROCAM_EVENT_NOFRAMETIMEOUT</a></td>
    <td>No frame was not captured within the specified time. see <a href="#noframe">OMEGONPROCAM_OPTION_NOFRAME_TIMEOUT</a></td>
  </tr>
   <tr>
-   <td><href id="evnopacket">OMEGONPROCAM_EVENT_NOPACKETIMEOUT</a></td>
+   <td><a id="evnopacket">OMEGONPROCAM_EVENT_NOPACKETIMEOUT</a></td>
    <td>No packet was not captured within the specified time. see <a href="#nopacket">OMEGONPROCAM_OPTION_NOPACKET_TIMEOUT</a></td>
  </tr>
   <tr>
@@ -340,69 +345,88 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
-        <td width="20%">Name</td>
-        <td width="60%">Description</td>
-		<td width="20%">Value</td>
+        <td width="15%">Name</td>
+        <td width="35%">Description</td>
+		<td width="35%">Remark</td>
+		<td width="15%">Value</td>
       </tr>
 	  <tr>
         <td>S_OK</td>
         <td>Success</td>
+		<td>&nbsp;</td>
 		<td>0x00000000</td>
 	  </tr>
 	  <tr>
         <td>S_FALSE</td>
-        <td>Success with noop</td>
+        <td>Yet another success</td>
+		<td>Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop</td>
 		<td>0x00000001</td>
-	  </tr>
-	  <tr>
-        <td>E_FAIL</td>
-        <td>Unspecified failure</td>
-		<td>0x80004005</td>
 	  </tr>
 	  <tr>
         <td>E_ACCESSDENIED</td>
         <td>Permission denied</td>
+		<td>The program on Linux does not have permission to open the USB device, please enable udev rules file or run as root</td>
 		<td>0x80070005</td>
 	  </tr>
 	  <tr>
         <td>E_INVALIDARG</td>
         <td>One or more arguments are not valid</td>
+		<td>&nbsp;</td>
 		<td>0x80070057</td>
 	  </tr>
 	  <tr>
         <td>E_NOTIMPL</td>
         <td>Not supported or not implemented</td>
+		<td>This feature is not supported on this model of camera</td>
 		<td>0x80004001</td>
 	  </tr>
 	  <tr>
         <td>E_POINTER</td>
         <td>Pointer that is not valid</td>
+		<td>Pointer is NULL</td>
 		<td>0x80004003</td>
 	  </tr>
 	  <tr>
         <td>E_UNEXPECTED</td>
         <td>Catastrophic failure</td>
-		<td>0x8000FFFF</td>
+		<td>&nbsp;</td>
+		<td>0x8000ffff</td>
 	  </tr>
 	  <tr>
         <td>E_WRONG_THREAD</td>
         <td>Call function in the wrong thread</td>
-		<td>0x8001010E</td>
+		<td>See <a href="#wrongthread1">here</a>, <a href="#wrongthread2">here</a>, <a href="#wrongthread3">here</a></td>
+		<td>0x8001010e</td>
 	  </tr>
 	  <tr>
         <td>E_GEN_FAILURE</td>
         <td>Device not functioning</td>
-		<td>0x8007001F</td>
+		<td>It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, camera hardware damage, etc</td>
+		<td>0x8007001f</td>
+	  </tr>
+	  <tr>
+        <td>E_BUSY</td>
+        <td>The requested resource is in use</td>
+		<td>The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc</td>
+		<td>0x800700aa</td>
 	  </tr>
 	  <tr>
         <td>E_PENDING</td>
         <td>The data necessary to complete this operation is not yet available</td>
+		<td>No data is available at this time</td>
 		<td>0x8000000a</td>
 	  </tr>
 	  <tr>
         <td>E_TIMEOUT</td>
         <td>This operation returned because the timeout period expired</td>
+		<td>&nbsp;</td>
 		<td>0x8001011f</td>
+	  </tr>
+	  <tr>
+        <td>E_FAIL</td>
+        <td>Unspecified failure</td>
+		<td>&nbsp;</td>
+		<td>0x80004005</td>
 	  </tr>
     </table>
   </div><br/>
@@ -415,7 +439,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 #include "omegonprocam.h"</pre></td></tr></table>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Calling Convention</font></h2>
-	<p>Win: __stdcall, please see <a href="https://docs.microsoft.com/en-us/cpp/cpp/stdcall" target="_blank">here</a></p>
+	<p>Win: __stdcall, please see <a href="https://learn.microsoft.com/en-us/cpp/cpp/stdcall" target="_blank">here</a></p>
 	<p>macOS, Linux and Android: __cdecl</p>
 </li></ul>
 <ul><li><h2><a id="callback"><font color="#0000FF">Callback: POMEGONPROCAM_EVENT_CALLBACK and POMEGONPROCAM_DATA_CALLBACK_V4/V3</font></a></h2>
@@ -425,11 +449,12 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
     </p>
 	<p><strong>There are limitations in the callback context:</strong></p>
 	<p><strong>(a) Do NOT call Omegonprocam_Stop and Omegonprocam_Close in this callback function, otherwise, deadlocks.</strong></p>
-	<p><strong>(b) Do NOT call Omegonprocam_put_Option with OMEGONPROCAM_OPTION_TRIGGER, OMEGONPROCAM_OPTION_BITDEPTH, OMEGONPROCAM_OPTION_PIXEL_FORMAT, OMEGONPROCAM_OPTION_BINNING, OMEGONPROCAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</strong></p>
+	<p><strong>(b) <a id="wrongthread1">Do NOT call Omegonprocam_put_Option with OMEGONPROCAM_OPTION_TRIGGER, OMEGONPROCAM_OPTION_BITDEPTH, OMEGONPROCAM_OPTION_PIXEL_FORMAT, OMEGONPROCAM_OPTION_BINNING, OMEGONPROCAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
+	<p><strong>(c) <a id="wrongthread2">Do NOT call Omegonprocam_put_Roi, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
 <p>Functions with coordinate parameters, such as Omegonprocam_put_Roi, Omegonprocam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
-<p>If the image is upsize down (see <a href="#upsizedown">here</a>), the coordinate must be also upsize down.</p> 
+<p>If the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</p> 
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_EnumV2</font></h2>
     <p><strong>Return value:</strong> non-negative integer, enumerated camera number</p>
@@ -467,12 +492,12 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="44">flag</td>
+   <td width="8%" rowspan="49">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
-   <td>OMEGONPROCAM_FLAG_CMOS</td>
-   <td>cmos sensor</td>
+   <td width="29%">OMEGONPROCAM_FLAG_CMOS</td>
+   <td width="63%">cmos sensor</td>
  </tr>
  <tr>
    <td>OMEGONPROCAM_FLAG_CCD_PROGRESSIVE</td>
@@ -487,56 +512,60 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td>support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
  </tr>
  <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_MONO</td>
-   <td width="63%">monochromatic sensor</td>
+   <td>OMEGONPROCAM_FLAG_MONO</td>
+   <td>monochromatic sensor</td>
  </tr>
   <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_BINSKIP_SUPPORTED</td>
-   <td width="63%">support bin/skip mode, see Omegonprocam_put_Mode and Omegonprocam_get_Mode</td>
+   <td>OMEGONPROCAM_FLAG_BINSKIP_SUPPORTED</td>
+   <td>support bin/skip mode, see Omegonprocam_put_Mode and Omegonprocam_get_Mode</td>
  </tr>
  <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_USB30</td>
-   <td width="63%">usb3.0</td>
+   <td>OMEGONPROCAM_FLAG_USB30</td>
+   <td>usb3.0</td>
  </tr>
  <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_TEC</td>
-   <td width="63%">Thermoelectric Cooler</td>
+   <td>OMEGONPROCAM_FLAG_TEC</td>
+   <td>Thermoelectric Cooler</td>
  </tr>
  <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_USB30_OVER_USB20</td>
-   <td width="63%">usb3.0 camera connected to usb2.0 port</td>
+   <td>OMEGONPROCAM_FLAG_USB30_OVER_USB20</td>
+   <td>usb3.0 camera connected to usb2.0 port</td>
  </tr>
  <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_ST4</td>
-   <td width="63%">ST4 port</td>
+   <td>OMEGONPROCAM_FLAG_ST4</td>
+   <td>ST4 port</td>
  </tr>
  <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_GETTEMPERATURE</td>
-   <td width="63%">support to get the temperature of the sensor, Omegonprocam_get_Temperature</td>
+   <td>OMEGONPROCAM_FLAG_GETTEMPERATURE</td>
+   <td>support to get the temperature of the sensor, Omegonprocam_get_Temperature</td>
+ </tr>
+ <tr>
+   <td>OMEGONPROCAM_FLAG_HIGH_FULLWELL</td>
+   <td>support high fullwell capacity</td>
  </tr>
   <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_RAW10</td>
-   <td width="63%">Pixel format, RAW 10 bits</td>
+   <td>OMEGONPROCAM_FLAG_RAW10</td>
+   <td>Pixel format, RAW 10 bits</td>
  </tr>
   <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_RAW12</td>
-   <td width="63%">Pixel format, RAW 12 bits</td>
+   <td>OMEGONPROCAM_FLAG_RAW12</td>
+   <td>Pixel format, RAW 12 bits</td>
  </tr>
   <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_RAW14</td>
-   <td width="63%">Pixel format, RAW 14 bits</td>
+   <td>OMEGONPROCAM_FLAG_RAW14</td>
+   <td>Pixel format, RAW 14 bits</td>
  </tr>
   <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_RAW16</td>
-   <td width="63%">Pixel format, RAW 16 bits</td>
+   <td>OMEGONPROCAM_FLAG_RAW16</td>
+   <td>Pixel format, RAW 16 bits</td>
  </tr>
   <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_FAN</td>
-   <td width="63%">cooling fan</td>
+   <td>OMEGONPROCAM_FLAG_FAN</td>
+   <td>cooling fan</td>
  </tr>
   <tr>
-   <td width="29%">OMEGONPROCAM_FLAG_TEC_ONOFF</td>
-   <td width="63%">Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
+   <td>OMEGONPROCAM_FLAG_TEC_ONOFF</td>
+   <td>Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
 							OMEGONPROCAM_OPTION_TEC<br/>
 							OMEGONPROCAM_OPTION_TECTARGET</td>
  </tr>
@@ -644,6 +673,22 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td>OMEGONPROCAM_FLAG_FILTERWHEEL</td>
     <td>filter wheel</td>
   </tr>
+  <tr>
+    <td>OMEGONPROCAM_FLAG_GIGE</td>
+    <td>1 Gigabit GigE</td>
+  </tr>
+  <tr>
+    <td>OMEGONPROCAM_FLAG_10GIGE</td>
+    <td>10 Gigabit GigE</td>
+  </tr>
+  <tr>
+    <td>OMEGONPROCAM_FLAG_5GIGE</td>
+    <td>5 Gigabit GigE</td>
+  </tr>
+  <tr>
+    <td>OMEGONPROCAM_FLAG_25GIGE</td>
+    <td>2.5 Gigabit GigE</td>
+  </tr>
  <tr>
    <td width="8%">maxspeed</td>
    <td colspan="2">Maximum speed level, same with Omegonprocam_get_MaxSpeed. The speed range is [0, maxspeed]. see Omegonprocam_put_Speed and Omegonprocam_get_Speed</td>
@@ -680,7 +725,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </blockquote>
   <p><strong>Remarks:</strong></p><blockquote>
   <p>This function is only available on macOS, Linux. To process the device plug in / pull out:</p><ul>
-  <li>On Windows, please refer to the MSDN(<a href="https://docs.microsoft.com/en-us/windows/win32/devio/device-management" target="_blank">Device Management</a>, <a href="https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal" target="_blank">Detecting Media Insertion or Removal</a>, <a href="https://docs.microsoft.com/en-us/windows/win32/devio/processing-a-request-to-remove-a-device" target="_blank">Processing a Request to Remove a Device</a>).</li>
+  <li>On Windows, please refer to the MSDN(<a href="https://learn.microsoft.com/en-us/windows/win32/devio/device-management" target="_blank">Device Management</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal" target="_blank">Detecting Media Insertion or Removal</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/processing-a-request-to-remove-a-device" target="_blank">Processing a Request to Remove a Device</a>).</li>
   <li>On Android, please refer <a href="https://developer.android.com/guide/topics/connectivity/usb/host" target="_blank">here</a></li>
   <li>On Linux/macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Omegonprocam_EnumV2(...) again to enum the cameras.</li>
   <li>On macOS, IONotificationPortCreate series APIs can also be used as an alternative.</li>
@@ -792,15 +837,16 @@ for (UsbDevice usbDevice : deviceList.values()) {
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bStill: to pull still image, set to 1, otherwise 0</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">OMEGONPROCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
-    <p>int rowPitch: the distance from one row to the next row. rowPitch = 0 means using the default row pitch. rowPitch = -1 means zero padding</p>
+    <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
     <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
 	<p>OmegonprocamFrameInfoV3/V2* pInfo: out parameter, frame info:</p><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
-#define OMEGONPROCAM_FRAMEINFO_FLAG_SEQ          0x01 /* frame sequence number */
-#define OMEGONPROCAM_FRAMEINFO_FLAG_TIMESTAMP    0x02 /* timestamp */
-#define OMEGONPROCAM_FRAMEINFO_FLAG_EXPOTIME     0x04 /* exposure time */
-#define OMEGONPROCAM_FRAMEINFO_FLAG_EXPOGAIN     0x08 /* exposure gain */
-#define OMEGONPROCAM_FRAMEINFO_FLAG_BLACKLEVEL   0x10 /* black level */
-#define OMEGONPROCAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x20 /* sequence shutter counter */
+#define OMEGONPROCAM_FRAMEINFO_FLAG_SEQ          0x0001 /* frame sequence number */
+#define OMEGONPROCAM_FRAMEINFO_FLAG_TIMESTAMP    0x0002 /* timestamp */
+#define OMEGONPROCAM_FRAMEINFO_FLAG_EXPOTIME     0x0004 /* exposure time */
+#define OMEGONPROCAM_FRAMEINFO_FLAG_EXPOGAIN     0x0008 /* exposure gain */
+#define OMEGONPROCAM_FRAMEINFO_FLAG_BLACKLEVEL   0x0010 /* black level */
+#define OMEGONPROCAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x0020 /* sequence shutter counter */
+#define OMEGONPROCAM_FRAMEINFO_FLAG_STILL        0x8000 /* still image */
 
 typedef struct {
     unsigned            width;      /* image width, always available */
@@ -844,7 +890,7 @@ typedef struct {
       <tr>
         <td colspan="2">Format</td>
         <td>=0 means Default Row Pitch</td>
-        <td>=-1 means zero paddding</td>
+        <td>=-1 means Minimum Row Pitch (zero paddding)</td>
       </tr>
       <tr>
         <td width="10%" rowspan="6">RGB</td>
@@ -937,10 +983,11 @@ typedef struct {
     <p><strong>Parameters:</strong></p>
     	<blockquote>
     		<p>HOmegonprocam h: camera instance handle</p>
+			<p>int bPause: 1 =&gt; pause, 0 =&gt; continue</p>
     	</blockquote>
-    <p><strong>Remarks:</strong> pause/continue camera instance.</p>
+    <p><strong>Remarks:</strong> temporarily pause the video stream</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Omegonprocam_Snap<br/>Omegonprocam_SnapN</font></h2>
+<ul><li><h2><font color="#0000FF">Omegonprocam_SnapN<br/>Omegonprocam_SnapR<br/>Omegonprocam_Snap</font></h2>
   <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
@@ -956,6 +1003,7 @@ typedef struct {
     <p>Most cameras can snap still image with different resolutions under continuous preview. For example, UCMOS03100KPA's previewed resolution is 1024*768, if we call Omegonprocam_Snap(h, 0), we get so called "still image" with 2048*1536 resolution.<br/>
     Some cameras hasn't this ability, so nResolutionIndex must be equal the preview resolution which is set by Omegonprocam_put_Size, or Omegonprocam_put_eSize.<br/>
     Whether it supports "still snap" or not, see "still" domain in OmegonprocamModelV2.</p>
+    <p>Omegonprocam_SnapR is used to snap "RAW" still image, bypass the hardware ISP if any.</p>
 	<p>Omegonprocam_Snap(h, index) == Omegonprocam_SnapN(h, index, 1)</p>
   </blockquote>
 </li></ul>
@@ -1025,8 +1073,8 @@ typedef struct {
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HOmegonprocam h: camera instance handle</p>
-    <p>unsigned* nFourCC: raw format, see  table below</p>
-    <p>unsigned* bitdepth: bit depth, such as 8, 10, 12, 14, 16</p>
+    <p>unsigned* pFourCC: raw format, see  table below</p>
+    <p>unsigned* pBitsPerPixel: bit depth, such as 8, 10, 12, 14, 16</p>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
   <tr>
    <td>#ifndef MAKEFOURCC<br/>
@@ -1093,10 +1141,16 @@ typedef struct {
           (The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
+        <td><a id="rawo">OMEGONPROCAM_OPTION_ISP</a></td>
+        <td>Hardware ISP: 1 =&gt; on, 0 =&gt; off</td>
+        <td>1</td>
+        <td>Yes</td>
+      </tr>
+      <tr>
       	<td>OMEGONPROCAM_OPTION_BITDEPTH</td>
       	<td>Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.<br/>
       	  0 = use 8 bits depth.<br/>1 = use the maximum bits depth of this camera.</td>
-      	<td>NA</td>
+      	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
       <tr>
@@ -1111,14 +1165,13 @@ typedef struct {
       <tr>
       	<td><a id="rgb">OMEGONPROCAM_OPTION_RGB</a></td>
       	<td>0 = RGB24<br/>
-			1 = RGB48 format when bitdepth > 8<br/>
+			1 = RGB48 format when bitdepth &gt; 8<br/>
 			2 = RGB32<br/>
 			3 = 8 bits grey (only for mono camera)<br/>
-			4 = 16 bits grey (only for mono camera and bitdepth > 8)<br/>
-            5 = RGB64 format when bitdepth > 8</td>
+			4 = 16 bits grey (only for mono camera and bitdepth &gt; 8)<br/>
+            5 = RGB64 format when bitdepth &gt; 8</td>
       	<td>0</td>
-      	<td><b>No</b><br/>
-      	  (The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
       	<td><a id="bgr">OMEGONPROCAM_OPTION_BYTEORDER</a></td>
@@ -1129,19 +1182,19 @@ typedef struct {
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
       <tr>
-      	<td><a id="upsizedown">OMEGONPROCAM_OPTION_UPSIDE_DOWN</a></td>
+      	<td><a id="upsidedown">OMEGONPROCAM_OPTION_UPSIDE_DOWN</a></td>
       	<td>Upside down:<br/>
 			1: yes<br/>
 			0: no<br/>
 			Please distinguish it from Omegonprocam_put_VFlip, which requires the CPU to perform data moving work on each frame of data</td>
       	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
-      	<td>Yes</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
       	<td>OMEGONPROCAM_OPTION_FAN</td>
       	<td>Some cameras support the cooling fan.<br/>
       	  0 = turn off the cooling fan<br/>[1, max] = fan speed</td>
-      	<td>NA</td>
+      	<td>Model Specific</td>
       	<td>Yes</td>
       </tr>
       <tr>
@@ -1154,7 +1207,7 @@ typedef struct {
       <tr>
       	<td>OMEGONPROCAM_OPTION_TECTARGET</td>
       	<td>get or set the target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃</td>
-      	<td>NA</td>
+      	<td>Model Specific</td>
       	<td>Yes</td>
       </tr>
       <tr>
@@ -1186,8 +1239,7 @@ typedef struct {
       	<td>OMEGONPROCAM_OPTION_MULTITHREAD</td>
       	<td>multithread image processing</td>
       	<td>1</td>
-      	<td><b>No</b><br/>
-			(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
       	<td><a id="binning">OMEGONPROCAM_OPTION_BINNING</a></td>
@@ -1212,13 +1264,13 @@ typedef struct {
 			0: LCG<br/>
 			1: HCG<br/>
 			2: HDR</td>
-      	<td>NA</td>
+      	<td>Model Specific</td>
       	<td>Yes</td>
       </tr>
       <tr>
       	<td>OMEGONPROCAM_OPTION_PIXEL_FORMAT</td>
       	<td>pixel format</td>
-      	<td>NA</td>
+      	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
       <tr>
@@ -1243,7 +1295,7 @@ typedef struct {
                     get:
                         <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
                         ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
-                        ((val &amp; 0xff0000) &gt;&gt; 8): average number</blockquote></td>
+                        ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
@@ -1258,7 +1310,7 @@ typedef struct {
                     get:
                         <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
                         ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
-                        ((val &amp; 0xff0000) &gt;&gt; 8): average number</blockquote></td>
+                        ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
@@ -1269,7 +1321,7 @@ typedef struct {
 						radius: [1, 10]<br/>
 						threshold: [0, 255]</blockquote>
 		</td>
-      	<td>0</td>
+      	<td>strength: Model Specific<br/>radius: 2<br/>threshold: 0</td>
       	<td>Yes</td>
       </tr>
       <tr>
@@ -1287,7 +1339,13 @@ typedef struct {
       </tr>
 	  <tr>
       	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE_MAX</td>
-      	<td>get the TEC maximum voltage in 0.1V</td>
+      	<td>TEC maximum voltage in 0.1V</td>
+      	<td>NA</td>
+      	<td>NA</td>
+      </tr>
+	  <tr>
+      	<td>OMEGONPROCAM_OPTION_TEC_VOLTAGE_MAX_RANGE</td>
+      	<td>get the TEC maximum voltage range in 0.1V<br/>high 16 bits: max<br/>low 16 bits: min</td>
       	<td>NA</td>
       	<td>NA</td>
       </tr>
@@ -1335,30 +1393,30 @@ typedef struct {
       </tr>
 	  <tr>
       	<td>OMEGONPROCAM_OPTION_TESTPATTERN</td>
-      	<td>test pattern:<br/>0: TestPattern Off<br/>3: monochrome diagonal stripes<br/>5: monochrome vertical stripes<br/>7: monochrome horizontal stripes<br/>9: chromatic diagonal stripes</td>
+      	<td>test pattern:<br/>0: off<br/>3: monochrome diagonal stripes<br/>5: monochrome vertical stripes<br/>7: monochrome horizontal stripes<br/>9: chromatic diagonal stripes</td>
       	<td>0</td>
       	<td>Yes</td>
       </tr>
 	  <tr>
         <td><a id="noframe">TOMEGONPROCAM_OPTION_NOFRAME_TIMEOUT</a></td>
         <td>Timeout for grabbing no frame. Trigger an event when no frame is acquired within the set time, see <a href="#evnoframe">OMEGONPROCAM_EVENT_NOFRAMETIMEOUT</a><br/>
-          0 => disable<br/>
-          positive value (>=500) => timeout milliseconds</td>
+          0 =&gt; disable<br/>
+          positive value (&gt;=OMEGONPROCAM_NOFRAME_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
         <td>0</td>
         <td>Yes</td>
       </tr>
 	  <tr>
         <td><a id="nopacket">OMEGONPROCAM_OPTION_NOPACKET_TIMEOUT</a></td>
         <td>Timeout for grabbing no packet. Trigger an event when no packet is acquired within the set time, see <a href="#evnopacket">OMEGONPROCAM_EVENT_NOPACKETTIMEOUT</a><br/>
-          0 = disable<br/>
-          positive value = timeout milliseconds</td>
+          0 =&gt; disable<br/>
+          positive value (&gt;=OMEGONPROCAM_NOPACKET_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
         <td>0</td>
         <td>Yes</td>
       </tr>
 	  <tr>
         <td>OMEGONPROCAM_OPTION_BANDWIDTH</td>
         <td>bandwidth, range:[1-100]%<br/>After setting the bandwidth, get the accurate precise rate range, and then set the precise frame rate</td>
-		<td>90%</td>
+		<td>100</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1394,19 +1452,19 @@ typedef struct {
         <td>OMEGONPROCAM_OPTION_CALLBACK_THREAD</td>
         <td>dedicated thread for callback, only available in pull mode</td>
 		<td>0</td>
-		<td><b>No</b></td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
 	  <tr>
         <td><a id="frontend">OMEGONPROCAM_OPTION_FRONTEND_DEQUE_LENGTH</a><br/>or<br/>OMEGONPROCAM_OPTION_FRAME_DEQUE_LENGTH</td>
         <td>frontend (raw) frame deque length, range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
 		<td>4</td>
-		<td><b>No</b></td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
 	  <tr>
         <td><a id="backend">OMEGONPROCAM_OPTION_BACKEND_DEQUE_LENGTH</a></td>
         <td>backend (pipelined) frame deque length (Only available in pull mode), range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
 		<td>3</td>
-		<td><b>No</b></td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
 	  <tr>
         <td>OMEGONPROCAM_OPTION_SEQUENCER_ONOFF</td>
@@ -1437,7 +1495,7 @@ typedef struct {
         <td><a id="denoise">OMEGONPROCAM_OPTION_DENOISE</a></td>
         <td>Denoise<br/>
 		strength range: [0, 100], 0 means disable</td>
-		<td>0</td>
+		<td>Model Specific</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1450,7 +1508,7 @@ typedef struct {
       <tr>
         <td><a id="heat">OMEGONPROCAM_OPTION_HEAT</a></td>
         <td>heat to prevent fogging up</td>
-		<td>max level</td>
+		<td>Model Specific</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1474,7 +1532,7 @@ typedef struct {
       </tr>
       <tr>
         <td><a id="hwoption">TOUCPAM_OPTION_EVENT_HARDWARE</a></td>
-        <td>enable or disable hardware event notify: 0 => disable, 1 => enable
+        <td>enable or disable hardware event notify: 0 =&gt; disable, 1 =&gt; enable
         <blockquote>(1) iOption = OMEGONPROCAM_OPTION_EVENT_HARDWARE, master switch for notification of all hardware events<br/>
         (2) iOption = OMEGONPROCAM_OPTION_EVENT_HARDWARE | <a href="#hwevent">(event type)</a>, a specific type of sub-switch</blockquote>
         Only if both the master switch and the sub-switch of a specific type remain on are actually enabled for that type of event notification.<br/>
@@ -1486,7 +1544,13 @@ typedef struct {
       <tr>
         <td><a id="lownoise">OMEGONPROCAM_OPTION_LOW_NOISE</a></td>
         <td>low noise mode (Higher signal noise ratio, lower frame rate)</td>
-		<td>0</td>
+		<td>Model Specific</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>OMEGONPROCAM_OPTION_HIGH_FULLWELL</td>
+        <td>high fullwell capacity:<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>Model Specific</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1499,13 +1563,31 @@ typedef struct {
       </tr>
       <tr>
         <td>OMEGONPROCAM_OPTION_DEFECT_PIXEL</td>
-        <td>Defect Pixel Correction<br/>0 => disable, 1 => enable</td>
+        <td>Defect Pixel Correction<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>enable (1)</td>
 		<td>Yes</td>
       </tr>
       <tr>
+        <td>OMEGONPROCAM_OPTION_HDR_KB</td>
+        <td>HDR synthesize<br/>K (high 16 bits): [1, 25500]<br/>B (low 16 bits): [0, 65535]<br/>0xffffffff => set to default</td>
+		<td>Model Specific</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>OMEGONPROCAM_OPTION_HDR_THRESHOLD</td>
+        <td>HDR synthesize<br/>threshold: [1, 4095]<br/>0xffffffff => set to default</td>
+		<td>Model Specific</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>OMEGONPROCAM_OPTION_DYNAMIC_DEFECT</td>
+        <td>Dynamic Defect Pixel Correction<br/>threshold:<br/>t1 (high 16 bits): [10, 100]<br/>t2 (low 16 bits): [0, 100]</td>
+		<td>disable (t1=0, t2=0)</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td>OMEGONPROCAM_OPTION_ANTI_SHUTTER_EFFECT</td>
-        <td>anti shutter effect: 1 => disable, 0 => disable</td>
+        <td>anti shutter effect: 1 =&gt; disable, 0 =&gt; disable</td>
 		<td>enable (1)</td>
 		<td>Yes</td>
       </tr>
@@ -1536,15 +1618,33 @@ typedef struct {
 		<td>Yes</td>
       </tr>
       <tr>
+        <td>OMEGONPROCAM_OPTION_LINE_PRE_DELAY</td>
+        <td>specified line signal pre-delay, microsecond</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>OMEGONPROCAM_OPTION_LINE_POST_DELAY</td>
+        <td>specified line signal post-delay, microsecond</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td>OMEGONPROCAM_OPTION_AUTOEXPO_CONV</td>
         <td>get auto exposure convergence status:<br/>1(YES) or 0(NO), -1(NA)</td>
 		<td></td>
 		<td>NA</td>
       </tr>
       <tr>
+        <td>OMEGONPROCAM_OPTION_AUTOEXPO_TRIGGER</td>
+        <td>auto exposure on trigger mode:<br/>1(Enable) or 0(Disable)</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td>OMEGONPROCAM_OPTION_THREAD_PRIORITY</td>
         <td>set the priority of the internal thread which grab data from the usb device.<br/>
-          Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority" target="_blank">SetThreadPriority</a></blockquote>
+          Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority" target="_blank">SetThreadPriority</a></blockquote>
 		  Linux &amp; macOS: <blockquote>The high 16 bits for the scheduling policy, and the low 16 bits for the priority.<br/>
 		  Please refer to <a href="https://linux.die.net/man/3/pthread_setschedparam" target="_blank">pthread_setschedparam</a>
 		  </blockquote></td>
@@ -1553,16 +1653,15 @@ typedef struct {
       </tr>
 	  <tr>
       	<td>OMEGONPROCAM_OPTION_LINEAR</td>
-      	<td>0 = turn off the builtin linear tone mapping<br/>
-      	  1 = turn on the builtin linear tone mapping</td>
+      	<td>Builtin linear tone mapping:<br/>0 = turn off<br/>1 = turn on</td>
       	<td>1</td>
       	<td>Yes</td>
       </tr>
       <tr>
       	<td>OMEGONPROCAM_OPTION_CURVE</td>
-      	<td>0 = turn off the builtin curve tone mapping<br/>
-      	  1 = turn on the builtin polynomial curve tone mapping<br/>
-		  2 = turn on the builtin logarithmic curve tone mapping</td>
+      	<td>Builtin curve tone mapping:<br/>0 = turn off<br/>
+      	  1 = turn on polynomial<br/>
+		  2 = turn on logarithmic</td>
       	<td>2</td>
       	<td>Yes</td>
       </tr>
@@ -1664,7 +1763,7 @@ typedef struct {
 					set:
                         <blockquote>-1: calibrate<br/>
                         val &amp; 0xff: position between 0 and N-1, where N is the number of filter slots<br/>
-						(val &gt;&gt; 8) &amp; 0x1: direction, 0 => clockwise spinning, 1 => auto direction spinning</blockquote>                   
+						(val &gt;&gt; 8) &amp; 0x1: direction, 0 =&gt; clockwise spinning, 1 =&gt; auto direction spinning</blockquote>                   
                     get:
                         <blockquote>-1: in motion<br/>
                         val: position arrived</blockquote>
@@ -1677,7 +1776,7 @@ typedef struct {
 <blockquote>
 	<p><strong>Important:</strong></p>
 <p><strong>a. Some options cannot be changed while the camera is running.</strong></p>
-  <p><strong>b. It is forbidden to call Omegonprocam_put_Option with OMEGONPROCAM_OPTION_TRIGGER, OMEGONPROCAM_OPTION_BITDEPTH, OMEGONPROCAM_OPTION_PIXEL_FORMAT, OMEGONPROCAM_OPTION_BINNING, OMEGONPROCAM_OPTION_ROTATE in the callback context of POMEGONPROCAM_EVENT_CALLBACK and POMEGONPROCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</strong></p>
+  <p><strong>b. <a id="wrongthread3">It is forbidden to call Omegonprocam_put_Option with OMEGONPROCAM_OPTION_TRIGGER, OMEGONPROCAM_OPTION_BITDEPTH, OMEGONPROCAM_OPTION_PIXEL_FORMAT, OMEGONPROCAM_OPTION_BINNING, OMEGONPROCAM_OPTION_ROTATE in the callback context of POMEGONPROCAM_EVENT_CALLBACK and POMEGONPROCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</a></strong></p>
   <p>c. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
 </blockquote>
 </li></ul>
@@ -1697,7 +1796,8 @@ typedef struct {
     <p><strong>Remarks:</strong> If you set RealTime mode as 1, then you get shorter frame delay but lower frame rate which damages fluency. The default value is 0.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_get_AutoExpoEnable<br/>Omegonprocam_put_AutoExpoEnable<br/>Omegonprocam_get_AutoExpoTarget<br/>
-Omegonprocam_put_AutoExpoTarget<br/>Omegonprocam_put_MaxAutoExpoTimeAGain<br/>Omegonprocam_get_MaxAutoExpoTimeAGain<br/>Omegonprocam_put_MinAutoExpoTimeAGain<br/>Omegonprocam_get_MinAutoExpoTimeAGain</font></h2>
+Omegonprocam_put_AutoExpoTarget<br/>Omegonprocam_put_MaxAutoExpoTimeAGain<br/>Omegonprocam_put_AutoExpoRange<br/>Omegonprocam_get_AutoExpoRange<br/>
+Omegonprocam_get_MaxAutoExpoTimeAGain<br/>Omegonprocam_put_MinAutoExpoTimeAGain<br/>Omegonprocam_get_MinAutoExpoTimeAGain</font></h2>
     <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
@@ -1746,9 +1846,9 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HOmegonprocam h: camera instance handle</p>
-      <p>int bChrome: TRUE or FALSE</p>
+      <p>int bChrome: 1(monochromatic) or color(0)</p>
     </blockquote>
-    <p><strong>Remarks:</strong> color or grey mode</p>
+    <p><strong>Remarks:</strong> color or monochromatic mode</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_get_VFlip<br/>Omegonprocam_put_VFlip<br/>Omegonprocam_get_HFlip<br/>Omegonprocam_put_HFlip</font></h2>
       <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -1794,7 +1894,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
   <p><strong>Remarks:</strong> set Bin mode or Skip mode. Cameras with higher resolution can support two sampling modes, one is Bin mode (Neighborhood averaging), the other is Skip (sampling extraction). In comparison, the former is with better image effect but decreasing frame rate while the latter is just the reverse.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_put_TempTint<br/>Omegonprocam_get_TempTint</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
+      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HOmegonprocam h: camera instance handle</p>
@@ -1803,7 +1903,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
   <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_AwbOnce</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return.</p>
+    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HOmegonprocam h: camera instance handle</p>
@@ -1812,7 +1912,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in Temp/Tint Mode. When the "auto white balance" completes, OMEGONPROCAM_EVENT_TEMPTINT event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_put_WhiteBalanceGain<br/>Omegonprocam_get_WhiteBalanceGain</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return.</p>
+      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HOmegonprocam h: camera instance handle</p>
@@ -1821,7 +1921,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
   <p><strong>Remarks:</strong> set/get the RGB gain parameters of white balance (RGB Gain Mode, please see <a href="#wb">here</a>).</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_AwbInit</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return.</p>
+    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HOmegonprocam h: camera instance handle</p>
@@ -1830,7 +1930,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, OMEGONPROCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
 <ul><li><h2><a id="black"><font color="#0000FF">Omegonprocam_AbbOnce</font></a></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure.</p>
+    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HOmegonprocam h: camera instance handle</p>
@@ -1855,6 +1955,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
       </blockquote>
       <p><strong>Remarks:</strong> set/get the rectangle of automatic white balance and auto-exposure and automatic black balance. The default Rectangle is in the center of the image, its width is 20% image with, its height is 20% image height.</p>
 	  <p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
+	  <p>For mono camera, white balance and black balance always return E_NOTIMPL.</p>
   </li>
 </ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_get_MonoMode</font></h2>
@@ -1977,7 +2078,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
       </tr>
       <tr>
         <td>OMEGONPROCAM_IOCONTROLTYPE_GET_INPUTACTIVATION</td>
-        <td>0x00 =&gt; Positive, 0x01 =&gt; Negative</td>
+        <td>0x00 =&gt; Rising edge, 0x01 =&gt; Falling edge</td>
       </tr>
   <tr>
    <td>OMEGONPROCAM_IOCONTROLTYPE_SET_INPUTACTIVATION</td>
@@ -2121,15 +2222,23 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
  </tr>
  <tr>
    <td>OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE</td>
-   <td>0 => specified lines<br/>1 => common exposure time<br/>default: 0</td>
+   <td>exposure time signal:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
  </tr>
  <tr>
    <td>OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE</td>
    <td>&nbsp;</td>
  </tr>
  <tr>
+   <td>OMEGONPROCAM_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE</td>
+   <td>exposure event:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
+ </tr>
+ <tr>
+   <td>OMEGONPROCAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE</td>
+   <td>&nbsp;</td>
+ </tr>
+ <tr>
    <td>OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_START_LINE</td>
-   <td>exposure start line, default: 0</td>
+   <td>exposure start line, default: 1</td>
  </tr>
  <tr>
    <td>OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_START_LINE</td>
@@ -2158,19 +2267,21 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
   </blockquote>
   <p><strong>Remarks:</strong> If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Omegonprocam_FfcOnce</font></h2>
+<ul><li><h2><font color="#0000FF">Omegonprocam_FfcOnce<br/>Omegonprocam_DfcOnce</font></h2>
   <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HOmegonprocam h: camera instance handle</p>
   </blockquote>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Omegonprocam_DfcOnce</font></h2>
+<ul><li><h2><font color="#0000FF">Omegonprocam_FfcExport<br/>Omegonprocam_FfcImport<br/>Omegonprocam_DfcExport<br/>Omegonprocam_DfcImport</font></h2>
   <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HOmegonprocam h: camera instance handle</p>
+	<p>filepath: file path</p>
   </blockquote>
+  <p><strong>Remarks:</strong> Export or import *.dfc or *.ffc file.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Omegonprocam_LevelRangeAuto</font></h2>
       <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -2388,8 +2499,8 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
     <td>Exposure Time</td>
     <td rowspan="2">&nbsp;</td>
     <td>350ms</td>
-    <td rowspan="2">Omegonprocam_get_MaxAutoExpoTimeAGain</td>
-    <td rowspan="2">Omegonprocam_put_MaxAutoExpoTimeAGain</td>
+    <td rowspan="2">Omegonprocam_get_AutoExpoRange<br/>Omegonprocam_get_MaxAutoExpoTimeAGain<br/>Omegonprocam_get_MinAutoExpoTimeAGain</td>
+    <td rowspan="2">Omegonprocam_put_AutoExpoRange<br/>Omegonprocam_put_MaxAutoExpoTimeAGain<br/>Omegonprocam_put_MinAutoExpoTimeAGain</td>
     <td rowspan="2">&nbsp;</td>
   </tr>
   <tr>
@@ -2419,7 +2530,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
   <tr>
     <td colspan="3">TEC Target</td>
     <td>-300 ~ 400<br/>(-30℃ ~ 40℃)</td>
-    <td>0</td>
+    <td>Model Specific</td>
     <td colspan="2">OMEGONPROCAM_OPTION_TECTARGET</td>
     <td>&nbsp;</td>
   </tr>
@@ -2467,10 +2578,10 @@ public bool Snap(uint nResolutionIndex)
       </tr>
 	  <tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="5">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="13">C++</td>
-		<td rowspan="5">&nbsp;</td>
-		<td rowspan="5">console</td>
+		<td rowspan="7">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="15">C++</td>
+		<td rowspan="7">&nbsp;</td>
+		<td rowspan="7">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr>
 	  <tr>
@@ -2482,8 +2593,16 @@ public bool Snap(uint nResolutionIndex)
 		<td>simplest sample to demo soft trigger, about 80 lines of code</td>
 	  </tr>
 	  <tr>
+		<td colspan="2">demotriggersync</td>
+		<td>simplest sample to demo soft trigger synchronously (TriggerSync), about 80 lines of code</td>
+	  </tr>
+	  <tr>
 		<td colspan="2">demoexternaltrigger</td>
-		<td>simplest sample to demo external trigger, about 120 lines of code</td>
+		<td>simplest sample to demo external trigger, about 130 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demotriggerout</td>
+		<td>simplest sample to demo output signal, about 150 lines of code</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">demoraw</td>
@@ -2603,7 +2722,7 @@ public bool Snap(uint nResolutionIndex)
 	  <tr>
 		<td colspan="2">amcap</td>
 		<td>&nbsp;</td>
-		<td>Microsoft directshow sample, <a href="https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap" target="_blank">https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap</a></td>
+		<td>Microsoft sample demonstrates various tasks related to video capture, see <a href="https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap" target="_blank">https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap</a></td>
 	  </tr>
 	  <tr>
 		<td colspan="2">LVDemo1</td>
@@ -2670,7 +2789,7 @@ public bool Snap(uint nResolutionIndex)
 <p>v10: demosaic method: please see <a href="#demosaic">here</a></p>
 <p>v9: change the histogram data type from double to float</p>
 <p>v8: support simulated trigger, please see <a href="#trigger">here</a></p>
-<p>v7: support RGB48 when bit depth > 8, please see <a href="#rgb">here</a></p>
+<p>v7: support RGB48 when bit depth &gt; 8, please see <a href="#rgb">here</a></p>
 <p>v6: support trigger mode, please see <a href="#trigger">here</a></p>
 <p>v5: White Balance: Temp/Tint Mode vs RGB Gain Mode, please see <a href="#wb">here</a></p>
 <p>v4: ROI (Region Of Interest) supported: please see <a href="#roi">here</a></p>
