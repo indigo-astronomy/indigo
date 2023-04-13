@@ -28,6 +28,8 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_ccd_touptek & family:
 	- add camera offset
+	- update SDK 53.22412.20230409 (except StarShootG)
+	- native apple silicon support (except StarShootG)
 
 # [2.0-228] - 14 Mar Tue 2023
 ### Overall
