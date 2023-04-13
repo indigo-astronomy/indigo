@@ -109,10 +109,10 @@
 #define DRIVER_NAME						"indigo_ccd_mallin"
 #define DRIVER_PRIVATE_DATA		mallin_private_data
 
-#define SDK_CALL(x)						Toupcam_##x
+#define SDK_CALL(x)						Mallincam_##x
 #define SDK_DEF(x)						MALLINCAM_##x
-#define SDK_TYPE(x)						Toupcam##x
-#define SDK_HANDLE						HToupCam
+#define SDK_TYPE(x)						Mallincam##x
+#define SDK_HANDLE						HMallincam
 
 #include <mallincam.h>
 #include "../ccd_mallin/indigo_ccd_mallin.h"
