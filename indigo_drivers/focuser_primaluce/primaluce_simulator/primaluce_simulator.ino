@@ -141,7 +141,23 @@ void loop() {
           }
         }       
       } else if (!strcmp(reqKey.c_str(), "cmd")) {
-        Serial.println("cmd:");
+				JsonVariant value = reqValue["MOT1"]["MOVE_ABS"]["STEP"];
+				if (value.is<int>()) {
+					state["MOT1"]["ABS_POS"] = value.as<int>();
+					res["cmd"]["MOT1"]["MOVE_ABS"]["STEP"] = "done";
+					serializeJson(response, Serial);
+					Serial.println();
+					return;
+				}
+				value = reqValue["MOT1"]["MOT_STOP"];
+				if (value.is<String>()) {
+					res["cmd"]["MOT1"]["MOT_STOP"] = "done";
+					serializeJson(response, Serial);
+					Serial.println();
+					return;
+				}
+				Serial.println("\"Error: invalid cmd\"");
+				return;
       } else {
         Serial.println("\"Error: no get, set or cmd\"");
         return;

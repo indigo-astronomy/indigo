@@ -65,7 +65,7 @@ static char *MOT1_SET_SPEED[] = { "res", "set", "MOT1", "SPEED", NULL };
 static char *MOT1_MIN_SPEED[] = { "res", "get", "MOT1", "MIN_SPEED", NULL };
 static char *MOT1_MAX_SPEED[] = { "res", "get", "MOT1", "MAX_SPEED", NULL };
 static char *MOT1_BUSY[] = { "res", "get", "MOT1", "STATUS", "BUSY", NULL };
-static char *MOT1_MOVE_ABS_STEP[] = { "res", "get", "MOT1", "MOVE_ABS", "STEP", NULL };
+static char *MOT1_MOVE_ABS_STEP[] = { "res", "cmd", "MOT1", "MOVE_ABS", "STEP", NULL };
 static char *MOT1_MOT_STOP[] = { "res", "get", "MOT1", "MOT_STOP", NULL };
 static char *MOT1_NTC_T[] = { "res", "get", "MOT1", "NTC_T", NULL };
 
@@ -80,7 +80,7 @@ static bool primaluce_command(indigo_device *device, char *command, char *respon
 	}
 //	struct timeval tv;
 //	fd_set readout;
-//	tv.tv_sec = 1;
+//	tv.tv_sec = 5;
 //	tv.tv_usec = 0;
 //	FD_ZERO(&readout);
 //	FD_SET(PRIVATE_DATA->handle, &readout);
@@ -286,7 +286,7 @@ static void focuser_position_handler(indigo_device *device) {
 	char command[1024];
 	char response[1024];
 	jsmntok_t tokens[128];
-	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
+	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
 	if (primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		char *state = getString(response, tokens, MOT1_MOVE_ABS_STEP);
 		if (state == NULL || strcmp(state, "done")) {
@@ -298,7 +298,7 @@ static void focuser_position_handler(indigo_device *device) {
 	}
 	while (true) {
 		if (primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":{\"BUSY\":\"\"}}}}}", response, sizeof(response), tokens, 128)) {
-			FOCUSER_POSITION_ITEM->number.value = getNumber(response, tokens, MOT1_ABS_POS);
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = getNumber(response, tokens, MOT1_ABS_POS);
 			if (getNumber(response, tokens, MOT1_BUSY) == 0) {
 				break;
 			}
@@ -321,7 +321,7 @@ static void focuser_steps_handler(indigo_device *device) {
 		position = FOCUSER_POSITION_ITEM->number.min;
 	else if (position > FOCUSER_POSITION_ITEM->number.max)
 		position = FOCUSER_POSITION_ITEM->number.max;
-	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}", position);
+	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", position);
 	if (primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		char *state = getString(response, tokens, MOT1_MOVE_ABS_STEP);
 		if (state == NULL || strcmp(state, "done")) {
@@ -333,7 +333,7 @@ static void focuser_steps_handler(indigo_device *device) {
 	}
 	while (true) {
 		if (primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":{\"BUSY\":\"\"}}}}}", response, sizeof(response), tokens, 128)) {
-			FOCUSER_POSITION_ITEM->number.value = getNumber(response, tokens, MOT1_ABS_POS);
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = getNumber(response, tokens, MOT1_ABS_POS);
 			if (getNumber(response, tokens, MOT1_BUSY) == 0) {
 				break;
 			}
