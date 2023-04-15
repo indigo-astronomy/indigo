@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x001C
+#define DRIVER_VERSION 0x001D
 
 #include <stdlib.h>
 #include <string.h>
@@ -152,8 +152,6 @@
 #include "../ccd_touptek/indigo_ccd_touptek.h"
 
 #endif
-
-#if !(defined(__APPLE__) && defined(__arm64__) && defined(STARSHOOTG))
 
 #define PRIVATE_DATA        							((DRIVER_PRIVATE_DATA *)device->private_data)
 
@@ -1650,20 +1648,3 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 	return INDIGO_OK;
 }
 
-#else
-
-indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
-	SET_DRIVER_INFO(info, DRIVER_LABEL, __FUNCTION__, DRIVER_VERSION, true, last_action);
-
-	switch(action) {
-		case INDIGO_DRIVER_INIT:
-		case INDIGO_DRIVER_SHUTDOWN:
-			return INDIGO_UNSUPPORTED_ARCH;
-		case INDIGO_DRIVER_INFO:
-			break;
-	}
-	return INDIGO_OK;
-}
-#endif
