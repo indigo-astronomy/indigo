@@ -37,7 +37,6 @@ static struct dslr_model_info {
   { "CANON EOS R3", 6000, 4000, 6.0 },
   { "CANON EOS R", 6720, 4480, 5.35 },
   { "CANON EOS M6 MARK II", 6960, 4640, 3.2 },
-  { "CANON EOS M6", 6000, 4000, 3.71 },
   { "CANON EOS M50 MARK II", 6000, 4000, 3.71 },
   { "CANON EOS M50", 6000, 4000, 3.71 },
   { "CANON EOS M5", 6000, 4000, 3.71 },
