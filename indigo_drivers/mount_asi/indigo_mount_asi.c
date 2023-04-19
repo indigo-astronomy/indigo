@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -108,6 +108,7 @@ typedef struct {
 	int prev_tracking_rate;
 	bool prev_home_state;
 	int prev_tracking_error;
+	bool park_requested;
 } asi_private_data;
 
 static char *asi_error_string(unsigned int code) {
@@ -605,6 +606,10 @@ static bool asi_home(indigo_device *device) {
 	return asi_command(device, ":hC#", NULL, 0, 0);
 }
 
+static bool asi_park(indigo_device *device) {
+	return asi_command(device, ":hP#", NULL, 0, 0);
+}
+
 static bool asi_stop(indigo_device *device) {
 	return asi_command(device, ":Q#", NULL, 0, 0);
 }
@@ -695,6 +700,18 @@ static void position_timer_callback(indigo_device *device) {
 					indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 				}
 				PRIVATE_DATA->prev_home_state = false;
+			}
+			if (strchr(response, 'N')) {
+				if (PRIVATE_DATA->park_requested == true) {
+					MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+					/* We can not detect when the mount is parked or unparked as the parked
+					   flag is never set (a firmware bug) this is why we set it to unparked
+					   when the goto park is finished
+					*/
+					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+					indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parked (perked item not set due to a firmware bug)");
+				}
+				PRIVATE_DATA->park_requested = false;
 			}
 		}
 
@@ -791,9 +808,12 @@ static void asi_init_mount(indigo_device *device) {
 			ZWO_MERIDIAN_TRACK_PASSED_ITEM->sw.value = track;
 			ZWO_MERIDIAN_LIMIT_ITEM->number.value = ZWO_MERIDIAN_LIMIT_ITEM->number.target = limit;
 		}
+		MOUNT_PARK_PROPERTY->hidden = false;
+		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 	} else {
 		ZWO_MERIDIAN_PROPERTY->hidden = true;
 		ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = true;
+		MOUNT_PARK_PROPERTY->hidden = true;
 	}
 	indigo_define_property(device, ZWO_MERIDIAN_PROPERTY, NULL);
 	indigo_define_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
@@ -896,13 +916,31 @@ static void mount_connect_callback(indigo_device *device) {
 
 static void mount_home_callback(indigo_device *device) {
 	if (MOUNT_HOME_ITEM->sw.value) {
-			MOUNT_HOME_ITEM->sw.value = false;
+		MOUNT_HOME_ITEM->sw.value = false;
 		if (!asi_home(device)) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 		} else {
 			PRIVATE_DATA->prev_home_state = false;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
+		}
+	}
+}
+
+static void mount_park_callback(indigo_device *device) {
+	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+		MOUNT_PARK_PARKED_ITEM->sw.value = false;
+		MOUNT_PARK_UNPARKED_ITEM->sw.value = false;
+		if (asi_set_tracking(device, false) && asi_park(device)) {
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Going to park position");
+			/* Wait 1s to make sure the mount reports moving. We use moving flag to detect
+			   when finished because fs a firmware bug mount never reports parked.
+			*/
+			indigo_usleep(ONE_SECOND_DELAY);
+			PRIVATE_DATA->park_requested = true;
+		} else {
+			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
 		}
 	}
 }
@@ -1028,10 +1066,11 @@ static void mount_set_utc_time_callback(indigo_device *device) {
 }
 
 static void mount_tracking_callback(indigo_device *device) {
-	if (asi_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value))
+	if (asi_set_tracking(device, MOUNT_TRACKING_ON_ITEM->sw.value)) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
-	else
+	} else {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
 	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 }
 
@@ -1179,6 +1218,15 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 			indigo_set_timer(device, 0, mount_home_callback, NULL);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_PARK_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PARK
+		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
+		if (MOUNT_PARK_PARKED_ITEM->sw.value) {
+			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+			indigo_set_timer(device, 0, mount_park_callback, NULL);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
