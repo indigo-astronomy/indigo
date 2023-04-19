@@ -991,14 +991,22 @@ static void mount_abort_callback(indigo_device *device) {
 			MOUNT_MOTION_SOUTH_ITEM->sw.value = false;
 			MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+
 			MOUNT_MOTION_WEST_ITEM->sw.value = false;
 			MOUNT_MOTION_EAST_ITEM->sw.value = false;
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_coordinates(device, NULL);
+
+			PRIVATE_DATA->prev_home_state = false;
+			MOUNT_HOME_ITEM->sw.value = false;
+			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
+
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
 		} else {
