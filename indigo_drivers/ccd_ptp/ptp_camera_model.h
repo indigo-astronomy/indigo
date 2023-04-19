@@ -48,7 +48,6 @@ static ptp_camera_model CAMERA[] = {
   { CANON_VID, 0x32af, "Canon EOS 5DSR", ptp_flag_lv, 8688, 5792, 4.14 },
   { CANON_VID, 0x32b4, "Canon EOS 1300D", ptp_flag_lv, 5184, 3456, 4.3 },
   { CANON_VID, 0x32bb, "Canon EOS M5", ptp_flag_lv, 6000, 4000, 3.71 },
-  { CANON_VID, 0x32c5, "Canon EOS M6", ptp_flag_lv, 6000, 4000, 3.71 },
   { CANON_VID, 0x32c9, "Canon EOS 800D", ptp_flag_lv, 6000, 4000, 3.71 },
   { CANON_VID, 0x32ca, "Canon EOS 6D Mark II", ptp_flag_lv, 6240, 4160, 5.7 },
   { CANON_VID, 0x32cb, "Canon EOS 77D", ptp_flag_lv, 6000, 4000, 3.71 },

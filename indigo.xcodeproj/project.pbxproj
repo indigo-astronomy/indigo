@@ -590,6 +590,8 @@
 		598A1D15259BAE3B00C0B34C /* libindigo_m1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 598A1C9D259BA94A00C0B34C /* libindigo_m1.dylib */; };
 		598FE2752614F91A00E0DA21 /* indigo_dome_talon6ror.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBEF2613B4A200B904EE /* indigo_dome_talon6ror.c */; };
 		598FE27D2614F91B00E0DA21 /* indigo_dome_talon6ror.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBEF2613B4A200B904EE /* indigo_dome_talon6ror.c */; };
+		599150D329EF2AC900E63C3B /* libstarshootg.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; };
+		599150D429EF2AC900E63C3B /* libstarshootg.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		5992F7B41E1EC8AF0035242E /* indigo_ccd_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7B21E1EC8A20035242E /* indigo_ccd_fli.c */; };
 		5992F7BD1E1EC95D0035242E /* indigo_wheel_fli.c in Sources */ = {isa = PBXBuildFile; fileRef = 5992F7BC1E1EC9580035242E /* indigo_wheel_fli.c */; };
 		59958DFF25CB0DEB00BEFA1B /* indigo_dome_skyroof.c in Sources */ = {isa = PBXBuildFile; fileRef = 59958DFB25CB0DEB00BEFA1B /* indigo_dome_skyroof.c */; };
@@ -980,6 +982,7 @@
 			files = (
 				59118C442996EDA30004BEC8 /* libogmacam.dylib in Embed Libraries */,
 				59B348AD29E85F8A0062C2EA /* libomegonprocam.dylib in Embed Libraries */,
+				599150D429EF2AC900E63C3B /* libstarshootg.dylib in Embed Libraries */,
 				59B348B229E85FA80062C2EA /* libSVBCameraSDK.dylib in Embed Libraries */,
 				59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */,
 				59B348B029E85F8B0062C2EA /* libmallincam.dylib in Embed Libraries */,
@@ -4807,6 +4810,7 @@
 				59D138A3283E5A9C00FCC514 /* libraw.a in Frameworks */,
 				59B348AF29E85F8B0062C2EA /* libmallincam.dylib in Frameworks */,
 				598A1D02259BAE0800C0B34C /* libatik.a in Frameworks */,
+				599150D329EF2AC900E63C3B /* libstarshootg.dylib in Frameworks */,
 				598A1CFB259BADCE00C0B34C /* libgps.a in Frameworks */,
 				598A1CF3259BAD9A00C0B34C /* libfli.a in Frameworks */,
 				59118C432996EDA30004BEC8 /* libogmacam.dylib in Frameworks */,
