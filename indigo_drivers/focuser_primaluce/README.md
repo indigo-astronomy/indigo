@@ -4,7 +4,8 @@ https://www.primalucelab.com
 
 ## Supported devices
 * ESATTO focusers
-* SESTO SENSO focusers
+* SESTO SENSO 2 focusers
+* ARCO rotators
 * GIOTTO flat field generators
 
 Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
@@ -21,7 +22,9 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_primaluce
 
-## Status: Untested
+## Status: Work in progress
+
+Tested with Sesto Senso 2.
 
 As PrimaluceLab never answered any email both simulator and driver are based only on publicly available information :(
 
