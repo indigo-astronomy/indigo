@@ -2741,7 +2741,7 @@
 		59B3489C29E853F60062C2EA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_primaluce.h; sourceTree = "<group>"; };
 		59B3489E29E854070062C2EA /* indigo_focuser_primaluce_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_primaluce_main.c; sourceTree = "<group>"; };
-		59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_primaluce.c; sourceTree = "<group>"; };
+		59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_primaluce.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59B348A329E85E2F0062C2EA /* jsmn.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = jsmn.h; sourceTree = "<group>"; };
 		59B348AE29E85F8B0062C2EA /* libmallincam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libmallincam.dylib; path = build/lib/libmallincam.dylib; sourceTree = "<group>"; };
 		59B51347297066040075C8A1 /* indigo_wheel_indigo_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_indigo_main.c; sourceTree = "<group>"; };
