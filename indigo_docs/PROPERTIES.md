@@ -214,12 +214,13 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 | MOUNT_ABORT_MOTION | switch | no | yes | ABORT_MOTION | yes |  |
 | MOUNT_RAW_COORDINATES | number | yes | yes | RA | yes |  |
 |  |  |  |  | DEC | yes |  |
-| MOUNT_ALIGNMENT_MODE | switch | no | yes | CONTROLLER | yes |  |
+| MOUNT_ALIGNMENT_MODE | switch | no | no | CONTROLLER | yes |  |
 |  |  |  |  | SINGLE_POINT | yes |  |
 |  |  |  |  | NEAREST_POINT | yes |  |
 |  |  |  |  | MULTI_POINT | yes |  |
-| MOUNT_ALIGNMENT_SELECT_POINTS | switch | no | yes | point id | yes |  |
-| MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY | switch | no | yes | point id | yes |  |
+| MOUNT_ALIGNMENT_SELECT_POINTS | switch | no | no | point id | yes |  |
+| MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY | switch | no | no | point id | yes |  |
+| MOUNT_ALIGNMENT_RESET | switch | no | no | RESET | yes |  |
 | MOUNT_EPOCH | number | no | yes | EPOCH | yes |  |
 | MOUNT_SIDE_OF_PIER | switch | no | no | EAST | yes |  |
 |  |  |  |  | WEST | yes |  |
