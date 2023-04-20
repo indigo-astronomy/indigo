@@ -225,7 +225,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 				return INDIGO_FAILED;
 			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, "All points", false);
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
-			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = 0;
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = 1;
 			// -------------------------------------------------------------------------------- MOUNT_EPOCH
 			MOUNT_EPOCH_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Current epoch", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (MOUNT_EPOCH_PROPERTY == NULL)
@@ -275,7 +275,7 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 		sscanf(buffer, "%d", &count);
 		MOUNT_CONTEXT->alignment_point_count = count;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
-		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 0;
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 1;
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
 			indigo_read_line(handle, buffer, sizeof(buffer));
@@ -326,7 +326,7 @@ void indigo_mount_update_alignment_points(indigo_device *device) {
 	MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 	indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
-	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count ? MOUNT_CONTEXT->alignment_point_count + 1 : 0;
+	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count ? MOUNT_CONTEXT->alignment_point_count + 1 : 1;
 	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 }

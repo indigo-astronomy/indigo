@@ -84,6 +84,8 @@
 #define ZWO_MERIDIAN_LIMIT_PROPERTY_NAME   "X_MERIDIAN_LIMIT"
 #define ZWO_MERIDIAN_LIMIT_ITEM_NAME       "LIMIT"
 
+#define MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM (MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items+0)
+
 typedef struct {
 	int handle;
 	int device_count;
@@ -614,6 +616,11 @@ static bool asi_stop(indigo_device *device) {
 	return asi_command(device, ":Q#", NULL, 0, 0);
 }
 
+static bool asi_clear_alignment_data(indigo_device *device) {
+	char response[64] = {0};
+	return asi_command(device, ":NSC#", response, sizeof(response), 0) && *response == '1';
+}
+
 static bool asi_guide_dec(indigo_device *device, int north, int south) {
 	char command[128];
 	if (north > 0) {
@@ -810,10 +817,12 @@ static void asi_init_mount(indigo_device *device) {
 		}
 		MOUNT_PARK_PROPERTY->hidden = false;
 		indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 	} else {
 		ZWO_MERIDIAN_PROPERTY->hidden = true;
 		ZWO_MERIDIAN_LIMIT_PROPERTY->hidden = true;
 		MOUNT_PARK_PROPERTY->hidden = true;
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = true;
 	}
 	indigo_define_property(device, ZWO_MERIDIAN_PROPERTY, NULL);
 	indigo_define_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
@@ -941,6 +950,19 @@ static void mount_park_callback(indigo_device *device) {
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+		}
+	}
+}
+
+static void mount_clear_alignmnet_callback(indigo_device *device) {
+	if (MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM->sw.value) {
+		MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM->sw.value = false;
+		if (!asi_clear_alignment_data(device)) {
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, "Alignment data clearing failed");
+		} else {
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, "Alignment data cleared");
 		}
 	}
 }
@@ -1218,6 +1240,15 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_connect_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_DELETE_POINTS
+		indigo_property_copy_values(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, property, false);
+		if (MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM->sw.value) {
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+			indigo_set_timer(device, 0, mount_clear_alignmnet_callback, NULL);
+		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_HOME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_HOME
