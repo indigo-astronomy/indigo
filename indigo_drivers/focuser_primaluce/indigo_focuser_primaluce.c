@@ -68,6 +68,7 @@ static char *MOT1_BUSY[] = { "res", "get", "MOT1", "STATUS", "BUSY", NULL };
 static char *MOT1_MOVE_ABS_STEP[] = { "res", "cmd", "MOT1", "MOVE_ABS", "STEP", NULL };
 static char *MOT1_MOT_STOP[] = { "res", "get", "MOT1", "MOT_STOP", NULL };
 static char *MOT1_NTC_T[] = { "res", "get", "MOT1", "NTC_T", NULL };
+static char *MOT1_ERROR[] = { "res", "get", "MOT1", "Error", NULL };
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
@@ -253,10 +254,15 @@ static void focuser_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
 	if (primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"NTC_T\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
-		double temp = getNumber(response, tokens, MOT1_NTC_T);
-		if (temp != FOCUSER_TEMPERATURE_ITEM->number.value) {
-			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+		char *error = getString(response, tokens, MOT1_ERROR);
+		if (error) {
+			indigo_send_message(device, "%s: %s", INFO_DEVICE_MODEL_ITEM->text.value, error);
+		} else {
+			double temp = getNumber(response, tokens, MOT1_NTC_T);
+			if (temp != FOCUSER_TEMPERATURE_ITEM->number.value) {
+				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+			}
 		}
 	}
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->timer);
