@@ -224,6 +224,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			if (MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, "All points", false);
+			sprintf(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items->hints, "warn_on_set:\"Clear all alignment points?\";");
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = 1;
 			// -------------------------------------------------------------------------------- MOUNT_EPOCH
