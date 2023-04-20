@@ -1,6 +1,8 @@
 # ZWO AM5 Undocumented Commands
+
 ## Altitude limits
 Limits are preserved after power cycle.
+
 ### **:SLLnn#**
 Set low altitude limit (0-30&deg;).
 Returns "1" on success, "0" on error. Example: :SLL20#
@@ -28,6 +30,15 @@ Returns "1" on success.
 ### **:GLC#**
 Get altitude limits status:
 **0#** - limits disabled, **1#** - limits enabled
+
+
+## Clear alignment data
+Each sync adds alignment point. They can only be removed all at once.
+
+### **:NSC#**
+Clear alignment data (remove all alignment points).
+Returns "1" on success.
+
 
 ## Slew speed
 Slew speed is preserved after power cycle.
