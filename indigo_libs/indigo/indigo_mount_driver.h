@@ -385,14 +385,23 @@ extern "C" {
 #define MOUNT_RAW_COORDINATES_DEC_ITEM							(MOUNT_RAW_COORDINATES_PROPERTY->items+1)
 
 //------------------------------------------------
-/** MOUNT_ALIGNMENT_SELECT_POINTS property pointer, property is mandatory, property change request is fully handled by indigo_mount_change_property
+/** MOUNT_ALIGNMENT_SELECT_POINTS property pointer, property is not mandatory, property change request is fully handled by indigo_mount_change_property
  */
 #define MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY				(MOUNT_CONTEXT->mount_alignment_select_points_property)
 
 //------------------------------------------------
-/** MOUNT_ALIGNMENT_DELETE_POINTS property pointer, property is mandatory, property change request is fully handled by indigo_mount_change_property
+/** MOUNT_ALIGNMENT_DELETE_POINTS property pointer, property is not mandatory, property change request is fully handled by indigo_mount_change_property
  */
 #define MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY				(MOUNT_CONTEXT->mount_alignment_delete_points_property)
+
+//------------------------------------------------
+/** MOUNT_ALIGNMENT_RESET property pointer, property is not mandatory, property change request is handled by indigo_mount_change_property
+ */
+#define MOUNT_ALIGNMENT_RESET_PROPERTY				(MOUNT_CONTEXT->mount_alignment_reset_property)
+
+/** MOUNT_ALIGNMENT_RESET.RESET proeprty item pointer.
+ */
+#define MOUNT_ALIGNMENT_RESET_ITEM				    (MOUNT_CONTEXT->mount_alignment_reset_property->items+0)
 
 //------------------------------------------------
 /** MOUNT_EPOCH property pointer, property is optional
@@ -507,6 +516,7 @@ typedef struct {
 	indigo_property *mount_snoop_devices_property;					///< MOUNT_SNOOP_DEVICES property pointer
 	indigo_property *mount_pec_property;										///< MOUNT_PEC property pointer
 	indigo_property *mount_pec_training_property;						///< MOUNT_PEC_TRAINING property pointer
+	indigo_property *mount_alignment_reset_property;					///< MOUNT_ALIGNMENT_RESET property pointer
 } indigo_mount_context;
 
 /** Attach callback function.
