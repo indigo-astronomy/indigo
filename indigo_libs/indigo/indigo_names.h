@@ -1731,6 +1731,15 @@
 #define MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME	"ALL"
 
 //----------------------------------------------------------------------
+/** MOUNT_ALIGNMENT_RESET property name.
+ */
+#define MOUNT_ALIGNMENT_RESET_PROPERTY_NAME	"MOUNT_ALIGNMENT_RESET"
+
+/** MOUNT_ALIGNMENT_RESET.RESET property item name.
+ */
+#define MOUNT_ALIGNMENT_RESET_ITEM_NAME	"RESET"
+
+//----------------------------------------------------------------------
 /** MOUNT_EPOCH property name.
  */
 #define MOUNT_EPOCH_PROPERTY_NAME							"MOUNT_EPOCH"

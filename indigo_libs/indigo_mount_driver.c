@@ -226,7 +226,14 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items, MOUNT_ALIGNMENT_DELETE_ALL_POINTS_ITEM_NAME, "All points", false);
 			sprintf(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items->hints, "warn_on_set:\"Clear all alignment points?\";");
 			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
-			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = 1;
+			MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = 0;
+			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_RESET
+			MOUNT_ALIGNMENT_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Reset alignment data", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+			if (MOUNT_ALIGNMENT_RESET_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(MOUNT_ALIGNMENT_RESET_ITEM, MOUNT_ALIGNMENT_RESET_ITEM_NAME, "Reset", false);
+			sprintf(MOUNT_ALIGNMENT_RESET_ITEM->hints, "warn_on_set:\"Reset alignment data?\";");
+			MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 			// -------------------------------------------------------------------------------- MOUNT_EPOCH
 			MOUNT_EPOCH_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Current epoch", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (MOUNT_EPOCH_PROPERTY == NULL)
@@ -276,7 +283,7 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 		sscanf(buffer, "%d", &count);
 		MOUNT_CONTEXT->alignment_point_count = count;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
-		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 1;
+		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 0;
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
 			indigo_read_line(handle, buffer, sizeof(buffer));
@@ -327,7 +334,7 @@ void indigo_mount_update_alignment_points(indigo_device *device) {
 	MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 	indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
-	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count ? MOUNT_CONTEXT->alignment_point_count + 1 : 1;
+	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = MOUNT_CONTEXT->alignment_point_count ? MOUNT_CONTEXT->alignment_point_count + 1 : 0;
 	MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
 }
@@ -388,6 +395,8 @@ indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, property))
 			indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_ALIGNMENT_RESET_PROPERTY, property))
+			indigo_define_property(device, MOUNT_ALIGNMENT_RESET_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_EPOCH_PROPERTY, property))
 			indigo_define_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_SIDE_OF_PIER_PROPERTY, property))
@@ -440,6 +449,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+			indigo_define_property(device, MOUNT_ALIGNMENT_RESET_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_define_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
@@ -495,6 +505,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_delete_property(device, MOUNT_RAW_COORDINATES_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY, NULL);
+			indigo_delete_property(device, MOUNT_ALIGNMENT_RESET_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_SNOOP_DEVICES_PROPERTY, NULL);
@@ -775,6 +786,17 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		}
 		indigo_mount_update_alignment_points(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_ALIGNMENT_RESET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_RESET
+		indigo_property_copy_values(MOUNT_ALIGNMENT_RESET_PROPERTY, property, false);
+		if (MOUNT_ALIGNMENT_RESET_ITEM->sw.value) {
+			MOUNT_CONTEXT->alignment_point_count = 0;
+			indigo_mount_update_alignment_points(device);
+		}
+		MOUNT_ALIGNMENT_RESET_PROPERTY->state = INDIGO_OK_STATE;
+		MOUNT_ALIGNMENT_RESET_ITEM->sw.value = false;
+		indigo_update_property(device, MOUNT_ALIGNMENT_RESET_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EPOCH_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EPOCH
 		indigo_property_copy_values(MOUNT_EPOCH_PROPERTY, property, false);
@@ -845,6 +867,7 @@ indigo_result indigo_mount_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_RAW_COORDINATES_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY);
 	indigo_release_property(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY);
+	indigo_release_property(MOUNT_ALIGNMENT_RESET_PROPERTY);
 	indigo_release_property(MOUNT_SNOOP_DEVICES_PROPERTY);
 	indigo_release_property(MOUNT_PEC_PROPERTY);
 	indigo_release_property(MOUNT_PEC_TRAINING_PROPERTY);
