@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PrimaluceLab focuser/rotator/flatfield driver
+/** INDIGO PrimaluceLab focuser/rotator driver
  \file indigo_focuser_primaluce.h
  */
 
@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-/** Register PrimaluceLab focuser/rotator/flatfield driver
+/** Register PrimaluceLab focuser/rotator driver
  */
 
 extern indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_driver_info *info);

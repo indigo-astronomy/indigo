@@ -19,11 +19,11 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PrimaluceLab focuser/rotator/flatfield driver
+/** INDIGO PrimaluceLab focuser/rotator driver
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>
@@ -48,9 +48,29 @@
 
 #define PRIVATE_DATA													((primaluce_private_data *)device->private_data)
 
+#define X_CONFIG_PROPERTY											(PRIVATE_DATA->config_property)
+#define X_CONFIG_M1ACC_ITEM										(X_CONFIG_PROPERTY->items+0)
+#define X_CONFIG_M1SPD_ITEM										(X_CONFIG_PROPERTY->items+1)
+#define X_CONFIG_M1DEC_ITEM										(X_CONFIG_PROPERTY->items+2)
+#define X_CONFIG_M1CACC_ITEM									(X_CONFIG_PROPERTY->items+3)
+#define X_CONFIG_M1CSPD_ITEM									(X_CONFIG_PROPERTY->items+4)
+#define X_CONFIG_M1CDEC_ITEM									(X_CONFIG_PROPERTY->items+5)
+#define X_CONFIG_M1HOLD_ITEM									(X_CONFIG_PROPERTY->items+6)
+
 #define X_STATE_PROPERTY											(PRIVATE_DATA->state_property)
-#define X_STATE_MOTOR_TEMP_ITEM								(X_STATE_PROPERTY->items + 0)
-#define X_STATE_POWERSUPPLY_ITEM							(X_STATE_PROPERTY->items + 1)
+#define X_STATE_MOTOR_TEMP_ITEM								(X_STATE_PROPERTY->items+0)
+#define X_STATE_VIN_12V_ITEM									(X_STATE_PROPERTY->items+1)
+#define X_STATE_VIN_USB_ITEM									(X_STATE_PROPERTY->items+2)
+
+#define X_LEDS_PROPERTY												(PRIVATE_DATA->dim_leds_property)
+#define X_LEDS_OFF_ITEM												(X_LEDS_PROPERTY->items+0)
+#define X_LEDS_DIM_ITEM												(X_LEDS_PROPERTY->items+1)
+#define X_LEDS_ON_ITEM												(X_LEDS_PROPERTY->items+2)
+
+#define X_WIFI_PROPERTY												(PRIVATE_DATA->wifi_property)
+#define X_WIFI_OFF_ITEM												(X_WIFI_PROPERTY->items+0)
+#define X_WIFI_AP_ITEM												(X_WIFI_PROPERTY->items+1)
+#define X_WIFI_STA_ITEM												(X_WIFI_PROPERTY->items+2)
 
 #define X_WIFI_AP_PROPERTY										(PRIVATE_DATA->wifi_ap_property)
 #define X_WIFI_AP_SSID_ITEM										(X_WIFI_AP_PROPERTY->items+0)
@@ -60,38 +80,183 @@
 #define X_WIFI_STA_SSID_ITEM									(X_WIFI_STA_PROPERTY->items+0)
 #define X_WIFI_STA_PASSWORD_ITEM							(X_WIFI_STA_PROPERTY->items+1)
 
+#define X_RUNPRESET_L_PROPERTY								(PRIVATE_DATA->runpreset_l_property)
+#define X_RUNPRESET_L_M1ACC_ITEM							(X_RUNPRESET_L_PROPERTY->items+0)
+#define X_RUNPRESET_L_M1SPD_ITEM							(X_RUNPRESET_L_PROPERTY->items+1)
+#define X_RUNPRESET_L_M1DEC_ITEM							(X_RUNPRESET_L_PROPERTY->items+2)
+#define X_RUNPRESET_L_M1CACC_ITEM							(X_RUNPRESET_L_PROPERTY->items+3)
+#define X_RUNPRESET_L_M1CSPD_ITEM							(X_RUNPRESET_L_PROPERTY->items+4)
+#define X_RUNPRESET_L_M1CDEC_ITEM							(X_RUNPRESET_L_PROPERTY->items+5)
+#define X_RUNPRESET_L_M1HOLD_ITEM							(X_RUNPRESET_L_PROPERTY->items+6)
+
+#define X_RUNPRESET_M_PROPERTY								(PRIVATE_DATA->runpreset_m_property)
+#define X_RUNPRESET_M_M1ACC_ITEM							(X_RUNPRESET_M_PROPERTY->items+0)
+#define X_RUNPRESET_M_M1SPD_ITEM							(X_RUNPRESET_M_PROPERTY->items+1)
+#define X_RUNPRESET_M_M1DEC_ITEM							(X_RUNPRESET_M_PROPERTY->items+2)
+#define X_RUNPRESET_M_M1CACC_ITEM							(X_RUNPRESET_M_PROPERTY->items+3)
+#define X_RUNPRESET_M_M1CSPD_ITEM							(X_RUNPRESET_M_PROPERTY->items+4)
+#define X_RUNPRESET_M_M1CDEC_ITEM							(X_RUNPRESET_M_PROPERTY->items+5)
+#define X_RUNPRESET_M_M1HOLD_ITEM							(X_RUNPRESET_M_PROPERTY->items+6)
+
+#define X_RUNPRESET_S_PROPERTY								(PRIVATE_DATA->runpreset_s_property)
+#define X_RUNPRESET_S_M1ACC_ITEM							(X_RUNPRESET_S_PROPERTY->items+0)
+#define X_RUNPRESET_S_M1SPD_ITEM							(X_RUNPRESET_S_PROPERTY->items+1)
+#define X_RUNPRESET_S_M1DEC_ITEM							(X_RUNPRESET_S_PROPERTY->items+2)
+#define X_RUNPRESET_S_M1CACC_ITEM							(X_RUNPRESET_S_PROPERTY->items+3)
+#define X_RUNPRESET_S_M1CSPD_ITEM							(X_RUNPRESET_S_PROPERTY->items+4)
+#define X_RUNPRESET_S_M1CDEC_ITEM							(X_RUNPRESET_S_PROPERTY->items+5)
+#define X_RUNPRESET_S_M1HOLD_ITEM							(X_RUNPRESET_S_PROPERTY->items+6)
+
+#define X_RUNPRESET_1_PROPERTY								(PRIVATE_DATA->runpreset_1_property)
+#define X_RUNPRESET_1_M1ACC_ITEM							(X_RUNPRESET_1_PROPERTY->items+0)
+#define X_RUNPRESET_1_M1SPD_ITEM							(X_RUNPRESET_1_PROPERTY->items+1)
+#define X_RUNPRESET_1_M1DEC_ITEM							(X_RUNPRESET_1_PROPERTY->items+2)
+#define X_RUNPRESET_1_M1CACC_ITEM							(X_RUNPRESET_1_PROPERTY->items+3)
+#define X_RUNPRESET_1_M1CSPD_ITEM							(X_RUNPRESET_1_PROPERTY->items+4)
+#define X_RUNPRESET_1_M1CDEC_ITEM							(X_RUNPRESET_1_PROPERTY->items+5)
+#define X_RUNPRESET_1_M1HOLD_ITEM							(X_RUNPRESET_1_PROPERTY->items+6)
+
+#define X_RUNPRESET_2_PROPERTY								(PRIVATE_DATA->runpreset_2_property)
+#define X_RUNPRESET_2_M1ACC_ITEM							(X_RUNPRESET_2_PROPERTY->items+0)
+#define X_RUNPRESET_2_M1SPD_ITEM							(X_RUNPRESET_2_PROPERTY->items+1)
+#define X_RUNPRESET_2_M1DEC_ITEM							(X_RUNPRESET_2_PROPERTY->items+2)
+#define X_RUNPRESET_2_M1CACC_ITEM							(X_RUNPRESET_2_PROPERTY->items+3)
+#define X_RUNPRESET_2_M1CSPD_ITEM							(X_RUNPRESET_2_PROPERTY->items+4)
+#define X_RUNPRESET_2_M1CDEC_ITEM							(X_RUNPRESET_2_PROPERTY->items+5)
+#define X_RUNPRESET_2_M1HOLD_ITEM							(X_RUNPRESET_2_PROPERTY->items+6)
+
+#define X_RUNPRESET_3_PROPERTY								(PRIVATE_DATA->runpreset_3_property)
+#define X_RUNPRESET_3_M1ACC_ITEM							(X_RUNPRESET_3_PROPERTY->items+0)
+#define X_RUNPRESET_3_M1SPD_ITEM							(X_RUNPRESET_3_PROPERTY->items+1)
+#define X_RUNPRESET_3_M1DEC_ITEM							(X_RUNPRESET_3_PROPERTY->items+2)
+#define X_RUNPRESET_3_M1CACC_ITEM							(X_RUNPRESET_3_PROPERTY->items+3)
+#define X_RUNPRESET_3_M1CSPD_ITEM							(X_RUNPRESET_3_PROPERTY->items+4)
+#define X_RUNPRESET_3_M1CDEC_ITEM							(X_RUNPRESET_3_PROPERTY->items+5)
+#define X_RUNPRESET_3_M1HOLD_ITEM							(X_RUNPRESET_3_PROPERTY->items+6)
+
+#define X_RUNPRESET_PROPERTY									(PRIVATE_DATA->runpreset_property)
+#define X_RUNPRESET_L_ITEM										(X_RUNPRESET_PROPERTY->items+0)
+#define X_RUNPRESET_M_ITEM										(X_RUNPRESET_PROPERTY->items+1)
+#define X_RUNPRESET_S_ITEM										(X_RUNPRESET_PROPERTY->items+2)
+#define X_RUNPRESET_1_ITEM										(X_RUNPRESET_PROPERTY->items+3)
+#define X_RUNPRESET_2_ITEM										(X_RUNPRESET_PROPERTY->items+4)
+#define X_RUNPRESET_3_ITEM										(X_RUNPRESET_PROPERTY->items+5)
+
+#define X_HOLD_CURR_PROPERTY									(PRIVATE_DATA->hold_curr_property)
+#define X_HOLD_CURR_OFF_ITEM									(X_HOLD_CURR_PROPERTY->items+0)
+#define X_HOLD_CURR_ON_ITEM										(X_HOLD_CURR_PROPERTY->items+1)
+
+#define X_CALIBRATE_SS_PROPERTY								(PRIVATE_DATA->calibrate_ss_property)
+#define X_CALIBRATE_SS_START_ITEM							(X_CALIBRATE_SS_PROPERTY->items+0)
+#define X_CALIBRATE_SS_START_INVERTED_ITEM		(X_CALIBRATE_SS_PROPERTY->items+1)
+#define X_CALIBRATE_SS_END_ITEM								(X_CALIBRATE_SS_PROPERTY->items+2)
+
+#define X_CALIBRATE_SS_PROPERTY								(PRIVATE_DATA->calibrate_ss_property)
+#define X_CALIBRATE_SS_START_ITEM							(X_CALIBRATE_SS_PROPERTY->items+0)
+#define X_CALIBRATE_SS_START_INVERTED_ITEM		(X_CALIBRATE_SS_PROPERTY->items+1)
+#define X_CALIBRATE_SS_END_ITEM								(X_CALIBRATE_SS_PROPERTY->items+2)
 
 typedef struct {
 	int handle;
 	indigo_timer *timer;
 	pthread_mutex_t mutex;
 	jsmn_parser parser;
+	bool has_abs_pos;
 	indigo_property *state_property;
+	indigo_property *dim_leds_property;
+	indigo_property *wifi_property;
 	indigo_property *wifi_ap_property;
 	indigo_property *wifi_sta_property;
+	indigo_property *config_property;
+	indigo_property *runpreset_l_property;
+	indigo_property *runpreset_m_property;
+	indigo_property *runpreset_s_property;
+	indigo_property *runpreset_1_property;
+	indigo_property *runpreset_2_property;
+	indigo_property *runpreset_3_property;
+	indigo_property *runpreset_property;
+	indigo_property *hold_curr_property;
+	indigo_property *calibrate_ss_property;
 } primaluce_private_data;
 
-static char *MODNAME[] = { "res", "get", "MODNAME", NULL };
-static char *SN[] = { "res", "get", "SN", NULL };
-static char *SWAPP[] = { "res", "get", "SWVERS", "SWAPP", NULL };
-static char *SWWEB[] = { "res", "get", "SWVERS", "SWWEB", NULL };
-static char *MOT1_ABS_POS[] = { "res", "get", "MOT1", "ABS_POS", NULL };
-static char *MOT1_GET_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
-static char *MOT1_SET_SPEED[] = { "res", "set", "MOT1", "SPEED", NULL };
-static char *MOT1_MIN_SPEED[] = { "res", "get", "MOT1", "MIN_SPEED", NULL };
-static char *MOT1_MAX_SPEED[] = { "res", "get", "MOT1", "MAX_SPEED", NULL };
-static char *MOT1_MST[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
-static char *MOT1_GOTO_STEP[] = { "res", "cmd", "MOT1", "GOTO", NULL };
-static char *MOT1_MOT_STOP[] = { "res", "get", "MOT1", "MOT_STOP", NULL };
-static char *EXT_T[] = { "res", "get", "EXT_T", NULL };
-static char *VIN_12V[] = { "res", "get", "VIN_12V", NULL };
-static char *MOT1_NTC_T[] = { "res", "get", "MOT1", "NTC_T", NULL };
-static char *MOT1_ERROR[] = { "res", "get", "MOT1", "Error", NULL };
-static char *LANCFG[] = { "res", "get", "LANCFG", NULL };
-static char *WIFIAP_SSID[] = { "res", "get", "WIFIAP", "SSID", NULL };
-static char *WIFIAP_PWD[] = { "res", "get", "WIFIAP", "PWD", NULL };
-static char *WIFISTA_SSID[] = { "res", "get", "WIFISTA", "SSID", NULL };
-static char *WIFISTA_PWD[] = { "res", "get", "WIFISTA", "PWD", NULL };
+static char *GET_MODNAME[] = { "res", "get", "MODNAME", NULL };
+static char *GET_SN[] = { "res", "get", "SN", NULL };
+static char *GET_SWAPP[] = { "res", "get", "SWVERS", "SWAPP", NULL };
+static char *GET_SWWEB[] = { "res", "get", "SWVERS", "SWWEB", NULL };
+static char *GET_CALRESTART_MOT1[] = { "res", "get", "CALRESTART", "MOT1", NULL };
+static char *GET_CALRESTART_MOT2[] = { "res", "get", "CALRESTART", "MOT2", NULL };
+static char *GET_MOT1_ABS_POS_STEP[] = { "res", "get", "MOT1", "ABS_POS_STEP", NULL };
+static char *GET_MOT1_ABS_POS[] = { "res", "get", "MOT1", "ABS_POS", NULL };
+static char *GET_MOT1_BKLASH[] = { "res", "get", "MOT1", "BKLASH", NULL };
+static char *SET_MOT1_BKLASH[] = { "res", "set", "MOT1", "BKLASH", NULL };
+static char *GET_MOT1_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
+static char *SET_MOT1_SPEED[] = { "res", "set", "MOT1", "SPEED", NULL };
+static char *GET_MOT1_MST[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
+static char *CMD_MOT1_GOTO[] = { "res", "cmd", "MOT1", "GOTO", NULL };
+static char *CMD_MOT1_MOVE[] = { "res", "cmd", "MOT1", "MOVE", NULL };
+static char *CMD_MOT1_MOT_STOP[] = { "res", "cmd", "MOT1", "MOT_STOP", NULL };
+static char *GET_EXT_T[] = { "res", "get", "EXT_T", NULL };
+static char *GET_DIMLEDS[] = { "res", "get", "DIMLEDS", NULL };
+static char *GET_VIN_12V[] = { "res", "get", "VIN_12V", NULL };
+static char *GET_VIN_USB[] = { "res", "get", "VIN_USB", NULL };
+static char *GET_MOT1_NTC_T[] = { "res", "get", "MOT1", "NTC_T", NULL };
+static char *GET_MOT1_ERROR[] = { "res", "get", "MOT1", "ERROR", NULL };
+static char *GET_WIFIAP_STATUS[] = { "res", "get", "WIFIAP", "STATUS", NULL };
+static char *GET_WIFIAP_SSID[] = { "res", "get", "WIFIAP", "SSID", NULL };
+static char *GET_WIFIAP_PWD[] = { "res", "get", "WIFIAP", "PWD", NULL };
+static char *GET_WIFISTA_SSID[] = { "res", "get", "WIFISTA", "SSID", NULL };
+static char *GET_WIFISTA_PWD[] = { "res", "get", "WIFISTA", "PWD", NULL };
+static char *GET_MOT1_FnRUN_ACC[] = { "res", "get", "MOT1", "FnRUN_ACC", NULL };
+static char *GET_MOT1_FnRUN_SPD[] = { "res", "get", "MOT1", "FnRUN_SPD", NULL };
+static char *GET_MOT1_FnRUN_DEC[] = { "res", "get", "MOT1", "FnRUN_DEC", NULL };
+static char *GET_MOT1_FnRUN_CURR_ACC[] = { "res", "get", "MOT1", "FnRUN_CURR_ACC", NULL };
+static char *GET_MOT1_FnRUN_CURR_SPD[] = { "res", "get", "MOT1", "FnRUN_CURR_SPD", NULL };
+static char *GET_MOT1_FnRUN_CURR_DEC[] = { "res", "get", "MOT1", "FnRUN_CURR_DEC", NULL };
+static char *GET_MOT1_FnRUN_CURR_HOLD[] = { "res", "get", "MOT1", "FnRUN_CURR_HOLD", NULL };
+static char *GET_MOT1_HOLDCURR_STATUS[] = { "res", "get", "MOT1", "HOLDCURR_STATUS", NULL };
+static char *SET_MOT1_HOLDCURR_STATUS[] = { "res", "set", "MOT1", "HOLDCURR_STATUS", NULL };
+static char *GET_RUNPRESET_L_M1ACC[] = { "res", "get", "RUNPRESET_L", "M1ACC", NULL };
+static char *GET_RUNPRESET_L_M1SPD[] = { "res", "get", "RUNPRESET_L", "M1SPD", NULL };
+static char *GET_RUNPRESET_L_M1DEC[] = { "res", "get", "RUNPRESET_L", "M1DEC", NULL };
+static char *GET_RUNPRESET_L_M1CACC[] = { "res", "get", "RUNPRESET_L", "M1CACC", NULL };
+static char *GET_RUNPRESET_L_M1CSPD[] = { "res", "get", "RUNPRESET_L", "M1CSPD", NULL };
+static char *GET_RUNPRESET_L_M1CDEC[] = { "res", "get", "RUNPRESET_L", "M1CDEC", NULL };
+static char *GET_RUNPRESET_L_M1HOLD[] = { "res", "get", "RUNPRESET_L", "M1HOLD", NULL };
+static char *GET_RUNPRESET_M_M1ACC[] = { "res", "get", "RUNPRESET_M", "M1ACC", NULL };
+static char *GET_RUNPRESET_M_M1SPD[] = { "res", "get", "RUNPRESET_M", "M1SPD", NULL };
+static char *GET_RUNPRESET_M_M1DEC[] = { "res", "get", "RUNPRESET_M", "M1DEC", NULL };
+static char *GET_RUNPRESET_M_M1CACC[] = { "res", "get", "RUNPRESET_M", "M1CACC", NULL };
+static char *GET_RUNPRESET_M_M1CSPD[] = { "res", "get", "RUNPRESET_M", "M1CSPD", NULL };
+static char *GET_RUNPRESET_M_M1CDEC[] = { "res", "get", "RUNPRESET_M", "M1CDEC", NULL };
+static char *GET_RUNPRESET_M_M1HOLD[] = { "res", "get", "RUNPRESET_M", "M1HOLD", NULL };
+static char *GET_RUNPRESET_S_M1ACC[] = { "res", "get", "RUNPRESET_S", "M1ACC", NULL };
+static char *GET_RUNPRESET_S_M1SPD[] = { "res", "get", "RUNPRESET_S", "M1SPD", NULL };
+static char *GET_RUNPRESET_S_M1DEC[] = { "res", "get", "RUNPRESET_S", "M1DEC", NULL };
+static char *GET_RUNPRESET_S_M1CACC[] = { "res", "get", "RUNPRESET_S", "M1CACC", NULL };
+static char *GET_RUNPRESET_S_M1CSPD[] = { "res", "get", "RUNPRESET_S", "M1CSPD", NULL };
+static char *GET_RUNPRESET_S_M1CDEC[] = { "res", "get", "RUNPRESET_S", "M1CDEC", NULL };
+static char *GET_RUNPRESET_S_M1HOLD[] = { "res", "get", "RUNPRESET_S", "M1HOLD", NULL };
+static char *GET_RUNPRESET_1_M1ACC[] = { "res", "get", "RUNPRESET_1", "M1ACC", NULL };
+static char *GET_RUNPRESET_1_M1SPD[] = { "res", "get", "RUNPRESET_1", "M1SPD", NULL };
+static char *GET_RUNPRESET_1_M1DEC[] = { "res", "get", "RUNPRESET_1", "M1DEC", NULL };
+static char *GET_RUNPRESET_1_M1CACC[] = { "res", "get", "RUNPRESET_1", "M1CACC", NULL };
+static char *GET_RUNPRESET_1_M1CSPD[] = { "res", "get", "RUNPRESET_1", "M1CSPD", NULL };
+static char *GET_RUNPRESET_1_M1CDEC[] = { "res", "get", "RUNPRESET_1", "M1CDEC", NULL };
+static char *GET_RUNPRESET_1_M1HOLD[] = { "res", "get", "RUNPRESET_1", "M1HOLD", NULL };
+static char *GET_RUNPRESET_2_M1ACC[] = { "res", "get", "RUNPRESET_2", "M1ACC", NULL };
+static char *GET_RUNPRESET_2_M1SPD[] = { "res", "get", "RUNPRESET_2", "M1SPD", NULL };
+static char *GET_RUNPRESET_2_M1DEC[] = { "res", "get", "RUNPRESET_2", "M1DEC", NULL };
+static char *GET_RUNPRESET_2_M1CACC[] = { "res", "get", "RUNPRESET_2", "M1CACC", NULL };
+static char *GET_RUNPRESET_2_M1CSPD[] = { "res", "get", "RUNPRESET_2", "M1CSPD", NULL };
+static char *GET_RUNPRESET_2_M1CDEC[] = { "res", "get", "RUNPRESET_2", "M1CDEC", NULL };
+static char *GET_RUNPRESET_2_M1HOLD[] = { "res", "get", "RUNPRESET_2", "M1HOLD", NULL };
+static char *GET_RUNPRESET_3_M1ACC[] = { "res", "get", "RUNPRESET_3", "M1ACC", NULL };
+static char *GET_RUNPRESET_3_M1SPD[] = { "res", "get", "RUNPRESET_3", "M1SPD", NULL };
+static char *GET_RUNPRESET_3_M1DEC[] = { "res", "get", "RUNPRESET_3", "M1DEC", NULL };
+static char *GET_RUNPRESET_3_M1CACC[] = { "res", "get", "RUNPRESET_3", "M1CACC", NULL };
+static char *GET_RUNPRESET_3_M1CSPD[] = { "res", "get", "RUNPRESET_3", "M1CSPD", NULL };
+static char *GET_RUNPRESET_3_M1CDEC[] = { "res", "get", "RUNPRESET_3", "M1CDEC", NULL };
+static char *GET_RUNPRESET_3_M1HOLD[] = { "res", "get", "RUNPRESET_3", "M1HOLD", NULL };
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
@@ -117,6 +282,7 @@ static bool primaluce_command(indigo_device *device, char *command, char *respon
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return false;
 	}
+	memset(tokens, 0, count * sizeof(jsmntok_t));
 	jsmn_init(&PRIVATE_DATA->parser);
 	if (*response == '"' || jsmn_parse(&PRIVATE_DATA->parser, response, size, tokens, count) <= 0) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failed to parse '%s' -> '%s'", command, response);
@@ -127,6 +293,7 @@ static bool primaluce_command(indigo_device *device, char *command, char *respon
 	for (int i = 0; i < count; i++) {
 		if (tokens[i].type == JSMN_UNDEFINED)
 			break;
+//		printf("%d %.*s\n", i, tokens[i].end -  tokens[i].start, response + tokens[i].start);
 		if (tokens[i].type == JSMN_STRING)
 			response[tokens[i].end] = 0;
 	}
@@ -145,7 +312,8 @@ static int getToken(char *response, jsmntok_t *tokens, int start, char *path[]) 
 		if (tokens[index].type != JSMN_STRING)
 			return -1;
 		char *n = response + tokens[index].start;
-		if (!strcmp(n, name)) {
+		int l = tokens[index].end - tokens[index].start;
+		if (!strncmp(n, name, l)) {
 			index++;
 			if (*++path == NULL) {
 				return index;
@@ -164,22 +332,33 @@ static int getToken(char *response, jsmntok_t *tokens, int start, char *path[]) 
 	return -1;
 }
 
-static char *getString(char *response, jsmntok_t *tokens, char *path[]) {
+static char *get_string(char *response, jsmntok_t *tokens, char *path[]) {
 	int index = getToken(response, tokens, 0, path);
 	if (index == -1 || tokens[index].type != JSMN_STRING)
 		return NULL;
 	return response + tokens[index].start;
 }
 
-static double getNumber(char *response, jsmntok_t *tokens, char *path[]) {
+static double get_number2(char *response, jsmntok_t *tokens, char *path[], char *alt_path[]) {
 	int index = getToken(response, tokens, 0, path);
-	if (index == -1)
-		return 0;
+	if (index == -1) {
+		if (alt_path != NULL) {
+			index = getToken(response, tokens, 0, alt_path);
+			if (index == -1) {
+				return 0;
+			}
+		} else {
+			return 0;
+		}
+	}
 	if  (tokens[index].type == JSMN_PRIMITIVE || tokens[index].type == JSMN_STRING)
 		return atof(response + tokens[index].start);
 	return 0;
 }
 
+static double get_number(char *response, jsmntok_t *tokens, char *path[]) {
+	return get_number2(response, tokens, path, NULL);
+}
 
 static bool primaluce_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
@@ -190,53 +369,171 @@ static bool primaluce_open(indigo_device *device) {
 		jsmntok_t tokens[1024];
 		char *text;
 		if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}", response, sizeof(response), tokens, 1024)) {
-			if ((text = getString(response, tokens, MODNAME))) {
+			if ((text = get_string(response, tokens, GET_MODNAME))) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
 				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, text);
+				if (!strncmp(text, "SESTOSENSO", 10)) {
+					X_CALIBRATE_SS_PROPERTY->hidden = false;
+					X_STATE_PROPERTY->count = 2;
+					X_CONFIG_PROPERTY->hidden = false;
+					X_RUNPRESET_PROPERTY->hidden = false;
+					X_RUNPRESET_L_PROPERTY->hidden = false;
+					X_RUNPRESET_M_PROPERTY->hidden = false;
+					X_RUNPRESET_S_PROPERTY->hidden = false;
+					X_RUNPRESET_1_PROPERTY->hidden = false;
+					X_RUNPRESET_2_PROPERTY->hidden = false;
+					X_RUNPRESET_3_PROPERTY->hidden = false;
+					X_HOLD_CURR_PROPERTY->hidden = false;
+				} else if (!strncmp(text, "ESATTO", 6)) {
+					X_STATE_PROPERTY->count = 3;
+					X_CALIBRATE_SS_PROPERTY->hidden = true;
+					X_CONFIG_PROPERTY->hidden = true;
+					X_RUNPRESET_PROPERTY->hidden = true;
+					X_RUNPRESET_L_PROPERTY->hidden = true;
+					X_RUNPRESET_M_PROPERTY->hidden = true;
+					X_RUNPRESET_S_PROPERTY->hidden = true;
+					X_RUNPRESET_1_PROPERTY->hidden = true;
+					X_RUNPRESET_2_PROPERTY->hidden = true;
+					X_RUNPRESET_3_PROPERTY->hidden = true;
+					X_HOLD_CURR_PROPERTY->hidden = true;
+				} else {
+					X_STATE_PROPERTY->count = 2;
+					X_CALIBRATE_SS_PROPERTY->hidden = true;
+					X_CONFIG_PROPERTY->hidden = true;
+					X_RUNPRESET_PROPERTY->hidden = true;
+					X_RUNPRESET_L_PROPERTY->hidden = true;
+					X_RUNPRESET_M_PROPERTY->hidden = true;
+					X_RUNPRESET_S_PROPERTY->hidden = true;
+					X_RUNPRESET_1_PROPERTY->hidden = true;
+					X_RUNPRESET_2_PROPERTY->hidden = true;
+					X_RUNPRESET_3_PROPERTY->hidden = true;
+					X_HOLD_CURR_PROPERTY->hidden = true;
+				}
 			}
-			if ((text = getString(response, tokens, SN))) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SN: %s", text);
-				indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
-			}
-			if ((text = getString(response, tokens, SWAPP))) {
+			if ((text = get_string(response, tokens, GET_SWAPP))) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWAPP: %s", text);
 				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
-				if ((text = getString(response, tokens, SWWEB))) {
+				double version = atof(text);
+				if (version < 3.05) {
+					indigo_send_message(device, "WARNING: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
+				}
+				if ((text = get_string(response, tokens, GET_SWWEB))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWWEB: %s", text);
 					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
 					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
 				}
 			}
+			if ((text = get_string(response, tokens, GET_SN))) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SN: %s", text);
+				indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
+			}
 			indigo_delete_property(device, INFO_PROPERTY, NULL);
 			indigo_define_property(device, INFO_PROPERTY, NULL);
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = getNumber(response, tokens, MOT1_ABS_POS);
-			FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = getNumber(response, tokens, MOT1_GET_SPEED);
-			FOCUSER_SPEED_ITEM->number.min = getNumber(response, tokens, MOT1_MIN_SPEED);
-			FOCUSER_SPEED_ITEM->number.max = getNumber(response, tokens, MOT1_MAX_SPEED);
-			X_STATE_MOTOR_TEMP_ITEM->number.value = getNumber(response, tokens, MOT1_NTC_T);
-			X_STATE_POWERSUPPLY_ITEM->number.value = getNumber(response, tokens, VIN_12V);
-			if ((text = getString(response, tokens, WIFIAP_SSID))) {
-				indigo_copy_value(X_WIFI_AP_SSID_ITEM->text.value, text);
+			if ((text = get_string(response, tokens, GET_MOT1_ERROR)) && *text) {
+				indigo_send_message(device, "ERROR: %s", text);
 			}
-			if ((text = getString(response, tokens, WIFIAP_PWD))) {
-				indigo_copy_value(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
+			if ( get_number(response, tokens, GET_CALRESTART_MOT1)) {
+				indigo_send_message(device, "ERROR: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 			}
-			if ((text = getString(response, tokens, WIFISTA_SSID))) {
-				indigo_copy_value(X_WIFI_STA_SSID_ITEM->text.value, text);
+			if ( get_number(response, tokens, GET_CALRESTART_MOT2)) {
+				indigo_send_message(device, "ERROR: ARCO needs calibration");
 			}
-			if ((text = getString(response, tokens, WIFISTA_PWD))) {
-				indigo_copy_value(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
+			PRIVATE_DATA->has_abs_pos = getToken(response, tokens, 0, GET_MOT1_ABS_POS) != -1;
+			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+			
+			if (getToken(response, tokens, 0, GET_MOT1_SPEED) == -1) {
+				FOCUSER_SPEED_PROPERTY->hidden = true;
+			} else {
+				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = get_number(response, tokens, GET_MOT1_SPEED);
+				FOCUSER_SPEED_PROPERTY->hidden = false;
 			}
-			if ((text = getString(response, tokens, LANCFG))) {
-				if (!strcmp(text, "ap")) {
-					X_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
-					X_WIFI_STA_PROPERTY->state = INDIGO_IDLE_STATE;
+			FOCUSER_BACKLASH_ITEM->number.value = get_number(response, tokens, GET_MOT1_BKLASH);
+			X_STATE_MOTOR_TEMP_ITEM->number.value = get_number(response, tokens, GET_MOT1_NTC_T);
+			X_STATE_VIN_12V_ITEM->number.value = get_number(response, tokens, GET_VIN_12V);
+			X_STATE_VIN_USB_ITEM->number.value = get_number(response, tokens, GET_VIN_USB);
+			// TBD: STA doesn't work
+			if ((text = get_string(response, tokens, GET_WIFIAP_STATUS))) {
+				if (!strcmp(text, "on")) {
+					indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_AP_ITEM, true);
 				} else {
-					X_WIFI_AP_PROPERTY->state = INDIGO_IDLE_STATE;
-					X_WIFI_STA_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_OFF_ITEM, true);
 				}
 			}
-
+			if ((text = get_string(response, tokens, GET_WIFIAP_SSID))) {
+				indigo_copy_value(X_WIFI_AP_SSID_ITEM->text.value, text);
+			}
+			if ((text = get_string(response, tokens, GET_WIFIAP_PWD))) {
+				indigo_copy_value(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
+			}
+			if ((text = get_string(response, tokens, GET_WIFISTA_SSID))) {
+				indigo_copy_value(X_WIFI_STA_SSID_ITEM->text.value, text);
+			}
+			if ((text = get_string(response, tokens, GET_WIFISTA_PWD))) {
+				indigo_copy_value(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
+			}
+			if ((text = get_string(response, tokens, GET_DIMLEDS))) {
+				if (!strcmp(text, "on")) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_ON_ITEM, true);
+				} else if (!strcmp(text, "low")) {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_DIM_ITEM, true);
+				} else {
+					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_OFF_ITEM, true);
+				}
+			}
+			X_CONFIG_M1ACC_ITEM->number.value = X_CONFIG_M1ACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_ACC);
+			X_CONFIG_M1SPD_ITEM->number.value = X_CONFIG_M1SPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_SPD);
+			X_CONFIG_M1DEC_ITEM->number.value = X_CONFIG_M1DEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_DEC);
+			X_CONFIG_M1CACC_ITEM->number.value = X_CONFIG_M1CACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_ACC);
+			X_CONFIG_M1CSPD_ITEM->number.value = X_CONFIG_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_SPD);
+			X_CONFIG_M1CDEC_ITEM->number.value = X_CONFIG_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_DEC);
+			X_CONFIG_M1HOLD_ITEM->number.value = X_CONFIG_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_HOLD);
+			X_RUNPRESET_L_M1ACC_ITEM->number.value = X_RUNPRESET_L_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1ACC);
+			X_RUNPRESET_L_M1SPD_ITEM->number.value = X_RUNPRESET_L_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1SPD);
+			X_RUNPRESET_L_M1DEC_ITEM->number.value = X_RUNPRESET_L_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1DEC);
+			X_RUNPRESET_L_M1CACC_ITEM->number.value = X_RUNPRESET_L_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CACC);
+			X_RUNPRESET_L_M1CSPD_ITEM->number.value = X_RUNPRESET_L_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CSPD);
+			X_RUNPRESET_L_M1CDEC_ITEM->number.value = X_RUNPRESET_L_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CDEC);
+			X_RUNPRESET_L_M1HOLD_ITEM->number.value = X_RUNPRESET_L_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1HOLD);
+			X_RUNPRESET_M_M1ACC_ITEM->number.value = X_RUNPRESET_M_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1ACC);
+			X_RUNPRESET_M_M1SPD_ITEM->number.value = X_RUNPRESET_M_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1SPD);
+			X_RUNPRESET_M_M1DEC_ITEM->number.value = X_RUNPRESET_M_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1DEC);
+			X_RUNPRESET_M_M1CACC_ITEM->number.value = X_RUNPRESET_M_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CACC);
+			X_RUNPRESET_M_M1CSPD_ITEM->number.value = X_RUNPRESET_M_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CSPD);
+			X_RUNPRESET_M_M1CDEC_ITEM->number.value = X_RUNPRESET_M_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CDEC);
+			X_RUNPRESET_M_M1HOLD_ITEM->number.value = X_RUNPRESET_M_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1HOLD);
+			X_RUNPRESET_S_M1ACC_ITEM->number.value = X_RUNPRESET_S_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1ACC);
+			X_RUNPRESET_S_M1SPD_ITEM->number.value = X_RUNPRESET_S_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1SPD);
+			X_RUNPRESET_S_M1DEC_ITEM->number.value = X_RUNPRESET_S_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1DEC);
+			X_RUNPRESET_S_M1CACC_ITEM->number.value = X_RUNPRESET_S_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CACC);
+			X_RUNPRESET_S_M1CSPD_ITEM->number.value = X_RUNPRESET_S_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CSPD);
+			X_RUNPRESET_S_M1CDEC_ITEM->number.value = X_RUNPRESET_S_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CDEC);
+			X_RUNPRESET_S_M1HOLD_ITEM->number.value = X_RUNPRESET_S_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1HOLD);
+			X_RUNPRESET_1_M1ACC_ITEM->number.value = X_RUNPRESET_1_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1ACC);
+			X_RUNPRESET_1_M1SPD_ITEM->number.value = X_RUNPRESET_1_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1SPD);
+			X_RUNPRESET_1_M1DEC_ITEM->number.value = X_RUNPRESET_1_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1DEC);
+			X_RUNPRESET_1_M1CACC_ITEM->number.value = X_RUNPRESET_1_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CACC);
+			X_RUNPRESET_1_M1CSPD_ITEM->number.value = X_RUNPRESET_1_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CSPD);
+			X_RUNPRESET_1_M1CDEC_ITEM->number.value = X_RUNPRESET_1_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CDEC);
+			X_RUNPRESET_1_M1HOLD_ITEM->number.value = X_RUNPRESET_1_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1HOLD);
+			X_RUNPRESET_2_M1ACC_ITEM->number.value = X_RUNPRESET_2_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1ACC);
+			X_RUNPRESET_2_M1SPD_ITEM->number.value = X_RUNPRESET_2_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1SPD);
+			X_RUNPRESET_2_M1DEC_ITEM->number.value = X_RUNPRESET_2_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1DEC);
+			X_RUNPRESET_2_M1CACC_ITEM->number.value = X_RUNPRESET_2_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CACC);
+			X_RUNPRESET_2_M1CSPD_ITEM->number.value = X_RUNPRESET_2_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CSPD);
+			X_RUNPRESET_2_M1CDEC_ITEM->number.value = X_RUNPRESET_2_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CDEC);
+			X_RUNPRESET_2_M1HOLD_ITEM->number.value = X_RUNPRESET_2_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1HOLD);
+			X_RUNPRESET_3_M1ACC_ITEM->number.value = X_RUNPRESET_3_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1ACC);
+			X_RUNPRESET_3_M1SPD_ITEM->number.value = X_RUNPRESET_3_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1SPD);
+			X_RUNPRESET_3_M1DEC_ITEM->number.value = X_RUNPRESET_3_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1DEC);
+			X_RUNPRESET_3_M1CACC_ITEM->number.value = X_RUNPRESET_3_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CACC);
+			X_RUNPRESET_3_M1CSPD_ITEM->number.value = X_RUNPRESET_3_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CSPD);
+			X_RUNPRESET_3_M1CDEC_ITEM->number.value = X_RUNPRESET_3_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CDEC);
+			X_RUNPRESET_3_M1HOLD_ITEM->number.value = X_RUNPRESET_3_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1HOLD);
+			if (get_number(response, tokens, GET_MOT1_HOLDCURR_STATUS)) {
+				indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_ON_ITEM, true);
+			} else {
+				indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_OFF_ITEM, true);
+			}
 			return true;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize");
@@ -270,24 +567,143 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- X_FOCUSER_PARK
-		X_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_STATE", "Advanced", "State", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		// -------------------------------------------------------------------------------- X_CONFIG
+		X_CONFIG_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CONFIG", "Advanced", "Configuration", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
+		if (X_CONFIG_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_CONFIG_M1ACC_ITEM, "M1ACC", "Acceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_CONFIG_M1SPD_ITEM, "M1SPD", "Run speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_CONFIG_M1DEC_ITEM, "M1DEC", "Deceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_CONFIG_M1CACC_ITEM, "M1CACC", "Acceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_CONFIG_M1CSPD_ITEM, "M1CSPD", "Run current", 0, 10, 0, 0);
+		indigo_init_number_item(X_CONFIG_M1CDEC_ITEM, "M1CDEC", "Deceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_CONFIG_M1HOLD_ITEM, "M1HOLD", "Hold current", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_STATE
+		X_STATE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_STATE", "Advanced", "State", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (X_STATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(X_STATE_MOTOR_TEMP_ITEM, "MOTOR_TEMP", "Temperature (°C)", -50, 100, 0, 0);
-		indigo_init_number_item(X_STATE_POWERSUPPLY_ITEM, "POWERSUPPLY", "Powersupply (V)", 0, 50, 0, 0);
+		indigo_init_number_item(X_STATE_MOTOR_TEMP_ITEM, "MOTOR_TEMP", "Motor emperature (°C)", -50, 100, 0, 0);
+		indigo_init_number_item(X_STATE_VIN_12V_ITEM, "VIN_12V", "12V power (V)", 0, 50, 0, 0);
+		indigo_init_number_item(X_STATE_VIN_USB_ITEM, "VIN_USB", "USB power (V)", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_WIFI
+		X_WIFI_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_WIFI", "Advanced", "WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_WIFI_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_WIFI_OFF_ITEM, "OFF", "Off", true);
+		indigo_init_switch_item(X_WIFI_AP_ITEM, "AP", "Access Point mode", false);
+		indigo_init_switch_item(X_WIFI_STA_ITEM, "STA", "Station mode", false);
+		// TBD: STA doesn't work
+		X_WIFI_PROPERTY->count = 2;
 		// ---------------------------------------------------------------------------- X_WIFI_AP
-		X_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, "X_WIFI_AP", "Advanced", "AP WiFi settings", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+		X_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, device->name, "X_WIFI_AP", "Advanced", "AP WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (X_WIFI_AP_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(X_WIFI_AP_SSID_ITEM, "AP_SSID", "SSID", "");
 		indigo_init_text_item(X_WIFI_AP_PASSWORD_ITEM, "AP_PASSWORD", "Password", "");
 		// ---------------------------------------------------------------------------- X_WIFI_STA
-		X_WIFI_STA_PROPERTY = indigo_init_text_property(NULL, device->name, "X_WIFI_STA", "Advanced", "STA WiFi settings", INDIGO_IDLE_STATE, INDIGO_RW_PERM, 2);
+		X_WIFI_STA_PROPERTY = indigo_init_text_property(NULL, device->name, "X_WIFI_STA", "Advanced", "STA WiFi settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (X_WIFI_STA_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(X_WIFI_STA_SSID_ITEM, "STA_SSID", "SSID", "");
 		indigo_init_text_item(X_WIFI_STA_PASSWORD_ITEM, "STA_PASSWORD", "Password", "");
+		// TBD: STA doesn't work
+		X_WIFI_STA_PROPERTY->hidden = true;
+		// -------------------------------------------------------------------------------- X_LEDS
+		X_LEDS_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_LEDS", "Advanced", "LEDs", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_LEDS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_LEDS_OFF_ITEM, "OFF", "Off", true);
+		indigo_init_switch_item(X_LEDS_DIM_ITEM, "DIM", "Dim", false);
+		indigo_init_switch_item(X_LEDS_ON_ITEM, "ON", "On", false);
+		// -------------------------------------------------------------------------------- X_RUNPRESET_L
+		X_RUNPRESET_L_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RUNPRESET_L", "Advanced", "Preset light", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
+		if (X_RUNPRESET_L_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_RUNPRESET_L_M1ACC_ITEM, "M1ACC", "Acceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_L_M1SPD_ITEM, "M1SPD", "Run speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_L_M1DEC_ITEM, "M1DEC", "Deceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_L_M1CACC_ITEM, "M1CACC", "Acceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_L_M1CSPD_ITEM, "M1CSPD", "Run current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_L_M1CDEC_ITEM, "M1CDEC", "Deceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_L_M1HOLD_ITEM, "M1HOLD", "Hold current", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_RUNPRESET_M
+		X_RUNPRESET_M_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RUNPRESET_M", "Advanced", "Preset medium", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
+		if (X_RUNPRESET_M_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_RUNPRESET_M_M1ACC_ITEM, "M1ACC", "Acceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_M_M1SPD_ITEM, "M1SPD", "Run speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_M_M1DEC_ITEM, "M1DEC", "Deceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_M_M1CACC_ITEM, "M1CACC", "Acceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_M_M1CSPD_ITEM, "M1CSPD", "Run current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_M_M1CDEC_ITEM, "M1CDEC", "Deceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_M_M1HOLD_ITEM, "M1HOLD", "Hold current", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_RUNPRESET_S
+		X_RUNPRESET_S_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RUNPRESET_S", "Advanced", "Preset slow", INDIGO_OK_STATE, INDIGO_RO_PERM, 7);
+		if (X_RUNPRESET_S_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_RUNPRESET_S_M1ACC_ITEM, "M1ACC", "Acceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_S_M1SPD_ITEM, "M1SPD", "Run speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_S_M1DEC_ITEM, "M1DEC", "Deceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_S_M1CACC_ITEM, "M1CACC", "Acceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_S_M1CSPD_ITEM, "M1CSPD", "Run current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_S_M1CDEC_ITEM, "M1CDEC", "Deceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_S_M1HOLD_ITEM, "M1HOLD", "Hold current", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_RUNPRESET_1
+		X_RUNPRESET_1_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RUNPRESET_1", "Advanced", "Preset #1", INDIGO_OK_STATE, INDIGO_RW_PERM, 7);
+		if (X_RUNPRESET_1_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_RUNPRESET_1_M1ACC_ITEM, "M1ACC", "Acceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_1_M1SPD_ITEM, "M1SPD", "Run speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_1_M1DEC_ITEM, "M1DEC", "Deceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_1_M1CACC_ITEM, "M1CACC", "Acceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_1_M1CSPD_ITEM, "M1CSPD", "Run current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_1_M1CDEC_ITEM, "M1CDEC", "Deceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_1_M1HOLD_ITEM, "M1HOLD", "Hold current", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_RUNPRESET_2
+		X_RUNPRESET_2_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RUNPRESET_2", "Advanced", "Preset #2", INDIGO_OK_STATE, INDIGO_RW_PERM, 7);
+		if (X_RUNPRESET_2_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_RUNPRESET_2_M1ACC_ITEM, "M1ACC", "Acceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_2_M1SPD_ITEM, "M1SPD", "Run speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_2_M1DEC_ITEM, "M1DEC", "Deceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_2_M1CACC_ITEM, "M1CACC", "Acceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_2_M1CSPD_ITEM, "M1CSPD", "Run current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_2_M1CDEC_ITEM, "M1CDEC", "Deceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_2_M1HOLD_ITEM, "M1HOLD", "Hold current", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_RUNPRESET_3
+		X_RUNPRESET_3_PROPERTY = indigo_init_number_property(NULL, device->name, "X_RUNPRESET_3", "Advanced", "Preset #3", INDIGO_OK_STATE, INDIGO_RW_PERM, 7);
+		if (X_RUNPRESET_3_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_RUNPRESET_3_M1ACC_ITEM, "M1ACC", "Acceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_3_M1SPD_ITEM, "M1SPD", "Run speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_3_M1DEC_ITEM, "M1DEC", "Deceleration speed", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_3_M1CACC_ITEM, "M1CACC", "Acceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_3_M1CSPD_ITEM, "M1CSPD", "Run current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_3_M1CDEC_ITEM, "M1CDEC", "Deceleration current", 0, 10, 0, 0);
+		indigo_init_number_item(X_RUNPRESET_3_M1HOLD_ITEM, "M1HOLD", "Hold current", 0, 10, 0, 0);
+		// -------------------------------------------------------------------------------- X_RUNPRESET
+		X_RUNPRESET_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RUNPRESET", "Advanced", "Presets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 6);
+		if (X_RUNPRESET_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_RUNPRESET_L_ITEM, "L", "Preset light", false);
+		indigo_init_switch_item(X_RUNPRESET_M_ITEM, "M", "Preset medium", false);
+		indigo_init_switch_item(X_RUNPRESET_S_ITEM, "S", "Preset slow", false);
+		indigo_init_switch_item(X_RUNPRESET_1_ITEM, "1", "Preset #1", false);
+		indigo_init_switch_item(X_RUNPRESET_2_ITEM, "2", "Preset #2", false);
+		indigo_init_switch_item(X_RUNPRESET_3_ITEM, "3", "Preset #3", false);
+		// -------------------------------------------------------------------------------- X_HOLD_CURR
+		X_HOLD_CURR_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_HOLD_CURR", "Advanced", "Hold current", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_HOLD_CURR_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_HOLD_CURR_OFF_ITEM, "OFF", "Off", true);
+		indigo_init_switch_item(X_HOLD_CURR_ON_ITEM, "ON", "On", false);
+		// -------------------------------------------------------------------------------- X_CALIBRATE_SS
+		X_CALIBRATE_SS_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CALIBRATE_SS", "Advanced", "Calibrate focuser", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_CALIBRATE_SS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_CALIBRATE_SS_START_ITEM, "START", "Start", false);
+		indigo_init_switch_item(X_CALIBRATE_SS_START_INVERTED_ITEM, "START_INVERTED", "Start inverted", false);
+		indigo_init_switch_item(X_CALIBRATE_SS_END_ITEM, "END", "End", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -304,7 +720,10 @@ static indigo_result focuser_attach(indigo_device *device) {
 #endif
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 8;
+		FOCUSER_SPEED_ITEM->number.min = 0;
+		FOCUSER_SPEED_ITEM->number.max = 0;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
@@ -318,10 +737,34 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 	if (IS_CONNECTED) {
 		if (indigo_property_match(X_STATE_PROPERTY, property))
 			indigo_define_property(device, X_STATE_PROPERTY, NULL);
+		if (indigo_property_match(X_CONFIG_PROPERTY, property))
+			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);
+		if (indigo_property_match(X_LEDS_PROPERTY, property))
+			indigo_define_property(device, X_LEDS_PROPERTY, NULL);
+		if (indigo_property_match(X_WIFI_PROPERTY, property))
+			indigo_define_property(device, X_WIFI_PROPERTY, NULL);
 		if (indigo_property_match(X_WIFI_AP_PROPERTY, property))
 			indigo_define_property(device, X_WIFI_AP_PROPERTY, NULL);
 		if (indigo_property_match(X_WIFI_STA_PROPERTY, property))
 			indigo_define_property(device, X_WIFI_STA_PROPERTY, NULL);
+		if (indigo_property_match(X_RUNPRESET_L_PROPERTY, property))
+			indigo_define_property(device, X_RUNPRESET_L_PROPERTY, NULL);
+		if (indigo_property_match(X_RUNPRESET_M_PROPERTY, property))
+			indigo_define_property(device, X_RUNPRESET_M_PROPERTY, NULL);
+		if (indigo_property_match(X_RUNPRESET_S_PROPERTY, property))
+			indigo_define_property(device, X_RUNPRESET_S_PROPERTY, NULL);
+		if (indigo_property_match(X_RUNPRESET_1_PROPERTY, property))
+			indigo_define_property(device, X_RUNPRESET_1_PROPERTY, NULL);
+		if (indigo_property_match(X_RUNPRESET_2_PROPERTY, property))
+			indigo_define_property(device, X_RUNPRESET_2_PROPERTY, NULL);
+		if (indigo_property_match(X_RUNPRESET_3_PROPERTY, property))
+			indigo_define_property(device, X_RUNPRESET_3_PROPERTY, NULL);
+		if (indigo_property_match(X_RUNPRESET_PROPERTY, property))
+			indigo_define_property(device, X_RUNPRESET_PROPERTY, NULL);
+		if (indigo_property_match(X_HOLD_CURR_PROPERTY, property))
+			indigo_define_property(device, X_HOLD_CURR_PROPERTY, NULL);
+		if (indigo_property_match(X_CALIBRATE_SS_PROPERTY, property))
+			indigo_define_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -332,22 +775,17 @@ static void focuser_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
 	if (primaluce_command(device, "{\"req\":{\"get\":{\"EXT_T\":\"\", \"VIN_12V\": \"\", \"MOT1\":{\"NTC_T\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
-		char *error = getString(response, tokens, MOT1_ERROR);
-		if (error) {
-			indigo_send_message(device, "%s: %s", INFO_DEVICE_MODEL_ITEM->text.value, error);
-		} else {
-			double temp = getNumber(response, tokens, EXT_T);
-			if (temp != FOCUSER_TEMPERATURE_ITEM->number.value) {
-				FOCUSER_TEMPERATURE_ITEM->number.value = temp;
-				indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-			}
-			double motor_temp = getNumber(response, tokens, MOT1_NTC_T);
-			double vin12v = getNumber(response, tokens, VIN_12V);
-			if (motor_temp != X_STATE_MOTOR_TEMP_ITEM->number.value || vin12v != X_STATE_POWERSUPPLY_ITEM->number.value) {
-				X_STATE_MOTOR_TEMP_ITEM->number.value = motor_temp;
-				X_STATE_POWERSUPPLY_ITEM->number.value = vin12v;
-				indigo_update_property(device, X_STATE_PROPERTY, NULL);
-			}
+	double temp = get_number(response, tokens, GET_EXT_T);
+		if (temp != FOCUSER_TEMPERATURE_ITEM->number.value) {
+			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+		}
+		double motor_temp = get_number(response, tokens, GET_MOT1_NTC_T);
+		double vin12v = get_number(response, tokens, GET_VIN_12V);
+		if (motor_temp != X_STATE_MOTOR_TEMP_ITEM->number.value || vin12v != X_STATE_VIN_12V_ITEM->number.value) {
+			X_STATE_MOTOR_TEMP_ITEM->number.value = motor_temp;
+			X_STATE_VIN_12V_ITEM->number.value = vin12v;
+			indigo_update_property(device, X_STATE_PROPERTY, NULL);
 		}
 	}
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->timer);
@@ -357,8 +795,20 @@ static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (primaluce_open(device)) {
 			indigo_define_property(device, X_STATE_PROPERTY, NULL);
+			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);
+			indigo_define_property(device, X_LEDS_PROPERTY, NULL);
+			indigo_define_property(device, X_WIFI_PROPERTY, NULL);
 			indigo_define_property(device, X_WIFI_AP_PROPERTY, NULL);
 			indigo_define_property(device, X_WIFI_STA_PROPERTY, NULL);
+			indigo_define_property(device, X_RUNPRESET_L_PROPERTY, NULL);
+			indigo_define_property(device, X_RUNPRESET_M_PROPERTY, NULL);
+			indigo_define_property(device, X_RUNPRESET_S_PROPERTY, NULL);
+			indigo_define_property(device, X_RUNPRESET_1_PROPERTY, NULL);
+			indigo_define_property(device, X_RUNPRESET_2_PROPERTY, NULL);
+			indigo_define_property(device, X_RUNPRESET_3_PROPERTY, NULL);
+			indigo_define_property(device, X_RUNPRESET_PROPERTY, NULL);
+			indigo_define_property(device, X_HOLD_CURR_PROPERTY, NULL);
+			indigo_define_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -369,8 +819,20 @@ static void focuser_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
 			indigo_delete_property(device, X_STATE_PROPERTY, NULL);
+			indigo_delete_property(device, X_CONFIG_PROPERTY, NULL);
+			indigo_delete_property(device, X_LEDS_PROPERTY, NULL);
+			indigo_delete_property(device, X_WIFI_PROPERTY, NULL);
 			indigo_delete_property(device, X_WIFI_AP_PROPERTY, NULL);
 			indigo_delete_property(device, X_WIFI_STA_PROPERTY, NULL);
+			indigo_delete_property(device, X_RUNPRESET_L_PROPERTY, NULL);
+			indigo_delete_property(device, X_RUNPRESET_M_PROPERTY, NULL);
+			indigo_delete_property(device, X_RUNPRESET_S_PROPERTY, NULL);
+			indigo_delete_property(device, X_RUNPRESET_1_PROPERTY, NULL);
+			indigo_delete_property(device, X_RUNPRESET_2_PROPERTY, NULL);
+			indigo_delete_property(device, X_RUNPRESET_3_PROPERTY, NULL);
+			indigo_delete_property(device, X_RUNPRESET_PROPERTY, NULL);
+			indigo_delete_property(device, X_HOLD_CURR_PROPERTY, NULL);
+			indigo_delete_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			primaluce_close(device);
 		}
@@ -384,28 +846,37 @@ static void focuser_position_handler(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
 	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
-	if (primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
-		char *state = getString(response, tokens, MOT1_GOTO_STEP);
-		if (state == NULL || strcmp(state, "done")) {
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			return;
-		}
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		return;
 	}
+	char *state = get_string(response, tokens, CMD_MOT1_GOTO);
+	if (state == NULL || strcmp(state, "done")) {
+		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		return;
+	}
+	char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
 	while (true) {
-		if (primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = getNumber(response, tokens, MOT1_ABS_POS);
-			if (!strcmp(getString(response, tokens, MOT1_MST), "stop")) {
+		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+			if (!strcmp(get_string(response, tokens, GET_MOT1_MST), "stop")) {
 				break;
 			}
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
 	}
-	indigo_usleep(100000);
-	if (primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\"}}}}", response, sizeof(response), tokens, 128)) {
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = getNumber(response, tokens, MOT1_ABS_POS);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	for (int i = 0; i < 10; i++) {
+		indigo_usleep(100000);
+		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+		if (FOCUSER_POSITION_ITEM->number.target == FOCUSER_POSITION_ITEM->number.value)
+			break;
 	}
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -416,40 +887,175 @@ static void focuser_steps_handler(indigo_device *device) {
 	char command[1024];
 	char response[1024];
 	jsmntok_t tokens[128];
-	int position = (int)FOCUSER_POSITION_ITEM->number.target;
-	int steps = (int)FOCUSER_STEPS_ITEM->number.target;
-	position = FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? (position + steps) : (position - steps);
-	if (position < FOCUSER_POSITION_ITEM->number.min)
-		position = FOCUSER_POSITION_ITEM->number.min;
-	else if (position > FOCUSER_POSITION_ITEM->number.max)
-		position = FOCUSER_POSITION_ITEM->number.max;
-	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}", position);
-	if (primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
-		char *state = getString(response, tokens, MOT1_GOTO_STEP);
-		if (state == NULL || strcmp(state, "done")) {
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			return;
-		}
+	int steps = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ? (int)FOCUSER_STEPS_ITEM->number.target : -(int)FOCUSER_STEPS_ITEM->number.target;
+	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE\":{\"STEP\":%d}}}}}", steps);
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		return;
 	}
+	char *state = get_string(response, tokens, CMD_MOT1_MOVE);
+	if (state == NULL || strcmp(state, "done")) {
+		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		return;
+	}
+	char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
 	while (true) {
-		if (primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = getNumber(response, tokens, MOT1_ABS_POS);
-			if (!strcmp(getString(response, tokens, MOT1_MST), "stop")) {
+		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+			if (!strcmp(get_string(response, tokens, GET_MOT1_MST), "stop")) {
 				break;
 			}
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
 	}
-	indigo_usleep(100000);
-	if (primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\"}}}}", response, sizeof(response), tokens, 128)) {
-		FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = getNumber(response, tokens, MOT1_ABS_POS);
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	for (int i = 0; i < 10; i++) {
+		indigo_usleep(100000);
+		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+		if (FOCUSER_POSITION_ITEM->number.target == FOCUSER_POSITION_ITEM->number.value)
+			break;
 	}
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+}
+
+static void focuser_bklash_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"MOT1\":{\"BKLASH\":%d}}}}", (int)FOCUSER_BACKLASH_ITEM->number.target);
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		return;
+	}
+	char *state = get_string(response, tokens, SET_MOT1_BKLASH);
+	if (state == NULL || strcmp(state, "done")) {
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		return;
+	}
+	FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+}
+
+static void focuser_preset_1_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"RUNPRESET_1\":{\"M1ACC\":%d,\"M1DEC\":%d,\"M1SPD\":%d,\"M1CACC\":%d,\"M1CDEC\":%d,\"M1CSPD\":%d,\"M1HOLD\":%d}}}}", (int)X_RUNPRESET_1_M1ACC_ITEM->number.target, (int)X_RUNPRESET_1_M1DEC_ITEM->number.target, (int)X_RUNPRESET_1_M1SPD_ITEM->number.target, (int)X_RUNPRESET_1_M1CACC_ITEM->number.target, (int)X_RUNPRESET_1_M1CDEC_ITEM->number.target, (int)X_RUNPRESET_1_M1CSPD_ITEM->number.target, (int)X_RUNPRESET_1_M1HOLD_ITEM->number.target);
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		X_RUNPRESET_1_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_RUNPRESET_1_PROPERTY, NULL);
+			return;
+	}
+	X_RUNPRESET_1_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_RUNPRESET_1_PROPERTY, NULL);
+}
+
+static void focuser_preset_2_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"RUNPRESET_2\":{\"M1ACC\":%d,\"M1DEC\":%d,\"M1SPD\":%d,\"M1CACC\":%d,\"M1CDEC\":%d,\"M1CSPD\":%d,\"M1HOLD\":%d}}}}", (int)X_RUNPRESET_2_M1ACC_ITEM->number.target, (int)X_RUNPRESET_2_M1DEC_ITEM->number.target, (int)X_RUNPRESET_2_M1SPD_ITEM->number.target, (int)X_RUNPRESET_2_M1CACC_ITEM->number.target, (int)X_RUNPRESET_2_M1CDEC_ITEM->number.target, (int)X_RUNPRESET_2_M1CSPD_ITEM->number.target, (int)X_RUNPRESET_2_M1HOLD_ITEM->number.target);
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		X_RUNPRESET_2_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_RUNPRESET_2_PROPERTY, NULL);
+		return;
+	}
+	X_RUNPRESET_2_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_RUNPRESET_2_PROPERTY, NULL);
+}
+
+static void focuser_preset_3_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"RUNPRESET_3\":{\"M1ACC\":%d,\"M1DEC\":%d,\"M1SPD\":%d,\"M1CACC\":%d,\"M1CDEC\":%d,\"M1CSPD\":%d,\"M1HOLD\":%d}}}}", (int)X_RUNPRESET_3_M1ACC_ITEM->number.target, (int)X_RUNPRESET_3_M1DEC_ITEM->number.target, (int)X_RUNPRESET_3_M1SPD_ITEM->number.target, (int)X_RUNPRESET_3_M1CACC_ITEM->number.target, (int)X_RUNPRESET_3_M1CDEC_ITEM->number.target, (int)X_RUNPRESET_3_M1CSPD_ITEM->number.target, (int)X_RUNPRESET_3_M1HOLD_ITEM->number.target);
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		X_RUNPRESET_3_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_RUNPRESET_3_PROPERTY, NULL);
+		return;
+	}
+	X_RUNPRESET_3_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_RUNPRESET_3_PROPERTY, NULL);
+}
+
+static void focuser_preset_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	if (X_RUNPRESET_L_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"RUNPRESET\":\"light\"}}}");
+		X_RUNPRESET_L_ITEM->sw.value = false;
+	} else if (X_RUNPRESET_M_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"RUNPRESET\":\"medium\"}}}");
+		X_RUNPRESET_M_ITEM->sw.value = false;
+	} else if (X_RUNPRESET_S_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"RUNPRESET\":\"slow\"}}}");
+		X_RUNPRESET_S_ITEM->sw.value = false;
+	} else if (X_RUNPRESET_1_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"RUNPRESET\":1}}}");
+		X_RUNPRESET_1_ITEM->sw.value = false;
+	} else if (X_RUNPRESET_2_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"RUNPRESET\":2}}}");
+		X_RUNPRESET_2_ITEM->sw.value = false;
+	} else if (X_RUNPRESET_3_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"RUNPRESET\":3}}}");
+		X_RUNPRESET_3_ITEM->sw.value = false;
+	}
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		X_RUNPRESET_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_RUNPRESET_PROPERTY, NULL);
+		return;
+	}
+	if (!primaluce_command(device, "{\"req\":{\"get\":{\"MOT1\":{\"HOLDCURR_STATUS\":\"\",\"FnRUN_SPD\":\"\",\"FnRUN_DEC\":\"\",\"FnRUN_ACC\":\"\",\"FnRUN_CURR_SPD\":\"\",\"FnRUN_CURR_DEC\":\"\",\"FnRUN_CURR_ACC\":\"\",\"FnRUN_CURR_HOLD\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
+		X_CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_CONFIG_PROPERTY, NULL);
+		return;
+	}
+	X_CONFIG_M1ACC_ITEM->number.value = X_CONFIG_M1ACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_ACC);
+	X_CONFIG_M1SPD_ITEM->number.value = X_CONFIG_M1SPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_SPD);
+	X_CONFIG_M1DEC_ITEM->number.value = X_CONFIG_M1DEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_DEC);
+	X_CONFIG_M1CACC_ITEM->number.value = X_CONFIG_M1CACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_ACC);
+	X_CONFIG_M1CSPD_ITEM->number.value = X_CONFIG_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_SPD);
+	X_CONFIG_M1CDEC_ITEM->number.value = X_CONFIG_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_DEC);
+	X_CONFIG_M1HOLD_ITEM->number.value = X_CONFIG_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_HOLD);
+	X_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_CONFIG_PROPERTY, NULL);
+	X_RUNPRESET_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_RUNPRESET_PROPERTY, NULL);
+}
+
+static void focuser_hold_curr_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	if (X_HOLD_CURR_OFF_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"MOT1\":{\"HOLDCURR_STATUS\":0}}}}");
+	} else if (X_LEDS_ON_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"MOT1\":{\"HOLDCURR_STATUS\":1}}}}");
+	}
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		X_HOLD_CURR_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_HOLD_CURR_PROPERTY, NULL);
+		return;
+	}
+	char *state = get_string(response, tokens, SET_MOT1_HOLDCURR_STATUS);
+	if (state == NULL || strcmp(state, "done")) {
+		X_HOLD_CURR_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_HOLD_CURR_PROPERTY, NULL);
+		return;
+	}
+	X_HOLD_CURR_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_HOLD_CURR_PROPERTY, NULL);
 }
 
 static void focuser_speed_handler(indigo_device *device) {
@@ -457,13 +1063,16 @@ static void focuser_speed_handler(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
 	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"MOT1\":{\"SPEED\":%d}}}}", (int)FOCUSER_SPEED_ITEM->number.target);
-	if (primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
-		char *state = getString(response, tokens, MOT1_SET_SPEED);
-		if (state == NULL || strcmp(state, "done")) {
-			FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
-			return;
-		}
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		return;
+	}
+	char *state = get_string(response, tokens, SET_MOT1_SPEED);
+	if (state == NULL || strcmp(state, "done")) {
+		FOCUSER_SPEED_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+		return;
 	}
 	FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
@@ -472,29 +1081,66 @@ static void focuser_speed_handler(indigo_device *device) {
 static void focuser_abort_handler(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
+	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
 	if (primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
-		char *state = getString(response, tokens, MOT1_MOT_STOP);
+		char *state = get_string(response, tokens, CMD_MOT1_MOT_STOP);
 		if (state == NULL || strcmp(state, "done")) {
-			FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
 			return;
 		}
 	}
-	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+}
+
+static void focuser_leds_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	if (X_LEDS_OFF_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"DIMLEDS\":\"off\"}}}");
+	} else if (X_LEDS_DIM_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"DIMLEDS\":\"low\"}}}");
+	} else if (X_LEDS_ON_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"DIMLEDS\":\"on\"}}}");
+	}
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		X_LEDS_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_LEDS_PROPERTY, NULL);
+		return;
+	}
+	X_LEDS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_LEDS_PROPERTY, NULL);
+}
+
+static void focuser_wifi_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	if (X_WIFI_OFF_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"off\"}}}");
+	} else if (X_WIFI_AP_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"AP_SET_STATUS\":\"on\"}}}");
+	} else if (X_WIFI_STA_ITEM->sw.value) {
+		snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"STA_SET_STATUS\":\"on\"}}}");
+	}
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		X_WIFI_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_WIFI_PROPERTY, NULL);
+		return;
+	}
+	X_WIFI_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_WIFI_PROPERTY, NULL);
 }
 
 static void focuser_wifi_ap_handler(indigo_device *device) {
 	char command[1024];
 	char response[1024];
 	jsmntok_t tokens[128];
-	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}, \"LANCFG\":\"ap\"}}}", X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value);
+	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"WIFIAP\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", X_WIFI_AP_SSID_ITEM->text.value, X_WIFI_AP_PASSWORD_ITEM->text.value);
 	if (primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		X_WIFI_AP_PROPERTY->state = INDIGO_OK_STATE;
-		X_WIFI_STA_PROPERTY->state = INDIGO_IDLE_STATE;
 	} else {
 		X_WIFI_AP_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -505,17 +1151,54 @@ static void focuser_wifi_sta_handler(indigo_device *device) {
 	char command[1024];
 	char response[1024];
 	jsmntok_t tokens[128];
-	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}, \"LANCFG\":\"sta\"}}}", X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value);
+	snprintf(command, sizeof(command), "{\"req\":{\"set\":{\"WIFISTA\":{\"SSID\":\"%s\", \"PWD\":\"%s\"}}}}", X_WIFI_STA_SSID_ITEM->text.value, X_WIFI_STA_PASSWORD_ITEM->text.value);
 	if (primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		X_WIFI_STA_PROPERTY->state = INDIGO_OK_STATE;
-		X_WIFI_AP_PROPERTY->state = INDIGO_IDLE_STATE;
 	} else {
 		X_WIFI_STA_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, X_WIFI_STA_PROPERTY, NULL);
 }
 
-
+static void focuser_calibrate_ss_handler(indigo_device *device) {
+	char response[1024];
+	jsmntok_t tokens[128];
+	bool result = true;
+	if (X_CALIBRATE_SS_START_ITEM->sw.value) {
+		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"Init\"}}}}", response, sizeof(response), tokens, 128);
+		if (result) {
+			indigo_usleep(1000000);
+			result = primaluce_command(device, "{\"req\":{\"set\": {\"MOT1\": {\"CAL_DIR\":\"normal\"}}}}", response, sizeof(response), tokens, 128);
+		}
+		if (result) {
+			indigo_usleep(1000000);
+			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMinPos\"}}}}", response, sizeof(response), tokens, 128);
+		}
+		if (result) {
+			indigo_usleep(1000000);
+			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"}}}}", response, sizeof(response), tokens, 128);
+		}
+	} else if (X_CALIBRATE_SS_START_INVERTED_ITEM->sw.value) {
+		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"Init\"}}}}", response, sizeof(response), tokens, 128);
+		if (result) {
+			indigo_usleep(1000000);
+			result = primaluce_command(device, "{\"req\":{\"set\": {\"MOT1\": {\"CAL_DIR\":\"invert\"}}}}", response, sizeof(response), tokens, 128);
+		}
+		if (result) {
+			indigo_usleep(1000000);
+			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMinPos\"}}}}", response, sizeof(response), tokens, 128);
+		}
+		if (result) {
+			indigo_usleep(1000000);
+			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"}}}}", response, sizeof(response), tokens, 128);
+		}
+	} else if (X_CALIBRATE_SS_END_ITEM->sw.value) {
+		X_CALIBRATE_SS_START_ITEM->sw.value = X_CALIBRATE_SS_START_INVERTED_ITEM->sw.value = X_CALIBRATE_SS_END_ITEM->sw.value = false;
+		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMaxPos\"}}}}", response, sizeof(response), tokens, 128);
+	}
+	X_CALIBRATE_SS_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+}
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
@@ -558,6 +1241,62 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, FOCUSER_SPEED_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_speed_handler, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_bklash_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_RUNPRESET_1_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RUNPRESET_1
+		indigo_property_copy_values(X_RUNPRESET_1_PROPERTY, property, false);
+		X_RUNPRESET_1_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_RUNPRESET_1_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_preset_1_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_RUNPRESET_2_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RUNPRESET_2
+		indigo_property_copy_values(X_RUNPRESET_2_PROPERTY, property, false);
+		X_RUNPRESET_2_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_RUNPRESET_2_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_preset_2_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_RUNPRESET_3_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RUNPRESET_3
+		indigo_property_copy_values(X_RUNPRESET_3_PROPERTY, property, false);
+		X_RUNPRESET_3_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_RUNPRESET_3_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_preset_3_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_RUNPRESET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_RUNPRESET
+		indigo_property_copy_values(X_RUNPRESET_PROPERTY, property, false);
+		X_RUNPRESET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_RUNPRESET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_preset_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_HOLD_CURR_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_HOLD_CURR
+		indigo_property_copy_values(X_HOLD_CURR_PROPERTY, property, false);
+		X_HOLD_CURR_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_HOLD_CURR_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_hold_curr_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_LEDS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_LEDS
+		indigo_property_copy_values(X_LEDS_PROPERTY, property, false);
+		X_LEDS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_LEDS_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_leds_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_WIFI_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_WIFI
+		indigo_property_copy_values(X_WIFI_PROPERTY, property, false);
+		X_WIFI_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_WIFI_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_wifi_handler, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_WIFI_AP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_WIFI_AP
 		indigo_property_copy_values(X_WIFI_AP_PROPERTY, property, false);
@@ -572,6 +1311,13 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, X_WIFI_STA_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_wifi_sta_handler, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_CALIBRATE_SS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CALIBRATE_SS
+		indigo_property_copy_values(X_CALIBRATE_SS_PROPERTY, property, false);
+		X_CALIBRATE_SS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_calibrate_ss_handler, NULL);
+		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
 }
@@ -583,8 +1329,20 @@ static indigo_result focuser_detach(indigo_device *device) {
 		focuser_connection_handler(device);
 	}
 	indigo_release_property(X_STATE_PROPERTY);
+	indigo_release_property(X_CONFIG_PROPERTY);
+	indigo_release_property(X_LEDS_PROPERTY);
+	indigo_release_property(X_WIFI_PROPERTY);
 	indigo_release_property(X_WIFI_AP_PROPERTY);
 	indigo_release_property(X_WIFI_STA_PROPERTY);
+	indigo_release_property(X_RUNPRESET_L_PROPERTY);
+	indigo_release_property(X_RUNPRESET_M_PROPERTY);
+	indigo_release_property(X_RUNPRESET_S_PROPERTY);
+	indigo_release_property(X_RUNPRESET_1_PROPERTY);
+	indigo_release_property(X_RUNPRESET_2_PROPERTY);
+	indigo_release_property(X_RUNPRESET_3_PROPERTY);
+	indigo_release_property(X_RUNPRESET_PROPERTY);
+	indigo_release_property(X_HOLD_CURR_PROPERTY);
+	indigo_release_property(X_CALIBRATE_SS_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
