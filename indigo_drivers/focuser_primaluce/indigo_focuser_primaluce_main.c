@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PrimaluceLab focuser/rotator/flatfield driver
+/** INDIGO PrimaluceLab focuser/rotator driver
  \file indigo_focuser_primaluce_main.c
  */
 
