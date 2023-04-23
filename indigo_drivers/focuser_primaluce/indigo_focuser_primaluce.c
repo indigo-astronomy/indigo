@@ -416,8 +416,7 @@ static void primaluce_close(indigo_device *device) {
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "N/A");
 		indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "N/A");
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
-		indigo_delete_property(device, INFO_PROPERTY, NULL);
-		indigo_define_property(device, INFO_PROPERTY, NULL);
+		indigo_update_property(device, INFO_PROPERTY, NULL);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 }
@@ -719,8 +718,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SN: %s", text);
 					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
 				}
-				indigo_delete_property(device, INFO_PROPERTY, NULL);
-				indigo_define_property(device, INFO_PROPERTY, NULL);
+				indigo_update_property(device, INFO_PROPERTY, NULL);
 				if ((text = get_string(response, tokens, GET_MOT1_ERROR)) && *text) {
 					indigo_send_message(device, "ERROR: %s", text);
 				}
