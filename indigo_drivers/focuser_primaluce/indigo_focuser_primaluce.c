@@ -267,15 +267,6 @@ static bool primaluce_command(indigo_device *device, char *command, char *respon
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return false;
 	}
-//	struct timeval tv;
-//	fd_set readout;
-//	tv.tv_sec = 5;
-//	tv.tv_usec = 0;
-//	FD_ZERO(&readout);
-//	FD_SET(PRIVATE_DATA->handle, &readout);
-//	result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-//	if (result <= 0)
-//		return false;
 	result = indigo_read_line(PRIVATE_DATA->handle, response, size);
 	if (result < 1) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
@@ -291,11 +282,12 @@ static bool primaluce_command(indigo_device *device, char *command, char *respon
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Parsed '%s' -> '%s'", command, response);
 	for (int i = 0; i < count; i++) {
-		if (tokens[i].type == JSMN_UNDEFINED)
+		if (tokens[i].type == JSMN_UNDEFINED) {
 			break;
-//		printf("%d %.*s\n", i, tokens[i].end -  tokens[i].start, response + tokens[i].start);
-		if (tokens[i].type == JSMN_STRING)
+		}
+		if (tokens[i].type == JSMN_STRING) {
 			response[tokens[i].end] = 0;
+		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	return true;
@@ -309,8 +301,9 @@ static int getToken(char *response, jsmntok_t *tokens, int start, char *path[]) 
 	int index = start + 1;
 	char *name = *path;
 	for (int i = 0; i < count; i++) {
-		if (tokens[index].type != JSMN_STRING)
+		if (tokens[index].type != JSMN_STRING) {
 			return -1;
+		}
 		char *n = response + tokens[index].start;
 		int l = tokens[index].end - tokens[index].start;
 		if (!strncmp(n, name, l)) {
@@ -322,10 +315,12 @@ static int getToken(char *response, jsmntok_t *tokens, int start, char *path[]) 
 		} else {
 			while (true) {
 				index++;
-				if (tokens[index].type == JSMN_UNDEFINED)
+				if (tokens[index].type == JSMN_UNDEFINED) {
 					return -1;
-				if (tokens[index].parent == start)
+				}
+				if (tokens[index].parent == start) {
 					break;
+				}
 			}
 		}
 	}
@@ -334,8 +329,9 @@ static int getToken(char *response, jsmntok_t *tokens, int start, char *path[]) 
 
 static char *get_string(char *response, jsmntok_t *tokens, char *path[]) {
 	int index = getToken(response, tokens, 0, path);
-	if (index == -1 || tokens[index].type != JSMN_STRING)
+	if (index == -1 || tokens[index].type != JSMN_STRING) {
 		return NULL;
+	}
 	return response + tokens[index].start;
 }
 
@@ -351,8 +347,9 @@ static double get_number2(char *response, jsmntok_t *tokens, char *path[], char 
 			return 0;
 		}
 	}
-	if  (tokens[index].type == JSMN_PRIMITIVE || tokens[index].type == JSMN_STRING)
+	if  (tokens[index].type == JSMN_PRIMITIVE || tokens[index].type == JSMN_STRING) {
 		return atof(response + tokens[index].start);
+	}
 	return 0;
 }
 
@@ -365,178 +362,25 @@ static bool primaluce_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
 	if (PRIVATE_DATA->handle >= 0) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		char response[8 * 1024];
-		jsmntok_t tokens[1024];
+		char response[1024];
+		jsmntok_t tokens[128];
 		char *text;
-		if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}", response, sizeof(response), tokens, 1024)) {
-			if ((text = get_string(response, tokens, GET_MODNAME))) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
-				indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, text);
-				if (!strncmp(text, "SESTOSENSO", 10)) {
-					X_CALIBRATE_SS_PROPERTY->hidden = false;
-					X_STATE_PROPERTY->count = 2;
-					X_CONFIG_PROPERTY->hidden = false;
-					X_RUNPRESET_PROPERTY->hidden = false;
-					X_RUNPRESET_L_PROPERTY->hidden = false;
-					X_RUNPRESET_M_PROPERTY->hidden = false;
-					X_RUNPRESET_S_PROPERTY->hidden = false;
-					X_RUNPRESET_1_PROPERTY->hidden = false;
-					X_RUNPRESET_2_PROPERTY->hidden = false;
-					X_RUNPRESET_3_PROPERTY->hidden = false;
-					X_HOLD_CURR_PROPERTY->hidden = false;
-				} else if (!strncmp(text, "ESATTO", 6)) {
-					X_STATE_PROPERTY->count = 3;
-					X_CALIBRATE_SS_PROPERTY->hidden = true;
-					X_CONFIG_PROPERTY->hidden = true;
-					X_RUNPRESET_PROPERTY->hidden = true;
-					X_RUNPRESET_L_PROPERTY->hidden = true;
-					X_RUNPRESET_M_PROPERTY->hidden = true;
-					X_RUNPRESET_S_PROPERTY->hidden = true;
-					X_RUNPRESET_1_PROPERTY->hidden = true;
-					X_RUNPRESET_2_PROPERTY->hidden = true;
-					X_RUNPRESET_3_PROPERTY->hidden = true;
-					X_HOLD_CURR_PROPERTY->hidden = true;
+		if (primaluce_command(device, "{\"req\":{\"get\":{\"MODNAME\":\"\"}}}", response, sizeof(response), tokens, 128) && (text = get_string(response, tokens, GET_MODNAME))) {
+			if (!strncmp(text, "SESTOSENSO", 10) || !strncmp(text, "ESATTO", 6)) {
+				if (primaluce_command(device, "{\"req\":{\"get\":{\"SWVERS\":{\"SWAPP\":\"\"}}}}", response, sizeof(response), tokens, 128) && (text = get_string(response, tokens, GET_SWAPP))) {
+					double version = atof(text);
+					if (version < 3.05) {
+						indigo_send_message(device, "WARNING: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
+					}
+					return true;
 				} else {
-					X_STATE_PROPERTY->count = 2;
-					X_CALIBRATE_SS_PROPERTY->hidden = true;
-					X_CONFIG_PROPERTY->hidden = true;
-					X_RUNPRESET_PROPERTY->hidden = true;
-					X_RUNPRESET_L_PROPERTY->hidden = true;
-					X_RUNPRESET_M_PROPERTY->hidden = true;
-					X_RUNPRESET_S_PROPERTY->hidden = true;
-					X_RUNPRESET_1_PROPERTY->hidden = true;
-					X_RUNPRESET_2_PROPERTY->hidden = true;
-					X_RUNPRESET_3_PROPERTY->hidden = true;
-					X_HOLD_CURR_PROPERTY->hidden = true;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported version");
 				}
-			}
-			if ((text = get_string(response, tokens, GET_SWAPP))) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWAPP: %s", text);
-				indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
-				double version = atof(text);
-				if (version < 3.05) {
-					indigo_send_message(device, "WARNING: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
-				}
-				if ((text = get_string(response, tokens, GET_SWWEB))) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWWEB: %s", text);
-					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
-					strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
-				}
-			}
-			if ((text = get_string(response, tokens, GET_SN))) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SN: %s", text);
-				indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
-			}
-			indigo_delete_property(device, INFO_PROPERTY, NULL);
-			indigo_define_property(device, INFO_PROPERTY, NULL);
-			if ((text = get_string(response, tokens, GET_MOT1_ERROR)) && *text) {
-				indigo_send_message(device, "ERROR: %s", text);
-			}
-			if ( get_number(response, tokens, GET_CALRESTART_MOT1)) {
-				indigo_send_message(device, "ERROR: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
-			}
-			if ( get_number(response, tokens, GET_CALRESTART_MOT2)) {
-				indigo_send_message(device, "ERROR: ARCO needs calibration");
-			}
-			PRIVATE_DATA->has_abs_pos = getToken(response, tokens, 0, GET_MOT1_ABS_POS) != -1;
-			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
-			
-			if (getToken(response, tokens, 0, GET_MOT1_SPEED) == -1) {
-				FOCUSER_SPEED_PROPERTY->hidden = true;
 			} else {
-				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = get_number(response, tokens, GET_MOT1_SPEED);
-				FOCUSER_SPEED_PROPERTY->hidden = false;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported device");
 			}
-			FOCUSER_BACKLASH_ITEM->number.value = get_number(response, tokens, GET_MOT1_BKLASH);
-			X_STATE_MOTOR_TEMP_ITEM->number.value = get_number(response, tokens, GET_MOT1_NTC_T);
-			X_STATE_VIN_12V_ITEM->number.value = get_number(response, tokens, GET_VIN_12V);
-			X_STATE_VIN_USB_ITEM->number.value = get_number(response, tokens, GET_VIN_USB);
-			// TBD: STA doesn't work
-			if ((text = get_string(response, tokens, GET_WIFIAP_STATUS))) {
-				if (!strcmp(text, "on")) {
-					indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_AP_ITEM, true);
-				} else {
-					indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_OFF_ITEM, true);
-				}
-			}
-			if ((text = get_string(response, tokens, GET_WIFIAP_SSID))) {
-				indigo_copy_value(X_WIFI_AP_SSID_ITEM->text.value, text);
-			}
-			if ((text = get_string(response, tokens, GET_WIFIAP_PWD))) {
-				indigo_copy_value(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
-			}
-			if ((text = get_string(response, tokens, GET_WIFISTA_SSID))) {
-				indigo_copy_value(X_WIFI_STA_SSID_ITEM->text.value, text);
-			}
-			if ((text = get_string(response, tokens, GET_WIFISTA_PWD))) {
-				indigo_copy_value(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
-			}
-			if ((text = get_string(response, tokens, GET_DIMLEDS))) {
-				if (!strcmp(text, "on")) {
-					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_ON_ITEM, true);
-				} else if (!strcmp(text, "low")) {
-					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_DIM_ITEM, true);
-				} else {
-					indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_OFF_ITEM, true);
-				}
-			}
-			X_CONFIG_M1ACC_ITEM->number.value = X_CONFIG_M1ACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_ACC);
-			X_CONFIG_M1SPD_ITEM->number.value = X_CONFIG_M1SPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_SPD);
-			X_CONFIG_M1DEC_ITEM->number.value = X_CONFIG_M1DEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_DEC);
-			X_CONFIG_M1CACC_ITEM->number.value = X_CONFIG_M1CACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_ACC);
-			X_CONFIG_M1CSPD_ITEM->number.value = X_CONFIG_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_SPD);
-			X_CONFIG_M1CDEC_ITEM->number.value = X_CONFIG_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_DEC);
-			X_CONFIG_M1HOLD_ITEM->number.value = X_CONFIG_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_HOLD);
-			X_RUNPRESET_L_M1ACC_ITEM->number.value = X_RUNPRESET_L_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1ACC);
-			X_RUNPRESET_L_M1SPD_ITEM->number.value = X_RUNPRESET_L_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1SPD);
-			X_RUNPRESET_L_M1DEC_ITEM->number.value = X_RUNPRESET_L_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1DEC);
-			X_RUNPRESET_L_M1CACC_ITEM->number.value = X_RUNPRESET_L_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CACC);
-			X_RUNPRESET_L_M1CSPD_ITEM->number.value = X_RUNPRESET_L_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CSPD);
-			X_RUNPRESET_L_M1CDEC_ITEM->number.value = X_RUNPRESET_L_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CDEC);
-			X_RUNPRESET_L_M1HOLD_ITEM->number.value = X_RUNPRESET_L_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1HOLD);
-			X_RUNPRESET_M_M1ACC_ITEM->number.value = X_RUNPRESET_M_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1ACC);
-			X_RUNPRESET_M_M1SPD_ITEM->number.value = X_RUNPRESET_M_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1SPD);
-			X_RUNPRESET_M_M1DEC_ITEM->number.value = X_RUNPRESET_M_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1DEC);
-			X_RUNPRESET_M_M1CACC_ITEM->number.value = X_RUNPRESET_M_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CACC);
-			X_RUNPRESET_M_M1CSPD_ITEM->number.value = X_RUNPRESET_M_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CSPD);
-			X_RUNPRESET_M_M1CDEC_ITEM->number.value = X_RUNPRESET_M_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CDEC);
-			X_RUNPRESET_M_M1HOLD_ITEM->number.value = X_RUNPRESET_M_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1HOLD);
-			X_RUNPRESET_S_M1ACC_ITEM->number.value = X_RUNPRESET_S_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1ACC);
-			X_RUNPRESET_S_M1SPD_ITEM->number.value = X_RUNPRESET_S_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1SPD);
-			X_RUNPRESET_S_M1DEC_ITEM->number.value = X_RUNPRESET_S_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1DEC);
-			X_RUNPRESET_S_M1CACC_ITEM->number.value = X_RUNPRESET_S_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CACC);
-			X_RUNPRESET_S_M1CSPD_ITEM->number.value = X_RUNPRESET_S_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CSPD);
-			X_RUNPRESET_S_M1CDEC_ITEM->number.value = X_RUNPRESET_S_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CDEC);
-			X_RUNPRESET_S_M1HOLD_ITEM->number.value = X_RUNPRESET_S_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1HOLD);
-			X_RUNPRESET_1_M1ACC_ITEM->number.value = X_RUNPRESET_1_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1ACC);
-			X_RUNPRESET_1_M1SPD_ITEM->number.value = X_RUNPRESET_1_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1SPD);
-			X_RUNPRESET_1_M1DEC_ITEM->number.value = X_RUNPRESET_1_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1DEC);
-			X_RUNPRESET_1_M1CACC_ITEM->number.value = X_RUNPRESET_1_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CACC);
-			X_RUNPRESET_1_M1CSPD_ITEM->number.value = X_RUNPRESET_1_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CSPD);
-			X_RUNPRESET_1_M1CDEC_ITEM->number.value = X_RUNPRESET_1_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CDEC);
-			X_RUNPRESET_1_M1HOLD_ITEM->number.value = X_RUNPRESET_1_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1HOLD);
-			X_RUNPRESET_2_M1ACC_ITEM->number.value = X_RUNPRESET_2_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1ACC);
-			X_RUNPRESET_2_M1SPD_ITEM->number.value = X_RUNPRESET_2_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1SPD);
-			X_RUNPRESET_2_M1DEC_ITEM->number.value = X_RUNPRESET_2_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1DEC);
-			X_RUNPRESET_2_M1CACC_ITEM->number.value = X_RUNPRESET_2_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CACC);
-			X_RUNPRESET_2_M1CSPD_ITEM->number.value = X_RUNPRESET_2_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CSPD);
-			X_RUNPRESET_2_M1CDEC_ITEM->number.value = X_RUNPRESET_2_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CDEC);
-			X_RUNPRESET_2_M1HOLD_ITEM->number.value = X_RUNPRESET_2_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1HOLD);
-			X_RUNPRESET_3_M1ACC_ITEM->number.value = X_RUNPRESET_3_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1ACC);
-			X_RUNPRESET_3_M1SPD_ITEM->number.value = X_RUNPRESET_3_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1SPD);
-			X_RUNPRESET_3_M1DEC_ITEM->number.value = X_RUNPRESET_3_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1DEC);
-			X_RUNPRESET_3_M1CACC_ITEM->number.value = X_RUNPRESET_3_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CACC);
-			X_RUNPRESET_3_M1CSPD_ITEM->number.value = X_RUNPRESET_3_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CSPD);
-			X_RUNPRESET_3_M1CDEC_ITEM->number.value = X_RUNPRESET_3_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CDEC);
-			X_RUNPRESET_3_M1HOLD_ITEM->number.value = X_RUNPRESET_3_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1HOLD);
-			if (get_number(response, tokens, GET_MOT1_HOLDCURR_STATUS)) {
-				indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_ON_ITEM, true);
-			} else {
-				indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_OFF_ITEM, true);
-			}
-			return true;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
 		}
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
@@ -794,6 +638,171 @@ static void focuser_timer_callback(indigo_device *device) {
 static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (primaluce_open(device)) {
+			char response[8 * 1024];
+			jsmntok_t tokens[1024];
+			char *text;
+			if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}", response, sizeof(response), tokens, 1024)) {
+				if ((text = get_string(response, tokens, GET_MODNAME))) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
+					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, text);
+					if (!strncmp(text, "SESTOSENSO", 10)) {
+						X_CALIBRATE_SS_PROPERTY->hidden = false;
+						X_STATE_PROPERTY->count = 2;
+						X_CONFIG_PROPERTY->hidden = false;
+						X_RUNPRESET_PROPERTY->hidden = false;
+						X_RUNPRESET_L_PROPERTY->hidden = false;
+						X_RUNPRESET_M_PROPERTY->hidden = false;
+						X_RUNPRESET_S_PROPERTY->hidden = false;
+						X_RUNPRESET_1_PROPERTY->hidden = false;
+						X_RUNPRESET_2_PROPERTY->hidden = false;
+						X_RUNPRESET_3_PROPERTY->hidden = false;
+						X_HOLD_CURR_PROPERTY->hidden = false;
+					} else if (!strncmp(text, "ESATTO", 6)) {
+						X_STATE_PROPERTY->count = 3;
+						X_CALIBRATE_SS_PROPERTY->hidden = true;
+						X_CONFIG_PROPERTY->hidden = true;
+						X_RUNPRESET_PROPERTY->hidden = true;
+						X_RUNPRESET_L_PROPERTY->hidden = true;
+						X_RUNPRESET_M_PROPERTY->hidden = true;
+						X_RUNPRESET_S_PROPERTY->hidden = true;
+						X_RUNPRESET_1_PROPERTY->hidden = true;
+						X_RUNPRESET_2_PROPERTY->hidden = true;
+						X_RUNPRESET_3_PROPERTY->hidden = true;
+						X_HOLD_CURR_PROPERTY->hidden = true;
+					} else {
+						X_STATE_PROPERTY->count = 2;
+						X_CALIBRATE_SS_PROPERTY->hidden = true;
+						X_CONFIG_PROPERTY->hidden = true;
+						X_RUNPRESET_PROPERTY->hidden = true;
+						X_RUNPRESET_L_PROPERTY->hidden = true;
+						X_RUNPRESET_M_PROPERTY->hidden = true;
+						X_RUNPRESET_S_PROPERTY->hidden = true;
+						X_RUNPRESET_1_PROPERTY->hidden = true;
+						X_RUNPRESET_2_PROPERTY->hidden = true;
+						X_RUNPRESET_3_PROPERTY->hidden = true;
+						X_HOLD_CURR_PROPERTY->hidden = true;
+					}
+				}
+				if ((text = get_string(response, tokens, GET_SWAPP))) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWAPP: %s", text);
+					indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+					if ((text = get_string(response, tokens, GET_SWWEB))) {
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SWWEB: %s", text);
+						strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, " / ");
+						strcat(INFO_DEVICE_FW_REVISION_ITEM->text.value, text);
+					}
+				}
+				if ((text = get_string(response, tokens, GET_SN))) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SN: %s", text);
+					indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, text);
+				}
+				indigo_delete_property(device, INFO_PROPERTY, NULL);
+				indigo_define_property(device, INFO_PROPERTY, NULL);
+				if ((text = get_string(response, tokens, GET_MOT1_ERROR)) && *text) {
+					indigo_send_message(device, "ERROR: %s", text);
+				}
+				if ( get_number(response, tokens, GET_CALRESTART_MOT1)) {
+					indigo_send_message(device, "ERROR: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
+				}
+				if ( get_number(response, tokens, GET_CALRESTART_MOT2)) {
+					indigo_send_message(device, "ERROR: ARCO needs calibration");
+				}
+				PRIVATE_DATA->has_abs_pos = getToken(response, tokens, 0, GET_MOT1_ABS_POS) != -1;
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+				if (getToken(response, tokens, 0, GET_MOT1_SPEED) == -1) {
+					FOCUSER_SPEED_PROPERTY->hidden = true;
+				} else {
+					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = get_number(response, tokens, GET_MOT1_SPEED);
+					FOCUSER_SPEED_PROPERTY->hidden = false;
+				}
+				FOCUSER_BACKLASH_ITEM->number.value = get_number(response, tokens, GET_MOT1_BKLASH);
+				X_STATE_MOTOR_TEMP_ITEM->number.value = get_number(response, tokens, GET_MOT1_NTC_T);
+				X_STATE_VIN_12V_ITEM->number.value = get_number(response, tokens, GET_VIN_12V);
+				X_STATE_VIN_USB_ITEM->number.value = get_number(response, tokens, GET_VIN_USB);
+				// TBD: STA doesn't work
+				if ((text = get_string(response, tokens, GET_WIFIAP_STATUS))) {
+					if (!strcmp(text, "on")) {
+						indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_AP_ITEM, true);
+					} else {
+						indigo_set_switch(X_WIFI_PROPERTY, X_WIFI_OFF_ITEM, true);
+					}
+				}
+				if ((text = get_string(response, tokens, GET_WIFIAP_SSID))) {
+					indigo_copy_value(X_WIFI_AP_SSID_ITEM->text.value, text);
+				}
+				if ((text = get_string(response, tokens, GET_WIFIAP_PWD))) {
+					indigo_copy_value(X_WIFI_AP_PASSWORD_ITEM->text.value, text);
+				}
+				if ((text = get_string(response, tokens, GET_WIFISTA_SSID))) {
+					indigo_copy_value(X_WIFI_STA_SSID_ITEM->text.value, text);
+				}
+				if ((text = get_string(response, tokens, GET_WIFISTA_PWD))) {
+					indigo_copy_value(X_WIFI_STA_PASSWORD_ITEM->text.value, text);
+				}
+				if ((text = get_string(response, tokens, GET_DIMLEDS))) {
+					if (!strcmp(text, "on")) {
+						indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_ON_ITEM, true);
+					} else if (!strcmp(text, "low")) {
+						indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_DIM_ITEM, true);
+					} else {
+						indigo_set_switch(X_LEDS_PROPERTY, X_LEDS_OFF_ITEM, true);
+					}
+				}
+				X_CONFIG_M1ACC_ITEM->number.value = X_CONFIG_M1ACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_ACC);
+				X_CONFIG_M1SPD_ITEM->number.value = X_CONFIG_M1SPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_SPD);
+				X_CONFIG_M1DEC_ITEM->number.value = X_CONFIG_M1DEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_DEC);
+				X_CONFIG_M1CACC_ITEM->number.value = X_CONFIG_M1CACC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_ACC);
+				X_CONFIG_M1CSPD_ITEM->number.value = X_CONFIG_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_SPD);
+				X_CONFIG_M1CDEC_ITEM->number.value = X_CONFIG_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_DEC);
+				X_CONFIG_M1HOLD_ITEM->number.value = X_CONFIG_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_MOT1_FnRUN_CURR_HOLD);
+				X_RUNPRESET_L_M1ACC_ITEM->number.value = X_RUNPRESET_L_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1ACC);
+				X_RUNPRESET_L_M1SPD_ITEM->number.value = X_RUNPRESET_L_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1SPD);
+				X_RUNPRESET_L_M1DEC_ITEM->number.value = X_RUNPRESET_L_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1DEC);
+				X_RUNPRESET_L_M1CACC_ITEM->number.value = X_RUNPRESET_L_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CACC);
+				X_RUNPRESET_L_M1CSPD_ITEM->number.value = X_RUNPRESET_L_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CSPD);
+				X_RUNPRESET_L_M1CDEC_ITEM->number.value = X_RUNPRESET_L_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1CDEC);
+				X_RUNPRESET_L_M1HOLD_ITEM->number.value = X_RUNPRESET_L_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_L_M1HOLD);
+				X_RUNPRESET_M_M1ACC_ITEM->number.value = X_RUNPRESET_M_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1ACC);
+				X_RUNPRESET_M_M1SPD_ITEM->number.value = X_RUNPRESET_M_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1SPD);
+				X_RUNPRESET_M_M1DEC_ITEM->number.value = X_RUNPRESET_M_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1DEC);
+				X_RUNPRESET_M_M1CACC_ITEM->number.value = X_RUNPRESET_M_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CACC);
+				X_RUNPRESET_M_M1CSPD_ITEM->number.value = X_RUNPRESET_M_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CSPD);
+				X_RUNPRESET_M_M1CDEC_ITEM->number.value = X_RUNPRESET_M_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1CDEC);
+				X_RUNPRESET_M_M1HOLD_ITEM->number.value = X_RUNPRESET_M_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_M_M1HOLD);
+				X_RUNPRESET_S_M1ACC_ITEM->number.value = X_RUNPRESET_S_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1ACC);
+				X_RUNPRESET_S_M1SPD_ITEM->number.value = X_RUNPRESET_S_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1SPD);
+				X_RUNPRESET_S_M1DEC_ITEM->number.value = X_RUNPRESET_S_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1DEC);
+				X_RUNPRESET_S_M1CACC_ITEM->number.value = X_RUNPRESET_S_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CACC);
+				X_RUNPRESET_S_M1CSPD_ITEM->number.value = X_RUNPRESET_S_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CSPD);
+				X_RUNPRESET_S_M1CDEC_ITEM->number.value = X_RUNPRESET_S_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1CDEC);
+				X_RUNPRESET_S_M1HOLD_ITEM->number.value = X_RUNPRESET_S_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_S_M1HOLD);
+				X_RUNPRESET_1_M1ACC_ITEM->number.value = X_RUNPRESET_1_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1ACC);
+				X_RUNPRESET_1_M1SPD_ITEM->number.value = X_RUNPRESET_1_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1SPD);
+				X_RUNPRESET_1_M1DEC_ITEM->number.value = X_RUNPRESET_1_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1DEC);
+				X_RUNPRESET_1_M1CACC_ITEM->number.value = X_RUNPRESET_1_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CACC);
+				X_RUNPRESET_1_M1CSPD_ITEM->number.value = X_RUNPRESET_1_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CSPD);
+				X_RUNPRESET_1_M1CDEC_ITEM->number.value = X_RUNPRESET_1_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1CDEC);
+				X_RUNPRESET_1_M1HOLD_ITEM->number.value = X_RUNPRESET_1_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_1_M1HOLD);
+				X_RUNPRESET_2_M1ACC_ITEM->number.value = X_RUNPRESET_2_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1ACC);
+				X_RUNPRESET_2_M1SPD_ITEM->number.value = X_RUNPRESET_2_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1SPD);
+				X_RUNPRESET_2_M1DEC_ITEM->number.value = X_RUNPRESET_2_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1DEC);
+				X_RUNPRESET_2_M1CACC_ITEM->number.value = X_RUNPRESET_2_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CACC);
+				X_RUNPRESET_2_M1CSPD_ITEM->number.value = X_RUNPRESET_2_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CSPD);
+				X_RUNPRESET_2_M1CDEC_ITEM->number.value = X_RUNPRESET_2_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1CDEC);
+				X_RUNPRESET_2_M1HOLD_ITEM->number.value = X_RUNPRESET_2_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_2_M1HOLD);
+				X_RUNPRESET_3_M1ACC_ITEM->number.value = X_RUNPRESET_3_M1ACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1ACC);
+				X_RUNPRESET_3_M1SPD_ITEM->number.value = X_RUNPRESET_3_M1SPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1SPD);
+				X_RUNPRESET_3_M1DEC_ITEM->number.value = X_RUNPRESET_3_M1DEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1DEC);
+				X_RUNPRESET_3_M1CACC_ITEM->number.value = X_RUNPRESET_3_M1CACC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CACC);
+				X_RUNPRESET_3_M1CSPD_ITEM->number.value = X_RUNPRESET_3_M1CSPD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CSPD);
+				X_RUNPRESET_3_M1CDEC_ITEM->number.value = X_RUNPRESET_3_M1CDEC_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1CDEC);
+				X_RUNPRESET_3_M1HOLD_ITEM->number.value = X_RUNPRESET_3_M1HOLD_ITEM->number.target = get_number(response, tokens, GET_RUNPRESET_3_M1HOLD);
+				if (get_number(response, tokens, GET_MOT1_HOLDCURR_STATUS)) {
+					indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_ON_ITEM, true);
+				} else {
+					indigo_set_switch(X_HOLD_CURR_PROPERTY, X_HOLD_CURR_OFF_ITEM, true);
+				}
+			}
 			indigo_define_property(device, X_STATE_PROPERTY, NULL);
 			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);
 			indigo_define_property(device, X_LEDS_PROPERTY, NULL);
@@ -1364,7 +1373,7 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 		focuser_detach
 	);
 
-	SET_DRIVER_INFO(info, "PrimaluceLab Focuser/Rotator/Flatfield", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "PrimaluceLab Focuser/Rotator", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;
