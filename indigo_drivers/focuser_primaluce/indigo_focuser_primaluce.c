@@ -156,8 +156,12 @@
 #define X_CALIBRATE_SS_START_INVERTED_ITEM		(X_CALIBRATE_SS_PROPERTY->items+1)
 #define X_CALIBRATE_SS_END_ITEM								(X_CALIBRATE_SS_PROPERTY->items+2)
 
+#define X_CALIBRATE_A_PROPERTY								(PRIVATE_DATA->calibrate_a_property)
+#define X_CALIBRATE_A_START_ITEM							(X_CALIBRATE_A_PROPERTY->items+0)
+
 typedef struct {
 	int handle;
+	int device_count;
 	indigo_timer *timer;
 	pthread_mutex_t mutex;
 	jsmn_parser parser;
@@ -177,6 +181,7 @@ typedef struct {
 	indigo_property *runpreset_property;
 	indigo_property *hold_curr_property;
 	indigo_property *calibrate_ss_property;
+	indigo_property *calibrate_a_property;
 } primaluce_private_data;
 
 static char *GET_MODNAME[] = { "res", "get", "MODNAME", NULL };
@@ -187,6 +192,8 @@ static char *GET_CALRESTART_MOT1[] = { "res", "get", "CALRESTART", "MOT1", NULL 
 static char *GET_CALRESTART_MOT2[] = { "res", "get", "CALRESTART", "MOT2", NULL };
 static char *GET_MOT1_ABS_POS_STEP[] = { "res", "get", "MOT1", "ABS_POS_STEP", NULL };
 static char *GET_MOT1_ABS_POS[] = { "res", "get", "MOT1", "ABS_POS", NULL };
+static char *GET_MOT2_ABS_POS_DEG[] = { "res", "get", "MOT2", "ABS_POS_DEG", NULL };
+static char *GET_MOT2_ABS_POS[] = { "res", "get", "MOT2", "ABS_POS", NULL };
 static char *GET_MOT1_BKLASH[] = { "res", "get", "MOT1", "BKLASH", NULL };
 static char *SET_MOT1_BKLASH[] = { "res", "set", "MOT1", "BKLASH", NULL };
 static char *GET_MOT1_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
@@ -195,12 +202,16 @@ static char *GET_MOT1_MST[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
 static char *CMD_MOT1_GOTO[] = { "res", "cmd", "MOT1", "GOTO", NULL };
 static char *CMD_MOT1_MOVE[] = { "res", "cmd", "MOT1", "MOVE", NULL };
 static char *CMD_MOT1_MOT_STOP[] = { "res", "cmd", "MOT1", "MOT_STOP", NULL };
+static char *CMD_MOT2_MOT_STOP[] = { "res", "cmd", "MOT2", "MOT_STOP", NULL };
+static char *CMD_MOT2_CAL_STATUS[] = { "res", "cmd", "MOT2", "CAL_STATUS", NULL };
+static char *GET_MOT2_CAL_STATUS[] = { "res", "get", "MOT2", "CAL_STATUS", NULL };
 static char *GET_EXT_T[] = { "res", "get", "EXT_T", NULL };
 static char *GET_DIMLEDS[] = { "res", "get", "DIMLEDS", NULL };
 static char *GET_VIN_12V[] = { "res", "get", "VIN_12V", NULL };
 static char *GET_VIN_USB[] = { "res", "get", "VIN_USB", NULL };
 static char *GET_MOT1_NTC_T[] = { "res", "get", "MOT1", "NTC_T", NULL };
 static char *GET_MOT1_ERROR[] = { "res", "get", "MOT1", "ERROR", NULL };
+static char *GET_MOT2_ERROR[] = { "res", "get", "MOT1", "ERROR", NULL };
 static char *GET_WIFIAP_STATUS[] = { "res", "get", "WIFIAP", "STATUS", NULL };
 static char *GET_WIFIAP_SSID[] = { "res", "get", "WIFIAP", "SSID", NULL };
 static char *GET_WIFIAP_PWD[] = { "res", "get", "WIFIAP", "PWD", NULL };
@@ -267,11 +278,18 @@ static bool primaluce_command(indigo_device *device, char *command, char *respon
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return false;
 	}
-	result = indigo_read_line(PRIVATE_DATA->handle, response, size);
-	if (result < 1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-		return false;
+	while (true) {
+		result = indigo_read_line(PRIVATE_DATA->handle, response, size);
+		if (result < 1) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			return false;
+		}
+		if (*response == '[') {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Ignored '%s' -> '%s'", command, response);
+			continue;
+		}
+		break;
 	}
 	memset(tokens, 0, count * sizeof(jsmntok_t));
 	jsmn_init(&PRIVATE_DATA->parser);
@@ -372,6 +390,7 @@ static bool primaluce_open(indigo_device *device) {
 					if (version < 3.05) {
 						indigo_send_message(device, "WARNING: %s has firmware version %.2f and at least 3.05 is needed", INFO_DEVICE_MODEL_ITEM->text.value, version);
 					}
+					//primaluce_command(device, "{\"req\":{\"cmd\":{\"LOGLEVEL\":\"no output\"}}}", response, sizeof(response), tokens, 128);
 					return true;
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unsupported version");
@@ -636,11 +655,15 @@ static void focuser_timer_callback(indigo_device *device) {
 }
 
 static void focuser_connection_handler(indigo_device *device) {
+	char response[8 * 1024];
+	jsmntok_t tokens[1024];
+	char *text;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (primaluce_open(device)) {
-			char response[8 * 1024];
-			jsmntok_t tokens[1024];
-			char *text;
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			result = primaluce_open(device->master_device);
+		}
+		if (result) {
 			if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}", response, sizeof(response), tokens, 1024)) {
 				if ((text = get_string(response, tokens, GET_MODNAME))) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
@@ -703,9 +726,6 @@ static void focuser_connection_handler(indigo_device *device) {
 				}
 				if ( get_number(response, tokens, GET_CALRESTART_MOT1)) {
 					indigo_send_message(device, "ERROR: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
-				}
-				if ( get_number(response, tokens, GET_CALRESTART_MOT2)) {
-					indigo_send_message(device, "ERROR: ARCO needs calibration");
 				}
 				PRIVATE_DATA->has_abs_pos = getToken(response, tokens, 0, GET_MOT1_ABS_POS) != -1;
 				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
@@ -821,6 +841,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
+			PRIVATE_DATA->device_count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
@@ -843,7 +864,9 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_delete_property(device, X_HOLD_CURR_PROPERTY, NULL);
 			indigo_delete_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			primaluce_close(device);
+			if (--PRIVATE_DATA->device_count == 0) {
+				primaluce_close(device->master_device);
+			}
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
@@ -1091,13 +1114,16 @@ static void focuser_abort_handler(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
 	FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
-	if (primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
-		char *state = get_string(response, tokens, CMD_MOT1_MOT_STOP);
-		if (state == NULL || strcmp(state, "done")) {
-			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
-			return;
-		}
+	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT1\":{\"MOT_STOP\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		return;
+	}
+	char *state = get_string(response, tokens, CMD_MOT1_MOT_STOP);
+	if (state == NULL || strcmp(state, "done")) {
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		return;
 	}
 	FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
@@ -1357,12 +1383,227 @@ static indigo_result focuser_detach(indigo_device *device) {
 	return indigo_focuser_detach(device);
 }
 
+// -------------------------------------------------------------------------------- INDIGO rotator device implementation
+
+static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
+static indigo_result rotator_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		// -------------------------------------------------------------------------------- X_CALIBRATE_SS
+		X_CALIBRATE_A_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CALIBRATE_A", "Advanced", "Calibrate rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (X_CALIBRATE_A_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_CALIBRATE_A_START_ITEM, "START", "Start", false);
+		// --------------------------------------------------------------------------------
+		ROTATOR_ON_POSITION_SET_PROPERTY->hidden = true;
+		// --------------------------------------------------------------------------------
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return rotator_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	return indigo_rotator_enumerate_properties(device, NULL, NULL);
+}
+
+static void rotator_connection_handler(indigo_device *device) {
+	char response[8 * 1024];
+	jsmntok_t tokens[1024];
+	char *text;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		bool result = true;
+		if (PRIVATE_DATA->device_count++ == 0) {
+			result = primaluce_open(device->master_device);
+		}
+		if (result) {
+			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":1}}}}", response, sizeof(response), tokens, 1024)) {
+				if (primaluce_command(device, "{\"req\":{\"get\": \"\"}}}", response, sizeof(response), tokens, 1024)) {
+					if ((text = get_string(response, tokens, GET_MOT2_ERROR)) && *text) {
+						indigo_send_message(device, "ERROR: %s", text);
+					}
+					if ( get_number(response, tokens, GET_CALRESTART_MOT2)) {
+						indigo_send_message(device, "ERROR: ARCO needs calibration");
+					}
+				}
+				PRIVATE_DATA->has_abs_pos = getToken(response, tokens, 0, GET_MOT2_ABS_POS) != -1;
+				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
+				indigo_define_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			} else {
+				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+				PRIVATE_DATA->device_count--;
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			}
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->device_count--;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		}
+	} else {
+		if (PRIVATE_DATA->handle > 0) {
+			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":0}}}}", response, sizeof(response), tokens, 1024)) {
+			}
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
+			indigo_delete_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
+			if (--PRIVATE_DATA->device_count == 0) {
+				primaluce_close(device);
+			}
+		}
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_rotator_change_property(device, NULL, CONNECTION_PROPERTY);
+}
+
+static void rotator_position_handler(indigo_device *device) {
+	char command[1024];
+	char response[1024];
+	jsmntok_t tokens[128];
+	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT2\":{\"GOTO\":%d}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
+	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		return;
+	}
+	char *state = get_string(response, tokens, CMD_MOT1_GOTO);
+	if (state == NULL || strcmp(state, "done")) {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		return;
+	}
+	char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"STATUS\":\"\"}}}}";
+	while (true) {
+		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+			ROTATOR_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
+			if (!strcmp(get_string(response, tokens, GET_MOT1_MST), "stop")) {
+				break;
+			}
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		}
+	}
+	for (int i = 0; i < 10; i++) {
+		indigo_usleep(100000);
+		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+			ROTATOR_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		}
+		if (ROTATOR_POSITION_ITEM->number.target == ROTATOR_POSITION_ITEM->number.value)
+			break;
+	}
+	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+}
+
+static void rotator_abort_handler(indigo_device *device) {
+	char response[1024];
+	jsmntok_t tokens[128];
+	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+	if (!primaluce_command(device, "{\"req\":{\"cmd\":{\"MOT2\":{\"MOT_STOP\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
+		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+		return;
+	}
+	char *state = get_string(response, tokens, CMD_MOT2_MOT_STOP);
+	if (state == NULL || strcmp(state, "done")) {
+		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+		return;
+	}
+	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+}
+
+static void focuser_calibrate_a_handler(indigo_device *device) {
+	char response[1024];
+	jsmntok_t tokens[128];
+	char *text;
+	if (X_CALIBRATE_SS_START_ITEM->sw.value) {
+		X_CALIBRATE_SS_START_ITEM->sw.value = false;
+		if (!primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT2\": {\"CAL_STATUS\":\"exec\"}}}}", response, sizeof(response), tokens, 128)) {
+			X_CALIBRATE_A_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+		}
+		char *state = get_string(response, tokens, CMD_MOT2_CAL_STATUS);
+		if (state == NULL || strcmp(state, "done")) {
+			X_CALIBRATE_A_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+			return;
+		}
+		char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"CAL_STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"CAL_STATUS\":\"\"}}}}";
+		while (true) {
+			if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+				ROTATOR_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
+				if (!strcmp(get_string(response, tokens, GET_MOT1_MST), "stop")) {
+					break;
+				}
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			}
+		}
+
+	}
+	X_CALIBRATE_SS_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+}
+
+static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, rotator_connection_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_POSITION
+		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, rotator_position_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
+		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
+		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, rotator_abort_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_CALIBRATE_A_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CALIBRATE_A
+		indigo_property_copy_values(X_CALIBRATE_A_PROPERTY, property, false);
+		X_CALIBRATE_A_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_calibrate_a_handler, NULL);
+		return INDIGO_OK;
+	}
+	return indigo_rotator_change_property(device, client, property);
+}
+
+static indigo_result rotator_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		rotator_connection_handler(device);
+	}
+	indigo_release_property(X_CALIBRATE_A_PROPERTY);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_rotator_detach(device);
+}
+
 // -------------------------------------------------------------------------------- INDIGO driver implementation
 
 indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static primaluce_private_data *private_data = NULL;
 	static indigo_device *focuser = NULL;
+	static indigo_device *rotator = NULL;
 
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		"PrimaluceLab Focuser",
@@ -1371,6 +1612,15 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 		focuser_change_property,
 		NULL,
 		focuser_detach
+	);
+
+	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
+		"PrimaluceLab Rotator",
+		rotator_attach,
+		rotator_enumerate_properties,
+		rotator_change_property,
+		NULL,
+		rotator_detach
 	);
 
 	SET_DRIVER_INFO(info, "PrimaluceLab Focuser/Rotator", __FUNCTION__, DRIVER_VERSION, false, last_action);
@@ -1384,16 +1634,27 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 			private_data = indigo_safe_malloc(sizeof(primaluce_private_data));
 			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
+			focuser->master_device = focuser;
 			indigo_attach_device(focuser);
+			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
+			rotator->private_data = private_data;
+			rotator->master_device = focuser;
+			indigo_attach_device(rotator);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(focuser);
+			VERIFY_NOT_CONNECTED(rotator);
 			last_action = action;
 			if (focuser != NULL) {
 				indigo_detach_device(focuser);
 				free(focuser);
 				focuser = NULL;
+			}
+			if (rotator != NULL) {
+				indigo_detach_device(rotator);
+				free(rotator);
+				rotator = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);
