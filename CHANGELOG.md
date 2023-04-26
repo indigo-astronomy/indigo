@@ -2,6 +2,35 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-232] - 28 Apr Thu 2023
+### Overall:
+- indigo_mount_driver:
+	- add MOUNT_ALIGNMENT_RESET property which reset alignment data
+
+- indigo_ccd_driver:
+	- support larger headers for FITS and XIFS images
+	- fix "Instrument:Camera:FocalLength" XISF proeprty
+
+### New Drivers:
+- indigo_focuser_primaluce:
+	- driver for PrimaLuceLab SESTO SENSO 2 and ESATTO focusers, plus ARCO rotators
+
+## Driver Fixes:
+- indigo_mount_asi:
+	- use more generic symlink as AM3 and AM5 share the same PID (AM3 is supported)
+	- add park
+	- clear alignment data implemented
+
+- indigo_ccd_ssg:
+	- update sdk 53.22412.20230409
+	- enable apple silicon build
+
+- indigo_ccd_ptp:
+	- remove unsupported Canon EOS M6
+
+- indigo_focuser_prodigy:
+	- fix property enumeration
+
 # [2.0-230] - 13 Apr Thu 2023
 ### Overall
 - indigosky:
