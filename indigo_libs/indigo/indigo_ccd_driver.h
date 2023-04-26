@@ -406,9 +406,17 @@ extern "C" {
  */
 #define CCD_REMOVE_FITS_HEADER_NAME_ITEM      (CCD_REMOVE_FITS_HEADER_PROPERTY->items+0)
 
+/** FITS logical record length used for header size rounding.
+ */
+#define FITS_LOGICAL_RECORD_LENGTH	2880
+
+/** Number of logical records allocated for FITS header.
+ */
+#define MAX_FITS_LOGICAL_RECORDS	3
+
 /** FITS header size, it should be added to image buffer size, raw data should start at this offset.
  */
-#define FITS_HEADER_SIZE  2880
+#define FITS_HEADER_SIZE  (MAX_FITS_LOGICAL_RECORDS * FITS_LOGICAL_RECORD_LENGTH)
 
 /** CCD_JPEG_SETTINGS property pointer, property is mandatory, read-write property, property change request is fully handled by indigo_ccd_change_property().
  */

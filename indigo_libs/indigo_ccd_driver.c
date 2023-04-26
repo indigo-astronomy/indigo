@@ -1389,7 +1389,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		byte_per_pixel = 2;
 		naxis = 3;
 	}
-
+	unsigned header_size = 0;
 	void *jpeg_data = NULL;
 	unsigned long jpeg_size = 0;
 	void *histogram_data = NULL;
@@ -1562,6 +1562,13 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				add_key(&header, true, "%-8s= %s", item->name, item->text.value);
 		}
 		add_key(&header, true,  "END");
+		header_size = (unsigned)(header - (char *)data);
+		if (header_size % FITS_LOGICAL_RECORD_LENGTH != 0) {
+			header_size = (header_size / FITS_LOGICAL_RECORD_LENGTH + 1) * FITS_LOGICAL_RECORD_LENGTH;
+		}
+		if (header_size < FITS_HEADER_SIZE) {
+			memmove(data + FITS_HEADER_SIZE - header_size, data, header_size);
+		}
 		if (byte_per_pixel == 2 && naxis == 2) {
 			uint16_t *raw = (uint16_t *)(data + FITS_HEADER_SIZE);
 			if (little_endian) {
@@ -1667,8 +1674,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header += 16;
 		memset(header, 0, FITS_HEADER_SIZE);
 		// https://pixinsight.com/doc/docs/XISF-1.0-spec/XISF-1.0-spec.html
-		sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
-		header += strlen(header);
+		header += sprintf(header, "<?xml version='1.0' encoding='UTF-8'?><xisf xmlns='http://www.pixinsight.com/xisf' xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance' version='1.0' xsi:schemaLocation='http://www.pixinsight.com/xisf http://pixinsight.com/xisf/xisf-1.0.xsd'>");
 		char *frame_type = "Light";
 		char b1[32], b2[32];
 		if (CCD_FRAME_TYPE_FLAT_ITEM->sw.value)
@@ -1680,117 +1686,84 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		else if (CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value)
 			frame_type ="DarkFlat";
 		if (naxis == 2 && byte_per_pixel == 1) {
-			sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			header += sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt8' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		} else if (naxis == 2 && byte_per_pixel == 2) {
-			sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt16' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			header += sprintf(header, "<Image geometry='%d:%d:1' imageType='%s' sampleFormat='UInt16' colorSpace='Gray' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		} else if (naxis == 3 && byte_per_pixel == 1) {
-			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			header += sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt8' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		} else if (naxis == 3 && byte_per_pixel == 2) {
-			sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
+			header += sprintf(header, "<Image geometry='%d:%d:3' imageType='%s' pixelStorage='Normal' sampleFormat='UInt16' colorSpace='RGB' location='attachment:%d:%lu'>", frame_width, frame_height, frame_type, FITS_HEADER_SIZE, blobsize);
 		}
-		header += strlen(header);
-		sprintf(header, "<FITSKeyword name='IMAGETYP' value='%s' comment='Frame type'/>", frame_type);
-		header += strlen(header);
-		sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
-		header += strlen(header);
-		sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
-		header += strlen(header);
-		sprintf(header, "<FITSKeyword name='INSTRUME' value='%s' comment='Instrument'/>", device->name);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
-		header += strlen(header);
-		sprintf(header, "<FITSKeyword name='XBINNING' value='%d' comment='Binning factor, X-axis'/><FITSKeyword name='YBINNING' value='%d' comment='Binning factor, Y-axis'/>", horizontal_bin, vertical_bin);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%s'/>", indigo_dtoa(CCD_EXPOSURE_ITEM->number.target, b1));
-		header += strlen(header);
+		header += sprintf(header, "<FITSKeyword name='IMAGETYP' value='%s' comment='Frame type'/>", frame_type);
+		header += sprintf(header, "<Property id='Observation:Time:Start' type='TimePoint' value='%s'/><Property id='Observation:Time:End' type='TimePoint' value='%s'/>", date_time_start ,date_time_end);
+		header += sprintf(header, "<FITSKeyword name='DATE-OBS' value='%s' comment='Observation start time, UT'/>", fits_date_obs);
+		header += sprintf(header, "<Property id='Instrument:Camera:Name' type='String'>%s</Property>", device->name);
+		header += sprintf(header, "<FITSKeyword name='INSTRUME' value='%s' comment='Instrument'/>", device->name);
+		header += sprintf(header, "<Property id='Instrument:Camera:XBinning' type='Int32' value='%d'/><Property id='Instrument:Camera:YBinning' type='Int32' value='%d'/>", horizontal_bin, vertical_bin);
+		header += sprintf(header, "<FITSKeyword name='XBINNING' value='%d' comment='Binning factor, X-axis'/><FITSKeyword name='YBINNING' value='%d' comment='Binning factor, Y-axis'/>", horizontal_bin, vertical_bin);
+		header += sprintf(header, "<Property id='Instrument:ExposureTime' type='Float32' value='%s'/>", indigo_dtoa(CCD_EXPOSURE_ITEM->number.target, b1));
 		if (CCD_EXPOSURE_ITEM->number.target >= 1.0)
-			sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.2f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
+			header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.2f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
 		else
-			sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.4f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
-		header += strlen(header);
-		sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
-		header += strlen(header);
-		sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
-		header += strlen(header);
+			header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.4f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
+		header += sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
+		header += sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
 
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
-			header += strlen(header);
-			sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);
-			header += strlen(header);
-
+			header += sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
+			header += sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);
 		}
 		if (!CCD_GAIN_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAIN_ITEM->number.value, b1));
-			header += strlen(header);
-			sprintf(header, "<FITSKeyword name='GAIN' value='%20.2f' comment='Gain'/>", CCD_GAIN_ITEM->number.value);
-			header += strlen(header);
+			header += sprintf(header, "<Property id='Instrument:Camera:Gain' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAIN_ITEM->number.value, b1));
+			header += sprintf(header, "<FITSKeyword name='GAIN' value='%20.2f' comment='Gain'/>", CCD_GAIN_ITEM->number.value);
 		}
 		if (!CCD_OFFSET_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Camera:Offset' type='Float32' value='%s'/>", indigo_dtoa(CCD_OFFSET_ITEM->number.value, b1));
-			header += strlen(header);
-			sprintf(header, "<FITSKeyword name='OFFSET' value='%20.2f' comment='Offset'/>", CCD_OFFSET_ITEM->number.value);
-			header += strlen(header);
+			header += sprintf(header, "<Property id='Instrument:Camera:Offset' type='Float32' value='%s'/>", indigo_dtoa(CCD_OFFSET_ITEM->number.value, b1));
+			header += sprintf(header, "<FITSKeyword name='OFFSET' value='%20.2f' comment='Offset'/>", CCD_OFFSET_ITEM->number.value);
 		}
 		if (!CCD_GAMMA_PROPERTY->hidden) {
-			sprintf(header, "<Property id='Instrument:Camera:Gamma' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAMMA_ITEM->number.value, b1));
-			header += strlen(header);
-			sprintf(header, "<FITSKeyword name='GAMMA' value='%20.2f' comment='Gamma'/>", CCD_GAMMA_ITEM->number.value);
-			header += strlen(header);
+			header += sprintf(header, "<Property id='Instrument:Camera:Gamma' type='Float32' value='%s'/>", indigo_dtoa(CCD_GAMMA_ITEM->number.value, b1));
+			header += sprintf(header, "<FITSKeyword name='GAMMA' value='%20.2f' comment='Gamma'/>", CCD_GAMMA_ITEM->number.value);
 		}
 		if (!CCD_LENS_PROPERTY->hidden) {
 			if (CCD_LENS_APERTURE_ITEM->number.value > 0) {
-				sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_APERTURE_ITEM->number.value / 100, b1));
-				header += strlen(header);
-				sprintf(header, "<FITSKeyword name='APTDIA' value='%20.2f' comment='Aperture diameter (mm)'/>", CCD_LENS_APERTURE_ITEM->number.value * 10);
-				header += strlen(header);
+				header += sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_APERTURE_ITEM->number.value / 100, b1));
+				header += sprintf(header, "<FITSKeyword name='APTDIA' value='%20.2f' comment='Aperture diameter (mm)'/>", CCD_LENS_APERTURE_ITEM->number.value * 10);
 			}
 			if (CCD_LENS_FOCAL_LENGTH_ITEM->number.value > 0) {
-				sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_FOCAL_LENGTH_ITEM->number.value / 100, b1));
-				header += strlen(header);
-				sprintf(header, "<FITSKeyword name='FOCALLEN' value='%20.2f' comment='Focal length (mm)'/>", CCD_LENS_FOCAL_LENGTH_ITEM->number.value * 10);
-				header += strlen(header);
+				header += sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_FOCAL_LENGTH_ITEM->number.value / 100, b1));
+				header += sprintf(header, "<FITSKeyword name='FOCALLEN' value='%20.2f' comment='Focal length (mm)'/>", CCD_LENS_FOCAL_LENGTH_ITEM->number.value * 10);
 			}
 		}
 		for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 			indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 			if (!strcmp(item->name, "FILTER")) {
-				sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value=%s/>", item->text.value);
-				header += strlen(header);
-				sprintf(header, "<FITSKeyword name='FILTER' value=%s comment='Name of the used filter'/>", item->text.value);
-				header += strlen(header);
+				header += sprintf(header, "<Property id='Instrument:Filter:Name' type='String' value=%s/>", item->text.value);
+				header += sprintf(header, "<FITSKeyword name='FILTER' value=%s comment='Name of the used filter'/>", item->text.value);
 			} else if (!strcmp(item->name, "FOCUS")) {
-				sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value);
-				header += strlen(header);
-				sprintf(header, "<FITSKeyword name='FOCUS' value='%s' comment='Focuser position'/>", item->text.value);
-				header += strlen(header);
+				header += sprintf(header, "<Property id='Instrument:Focuser:Position' type='String' value='%s'/>", item->text.value);
+				header += sprintf(header, "<FITSKeyword name='FOCUS' value='%s' comment='Focuser position'/>", item->text.value);
 			}
 		}
 		if (keywords) {
 			while (keywords->type) {
 				if (!strcmp(keywords->name, "BAYERPAT")) {
-					sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2'/>", keywords->string);
-					header += strlen(header);
+					header += sprintf(header, "<ColorFilterArray pattern='%s' width='2' height='2'/>", keywords->string);
 				}
 				keywords++;
 			}
 		}
-		sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%s</Property>", date_time_end, INDIGO_BUILD);
-		header += strlen(header);
+		header += sprintf(header, "</Image><Metadata><Property id='XISF:CreationTime' type='String'>%s</Property><Property id='XISF:CreatorApplication' type='String'>INDIGO 2.0-%s</Property>", date_time_end, INDIGO_BUILD);
 #ifdef INDIGO_LINUX
-		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
+		header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Linux</Property>");
 #endif
 #ifdef INDIGO_MACOS
-		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>macOS</Property>");
+		header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>macOS</Property>");
 #endif
 #ifdef INDIGO_WINDOWS
-		sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Windows</Property>");
+		header += sprintf(header, "<Property id='XISF:CreatorOS' type='String'>Windows</Property>");
 #endif
-		header += strlen(header);
-		sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
-		header += strlen(header);
+		header += sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
 		*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data) - 16;
 		if (naxis == 2 && byte_per_pixel == 2) {
 			if (!little_endian) {
@@ -1932,8 +1905,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	void *blob_value = NULL;
 	long blob_size = 0;
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-		blob_value = data;
-		blob_size = FITS_HEADER_SIZE + blobsize;
+		blob_value = data + FITS_HEADER_SIZE - header_size;
+		blob_size = header_size + blobsize;
 	} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
 		blob_value = data;
 		blob_size = FITS_HEADER_SIZE + blobsize;
