@@ -1170,7 +1170,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ZWO_AM5");
+		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ZWO_Mount");
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_EPOCH
