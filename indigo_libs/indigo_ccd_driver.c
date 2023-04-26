@@ -1731,7 +1731,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				header += sprintf(header, "<FITSKeyword name='APTDIA' value='%20.2f' comment='Aperture diameter (mm)'/>", CCD_LENS_APERTURE_ITEM->number.value * 10);
 			}
 			if (CCD_LENS_FOCAL_LENGTH_ITEM->number.value > 0) {
-				header += sprintf(header, "<Property id='Instrument:Camera:Aperture' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_FOCAL_LENGTH_ITEM->number.value / 100, b1));
+				header += sprintf(header, "<Property id='Instrument:Camera:FocalLength' type='Float32' value='%s'/>", indigo_dtoa(CCD_LENS_FOCAL_LENGTH_ITEM->number.value / 100, b1));
 				header += sprintf(header, "<FITSKeyword name='FOCALLEN' value='%20.2f' comment='Focal length (mm)'/>", CCD_LENS_FOCAL_LENGTH_ITEM->number.value * 10);
 			}
 		}
