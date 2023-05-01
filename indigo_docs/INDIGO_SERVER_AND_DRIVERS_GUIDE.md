@@ -1,5 +1,5 @@
 # Guide to indigo_server and INDIGO Drivers
-Revision: 12.01.2021 (draft)
+Revision: 01.05.2023 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -180,4 +180,4 @@ The README of each driver can provide information if hotplug is supported or not
 On Linux most of the USB to serial devices will be named '/dev/ttyUSB0', '/dev/ttyUSB1' etc. or  '/dev/ttyACM0', '/dev/ttyACM1' etc. Each device will always be ttyUSB or ttyACM but there is no way to know the number. Therefore it is advised to connect and power up (if external power is required) all USB serial devices before booting up the Linux system (for example the Raspberry Pi). Then identify devices by connecting the INDIGO drivers to them one by one. Once identified, save each driver configuration to "Profile 0".
 Next time you have to make sure that all USB serial devices are connected to the same USB ports and powered up before booting the Linux machine.
 
-The same applies for MacOSX. The only difference is the device name on MacOSX of the USB to serial devices are usually called /dev/cu.usbserial.
+The same applies to MacOS. The only difference is the device name. On MacOS the USB to serial devices are usually called /dev/cu.usbserial.
