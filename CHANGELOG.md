@@ -2,6 +2,16 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-234] - 02 May Tue 2023
+### Overall:
+- indigo_ccd_driver:
+	- fix FITS files saved on server regression.
+	- optimize saving images on server
+
+## Driver Fixes:
+- indigo_ccd_asi:
+	- updated SDK to v.1.29
+
 # [2.0-232] - 28 Apr Thu 2023
 ### Overall:
 - indigo_mount_driver:
