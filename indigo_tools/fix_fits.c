@@ -21,6 +21,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <libgen.h>
 
 #define BROKEN_FITS_OFFSET (2880*2)
@@ -51,6 +52,16 @@ int main(int argc, char *argv[]) {
 	int size = read_file(argv[1], &data);
 	if (size < 0) {
 		printf("error reading: %s\n", argv[1]);
+		return 1;
+	}
+
+	if (strncmp(data, "SIMPLE", 6)) {
+		printf("does not appear to be a FITS image\n");
+		return 1;
+	}
+
+	if (strncmp(data + BROKEN_FITS_OFFSET, "SIMPLE", 6)) {
+		printf("can not find true start position, maybe fixed?\n");
 		return 1;
 	}
 
