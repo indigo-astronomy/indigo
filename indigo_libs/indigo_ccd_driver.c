@@ -1982,12 +1982,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			}
 		} else if (handle > 0) {
 			if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
-				if (!indigo_write(handle, data, FITS_HEADER_SIZE + blobsize)) {
+				if (!indigo_write(handle, data + FITS_HEADER_SIZE - header_size, blobsize + header_size)) {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = strerror(errno);
 				}
 			} else if (CCD_IMAGE_FORMAT_XISF_ITEM->sw.value) {
-				if (!indigo_write(handle, data, FITS_HEADER_SIZE + blobsize)) {
+				if (!indigo_write(handle, data, blobsize + FITS_HEADER_SIZE)) {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 					message = strerror(errno);
 				}
