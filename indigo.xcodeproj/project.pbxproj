@@ -1221,6 +1221,7 @@
 		5937CBEA2A02BEEB00135CCF /* indigo_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp_sony.m; sourceTree = "<group>"; };
 		5937CBED2A02BEF700135CCF /* indigo_ptp_fuji.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp_fuji.m; sourceTree = "<group>"; };
 		5937CBF32A02C25900135CCF /* indigo_ptp_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ptp_ica.h; sourceTree = "<group>"; };
+		5937CBF72A02E70200135CCF /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		59399D892177D316002886CA /* indigo_focuser_optec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec.c; sourceTree = "<group>"; };
 		59399D8A2177D316002886CA /* indigo_focuser_optec_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec_main.c; sourceTree = "<group>"; };
 		59399D8B2177D316002886CA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -12843,6 +12844,7 @@
 			isa = PBXGroup;
 			children = (
 				9D586C3D22FB0C34002D382E /* README.md */,
+				5937CBF72A02E70200135CCF /* Makefile */,
 				9D586C3E22FB0D43002D382E /* indigo_ccd_ptp.h */,
 				9D586C3F22FB0D43002D382E /* indigo_ccd_ptp.c */,
 				59FA0B1C22FB400900A15D19 /* indigo_ptp.h */,

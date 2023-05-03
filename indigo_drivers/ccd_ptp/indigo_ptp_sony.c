@@ -677,6 +677,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 }
 
 static void ptp_check_event(indigo_device *device) {
+#ifdef USE_ICA_TRANSPORT
+	ptp_get_event(device);
+#else
 	ptp_container event;
 	int length = 0;
 	memset(&event, 0, sizeof(event));
@@ -686,6 +689,7 @@ static void ptp_check_event(indigo_device *device) {
 		PTP_DUMP_CONTAINER(&event);
 		PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
 	}
+#endif
 	indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
 }
 
