@@ -20,9 +20,9 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO PTP DSLR driver - ICA bridge
- \file indigo_ccd_ptp.m
+ \file indigo_ptp_fuji.m
  */
 
 #define USE_ICA_TRANSPORT
 
-#import "indigo_ccd_ptp.c"
+#import "indigo_ptp_fuji.c"

@@ -125,6 +125,18 @@
 		592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */; };
 		5931B7282535FA8A008F74A1 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5931B7272535FA8A008F74A1 /* libindigo.dylib */; };
 		593287A62409AD1000ED61C0 /* indigo_rotator_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */; };
+		5937CBE22A02BE9800135CCF /* indigo_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBE12A02BE9800135CCF /* indigo_ptp.m */; };
+		5937CBE32A02BE9800135CCF /* indigo_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBE12A02BE9800135CCF /* indigo_ptp.m */; };
+		5937CBE52A02BED800135CCF /* indigo_ptp_canon.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBE42A02BED800135CCF /* indigo_ptp_canon.m */; };
+		5937CBE62A02BED800135CCF /* indigo_ptp_canon.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBE42A02BED800135CCF /* indigo_ptp_canon.m */; };
+		5937CBE82A02BEE100135CCF /* indigo_ptp_nikon.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBE72A02BEE100135CCF /* indigo_ptp_nikon.m */; };
+		5937CBE92A02BEE100135CCF /* indigo_ptp_nikon.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBE72A02BEE100135CCF /* indigo_ptp_nikon.m */; };
+		5937CBEB2A02BEEB00135CCF /* indigo_ptp_sony.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBEA2A02BEEB00135CCF /* indigo_ptp_sony.m */; };
+		5937CBEC2A02BEEB00135CCF /* indigo_ptp_sony.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBEA2A02BEEB00135CCF /* indigo_ptp_sony.m */; };
+		5937CBEE2A02BEF700135CCF /* indigo_ptp_fuji.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBED2A02BEF700135CCF /* indigo_ptp_fuji.m */; };
+		5937CBEF2A02BEF700135CCF /* indigo_ptp_fuji.m in Sources */ = {isa = PBXBuildFile; fileRef = 5937CBED2A02BEF700135CCF /* indigo_ptp_fuji.m */; };
+		5937CBF42A02C25900135CCF /* indigo_ptp_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 5937CBF32A02C25900135CCF /* indigo_ptp_ica.h */; };
+		5937CBF52A02C25900135CCF /* indigo_ptp_ica.h in Headers */ = {isa = PBXBuildFile; fileRef = 5937CBF32A02C25900135CCF /* indigo_ptp_ica.h */; };
 		59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 59399D892177D316002886CA /* indigo_focuser_optec.c */; };
 		593A357E219DBAD500EDF481 /* indigo_filter.h in Headers */ = {isa = PBXBuildFile; fileRef = 593A357A219DB4BA00EDF481 /* indigo_filter.h */; };
 		593A3580219DBE5E00EDF481 /* indigo_filter.c in Sources */ = {isa = PBXBuildFile; fileRef = 593A357B219DB4BA00EDF481 /* indigo_filter.c */; };
@@ -278,11 +290,9 @@
 		598A1B57259BA94A00C0B34C /* indigo_ccd_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */; };
 		598A1B58259BA94A00C0B34C /* indigo_dome_baader.c in Sources */ = {isa = PBXBuildFile; fileRef = 59EF8BC024683B10009D75C5 /* indigo_dome_baader.c */; };
 		598A1B59259BA94A00C0B34C /* indigo_dome_dragonfly.c in Sources */ = {isa = PBXBuildFile; fileRef = 591F328624211EB000D1D64B /* indigo_dome_dragonfly.c */; };
-		598A1B5A259BA94A00C0B34C /* indigo_ptp_canon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FA0B1E22FCACC600A15D19 /* indigo_ptp_canon.c */; };
 		598A1B5B259BA94A00C0B34C /* indigo_raw_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911B6C922630FE900D6B9EC /* indigo_raw_utils.c */; };
 		598A1B5C259BA94A00C0B34C /* indigo_aux_dsusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */; };
 		598A1B5D259BA94A00C0B34C /* indigo_focuser_steeldrive2.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */; };
-		598A1B5E259BA94A00C0B34C /* indigo_ptp_fuji.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C3BB0F255077E8000720B4 /* indigo_ptp_fuji.c */; };
 		598A1B5F259BA94A00C0B34C /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
 		598A1B60259BA94A00C0B34C /* indigo_wheel_trutek.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD524A2126E88B002FCC79 /* indigo_wheel_trutek.c */; };
 		598A1B61259BA94A00C0B34C /* indigo_driver_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */; };
@@ -290,12 +300,10 @@
 		598A1B63259BA94A00C0B34C /* indigo_ccd_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FB661DA40B380084BBF8 /* indigo_ccd_sx.c */; };
 		598A1B64259BA94A00C0B34C /* nex_open.c in Sources */ = {isa = PBXBuildFile; fileRef = 598C582F21A75B1A001CA8C0 /* nex_open.c */; };
 		598A1B65259BA94A00C0B34C /* indigo_mount_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */; };
-		598A1B66259BA94A00C0B34C /* indigo_ptp_sony.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D6719022FDBB8D00D08A2A /* indigo_ptp_sony.c */; };
 		598A1B67259BA94A00C0B34C /* libuvc_stream.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D73E61521FF37F9003CEC15 /* libuvc_stream.c */; };
 		598A1B68259BA94A00C0B34C /* indigo_mount_ioptron.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD522E21246EB5002FCC79 /* indigo_mount_ioptron.c */; };
 		598A1B69259BA94A00C0B34C /* indigo_gps_nmea.c in Sources */ = {isa = PBXBuildFile; fileRef = 59DD69C51FC1CF8D00AEF0DF /* indigo_gps_nmea.c */; };
 		598A1B6A259BA94A00C0B34C /* indigo_mount_temma.c in Sources */ = {isa = PBXBuildFile; fileRef = 590B59D11F78544000086FD2 /* indigo_mount_temma.c */; };
-		598A1B6B259BA94A00C0B34C /* indigo_ptp_nikon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D6718C22FDBB7500D08A2A /* indigo_ptp_nikon.c */; };
 		598A1B6C259BA94A00C0B34C /* DDHidElement.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2911211E211100380EF4 /* DDHidElement.m */; };
 		598A1B6D259BA94A00C0B34C /* indigo_focuser_moonlite.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D4F4741215A4440006110FD /* indigo_focuser_moonlite.c */; };
 		598A1B6E259BA94A00C0B34C /* indigo_focuser_efa.c in Sources */ = {isa = PBXBuildFile; fileRef = 59413564232404D700ED5FF4 /* indigo_focuser_efa.c */; };
@@ -700,7 +708,6 @@
 		59BBED28278493E400BA9CD6 /* indigo_agent_astap.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBED24278493E400BA9CD6 /* indigo_agent_astap.c */; };
 		59C3BAFC254DE8AD000720B4 /* indigo_ser.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C3BAFA254DE8AD000720B4 /* indigo_ser.h */; };
 		59C3BAFD254DE8AD000720B4 /* indigo_ser.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C3BAFB254DE8AD000720B4 /* indigo_ser.c */; };
-		59C3BB12255077E9000720B4 /* indigo_ptp_fuji.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C3BB0F255077E8000720B4 /* indigo_ptp_fuji.c */; };
 		59C3BB13255077E9000720B4 /* indigo_ptp_fuji.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C3BB10255077E8000720B4 /* indigo_ptp_fuji.h */; };
 		59C4C88420CEF107007EE330 /* indigo_focuser_wemacro.h in Headers */ = {isa = PBXBuildFile; fileRef = 59C4C88020CEF107007EE330 /* indigo_focuser_wemacro.h */; };
 		59C565072464A14C00344C0C /* indigo_aux_mgbox.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C565012464A13A00344C0C /* indigo_aux_mgbox.c */; };
@@ -733,9 +740,7 @@
 		59D2B9FA294A332E002F0F90 /* indigo_mount_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D2B9F2294A332E002F0F90 /* indigo_mount_asi.h */; };
 		59D2B9FB294A332E002F0F90 /* indigo_mount_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D2B9F2294A332E002F0F90 /* indigo_mount_asi.h */; };
 		59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D62CD81E731490004DDD9C /* indigo_focuser_usbv3.c */; };
-		59D6718E22FDBB7500D08A2A /* indigo_ptp_nikon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D6718C22FDBB7500D08A2A /* indigo_ptp_nikon.c */; };
 		59D6718F22FDBB7500D08A2A /* indigo_ptp_nikon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D6718D22FDBB7500D08A2A /* indigo_ptp_nikon.h */; };
-		59D6719222FDBB8E00D08A2A /* indigo_ptp_sony.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D6719022FDBB8D00D08A2A /* indigo_ptp_sony.c */; };
 		59D6719322FDBB8E00D08A2A /* indigo_ptp_sony.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D6719122FDBB8D00D08A2A /* indigo_ptp_sony.h */; };
 		59D707691DC527B800DEF566 /* indigo_mount_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D707671DC527B800DEF566 /* indigo_mount_driver.c */; };
 		59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D707681DC527B800DEF566 /* indigo_mount_driver.h */; };
@@ -773,7 +778,6 @@
 		59F871BD26A87162007DF91C /* indigo_ccd_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FC2EB6210CA76100730343 /* indigo_ccd_mi.c */; };
 		59F871BF26A871B6007DF91C /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A52D5B21A3360B000B6F27 /* libgxccd.a */; };
 		59FA0B1F22FCACC700A15D19 /* indigo_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */; };
-		59FA0B2022FCACC700A15D19 /* indigo_ptp_canon.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FA0B1E22FCACC600A15D19 /* indigo_ptp_canon.c */; };
 		59FC2EBC210CA76200730343 /* indigo_ccd_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FC2EB7210CA76100730343 /* indigo_ccd_mi.h */; };
 		59FE34652187B2F8004FB5D4 /* indigo_aux_dsusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */; };
 		59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FE34632187B2F7004FB5D4 /* indigo_aux_dsusb.h */; };
@@ -841,8 +845,6 @@
 		9DA451CF21908CBC00818B58 /* indigo_agent_imager.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DA451CD21908CBC00818B58 /* indigo_agent_imager.h */; };
 		9DA71CF12A0255A900CFA533 /* indigo_ccd_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DA71CF02A0255A900CFA533 /* indigo_ccd_ptp.m */; };
 		9DA71CF22A0255A900CFA533 /* indigo_ccd_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DA71CF02A0255A900CFA533 /* indigo_ccd_ptp.m */; };
-		9DA71CF32A025A0A00CFA533 /* indigo_ptp.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D586C4422FC6265002D382E /* indigo_ptp.c */; };
-		9DA71CF42A025A0B00CFA533 /* indigo_ptp.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D586C4422FC6265002D382E /* indigo_ptp.c */; };
 		9DA71D012A029BE500CFA533 /* indigo_ccd_ica.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E21EFADFE000E750AA /* indigo_ccd_ica.m */; };
 		9DA71D022A029BE500CFA533 /* indigo_ica_ptp.m in Sources */ = {isa = PBXBuildFile; fileRef = 59C499E41EFADFE000E750AA /* indigo_ica_ptp.m */; };
 		9DA71D032A029BE500CFA533 /* indigo_ica_ptp_canon.h in Headers */ = {isa = PBXBuildFile; fileRef = 59E38B4F1F1577A000187839 /* indigo_ica_ptp_canon.h */; };
@@ -1213,6 +1215,12 @@
 		5932DD3524B20C1400B90A6A /* README.arm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.arm; sourceTree = "<group>"; };
 		5932DD3624B20C8D00B90A6A /* ASICamera2 Software Development Kit.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = "ASICamera2 Software Development Kit.pdf"; path = "doc/ASICamera2 Software Development Kit.pdf"; sourceTree = "<group>"; };
 		5936A993299C0D1F00C3095A /* uncrustify.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; path = uncrustify.cfg; sourceTree = "<group>"; };
+		5937CBE12A02BE9800135CCF /* indigo_ptp.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp.m; sourceTree = "<group>"; };
+		5937CBE42A02BED800135CCF /* indigo_ptp_canon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp_canon.m; sourceTree = "<group>"; };
+		5937CBE72A02BEE100135CCF /* indigo_ptp_nikon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp_nikon.m; sourceTree = "<group>"; };
+		5937CBEA2A02BEEB00135CCF /* indigo_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp_sony.m; sourceTree = "<group>"; };
+		5937CBED2A02BEF700135CCF /* indigo_ptp_fuji.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ptp_fuji.m; sourceTree = "<group>"; };
+		5937CBF32A02C25900135CCF /* indigo_ptp_ica.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ptp_ica.h; sourceTree = "<group>"; };
 		59399D892177D316002886CA /* indigo_focuser_optec.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec.c; sourceTree = "<group>"; };
 		59399D8A2177D316002886CA /* indigo_focuser_optec_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optec_main.c; sourceTree = "<group>"; };
 		59399D8B2177D316002886CA /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -12837,7 +12845,6 @@
 				9D586C3D22FB0C34002D382E /* README.md */,
 				9D586C3E22FB0D43002D382E /* indigo_ccd_ptp.h */,
 				9D586C3F22FB0D43002D382E /* indigo_ccd_ptp.c */,
-				9DA71CF02A0255A900CFA533 /* indigo_ccd_ptp.m */,
 				59FA0B1C22FB400900A15D19 /* indigo_ptp.h */,
 				9D586C4422FC6265002D382E /* indigo_ptp.c */,
 				59FA0B1D22FCACC600A15D19 /* indigo_ptp_canon.h */,
@@ -12850,6 +12857,13 @@
 				59C3BB0F255077E8000720B4 /* indigo_ptp_fuji.c */,
 				595E9FC0233E6666006E01D3 /* ptp_camera_model.h */,
 				59C3BB0E255077E8000720B4 /* indigo_ccd_ptp_main.c */,
+				5937CBF32A02C25900135CCF /* indigo_ptp_ica.h */,
+				9DA71CF02A0255A900CFA533 /* indigo_ccd_ptp.m */,
+				5937CBE12A02BE9800135CCF /* indigo_ptp.m */,
+				5937CBE42A02BED800135CCF /* indigo_ptp_canon.m */,
+				5937CBE72A02BEE100135CCF /* indigo_ptp_nikon.m */,
+				5937CBEA2A02BEEB00135CCF /* indigo_ptp_sony.m */,
+				5937CBED2A02BEF700135CCF /* indigo_ptp_fuji.m */,
 			);
 			path = ccd_ptp;
 			sourceTree = "<group>";
@@ -13702,6 +13716,7 @@
 				59B8A8C827ADAD8400A27609 /* indigo_align.h in Headers */,
 				598A1C1B259BA94A00C0B34C /* libdsusb.h in Headers */,
 				591CD0CD298042C1003243AE /* starshootg.h in Headers */,
+				5937CBF52A02C25900135CCF /* indigo_ptp_ica.h in Headers */,
 				598A1C1C259BA94A00C0B34C /* duk_config.h in Headers */,
 				598A1C1D259BA94A00C0B34C /* DDHidUsageTables.h in Headers */,
 				598A1C1E259BA94A00C0B34C /* indigo_driver_json.h in Headers */,
@@ -14003,6 +14018,7 @@
 				5911B6DA22633DBE00D6B9EC /* indigo_agent_guider.h in Headers */,
 				595F2920211E211100380EF4 /* DDHidQueue.h in Headers */,
 				595F2919211E211100380EF4 /* NSDictionary+DDHidExtras.h in Headers */,
+				5937CBF42A02C25900135CCF /* indigo_ptp_ica.h in Headers */,
 				59A52D6521A33617000B6F27 /* gxccd.h in Headers */,
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
 				9DAD52472126BD99002FCC79 /* indigo_wheel_quantum.h in Headers */,
@@ -14318,6 +14334,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5937CBE62A02BED800135CCF /* indigo_ptp_canon.m in Sources */,
 				59111CF2285F504200E57194 /* indigocat_earth.c in Sources */,
 				598A1B54259BA94A00C0B34C /* libuvc_misc.c in Sources */,
 				598A1B55259BA94A00C0B34C /* indigo_ccd_qhy.cpp in Sources */,
@@ -14326,12 +14343,10 @@
 				598A1B57259BA94A00C0B34C /* indigo_ccd_simulator.c in Sources */,
 				598A1B58259BA94A00C0B34C /* indigo_dome_baader.c in Sources */,
 				598A1B59259BA94A00C0B34C /* indigo_dome_dragonfly.c in Sources */,
-				598A1B5A259BA94A00C0B34C /* indigo_ptp_canon.c in Sources */,
 				598A1B5B259BA94A00C0B34C /* indigo_raw_utils.c in Sources */,
 				59111CEE285F504200E57194 /* indigocat_jupiter.c in Sources */,
 				598A1B5C259BA94A00C0B34C /* indigo_aux_dsusb.c in Sources */,
 				598A1B5D259BA94A00C0B34C /* indigo_focuser_steeldrive2.c in Sources */,
-				598A1B5E259BA94A00C0B34C /* indigo_ptp_fuji.c in Sources */,
 				598A1B5F259BA94A00C0B34C /* indigo_agent_alignment.c in Sources */,
 				59B51351297066040075C8A1 /* indigo_wheel_indigo.c in Sources */,
 				598A1B60259BA94A00C0B34C /* indigo_wheel_trutek.c in Sources */,
@@ -14343,7 +14358,6 @@
 				598A1B64259BA94A00C0B34C /* nex_open.c in Sources */,
 				598A1B65259BA94A00C0B34C /* indigo_mount_simulator.c in Sources */,
 				9DD01BE8298A63A50044FB3B /* indigo_build.c in Sources */,
-				598A1B66259BA94A00C0B34C /* indigo_ptp_sony.c in Sources */,
 				598A1B67259BA94A00C0B34C /* libuvc_stream.c in Sources */,
 				59A413392971E54C00F0A80B /* Makefile.inc in Sources */,
 				9DA71D0C2A029BE600CFA533 /* indigo_ica_ptp.m in Sources */,
@@ -14352,7 +14366,6 @@
 				598A1B69259BA94A00C0B34C /* indigo_gps_nmea.c in Sources */,
 				593A8F11285F616F00F6CF1C /* indigocat_precession.c in Sources */,
 				598A1B6A259BA94A00C0B34C /* indigo_mount_temma.c in Sources */,
-				598A1B6B259BA94A00C0B34C /* indigo_ptp_nikon.c in Sources */,
 				598A1B6C259BA94A00C0B34C /* DDHidElement.m in Sources */,
 				598A1B6D259BA94A00C0B34C /* indigo_focuser_moonlite.c in Sources */,
 				59111CF4285F504200E57194 /* indigocat_uranus.c in Sources */,
@@ -14414,6 +14427,7 @@
 				598A1B9B259BA94A00C0B34C /* indigo_agent_lx200_server.c in Sources */,
 				598A1B9C259BA94A00C0B34C /* libdsi.c in Sources */,
 				598A1B9D259BA94A00C0B34C /* nexstar.c in Sources */,
+				5937CBE92A02BEE100135CCF /* indigo_ptp_nikon.m in Sources */,
 				9DA71D0B2A029BE600CFA533 /* indigo_ccd_ica.m in Sources */,
 				598A1B9E259BA94A00C0B34C /* DDHidAppleMikey.m in Sources */,
 				591CCFAD2980396B003243AE /* indigo_ccd_omegonpro.c in Sources */,
@@ -14438,6 +14452,7 @@
 				59111CF3285F504200E57194 /* indigocat_mars.c in Sources */,
 				59F6BB42261CA65800DA9BE1 /* alpaca_switch.c in Sources */,
 				598A1BAB259BA94A00C0B34C /* indigo_aux_dragonfly.c in Sources */,
+				5937CBE32A02BE9800135CCF /* indigo_ptp.m in Sources */,
 				598A1BAC259BA94A00C0B34C /* DDHidKeyboard.m in Sources */,
 				598A1BAD259BA94A00C0B34C /* indigo_wheel_optec.c in Sources */,
 				598A1BAE259BA94A00C0B34C /* indigo_aux_arteskyflat.c in Sources */,
@@ -14452,6 +14467,7 @@
 				598A1BB4259BA94A00C0B34C /* indigo_aux_rts.c in Sources */,
 				598A1BB5259BA94A00C0B34C /* duktape.c in Sources */,
 				598A1BB6259BA94A00C0B34C /* DDHidQueue.m in Sources */,
+				5937CBEC2A02BEEB00135CCF /* indigo_ptp_sony.m in Sources */,
 				598A1BB7259BA94A00C0B34C /* indigo_mount_rainbow.c in Sources */,
 				594EF31D2770FD58002D0EC8 /* indigo_align.c in Sources */,
 				598A1BB8259BA94A00C0B34C /* indigo_ccd_simulator_data.c in Sources */,
@@ -14503,6 +14519,7 @@
 				598A1BDC259BA94A00C0B34C /* indigo_focuser_optec.c in Sources */,
 				598A1BDD259BA94A00C0B34C /* indigo_focuser_lakeside.c in Sources */,
 				59D2B9E8294A2B22002F0F90 /* indigo_ccd_asi.c in Sources */,
+				5937CBEF2A02BEF700135CCF /* indigo_ptp_fuji.m in Sources */,
 				598A1BDE259BA94A00C0B34C /* indigo_dome_nexdome3.c in Sources */,
 				598A1BDF259BA94A00C0B34C /* indigo_wheel_xagyl.c in Sources */,
 				591CD11329806D42003243AE /* indigo_ccd_mallin.c in Sources */,
@@ -14531,7 +14548,6 @@
 				598A1BF1259BA94A00C0B34C /* DDHidAppleRemote.m in Sources */,
 				598A1BF2259BA94A00C0B34C /* indigo_aux_flipflat.c in Sources */,
 				597BD1B5260A597400239274 /* alpaca_guider.c in Sources */,
-				9DA71CF42A025A0B00CFA533 /* indigo_ptp.c in Sources */,
 				5995A8D925A9AC69003987F1 /* indigo_platesolver.c in Sources */,
 				59111CEA285F504200E57194 /* indigocat_sun.c in Sources */,
 				598A1BF3259BA94A00C0B34C /* indigo_system_ascol.c in Sources */,
@@ -14572,19 +14588,18 @@
 			files = (
 				59D29A1B2841469D00D5E7F7 /* indigo_mount_starbook.c in Sources */,
 				9D73E61B21FF37F9003CEC15 /* libuvc_misc.c in Sources */,
+				5937CBE22A02BE9800135CCF /* indigo_ptp.m in Sources */,
 				595567CE24B88F5B00DF303D /* indigo_ccd_qhy.cpp in Sources */,
 				59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */,
 				59C8E7C11DBBB05500AA3F0A /* indigo_ccd_simulator.c in Sources */,
 				59EF8BC924683B2A009D75C5 /* indigo_dome_baader.c in Sources */,
 				9DA71D072A029BE500CFA533 /* indigo_ica_ptp_canon.m in Sources */,
 				591F329324211F3C00D1D64B /* indigo_dome_dragonfly.c in Sources */,
-				59FA0B2022FCACC700A15D19 /* indigo_ptp_canon.c in Sources */,
 				9D62F70128FEAF62006599FF /* indigo_agent_config.c in Sources */,
 				5911B6CB22630FE900D6B9EC /* indigo_raw_utils.c in Sources */,
 				597C7225293CFC3A0016D45A /* indigo_ccd_asi.c in Sources */,
 				59FE34652187B2F8004FB5D4 /* indigo_aux_dsusb.c in Sources */,
 				59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */,
-				59C3BB12255077E9000720B4 /* indigo_ptp_fuji.c in Sources */,
 				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
@@ -14597,15 +14612,13 @@
 				59111D03285F504300E57194 /* indigocat_uranus.c in Sources */,
 				59C76F0E2378724D0091B966 /* nex_open.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
-				59D6719222FDBB8E00D08A2A /* indigo_ptp_sony.c in Sources */,
+				5937CBE82A02BEE100135CCF /* indigo_ptp_nikon.m in Sources */,
 				591CD0E829805CB9003243AE /* indigo_ccd_rising.c in Sources */,
 				597DFE242804A880009E37CB /* indigo_rotator_optec.c in Sources */,
 				9D73E61E21FF37F9003CEC15 /* libuvc_stream.c in Sources */,
 				9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */,
 				59DD69C91FC1CF8D00AEF0DF /* indigo_gps_nmea.c in Sources */,
 				590B59D41F7858FE00086FD2 /* indigo_mount_temma.c in Sources */,
-				9DA71CF32A025A0A00CFA533 /* indigo_ptp.c in Sources */,
-				59D6718E22FDBB7500D08A2A /* indigo_ptp_nikon.c in Sources */,
 				595F292E211E211200380EF4 /* DDHidElement.m in Sources */,
 				9D4F4742215A4447006110FD /* indigo_focuser_moonlite.c in Sources */,
 				59413566232404D700ED5FF4 /* indigo_focuser_efa.c in Sources */,
@@ -14719,6 +14732,7 @@
 				595567D824BA00DA00DF303D /* indigo_mount_pmc8_main.c in Sources */,
 				59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */,
 				59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */,
+				5937CBEE2A02BEF700135CCF /* indigo_ptp_fuji.m in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
 				5910D9B7258008190015D915 /* indigo_agent_scripting.c in Sources */,
 				59111D02285F504300E57194 /* indigocat_mars.c in Sources */,
@@ -14728,6 +14742,7 @@
 				59B51350297066040075C8A1 /* indigo_wheel_indigo.c in Sources */,
 				59BBED27278493E400BA9CD6 /* indigo_agent_astap.c in Sources */,
 				59D138A5283E6BAA00FCC514 /* indigo_dslr_raw.c in Sources */,
+				5937CBEB2A02BEEB00135CCF /* indigo_ptp_sony.m in Sources */,
 				9DA71D012A029BE500CFA533 /* indigo_ccd_ica.m in Sources */,
 				59A321B821D691D600EC0F4A /* indigo_mount_synscan_guider.c in Sources */,
 				595AA1CD1FC5ED8A00350E7B /* indigo_agent_snoop.c in Sources */,
@@ -14795,6 +14810,7 @@
 				5979C862254710B0005395BE /* indigo_tiff.c in Sources */,
 				9D48B7B6215E5B6100CF757E /* indigo_ccd_touptek.c in Sources */,
 				9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */,
+				5937CBE52A02BED800135CCF /* indigo_ptp_canon.m in Sources */,
 				59B636B020A74CD400EF2D52 /* indigo_usb_utils.c in Sources */,
 				595B88EC242CFEA2008CA4E2 /* indigo_token.c in Sources */,
 				59F1AD1223FB15B300008F02 /* indigo_focuser_lunatico.c in Sources */,

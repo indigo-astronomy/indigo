@@ -26,10 +26,14 @@
 #ifndef indigo_ptp_h
 #define indigo_ptp_h
 
+#ifdef USE_ICA_TRANSPORT
+#import "indigo_ptp_ica.h"
+#endif
+
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION              0x001B
+#define DRIVER_VERSION              0x001C
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -342,7 +346,12 @@ typedef struct {
 typedef struct {
 	void *vendor_private_data;
 	indigo_device *focuser;
+#ifdef USE_ICA_TRANSPORT
+	ICCameraDevice *dev;
+	ICACameraDelegate *delegate;
+#else
 	libusb_device *dev;
+#endif
 	libusb_device_handle *handle;
 	uint8_t ep_in, ep_out, ep_int;
 	indigo_property *dslr_delete_image_property;
