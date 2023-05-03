@@ -20,9 +20,22 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO PTP DSLR driver - ICA bridge
- \file indigo_ccd_ptp.m
+ \file indigo_ccd_ptp_ica.h
  */
 
-#define USE_ICA_TRANSPORT
+#import <Cocoa/Cocoa.h>
+#import <ImageCaptureCore/ImageCaptureCore.h>
 
-#import "indigo_ccd_ptp.c"
+#pragma clang diagnostic ignored "-Wnullability-completeness"
+
+@interface ICABrowser : NSObject <ICDeviceBrowserDelegate>
+@end
+
+@interface ICACameraDelegate: NSObject<ICCameraDeviceDelegate>
+@property dispatch_semaphore_t openSemafor;
+@property dispatch_semaphore_t closeSemafor;
+@property dispatch_semaphore_t ptpSemafor;
+@property NSData *ptpResponse;
+@property NSData *ptpInput;
+@property NSMutableArray *events;
+@end

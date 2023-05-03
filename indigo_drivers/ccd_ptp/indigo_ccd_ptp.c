@@ -160,11 +160,13 @@ static void handle_connection(indigo_device *device) {
 			if (result) {
 				PRIVATE_DATA->transaction_id = 0;
 				PRIVATE_DATA->session_id = 0;
+#ifndef USE_ICA_TRANSPORT
 				result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
 				if (!result && PRIVATE_DATA->last_error == ptp_response_SessionAlreadyOpen) {
 					ptp_transaction_0_0(device, ptp_operation_CloseSession);
 					result = ptp_transaction_1_1(device, ptp_operation_OpenSession, 1, &PRIVATE_DATA->session_id);
 				}
+#endif
 				if (result) {
 					if (PRIVATE_DATA->initialise(device)) {
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -651,9 +653,6 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 
 #ifdef USE_ICA_TRANSPORT
 
-@interface ICABrowser : NSObject <ICDeviceBrowserDelegate>
-@end
-
 @implementation ICABrowser {
 	ICDeviceBrowser *icBrowser;
 }
@@ -676,12 +675,42 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 	[icBrowser stop];
 }
 
--(void)deviceBrowser:(ICDeviceBrowser*)browser didAddDevice:(ICDevice*)device moreComing:(BOOL)moreComing {
-	NSLog(@"didAddDevice %@", device.description);
+-(void)deviceBrowser:(ICDeviceBrowser*)browser didAddDevice:(ICDevice*)dev moreComing:(BOOL)moreComing {
+	pthread_mutex_lock(&device_mutex);
+	INDIGO_DEBUG_DRIVER(([[NSString stringWithFormat:@"device recognised %@", dev.description] cStringUsingEncoding:NSUTF8StringEncoding]));
+	char usb_path[INDIGO_NAME_SIZE];
+	snprintf(usb_path, INDIGO_NAME_SIZE, "%08x", dev.usbLocationID);
+	indigo_device *device = attach_device(dev.usbVendorID, dev.usbProductID, usb_path);
+	PRIVATE_DATA->dev = (ICCameraDevice *)dev;
+	[dev.userData setObject:[NSValue valueWithPointer:device] forKey:@"device"];
+	pthread_mutex_unlock(&device_mutex);
 }
 
--(void)deviceBrowser:(ICDeviceBrowser*)browser didRemoveDevice:(ICDevice*)device moreGoing:(BOOL)moreGoing {
-	NSLog(@"didRemoveDevice %@", device.description);
+-(void)deviceBrowser:(ICDeviceBrowser*)browser didRemoveDevice:(ICDevice*)dev moreGoing:(BOOL)moreGoing {
+	pthread_mutex_lock(&device_mutex);
+	ptp_private_data *private_data = NULL;
+	for (int j = 0; j < MAX_DEVICES; j++) {
+		if (devices[j] != NULL) {
+			indigo_device *device = devices[j];
+			if (PRIVATE_DATA->dev == dev) {
+				private_data = PRIVATE_DATA;
+				if (private_data->focuser) {
+					indigo_detach_device(private_data->focuser);
+					free(private_data->focuser);
+					private_data->focuser = NULL;
+				}
+				indigo_detach_device(device);
+				free(device);
+				devices[j] = NULL;
+			}
+		}
+	}
+	if (private_data != NULL) {
+		if (private_data->vendor_private_data)
+			free(private_data->vendor_private_data);
+		free(private_data);
+	}
+	pthread_mutex_unlock(&device_mutex);
 }
 @end
 
