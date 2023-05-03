@@ -503,7 +503,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static void process_plug_event(libusb_device *dev) {
+static indigo_device *attach_device(int vendor, int product, const char *usb_path) {
 	static indigo_device ccd_template = INDIGO_DEVICE_INITIALIZER(
 		"",
 		ccd_attach,
@@ -520,18 +520,13 @@ static void process_plug_event(libusb_device *dev) {
 		NULL,
 		focuser_detach
 	);
-	struct libusb_device_descriptor descriptor;
-	pthread_mutex_lock(&device_mutex);
-	int rc = libusb_get_device_descriptor(dev, &descriptor);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "searching for %04x:%04x", descriptor.idVendor, descriptor.idProduct);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "searching for %04x:%04x", vendor, product);
 	for (int i = 0; CAMERA[i].vendor; i++) {
-		if (CAMERA[i].vendor == descriptor.idVendor && (CAMERA[i].product == descriptor.idProduct || CAMERA[i].product == 0xFFFF)) {
+		if (CAMERA[i].vendor == vendor && (CAMERA[i].product == product || CAMERA[i].product == 0xFFFF)) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "found %s", CAMERA[i].name);
 			ptp_private_data *private_data = indigo_safe_malloc(sizeof(ptp_private_data));
-			private_data->dev = dev;
 			private_data->model = CAMERA[i];
-			if (descriptor.idVendor == CANON_VID) {
+			if (vendor == CANON_VID) {
 				private_data->operation_code_label = ptp_operation_canon_code_label;
 				private_data->response_code_label = ptp_response_canon_code_label;
 				private_data->event_code_label = ptp_event_canon_code_label;
@@ -550,7 +545,7 @@ static void process_plug_event(libusb_device *dev) {
 				private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_canon_focus : NULL;
 				private_data->set_host_time = ptp_canon_set_host_time;
 				private_data->check_dual_compression = ptp_canon_check_dual_compression;
-			} else if (descriptor.idVendor == NIKON_VID) {
+			} else if (vendor == NIKON_VID) {
 				private_data->operation_code_label = ptp_operation_nikon_code_label;
 				private_data->response_code_label = ptp_response_nikon_code_label;
 				private_data->event_code_label = ptp_event_nikon_code_label;
@@ -569,7 +564,7 @@ static void process_plug_event(libusb_device *dev) {
 				private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_nikon_focus : NULL;
 				private_data->set_host_time = ptp_set_host_time;
 				private_data->check_dual_compression = ptp_nikon_check_dual_compression;
-			} else if (descriptor.idVendor == SONY_VID) {
+			} else if (vendor == SONY_VID) {
 				private_data->operation_code_label = ptp_operation_sony_code_label;
 				private_data->response_code_label = ptp_response_code_label;
 				private_data->event_code_label = ptp_event_sony_code_label;
@@ -588,7 +583,7 @@ static void process_plug_event(libusb_device *dev) {
 				private_data->focus = NULL;
 				private_data->set_host_time = NULL;
 				private_data->check_dual_compression = ptp_sony_check_dual_compression;
-			} else if (descriptor.idVendor == FUJI_VID) {
+			} else if (vendor == FUJI_VID) {
 				private_data->operation_code_label = ptp_operation_fuji_code_label;
 				private_data->response_code_label = ptp_response_code_label;
 				private_data->event_code_label = ptp_event_fuji_code_label;
@@ -627,11 +622,8 @@ static void process_plug_event(libusb_device *dev) {
 				private_data->set_host_time = ptp_set_host_time;
 				private_data->check_dual_compression = NULL;
 			}
-			libusb_ref_device(dev);
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			device->master_device = device;
-			char usb_path[INDIGO_NAME_SIZE];
-			indigo_get_usb_path(dev, usb_path);
 			snprintf(device->name, INDIGO_NAME_SIZE, "%s", CAMERA[i].name);
 			indigo_make_name_unique(device->name, "%s", usb_path);
 			device->private_data = private_data;
@@ -649,12 +641,65 @@ static void process_plug_event(libusb_device *dev) {
 					break;
 				}
 			}
-			break;
+			pthread_mutex_unlock(&device_mutex);
+			return device;
 		}
 	}
 	pthread_mutex_unlock(&device_mutex);
+	return NULL;
 }
 
+#ifdef USE_ICA_TRANSPORT
+
+@interface ICABrowser : NSObject <ICDeviceBrowserDelegate>
+@end
+
+@implementation ICABrowser {
+	ICDeviceBrowser *icBrowser;
+}
+
+-(id)init {
+	self = [super init];
+	if (self) {
+		icBrowser = [[ICDeviceBrowser alloc] init];
+		icBrowser.delegate = self;
+		icBrowser.browsedDeviceTypeMask = ICDeviceTypeMaskCamera | ICDeviceLocationTypeMaskLocal;
+	}
+	return self;
+}
+
+-(void)start {
+	[icBrowser start];
+}
+
+-(void)stop {
+	[icBrowser stop];
+}
+
+-(void)deviceBrowser:(ICDeviceBrowser*)browser didAddDevice:(ICDevice*)device moreComing:(BOOL)moreComing {
+	NSLog(@"didAddDevice %@", device.description);
+}
+
+-(void)deviceBrowser:(ICDeviceBrowser*)browser didRemoveDevice:(ICDevice*)device moreGoing:(BOOL)moreGoing {
+	NSLog(@"didRemoveDevice %@", device.description);
+}
+@end
+
+ICABrowser *browser;
+
+#else
+
+static void process_plug_event(libusb_device *dev) {
+	struct libusb_device_descriptor descriptor;
+	pthread_mutex_lock(&device_mutex);
+	int rc = libusb_get_device_descriptor(dev, &descriptor);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
+	libusb_ref_device(dev);
+	char usb_path[INDIGO_NAME_SIZE];
+	indigo_get_usb_path(dev, usb_path);
+	indigo_device *device = attach_device(descriptor.idVendor, descriptor.idProduct, usb_path);
+	PRIVATE_DATA->dev = dev;
+}
 
 static void process_unplug_event(libusb_device *dev) {
 	pthread_mutex_lock(&device_mutex);
@@ -700,6 +745,8 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 static libusb_hotplug_callback_handle callback_handle;
 
+#endif
+
 indigo_result indigo_ccd_ptp(indigo_driver_action action, indigo_driver_info *info) {
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
@@ -715,15 +762,38 @@ indigo_result indigo_ccd_ptp(indigo_driver_action action, indigo_driver_info *in
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = 0;
 			}
+#ifdef USE_ICA_TRANSPORT
+			browser = [[ICABrowser alloc] init];
+			[browser start];
+			return INDIGO_OK;
+#else
 			indigo_start_usb_event_handler();
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-
+#endif
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++)
 				VERIFY_NOT_CONNECTED(devices[i]);
 			last_action = action;
+#ifdef USE_ICA_TRANSPORT
+			[browser stop];
+			browser = nil;
+			for (int j = 0; j < MAX_DEVICES; j++) {
+				if (devices[j] != NULL) {
+					indigo_device *device = devices[j];
+					if (PRIVATE_DATA->focuser) {
+						indigo_detach_device(PRIVATE_DATA->focuser);
+						free(PRIVATE_DATA->focuser);
+						PRIVATE_DATA->focuser = NULL;
+					}
+					indigo_detach_device(device);
+					free(PRIVATE_DATA);
+					free(device);
+					devices[j] = NULL;
+				}
+			}
+#else
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 			for (int j = 0; j < MAX_DEVICES; j++) {
@@ -732,6 +802,7 @@ indigo_result indigo_ccd_ptp(indigo_driver_action action, indigo_driver_info *in
 					hotplug_callback(NULL, PRIVATE_DATA->dev, LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, NULL);
 				}
 			}
+#endif
 			break;
 
 		case INDIGO_DRIVER_INFO:
