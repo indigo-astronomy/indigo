@@ -924,12 +924,18 @@ uint32_t ptp_type_size(ptp_type type) {
 }
 
 - (void)device:(nonnull ICDevice *)device didOpenSessionWithError:(NSError * _Nullable)error {
+	if (error != nil) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [error.description cStringUsingEncoding:NSUTF8StringEncoding]);
+	}
 	if (_openSemafor) {
 		dispatch_semaphore_signal(_openSemafor);
 	}
 }
 
 - (void)device:(nonnull ICDevice *)device didCloseSessionWithError:(NSError * _Nullable)error {
+	if (error != nil) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [error.description cStringUsingEncoding:NSUTF8StringEncoding]);
+	}
 	if (_closeSemafor) {
 		dispatch_semaphore_signal(_closeSemafor);
 	}
@@ -942,6 +948,7 @@ uint32_t ptp_type_size(ptp_type type) {
 }
 
 - (void)cameraDevice:(nonnull ICCameraDevice *)camera didReceivePTPEvent:(nonnull NSData *)eventData {
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "event added %s", [eventData.description cStringUsingEncoding:NSUTF8StringEncoding]);
 	[_events insertObject:eventData atIndex:0];
 }
 
@@ -964,10 +971,15 @@ uint32_t ptp_type_size(ptp_type type) {
 }
 
 -(void)didSendPTPCommand:(NSData*)command inData:(NSData*)inData response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
-	NSLog(@"didSendPTPCommand %@", error);
+	if (error == nil) {
+		if (_ptpSemafor) {
+			_ptpResponse = response;
+			_ptpInput = inData;
+		}
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [error.description cStringUsingEncoding:NSUTF8StringEncoding]);
+	}
 	if (_ptpSemafor) {
-		_ptpResponse = response;
-		_ptpInput = inData;
 		dispatch_semaphore_signal(_ptpSemafor);
 	}
 }
@@ -980,9 +992,11 @@ bool ptp_open(indigo_device *device) {
 	PRIVATE_DATA->delegate = delegate;
 	camera.delegate = delegate;
 	delegate.openSemafor = dispatch_semaphore_create(0);
-	delegate.ptpSemafor = dispatch_semaphore_create(0);
 	[camera requestOpenSession];
-	dispatch_semaphore_wait(delegate.openSemafor, DISPATCH_TIME_FOREVER);
+	if (dispatch_semaphore_wait(delegate.openSemafor, dispatch_time(DISPATCH_TIME_NOW, 10000000000ull))) {
+		delegate.openSemafor = nil;
+		return false;
+	}
 	delegate.openSemafor = nil;
 	return true;
 }
@@ -1004,8 +1018,16 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	PTP_DUMP_CONTAINER(&container);
 	NSData *requestData = [NSData dataWithBytesNoCopy:&container length:container.length freeWhenDone:YES];
 	NSData *outData = data_out ? [NSData dataWithBytesNoCopy:data_out length:data_out_size freeWhenDone:YES] : nil;
+	if (delegate.ptpSemafor == nil) {
+		delegate.ptpSemafor = dispatch_semaphore_create(0);
+	}
 	[camera requestSendPTPCommand:requestData outData:outData sendCommandDelegate:delegate didSendCommandSelector:@selector(didSendPTPCommand:inData:response:error:contextInfo:) contextInfo:nil];
-	dispatch_semaphore_wait(delegate.ptpSemafor, DISPATCH_TIME_FOREVER);
+	if (dispatch_semaphore_wait(delegate.ptpSemafor, dispatch_time(DISPATCH_TIME_NOW, 10000000000ull))) {
+		delegate.ptpSemafor = nil;
+		PRIVATE_DATA->last_error = ptp_response_GeneralError;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "timeout");
+		return false;
+	}
 	[delegate.ptpResponse getBytes:&container length:sizeof(container)];
 	PTP_DUMP_CONTAINER(&container);
 	if (in_1)
@@ -1049,7 +1071,7 @@ void ptp_close(indigo_device *device) {
 	ICACameraDelegate *delegate = PRIVATE_DATA->delegate;
 	delegate.closeSemafor = dispatch_semaphore_create(0);
 	[camera requestCloseSession];
-	dispatch_semaphore_wait(delegate.closeSemafor, DISPATCH_TIME_FOREVER);
+	dispatch_semaphore_wait(delegate.closeSemafor, dispatch_time(DISPATCH_TIME_NOW, 10000000000ull));
 	delegate.closeSemafor = nil;
 	delegate.ptpSemafor = nil;
 	camera.delegate = nil;
