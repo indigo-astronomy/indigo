@@ -1691,7 +1691,7 @@ double timestamp(void) {
 }
 
 void ptp_blob_exposure_timer(indigo_device *device) {
-	double finish = timestamp() + (int)CCD_EXPOSURE_ITEM->number.value;
+	double finish = timestamp() + CCD_EXPOSURE_ITEM->number.target;
 	double remains = finish;
 	while (!PRIVATE_DATA->abort_capture && remains > 0) {
 		indigo_usleep(10000);
