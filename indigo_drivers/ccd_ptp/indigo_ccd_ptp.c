@@ -203,8 +203,8 @@ static void handle_connection(indigo_device *device) {
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 	} else {
+    indigo_cancel_timer_sync(device, &PRIVATE_DATA->event_checker);
 		indigo_detach_device(PRIVATE_DATA->focuser);
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->event_checker);
 #ifndef USE_ICA_TRANSPORT
 		ptp_transaction_0_0(device, ptp_operation_CloseSession);
 #endif
@@ -671,51 +671,51 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 
 -(void)start {
 	[icBrowser start];
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "browser started");
 }
 
 -(void)stop {
 	[icBrowser stop];
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "browser stopped");
 }
 
 -(void)deviceBrowser:(ICDeviceBrowser*)browser didAddDevice:(ICDevice*)dev moreComing:(BOOL)moreComing {
-	pthread_mutex_lock(&device_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "device added %s", [dev.description cStringUsingEncoding:NSUTF8StringEncoding]);
-	char usb_path[INDIGO_NAME_SIZE];
-	snprintf(usb_path, INDIGO_NAME_SIZE, "%08x", dev.usbLocationID);
-	indigo_device *device = attach_device(dev.usbVendorID, dev.usbProductID, usb_path);
-	PRIVATE_DATA->dev = (ICCameraDevice *)dev;
-	[dev.userData setObject:[NSValue valueWithPointer:device] forKey:@"device"];
-	pthread_mutex_unlock(&device_mutex);
+	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+		pthread_mutex_lock(&device_mutex);
+		char usb_path[INDIGO_NAME_SIZE];
+		snprintf(usb_path, INDIGO_NAME_SIZE, "%08x", dev.usbLocationID);
+		indigo_device *device = attach_device(dev.usbVendorID, dev.usbProductID, usb_path);
+		PRIVATE_DATA->dev = (ICCameraDevice *)dev;
+		[dev.userData setObject:[NSValue valueWithPointer:device] forKey:@"device"];
+		pthread_mutex_unlock(&device_mutex);
+	});
 }
 
 -(void)deviceBrowser:(ICDeviceBrowser*)browser didRemoveDevice:(ICDevice*)dev moreGoing:(BOOL)moreGoing {
-	pthread_mutex_lock(&device_mutex);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "device removed %s", [dev.name cStringUsingEncoding:NSUTF8StringEncoding]);
-	ptp_private_data *private_data = NULL;
-	for (int j = 0; j < MAX_DEVICES; j++) {
-		if (devices[j] != NULL) {
-			indigo_device *device = devices[j];
-			if (PRIVATE_DATA->dev == dev) {
-				private_data = PRIVATE_DATA;
-				if (private_data->focuser) {
-					indigo_detach_device(private_data->focuser);
-					free(private_data->focuser);
-					private_data->focuser = NULL;
+	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+		pthread_mutex_lock(&device_mutex);
+		ptp_private_data *private_data = NULL;
+		for (int j = 0; j < MAX_DEVICES; j++) {
+			if (devices[j] != NULL) {
+				indigo_device *device = devices[j];
+				if (PRIVATE_DATA->dev == dev) {
+					private_data = PRIVATE_DATA;
+					if (private_data->focuser) {
+						indigo_detach_device(private_data->focuser);
+						free(private_data->focuser);
+						private_data->focuser = NULL;
+					}
+					indigo_detach_device(device);
+					free(device);
+					devices[j] = NULL;
 				}
-				indigo_detach_device(device);
-				free(device);
-				devices[j] = NULL;
 			}
 		}
-	}
-	if (private_data != NULL) {
-		if (private_data->vendor_private_data)
-			free(private_data->vendor_private_data);
-		free(private_data);
-	}
-	pthread_mutex_unlock(&device_mutex);
+		if (private_data != NULL) {
+			if (private_data->vendor_private_data)
+				free(private_data->vendor_private_data);
+			free(private_data);
+		}
+		pthread_mutex_unlock(&device_mutex);
+	});
 }
 @end
 

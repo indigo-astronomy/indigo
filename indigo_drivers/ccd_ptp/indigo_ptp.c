@@ -948,7 +948,6 @@ uint32_t ptp_type_size(ptp_type type) {
 }
 
 - (void)cameraDevice:(nonnull ICCameraDevice *)camera didReceivePTPEvent:(nonnull NSData *)eventData {
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "event added %s", [eventData.description cStringUsingEncoding:NSUTF8StringEncoding]);
 	if (_events == nil) {
 		_events = [[NSMutableArray alloc] init];
 	}
