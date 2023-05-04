@@ -991,6 +991,9 @@ uint32_t ptp_type_size(ptp_type type) {
 
 bool ptp_open(indigo_device *device) {
 	ICCameraDevice *camera = PRIVATE_DATA->dev;
+	if (camera == NULL) {
+		return false;
+	}
 	ICACameraDelegate *delegate = [[ICACameraDelegate alloc] init];
 	PRIVATE_DATA->delegate = delegate;
 	camera.delegate = delegate;
@@ -1007,6 +1010,9 @@ bool ptp_open(indigo_device *device) {
 bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t out_1, uint32_t out_2, uint32_t out_3, uint32_t out_4, uint32_t out_5, void *data_out, uint32_t data_out_size, uint32_t *in_1, uint32_t *in_2, uint32_t *in_3, uint32_t *in_4, uint32_t *in_5, void **data_in, uint32_t *data_in_size) {
 	ICCameraDevice *camera = PRIVATE_DATA->dev;
 	ICACameraDelegate *delegate = PRIVATE_DATA->delegate;
+	if (camera == NULL || delegate == NULL) {
+		return false;
+	}
 	ptp_container container;
 	memset(&container, 0, sizeof(container));
 	container.length = PTP_CONTAINER_COMMAND_SIZE(count);
@@ -1058,6 +1064,9 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 
 bool ptp_get_event(indigo_device *device) {
 	ICACameraDelegate *delegate = PRIVATE_DATA->delegate;
+	if (delegate == NULL) {
+		return false;
+	}
 	ptp_container event;
 	NSData *eventData;
 	while ((eventData = delegate.events.lastObject)) {
@@ -1072,6 +1081,9 @@ bool ptp_get_event(indigo_device *device) {
 void ptp_close(indigo_device *device) {
 	ICCameraDevice *camera = PRIVATE_DATA->dev;
 	ICACameraDelegate *delegate = PRIVATE_DATA->delegate;
+	if (camera == NULL || delegate == NULL) {
+		return;
+	}
 	delegate.closeSemafor = dispatch_semaphore_create(0);
 	[camera requestCloseSession];
 	dispatch_semaphore_wait(delegate.closeSemafor, dispatch_time(DISPATCH_TIME_NOW, 10000000000ull));
