@@ -51,23 +51,23 @@ status:
 
 ifeq ($(OS_DETECTED),Darwin)
 
-indigo_ccd_ptp.o: indigo_ccd_ptp.m
-	$(CC) $(MFLAGS) -c -o $@ $<
+indigo_ccd_ptp.o: indigo_ccd_ptp.m indigo_ccd_ptp.c
+	$(CC) $(MFLAGS) -c -o $@ indigo_ccd_ptp.m
 
-indigo_ptp.o: indigo_ptp.m
-	$(CC) $(MFLAGS) -c -o $@ $<
+indigo_ptp.o: indigo_ptp.m indigo_ptp.c
+	$(CC) $(MFLAGS) -c -o $@ indigo_ptp.m
 
-indigo_ptp_canon.o: indigo_ptp_canon.m
-	$(CC) $(MFLAGS) -c -o $@ $<
+indigo_ptp_canon.o: indigo_ptp_canon.m  indigo_ptp_canon.c
+	$(CC) $(MFLAGS) -c -o $@ indigo_ptp_canon.m
 
-indigo_ptp_nikon.o: indigo_ptp_nikon.m
-	$(CC) $(MFLAGS) -c -o $@ $<
+indigo_ptp_nikon.o: indigo_ptp_nikon.m  indigo_ptp_nikon.c
+	$(CC) $(MFLAGS) -c -o $@ indigo_ptp_nikon.m
 
-indigo_ptp_sony.o: indigo_ptp_sony.m
-	$(CC) $(MFLAGS) -c -o $@ $<
+indigo_ptp_sony.o: indigo_ptp_sony.m  indigo_ptp_sony.c
+	$(CC) $(MFLAGS) -c -o $@ indigo_ptp_sony.m
 
-indigo_ptp_fuji.o: indigo_ptp_fuji.m
-	$(CC) $(MFLAGS) -c -o $@ $<
+indigo_ptp_fuji.o: indigo_ptp_fuji.m  indigo_ptp_fuji.c
+	$(CC) $(MFLAGS) -c -o $@ indigo_ptp_fuji.m
 
 $(DRIVER_EXECUTABLE): indigo_ccd_ptp_main.o $(DRIVER_A)
 	$(CC) -o $@ $^ $(LDFLAGS) -lindigo -framework IOKit -framework Cocoa
