@@ -1526,7 +1526,9 @@ bool ptp_refresh_property(indigo_device *device, ptp_property *property) {
 
 static void ptp_check_event(indigo_device *device) {
 	ptp_get_event(device);
-	indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
+	if (IS_CONNECTED) {
+		indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
+	}
 }
 
 bool ptp_initialise(indigo_device *device) {

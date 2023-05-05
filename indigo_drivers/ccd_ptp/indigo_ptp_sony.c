@@ -690,7 +690,9 @@ static void ptp_check_event(indigo_device *device) {
 		PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
 	}
 #endif
-	indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
+	if (IS_CONNECTED) {
+		indigo_reschedule_timer(device, 0, &PRIVATE_DATA->event_checker);
+	}
 }
 
 bool ptp_sony_initialise(indigo_device *device) {

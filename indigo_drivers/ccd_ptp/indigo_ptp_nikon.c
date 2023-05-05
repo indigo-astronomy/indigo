@@ -718,7 +718,9 @@ static void ptp_check_event(indigo_device *device) {
 			buffer = NULL;
 		}
 	}
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	if (IS_CONNECTED) {
+		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	}
 }
 
 bool ptp_nikon_initialise(indigo_device *device) {
