@@ -729,33 +729,35 @@ static void process_plug_event(libusb_device *dev) {
 	char usb_path[INDIGO_NAME_SIZE];
 	indigo_get_usb_path(dev, usb_path);
 	indigo_device *device = attach_device(descriptor.idVendor, descriptor.idProduct, usb_path);
-	PRIVATE_DATA->dev = dev;
+	if (device) {
+		PRIVATE_DATA->dev = dev;
+	} else {
+		libusb_unref_device(dev);
+	}
 }
 
 static void process_unplug_event(libusb_device *dev) {
 	pthread_mutex_lock(&device_mutex);
-	ptp_private_data *private_data = NULL;
 	for (int j = 0; j < MAX_DEVICES; j++) {
 		if (devices[j] != NULL) {
 			indigo_device *device = devices[j];
 			if (PRIVATE_DATA->dev == dev) {
-				private_data = PRIVATE_DATA;
+				ptp_private_data *private_data = PRIVATE_DATA;
 				if (private_data->focuser) {
 					indigo_detach_device(private_data->focuser);
 					free(private_data->focuser);
 					private_data->focuser = NULL;
 				}
 				indigo_detach_device(device);
-				free(device);
 				devices[j] = NULL;
+				free(device);
+				libusb_unref_device(dev);
+				if (private_data->vendor_private_data)
+					free(private_data->vendor_private_data);
+				free(private_data);
+				break;
 			}
 		}
-	}
-	if (private_data != NULL) {
-		libusb_unref_device(dev);
-		if (private_data->vendor_private_data)
-			free(private_data->vendor_private_data);
-		free(private_data);
 	}
 	pthread_mutex_unlock(&device_mutex);
 }
