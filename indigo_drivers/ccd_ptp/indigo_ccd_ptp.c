@@ -692,12 +692,11 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 -(void)deviceBrowser:(ICDeviceBrowser*)browser didRemoveDevice:(ICDevice*)dev moreGoing:(BOOL)moreGoing {
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
 		pthread_mutex_lock(&device_mutex);
-		ptp_private_data *private_data = NULL;
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] != NULL) {
 				indigo_device *device = devices[j];
 				if (PRIVATE_DATA->dev == dev) {
-					private_data = PRIVATE_DATA;
+					ptp_private_data *private_data = PRIVATE_DATA;
 					if (private_data->focuser) {
 						indigo_detach_device(private_data->focuser);
 						free(private_data->focuser);
@@ -706,13 +705,11 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 					indigo_detach_device(device);
 					free(device);
 					devices[j] = NULL;
+					if (private_data->vendor_private_data)
+						free(private_data->vendor_private_data);
+					free(private_data);
 				}
 			}
-		}
-		if (private_data != NULL) {
-			if (private_data->vendor_private_data)
-				free(private_data->vendor_private_data);
-			free(private_data);
 		}
 		pthread_mutex_unlock(&device_mutex);
 	});

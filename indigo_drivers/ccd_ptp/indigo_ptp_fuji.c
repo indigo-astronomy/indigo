@@ -404,12 +404,13 @@ static void ptp_fuji_get_event(indigo_device *device) {
 	}
 	if (buffer)
 		free(buffer);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
 }
 
 static void ptp_fuji_check_event(indigo_device *device) {
 	ptp_fuji_get_event(device);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	if (IS_CONNECTED) {
+		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	}
 }
 
 bool ptp_fuji_initialise(indigo_device *device) {
