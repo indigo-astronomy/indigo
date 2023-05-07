@@ -1265,7 +1265,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 
 static void ptp_canon_check_event(indigo_device *device) {
 	ptp_canon_get_event(device);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	if (IS_CONNECTED) {
+		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	}
 }
 
 bool ptp_canon_initialise(indigo_device *device) {
