@@ -276,17 +276,17 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 			INDIGO_TRACE(indigo_trace("timer #%d - cancel requested", (*timer)->timer_id));
 			(*timer)->canceled = true;
 			(*timer)->scheduled = false;
+      timer_buffer = *timer;
+      must_wait = true;
 			pthread_mutex_lock(&(*timer)->mutex);
 			pthread_cond_signal(&(*timer)->cond);
 			pthread_mutex_unlock(&(*timer)->mutex);
 			/* Save a local copy of the timer instance as *timer can be set
 			 to NULL by *timer_func() after cancel_timer_mutex is released */
-			timer_buffer = *timer;
-			must_wait = true;
 		}
 	}
 	pthread_mutex_unlock(&cancel_timer_mutex);
-	/* if must_wain == true then timer_buffer != NULL (see above) */
+	/* if must_wait == true then timer_buffer != NULL (see above) */
 	if (must_wait) {
 		INDIGO_TRACE(indigo_trace("timer #%d - waiting to finish", timer_buffer->timer_id));
 		/* just wait for the callback to finish */
