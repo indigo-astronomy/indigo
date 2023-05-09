@@ -1,3 +1,7 @@
+2023.05.04(3.3.0)
+- Add 'isSupportHardBin' and 'pID' in POACameraProperties struct in 'PlayerOneCamera.h', also, fixed some words spelling mistakes, please update 'PlayerOneCamera.h' in your project.
+- Support PlayerOne new camera model(Ares series)
+
 2023.03.13(3.2.2)
 - Fix a issue that In some cases, the frame is incomplete in video mode
 - Add linux x86 lib
