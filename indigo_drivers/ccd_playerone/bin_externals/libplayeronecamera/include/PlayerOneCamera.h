@@ -136,8 +136,8 @@ typedef struct _POACameraProperties     ///< Camera Properties Definition
     int bitDepth;                       ///< ADC depth of CMOS sensor
     POABool isColorCamera;              ///< is a color camera or not
     POABool isHasST4Port;               ///< does the camera have ST4 port, if not, camera don't support ST4 guide
-    POABool isHasCooler;                ///< does the camera have cooler, generally, the cool camera with cooler
-    POABool isUSB3Speed;                ///< is usb3.0 speed
+    POABool isHasCooler;                ///< does the camera have cooler assembly, generally, the cooled camera with cooler, window heater and fan
+    POABool isUSB3Speed;                ///< is usb3.0 speed connection
     POABayerPattern bayerPattern;       ///< the bayer filter pattern of camera
     double pixelSize;                   ///< camera pixel size(unit: um)
     char SN[64];                        ///< the serial number of camera,it's unique
@@ -145,8 +145,10 @@ typedef struct _POACameraProperties     ///< Camera Properties Definition
     char localPath[256];                ///< the path of the camera in the computer host
     int bins[8];                        ///< bins supported by the camera, 1 == bin1, 2 == bin2,..., end with 0, eg:[1,2,3,4,0,0,0,0]
     POAImgFormat imgFormats[8];         ///< image data format supported by the camera, end with POA_END, eg:[POA_RAW8, POA_RAW16, POA_END,...]
+    POABool isSupportHardBin;           ///< does the camera sensor support hardware bin (since V3.3.0)
+    int pID;                            ///< camera's Product ID, note: the vID of PlayerOne is 0xA0A0 (since V3.3.0)
 
-    char reserved[256];                 ///< reserved
+    char reserved[248];                 ///< reserved, the size of reserved has changed from 256 to 248 since V3.3.0
 } POACameraProperties;
 
 typedef union _POAConfigValue           ///< Config Value Definition
@@ -525,7 +527,7 @@ POACAMERA_API  POAErrors POASetImageFormat(int nCameraID, POAImgFormat imgFormat
  *
  * @param nCameraID (input), get from in the POACameraProperties structure, use POAGetCameraProperties function
  *
- * @param bSignalFrame (input), POA_TRUE: SnapMode, after the exposure, will not continue, POA_FALSE: continuous exposure
+ * @param bSingleFrame (input), POA_TRUE: SnapMode, after the exposure, will not continue(Single Shot), POA_FALSE: VideoMode, continuous exposure
  *
  * @return  POA_OK: operation successful
  *          POA_ERROR_INVALID_ID: no camera with this ID was found or the ID is out of boundary
@@ -533,7 +535,7 @@ POACAMERA_API  POAErrors POASetImageFormat(int nCameraID, POAImgFormat imgFormat
  *          POA_ERROR_OPERATION_FAILED: operation failed
  *          POA_ERROR_EXPOSING: camera is exposing
  */
-POACAMERA_API  POAErrors POAStartExposure(int nCameraID, POABool bSignalFrame);
+POACAMERA_API  POAErrors POAStartExposure(int nCameraID, POABool bSingleFrame);
 
 
 /**
@@ -708,7 +710,7 @@ POACAMERA_API  POAErrors POASetUserCustomID(int nCameraID, const char* pCustomID
 
 
 /**
- * @brief POAGetGainOffset: get some preset values
+ * @brief POAGetGainOffset: get some preset values, Note: deprecated, please use the following function
  *
  * @param nCameraID (input), get from in the POACameraProperties structure, use POAGetCameraProperties function
  *
@@ -732,7 +734,7 @@ POACAMERA_API  POAErrors POAGetGainOffset(int nCameraID, int *pOffsetHighestDR, 
  * @param nCameraID (input), get from in the POACameraProperties structure, use POAGetCameraProperties function
  * @param pGainHighestDR (output), gain at highest dynamic range, in most cases, this gain is 0
  * @param pHCGain (output), gain at HCG Mode(High Conversion Gain)
- * @param pUnityGain (output), unity gain(or standard gain), with this gain, e/ADC will be 1
+ * @param pUnityGain (output), unity gain(or standard gain), with this gain, eGain(e/ADU) will be 1
  * @param pGainLowestRN (output), aka Maximum Analog Gain, gain at lowest read noise
  * @param pOffsetHighestDR (output), offset at highest dynamic range
  * @param pOffsetHCGain (output), offset at HCG Mode
@@ -741,7 +743,7 @@ POACAMERA_API  POAErrors POAGetGainOffset(int nCameraID, int *pOffsetHighestDR, 
  * @return POA_OK: operation successful
  *         POA_ERROR_INVALID_ID: no camera with this ID was found or the ID is out of boundary
  */
-POACAMERA_API  POAErrors POAGetGainsAndOffsets(int nCameraID, int*pGainHighestDR, int *pHCGain, int *pUnityGain, int *pGainLowestRN,
+POACAMERA_API  POAErrors POAGetGainsAndOffsets(int nCameraID, int *pGainHighestDR, int *pHCGain, int *pUnityGain, int *pGainLowestRN,
                                                int *pOffsetHighestDR, int *pOffsetHCGain, int *pOffsetUnityGain, int *pOffsetLowestRN);
 
 
