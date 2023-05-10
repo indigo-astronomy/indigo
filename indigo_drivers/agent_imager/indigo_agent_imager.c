@@ -1586,13 +1586,13 @@ static void set_property(indigo_device *device, char *name, char *value) {
 
 static void sequence_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	char sequence_text[INDIGO_VALUE_SIZE], *sequence_text_pnt, *value;
+	char *sequence_text, *sequence_text_pnt, *value;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->focus_exposure = 0;
 	DEVICE_PRIVATE_DATA->allow_subframing = false;
 	DEVICE_PRIVATE_DATA->find_stars = false;
-	indigo_copy_value(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value);
+	sequence_text = indigo_safe_malloc_copy(strlen(indigo_get_text_item_value(AGENT_IMAGER_SEQUENCE_ITEM))+1, indigo_get_text_item_value(AGENT_IMAGER_SEQUENCE_ITEM));
 	bool autofocus_requested = strstr(sequence_text, "focus") != NULL;
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		if (strchr(token, '='))
@@ -1617,11 +1617,12 @@ static void sequence_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		FILTER_DEVICE_CONTEXT->running_process = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No focuser is selected");
+		indigo_safe_free(sequence_text);
 		return;
 	}
 	indigo_send_message(device, "Sequence started");
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	indigo_copy_value(sequence_text, AGENT_IMAGER_SEQUENCE_ITEM->text.value);
+	strcpy(sequence_text, indigo_get_text_item_value(AGENT_IMAGER_SEQUENCE_ITEM));
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		value = strchr(token, '=');
 		if (value) {
@@ -1684,6 +1685,7 @@ static void sequence_process(indigo_device *device) {
 			break;
 		}
 	}
+	indigo_safe_free(sequence_text);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_send_message(device, "Sequence finished");
