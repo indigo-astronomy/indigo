@@ -812,6 +812,7 @@ static void exposure_batch_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
+	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
 	indigo_send_message(device, "Batch started");
 	if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 		// Start batch on related imager agents
@@ -901,6 +902,7 @@ static void streaming_batch_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
+	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
 	indigo_send_message(device, "Streaming started");
 	if (streaming_batch(device)) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
