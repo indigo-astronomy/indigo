@@ -1682,6 +1682,8 @@ static void sequence_process(indigo_device *device) {
 			} else {
 				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 					indigo_send_message(device, "Autofocus aborted");
+					restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+					restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 					break;
 				}
 				indigo_send_message(device, "Autofocus failed");
