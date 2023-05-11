@@ -1494,10 +1494,10 @@ static void set_property(indigo_device *device, char *name, char *value) {
 		AGENT_IMAGER_BATCH_COUNT_ITEM->number.target = atoi(value);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "exposure")) {
-		AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = atof(value);
+		AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = atof(value);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "delay")) {
-		AGENT_IMAGER_BATCH_DELAY_ITEM->number.target = atof(value);
+		AGENT_IMAGER_BATCH_DELAY_ITEM->number.target = AGENT_IMAGER_BATCH_DELAY_ITEM->number.value = atof(value);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "filter")) {
 		if (indigo_filter_cached_property(device, INDIGO_FILTER_WHEEL_INDEX, WHEEL_SLOT_PROPERTY_NAME, &device_property, NULL)) {
@@ -1672,7 +1672,8 @@ static void sequence_process(indigo_device *device) {
 			int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
 			int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 			double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
-			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = DEVICE_PRIVATE_DATA->focus_exposure;
+			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = DEVICE_PRIVATE_DATA->focus_exposure;
+			indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 			DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
 			indigo_send_message(device, "Autofocus started");
 			DEVICE_PRIVATE_DATA->restore_initial_position = true;
@@ -1687,7 +1688,7 @@ static void sequence_process(indigo_device *device) {
 			}
 			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
-			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = exposure;
+			AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = exposure;
 			indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 			DEVICE_PRIVATE_DATA->focus_exposure = 0;
 		}
