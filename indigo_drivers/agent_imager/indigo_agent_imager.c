@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0024
+#define DRIVER_VERSION 0x0025
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -639,7 +639,9 @@ static bool exposure_batch(indigo_device *device) {
 	check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_BATCH_ITEM);
 	set_headers(device);
 	FILTER_DEVICE_CONTEXT->property_removed = false;
-	AGENT_IMAGER_STATS_BATCH_ITEM->number.value++;
+	// Why was it incremented here? Filter setting and focusing were considered in the previus batch or before the first batch, which makes no sense!
+	// Moved it where the batch starts.
+	// AGENT_IMAGER_STATS_BATCH_ITEM->number.value++;
 	for (int remaining_exposures = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target; remaining_exposures != 0; remaining_exposures--) {
 		AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -810,7 +812,7 @@ static void exposure_batch_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = false;
 	DEVICE_PRIVATE_DATA->find_stars = false;
-	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
+	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
 	indigo_send_message(device, "Batch started");
@@ -900,7 +902,7 @@ static void streaming_batch_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = false;
 	DEVICE_PRIVATE_DATA->find_stars = false;
-	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 0;
+	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
 	indigo_send_message(device, "Streaming started");
@@ -1665,6 +1667,7 @@ static void sequence_process(indigo_device *device) {
 		}
 		indigo_send_message(device, "Batch %d started", batch_index);
 		AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+		AGENT_IMAGER_STATS_BATCH_ITEM->number.value++;
 		AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = batch_index;
 		AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -1708,6 +1711,8 @@ static void sequence_process(indigo_device *device) {
 	indigo_safe_free(sequence_text);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
+		// Sometimes blob arrives after the end of the sequence - gives sime time to the blob update
+		indigo_usleep(0.2 * ONE_SECOND_DELAY);
 		indigo_send_message(device, "Sequence finished");
 	} else {
 		indigo_send_message(device, "Sequence failed");
