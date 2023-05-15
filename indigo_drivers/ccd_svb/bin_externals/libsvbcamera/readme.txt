@@ -305,3 +305,13 @@ Version: v1.11.1
 Date: 2023-03-27
 1. SV305C supports saturation
 2. Improve the frame rate of SV305C in small ROI
+
+
+##########################################################
+版本:v1.11.2
+日期:2023-04-23
+1.支持图像翻转参数
+
+Version: v1.11.2
+Date: 2023-03-27
+1. Support image flip
