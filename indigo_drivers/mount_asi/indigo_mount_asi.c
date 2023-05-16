@@ -769,7 +769,7 @@ static void position_timer_callback(indigo_device *device) {
 			PRIVATE_DATA->prev_tracking_error = error_code;
 		}
 
-		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 5 : 5, &PRIVATE_DATA->position_timer);
+		indigo_reschedule_timer(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE ? 0.5 : 1, &PRIVATE_DATA->position_timer);
 	}
 }
 
