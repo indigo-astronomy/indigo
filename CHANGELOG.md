@@ -2,13 +2,34 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-236] - 17 May Wed 2023
+### Driver fixes:
+- indigo_agent_imager:
+	- fix item descriptions
+	- sequence can have up to 128 batches
+	- add BATCH_INDEX to STATS proeprty
+	- clear batch index on simple batch as it does not represent any of the batches in the sequence
+	- update AGENT_IMAGER_BATCH accordingly during a sequence
+	- restore format and upload mode on abort
+	- fixed batch counting
+
+-indigo_ccd_playerone:
+	- updated SDK to v.3.3.0
+
+- indigo_ccd_ptp:
+	- use ICA transport on MacOS
+	- fixed some races
+
+- indigo_ccd_svb:
+	- updated SDK to v.1.11.3
+
 # [2.0-234] - 02 May Tue 2023
 ### Overall:
 - indigo_ccd_driver:
 	- fix FITS files saved on server regression.
 	- optimize saving images on server
 
-## Driver Fixes:
+### Driver Fixes:
 - indigo_ccd_asi:
 	- updated SDK to v.1.29
 
@@ -25,7 +46,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_focuser_primaluce:
 	- driver for PrimaLuceLab SESTO SENSO 2 and ESATTO focusers, plus ARCO rotators
 
-## Driver Fixes:
+### Driver Fixes:
 - indigo_mount_asi:
 	- use more generic symlink as AM3 and AM5 share the same PID (AM3 is supported)
 	- add park
