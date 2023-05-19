@@ -113,19 +113,20 @@
 #define AGENT_IMAGER_STATS_DELAY_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+1)
 #define AGENT_IMAGER_STATS_FRAME_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+2)
 #define AGENT_IMAGER_STATS_FRAMES_ITEM      	(AGENT_IMAGER_STATS_PROPERTY->items+3)
-#define AGENT_IMAGER_STATS_BATCH_INDEX_ITEM     (AGENT_IMAGER_STATS_PROPERTY->items+4)
+#define AGENT_IMAGER_STATS_BATCH_INDEX_ITEM   (AGENT_IMAGER_STATS_PROPERTY->items+4)
 #define AGENT_IMAGER_STATS_BATCH_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+5)
 #define AGENT_IMAGER_STATS_BATCHES_ITEM      	(AGENT_IMAGER_STATS_PROPERTY->items+6)
-#define AGENT_IMAGER_STATS_DRIFT_X_ITEM      	(AGENT_IMAGER_STATS_PROPERTY->items+7)
-#define AGENT_IMAGER_STATS_DRIFT_Y_ITEM      	(AGENT_IMAGER_STATS_PROPERTY->items+8)
-#define AGENT_IMAGER_STATS_FWHM_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+9)
-#define AGENT_IMAGER_STATS_HFD_ITEM      			(AGENT_IMAGER_STATS_PROPERTY->items+10)
-#define AGENT_IMAGER_STATS_PEAK_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+11)
-#define AGENT_IMAGER_STATS_DITHERING_ITEM     (AGENT_IMAGER_STATS_PROPERTY->items+12)
-#define AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM     		(AGENT_IMAGER_STATS_PROPERTY->items+13)
-#define AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM     		(AGENT_IMAGER_STATS_PROPERTY->items+14)
-#define AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM			(AGENT_IMAGER_STATS_PROPERTY->items+15)
-#define AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM (AGENT_IMAGER_STATS_PROPERTY->items+16)
+#define AGENT_IMAGER_STATS_PHASE_ITEM  				(AGENT_IMAGER_STATS_PROPERTY->items+7)
+#define AGENT_IMAGER_STATS_DRIFT_X_ITEM      	(AGENT_IMAGER_STATS_PROPERTY->items+8)
+#define AGENT_IMAGER_STATS_DRIFT_Y_ITEM      	(AGENT_IMAGER_STATS_PROPERTY->items+9)
+#define AGENT_IMAGER_STATS_FWHM_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+10)
+#define AGENT_IMAGER_STATS_HFD_ITEM      			(AGENT_IMAGER_STATS_PROPERTY->items+11)
+#define AGENT_IMAGER_STATS_PEAK_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+12)
+#define AGENT_IMAGER_STATS_DITHERING_ITEM     (AGENT_IMAGER_STATS_PROPERTY->items+13)
+#define AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM     		(AGENT_IMAGER_STATS_PROPERTY->items+14)
+#define AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM     		(AGENT_IMAGER_STATS_PROPERTY->items+15)
+#define AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM			(AGENT_IMAGER_STATS_PROPERTY->items+16)
+#define AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM (AGENT_IMAGER_STATS_PROPERTY->items+17)
 
 #define MAX_STAR_COUNT												50
 #define AGENT_IMAGER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
@@ -167,6 +168,8 @@
 #define AF_MOVE_LIMIT_RMS 40
 
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
+
+typedef enum { IDLE = 0, SETTING_FILTER, FOCUSING, CAPTURING } phase_type;
 
 typedef struct {
 	indigo_property *agent_imager_batch_property;
@@ -1502,6 +1505,8 @@ static void set_property(indigo_device *device, char *name, char *value) {
 		AGENT_IMAGER_BATCH_DELAY_ITEM->number.target = AGENT_IMAGER_BATCH_DELAY_ITEM->number.value = atof(value);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 	} else if (!strcasecmp(name, "filter")) {
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = SETTING_FILTER;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (indigo_filter_cached_property(device, INDIGO_FILTER_WHEEL_INDEX, WHEEL_SLOT_PROPERTY_NAME, &device_property, NULL)) {
 			for (int j = 0; j < AGENT_WHEEL_FILTER_PROPERTY->count; j++) {
 				indigo_item *item = AGENT_WHEEL_FILTER_PROPERTY->items + j;
@@ -1601,6 +1606,7 @@ static void sequence_process(indigo_device *device) {
 
 	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value =
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value =
+	AGENT_IMAGER_STATS_PHASE_ITEM->number.value =
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 
@@ -1672,6 +1678,8 @@ static void sequence_process(indigo_device *device) {
 		AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (DEVICE_PRIVATE_DATA->focus_exposure > 0) {
+			AGENT_IMAGER_STATS_PHASE_ITEM->number.value = FOCUSING;
+			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
 			int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
 			double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
@@ -1700,6 +1708,8 @@ static void sequence_process(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			break;
 		}
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = CAPTURING;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (exposure_batch(device)) {
 			indigo_send_message(device, "Batch %d finished", batch_index);
 		} else {
@@ -1717,8 +1727,9 @@ static void sequence_process(indigo_device *device) {
 	} else {
 		indigo_send_message(device, "Sequence failed");
 	}
-	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
+	AGENT_IMAGER_STATS_PHASE_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1965,7 +1976,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_RADIUS_ITEM, AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_SUBFRAME_ITEM, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 10, 1, 0);
 		// -------------------------------------------------------------------------------- Focusing stats
-		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 17);
+		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 18);
 		if (AGENT_IMAGER_STATS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_STATS_EXPOSURE_ITEM, AGENT_IMAGER_STATS_EXPOSURE_ITEM_NAME, "Exposure remaining (s)", 0, 3600, 0, 0);
@@ -1975,6 +1986,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_STATS_BATCH_INDEX_ITEM, AGENT_IMAGER_STATS_BATCH_INDEX_ITEM_NAME, "Current batch index", 0, 0xFFFFFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_BATCH_ITEM, AGENT_IMAGER_STATS_BATCH_ITEM_NAME, "Current batch", 0, 0xFFFFFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_BATCHES_ITEM, AGENT_IMAGER_STATS_BATCHES_ITEM_NAME, "Batch count", 0, 0xFFFFFFFF, 0, 0);
+		indigo_init_number_item(AGENT_IMAGER_STATS_PHASE_ITEM, AGENT_IMAGER_STATS_PHASE_ITEM_NAME, "Batch phase", 0, 0xFFFFFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_DRIFT_X_ITEM, AGENT_IMAGER_STATS_DRIFT_X_ITEM_NAME, "Drift X", -1000, 1000, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_DRIFT_Y_ITEM, AGENT_IMAGER_STATS_DRIFT_Y_ITEM_NAME, "Drift Y", -1000, 1000, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_FWHM_ITEM, AGENT_IMAGER_STATS_FWHM_ITEM_NAME, "FWHM", 0, 0xFFFF, 0, 0);
