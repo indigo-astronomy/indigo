@@ -596,6 +596,10 @@
 		5995A91525AB3566003987F1 /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
 		5996615822CF44D500330652 /* indigo_aux_ppb.c in Sources */ = {isa = PBXBuildFile; fileRef = 5996615122CF3E0F00330652 /* indigo_aux_ppb.c */; };
 		59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */; };
+		59989A792A1BCEA200665AB7 /* libnncam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; };
+		59989A7A2A1BCEA200665AB7 /* libnncam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59989A7B2A1BCEB200665AB7 /* libmallincam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; };
+		59989A7C2A1BCEB200665AB7 /* libmallincam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		599A63A71DE8BD1700ABC827 /* indigo_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63A51DE8BD1700ABC827 /* indigo_json.c */; };
 		599A63A81DE8BD1700ABC827 /* indigo_json.h in Headers */ = {isa = PBXBuildFile; fileRef = 599A63A61DE8BD1700ABC827 /* indigo_json.h */; };
@@ -975,7 +979,9 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				59989A7A2A1BCEA200665AB7 /* libnncam.dylib in Embed Libraries */,
 				59118C412996ED950004BEC8 /* libogmacam.dylib in Embed Libraries */,
+				59989A7C2A1BCEB200665AB7 /* libmallincam.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4880,7 +4886,9 @@
 				59D138A2283E5A8700FCC514 /* libraw.a in Frameworks */,
 				9DDEFC0021EE359C00657C8F /* libftd2xx.a in Frameworks */,
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
+				59989A7B2A1BCEB200665AB7 /* libmallincam.dylib in Frameworks */,
 				5980010A22E4E76700021D67 /* libapogee.a in Frameworks */,
+				59989A792A1BCEA200665AB7 /* libnncam.dylib in Frameworks */,
 				598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */,
 				5942229F22E34AA9009DAD5C /* libdc1394.dylib in Frameworks */,
 				9DDEFBFE21EE352F00657C8F /* libtoupcam.dylib in Frameworks */,
