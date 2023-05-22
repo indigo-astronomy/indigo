@@ -1321,6 +1321,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		metadata.metadata_version = 1;
 		metadata.client_transaction_id = client_transaction_id;
 		metadata.server_transaction_id = server_transaction_id;
+		metadata.data_start = sizeof(indigo_alpaca_metadata);
 		metadata.image_element_type = metadata.transmission_element_type = indigo_alpaca_type_int32;
 		if (alpaca_device->ccd.imageready && (entry = indigo_validate_blob(alpaca_device->ccd.imageready))) {
 			pthread_mutex_lock(&entry->mutext);
