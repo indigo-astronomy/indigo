@@ -354,7 +354,7 @@ static indigo_alpaca_error alpaca_get_sensortype(indigo_alpaca_device *device, i
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (!strncasecmp(device->ccd.readoutmodes_names[device->ccd.readoutmode], "rgb", 3))
+	if (!strcmp(device->driver_info, "indigo_ccd_ptp") || !strncasecmp(device->ccd.readoutmodes_names[device->ccd.readoutmode], "rgb", 3))
 		*value = 1;
 	else
 		*value = 0;
