@@ -1664,6 +1664,12 @@ static void sequence_process(indigo_device *device) {
 		if (batch_index < 1 || batch_index > sequence_size) {
 			continue;
 		}
+		indigo_send_message(device, "Batch %d started", batch_index);
+		AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+		AGENT_IMAGER_STATS_BATCH_ITEM->number.value++;
+		AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = batch_index;
+		AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = 0;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		char batch_text[INDIGO_VALUE_SIZE], *batch_text_pnt;
 		indigo_copy_value(batch_text, AGENT_IMAGER_SEQUENCE_PROPERTY->items[batch_index].text.value);
 		for (char *token = strtok_r(batch_text, ";", &batch_text_pnt); token; token = strtok_r(NULL, ";", &batch_text_pnt)) {
@@ -1674,12 +1680,6 @@ static void sequence_process(indigo_device *device) {
 			*value++ = 0;
 			set_property(device, token, value);
 		}
-		indigo_send_message(device, "Batch %d started", batch_index);
-		AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
-		AGENT_IMAGER_STATS_BATCH_ITEM->number.value++;
-		AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = batch_index;
-		AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
-		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (DEVICE_PRIVATE_DATA->focus_exposure > 0) {
 			AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_FOCUSING;
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
