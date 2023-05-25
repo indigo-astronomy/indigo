@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -403,7 +403,7 @@ static bool svb_set_cooler(indigo_device *device, bool status, double target, do
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "SVBGetControlValue(%d, ASI_TARGET_TEMP) = %lf", id, current_target);
 		}
 		if ((long)target != current_target) {
-			res = SVBSetControlValue(id, SVB_TARGET_TEMPERATURE, (long)target, false);
+			res = SVBSetControlValue(id, SVB_TARGET_TEMPERATURE, (long)(target * 10), false); /* SVB_TARGET_TEMPERATURE requires temp x 10 */
 			if (res) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, SVB_TARGET_TEMPERATURE, %lf) = %d", id, current_target, res);
 			} else {
