@@ -71,6 +71,11 @@
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
 
+#define AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY       (DEVICE_PRIVATE_DATA->agent_mount_coordinates_property)
+#define AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM        (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->items+0)
+#define AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM       (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->items+1)
+#define AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM       (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->items+2)
+
 #define AGENT_GUIDER_SETTINGS_PROPERTY				(DEVICE_PRIVATE_DATA->agent_settings_property)
 #define AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+0)
 #define AGENT_GUIDER_SETTINGS_DELAY_ITEM   		(AGENT_GUIDER_SETTINGS_PROPERTY->items+1)
@@ -140,6 +145,7 @@ typedef struct {
 	indigo_property *agent_guider_apply_dec_backlash_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_abort_process_property;
+	indigo_property *agent_mount_coordinates_property;
 	indigo_property *agent_settings_property;
 	indigo_property *agent_stars_property;
 	indigo_property *agent_selection_property;
@@ -168,6 +174,7 @@ static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
+		indigo_save_property(device, NULL, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
@@ -1432,7 +1439,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
-
+		//------------------------------------------------------------------------------- Mount orientation
+		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (E=-1, W=1, 0=undef)", -1, 1, 1, 0);
 		// -------------------------------------------------------------------------------- Guiding settings
 		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
@@ -1524,6 +1537,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_STARS_PROPERTY, property))
@@ -1606,6 +1621,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, NULL);
+} else if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_MOUNT_COORDINATES
+		double dec = AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.target;
+		int side_of_pier = AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target;
+		indigo_property_copy_values(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property, false);
+		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
 		double dith_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target;
@@ -1775,6 +1798,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_SETTINGS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_STARS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_SELECTION_PROPERTY);
