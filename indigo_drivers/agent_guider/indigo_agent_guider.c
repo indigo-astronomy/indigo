@@ -1456,9 +1456,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 1, 0);
-		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 1, 0);
-		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (E=-1, W=1, 0=undef)", -1, 1, 1, 0);
+		indigo_init_sexagesimal_number_item(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 1, 0);
+		indigo_init_sexagesimal_number_item(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
 		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
