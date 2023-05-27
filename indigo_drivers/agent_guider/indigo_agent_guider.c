@@ -43,6 +43,8 @@
 #define PI (3.14159265358979)
 #define PI2 (PI/2)
 
+#define MIN_COS_DEC (0.04)       /* DEC = ~88 degrees */
+
 #define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
@@ -160,6 +162,7 @@ typedef struct {
 	double rmse_ra_sum, rmse_dec_sum;
 	double rmse_ra_s_sum, rmse_dec_s_sum;
 	double rmse_ra_threshold, rmse_dec_threshold;
+	double cos_dec;
 	unsigned long rmse_count;
 	void *last_image;
 	int phase;
@@ -1067,15 +1070,24 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 				break;
 			}
 			case INDIGO_GUIDER_PHASE_DONE: {
-				double acos_dec = fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
-				if (acos_dec > 1) acos_dec = 1;
-				double pole_distnce = 90 - 180 / PI * acos(acos_dec);
+				double pole_distance = 90 - fabs(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value);
 				/* Declination is > 85deg or < -85deg */
-				if (pole_distnce < 5) {
-					indigo_send_message(device, "Calculated pole distance %.1f°. RA calibration may be off", pole_distnce);
-				} else {
-					//indigo_send_message(device, "Calculated pole distance %.1f°", pole_distnce);
+				if (pole_distance < 5) {
+					indigo_send_message(device, "Pole distance %.1f°. RA calibration may be off", pole_distance);
 				}
+				if (DEVICE_PRIVATE_DATA->cos_dec == 0) {
+					DEVICE_PRIVATE_DATA->cos_dec = MIN_COS_DEC;
+				}
+				INDIGO_DRIVER_LOG(
+					DRIVER_NAME,
+					"Calculated RA speed = %.3f, RA speed at equator = %.3f (cos_dec = %.3f)",
+					AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value,
+					AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / DEVICE_PRIVATE_DATA->cos_dec,
+					DEVICE_PRIVATE_DATA->cos_dec
+				);
+				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value =
+				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / DEVICE_PRIVATE_DATA->cos_dec;
+				indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 				indigo_send_message(device, "Calibration complete");
 				save_config(device);
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1203,7 +1215,8 @@ static void guide_process(indigo_device *device) {
 					drift_ra,
 					avg_drift_ra
 				);
-				correction_ra = correction_ra / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value;
+				double cos_dec = (DEVICE_PRIVATE_DATA->cos_dec > MIN_COS_DEC) ? DEVICE_PRIVATE_DATA->cos_dec : MIN_COS_DEC;
+				correction_ra = correction_ra / (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * cos_dec);
 				if (correction_ra > max_pulse)
 					correction_ra = max_pulse;
 				else if (correction_ra < -max_pulse)
@@ -1443,9 +1456,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
-		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 0, 0);
+		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (E=-1, W=1, 0=undef)", -1, 1, 1, 0);
+		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
 		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
@@ -1459,7 +1473,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM_NAME, "Min calibration drift (px)", 0, 100, 5, 20);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_ANGLE_ITEM, AGENT_GUIDER_SETTINGS_ANGLE_ITEM_NAME, "Angle (°)", -180, 180, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM, AGENT_GUIDER_SETTINGS_BACKLASH_ITEM_NAME, "Dec backlash (px)", 0, 100, 0, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM, AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM_NAME, "RA speed (px/s)", -500, 500, 0.1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM, AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM_NAME, "RA speed at equator (px/s)", -500, 500, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM, AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM_NAME, "Dec speed (px/s)", -500, 500, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM, AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM_NAME, "Min error (px)", 0, 5, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM_NAME, "Min pulse (s)", 0, 1, 0.001, 0.01);
@@ -1621,13 +1635,36 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, NULL);
-} else if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_MOUNT_COORDINATES
-		double dec = AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.target;
-		int side_of_pier = AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target;
+		double dec = AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value;
+		int side_of_pier = (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property, false);
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		bool update_settings = false;
+		if (
+			side_of_pier != 0 &&
+			AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target != 0 &&
+			side_of_pier != (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target
+		) {
+			double angle = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value + 180;
+			if (angle > 180) {
+				angle -= 360;
+			}
+			AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = angle;
+			update_settings = true;
+		}
+		if (dec != AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.target) {
+			DEVICE_PRIVATE_DATA->cos_dec = cos(-PI * AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value / 180);
+			if (DEVICE_PRIVATE_DATA->cos_dec == 0) {
+				DEVICE_PRIVATE_DATA->cos_dec = MIN_COS_DEC;
+			}
+			update_settings = true;
+		}
 		save_config(device);
+		if (update_settings) {
+			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+		}
 		indigo_update_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
