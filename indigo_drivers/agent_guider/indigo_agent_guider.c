@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x001C
+#define DRIVER_VERSION 0x001D
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -1078,7 +1078,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 				if (DEVICE_PRIVATE_DATA->cos_dec == 0) {
 					DEVICE_PRIVATE_DATA->cos_dec = MIN_COS_DEC;
 				}
-				INDIGO_DRIVER_LOG(
+				INDIGO_DRIVER_DEBUG(
 					DRIVER_NAME,
 					"Calculated RA speed = %.3f, RA speed at equator = %.3f (cos_dec = %.3f)",
 					AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value,
