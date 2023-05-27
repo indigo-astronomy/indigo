@@ -96,6 +96,7 @@ typedef struct {
 	double dome_latitude, dome_longitude, dome_elevation;
 	double gps_latitude, gps_longitude, gps_elevation;
 	double mount_ra, mount_dec;
+	int mount_side_of_pier;
 	double mount_target_ra, mount_target_dec;
 	int server_socket;
 	bool dome_unparked;
@@ -161,6 +162,11 @@ static void set_eq_coordinates(indigo_device *device) {
 		if (item->sw.value && !strncmp("Imager Agent", item->name, 12)) {
 			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, item->name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, item->name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
+		}
+		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
+			static const char *names[] = { AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME };
+			double values[] = { DEVICE_PRIVATE_DATA->mount_ra, DEVICE_PRIVATE_DATA->mount_dec, DEVICE_PRIVATE_DATA->mount_side_of_pier };
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, 3, names, values);
 		}
 	}
 }
@@ -696,6 +702,16 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				if (changed && CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[1].sw.value)
 					indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
 			}
+		} else if (!strcmp(property->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME))
+					CLIENT_PRIVATE_DATA->mount_side_of_pier = -1;
+				else if (!strcmp(property->items[i].name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME))
+					CLIENT_PRIVATE_DATA->mount_side_of_pier = 1;
+				else
+					CLIENT_PRIVATE_DATA->mount_side_of_pier = 0;
+			}
+			set_eq_coordinates(FILTER_CLIENT_CONTEXT->device);
 		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 			for (int i = 0; i < property->count; i++) {
 				if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME))
