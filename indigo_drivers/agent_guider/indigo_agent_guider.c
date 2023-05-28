@@ -87,20 +87,21 @@
 #define AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+5)
 #define AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+6)
 #define AGENT_GUIDER_SETTINGS_ANGLE_ITEM      (AGENT_GUIDER_SETTINGS_PROPERTY->items+7)
-#define AGENT_GUIDER_SETTINGS_BACKLASH_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+8)
-#define AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+9)
-#define AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+10)
-#define AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+11)
-#define AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+12)
-#define AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+13)
-#define AGENT_GUIDER_SETTINGS_AGG_RA_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+14)
-#define AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+15)
-#define AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+16)
-#define AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
-#define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
-#define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
-#define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
-#define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
+#define AGENT_GUIDER_SETTINGS_SOP_ITEM        (AGENT_GUIDER_SETTINGS_PROPERTY->items+8)
+#define AGENT_GUIDER_SETTINGS_BACKLASH_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+9)
+#define AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+10)
+#define AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+11)
+#define AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+12)
+#define AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+13)
+#define AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+14)
+#define AGENT_GUIDER_SETTINGS_AGG_RA_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+15)
+#define AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+16)
+#define AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
+#define AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
+#define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
+#define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
+#define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
+#define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+22)
 
 #define MAX_STAR_COUNT												50
 #define AGENT_GUIDER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
@@ -177,7 +178,6 @@ static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
-		indigo_save_property(device, NULL, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
@@ -196,6 +196,29 @@ static void save_config(indigo_device *device) {
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
+}
+
+static double get_rotation_angle(indigo_device *device) {
+	double angle = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value;
+	if (
+		AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value != 0 &&
+		AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value != 0 &&
+		AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value != AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value
+	) {
+		angle += 180;
+		if (angle > 180) {
+			angle -= 360;
+		}
+	}
+	INDIGO_DRIVER_DEBUG(
+		DRIVER_NAME,
+		"Calibration Rotation Angle = %.3f (SOP = %d), Current SOP = %d => Effecive angle = %.3f",
+		AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value,
+		(int)AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value,
+		(int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value,
+		angle
+	);
+	return angle;
 }
 
 static indigo_property_state capture_raw_frame(indigo_device *device) {
@@ -834,6 +857,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 		switch (DEVICE_PRIVATE_DATA->phase) {
 			case INDIGO_GUIDER_PHASE_INITIALIZING: {
 				AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = 0;
+				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value = AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = 0;
@@ -1087,6 +1111,10 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 				);
 				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value =
 				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / DEVICE_PRIVATE_DATA->cos_dec;
+
+				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value =
+				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target = AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
+
 				indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 				indigo_send_message(device, "Calibration complete");
 				save_config(device);
@@ -1188,7 +1216,7 @@ static void guide_process(indigo_device *device) {
 			break;
 		}
 		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
-			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
+			double angle = -PI * get_rotation_angle(device) / 180;
 			double sin_angle = sin(angle);
 			double cos_angle = cos(angle);
 			double pix_scale_x = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * 3600;
@@ -1461,7 +1489,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 23);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 120, 0.1, 1);
@@ -1472,6 +1500,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM, AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM_NAME, "Max calibration steps", 0, 50, 1, 20);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM_NAME, "Min calibration drift (px)", 0, 100, 5, 20);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_ANGLE_ITEM, AGENT_GUIDER_SETTINGS_ANGLE_ITEM_NAME, "Angle (°)", -180, 180, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SOP_ITEM, AGENT_GUIDER_SETTINGS_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM, AGENT_GUIDER_SETTINGS_BACKLASH_ITEM_NAME, "Dec backlash (px)", 0, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM, AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM_NAME, "RA speed at equator (px/s)", -500, 500, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM, AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM_NAME, "Dec speed (px/s)", -500, 500, 0.1, 0);
@@ -1638,32 +1667,18 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_MOUNT_COORDINATES
 		double dec = AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value;
-		int side_of_pier = (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property, false);
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-		bool update_settings = false;
-		if (
-			side_of_pier != 0 &&
-			AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target != 0 &&
-			side_of_pier != (int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target
-		) {
-			double angle = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value + 180;
-			if (angle > 180) {
-				angle -= 360;
-			}
-			AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = angle;
-			update_settings = true;
-		}
 		if (dec != AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.target) {
 			DEVICE_PRIVATE_DATA->cos_dec = cos(-PI * AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value / 180);
 			if (DEVICE_PRIVATE_DATA->cos_dec == 0) {
 				DEVICE_PRIVATE_DATA->cos_dec = MIN_COS_DEC;
 			}
-			update_settings = true;
 		}
-		save_config(device);
-		if (update_settings) {
-			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+		/* force -1, 0, 1 */
+		if (AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target != 0) {
+			AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value =
+			AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target = copysign(1.0, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target);
 		}
 		indigo_update_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
@@ -1679,7 +1694,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			   In this case we set the limits -> DITH_X = 0 and DITH_Y = dith_total.
 			   Note: we preserve the requested ammount of dithering but we do it in RA only.
 			*/
-			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target / 180;
+			double angle = -PI * get_rotation_angle(device) / 180;
 			double sign = copysign(1.0, AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target) * copysign(1.0, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target);
 			double dith_total = sign * sqrt(AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target * AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target * AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target);
 			double cos_angle = cos(angle);
@@ -1719,6 +1734,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		if (update_stats) {
 			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+		}
+		/* force -1, 0, 1 */
+		if (AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target != 0) {
+			AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value =
+			AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target = copysign(1.0, AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target);
 		}
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
