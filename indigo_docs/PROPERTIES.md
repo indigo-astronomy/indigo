@@ -93,9 +93,9 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 |  |  |  |  | OFF | yes |  |
 | CCD_COOLER_POWER | number | yes | no | POWER | yes | It depends on hardware if it is undefined, read-only or read-write. |
 | CCD_FITS_HEADERS | text | yes | yes | FITS key name, ... | yes | String in form "value" or "'value'" |
-| CCD_SET_FITS_HEADER | text | no | yes | NAME | yes | FITS key name |
+| CCD_SET_FITS_HEADER | text | no | yes | KEYWORD | yes | FITS key name |
 |  |  |  |  | VALUE | yes | FITS key value |
-| CCD_REMOVE_FITS_HEADER | text | no | yes | NAME | yes | FITS key name |
+| CCD_REMOVE_FITS_HEADER | text | no | yes | KEYWORD | yes | FITS key name |
 | CCD_PREVIEW | switch | no | yes | ENABLED | yes | Send JPEG preview to client |
 |  |  |  |  | DISABLED | yes | |
 | CCD_PREVIEW_IMAGE | blob | no | yes | IMAGE | yes |  |
