@@ -1540,6 +1540,23 @@ bool ptp_initialise(indigo_device *device) {
 			free(buffer);
 		buffer = NULL;
 		uint16_t *properties = PRIVATE_DATA->info_properties_supported;
+		
+#ifndef UNKNOWN_GROUP
+		for (int i = 0; properties[i]; i++) {
+			char *name = PRIVATE_DATA->property_code_name(properties[i]);
+			if (!strncmp(name, "CCD_", 4))
+				continue;
+			if (!strncmp(name, "DSLR_", 5))
+				continue;
+#ifdef ADVANCED_GROUP
+			if (!strncmp(name, "ADV_", 4))
+				continue;
+#endif
+			memmove(properties + i, properties + i + 1, (PTP_MAX_ELEMENTS - i - 1) * sizeof(uint16_t));
+			i--;
+		}
+#endif
+		
 		uint32_t size = 0;
 		for (int i = 0; properties[i]; i++) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, &size)) {
