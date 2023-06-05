@@ -210,7 +210,7 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_SerialNumber: return "ADV_SerialNumber";
 		case ptp_property_canon_AutoPowerOff: return "ADV_AutoPowerOff";
 	}
-	return ptp_property_canon_code_label(code);
+	return ptp_property_code_name(code);
 }
 
 char *ptp_property_canon_code_label(uint16_t code) {
