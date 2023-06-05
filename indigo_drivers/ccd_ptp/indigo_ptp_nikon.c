@@ -220,7 +220,7 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_nikon_CameraInclination: return "ADV_CameraInclination";
 		case ptp_property_nikon_ExposureIndexHi: return "ADV_ExposureIndexHi";
 	}
-	return ptp_property_nikon_code_label(code);
+	return ptp_property_code_name(code);
 }
 
 char *ptp_property_nikon_code_label(uint16_t code) {
