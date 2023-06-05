@@ -188,7 +188,7 @@ typedef struct {
 	indigo_device *camera;
 	char bayer_pattern[5];
 	indigo_device *guider;
-	indigo_timer *exposure_timer, *temperature_timer, *guider_timer, *guider_timer_ra, *guider_timer_dec;
+	indigo_timer *exposure_watchdog_timer, *temperature_timer, *guider_timer, *guider_timer_ra, *guider_timer_dec;
 	double current_temperature;
 	unsigned char *buffer;
 	unsigned bin_mode;
@@ -306,12 +306,20 @@ static void finish_streaming_async(indigo_device *device) {
 	indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 }
 
+static void exposure_watchdog_callback(indigo_device *device) {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time");
+	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed, pull callback was not called");
+}
+
 static void pull_callback(unsigned event, void* callbackCtx) {
 	SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
 	HRESULT result;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pull_callback(%04x) called", event);
 
 	indigo_device *device = (indigo_device *)callbackCtx;
+
+	indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
 
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
@@ -1008,18 +1016,13 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 		setup_exposure(device);
 
-		/*
-		int balcklevel;
-		double scale;
-		get_blacklevel(device, &balcklevel, &scale);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EXPOSURE blacklevel= %d, scale=%f => offset = %f", balcklevel, scale, balcklevel * scale);
-		*/
-
 		result = SDK_CALL(put_ExpoTime)(PRIVATE_DATA->handle, (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000));
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_ExpoTime(%u) -> %08x", (unsigned)(CCD_EXPOSURE_ITEM->number.target * 1000000), result);
 		PRIVATE_DATA->aborting = false;
 		result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
+		double whatchdog_timeout = (CCD_EXPOSURE_ITEM->number.target > 1) ? 1.5 * CCD_EXPOSURE_ITEM->number.target : 1.5;
+		indigo_set_timer(device, whatchdog_timeout, exposure_watchdog_callback, &PRIVATE_DATA->exposure_watchdog_timer);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_STREAMING
@@ -1049,6 +1052,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
