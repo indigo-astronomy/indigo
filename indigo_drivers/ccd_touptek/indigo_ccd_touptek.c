@@ -188,7 +188,7 @@ typedef struct {
 	indigo_device *camera;
 	char bayer_pattern[5];
 	indigo_device *guider;
-	indigo_timer *exposure_watchdog_timer, *temperature_timer, *guider_timer, *guider_timer_ra, *guider_timer_dec;
+	indigo_timer *exposure_watchdog_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double current_temperature;
 	unsigned char *buffer;
 	unsigned bin_mode;
@@ -856,6 +856,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
 		if (PRIVATE_DATA->buffer != NULL) {
 			free(PRIVATE_DATA->buffer);
 			PRIVATE_DATA->buffer = NULL;
