@@ -2,6 +2,39 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-238] - 07 Jun Wed 2023
+### Overall:
+	- imager and guider phases made public enums
+
+### Driver fixes:
+- insigo_agent_imager:
+	- sequence phase item added
+	- sequence state fixes
+	- add mount coordinates property
+
+- indigo_agent_guider:
+	- add mount coordinates property (AGENT_GUIDER_MOUNT_COORDINATES)
+	- no need to recalibrate after flip or on Dec change
+	- add AGENT_GUIDER_FLIP_REVERSES_DEC property, to reverse or not Dec speed after meridian flip
+	- README.md updated
+
+- indigo_agent_mount:
+	- AGENT_GUIDER_MOUNT_COORDINATES set to related guider agent
+
+- indigo_agent_alpaca:
+	- sensor type fixed for DSLRs
+	- fixed_data offset
+
+- indigo_ccd_touptek & family:
+	- add exposure watchdog in case the pull callback is not fired, guiding ahould not stop on its own any more
+
+- indigo_ccd_svb:
+	- fix target temperature
+
+- indigo_ccd_ptp:
+	- ptp_operation_GetDevicePropDesc is executed for known properties only by default
+	- typo fixed
+
 # [2.0-236] - 17 May Wed 2023
 ### Driver fixes:
 - indigo_agent_imager:
