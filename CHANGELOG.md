@@ -2,6 +2,11 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-240] - 08 Jun Thu 2023
+### Driver fixes:
+- indigo_ccd_touptek & family:
+	- increase timeout for the exposure watchdog
+
 # [2.0-238] - 07 Jun Wed 2023
 ### Overall:
 	- imager and guider phases made public enums
