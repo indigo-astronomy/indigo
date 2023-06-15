@@ -29,28 +29,11 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_names.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-typedef enum {
-	POLAR_ALIGN_IDLE = 0,
-	POLAR_ALIGN_START,
-	POLAR_ALIGN_REFERENCE_1,
-	POLAR_ALIGN_REFERENCE_2,
-	POLAR_ALIGN_REFERENCE_3,
-	POLAR_ALIGN_RECALCULATE,
-	POLAR_ALIGN_IN_PROGRESS
-} platesolver_pa_state_t;
-
-typedef enum {
-	SOLVER_WCS_IDLE = 0,
-	SOLVER_WCS_WAITING_FOR_IMAGE,
-	SOLVER_WCS_SOLVING,
-	SOLVER_WCS_SYNCING,
-	SOLVER_WCS_CENTERING
-} platesolver_wcs_state_t;
 
 #define PLATESOLVER_MAIN_GROUP		"Plate solver"
 
