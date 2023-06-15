@@ -354,6 +354,8 @@ static void start_process(indigo_device *device) {
 	}
 	indigo_update_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY, NULL);
 	if (AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM->sw.value) {
+		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_GOTO;
+		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		if (
 			!mount_slew(
 				device,
@@ -923,7 +925,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_WCS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
-	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PA_STATE_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PRECISE_GOTO_SETTINGS_PROPERTY);
