@@ -124,6 +124,10 @@ typedef enum {
 #define AGENT_PLATESOLVER_ABORT_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_property)
 #define AGENT_PLATESOLVER_ABORT_ITEM					(AGENT_PLATESOLVER_ABORT_PROPERTY->items+0)
 
+#define AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve_images_property)
+#define AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM		(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY->items+0)
+#define AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM	(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY->items+1)
+
 #define AGENT_PLATESOLVER_IMAGE_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->image_property)
 #define AGENT_PLATESOLVER_IMAGE_ITEM					(AGENT_PLATESOLVER_IMAGE_PROPERTY->items+0)
 
@@ -148,6 +152,7 @@ typedef struct {
 	indigo_property *polar_alignment_state_property;
 	indigo_property *polar_alignment_settings_property;
 	indigo_property *precise_goto_settings_property;
+	indigo_property *solve_images_property;
 	indigo_property_state on_coordinates_set_state;
 	indigo_spherical_point_t eq_coordinates;
 	indigo_spherical_point_t eq_start_coordinates;
