@@ -217,6 +217,9 @@ typedef struct {
 	bool use_rms_estimator;
 	bool use_aux_1;
 	bool barrier_resume;
+	indigo_property_state related_solver_process_state;
+	double solver_goto_ra;
+	double solver_goto_dec;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -1493,10 +1496,33 @@ static void park_mount(indigo_device *device) {
 	}
 }
 
+static void unpark_mount(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Mount Agent", item->name, 11)) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+		}
+	}
+}
+
+static void solver_precise_goto(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && (!strncmp("Astrometry Agent", item->name, 16) || !strncmp("ASTAP Agent", item->name, 11))) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, true);
+		}
+	}
+}
+
 static void set_property(indigo_device *device, char *name, char *value) {
 	indigo_property *device_property = NULL;
+	bool wait_for_solver = false;
 	FILTER_DEVICE_CONTEXT->property_removed = false;
-	if (!strcasecmp(name, "focus")) {
+	if (!strcasecmp(name, "object")) {
+		// NO-OP, for grouping only
+	} else if (!strcasecmp(name, "focus")) {
 		DEVICE_PRIVATE_DATA->focus_exposure = atof(value);
 	} else if (!strcasecmp(name, "count")) {
 		AGENT_IMAGER_BATCH_COUNT_ITEM->number.target = atoi(value);
@@ -1594,10 +1620,30 @@ static void set_property(indigo_device *device, char *name, char *value) {
 				}
 			}
 		}
+	} else if (!strcasecmp(name, "ra")) {
+		DEVICE_PRIVATE_DATA->solver_goto_ra = indigo_atod(value);
+	} else if (!strcasecmp(name, "dec")) {
+		DEVICE_PRIVATE_DATA->solver_goto_ra = indigo_atod(value);
+	} else if (!strcasecmp(name, "goto")) {
+		if (!strcmp(value, "precise")) {
+			solver_precise_goto(device);
+			wait_for_solver = true;
+		}
+		if (!strcmp(value, "slew")) {
+			// TBD
+			wait_for_solver = true;
+		}
 	}
 	if (device_property) {
 		indigo_usleep(200000);
 		while (!FILTER_DEVICE_CONTEXT->property_removed && device_property->state == INDIGO_BUSY_STATE) {
+			indigo_usleep(200000);
+		}
+	} else if (wait_for_solver) {
+		while (DEVICE_PRIVATE_DATA->related_solver_process_state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_usleep(200000);
+		}
+		while (DEVICE_PRIVATE_DATA->related_solver_process_state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_usleep(200000);
 		}
 	}
@@ -1623,6 +1669,8 @@ static void sequence_process(indigo_device *device) {
 		if (strchr(token, '='))
 			continue;
 		if (!strcmp(token, "park"))
+			continue;
+		if (!strcmp(token, "unpark"))
 			continue;
 		int batch_index = atoi(token);
 		if (batch_index < 1 || batch_index > sequence_size) {
@@ -1658,6 +1706,10 @@ static void sequence_process(indigo_device *device) {
 		}
 		if (!strcmp(token, "park")) {
 			park_mount(device);
+			continue;
+		}
+		if (!strcmp(token, "unpark")) {
+			unpark_mount(device);
 			continue;
 		}
 		int batch_index = atoi(token);
@@ -2555,6 +2607,18 @@ static void snoop_wheel_changes(indigo_client *client, indigo_property *property
 	}
 }
 
+static void snoop_solver_process_state(indigo_client *client, indigo_property *property) {
+	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
+		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
+			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
+			if (agent->sw.value && (!strncmp(agent->name, "Astrometry Agent", 16) || !strncmp(agent->name, "ASTAP Agent", 11))) {
+				CLIENT_PRIVATE_DATA->related_solver_process_state = property->state;
+				break;
+			}
+		}
+	}
+}
+
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
@@ -2593,6 +2657,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		snoop_wheel_changes(client, property);
 		snoop_guider_stats(client, property);
 		snoop_barrier_state(client, property);
+		snoop_solver_process_state(client, property);
 	}
 	return indigo_filter_define_property(client, device, property, message);
 }
@@ -2704,6 +2769,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 		snoop_wheel_changes(client, property);
 		snoop_guider_stats(client, property);
 		snoop_barrier_state(client, property);
+		snoop_solver_process_state(client, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
 }
