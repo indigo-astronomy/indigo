@@ -75,6 +75,7 @@ void indigo_platesolver_save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_HINTS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_SYNC_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			close(DEVICE_CONTEXT->property_save_file_handle);
@@ -368,7 +369,7 @@ static void start_process(indigo_device *device) {
 			return;
 		}
 	}
-	if (!start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value))
+	if (!start_exposure(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.value))
 		process_failed(device, NULL);
 }
 
@@ -461,7 +462,7 @@ static void solve(indigo_platesolver_task *task) {
 				3
 			);
 			if (ok) {
-				ok = start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
+				ok = start_exposure(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.value);
 			}
 			if (!ok) {
 				AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -503,7 +504,7 @@ static void solve(indigo_platesolver_task *task) {
 				3
 			);
 			if (ok) {
-				ok = start_exposure(device, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value);
+				ok = start_exposure(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.value);
 			}
 			if (!ok) {
 				AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -715,7 +716,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		strcpy(AGENT_PLATESOLVER_WCS_HEIGHT_ITEM->number.format, "%m");
 		strcpy(AGENT_PLATESOLVER_WCS_SCALE_ITEM->number.format, "%m");
 		// -------------------------------------------------------------------------------- SYNC property /* OBSOLETED */
-		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
+		AGENT_PLATESOLVER_SYNC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PLATESOLVER_SYNC_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Sync mode (obsolete)", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_PLATESOLVER_SYNC_DISABLED_ITEM, AGENT_PLATESOLVER_SYNC_DISABLED_ITEM_NAME, "Disabled", true);
@@ -739,11 +740,16 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM, AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM_NAME, "Enabled", true);
 		indigo_init_switch_item(AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM, AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM_NAME, "Disabled", false);
+		// -------------------------------------------------------------------------------- _SETTINGS property
+		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Exposure settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 60, 1, 1);
 		// -------------------------------------------------------------------------------- POLAR_ALIGNMENT_SETTINGS property
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Polar alignment settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 60, 1, 1);
+		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s) (obsolete)", 0, 60, 1, 1);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM_NAME, "Hour angle move (°)", -50, 50, 5, 20);
 		indigo_init_number_item(AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM, AGENT_PLATESOLVER_PA_SETTINGS_COMPENSATE_REFRACTION_ITEM_NAME, "Compensate refraction (1=On, 0=Off)", 0, 1, 0, 0);
 		strcpy(AGENT_PLATESOLVER_PA_SETTINGS_HA_MOVE_ITEM->number.format, "%m");
@@ -819,6 +825,8 @@ indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, ind
 		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY, property))
 		indigo_define_property(device, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, property))
+		indigo_define_property(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property))
 		indigo_define_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_PLATESOLVER_PRECISE_GOTO_SETTINGS_PROPERTY, property))
@@ -852,10 +860,27 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_EXPOSURE_SETTINGS
+		indigo_property_copy_values(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, property, false);
+		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.value =
+		AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.target =
+		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.target;
+		indigo_update_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, NULL);
+		indigo_update_property(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, NULL);
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_PA_SETTINGS
 		indigo_property_copy_values(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property, false);
 		AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.value =
+		AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM->number.target =
+		AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM->number.target;
+		indigo_update_property(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);
 		return INDIGO_OK;
@@ -926,6 +951,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PA_STATE_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_PRECISE_GOTO_SETTINGS_PROPERTY);

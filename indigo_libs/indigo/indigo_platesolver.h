@@ -94,6 +94,8 @@ extern "C" {
 #define AGENT_PLATESOLVER_PA_STATE_ALT_CORRECTION_UP_ITEM	(AGENT_PLATESOLVER_PA_STATE_PROPERTY->items+10)
 #define AGENT_PLATESOLVER_PA_STATE_AZ_CORRECTION_CW_ITEM	(AGENT_PLATESOLVER_PA_STATE_PROPERTY->items+11)
 
+#define AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->exposure_settings_property)
+#define AGENT_PLATESOLVER_EXPOSURE_SETTINGS_EXPOSURE_ITEM		(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY->items+0)
 
 #define AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->polar_alignment_settings_property)
 #define AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE_ITEM				(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY->items+0)
@@ -132,6 +134,7 @@ typedef struct {
 	indigo_property *start_process_property;
 	indigo_property *abort_property;
 	indigo_property *image_property;
+	indigo_property *exposure_settings_property;
 	indigo_property *polar_alignment_state_property;
 	indigo_property *polar_alignment_settings_property;
 	indigo_property *precise_goto_settings_property;
