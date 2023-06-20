@@ -1,5 +1,5 @@
 # Basics of INDIGO Scripting
-Revision: 14.07.2022 (v3)
+Revision: 20.06.2023 (v4)
 
 Author: **Johan Bakker**
 
@@ -222,9 +222,7 @@ myTimer = indigo_set_timer(myTimer_triggers, myInterval);
 Functions can be used as a means to structure scripts and avoid redundancy by duplicating code. If some code or calculation is rather complex and especially when this code is used multiple times in a script, this code is best placed into a function with preferably a good descriptive name.  In its simplest form the function is just code block with a name, the can be called to execute from anywhere in the script;
 ```JS
 function mySimpleFunction() {
-
   indigo_log("Inside function");
-
 }
 
 mySimpleFunction();
@@ -232,10 +230,8 @@ mySimpleFunction();
 A function can also accept parameters and return the result of processing. The following function multiplies two parameters and returns the product;
 ```JS
 function myMultiplier(myNumber1, myNumber2) {
-
   var myProduct = myNumber1 * myNumber2;
   return (myProduct);
-
 }
 
 var myResult = myMultiplier(2, 3);
@@ -521,11 +517,10 @@ if (indigo_devices ["Unihedron SQM"].AUX_INFO.state == "Ok") {
 }
 ```
 ### Update Indigo properties
-If we want to change item values of a property, we need to use the change method, where we provide it with *one or more* {ITEM_NAME: (value)} tuples of the right type, which are used to update the property;
+If we want to change item values of a property, we need to use the change method, where we provide it with *one or more*  { KEYWORD: "xxx", VALUE: "yyy"} tuples of the right type, which are used to update the property;
 ```JS
 if (indigo_devices ["Imager Agent"].CCD_FITS_HEADERS.state == "Ok") {
-    var FITS_value = "MYSTUFF: Stuff i want to store in the fits header of an image";
-	indigo_devices ["Imager Agent"].CCD_FITS_HEADERS.change ({HEADER_1: (FITS_value)});
+	indigo_devices ["Imager Agent"].CCD_SET_FITS_HEADER.change ({ KEYWORD: "MYSTUFF", VALUE: "Something I want to store in the hrader"});
 }
 ```
 ```JS
