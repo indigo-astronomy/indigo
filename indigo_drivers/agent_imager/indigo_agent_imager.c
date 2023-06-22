@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0027
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -290,6 +290,50 @@ static void set_headers(indigo_device *device) {
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], "FOCUSPOS", "%d", DEVICE_PRIVATE_DATA->focuser_position);
 	} else {
 		indigo_remove_fits_header(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX], "FOCUSPOS");
+	}
+}
+
+static void park_mount(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Mount Agent", item->name, 11)) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+		}
+	}
+}
+
+static void unpark_mount(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Mount Agent", item->name, 11)) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
+		}
+	}
+}
+
+static void solver_precise_goto(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && (!strncmp("Astrometry Agent", item->name, 16) || !strncmp("ASTAP Agent", item->name, 11))) {
+			char *names[] = { AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM_NAME, AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM_NAME };
+			double values[] = { DEVICE_PRIVATE_DATA->solver_goto_ra, DEVICE_PRIVATE_DATA->solver_goto_dec };
+			// TODO: mount agent should not abort sequence while goto is in progress
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY_NAME, 2, (const char **)names, values);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, true);
+		}
+	}
+}
+
+static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && (!strncmp("Mount Agent", item->name, 11))) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, AGENT_ABORT_IMAGER_ITEM_NAME, state);
+		}
 	}
 }
 
@@ -569,6 +613,7 @@ static void preview_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	uint8_t *saturation_mask = NULL;
+	allow_abort_by_mount_agent(device, false);
 	while (capture_raw_frame(device, &saturation_mask) == INDIGO_OK_STATE);
 	indigo_safe_free(saturation_mask);
 
@@ -823,6 +868,7 @@ static void exposure_batch_process(indigo_device *device) {
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
+	allow_abort_by_mount_agent(device, true);
 	indigo_send_message(device, "Batch started");
 	if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 		// Start batch on related imager agents
@@ -852,6 +898,7 @@ static void exposure_batch_process(indigo_device *device) {
 			indigo_send_message(device, "Batch failed");
 		}
 	}
+	allow_abort_by_mount_agent(device, false);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_IDLE;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -914,6 +961,7 @@ static void streaming_batch_process(indigo_device *device) {
 	AGENT_IMAGER_STATS_BATCH_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
+	allow_abort_by_mount_agent(device, true);
 	indigo_send_message(device, "Streaming started");
 	if (streaming_batch(device)) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
@@ -934,6 +982,7 @@ static void streaming_batch_process(indigo_device *device) {
 			indigo_send_message(device, "Streaming failed");
 		}
 	}
+	allow_abort_by_mount_agent(device, false);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
@@ -1458,6 +1507,7 @@ static void autofocus_process(indigo_device *device) {
 	}
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME);
+	allow_abort_by_mount_agent(device, true);
 	indigo_send_message(device, "Focusing started");
 	select_subframe(device);
 	DEVICE_PRIVATE_DATA->restore_initial_position = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value ? false : AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM->sw.value;
@@ -1474,6 +1524,7 @@ static void autofocus_process(indigo_device *device) {
 		}
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
+	allow_abort_by_mount_agent(device, false);
 	restore_subframe(device);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	if (focuser_mode != -1) {
@@ -1484,40 +1535,6 @@ static void autofocus_process(indigo_device *device) {
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
-}
-
-static void park_mount(indigo_device *device) {
-	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	for (int i = 0; i < list->count; i++) {
-		indigo_item *item = list->items + i;
-		if (item->sw.value && !strncmp("Mount Agent", item->name, 11)) {
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
-		}
-	}
-}
-
-static void unpark_mount(indigo_device *device) {
-	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	for (int i = 0; i < list->count; i++) {
-		indigo_item *item = list->items + i;
-		if (item->sw.value && !strncmp("Mount Agent", item->name, 11)) {
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
-		}
-	}
-}
-
-static void solver_precise_goto(indigo_device *device) {
-	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	for (int i = 0; i < list->count; i++) {
-		indigo_item *item = list->items + i;
-		if (item->sw.value && (!strncmp("Astrometry Agent", item->name, 16) || !strncmp("ASTAP Agent", item->name, 11))) {
-			char *names[] = { AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM_NAME, AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM_NAME };
-			double values[] = { DEVICE_PRIVATE_DATA->solver_goto_ra, DEVICE_PRIVATE_DATA->solver_goto_dec };
-			// TODO: mount agent should not abort sequence while goto is in progress
-			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY_NAME, 2, (const char **)names, values);
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, true);
-		}
-	}
 }
 
 static void set_property(indigo_device *device, char *name, char *value) {
@@ -1643,15 +1660,12 @@ static void set_property(indigo_device *device, char *name, char *value) {
 			indigo_usleep(200000);
 		}
 	} else if (wait_for_solver) {
-		printf("1 ****** \(%d)\n", DEVICE_PRIVATE_DATA->related_solver_process_state);
 		while (DEVICE_PRIVATE_DATA->related_solver_process_state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_usleep(200000);
 		}
-		printf("2 ****** \(%d)\n", DEVICE_PRIVATE_DATA->related_solver_process_state);
 		while (DEVICE_PRIVATE_DATA->related_solver_process_state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_usleep(200000);
 		}
-		printf("3 ****** \(%d)\n", DEVICE_PRIVATE_DATA->related_solver_process_state);
 	}
 }
 
@@ -1704,6 +1718,7 @@ static void sequence_process(indigo_device *device) {
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	strcpy(sequence_text, indigo_get_text_item_value(AGENT_IMAGER_SEQUENCE_ITEM));
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
+		allow_abort_by_mount_agent(device, false);
 		value = strchr(token, '=');
 		if (value) {
 			*value++ = 0;
@@ -1738,6 +1753,7 @@ static void sequence_process(indigo_device *device) {
 			*value++ = 0;
 			set_property(device, token, value);
 		}
+		allow_abort_by_mount_agent(device, true);
 		if (DEVICE_PRIVATE_DATA->focus_exposure > 0) {
 			AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_FOCUSING;
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -1777,6 +1793,7 @@ static void sequence_process(indigo_device *device) {
 			break;
 		}
 	}
+	allow_abort_by_mount_agent(device, false);
 	indigo_safe_free(sequence_text);
 	if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;

@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x001E
+#define DRIVER_VERSION 0x001F
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -201,6 +201,16 @@ static void save_config(indigo_device *device) {
 		CONFIG_SAVE_ITEM->sw.value = false;
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
+	}
+}
+
+static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && (!strncmp("Mount Agent", item->name, 11))) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, AGENT_ABORT_GUIDER_ITEM_NAME, state);
+		}
 	}
 }
 
@@ -783,6 +793,7 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value =
 	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
 
+	allow_abort_by_mount_agent(device, false);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 	while (capture_raw_frame(device) == INDIGO_OK_STATE)
@@ -868,6 +879,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value =
 	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
 
+	allow_abort_by_mount_agent(device, true);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1150,6 +1162,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
 	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	allow_abort_by_mount_agent(device, false);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
@@ -1207,6 +1220,7 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->rmse_ra_threshold =
 	DEVICE_PRIVATE_DATA->rmse_dec_threshold = 0;
+	allow_abort_by_mount_agent(device, true);
 	indigo_send_message(device, "Guiding started");
 	double saved_exposure_time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
 	AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = 0;
@@ -1408,6 +1422,7 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	allow_abort_by_mount_agent(device, false);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);

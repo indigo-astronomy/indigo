@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -65,6 +65,10 @@
 #define AGENT_SET_HOST_TIME_MOUNT_ITEM  							(AGENT_SET_HOST_TIME_PROPERTY->items+0)
 #define AGENT_SET_HOST_TIME_DOME_ITEM  								(AGENT_SET_HOST_TIME_PROPERTY->items+1)
 
+#define AGENT_ABORT_RELATED_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_related_processes_property)
+#define AGENT_ABORT_IMAGER_ITEM  											(AGENT_ABORT_RELATED_PROCESS_PROPERTY->items+0)
+#define AGENT_ABORT_GUIDER_ITEM  											(AGENT_ABORT_RELATED_PROCESS_PROPERTY->items+1)
+
 #define AGENT_LX200_SERVER_PROPERTY										(DEVICE_PRIVATE_DATA->agent_lx200_server_property)
 #define AGENT_LX200_SERVER_STOPPED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+0)
 #define AGENT_LX200_SERVER_STARTED_ITEM								(AGENT_LX200_SERVER_PROPERTY->items+1)
@@ -88,6 +92,7 @@ typedef struct {
 	indigo_property *agent_geographic_property;
 	indigo_property *agent_site_data_source_property;
 	indigo_property *agent_set_host_time_property;
+	indigo_property *agent_related_processes_property;
 	indigo_property *agent_lx200_server_property;
 	indigo_property *agent_lx200_configuration_property;
 	indigo_property *agent_limits_property;
@@ -100,9 +105,6 @@ typedef struct {
 	double mount_target_ra, mount_target_dec;
 	int server_socket;
 	bool dome_unparked;
-	bool imager_in_preview;
-	bool guider_in_preview;
-	bool imager_paused;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
@@ -172,7 +174,7 @@ static void set_eq_coordinates(indigo_device *device) {
 }
 
 static void abort_capture(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->imager_in_preview || DEVICE_PRIVATE_DATA->imager_paused)
+	if (!AGENT_ABORT_IMAGER_ITEM->sw.value)
 		return;
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
@@ -184,7 +186,7 @@ static void abort_capture(indigo_device *device) {
 }
 
 static void abort_guiding(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->guider_in_preview)
+	if (!AGENT_ABORT_GUIDER_ITEM->sw.value)
 		return;
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
@@ -268,6 +270,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_SET_HOST_TIME_MOUNT_ITEM, AGENT_SET_HOST_TIME_MOUNT_ITEM_NAME, "Set host time to mount", true);
 		indigo_init_switch_item(AGENT_SET_HOST_TIME_DOME_ITEM, AGENT_SET_HOST_TIME_DOME_ITEM_NAME, "Set host time to dome", true);
+		// -------------------------------------------------------------------------------- AGENT_ABORT_RELATED_PROCESS
+		AGENT_ABORT_RELATED_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, "Agent", "Allow to abort related process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (AGENT_ABORT_RELATED_PROCESS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_ABORT_IMAGER_ITEM, AGENT_ABORT_IMAGER_ITEM_NAME, "Imaging", false);
+		indigo_init_switch_item(AGENT_ABORT_GUIDER_ITEM, AGENT_ABORT_GUIDER_ITEM_NAME, "Guiding", false);
 		// -------------------------------------------------------------------------------- AGENT_LX200_SERVER
 		AGENT_LX200_SERVER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_LX200_SERVER_PROPERTY_NAME, "Agent", "LX200 Server state", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_LX200_SERVER_PROPERTY == NULL)
@@ -313,6 +321,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property))
 		indigo_define_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_ABORT_RELATED_PROCESS_PROPERTY, property))
+		indigo_define_property(device, AGENT_ABORT_RELATED_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_LX200_SERVER_PROPERTY, property))
 		indigo_define_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property))
@@ -613,7 +623,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
-	 } else if (indigo_property_match(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_ABORT_RELATED_PROCESS
+		indigo_property_copy_values(AGENT_ABORT_RELATED_PROCESS_PROPERTY, property, false);
+		indigo_update_property(device, AGENT_ABORT_RELATED_PROCESS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_GEOGRAPHIC_COORDINATES
 		indigo_property_copy_values(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		set_site_coordinates(device);
@@ -669,6 +684,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
 	indigo_release_property(AGENT_SET_HOST_TIME_PROPERTY);
+	indigo_release_property(AGENT_ABORT_RELATED_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_LX200_SERVER_PROPERTY);
 	indigo_release_property(AGENT_LX200_CONFIGURATION_PROPERTY);
 	indigo_release_property(AGENT_LIMITS_PROPERTY);
@@ -870,35 +886,6 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				}
 			}
 		}
-	} else {
-		indigo_property *list = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
-		for (int i = 0; i < list->count; i++) {
-			indigo_item *item = list->items + i;
-			if (item->sw.value) {
-				if (!strncmp("Imager Agent", item->name, 12)) {
-					if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-						CLIENT_PRIVATE_DATA->imager_in_preview = false;
-						for (int j = 0; j < property->count; j++) {
-							indigo_item *item = property->items + j;
-							if (item->sw.value && !strcmp(item->name, AGENT_IMAGER_START_PREVIEW_ITEM_NAME))
-								CLIENT_PRIVATE_DATA->imager_in_preview = true;
-						}
-					} else if (!strcmp(property->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME)) {
-						CLIENT_PRIVATE_DATA->imager_paused = property->state == INDIGO_BUSY_STATE;
-					}
-				} else if (!strncmp("Guider Agent", item->name, 12)) {
-					if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-						CLIENT_PRIVATE_DATA->guider_in_preview = false;
-						for (int j = 0; j < property->count; j++) {
-							indigo_item *item = property->items + j;
-							if (item->sw.value && !strcmp(item->name, AGENT_GUIDER_START_PREVIEW_ITEM_NAME))
-								CLIENT_PRIVATE_DATA->guider_in_preview = true;
-						}
-					}
-				}
-			}
-		}
-
 	}
 }
 
