@@ -238,12 +238,12 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 				return INDIGO_FAILED;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->count = 0;
-			// -------------------------------------------------------------------------------- FILTER_FORCE_SYMETRIC_RELATIONS
-			FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY_NAME, "Main", "Force symetric relations", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-			if (FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY == NULL)
+			// -------------------------------------------------------------------------------- FILTER_FORCE_SYMMETRIC_RELATIONS
+			FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY_NAME, "Main", "Force SYMMETRIC relations", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_switch_item(FILTER_FORCE_SYMETRIC_RELATIONS_ENABLED_ITEM, FILTER_FORCE_SYMETRIC_RELATIONS_ENABLED_ITEM_NAME, "Enable", true);
-			indigo_init_switch_item(FILTER_FORCE_SYMETRIC_RELATIONS_DISABLED_ITEM, FILTER_FORCE_SYMETRIC_RELATIONS_DISABLED_ITEM_NAME, "Disable", false);
+			indigo_init_switch_item(FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM, FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM_NAME, "Enable", true);
+			indigo_init_switch_item(FILTER_FORCE_SYMMETRIC_RELATIONS_DISABLED_ITEM, FILTER_FORCE_SYMMETRIC_RELATIONS_DISABLED_ITEM_NAME, "Disable", false);
 			// -------------------------------------------------------------------------------- CCD_LENS_FOV
 			CCD_LENS_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_FOV_PROPERTY_NAME, "Camera", "FOV and pixel scale", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 4);
 			if (CCD_LENS_FOV_PROPERTY == NULL)
@@ -284,8 +284,8 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 		if (cached_property && indigo_property_match(cached_property, property))
 			indigo_define_property(device, cached_property, NULL);
 	}
-	if (indigo_property_match(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, property))
-		indigo_define_property(device, FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, NULL);
+	if (indigo_property_match(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property))
+		indigo_define_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
 	if (indigo_property_match(CCD_LENS_FOV_PROPERTY, property))
 		indigo_define_property(device, CCD_LENS_FOV_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
@@ -481,7 +481,7 @@ static indigo_result update_related_device_list(indigo_device *device, indigo_pr
 
 static void set_reverse_relation(indigo_device *device, void *data) {
 	indigo_item *item = (indigo_item *)data;
-	if (FILTER_FORCE_SYMETRIC_RELATIONS_ENABLED_ITEM->sw.value) {
+	if (FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM->sw.value) {
 		char reverse_item_name[INDIGO_NAME_SIZE];
 		strcpy(reverse_item_name, device->name);
 		if (strchr(item->name, '@')) {
@@ -561,10 +561,10 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			return INDIGO_OK;
 		}
 	}
-	if (indigo_property_match(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- FILTER_FORCE_SYMETRIC_RELATIONS
-		indigo_property_copy_values(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, property, false);
-		indigo_update_property(device, FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, NULL);
+	if (indigo_property_match(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FILTER_FORCE_SYMMETRIC_RELATIONS
+		indigo_property_copy_values(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property, false);
+		indigo_update_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
