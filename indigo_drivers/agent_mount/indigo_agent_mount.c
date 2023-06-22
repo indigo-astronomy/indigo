@@ -623,7 +623,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property)) {
+	} else if (indigo_property_match(AGENT_ABORT_RELATED_PROCESS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_ABORT_RELATED_PROCESS
 		indigo_property_copy_values(AGENT_ABORT_RELATED_PROCESS_PROPERTY, property, false);
 		indigo_update_property(device, AGENT_ABORT_RELATED_PROCESS_PROPERTY, NULL);
