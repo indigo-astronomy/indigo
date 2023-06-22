@@ -421,6 +421,10 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD |
 | FILTER_WHEEL_LIST | switch | no | yes | ... | yes | Select wheel |
 | FILTER_FOCUSER_LIST | switch | no | yes | ... | yes | Select focuser |
+| FILTER_ROTATOR_LIST | switch | no | yes | ... | yes | Select rotator |
+| FILTER_RELATED_AGENT_LIST | switch | no | yes | ... | yes | Select related agents |
+| FILTER_FORCE_SYMMETRIC_RELATIONS | switch | no | yes | ENABLED | yes | Set symmetric relation |
+|  |  |  |  | DISABLED | yes | |
 | AGENT_START_PROCESS | switch | no | yes | EXPOSURE | yes | Start exposure |
 |  |  |  |  | STREAMING | yes | Start streaming |
 | AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
@@ -442,6 +446,9 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD |
 | FILTER_GUIDER_LIST | switch | no | yes | ... | yes | Select guider |
+| FILTER_RELATED_AGENT_LIST | switch | no | yes | ... | yes | Select related agents |
+| FILTER_FORCE_SYMMETRIC_RELATIONS | switch | no | yes | ENABLED | yes | Set symmetric relation |
+|  |  |  |  | DISABLED | yes | |
 | AGENT_IMAGER_BATCH | switch | no | yes | PREVIEW | yes | Start preview |
 |  |  |  |  | CALIBRATION | yes | Start calibration |
 |  |  |  |  | GUIDING | yes | Start guiding |
@@ -489,6 +496,9 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | FILTER_DOME_LIST | switch | no | yes | ... | yes | Select dome |
 | FILTER_MOUNT_LIST | switch | no | yes | ... | yes | Select mount |
 | FILTER_GPS_LIST | switch | no | yes | ... | yes | Select GPS |
+| FILTER_RELATED_AGENT_LIST | switch | no | yes | ... | yes | Select related agents |
+| FILTER_FORCE_SYMMETRIC_RELATIONS | switch | no | yes | ENABLED | yes | Set symmetric relation |
+|  |  |  |  | DISABLED | yes | |
 | GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Observatory coordinates |
 |  |  |  |  | LONGITUDE | yes | |
 |  |  |  |  | ELEVATION | yes | |

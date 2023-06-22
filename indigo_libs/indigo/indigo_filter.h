@@ -168,17 +168,17 @@ extern "C" {
  */
 #define FILTER_RELATED_AGENT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property)
 
-/** FILTER_FORCE_SYMETRIC_RELATIONS property pointer, property is mandatory, property change request is fully handled by indigo_filter_change_property().
+/** FILTER_FORCE_SYMMETRIC_RELATIONS property pointer, property is mandatory, property change request is fully handled by indigo_filter_change_property().
  */
-#define FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY	(FILTER_DEVICE_CONTEXT->filter_force_symetric_relations_property)
+#define FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY	(FILTER_DEVICE_CONTEXT->filter_force_SYMMETRIC_relations_property)
 
-/** FILTER_FORCE_SYMETRIC_RELATIONS.ENABLED property item pointer.
+/** FILTER_FORCE_SYMMETRIC_RELATIONS.ENABLED property item pointer.
  */
-#define FILTER_FORCE_SYMETRIC_RELATIONS_ENABLED_ITEM	(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY->items+0)
+#define FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM	(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->items+0)
 
-/** FILTER_FORCE_SYMETRIC_RELATIONS.DISABLED property item pointer.
+/** FILTER_FORCE_SYMMETRIC_RELATIONS.DISABLED property item pointer.
  */
-#define FILTER_FORCE_SYMETRIC_RELATIONS_DISABLED_ITEM	(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY->items+1)
+#define FILTER_FORCE_SYMMETRIC_RELATIONS_DISABLED_ITEM	(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->items+1)
 
 
 /** CCD_LENS_FOV property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
@@ -212,7 +212,7 @@ typedef struct {
 	indigo_property *filter_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_related_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_related_agent_list_property;
-	indigo_property *filter_force_symetric_relations_property;
+	indigo_property *filter_force_SYMMETRIC_relations_property;
 	indigo_property *device_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *connection_property_cache[INDIGO_FILTER_MAX_DEVICES];
