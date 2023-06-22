@@ -337,6 +337,16 @@ static void disable_solver(indigo_device *device) {
 	}
 }
 
+static void abort_solver(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && (!strncmp("Astrometry Agent", item->name, 16) || !strncmp("ASTAP Agent", item->name, 11))) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
+		}
+	}
+}
+
 static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
@@ -1675,6 +1685,9 @@ static void set_property(indigo_device *device, char *name, char *value) {
 		}
 		while (DEVICE_PRIVATE_DATA->related_solver_process_state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_usleep(200000);
+		}
+		if (DEVICE_PRIVATE_DATA->related_solver_process_state == INDIGO_BUSY_STATE) {
+			abort_solver(device);
 		}
 		disable_solver(device);
 	}
