@@ -238,6 +238,12 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 				return INDIGO_FAILED;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->count = 0;
+			// -------------------------------------------------------------------------------- FILTER_FORCE_SYMETRIC_RELATIONS
+			FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY_NAME, "Main", "Force symetric relations", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(FILTER_FORCE_SYMETRIC_RELATIONS_ENABLED_ITEM, FILTER_FORCE_SYMETRIC_RELATIONS_ENABLED_ITEM_NAME, "Enable", true);
+			indigo_init_switch_item(FILTER_FORCE_SYMETRIC_RELATIONS_DISABLED_ITEM, FILTER_FORCE_SYMETRIC_RELATIONS_DISABLED_ITEM_NAME, "Disable", false);
 			// -------------------------------------------------------------------------------- CCD_LENS_FOV
 			CCD_LENS_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_FOV_PROPERTY_NAME, "Camera", "FOV and pixel scale", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 4);
 			if (CCD_LENS_FOV_PROPERTY == NULL)
@@ -278,6 +284,8 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 		if (cached_property && indigo_property_match(cached_property, property))
 			indigo_define_property(device, cached_property, NULL);
 	}
+	if (indigo_property_match(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, property))
+		indigo_define_property(device, FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, NULL);
 	if (indigo_property_match(CCD_LENS_FOV_PROPERTY, property))
 		indigo_define_property(device, CCD_LENS_FOV_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
@@ -471,18 +479,40 @@ static indigo_result update_related_device_list(indigo_device *device, indigo_pr
 	return INDIGO_OK;
 }
 
+static void set_reverse_relation(indigo_device *device, void *data) {
+	indigo_item *item = (indigo_item *)data;
+	if (FILTER_FORCE_SYMETRIC_RELATIONS_ENABLED_ITEM->sw.value) {
+		char reverse_item_name[INDIGO_NAME_SIZE];
+		strcpy(reverse_item_name, device->name);
+		if (strchr(item->name, '@')) {
+			snprintf(reverse_item_name, sizeof(reverse_item_name), "%s @ %s", device->name, indigo_local_service_name);
+		} else {
+			indigo_copy_name(reverse_item_name, device->name);
+		}
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, reverse_item_name, item->sw.value);
+	}
+	indigo_property all_properties;
+	memset(&all_properties, 0, sizeof(all_properties));
+	strcpy(all_properties.device, item->name);
+	indigo_enumerate_properties(FILTER_DEVICE_CONTEXT->client, &all_properties);
+}
+
 static indigo_result update_related_agent_list(indigo_device *device, indigo_property *property) {
 	indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	indigo_property_copy_values(device_list, property, false);
-	for (int i = 0; i < device_list->count; i++) {
-		if (device_list->items[i].sw.value) {
-			device_list->state = INDIGO_OK_STATE;
-			indigo_property all_properties;
-			memset(&all_properties, 0, sizeof(all_properties));
-			strcpy(all_properties.device, device_list->items[i].name);
-			indigo_enumerate_properties(FILTER_DEVICE_CONTEXT->client, &all_properties);
+	for (int i = 0; i < property->count; i++) {
+		indigo_item *remote_item = property->items + i;
+		for (int j = 0; j < device_list->count; j++) {
+			indigo_item *local_item = device_list->items + j;
+			if (!strcmp(remote_item->name, local_item->name)) {
+				if (remote_item->sw.value == local_item->sw.value)
+					break;
+				local_item->sw.value = remote_item->sw.value;
+				indigo_set_timer_with_data(device, 0, set_reverse_relation, NULL, local_item);
+				break;
+			}
 		}
 	}
+	device_list->state = INDIGO_OK_STATE;
 	indigo_update_property(device, device_list, NULL);
 	return INDIGO_OK;
 }
@@ -505,8 +535,9 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 		if (indigo_property_match(device_list, property))
 			return update_related_device_list(device, device_list, property);
 	}
-	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
+	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property)) {
 		return update_related_agent_list(device, property);
+	}
 	indigo_property **agent_cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		if (agent_cache[i] && indigo_property_match_defined(agent_cache[i], property)) {
@@ -530,7 +561,12 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			return INDIGO_OK;
 		}
 	}
-	if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+	if (indigo_property_match(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FILTER_FORCE_SYMETRIC_RELATIONS
+		indigo_property_copy_values(FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, property, false);
+		indigo_update_property(device, FILTER_FORCE_SYMETRIC_RELATIONS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		assert(DEVICE_CONTEXT->base_device == NULL);
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
