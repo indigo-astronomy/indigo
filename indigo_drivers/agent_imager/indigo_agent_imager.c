@@ -320,9 +320,19 @@ static void solver_precise_goto(indigo_device *device) {
 		if (item->sw.value && (!strncmp("Astrometry Agent", item->name, 16) || !strncmp("ASTAP Agent", item->name, 11))) {
 			char *names[] = { AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM_NAME, AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM_NAME };
 			double values[] = { DEVICE_PRIVATE_DATA->solver_goto_ra, DEVICE_PRIVATE_DATA->solver_goto_dec };
-			// TODO: mount agent should not abort sequence while goto is in progress
 			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY_NAME, 2, (const char **)names, values);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME, AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM_NAME, true);
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM_NAME, true);
+		}
+	}
+}
+
+static void disable_solver(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && (!strncmp("Astrometry Agent", item->name, 16) || !strncmp("ASTAP Agent", item->name, 11))) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY_NAME, AGENT_PLATESOLVER_SOLVE_IMAGES_DISABLED_ITEM_NAME, true);
 		}
 	}
 }
@@ -1666,6 +1676,7 @@ static void set_property(indigo_device *device, char *name, char *value) {
 		while (DEVICE_PRIVATE_DATA->related_solver_process_state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_usleep(200000);
 		}
+		disable_solver(device);
 	}
 }
 
