@@ -1662,6 +1662,8 @@ static void set_property(indigo_device *device, char *name, char *value) {
 			}
 		}
 	} else if (!strcasecmp(name, "angle")) {
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_ROTATING;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (indigo_filter_cached_property(device, INDIGO_FILTER_ROTATOR_INDEX, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, &device_property, NULL)) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_property->device, device_property->name, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
 			if (indigo_filter_cached_property(device, INDIGO_FILTER_ROTATOR_INDEX, ROTATOR_POSITION_PROPERTY_NAME, &device_property, NULL)) {
@@ -1673,6 +1675,8 @@ static void set_property(indigo_device *device, char *name, char *value) {
 	} else if (!strcasecmp(name, "dec")) {
 		DEVICE_PRIVATE_DATA->solver_goto_dec = indigo_atod(value);
 	} else if (!strcasecmp(name, "goto")) {
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_SLEWING;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (!strcmp(value, "precise")) {
 			solver_precise_goto(device);
 			wait_for_solver = true;
