@@ -703,13 +703,13 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
 			}
 		} else if (!strcmp(property->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME)) {
+			CLIENT_PRIVATE_DATA->mount_side_of_pier = 0;
 			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME))
+				indigo_item *item = property->items + i;
+				if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_EAST_ITEM_NAME))
 					CLIENT_PRIVATE_DATA->mount_side_of_pier = -1;
-				else if (!strcmp(property->items[i].name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME))
+				else if (item->sw.value && !strcmp(item->name, MOUNT_SIDE_OF_PIER_WEST_ITEM_NAME))
 					CLIENT_PRIVATE_DATA->mount_side_of_pier = 1;
-				else
-					CLIENT_PRIVATE_DATA->mount_side_of_pier = 0;
 			}
 			set_eq_coordinates(FILTER_CLIENT_CONTEXT->device);
 		} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
