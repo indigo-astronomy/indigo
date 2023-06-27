@@ -872,8 +872,8 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_sony_exposure(indigo_device *device) {
-	if (PRIVATE_DATA->model.product == 0x0ccc && !SONY_PRIVATE_DATA->did_capture) {
-		// A7R4 needs 3s delay before first capture
+	if ((PRIVATE_DATA->model.product == 0x0ccc || PRIVATE_DATA->model.product == 0x0d9f) && !SONY_PRIVATE_DATA->did_capture) {
+		// A7R4/A7R4A needs 3s delay before first capture
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
 		for (int i = 0; i < 30; i++) {
 			if (PRIVATE_DATA->abort_capture)
@@ -954,8 +954,8 @@ bool ptp_sony_liveview(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size;
 	int retry_count = 0;
-	if (PRIVATE_DATA->model.product == 0x0ccc && !SONY_PRIVATE_DATA->did_liveview) {
-		// A7R4 needs 3s delay before first capture
+	if ((PRIVATE_DATA->model.product == 0x0ccc || PRIVATE_DATA->model.product == 0x0d9f) && !SONY_PRIVATE_DATA->did_liveview) {
+		// A7R4/A7R4A needs 3s delay before first capture
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
 		for (int i = 0; i < 30; i++) {
 			if (PRIVATE_DATA->abort_capture)
