@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 53.22412.20230409 */
+/* Version: 54.22587.20230516 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -217,7 +217,7 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_DENOISE_DEF              0       /* denoise */
 #define ALTAIRCAM_DENOISE_MIN              0       /* denoise */
 #define ALTAIRCAM_DENOISE_MAX              100     /* denoise */
-#define ALTAIRCAM_TEC_TARGET_MIN           (-300)  /* TEC target: -30.0 degrees Celsius */
+#define ALTAIRCAM_TEC_TARGET_MIN           (-500)  /* TEC target: -50.0 degrees Celsius */
 #define ALTAIRCAM_TEC_TARGET_DEF           0       /* 0.0 degrees Celsius */
 #define ALTAIRCAM_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define ALTAIRCAM_HEARTBEAT_MIN            100     /* millisecond */
@@ -277,7 +277,7 @@ typedef struct {
 } AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.22412.20230409
+    get the version of this dll/so/dylib, which is: 54.22587.20230516
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -978,7 +978,14 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
                                                                 threshold: [1, 4095]
                                                                 0xffffffff => set to default
                                                          */
-#define ALTAIRCAM_OPTION_ISP                    0x59       /* hardware ISP: on => 1, off => 0 */
+#define ALTAIRCAM_OPTION_GIGETIMEOUT            0x5a       /* For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive.
+                                                            If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection.
+                                                            When the application is stopped by the debugger, the application cannot create the heartbeat signals
+                                                                0 => auto: when the camera is opened, disable if debugger is present or enable if no debugger is present
+                                                                1 => enable
+                                                                2 => disable
+                                                                default: auto
+                                                         */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8              0x00
@@ -1126,6 +1133,11 @@ ALTAIRCAM_API(HRESULT)  Altaircam_IoControl(HAltaircam h, unsigned ioLineNumber,
 #define ALTAIRCAM_FLASH_READ      0x04    /* read */
 #define ALTAIRCAM_FLASH_WRITE     0x05    /* write */
 #define ALTAIRCAM_FLASH_ERASE     0x06    /* erase */
+/* Flash:
+ action = ALTAIRCAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
+ addr = address
+ see democpp
+*/
 ALTAIRCAM_API(HRESULT)  Altaircam_rwc_Flash(HAltaircam h, unsigned action, unsigned addr, unsigned len, void* pData);
 
 ALTAIRCAM_API(HRESULT)  Altaircam_write_UART(HAltaircam h, const unsigned char* pData, unsigned nDataLen);
