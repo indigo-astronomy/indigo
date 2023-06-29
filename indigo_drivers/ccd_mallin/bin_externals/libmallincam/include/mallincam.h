@@ -1,7 +1,7 @@
 #ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 53.22412.20230409 */
+/* Version: 54.22812.20230618 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -158,11 +158,12 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_FLAG_LEVELRANGE_HARDWARE 0x0000020000000000  /* hardware level range, put(get)_LevelRangeV2 */
 #define MALLINCAM_FLAG_EVENT_HARDWARE      0x0000040000000000  /* hardware event, such as exposure start & stop */
 #define MALLINCAM_FLAG_LIGHTSOURCE         0x0000080000000000  /* light source */
-#define MALLINCAM_FLAG_FILTERWHEEL         0x0000100000000000  /* filter wheel */
+#define MALLINCAM_FLAG_FILTERWHEEL         0x0000100000000000  /* astro filter wheel */
 #define MALLINCAM_FLAG_GIGE                0x0000200000000000  /* 1 Gigabit GigE */
 #define MALLINCAM_FLAG_10GIGE              0x0000400000000000  /* 10 Gigabit GigE */
 #define MALLINCAM_FLAG_5GIGE               0x0000800000000000  /* 5 Gigabit GigE */
 #define MALLINCAM_FLAG_25GIGE              0x0001000000000000  /* 2.5 Gigabit GigE */
+#define MALLINCAM_FLAG_AUTOFOCUSER         0x0002000000000000  /* astro auto focuser */
 
 #define MALLINCAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define MALLINCAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
@@ -217,7 +218,7 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_DENOISE_DEF              0       /* denoise */
 #define MALLINCAM_DENOISE_MIN              0       /* denoise */
 #define MALLINCAM_DENOISE_MAX              100     /* denoise */
-#define MALLINCAM_TEC_TARGET_MIN           (-300)  /* TEC target: -30.0 degrees Celsius */
+#define MALLINCAM_TEC_TARGET_MIN           (-500)  /* TEC target: -50.0 degrees Celsius */
 #define MALLINCAM_TEC_TARGET_DEF           0       /* 0.0 degrees Celsius */
 #define MALLINCAM_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define MALLINCAM_HEARTBEAT_MIN            100     /* millisecond */
@@ -277,7 +278,7 @@ typedef struct {
 } MallincamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.22412.20230409
+    get the version of this dll/so/dylib, which is: 54.22812.20230618
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -298,14 +299,14 @@ MALLINCAM_API(const char*)      Mallincam_Version();
 */
 MALLINCAM_API(unsigned) Mallincam_EnumV2(MallincamDeviceV2 arr[MALLINCAM_MAX]);
 
-/* use the id of MallincamDeviceV2, which is enumerated by Mallincam_EnumV2.
-    if id is NULL, Mallincam_Open will open the first enumerated camera.
+/* use the camId of MallincamDeviceV2, which is enumerated by Mallincam_EnumV2.
+    if camId is NULL, Mallincam_Open will open the first enumerated camera.
     For the issue of opening the camera on Android, please refer to the documentation
 */
 #if defined(_WIN32)
-MALLINCAM_API(HMallincam) Mallincam_Open(const wchar_t* id);
+MALLINCAM_API(HMallincam) Mallincam_Open(const wchar_t* camId);
 #else
-MALLINCAM_API(HMallincam) Mallincam_Open(const char* id);
+MALLINCAM_API(HMallincam) Mallincam_Open(const char* camId);
 #endif
 
 /*
@@ -549,6 +550,15 @@ typedef void (__stdcall* PIMALLINCAM_HISTOGRAM_CALLBACK)(const float aHistY[256]
 typedef void (__stdcall* PIMALLINCAM_CHROME_CALLBACK)(void* ctxChrome);
 typedef void (__stdcall* PIMALLINCAM_PROGRESS)(int percent, void* ctxProgress);
 #endif
+/*
+* nFlag & 0x00008000: mono or color
+* nFlag & 0x0f: bitdepth
+* so the size of aHist is:
+    int arraySize = 1 << (nFlag & 0x0f);
+    if ((nFlag & 0x00008000) == 0)
+        arraySize *= 3;
+*/
+typedef void (__stdcall* PIMALLINCAM_HISTOGRAM_CALLBACKV2)(const unsigned* aHist, unsigned nFlag, void* ctxHistogramV2);
 
 /*
 * bAutoExposure:
@@ -769,6 +779,7 @@ MALLINCAM_API(HRESULT)  Mallincam_get_LevelRangeV2(HMallincam h, unsigned short*
 */
 MALLINCAM_API(HRESULT)  Mallincam_LevelRangeAuto(HMallincam h);  /* software level range */
 MALLINCAM_API(HRESULT)  Mallincam_GetHistogram(HMallincam h, PIMALLINCAM_HISTOGRAM_CALLBACK funHistogram, void* ctxHistogram);
+MALLINCAM_API(HRESULT)  Mallincam_GetHistogramV2(HMallincam h, PIMALLINCAM_HISTOGRAM_CALLBACKV2 funHistogramV2, void* ctxHistogramV2);
 
 /* led state:
     iLed: Led index, (0, 1, 2, ...)
@@ -905,7 +916,7 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 #define MALLINCAM_OPTION_LOW_NOISE              0x38       /* low noise mode (Higher signal noise ratio, lower frame rate): 1 => enable */
 #define MALLINCAM_OPTION_POWER                  0x39       /* get power consumption, unit: milliwatt */
 #define MALLINCAM_OPTION_GLOBAL_RESET_MODE      0x3a       /* global reset mode */
-#define MALLINCAM_OPTION_OPEN_USB_ERRORCODE     0x3b       /* get the open usb error code */
+#define MALLINCAM_OPTION_OPEN_ERRORCODE         0x3b       /* get the open camera error code */
 #define MALLINCAM_OPTION_FLUSH                  0x3d       /* 1 = hard flush, discard frames cached by camera DDR (if any)
                                                             2 = soft flush, discard frames cached by mallincam.dll (if any)
                                                             3 = both flush
@@ -978,7 +989,17 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
                                                                 threshold: [1, 4095]
                                                                 0xffffffff => set to default
                                                          */
-#define MALLINCAM_OPTION_ISP                    0x59       /* hardware ISP: on => 1, off => 0 */
+#define MALLINCAM_OPTION_GIGETIMEOUT            0x5a       /* For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive.
+                                                            If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection.
+                                                            When the application is stopped by the debugger, the application cannot create the heartbeat signals
+                                                                0 => auto: when the camera is opened, disable if debugger is present or enable if no debugger is present
+                                                                1 => enable
+                                                                2 => disable
+                                                                default: auto
+                                                         */
+#define MALLINCAM_OPTION_EEPROM_SIZE            0x5b       /* get EEPROM size */
+#define MALLINCAM_OPTION_OVERCLOCK_MAX          0x5c       /* get overclock range: [0, max] */
+#define MALLINCAM_OPTION_OVERCLOCK              0x5d       /* overclock, default: 0 */
 
 /* pixel format */
 #define MALLINCAM_PIXELFORMAT_RAW8              0x00
@@ -1010,9 +1031,9 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Roi(HMallincam h, unsigned* pxOffset, unsi
     for each device found, it will take about 3 seconds
 */
 #if defined(_WIN32)
-MALLINCAM_API(HRESULT) Mallincam_Replug(const wchar_t* id);
+MALLINCAM_API(HRESULT) Mallincam_Replug(const wchar_t* camId);
 #else
-MALLINCAM_API(HRESULT) Mallincam_Replug(const char* id);
+MALLINCAM_API(HRESULT) Mallincam_Replug(const char* camId);
 #endif
 
 #ifndef __MALLINCAMAFPARAM_DEFINED__
@@ -1126,6 +1147,11 @@ MALLINCAM_API(HRESULT)  Mallincam_IoControl(HMallincam h, unsigned ioLineNumber,
 #define MALLINCAM_FLASH_READ      0x04    /* read */
 #define MALLINCAM_FLASH_WRITE     0x05    /* write */
 #define MALLINCAM_FLASH_ERASE     0x06    /* erase */
+/* Flash:
+ action = MALLINCAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
+ addr = address
+ see democpp
+*/
 MALLINCAM_API(HRESULT)  Mallincam_rwc_Flash(HMallincam h, unsigned action, unsigned addr, unsigned len, void* pData);
 
 MALLINCAM_API(HRESULT)  Mallincam_write_UART(HMallincam h, const unsigned char* pData, unsigned nDataLen);
@@ -1148,10 +1174,10 @@ MALLINCAM_API(HRESULT)  Mallincam_Update(const wchar_t* camId, const wchar_t* fi
 MALLINCAM_API(HRESULT)  Mallincam_Update(const char* camId, const char* filePath, PIMALLINCAM_PROGRESS funProgress, void* ctxProgress);
 #endif
 
-MALLINCAM_API(HRESULT)  Mallincam_put_Linear(HMallincam h, const unsigned char* v8, const unsigned short* v16);
-MALLINCAM_API(HRESULT)  Mallincam_put_Curve(HMallincam h, const unsigned char* v8, const unsigned short* v16);
-MALLINCAM_API(HRESULT)  Mallincam_put_ColorMatrix(HMallincam h, const double v[9]);
-MALLINCAM_API(HRESULT)  Mallincam_put_InitWBGain(HMallincam h, const unsigned short v[3]);
+MALLINCAM_API(HRESULT)  Mallincam_put_Linear(HMallincam h, const unsigned char* v8, const unsigned short* v16); /* v8, v16 pointer must remains valid */
+MALLINCAM_API(HRESULT)  Mallincam_put_Curve(HMallincam h, const unsigned char* v8, const unsigned short* v16); /* v8, v16 pointer must remains valid */
+MALLINCAM_API(HRESULT)  Mallincam_put_ColorMatrix(HMallincam h, const double v[9]); /* null => revert to model default */
+MALLINCAM_API(HRESULT)  Mallincam_put_InitWBGain(HMallincam h, const unsigned short v[3]); /* null => revert to model default */
 
 /*
     get the frame rate: framerate (fps) = Frame * 1000.0 / nTime
@@ -1285,8 +1311,10 @@ MALLINCAM_API(HRESULT)  Mallincam_AwbOnePush(HMallincam h, PIMALLINCAM_TEMPTINT_
 MALLINCAM_DEPRECATED
 MALLINCAM_API(HRESULT)  Mallincam_AbbOnePush(HMallincam h, PIMALLINCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB);
 
+/* Initialize support for GigE cameras. If online/offline notifications are not required, the callback function can be set to NULL */
 typedef void (__stdcall* PMALLINCAM_HOTPLUG)(void* ctxHotPlug);
 MALLINCAM_API(HRESULT)  Mallincam_GigeEnable(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
+
 /*
 USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
@@ -1301,6 +1329,34 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 #if !defined(_WIN32) && !defined(__ANDROID__)
 MALLINCAM_API(void)   Mallincam_HotPlug(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
+
+/* AAF: Astro Auto Focuser */
+#define MALLINCAM_AAF_SETPOSITION     0x01
+#define MALLINCAM_AAF_GETPOSITION     0x02
+#define MALLINCAM_AAF_SETZERO         0x03
+#define MALLINCAM_AAF_GETZERO         0x04
+#define MALLINCAM_AAF_SETDIRECTION    0x05
+#define MALLINCAM_AAF_GETDIRECTION    0x06
+#define MALLINCAM_AAF_SETMAXINCREMENT 0x07
+#define MALLINCAM_AAF_GETMAXINCREMENT 0x08
+#define MALLINCAM_AAF_SETFINE         0x09
+#define MALLINCAM_AAF_GETFINE         0x0a
+#define MALLINCAM_AAF_SETCOARSE       0x0b
+#define MALLINCAM_AAF_GETCOARSE       0x0c
+#define MALLINCAM_AAF_SETBUZZER       0x0d
+#define MALLINCAM_AAF_GETBUZZER       0x0e
+#define MALLINCAM_AAF_SETBACKLASH     0x0f
+#define MALLINCAM_AAF_GETBACKLASH     0x10
+#define MALLINCAM_AAF_GETAMBIENTTEMP  0x12
+#define MALLINCAM_AAF_GETTEMP         0x14
+#define MALLINCAM_AAF_ISMOVING        0x16
+#define MALLINCAM_AAF_HALT            0x17
+#define MALLINCAM_AAF_SETMAXSTEP      0x1b
+#define MALLINCAM_AAF_GETMAXSTEP      0x1c
+#define MALLINCAM_AAF_RANGEMIN        0xfd  /* Range: min value */
+#define MALLINCAM_AAF_RANGEMAX        0xfe  /* Range: max value */
+#define MALLINCAM_AAF_RANGEDEF        0xff  /* Range: default value */
+MALLINCAM_API(HRESULT) Mallincam_AAF(HMallincam h, int action, int outVal, int* inVal);
 
 #if defined(_WIN32)
 /* Mallincam_put_TempTintInit is obsolete, recommend using Mallincam_AwbOnce. */
@@ -1349,13 +1405,13 @@ MALLINCAM_API(HRESULT)  Mallincam_get_VignetMidPointInt(HMallincam h, int* nMidP
 #if defined(_WIN32)
 MALLINCAM_API(HRESULT)  Mallincam_set_Name(HMallincam h, const char* name);
 MALLINCAM_API(HRESULT)  Mallincam_query_Name(HMallincam h, char name[64]);
-MALLINCAM_API(HRESULT)  Mallincam_put_Name(const wchar_t* id, const char* name);
-MALLINCAM_API(HRESULT)  Mallincam_get_Name(const wchar_t* id, char name[64]);
+MALLINCAM_API(HRESULT)  Mallincam_put_Name(const wchar_t* camId, const char* name);
+MALLINCAM_API(HRESULT)  Mallincam_get_Name(const wchar_t* camId, char name[64]);
 #else
 MALLINCAM_API(HRESULT)  Mallincam_set_Name(HMallincam h, const char* name);
 MALLINCAM_API(HRESULT)  Mallincam_query_Name(HMallincam h, char name[64]);
-MALLINCAM_API(HRESULT)  Mallincam_put_Name(const char* id, const char* name);
-MALLINCAM_API(HRESULT)  Mallincam_get_Name(const char* id, char name[64]);
+MALLINCAM_API(HRESULT)  Mallincam_put_Name(const char* camId, const char* name);
+MALLINCAM_API(HRESULT)  Mallincam_get_Name(const char* camId, char name[64]);
 #endif
 MALLINCAM_API(unsigned) Mallincam_EnumWithName(MallincamDeviceV2 pti[MALLINCAM_MAX]);
 

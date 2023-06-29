@@ -102,6 +102,18 @@ static bool set_fov(indigo_device *device, double angle, double width, double he
 	return false;
 }
 
+static bool clear_mount_alignment(indigo_device *device) {
+	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
+		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
+		if (item->sw.value && !strncmp(item->name, "Mount Agent", 11)) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_ALIGNMENT_RESET_PROPERTY_NAME, MOUNT_ALIGNMENT_RESET_ITEM_NAME, true);
+			return true;
+		}
+	}
+	indigo_send_message(device, "No mount agent selected");
+	return false;
+}
+
 static bool abort_mount_move(indigo_device *device) {
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
@@ -349,6 +361,10 @@ static void start_process(indigo_device *device) {
 	} else if (AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM->sw.value) {
 		indigo_set_switch(AGENT_PLATESOLVER_SYNC_PROPERTY, AGENT_PLATESOLVER_SYNC_CENTER_ITEM, true);
 	} else if (AGENT_PLATESOLVER_START_CALCULATE_PA_ERROR_ITEM->sw.value) {
+		if (!clear_mount_alignment(device)) {
+			process_failed(device, "Clear alignment points failed");
+			return;
+		}
 		indigo_set_switch(AGENT_PLATESOLVER_SYNC_PROPERTY, AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM, true);
 	} else if (AGENT_PLATESOLVER_START_RECALCULATE_PA_ERROR_ITEM->sw.value) {
 		indigo_set_switch(AGENT_PLATESOLVER_SYNC_PROPERTY, AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM, true);

@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Nncam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 53.22412.20230408</li></ul>
+<hr/><ul><li>Version: 54.22812.20230618</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -48,7 +48,7 @@
 </ul>
 <hr/><h1><font color="#0000FF">2. Introduction</font></h1><hr/>
 <p>Nncam cameras support various kinds of APIs (Application Program Interface), namely
- Native C/C++, <a href="#dotnet">.NET/C#/VB.NET</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
+ Native C/C++, <a href="#dotnet">.NET (C# &amp; VB.NET)</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
 The SDK zip file contains all of the necessary resources and information:</p>
 <ul><li>inc</li></ul>
 <blockquote>
@@ -65,27 +65,17 @@ The SDK zip file contains all of the necessary resources and information:</p>
      </blockquote></li>
      <li>x86
      <blockquote>
-       <p align="left">nncam.lib, lib file for x86<br/>
-         nncam.dll, dll file for x86<br/>
-         updatefw.exe, firmware upgrade tool<br/>
-         *.exe, some demo program exe files</p>
+       <p align="left"> nncam.dll, nncam.lib<br/>
+         updatefw.exe: firmware upgrade tool<br/>
+         *.exe: demo exe files</p>
      </blockquote></li>
      <li>x64
       <blockquote>
-        <p align="left">nncam.lib, lib file for x64<br/>
-         nncam.dll, dll file for x64<br/>
-         *.exe, some demo program exe files</p>
+        <p align="left">nncam.dll, nncam.lib<br/>
+         *.exe: demo exe files</p>
       </blockquote></li>
-	  <li>arm
-     <blockquote>
-       <p align="left">nncam.lib, lib file for arm<br/>
-         nncam.dll, dll file for arm<br/></p>
-     </blockquote></li>
-	  <li>arm64
-     <blockquote>
-       <p align="left">nncam.lib, lib file for arm64<br/>
-         nncam.dll, dll file for arm64<br/></p>
-     </blockquote></li>
+	  <li>arm: nncam.dll, nncam.lib</li>
+	  <li>arm64: nncam.dll, nncam.lib</li>
 	 <li>winrt
 		<blockquote>
 		DLL files for WinRT / UWP (Universal Windows Platform) / Windows Store App.<br/>
@@ -138,7 +128,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 		 <li>matlab: MatLab demo</li>
        </ul>
      </li></ul>
-<hr/><h1><font color="#0000FF">3. Concepts and terminology</font></h1><hr/>
+<hr/><h1><font color="#0000FF">3. Concepts &amp; Terminology</font></h1><hr/>
 <h2><font color="#0000FF">a. Modes for accessing image data: "Pull" Mode vs "Push" Mode</font></h2>
 <p>Nncam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
 <ul>
@@ -447,7 +437,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
         Please ensure that the callback funcion is simple and return quickly.<br/>
         Otherwise, in callback mode, NNCAM_OPTION_CALLBACK_THREAD can be setted to use a dedicated thread for callback.
     </p>
-	<p><strong>There are limitations in the callback context:</strong></p>
+	<p><strong>Due to the need to wait for the callback function to return when performing the following actions, the callback function context has the following limitations:</strong></p>
 	<p><strong>(a) Do NOT call Nncam_Stop and Nncam_Close in this callback function, otherwise, deadlocks.</strong></p>
 	<p><strong>(b) <a id="wrongthread1">Do NOT call Nncam_put_Option with NNCAM_OPTION_TRIGGER, NNCAM_OPTION_BITDEPTH, NNCAM_OPTION_PIXEL_FORMAT, NNCAM_OPTION_BINNING, NNCAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
 	<p><strong>(c) <a id="wrongthread2">Do NOT call Nncam_put_Roi, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
@@ -457,7 +447,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <p>If the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</p> 
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_EnumV2</font></h2>
-    <p><strong>Return value:</strong> non-negative integer, enumerated camera number</p>
+    <p><strong>Return value: </strong> non-negative integer, enumerated camera number</p>
     <p><strong>Parameters:</strong></p>
     	<blockquote>
     		<p>NncamDeviceV2 arr[NNCAM_MAX]: NncamDeviceV2 buffer</p>
@@ -492,7 +482,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="49">flag</td>
+   <td width="8%" rowspan="50">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
@@ -671,7 +661,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </tr>
   <tr>
     <td>NNCAM_FLAG_FILTERWHEEL</td>
-    <td>filter wheel</td>
+    <td>astro filter wheel</td>
   </tr>
   <tr>
     <td>NNCAM_FLAG_GIGE</td>
@@ -688,6 +678,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <tr>
     <td>NNCAM_FLAG_25GIGE</td>
     <td>2.5 Gigabit GigE</td>
+  </tr>
+  <tr>
+    <td>NNCAM_FLAG_AUTOFOCUSER</td>
+    <td>astro auto focuser</td>
   </tr>
  <tr>
    <td width="8%">maxspeed</td>
@@ -710,7 +704,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 <p>(2) On the Android platform, if the camera cannot be enumerated, it is possible that NDK has been restricted from enumerating USB devices. See <a href="#androidopen">here</a>.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_HotPlug</font></h2>
-  <p><strong>Return value:</strong> NA</p>
+  <p><strong>Return value: </strong> NA</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>PNNCAM_HOTPLUG funHotPlug: callback function</p>
@@ -725,16 +719,24 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </blockquote>
   <p><strong>Remarks:</strong></p><blockquote>
   <p>This function is only available on macOS, Linux. To process the device plug in / pull out:</p><ul>
-  <li>On Windows, please refer to the MSDN(<a href="https://learn.microsoft.com/en-us/windows/win32/devio/device-management" target="_blank">Device Management</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal" target="_blank">Detecting Media Insertion or Removal</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/processing-a-request-to-remove-a-device" target="_blank">Processing a Request to Remove a Device</a>).</li>
+  <li><a id="hotplugnotify"><object>On Windows, please refer to the MSDN(<a href="https://learn.microsoft.com/en-us/windows/win32/devio/device-management" target="_blank">Device Management</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal" target="_blank">Detecting Media Insertion or Removal</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/processing-a-request-to-remove-a-device" target="_blank">Processing a Request to Remove a Device</a>).</object></a></li>
   <li>On Android, please refer <a href="https://developer.android.com/guide/topics/connectivity/usb/host" target="_blank">here</a></li>
   <li>On Linux/macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Nncam_EnumV2(...) again to enum the cameras.</li>
   <li>On macOS, IONotificationPortCreate series APIs can also be used as an alternative.</li>
   </ul>
-  <p>Recommendation: for better rubustness, when notify of device insertion arrives, don't open handle of this device immediately, but open it <b>after delaying a short time (e.g., 200 milliseconds)</b>.</p>
 </blockquote>
 </li></ul>
+<ul><li><h2><font color="#0000FF"><a id="apigige">Nncam_GigeEnable</a></font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+		<blockquote>
+			<p>PNNCAM_HOTPLUG funHotPlug: callback function, used to notify GigE cameras online/offline. If online/offline notifications are not required, this callback function can be set to NULL.</p>
+			<p>void* ctxHotPlug: callback context</p>
+		</blockquote>
+    <p><strong>Remarks:</strong> Initialize support for GigE cameras, it only needs to be called once when the process starts.</p>
+</li></ul>
 <ul><li><h2><font color="#0000FF"><a id="apiopen">Nncam_Open</a></font></h2>
-  <p><strong>Return value:</strong> HNncam handle. Return NULL when fails (Such as the device has been pulled out).</p>
+  <p><strong>Return value: </strong> HNncam handle. Return NULL when fails (Such as the device has been pulled out).</p>
   <p><strong>Parameters:</strong></p>
   	<blockquote>
   		<p>id: Nncam camera instance, enumerated by Nncam_EnumV2. <strong>If id is NULL, Nncam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Nncam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
@@ -805,7 +807,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
 <p>3. Nncam_Open/Close, Start/Stop are relatively heavyweight calls, <strong>frequent operation is not recommended unless necessary</strong>.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_Close</font></h2>
-    <p><strong>Return value:</strong> void</p>
+    <p><strong>Return value: </strong> void</p>
     <p><strong>Parameters:</strong></p>
 		<blockquote>
 			<p>HNncam h: camera handle</p>
@@ -813,7 +815,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
     <p><strong>Remarks:</strong> close the camera. After the handle is closed, never use the HNncam handle any more.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_StartPullModeWithWndMsg<br/>Nncam_StartPullModeWithCallback</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -831,7 +833,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="infov2">Nncam_PullImageV3<br/>Nncam_PullImageV2<br/>Nncam_PullStillImageV2<br/>Nncam_PullImageWithRowPitchV2<br/>Nncam_PullStillImageWithRowPitchV2</a><br/>
 			Nncam_PullImage<br/>Nncam_PullStillImage<br/><a id="rowpitch1">Nncam_PullImageWithRowPitch</a><br/><a id="rowpitch2">Nncam_PullStillImageWithRowPitch</a></font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote><p>HNncam h: camera instance handle</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
@@ -945,7 +947,7 @@ typedef struct {
 </table></div></blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_StartPushModeV4<br/>Nncam_StartPushModeV3</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle.</p>
@@ -966,7 +968,7 @@ typedef struct {
   <p><strong>Remarks:</strong> start camera instance.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_Stop</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     	<blockquote>
     		<p>HNncam handle</p>
@@ -979,7 +981,7 @@ typedef struct {
     </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_Pause</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     	<blockquote>
     		<p>HNncam h: camera instance handle</p>
@@ -988,7 +990,7 @@ typedef struct {
     <p><strong>Remarks:</strong> temporarily pause the video stream</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_SnapN<br/>Nncam_SnapR<br/>Nncam_Snap</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -1008,7 +1010,7 @@ typedef struct {
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_Trigger</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure.</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -1021,7 +1023,7 @@ typedef struct {
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_Size<br/>Nncam_get_Size<br/>Nncam_put_eSize<br/>Nncam_get_eSize</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1039,7 +1041,7 @@ typedef struct {
         </blockquote>
 </li></ul>
 <ul><li><h2><a id="roi"><font color="#0000FF">Nncam_put_Roi<br/>Nncam_get_Roi</font></a></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure.</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1056,7 +1058,7 @@ typedef struct {
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_ResolutionNumber<br/>Nncam_get_Resolution</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1069,7 +1071,7 @@ typedef struct {
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_RawFormat</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -1117,7 +1119,7 @@ typedef struct {
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_Option<br/>Nncam_get_Option</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -1139,12 +1141,6 @@ typedef struct {
         <td>0</td>
         <td><b>No</b><br/>
           (The return value is E_UNEXPECTED when set this option while camera is running)</td>
-      </tr>
-      <tr>
-        <td><a id="rawo">NNCAM_OPTION_ISP</a></td>
-        <td>Hardware ISP: 1 =&gt; on, 0 =&gt; off</td>
-        <td>1</td>
-        <td>Yes</td>
       </tr>
       <tr>
       	<td>NNCAM_OPTION_BITDEPTH</td>
@@ -1592,8 +1588,20 @@ typedef struct {
 		<td>Yes</td>
       </tr>
       <tr>
+        <td>NNCAM_OPTION_OVERCLOCK_MAX</td>
+        <td>maximum overclock</td>
+		<td>enable (1)</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>NNCAM_OPTION_OVERCLOCK</td>
+        <td>overclock</td>
+		<td>enable (0)</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td>NNCAM_OPTION_CHAMBER_HT</td>
-        <td>get chamber humidity & temperature:<br/>
+        <td>get chamber humidity &amp; temperature:<br/>
         high 16 bits: humidity, in 0.1%, such as: 325 means humidity is 32.5%<br/>
         low 16 bits: temperature, in 0.1 degrees Celsius, such as: 32 means 3.2 degrees Celsius</td>
 		<td>NA</td>
@@ -1601,7 +1609,7 @@ typedef struct {
       </tr>
       <tr>
         <td>NNCAM_OPTION_ENV_HT</td>
-        <td>get environment humidity & temperature</td>
+        <td>get environment humidity &amp; temperature</td>
 		<td>NA</td>
 		<td>NA</td>
       </tr>
@@ -1752,6 +1760,15 @@ typedef struct {
       	<td>NA</td>
       </tr>
       <tr>
+      	<td>NNCAM_OPTION_GIGETIMEOUT</td>
+      	<td>For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive. If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection. When the application is stopped by the debugger, the application cannot create the heartbeat signals.<br/>
+		0 =&gt; auto: when the camera is opened, disable if debugger is present or enable if no debugger is present<br/>
+		1 =&gt; enable<br/>
+		2 =&gt; disable</td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
       	<td>NNCAM_OPTION_FILTERWHEEL_SLOT</td>
       	<td>filter wheel slot number</td>
       	<td>7</td>
@@ -1781,7 +1798,7 @@ typedef struct {
 </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="realtime">Nncam_put_RealTime<br/>Nncam_get_RealTime</a></font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1798,7 +1815,7 @@ typedef struct {
 <ul><li><h2><font color="#0000FF">Nncam_get_AutoExpoEnable<br/>Nncam_put_AutoExpoEnable<br/>Nncam_get_AutoExpoTarget<br/>
 Nncam_put_AutoExpoTarget<br/>Nncam_put_MaxAutoExpoTimeAGain<br/>Nncam_put_AutoExpoRange<br/>Nncam_get_AutoExpoRange<br/>
 Nncam_get_MaxAutoExpoTimeAGain<br/>Nncam_put_MinAutoExpoTimeAGain<br/>Nncam_get_MinAutoExpoTimeAGain</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1813,7 +1830,7 @@ Nncam_get_MaxAutoExpoTimeAGain<br/>Nncam_put_MinAutoExpoTimeAGain<br/>Nncam_get_
     <p><strong>Remarks:</strong> If auto exposure is enabled, the exposure time and gain are controlled by software to make the average brightness of the target rectangle as close as possible to the auto exposure target. The auto exposure target value is the target brightness of the target rectangle (see Nncam_put_AEAuxRect, Nncam_get_AEAuxRect).</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_ExpoTime<br/>Nncam_put_ExpoTime<br/>Nncam_get_ExpTimeRange<br/>Nncam_get_RealExpoTime</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1823,7 +1840,7 @@ Nncam_get_MaxAutoExpoTimeAGain<br/>Nncam_put_MinAutoExpoTimeAGain<br/>Nncam_get_
   <p><strong>Remarks:</strong> exposure time related. Nncam_get_RealExpoTime get the real exposure time based on 50HZ/60HZ.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_ExpoAGain<br/>Nncam_put_ExpoAGain<br/>Nncam_get_ExpoAGainRange</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1834,7 +1851,7 @@ Nncam_get_MaxAutoExpoTimeAGain<br/>Nncam_put_MinAutoExpoTimeAGain<br/>Nncam_get_
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_Hue<br/>Nncam_get_Hue<br/>Nncam_put_Saturation<br/>Nncam_get_Saturation<br/>
 Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_put_Contrast<br/>Nncam_get_Gamma<br/>Nncam_put_Gamma</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HNncam h: camera instance handle</p>
@@ -1842,7 +1859,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> set or get hue, saturation, brightness, contrast and gamma.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_Chrome<br/>Nncam_put_Chrome</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1851,12 +1868,12 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> color or monochromatic mode</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_VFlip<br/>Nncam_put_VFlip<br/>Nncam_get_HFlip<br/>Nncam_put_HFlip</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong> HNncam h: camera instance handle</p>
       <p><strong>Remarks:</strong> vertical/horizontal flip.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_Speed<br/>Nncam_get_Speed<br/>Nncam_get_MaxSpeed</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1866,7 +1883,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
 	For some cameras that support the so-called <a href="#precise">precise frame rate</a>, it is recommended to use precise frame rate control. In order to maintain compatibility, Speed is still valid, and the mapping mechanism is: MaxSpeed is 9 (10 levels in total), corresponding to the maximum frame rate when Bandwidth is from 10% to 100%. For example, set the speed to 8, which is equivalent to: The precise frame rate is set to the maximum frame rate with bandwith is set to 90%.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_HZ<br/>Nncam_get_HZ</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1875,7 +1892,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> set the light source power frequency</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_Temperature<br/>Nncam_put_Temperature</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure, E_NOTIMPL means not supporting get or set the temperature</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure, E_NOTIMPL means not supporting get or set the temperature</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1885,7 +1902,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
 	<blockquote><p>set the target temperature of the sensor, equivalent to Nncam_put_Option(, NNCAM_OPTION_TECTARGET, ).</p></blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_Mode<br/>Nncam_get_Mode</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -1894,7 +1911,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> set Bin mode or Skip mode. Cameras with higher resolution can support two sampling modes, one is Bin mode (Neighborhood averaging), the other is Skip (sampling extraction). In comparison, the former is with better image effect but decreasing frame rate while the latter is just the reverse.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_TempTint<br/>Nncam_get_TempTint</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HNncam h: camera instance handle</p>
@@ -1903,7 +1920,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_AwbOnce</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1912,7 +1929,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in Temp/Tint Mode. When the "auto white balance" completes, NNCAM_EVENT_TEMPTINT event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_WhiteBalanceGain<br/>Nncam_get_WhiteBalanceGain</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HNncam h: camera instance handle</p>
@@ -1921,7 +1938,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> set/get the RGB gain parameters of white balance (RGB Gain Mode, please see <a href="#wb">here</a>).</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_AwbInit</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1930,7 +1947,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, NNCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
 <ul><li><h2><a id="black"><font color="#0000FF">Nncam_AbbOnce</font></a></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure. For mono camera, return value always is E_NOTIMPL.</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1939,7 +1956,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> Call this function to perform one "auto black balance". When the "auto black balance" completes, NNCAM_EVENT_BLACK event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_BlackBalance<br/>Nncam_get_BlackBalance</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure.</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HNncam h: camera instance handle</p>
@@ -1948,7 +1965,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> set/get the RGB offset parameters of black balance.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_AWBAuxRect<br/>Nncam_get_AWBAuxRect<br/>Nncam_put_AEAuxRect<br/>Nncam_get_AEAuxRect<br/>Nncam_put_ABBAuxRect<br/>Nncam_get_ABBAuxRect</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
       	<p>HNncam h: camera instance handle</p>
@@ -1959,7 +1976,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   </li>
 </ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_MonoMode</font></h2>
-    <p><strong>Return value:</strong> S_OK means mono mode, S_FALSE means color mode</p>
+    <p><strong>Return value: </strong> S_OK means mono mode, S_FALSE means color mode</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>Nncam h: camera instance handle</p>
@@ -1967,7 +1984,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> grey camera or not, find the flag in NncamModelV2: NNCAM_FLAG_MONO</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_get_MaxBitDepth</font></h2>
-    <p><strong>Return value:</strong> the maximum bit depth this camera supports.</p>
+    <p><strong>Return value: </strong> the maximum bit depth this camera supports.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HNncam h: camera instance handle</p>
@@ -1976,7 +1993,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
 </li></ul>
 <ul><li>
     <h2><font color="#0000FF">Nncam_get_StillResolutionNumber<br/>Nncam_get_StillResolution</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -1987,7 +2004,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
 </li></ul>
 <ul><li>
     <h2><font color="#0000FF">Nncam_get_SerialNumber<br/>Nncam_get_FwVersion<br/>Nncam_get_HwVersion<br/>Nncam_get_ProductionDate<br/>Nncam_get_Revision</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2001,7 +2018,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
 </li></ul>
 <ul><li>
     <h2><font color="#0000FF">Nncam_get_PixelSize</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2011,7 +2028,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
 </li></ul>
 <ul><li>
     <h2><font color="#0000FF">Nncam_put_LEDState</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2022,7 +2039,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> One or more LED lights installed on some camera. This function controls the status of these lights.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_read_EEPROM<br/>Nncam_write_EEPROM</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2034,7 +2051,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> In some cameras, EEPROM is available for read and write. If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_IoControl</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2195,7 +2212,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
  <tr>
    <td>NNCAM_IOCONTROLTYPE_SET_USERVALUE</td>
    <td>&nbsp;</td>
- </tr> <tr>
+ </tr><tr>
    <td>NNCAM_IOCONTROLTYPE_GET_UART_ENABLE</td>
    <td>UART enable: 1 =&gt; on; 0 =&gt; off</td>
  </tr>
@@ -2257,7 +2274,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_read_UART<br/>Nncam_write_UART</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2268,14 +2285,14 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_FfcOnce<br/>Nncam_DfcOnce</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_FfcExport<br/>Nncam_FfcImport<br/>Nncam_DfcExport<br/>Nncam_DfcImport</font></h2>
-  <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2284,7 +2301,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Remarks:</strong> Export or import *.dfc or *.ffc file.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_LevelRangeAuto</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
       	<p>HNncam h: camera instance handle</p>
@@ -2292,7 +2309,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
       <p><strong>Remarks:</strong> auto Level Range.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_LevelRange<br/>Nncam_get_LevelRange</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -2301,7 +2318,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> level range related.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="levelrangev2">Nncam_put_LevelRangeV2<br/>Nncam_get_LevelRangeV2</a></font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HNncam h: camera instance handle</p>
@@ -2332,7 +2349,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> level range related.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_put_Demosaic</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>  
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>  
     <p><strong>Parameters:</strong></p><blockquote><p>funDemosaic: To replace the builtin demosaic function</p>
     <blockquote>
     <table width="100%" border="0" bgcolor="#B0D0B0">
@@ -2344,7 +2361,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
 	<p>ctxDemosaic: callback context</p></blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_Update</font></h2>
-    <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>camId: camera ID</p>
@@ -2354,7 +2371,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> firmware update. Please do not unplug the camera or lost power during the upgrade process, this is very very important. Once an unplugging or power outage occurs during the upgrade process, the camera will no longer be available and can only be returned to the factory for repair.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_Replug</font></h2>
-    <p><strong>Return value:</strong> &gt;0: the number of device has been replug; = 0: no device found; E_ACCESSDENIED: no UAC Administrator privileges</p>
+    <p><strong>Return value: </strong> &gt;0: the number of device has been replug; = 0: no device found; E_ACCESSDENIED: no UAC Administrator privileges</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>id: camera ID</p>
@@ -2362,7 +2379,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
     <p><strong>Remarks:</strong> simulate replug. for each device found, it will take about 3 seconds.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Nncam_GetHistogram</font></h2>
-      <p><strong>Return value:</strong> <a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera instance handle</p>
@@ -2423,10 +2440,22 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   </tr>
   <tr>
     <td>Green Gain</td>
-    </tr>
+  </tr>
   <tr>
     <td>Blue Gain</td>
-    </tr>
+  </tr>
+  <tr>
+    <td colspan="3">Black Balance</td>
+    <td>0~255(bitdepth=8)<br/>
+		0~1023(bitdepth=10)<br/>
+		0~4095(bitdepth=12)<br/>
+		0~16383(bitdepth=14)<br/>
+		0~65535(bitdepth=16)</td>
+    <td>0</td>
+    <td>Nncam_get_BlackBalance</td>
+    <td>Nncam_put_BlackBalance</td>
+    <td>Nncam_AbbOnce</td>
+  </tr>  
   <tr>
     <td colspan="2" rowspan="2">LevelRange</td>
 	<td>Software</td>
@@ -2483,12 +2512,12 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   </tr>
   <tr>
     <td colspan="3">Black Level</td>
-    <td>0~31 (bit depth=8)<br/>
-    				0~31 * 4 (bit depth=10)<br/>
-    				0~31 * 16 (bit depth=12)<br/>
-    				0~31 * 64 (bit depth=14)<br/>
-    				0~31 * 256 (bit depth=16)</td>
-    <td>&nbsp;</td>
+    <td>0~31 (bitdepth=8)<br/>
+    	0~31 * 4 (bitdepth=10)<br/>
+    	0~31 * 16 (bitdepth=12)<br/>
+    	0~31 * 64 (bitdepth=14)<br/>
+    	0~31 * 256 (bitdepth=16)</td>
+    <td>Model Specific</td>
     <td>Nncam_get_Option</td>
     <td>Nncam_put_Option</td>
     <td>&nbsp;</td>
@@ -2529,7 +2558,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   </tr>
   <tr>
     <td colspan="3">TEC Target</td>
-    <td>-300 ~ 400<br/>(-30℃ ~ 40℃)</td>
+    <td>-500 ~ 400<br/>(-50℃ ~ 40℃)</td>
     <td>Model Specific</td>
     <td colspan="2">NNCAM_OPTION_TECTARGET</td>
     <td>&nbsp;</td>
@@ -2537,7 +2566,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
  </table>
 </div>
 </li></ul>
-<hr/><h1><font color="#0000FF"><a id="dotnet">5. .NET and C# and VB.NET</a></font></h1><hr/>
+<hr/><h1><font color="#0000FF"><a id="dotnet">5. .NET (C# &amp; VB.NET)</a></font></h1><hr/>
 <p>Nncam does support .NET development environment (C# and VB.NET).</p>
 <p>nncam.cs use P/Invoke to call into nncam.dll. Copy nncam.cs to your C# project, please reference samples.</p>
 <p>Please pay attation to that <strong>the object of the C# class Nncam. Nncam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new Nncam</strong> (The constructor is private on purpose).</p>
@@ -2578,10 +2607,10 @@ public bool Snap(uint nResolutionIndex)
       </tr>
 	  <tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="7">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="15">C++</td>
-		<td rowspan="7">&nbsp;</td>
-		<td rowspan="7">console</td>
+		<td rowspan="8">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="16">C++</td>
+		<td rowspan="8">&nbsp;</td>
+		<td rowspan="8">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr>
 	  <tr>
@@ -2606,7 +2635,11 @@ public bool Snap(uint nResolutionIndex)
 	  </tr>
 	  <tr>
 		<td colspan="2">demoraw</td>
-		<td>raw data and snap still image, about 120 lines of code. <a href="./images/demoraw.png">snapshot</a>.</td>
+		<td>raw data, snap still image and save raw data to *.raw files, about 140 lines of code. <a href="./images/demoraw.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demostillraw</td>
+		<td>snap still raw image and save to *.raw files, about 140 lines of code</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">demoqt</td>
@@ -2618,8 +2651,8 @@ public bool Snap(uint nResolutionIndex)
 	  <tr>
 		<td colspan="2">democpp</td>
 		<td rowspan="7">Win32</td>
-		<td rowspan="5">ATL/WTL</td>
-		<td><a href="./images/democpp.png">snapshot</a>. demonstrates to enumerate device, open device, video preview, image capture, preview resolution, trigger, image saving multi-format (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control, etc. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl" target="_blank">http://sourceforge.net/projects/wtl</a></td>
+		<td rowspan="5">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>
+		<td><a href="./images/democpp.png">snapshot</a>. demonstrates to enumerate device (Respone to <a href="#hotplugnotify">device plugin/unplug notifications</a>), <a href="#apigige">initialize support GigE</a>, open device, video preview, image capture, preview resolution, trigger, image saving multi-format (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control, read write EEPROM/FLASH, etc. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl" target="_blank">http://sourceforge.net/projects/wtl</a></td>
 	  </tr>
 	  <tr>
 		<td colspan="2">democallback</td>
@@ -2685,7 +2718,7 @@ public bool Snap(uint nResolutionIndex)
 		<td>simplest</td>
 		<td rowspan="5">Win32<br/>Linux<br/>macOS</td>
 		<td rowspan="3">Java</td>
-		<td rowspan="3">jna</td>
+		<td rowspan="3"><a href="http://sourceforge.net/projects/wtl" target="_blank">jna</a></td>
 		<td>console</td>
 		<td>simplest java sample. IntelliJ project</td>
 	  </tr>
@@ -2738,6 +2771,7 @@ public bool Snap(uint nResolutionIndex)
 	</table>
 </div>
 <hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v54: Add support to GigE. Please see <a href="#apigige">here</a></p>
 <p>v53: Add NncamFrameInfoV3, Nncam_PullImageV3, Nncam_StartPushModeV4</p>
 <p>v52: Android Java side transfer file descriptor to <a href="#apiopen">Nncam_Open</a> to open camera. Please see <a href="#androidopen">here</a></p>
 <p>v51: Add support auto exposure "once" mode. Please see <a href="#aexpo">here</a></p>
