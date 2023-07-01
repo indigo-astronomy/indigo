@@ -882,8 +882,8 @@ static void handle_advanced_property(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	res = POAGetConfigsCount(id, &ctrl_count);
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res) {
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetNumOfControls(%d) > %d", id, res);
 		POA_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, POA_ADVANCED_PROPERTY, NULL);
@@ -894,7 +894,9 @@ static void handle_advanced_property(indigo_device *device) {
 	POABool unused;
 	POAConfigValue value;
 	for (int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		POAGetConfigAttributes(id, ctrl_no, &ctrl_caps);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		for (int i = 0; i < POA_ADVANCED_PROPERTY->count; i++) {
 			indigo_item *item = POA_ADVANCED_PROPERTY->items + i;
 			if (!strncmp(ctrl_caps.szConfName, item->name, INDIGO_NAME_SIZE)) {
@@ -904,7 +906,9 @@ static void handle_advanced_property(indigo_device *device) {
 					value.floatValue = item->number.value;
 				else
 					value.intValue = item->number.value;
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POASetConfig(id, ctrl_caps.configID, value, POA_FALSE);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					POA_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 					if (ctrl_caps.valueType == VAL_BOOL)
@@ -921,7 +925,9 @@ static void handle_advanced_property(indigo_device *device) {
 					else
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, %s, %d)", id, ctrl_caps.szConfName, value.intValue);
 				}
+				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POAGetConfig(id, ctrl_caps.configID, &value, &unused);
+				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					POA_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, %s) > %d", id, ctrl_caps.szConfName, res);
@@ -941,7 +947,6 @@ static void handle_advanced_property(indigo_device *device) {
 		}
 	}
 	indigo_update_property(device, POA_ADVANCED_PROPERTY, NULL);
-	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 }
 
 static indigo_result init_camera_property(indigo_device *device, POAConfigAttributes ctrl_caps) {
