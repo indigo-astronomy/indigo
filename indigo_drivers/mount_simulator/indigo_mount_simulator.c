@@ -177,6 +177,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_HOME_POSITION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_HOME
 		MOUNT_HOME_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
+		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES

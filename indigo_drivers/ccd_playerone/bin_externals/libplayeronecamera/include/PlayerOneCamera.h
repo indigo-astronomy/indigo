@@ -119,10 +119,11 @@ typedef enum _POAConfig                 ///< Camera Config Definition
     POA_FLIP_VERT,                      ///< flip the image vertically, Note: set this config(POASetConfig), the 'confValue' will be ignored, read-write, valueType == VAL_BOOL
     POA_FLIP_BOTH,                      ///< flip the image horizontally and vertically, Note: set this config(POASetConfig), the 'confValue' will be ignored, read-write, valueType == VAL_BOOL
     POA_FRAME_LIMIT,                    ///< Frame rate limit, the range:[0, 2000], 0 means no limit, read-write, valueType == VAL_INT
-    POA_HQI,                            ///< High quality image, for those without DDR camera(guide camera), if set POA_TRUE, this will reduce the waviness and stripe of the image,
+    POA_HQI,                            ///< High Quality Image, for those without DDR camera(guide camera), if set POA_TRUE, this will reduce the waviness and stripe of the image,
                                         ///< but frame rate may go down, note: this config has no effect on those cameras that with DDR. read-write, valueType == VAL_BOOL
     POA_USB_BANDWIDTH_LIMIT,            ///< USB bandwidth limit, read-write, valueType == VAL_INT
-    POA_PIXEL_BIN_SUM                   ///< take the sum of pixels after binning, POA_TRUE is sum and POA_FLASE is average, default is POA_FLASE, read-write, valueType == VAL_BOOL
+    POA_PIXEL_BIN_SUM,                  ///< take the sum of pixels after binning, POA_TRUE is sum and POA_FLASE is average, default is POA_FLASE, read-write, valueType == VAL_BOOL
+    POA_MONO_BIN                        ///< only for color camera, when set to POA_TRUE, pixel binning will use neighbour pixels and image after binning will lose the bayer pattern, read-write, valueType == VAL_BOOL
 
 } POAConfig;
 
@@ -772,6 +773,9 @@ POACAMERA_API int POAGetAPIVersion();
  */
 POACAMERA_API const char* POAGetSDKVersion();
 
+
+/**this function for matlab**/
+POACAMERA_API  POAErrors POASetConfig_M(int nCameraID, POAConfig confID, double cfgVal, POABool isAuto);
 
 #ifdef __cplusplus
 }
