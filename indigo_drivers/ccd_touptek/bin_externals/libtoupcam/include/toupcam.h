@@ -1,7 +1,7 @@
 #ifndef __toupcam_h__
 #define __toupcam_h__
 
-/* Version: 53.22412.20230409 */
+/* Version: 54.22812.20230618 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -158,11 +158,12 @@ typedef struct Toupcam_t { int unused; } *HToupcam, *HToupCam;
 #define TOUPCAM_FLAG_LEVELRANGE_HARDWARE 0x0000020000000000  /* hardware level range, put(get)_LevelRangeV2 */
 #define TOUPCAM_FLAG_EVENT_HARDWARE      0x0000040000000000  /* hardware event, such as exposure start & stop */
 #define TOUPCAM_FLAG_LIGHTSOURCE         0x0000080000000000  /* light source */
-#define TOUPCAM_FLAG_FILTERWHEEL         0x0000100000000000  /* filter wheel */
+#define TOUPCAM_FLAG_FILTERWHEEL         0x0000100000000000  /* astro filter wheel */
 #define TOUPCAM_FLAG_GIGE                0x0000200000000000  /* 1 Gigabit GigE */
 #define TOUPCAM_FLAG_10GIGE              0x0000400000000000  /* 10 Gigabit GigE */
 #define TOUPCAM_FLAG_5GIGE               0x0000800000000000  /* 5 Gigabit GigE */
 #define TOUPCAM_FLAG_25GIGE              0x0001000000000000  /* 2.5 Gigabit GigE */
+#define TOUPCAM_FLAG_AUTOFOCUSER         0x0002000000000000  /* astro auto focuser */
 
 #define TOUPCAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define TOUPCAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
@@ -217,7 +218,7 @@ typedef struct Toupcam_t { int unused; } *HToupcam, *HToupCam;
 #define TOUPCAM_DENOISE_DEF              0       /* denoise */
 #define TOUPCAM_DENOISE_MIN              0       /* denoise */
 #define TOUPCAM_DENOISE_MAX              100     /* denoise */
-#define TOUPCAM_TEC_TARGET_MIN           (-300)  /* TEC target: -30.0 degrees Celsius */
+#define TOUPCAM_TEC_TARGET_MIN           (-500)  /* TEC target: -50.0 degrees Celsius */
 #define TOUPCAM_TEC_TARGET_DEF           0       /* 0.0 degrees Celsius */
 #define TOUPCAM_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define TOUPCAM_HEARTBEAT_MIN            100     /* millisecond */
@@ -277,7 +278,7 @@ typedef struct {
 } ToupcamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.22412.20230409
+    get the version of this dll/so/dylib, which is: 54.22812.20230618
 */
 #if defined(_WIN32)
 TOUPCAM_API(const wchar_t*)   Toupcam_Version();
@@ -298,14 +299,14 @@ TOUPCAM_API(const char*)      Toupcam_Version();
 */
 TOUPCAM_API(unsigned) Toupcam_EnumV2(ToupcamDeviceV2 arr[TOUPCAM_MAX]);
 
-/* use the id of ToupcamDeviceV2, which is enumerated by Toupcam_EnumV2.
-    if id is NULL, Toupcam_Open will open the first enumerated camera.
+/* use the camId of ToupcamDeviceV2, which is enumerated by Toupcam_EnumV2.
+    if camId is NULL, Toupcam_Open will open the first enumerated camera.
     For the issue of opening the camera on Android, please refer to the documentation
 */
 #if defined(_WIN32)
-TOUPCAM_API(HToupcam) Toupcam_Open(const wchar_t* id);
+TOUPCAM_API(HToupcam) Toupcam_Open(const wchar_t* camId);
 #else
-TOUPCAM_API(HToupcam) Toupcam_Open(const char* id);
+TOUPCAM_API(HToupcam) Toupcam_Open(const char* camId);
 #endif
 
 /*
@@ -549,6 +550,15 @@ typedef void (__stdcall* PITOUPCAM_HISTOGRAM_CALLBACK)(const float aHistY[256], 
 typedef void (__stdcall* PITOUPCAM_CHROME_CALLBACK)(void* ctxChrome);
 typedef void (__stdcall* PITOUPCAM_PROGRESS)(int percent, void* ctxProgress);
 #endif
+/*
+* nFlag & 0x00008000: mono or color
+* nFlag & 0x0f: bitdepth
+* so the size of aHist is:
+    int arraySize = 1 << (nFlag & 0x0f);
+    if ((nFlag & 0x00008000) == 0)
+        arraySize *= 3;
+*/
+typedef void (__stdcall* PITOUPCAM_HISTOGRAM_CALLBACKV2)(const unsigned* aHist, unsigned nFlag, void* ctxHistogramV2);
 
 /*
 * bAutoExposure:
@@ -769,6 +779,7 @@ TOUPCAM_API(HRESULT)  Toupcam_get_LevelRangeV2(HToupcam h, unsigned short* pMode
 */
 TOUPCAM_API(HRESULT)  Toupcam_LevelRangeAuto(HToupcam h);  /* software level range */
 TOUPCAM_API(HRESULT)  Toupcam_GetHistogram(HToupcam h, PITOUPCAM_HISTOGRAM_CALLBACK funHistogram, void* ctxHistogram);
+TOUPCAM_API(HRESULT)  Toupcam_GetHistogramV2(HToupcam h, PITOUPCAM_HISTOGRAM_CALLBACKV2 funHistogramV2, void* ctxHistogramV2);
 
 /* led state:
     iLed: Led index, (0, 1, 2, ...)
@@ -905,7 +916,7 @@ TOUPCAM_API(HRESULT)  Toupcam_feed_Pipe(HToupcam h, unsigned pipeId);
 #define TOUPCAM_OPTION_LOW_NOISE              0x38       /* low noise mode (Higher signal noise ratio, lower frame rate): 1 => enable */
 #define TOUPCAM_OPTION_POWER                  0x39       /* get power consumption, unit: milliwatt */
 #define TOUPCAM_OPTION_GLOBAL_RESET_MODE      0x3a       /* global reset mode */
-#define TOUPCAM_OPTION_OPEN_USB_ERRORCODE     0x3b       /* get the open usb error code */
+#define TOUPCAM_OPTION_OPEN_ERRORCODE         0x3b       /* get the open camera error code */
 #define TOUPCAM_OPTION_FLUSH                  0x3d       /* 1 = hard flush, discard frames cached by camera DDR (if any)
                                                             2 = soft flush, discard frames cached by toupcam.dll (if any)
                                                             3 = both flush
@@ -978,7 +989,17 @@ TOUPCAM_API(HRESULT)  Toupcam_feed_Pipe(HToupcam h, unsigned pipeId);
                                                                 threshold: [1, 4095]
                                                                 0xffffffff => set to default
                                                          */
-#define TOUPCAM_OPTION_ISP                    0x59       /* hardware ISP: on => 1, off => 0 */
+#define TOUPCAM_OPTION_GIGETIMEOUT            0x5a       /* For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive.
+                                                            If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection.
+                                                            When the application is stopped by the debugger, the application cannot create the heartbeat signals
+                                                                0 => auto: when the camera is opened, disable if debugger is present or enable if no debugger is present
+                                                                1 => enable
+                                                                2 => disable
+                                                                default: auto
+                                                         */
+#define TOUPCAM_OPTION_EEPROM_SIZE            0x5b       /* get EEPROM size */
+#define TOUPCAM_OPTION_OVERCLOCK_MAX          0x5c       /* get overclock range: [0, max] */
+#define TOUPCAM_OPTION_OVERCLOCK              0x5d       /* overclock, default: 0 */
 
 /* pixel format */
 #define TOUPCAM_PIXELFORMAT_RAW8              0x00
@@ -1010,9 +1031,9 @@ TOUPCAM_API(HRESULT)  Toupcam_get_Roi(HToupcam h, unsigned* pxOffset, unsigned* 
     for each device found, it will take about 3 seconds
 */
 #if defined(_WIN32)
-TOUPCAM_API(HRESULT) Toupcam_Replug(const wchar_t* id);
+TOUPCAM_API(HRESULT) Toupcam_Replug(const wchar_t* camId);
 #else
-TOUPCAM_API(HRESULT) Toupcam_Replug(const char* id);
+TOUPCAM_API(HRESULT) Toupcam_Replug(const char* camId);
 #endif
 
 #ifndef __TOUPCAMAFPARAM_DEFINED__
@@ -1126,6 +1147,11 @@ TOUPCAM_API(HRESULT)  Toupcam_IoControl(HToupcam h, unsigned ioLineNumber, unsig
 #define TOUPCAM_FLASH_READ      0x04    /* read */
 #define TOUPCAM_FLASH_WRITE     0x05    /* write */
 #define TOUPCAM_FLASH_ERASE     0x06    /* erase */
+/* Flash:
+ action = TOUPCAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
+ addr = address
+ see democpp
+*/
 TOUPCAM_API(HRESULT)  Toupcam_rwc_Flash(HToupcam h, unsigned action, unsigned addr, unsigned len, void* pData);
 
 TOUPCAM_API(HRESULT)  Toupcam_write_UART(HToupcam h, const unsigned char* pData, unsigned nDataLen);
@@ -1148,10 +1174,10 @@ TOUPCAM_API(HRESULT)  Toupcam_Update(const wchar_t* camId, const wchar_t* filePa
 TOUPCAM_API(HRESULT)  Toupcam_Update(const char* camId, const char* filePath, PITOUPCAM_PROGRESS funProgress, void* ctxProgress);
 #endif
 
-TOUPCAM_API(HRESULT)  Toupcam_put_Linear(HToupcam h, const unsigned char* v8, const unsigned short* v16);
-TOUPCAM_API(HRESULT)  Toupcam_put_Curve(HToupcam h, const unsigned char* v8, const unsigned short* v16);
-TOUPCAM_API(HRESULT)  Toupcam_put_ColorMatrix(HToupcam h, const double v[9]);
-TOUPCAM_API(HRESULT)  Toupcam_put_InitWBGain(HToupcam h, const unsigned short v[3]);
+TOUPCAM_API(HRESULT)  Toupcam_put_Linear(HToupcam h, const unsigned char* v8, const unsigned short* v16); /* v8, v16 pointer must remains valid */
+TOUPCAM_API(HRESULT)  Toupcam_put_Curve(HToupcam h, const unsigned char* v8, const unsigned short* v16); /* v8, v16 pointer must remains valid */
+TOUPCAM_API(HRESULT)  Toupcam_put_ColorMatrix(HToupcam h, const double v[9]); /* null => revert to model default */
+TOUPCAM_API(HRESULT)  Toupcam_put_InitWBGain(HToupcam h, const unsigned short v[3]); /* null => revert to model default */
 
 /*
     get the frame rate: framerate (fps) = Frame * 1000.0 / nTime
@@ -1285,8 +1311,10 @@ TOUPCAM_API(HRESULT)  Toupcam_AwbOnePush(HToupcam h, PITOUPCAM_TEMPTINT_CALLBACK
 TOUPCAM_DEPRECATED
 TOUPCAM_API(HRESULT)  Toupcam_AbbOnePush(HToupcam h, PITOUPCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB);
 
+/* Initialize support for GigE cameras. If online/offline notifications are not required, the callback function can be set to NULL */
 typedef void (__stdcall* PTOUPCAM_HOTPLUG)(void* ctxHotPlug);
 TOUPCAM_API(HRESULT)  Toupcam_GigeEnable(PTOUPCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
+
 /*
 USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
@@ -1301,6 +1329,34 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 #if !defined(_WIN32) && !defined(__ANDROID__)
 TOUPCAM_API(void)   Toupcam_HotPlug(PTOUPCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
+
+/* AAF: Astro Auto Focuser */
+#define TOUPCAM_AAF_SETPOSITION     0x01
+#define TOUPCAM_AAF_GETPOSITION     0x02
+#define TOUPCAM_AAF_SETZERO         0x03
+#define TOUPCAM_AAF_GETZERO         0x04
+#define TOUPCAM_AAF_SETDIRECTION    0x05
+#define TOUPCAM_AAF_GETDIRECTION    0x06
+#define TOUPCAM_AAF_SETMAXINCREMENT 0x07
+#define TOUPCAM_AAF_GETMAXINCREMENT 0x08
+#define TOUPCAM_AAF_SETFINE         0x09
+#define TOUPCAM_AAF_GETFINE         0x0a
+#define TOUPCAM_AAF_SETCOARSE       0x0b
+#define TOUPCAM_AAF_GETCOARSE       0x0c
+#define TOUPCAM_AAF_SETBUZZER       0x0d
+#define TOUPCAM_AAF_GETBUZZER       0x0e
+#define TOUPCAM_AAF_SETBACKLASH     0x0f
+#define TOUPCAM_AAF_GETBACKLASH     0x10
+#define TOUPCAM_AAF_GETAMBIENTTEMP  0x12
+#define TOUPCAM_AAF_GETTEMP         0x14
+#define TOUPCAM_AAF_ISMOVING        0x16
+#define TOUPCAM_AAF_HALT            0x17
+#define TOUPCAM_AAF_SETMAXSTEP      0x1b
+#define TOUPCAM_AAF_GETMAXSTEP      0x1c
+#define TOUPCAM_AAF_RANGEMIN        0xfd  /* Range: min value */
+#define TOUPCAM_AAF_RANGEMAX        0xfe  /* Range: max value */
+#define TOUPCAM_AAF_RANGEDEF        0xff  /* Range: default value */
+TOUPCAM_API(HRESULT) Toupcam_AAF(HToupcam h, int action, int outVal, int* inVal);
 
 #if defined(_WIN32)
 /* Toupcam_put_TempTintInit is obsolete, recommend using Toupcam_AwbOnce. */
@@ -1349,13 +1405,13 @@ TOUPCAM_API(HRESULT)  Toupcam_get_VignetMidPointInt(HToupcam h, int* nMidPoint);
 #if defined(_WIN32)
 TOUPCAM_API(HRESULT)  Toupcam_set_Name(HToupcam h, const char* name);
 TOUPCAM_API(HRESULT)  Toupcam_query_Name(HToupcam h, char name[64]);
-TOUPCAM_API(HRESULT)  Toupcam_put_Name(const wchar_t* id, const char* name);
-TOUPCAM_API(HRESULT)  Toupcam_get_Name(const wchar_t* id, char name[64]);
+TOUPCAM_API(HRESULT)  Toupcam_put_Name(const wchar_t* camId, const char* name);
+TOUPCAM_API(HRESULT)  Toupcam_get_Name(const wchar_t* camId, char name[64]);
 #else
 TOUPCAM_API(HRESULT)  Toupcam_set_Name(HToupcam h, const char* name);
 TOUPCAM_API(HRESULT)  Toupcam_query_Name(HToupcam h, char name[64]);
-TOUPCAM_API(HRESULT)  Toupcam_put_Name(const char* id, const char* name);
-TOUPCAM_API(HRESULT)  Toupcam_get_Name(const char* id, char name[64]);
+TOUPCAM_API(HRESULT)  Toupcam_put_Name(const char* camId, const char* name);
+TOUPCAM_API(HRESULT)  Toupcam_get_Name(const char* camId, char name[64]);
 #endif
 TOUPCAM_API(unsigned) Toupcam_EnumWithName(ToupcamDeviceV2 pti[TOUPCAM_MAX]);
 

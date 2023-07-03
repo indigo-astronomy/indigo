@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 53.22412.20230409 */
+/* Version: 54.22812.20230618 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -158,11 +158,12 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_FLAG_LEVELRANGE_HARDWARE 0x0000020000000000  /* hardware level range, put(get)_LevelRangeV2 */
 #define OGMACAM_FLAG_EVENT_HARDWARE      0x0000040000000000  /* hardware event, such as exposure start & stop */
 #define OGMACAM_FLAG_LIGHTSOURCE         0x0000080000000000  /* light source */
-#define OGMACAM_FLAG_FILTERWHEEL         0x0000100000000000  /* filter wheel */
+#define OGMACAM_FLAG_FILTERWHEEL         0x0000100000000000  /* astro filter wheel */
 #define OGMACAM_FLAG_GIGE                0x0000200000000000  /* 1 Gigabit GigE */
 #define OGMACAM_FLAG_10GIGE              0x0000400000000000  /* 10 Gigabit GigE */
 #define OGMACAM_FLAG_5GIGE               0x0000800000000000  /* 5 Gigabit GigE */
 #define OGMACAM_FLAG_25GIGE              0x0001000000000000  /* 2.5 Gigabit GigE */
+#define OGMACAM_FLAG_AUTOFOCUSER         0x0002000000000000  /* astro auto focuser */
 
 #define OGMACAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define OGMACAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
@@ -217,7 +218,7 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_DENOISE_DEF              0       /* denoise */
 #define OGMACAM_DENOISE_MIN              0       /* denoise */
 #define OGMACAM_DENOISE_MAX              100     /* denoise */
-#define OGMACAM_TEC_TARGET_MIN           (-300)  /* TEC target: -30.0 degrees Celsius */
+#define OGMACAM_TEC_TARGET_MIN           (-500)  /* TEC target: -50.0 degrees Celsius */
 #define OGMACAM_TEC_TARGET_DEF           0       /* 0.0 degrees Celsius */
 #define OGMACAM_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define OGMACAM_HEARTBEAT_MIN            100     /* millisecond */
@@ -277,7 +278,7 @@ typedef struct {
 } OgmacamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 53.22412.20230409
+    get the version of this dll/so/dylib, which is: 54.22812.20230618
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -298,14 +299,14 @@ OGMACAM_API(const char*)      Ogmacam_Version();
 */
 OGMACAM_API(unsigned) Ogmacam_EnumV2(OgmacamDeviceV2 arr[OGMACAM_MAX]);
 
-/* use the id of OgmacamDeviceV2, which is enumerated by Ogmacam_EnumV2.
-    if id is NULL, Ogmacam_Open will open the first enumerated camera.
+/* use the camId of OgmacamDeviceV2, which is enumerated by Ogmacam_EnumV2.
+    if camId is NULL, Ogmacam_Open will open the first enumerated camera.
     For the issue of opening the camera on Android, please refer to the documentation
 */
 #if defined(_WIN32)
-OGMACAM_API(HOgmacam) Ogmacam_Open(const wchar_t* id);
+OGMACAM_API(HOgmacam) Ogmacam_Open(const wchar_t* camId);
 #else
-OGMACAM_API(HOgmacam) Ogmacam_Open(const char* id);
+OGMACAM_API(HOgmacam) Ogmacam_Open(const char* camId);
 #endif
 
 /*
@@ -549,6 +550,15 @@ typedef void (__stdcall* PIOGMACAM_HISTOGRAM_CALLBACK)(const float aHistY[256], 
 typedef void (__stdcall* PIOGMACAM_CHROME_CALLBACK)(void* ctxChrome);
 typedef void (__stdcall* PIOGMACAM_PROGRESS)(int percent, void* ctxProgress);
 #endif
+/*
+* nFlag & 0x00008000: mono or color
+* nFlag & 0x0f: bitdepth
+* so the size of aHist is:
+    int arraySize = 1 << (nFlag & 0x0f);
+    if ((nFlag & 0x00008000) == 0)
+        arraySize *= 3;
+*/
+typedef void (__stdcall* PIOGMACAM_HISTOGRAM_CALLBACKV2)(const unsigned* aHist, unsigned nFlag, void* ctxHistogramV2);
 
 /*
 * bAutoExposure:
@@ -769,6 +779,7 @@ OGMACAM_API(HRESULT)  Ogmacam_get_LevelRangeV2(HOgmacam h, unsigned short* pMode
 */
 OGMACAM_API(HRESULT)  Ogmacam_LevelRangeAuto(HOgmacam h);  /* software level range */
 OGMACAM_API(HRESULT)  Ogmacam_GetHistogram(HOgmacam h, PIOGMACAM_HISTOGRAM_CALLBACK funHistogram, void* ctxHistogram);
+OGMACAM_API(HRESULT)  Ogmacam_GetHistogramV2(HOgmacam h, PIOGMACAM_HISTOGRAM_CALLBACKV2 funHistogramV2, void* ctxHistogramV2);
 
 /* led state:
     iLed: Led index, (0, 1, 2, ...)
@@ -905,7 +916,7 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
 #define OGMACAM_OPTION_LOW_NOISE              0x38       /* low noise mode (Higher signal noise ratio, lower frame rate): 1 => enable */
 #define OGMACAM_OPTION_POWER                  0x39       /* get power consumption, unit: milliwatt */
 #define OGMACAM_OPTION_GLOBAL_RESET_MODE      0x3a       /* global reset mode */
-#define OGMACAM_OPTION_OPEN_USB_ERRORCODE     0x3b       /* get the open usb error code */
+#define OGMACAM_OPTION_OPEN_ERRORCODE         0x3b       /* get the open camera error code */
 #define OGMACAM_OPTION_FLUSH                  0x3d       /* 1 = hard flush, discard frames cached by camera DDR (if any)
                                                             2 = soft flush, discard frames cached by ogmacam.dll (if any)
                                                             3 = both flush
@@ -978,7 +989,17 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
                                                                 threshold: [1, 4095]
                                                                 0xffffffff => set to default
                                                          */
-#define OGMACAM_OPTION_ISP                    0x59       /* hardware ISP: on => 1, off => 0 */
+#define OGMACAM_OPTION_GIGETIMEOUT            0x5a       /* For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive.
+                                                            If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection.
+                                                            When the application is stopped by the debugger, the application cannot create the heartbeat signals
+                                                                0 => auto: when the camera is opened, disable if debugger is present or enable if no debugger is present
+                                                                1 => enable
+                                                                2 => disable
+                                                                default: auto
+                                                         */
+#define OGMACAM_OPTION_EEPROM_SIZE            0x5b       /* get EEPROM size */
+#define OGMACAM_OPTION_OVERCLOCK_MAX          0x5c       /* get overclock range: [0, max] */
+#define OGMACAM_OPTION_OVERCLOCK              0x5d       /* overclock, default: 0 */
 
 /* pixel format */
 #define OGMACAM_PIXELFORMAT_RAW8              0x00
@@ -1010,9 +1031,9 @@ OGMACAM_API(HRESULT)  Ogmacam_get_Roi(HOgmacam h, unsigned* pxOffset, unsigned* 
     for each device found, it will take about 3 seconds
 */
 #if defined(_WIN32)
-OGMACAM_API(HRESULT) Ogmacam_Replug(const wchar_t* id);
+OGMACAM_API(HRESULT) Ogmacam_Replug(const wchar_t* camId);
 #else
-OGMACAM_API(HRESULT) Ogmacam_Replug(const char* id);
+OGMACAM_API(HRESULT) Ogmacam_Replug(const char* camId);
 #endif
 
 #ifndef __OGMACAMAFPARAM_DEFINED__
@@ -1126,6 +1147,11 @@ OGMACAM_API(HRESULT)  Ogmacam_IoControl(HOgmacam h, unsigned ioLineNumber, unsig
 #define OGMACAM_FLASH_READ      0x04    /* read */
 #define OGMACAM_FLASH_WRITE     0x05    /* write */
 #define OGMACAM_FLASH_ERASE     0x06    /* erase */
+/* Flash:
+ action = OGMACAM_FLASH_XXXX: read, write, erase, query total size, query read/write block size, query erase block size
+ addr = address
+ see democpp
+*/
 OGMACAM_API(HRESULT)  Ogmacam_rwc_Flash(HOgmacam h, unsigned action, unsigned addr, unsigned len, void* pData);
 
 OGMACAM_API(HRESULT)  Ogmacam_write_UART(HOgmacam h, const unsigned char* pData, unsigned nDataLen);
@@ -1148,10 +1174,10 @@ OGMACAM_API(HRESULT)  Ogmacam_Update(const wchar_t* camId, const wchar_t* filePa
 OGMACAM_API(HRESULT)  Ogmacam_Update(const char* camId, const char* filePath, PIOGMACAM_PROGRESS funProgress, void* ctxProgress);
 #endif
 
-OGMACAM_API(HRESULT)  Ogmacam_put_Linear(HOgmacam h, const unsigned char* v8, const unsigned short* v16);
-OGMACAM_API(HRESULT)  Ogmacam_put_Curve(HOgmacam h, const unsigned char* v8, const unsigned short* v16);
-OGMACAM_API(HRESULT)  Ogmacam_put_ColorMatrix(HOgmacam h, const double v[9]);
-OGMACAM_API(HRESULT)  Ogmacam_put_InitWBGain(HOgmacam h, const unsigned short v[3]);
+OGMACAM_API(HRESULT)  Ogmacam_put_Linear(HOgmacam h, const unsigned char* v8, const unsigned short* v16); /* v8, v16 pointer must remains valid */
+OGMACAM_API(HRESULT)  Ogmacam_put_Curve(HOgmacam h, const unsigned char* v8, const unsigned short* v16); /* v8, v16 pointer must remains valid */
+OGMACAM_API(HRESULT)  Ogmacam_put_ColorMatrix(HOgmacam h, const double v[9]); /* null => revert to model default */
+OGMACAM_API(HRESULT)  Ogmacam_put_InitWBGain(HOgmacam h, const unsigned short v[3]); /* null => revert to model default */
 
 /*
     get the frame rate: framerate (fps) = Frame * 1000.0 / nTime
@@ -1285,8 +1311,10 @@ OGMACAM_API(HRESULT)  Ogmacam_AwbOnePush(HOgmacam h, PIOGMACAM_TEMPTINT_CALLBACK
 OGMACAM_DEPRECATED
 OGMACAM_API(HRESULT)  Ogmacam_AbbOnePush(HOgmacam h, PIOGMACAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB);
 
+/* Initialize support for GigE cameras. If online/offline notifications are not required, the callback function can be set to NULL */
 typedef void (__stdcall* POGMACAM_HOTPLUG)(void* ctxHotPlug);
 OGMACAM_API(HRESULT)  Ogmacam_GigeEnable(POGMACAM_HOTPLUG funHotPlug, void* ctxHotPlug);
+
 /*
 USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
@@ -1301,6 +1329,34 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 #if !defined(_WIN32) && !defined(__ANDROID__)
 OGMACAM_API(void)   Ogmacam_HotPlug(POGMACAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
+
+/* AAF: Astro Auto Focuser */
+#define OGMACAM_AAF_SETPOSITION     0x01
+#define OGMACAM_AAF_GETPOSITION     0x02
+#define OGMACAM_AAF_SETZERO         0x03
+#define OGMACAM_AAF_GETZERO         0x04
+#define OGMACAM_AAF_SETDIRECTION    0x05
+#define OGMACAM_AAF_GETDIRECTION    0x06
+#define OGMACAM_AAF_SETMAXINCREMENT 0x07
+#define OGMACAM_AAF_GETMAXINCREMENT 0x08
+#define OGMACAM_AAF_SETFINE         0x09
+#define OGMACAM_AAF_GETFINE         0x0a
+#define OGMACAM_AAF_SETCOARSE       0x0b
+#define OGMACAM_AAF_GETCOARSE       0x0c
+#define OGMACAM_AAF_SETBUZZER       0x0d
+#define OGMACAM_AAF_GETBUZZER       0x0e
+#define OGMACAM_AAF_SETBACKLASH     0x0f
+#define OGMACAM_AAF_GETBACKLASH     0x10
+#define OGMACAM_AAF_GETAMBIENTTEMP  0x12
+#define OGMACAM_AAF_GETTEMP         0x14
+#define OGMACAM_AAF_ISMOVING        0x16
+#define OGMACAM_AAF_HALT            0x17
+#define OGMACAM_AAF_SETMAXSTEP      0x1b
+#define OGMACAM_AAF_GETMAXSTEP      0x1c
+#define OGMACAM_AAF_RANGEMIN        0xfd  /* Range: min value */
+#define OGMACAM_AAF_RANGEMAX        0xfe  /* Range: max value */
+#define OGMACAM_AAF_RANGEDEF        0xff  /* Range: default value */
+OGMACAM_API(HRESULT) Ogmacam_AAF(HOgmacam h, int action, int outVal, int* inVal);
 
 #if defined(_WIN32)
 /* Ogmacam_put_TempTintInit is obsolete, recommend using Ogmacam_AwbOnce. */
@@ -1349,13 +1405,13 @@ OGMACAM_API(HRESULT)  Ogmacam_get_VignetMidPointInt(HOgmacam h, int* nMidPoint);
 #if defined(_WIN32)
 OGMACAM_API(HRESULT)  Ogmacam_set_Name(HOgmacam h, const char* name);
 OGMACAM_API(HRESULT)  Ogmacam_query_Name(HOgmacam h, char name[64]);
-OGMACAM_API(HRESULT)  Ogmacam_put_Name(const wchar_t* id, const char* name);
-OGMACAM_API(HRESULT)  Ogmacam_get_Name(const wchar_t* id, char name[64]);
+OGMACAM_API(HRESULT)  Ogmacam_put_Name(const wchar_t* camId, const char* name);
+OGMACAM_API(HRESULT)  Ogmacam_get_Name(const wchar_t* camId, char name[64]);
 #else
 OGMACAM_API(HRESULT)  Ogmacam_set_Name(HOgmacam h, const char* name);
 OGMACAM_API(HRESULT)  Ogmacam_query_Name(HOgmacam h, char name[64]);
-OGMACAM_API(HRESULT)  Ogmacam_put_Name(const char* id, const char* name);
-OGMACAM_API(HRESULT)  Ogmacam_get_Name(const char* id, char name[64]);
+OGMACAM_API(HRESULT)  Ogmacam_put_Name(const char* camId, const char* name);
+OGMACAM_API(HRESULT)  Ogmacam_get_Name(const char* camId, char name[64]);
 #endif
 OGMACAM_API(unsigned) Ogmacam_EnumWithName(OgmacamDeviceV2 pti[OGMACAM_MAX]);
 
