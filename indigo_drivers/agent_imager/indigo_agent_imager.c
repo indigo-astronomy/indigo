@@ -23,7 +23,8 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0028
+
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1041,14 +1042,31 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RMS contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
-				if (AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value == 0)
+				if (AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value == 0) {
 					continue;
-				quality += AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
+				}
+				quality = (quality > AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value) ? quality : AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
 			} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak = %g, HFD = %g,  FWHM = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value);
-				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0)
+				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
+					INDIGO_DRIVER_DEBUG(
+						DRIVER_NAME,
+						"Peak = %g, HFD = %g, FWHM = %g",
+						AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value,
+						AGENT_IMAGER_STATS_FWHM_ITEM->number.value
+					);
 					continue;
-				quality += AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
+				}
+				double current_quality = AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
+				quality = (quality > current_quality) ? quality : current_quality;
+				INDIGO_DRIVER_DEBUG(
+					DRIVER_NAME,
+					"Peak = %g, HFD = %g, FWHM = %g, current_quality = %g, best_quality = %g",
+					AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
+					AGENT_IMAGER_STATS_HFD_ITEM->number.value,
+					AGENT_IMAGER_STATS_FWHM_ITEM->number.value,
+					current_quality,
+					quality
+				);
 			}
 			frame_count++;
 		}
@@ -1056,7 +1074,6 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 			indigo_send_message(device, "Failed to evaluate quality");
 			continue;
 		}
-		quality /= frame_count;
 		if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 			min_est = (min_est > quality) ? quality : min_est;
 			if (DEVICE_PRIVATE_DATA->frame_saturated) {
@@ -1264,14 +1281,32 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RMS contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
-				if (AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value == 0)
+				if (AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value == 0) {
 					continue;
-				quality += AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
+				}
+				quality = (quality > AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value) ? quality : AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
 			} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak = %g, HFD = %g,  FWHM = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value);
-				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0)
+				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
+					INDIGO_DRIVER_DEBUG(
+						DRIVER_NAME,
+						"Peak = %g, HFD = %g, FWHM = %g",
+						AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
+						AGENT_IMAGER_STATS_HFD_ITEM->number.value,
+						AGENT_IMAGER_STATS_FWHM_ITEM->number.value
+					);
 					continue;
-				quality += AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
+				}
+				double current_quality = AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
+				quality = (quality > current_quality) ? quality : current_quality;
+				INDIGO_DRIVER_DEBUG(
+					DRIVER_NAME,
+					"Peak = %g, HFD = %g, FWHM = %g, current_quality = %g, best_quality = %g",
+					AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
+					AGENT_IMAGER_STATS_HFD_ITEM->number.value,
+					AGENT_IMAGER_STATS_FWHM_ITEM->number.value,
+					current_quality,
+					quality
+				);
 			}
 			frame_count++;
 		}
@@ -1279,7 +1314,6 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 			indigo_send_message(device, "Failed to evaluate quality");
 			continue;
 		}
-		quality /= frame_count;
 		if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 			min_est = (min_est > quality) ? quality : min_est;
 			if (DEVICE_PRIVATE_DATA->frame_saturated) {
