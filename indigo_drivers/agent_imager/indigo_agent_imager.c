@@ -1628,6 +1628,8 @@ static void set_property(indigo_device *device, char *name, char *value) {
 	bool wait_for_solver = false;
 	bool wait_for_guider = false;
 	FILTER_DEVICE_CONTEXT->property_removed = false;
+	int upload_mode = -1;
+	int image_format = -1;
 	if (!strcasecmp(name, "object")) {
 		// NO-OP, for grouping only
 	} else if (!strcasecmp(name, "sleep")) {
@@ -1749,6 +1751,14 @@ static void set_property(indigo_device *device, char *name, char *value) {
 	} else if (!strcasecmp(name, "dec")) {
 		DEVICE_PRIVATE_DATA->solver_goto_dec = indigo_atod(value);
 	} else if (!strcasecmp(name, "goto")) {
+		if (indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, &device_property, NULL)) {
+			upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_property->device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true);
+		}
+		if (indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, &device_property, NULL)) {
+			image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_property->device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
+		}
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_SLEWING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (!strcmp(value, "precise")) {
@@ -1786,6 +1796,12 @@ static void set_property(indigo_device *device, char *name, char *value) {
 			abort_solver(device);
 		}
 		disable_solver(device);
+		if (upload_mode >= 0) {
+			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+		}
+		if (image_format >= 0) {
+			restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
+		}
 	} else if (wait_for_guider) { // wait for guider calibration
 		while (DEVICE_PRIVATE_DATA->related_guider_process_state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_usleep(200000);
