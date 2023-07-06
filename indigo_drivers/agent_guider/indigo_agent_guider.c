@@ -43,7 +43,7 @@
 #define PI (3.14159265358979)
 #define PI2 (PI/2)
 
-#define MIN_COS_DEC (0.04)       /* DEC = ~88 degrees */
+#define MIN_COS_DEC (0.017)       /* DEC = ~89 degrees */
 
 #define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
@@ -1188,14 +1188,21 @@ static void calibrate_and_guide_process(indigo_device *device) {
 
 static void guide_process(indigo_device *device) {
 	double prev_correction_dec = 0;
-	if (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0) {
+	if (
+		AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0 ||
+		fabs(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value) > 89
+	) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
 		AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
 		AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
 		AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		indigo_send_message(device, "Guiding failed (not calibrated)");
+		if (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0) {
+			indigo_send_message(device, "Guiding failed (not calibrated)");
+		} else {
+			indigo_send_message(device, "Guiding failed (too close to the pole)");
+		}
 		FILTER_DEVICE_CONTEXT->running_process = false;
 		return;
 	}
