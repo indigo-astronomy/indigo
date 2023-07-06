@@ -218,6 +218,7 @@ typedef struct {
 	bool use_aux_1;
 	bool barrier_resume;
 	indigo_property_state related_solver_process_state;
+	indigo_property_state related_guider_process_state;
 	double solver_goto_ra;
 	double solver_goto_dec;
 } agent_private_data;
@@ -353,6 +354,36 @@ static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
 		indigo_item *item = list->items + i;
 		if (item->sw.value && (!strncmp("Mount Agent", item->name, 11))) {
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, AGENT_ABORT_IMAGER_ITEM_NAME, state);
+		}
+	}
+}
+
+static void stop_guider(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
+		}
+	}
+}
+
+static void calibrate_guider(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_CALIBRATION_ITEM_NAME, true);
+		}
+	}
+}
+
+static void start_guider(indigo_device *device) {
+	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	for (int i = 0; i < list->count; i++) {
+		indigo_item *item = list->items + i;
+		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_GUIDING_ITEM_NAME, true);
 		}
 	}
 }
@@ -1593,9 +1624,17 @@ static void autofocus_process(indigo_device *device) {
 static void set_property(indigo_device *device, char *name, char *value) {
 	indigo_property *device_property = NULL;
 	bool wait_for_solver = false;
+	bool wait_for_guider = false;
 	FILTER_DEVICE_CONTEXT->property_removed = false;
 	if (!strcasecmp(name, "object")) {
 		// NO-OP, for grouping only
+	} else if (!strcasecmp(name, "sleep")) {
+		// sleep with 0.01s resolution
+		double delay = atof(value);
+		while (delay > 0 && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_usleep(10000);
+			delay -= 0.01;
+		}
 	} else if (!strcasecmp(name, "focus")) {
 		DEVICE_PRIVATE_DATA->focus_exposure = atof(value);
 	} else if (!strcasecmp(name, "count")) {
@@ -1717,6 +1756,18 @@ static void set_property(indigo_device *device, char *name, char *value) {
 			// TODO: non-precise goto is not implemented in solver agent yet
 			wait_for_solver = true;
 		}
+	} else if (!strcasecmp(name, "guiding")) {
+		if (!strcmp(value, "off")) {
+			stop_guider(device);
+		} else if (!strcmp(value, "calibrate")) {
+			AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_CALIBRATING;
+			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+			calibrate_guider(device);
+			wait_for_guider = true;
+		} else if (!strcmp(value, "on")) {
+			start_guider(device);
+		}
+
 	}
 	if (device_property) {
 		indigo_usleep(200000);
@@ -1734,6 +1785,16 @@ static void set_property(indigo_device *device, char *name, char *value) {
 			abort_solver(device);
 		}
 		disable_solver(device);
+	} else if (wait_for_guider) { // wait for guider calibration
+		while (DEVICE_PRIVATE_DATA->related_guider_process_state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_usleep(200000);
+		}
+		while (DEVICE_PRIVATE_DATA->related_guider_process_state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_usleep(200000);
+		}
+		if (DEVICE_PRIVATE_DATA->related_guider_process_state == INDIGO_BUSY_STATE) {
+			stop_guider(device);
+		}
 	}
 }
 
@@ -2744,6 +2805,18 @@ static void snoop_solver_process_state(indigo_client *client, indigo_property *p
 	}
 }
 
+static void snoop_guider_process_state(indigo_client *client, indigo_property *property) {
+	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
+		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
+			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
+			if (agent->sw.value && (!strncmp(agent->name, "Guider Agent", 12))) {
+				CLIENT_PRIVATE_DATA->related_guider_process_state = property->state;
+				break;
+			}
+		}
+	}
+}
+
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
@@ -2783,6 +2856,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		snoop_guider_stats(client, property);
 		snoop_barrier_state(client, property);
 		snoop_solver_process_state(client, property);
+		snoop_guider_process_state(client, property);
 	}
 	return indigo_filter_define_property(client, device, property, message);
 }
@@ -2895,6 +2969,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 		snoop_guider_stats(client, property);
 		snoop_barrier_state(client, property);
 		snoop_solver_process_state(client, property);
+		snoop_guider_process_state(client, property);
 	}
 	return indigo_filter_update_property(client, device, property, message);
 }
