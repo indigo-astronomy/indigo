@@ -368,21 +368,23 @@ static void stop_guider(indigo_device *device) {
 	}
 }
 
-static void calibrate_guider(indigo_device *device) {
+static void calibrate_guider(indigo_device *device, double exposure_time) {
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
 		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, exposure_time);
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_CALIBRATION_ITEM_NAME, true);
 		}
 	}
 }
 
-static void start_guider(indigo_device *device) {
+static void start_guider(indigo_device *device, double exposure_time) {
 	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < list->count; i++) {
 		indigo_item *item = list->items + i;
 		if (item->sw.value && !strncmp("Guider Agent", item->name, 12)) {
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, exposure_time);
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_GUIDING_ITEM_NAME, true);
 		}
 	}
@@ -1756,18 +1758,17 @@ static void set_property(indigo_device *device, char *name, char *value) {
 			// TODO: non-precise goto is not implemented in solver agent yet
 			wait_for_solver = true;
 		}
-	} else if (!strcasecmp(name, "guiding")) {
+	} else if (!strcasecmp(name, "calibrate")) {
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_CALIBRATING;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+		calibrate_guider(device, atof(value));
+		wait_for_guider = true;
+	} else if (!strcasecmp(name, "guide")) {
 		if (!strcmp(value, "off")) {
 			stop_guider(device);
-		} else if (!strcmp(value, "calibrate")) {
-			AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_CALIBRATING;
-			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-			calibrate_guider(device);
-			wait_for_guider = true;
-		} else if (!strcmp(value, "on")) {
-			start_guider(device);
+		} else {
+			start_guider(device, atof(value));
 		}
-
 	}
 	if (device_property) {
 		indigo_usleep(200000);
