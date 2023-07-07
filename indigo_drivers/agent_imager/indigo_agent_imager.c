@@ -1742,7 +1742,7 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 			start_guider(device, atof(value));
 		}
 	} else {
-		indigo_send_message(device, "Unknown sequencer command '%'", name);
+		indigo_send_message(device, "Unknown sequencer command '%s'", name);
 		return false;
 	}
 	if (device_property) {
