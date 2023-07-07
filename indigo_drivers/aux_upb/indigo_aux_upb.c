@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -871,7 +871,7 @@ static void aux_connection_handler(indigo_device *device) {
 					PRIVATE_DATA->handle = 0;
 				}
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'SA' response");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'PA' response");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
@@ -951,6 +951,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
+			upb_command(device, "PL:1", response, sizeof(response));
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
