@@ -811,48 +811,45 @@ static bool exposure_batch(indigo_device *device) {
 						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value--;
 					} else {
 						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.target;
-						for (int item_index = 0; item_index < FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->count; item_index++) {
-							indigo_item *agent = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property->items + item_index;
-							if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
-								static const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
-								double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (drand48() - 0.5);
-								double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (drand48() - 0.5) : 0;
-								double item_values[] = { x_value, y_value };
-								check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DITHER_ITEM);
-								DEVICE_PRIVATE_DATA->dithering_started = false;
-								indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, agent->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
-								for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
-									if (DEVICE_PRIVATE_DATA->dithering_started) {
+						char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
+						if (related_agent_name) {
+							static const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
+							double x_value = fabs(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target) * (drand48() - 0.5);
+							double y_value = AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target > 0 ? AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * (drand48() - 0.5) : 0;
+							double item_values[] = { x_value, y_value };
+							check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DITHER_ITEM);
+							DEVICE_PRIVATE_DATA->dithering_started = false;
+							indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
+							for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
+								if (DEVICE_PRIVATE_DATA->dithering_started) {
+									break;
+								}
+								if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+									return false;
+								indigo_usleep(200000);
+							}
+							if (DEVICE_PRIVATE_DATA->dithering_started) {
+								AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
+								indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
+								DEVICE_PRIVATE_DATA->dithering_finished = false;
+								double time_limit = AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM->number.value * 5;
+								for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
+									if (DEVICE_PRIVATE_DATA->dithering_finished) {
+										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
 										break;
 									}
 									if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 										return false;
 									indigo_usleep(200000);
 								}
-								if (DEVICE_PRIVATE_DATA->dithering_started) {
-									AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
-									indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
-									DEVICE_PRIVATE_DATA->dithering_finished = false;
-									double time_limit = AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM->number.value * 5;
-									for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
-										if (DEVICE_PRIVATE_DATA->dithering_finished) {
-											INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
-											break;
-										}
-										if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-											return false;
-										indigo_usleep(200000);
-									}
-									if (!DEVICE_PRIVATE_DATA->dithering_finished) {
-										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed");
-										indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
-										indigo_usleep(200000);
-									}
+								if (!DEVICE_PRIVATE_DATA->dithering_finished) {
+									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed");
+									indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
+									indigo_usleep(200000);
 								}
-								check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DITHER_ITEM);
-								break;
 							}
+							check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DITHER_ITEM);
 						}
 					}
 				}
@@ -2715,48 +2712,40 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static void snoop_guider_stats(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_GUIDER_STATS_PROPERTY_NAME)) {
-		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
-			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
-			if (agent->sw.value && !strncmp(agent->name, "Guider Agent", 12)) {
-				if (!strcmp(agent->name, property->device)) {
-					indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-					for (int i = 0; i < property->count; i++) {
-						indigo_item *item = property->items + i;
-						if (!strcmp(item->name, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME)) {
-							AGENT_IMAGER_STATS_DITHERING_ITEM->number.value = item->number.value;
-							indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-							if (item->number.value)
-								DEVICE_PRIVATE_DATA->dithering_started = true;
-							else
-								DEVICE_PRIVATE_DATA->dithering_finished = true;
-							break;
-						}
-					}
+		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+		char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
+		if (related_agent_name && !strcmp(related_agent_name, property->device)) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME)) {
+					AGENT_IMAGER_STATS_DITHERING_ITEM->number.value = item->number.value;
+					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+					if (item->number.value)
+						DEVICE_PRIVATE_DATA->dithering_started = true;
+					else
+						DEVICE_PRIVATE_DATA->dithering_finished = true;
+					break;
 				}
-				break;
 			}
-		}
+		}		
 	}
 }
 
 static void snoop_barrier_state(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME)) {
-		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
-			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
-			if (!strcmp(agent->name, property->device)) {
-				indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-				CLIENT_PRIVATE_DATA->barrier_resume = true;
-				for (int i = 0; i < AGENT_IMAGER_BARRIER_STATE_PROPERTY->count; i++) {
-					indigo_item *item = AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + i;
-					if (!strcmp(item->name, property->device)) {
-						item->light.value = property->state;
-						indigo_update_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
-					}
-					CLIENT_PRIVATE_DATA->barrier_resume &= (item->light.value == INDIGO_BUSY_STATE);
+		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+		char *related_agent_name = indigo_filter_first_related_agent(device, property->device);
+		if (related_agent_name) {
+			CLIENT_PRIVATE_DATA->barrier_resume = true;
+			for (int i = 0; i < AGENT_IMAGER_BARRIER_STATE_PROPERTY->count; i++) {
+				indigo_item *item = AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + i;
+				if (!strcmp(item->name, property->device)) {
+					item->light.value = property->state;
+					indigo_update_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
 				}
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Breakpoint barrier state %s", CLIENT_PRIVATE_DATA->barrier_resume ? "complete" : "incomplete");
-				break;
+				CLIENT_PRIVATE_DATA->barrier_resume &= (item->light.value == INDIGO_BUSY_STATE);
 			}
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Breakpoint barrier state %s", CLIENT_PRIVATE_DATA->barrier_resume ? "complete" : "incomplete");
 		}
 	}
 }
@@ -2786,24 +2775,16 @@ static void snoop_wheel_changes(indigo_client *client, indigo_property *property
 
 static void snoop_solver_process_state(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
-			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
-			if (agent->sw.value && (!strncmp(agent->name, "Astrometry Agent", 16) || !strncmp(agent->name, "ASTAP Agent", 11))) {
-				CLIENT_PRIVATE_DATA->related_solver_process_state = property->state;
-				break;
-			}
+		if (indigo_filter_first_related_agent_2(FILTER_CLIENT_CONTEXT->device, "Astrometry Agent", "ASTAP Agent")) {
+			CLIENT_PRIVATE_DATA->related_solver_process_state = property->state;
 		}
 	}
 }
 
 static void snoop_guider_process_state(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-		for (int item_index = 0; item_index < FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->count; item_index++) {
-			indigo_item *agent = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property->items + item_index;
-			if (agent->sw.value && (!strncmp(agent->name, "Guider Agent", 12))) {
-				CLIENT_PRIVATE_DATA->related_guider_process_state = property->state;
-				break;
-			}
+		if (indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Guider Agent")) {
+			CLIENT_PRIVATE_DATA->related_guider_process_state = property->state;
 		}
 	}
 }
