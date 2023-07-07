@@ -498,11 +498,11 @@ static void set_reverse_relation(indigo_device *device, void *data) {
 }
 
 static indigo_result update_related_agent_list(indigo_device *device, indigo_property *property) {
-	indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *remote_item = property->items + i;
-		for (int j = 0; j < device_list->count; j++) {
-			indigo_item *local_item = device_list->items + j;
+		for (int j = 0; j < related_agents_property->count; j++) {
+			indigo_item *local_item = related_agents_property->items + j;
 			if (!strcmp(remote_item->name, local_item->name)) {
 				if (remote_item->sw.value == local_item->sw.value)
 					break;
@@ -512,8 +512,8 @@ static indigo_result update_related_agent_list(indigo_device *device, indigo_pro
 			}
 		}
 	}
-	device_list->state = INDIGO_OK_STATE;
-	indigo_update_property(device, device_list, NULL);
+	related_agents_property->state = INDIGO_OK_STATE;
+	indigo_update_property(device, related_agents_property, NULL);
 	return INDIGO_OK;
 }
 
@@ -1043,3 +1043,29 @@ indigo_result indigo_filter_forward_change_property(indigo_client *client, indig
 	indigo_release_property(copy);
 	return result;
 }
+
+char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1) {
+	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	unsigned long base_name_len_1 = strlen(base_name_1);
+	for (int i = 0; i < related_agents_property->count; i++) {
+		indigo_item *item = related_agents_property->items + i;
+		if (item->sw.value && !strncmp(base_name_1, item->name, base_name_len_1)) {
+			return item->name;
+		}
+	}
+	return NULL;
+}
+
+char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2) {
+	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	unsigned long base_name_len_1 = strlen(base_name_1);
+	unsigned long base_name_len_2 = strlen(base_name_2);
+	for (int i = 0; i < related_agents_property->count; i++) {
+		indigo_item *item = related_agents_property->items + i;
+		if (item->sw.value && (!strncmp(base_name_1, item->name, base_name_len_1) || !strncmp(base_name_2, item->name, base_name_len_2))) {
+			return item->name;
+		}
+	}
+	return NULL;
+}
+
