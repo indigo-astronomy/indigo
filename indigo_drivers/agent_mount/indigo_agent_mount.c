@@ -95,8 +95,8 @@
 #define AGENT_ABORT_PROCESS_ITEM      								(AGENT_ABORT_PROCESS_PROPERTY->items+0)
 
 #define AGENT_START_PROCESS_PROPERTY									(DEVICE_PRIVATE_DATA->agent_start_process_property)
-#define AGENT_MOOUNT_START_SLEW_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+0)
-#define AGENT_MOOUNT_START_SYNC_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+1)
+#define AGENT_MOUNT_START_SLEW_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+0)
+#define AGENT_MOUNT_START_SYNC_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+1)
 
 typedef struct {
 	indigo_property *agent_geographic_property;
@@ -315,8 +315,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_MOOUNT_START_SLEW_ITEM, AGENT_MOOUNT_START_SLEW_ITEM_NAME, "Slew", false);
-		indigo_init_switch_item(AGENT_MOOUNT_START_SYNC_ITEM, AGENT_MOOUNT_START_SYNC_ITEM_NAME, "Sync", false);
+		indigo_init_switch_item(AGENT_MOUNT_START_SLEW_ITEM, AGENT_MOUNT_START_SLEW_ITEM_NAME, "Slew", false);
+		indigo_init_switch_item(AGENT_MOUNT_START_SYNC_ITEM, AGENT_MOUNT_START_SYNC_ITEM_NAME, "Sync", false);
 
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
@@ -664,7 +664,7 @@ static void mount_control(indigo_device *device, char *operation) {
 	if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) {
 		indigo_error("MOUNT_EQUATORIAL_COORDINATES didn't become OK in 60s");
 	}
-	AGENT_MOOUNT_START_SLEW_ITEM->sw.value = AGENT_MOOUNT_START_SYNC_ITEM->sw.value = false;
+	AGENT_MOUNT_START_SLEW_ITEM->sw.value = AGENT_MOUNT_START_SYNC_ITEM->sw.value = false;
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -769,16 +769,16 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
 			if (!FILTER_MOUNT_LIST_PROPERTY->items->sw.value) {
-				if (AGENT_MOOUNT_START_SLEW_ITEM->sw.value) {
+				if (AGENT_MOUNT_START_SLEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, slew_process, NULL);
-				} else if (AGENT_MOOUNT_START_SYNC_ITEM->sw.value) {
+				} else if (AGENT_MOUNT_START_SYNC_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, sync_process, NULL);
 				}
 			} else {
-				AGENT_MOOUNT_START_SLEW_ITEM->sw.value =
-				AGENT_MOOUNT_START_SYNC_ITEM->sw.value = false;
+				AGENT_MOUNT_START_SLEW_ITEM->sw.value =
+				AGENT_MOUNT_START_SYNC_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No mount is selected");
 			}
