@@ -265,6 +265,13 @@ extern bool indigo_filter_cached_property(indigo_device *device, int index, char
 /** Forward property change to a different device.
  */
 extern indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name);
+/** Find the full name of the first related agent starting with a given base name.
+ */
+extern char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1);
+/** Find the full name of the first related agent starting with any of given base names.
+ */
+extern char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2);
+
 #ifdef __cplusplus
 }
 #endif

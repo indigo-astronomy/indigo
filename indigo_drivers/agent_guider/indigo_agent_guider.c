@@ -205,12 +205,9 @@ static void save_config(indigo_device *device) {
 }
 
 static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
-	indigo_property *list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	for (int i = 0; i < list->count; i++) {
-		indigo_item *item = list->items + i;
-		if (item->sw.value && (!strncmp("Mount Agent", item->name, 11))) {
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, AGENT_ABORT_GUIDER_ITEM_NAME, state);
-		}
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
+	if (related_agent_name) {
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, AGENT_ABORT_GUIDER_ITEM_NAME, state);
 	}
 }
 
