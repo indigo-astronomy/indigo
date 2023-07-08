@@ -69,15 +69,18 @@
 #define AUX_USB_PORT_5_ITEM									(AUX_USB_PORT_PROPERTY->items + 4)
 #define AUX_USB_PORT_6_ITEM									(AUX_USB_PORT_PROPERTY->items + 5)
 
-#define AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
+#define AUX_INFO_PROPERTY									(PRIVATE_DATA->info_property)
 #define AUX_INFO_VOLTAGE_ITEM								(AUX_INFO_PROPERTY->items + 0)
 #define AUX_INFO_UPTIME_ITEM								(AUX_INFO_PROPERTY->items + 1)
 #define AUX_INFO_UPTIME_ITEM_NAME							"UPTIME"
 
 #define X_AUX_REBOOT_PROPERTY								(PRIVATE_DATA->reboot_property)
-#define X_AUX_REBOOT_ITEM										(X_AUX_REBOOT_PROPERTY->items + 0)
+#define X_AUX_REBOOT_ITEM									(X_AUX_REBOOT_PROPERTY->items + 0)
 
-#define AUX_GROUP															"Powerbox"
+#define X_AUX_SAVE_DEFAULTS_PROPERTY						(PRIVATE_DATA->save_defaults_property)
+#define X_AUX_SAVE_DEFAULTS_ITEM							(X_AUX_SAVE_DEFAULTS_PROPERTY->items + 0)
+
+#define AUX_GROUP											"USB Ports"
 
 typedef struct {
 	int handle;
@@ -85,9 +88,9 @@ typedef struct {
 	indigo_property *outlet_names_property;
 	indigo_property *usb_port_property;
 	indigo_property *info_property;
+	indigo_property *save_defaults_property;
 	indigo_property *reboot_property;
 	int count;
-	int version;
 	pthread_mutex_t mutex;
 } upb_private_data;
 
@@ -143,12 +146,17 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
-		indigo_init_sexagesimal_number_item(AUX_INFO_UPTIME_ITEM, AUX_INFO_UPTIME_ITEM_NAME, "Uptime [s]", 0, 1e10, 0, 0);
+		indigo_init_sexagesimal_number_item(AUX_INFO_UPTIME_ITEM, AUX_INFO_UPTIME_ITEM_NAME, "Uptime [hours]", 0, 1e10, 0, 0);
 		// -------------------------------------------------------------------------------- Device specific
 		X_AUX_REBOOT_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_REBOOT", AUX_GROUP, "Reboot", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_AUX_REBOOT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_AUX_REBOOT_ITEM, "REBOOT", "Reboot", false);
+		// --------------------------------------------------------------------------------
+		X_AUX_SAVE_DEFAULTS_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_SAVE_DEFAULTS", AUX_GROUP, "Save current port states as default", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (X_AUX_SAVE_DEFAULTS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_AUX_SAVE_DEFAULTS_ITEM, "SAVE", "Save", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
@@ -178,6 +186,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		if (indigo_property_match(AUX_INFO_PROPERTY, property))
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+		if (indigo_property_match(X_AUX_SAVE_DEFAULTS_PROPERTY, property))
+			indigo_define_property(device, X_AUX_SAVE_DEFAULTS_PROPERTY, NULL);
 		if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property))
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 	}
@@ -238,8 +248,8 @@ static void aux_timer_callback(indigo_device *device) {
 
 	if (uch_command(device, "PC", response, sizeof(response))) {
 		char *pnt, *token = strtok_r(response, ":", &pnt);
-		if (token) {
-			double value = floor(indigo_atod(token)/1000); // convert to seconds;
+		if ((token = strtok_r(NULL, ":", &pnt))) {
+			double value = indigo_atod(token)/(1000*3600); // convert to seconds;
 			if (AUX_INFO_UPTIME_ITEM->number.value != value) {
 				updateInfo = true;
 				AUX_INFO_UPTIME_ITEM->number.value = value;
@@ -273,7 +283,6 @@ static void aux_connection_handler(indigo_device *device) {
 					if (uch_command(device, "P#", response, sizeof(response))) {
 						if (!strcmp(response, "UCH_OK")) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UCH %s", DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->version = 1;
 							break;
 						}
 					}
@@ -289,7 +298,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			if (uch_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
+			if (uch_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UCH", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
 					AUX_INFO_VOLTAGE_ITEM->number.value = indigo_atod(token);
@@ -314,11 +323,12 @@ static void aux_connection_handler(indigo_device *device) {
 
 			if (uch_command(device, "PV", response, sizeof(response)) ) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB Control Hub");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_define_property(device, X_AUX_SAVE_DEFAULTS_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 
@@ -336,6 +346,7 @@ static void aux_connection_handler(indigo_device *device) {
 
 		indigo_delete_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_delete_property(device, X_AUX_SAVE_DEFAULTS_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
@@ -364,6 +375,23 @@ static void aux_usb_port_handler(indigo_device *device) {
 	}
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_save_defaults_handler(indigo_device *device) {
+	char response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (X_AUX_SAVE_DEFAULTS_ITEM->sw.value) {
+		char command[] = "PE:000000";
+		char *port_mask = command + 3;
+		for (int i = 0; i < AUX_USB_PORT_PROPERTY->count; i++) {
+			port_mask[i] = AUX_USB_PORT_PROPERTY->items[i].sw.value ? '1' : '0';
+		}
+		uch_command(device, command, response, sizeof(response));
+		X_AUX_SAVE_DEFAULTS_ITEM->sw.value = false;
+		X_AUX_SAVE_DEFAULTS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, X_AUX_SAVE_DEFAULTS_PROPERTY, NULL);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -415,6 +443,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_usb_port_handler, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(X_AUX_SAVE_DEFAULTS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_AUX_SAVE_DEFAULTS
+		indigo_property_copy_values(X_AUX_SAVE_DEFAULTS_PROPERTY, property, false);
+		X_AUX_SAVE_DEFAULTS_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_AUX_SAVE_DEFAULTS_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_save_defaults_handler, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_AUX_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_REBOOT
 		indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
@@ -426,6 +461,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_OUTLET_NAMES_PROPERTY);
+			indigo_save_property(device, NULL, AUX_USB_PORT_PROPERTY);
 		}
 	}
 	return indigo_aux_change_property(device, client, property);
@@ -439,6 +475,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	}
 	indigo_release_property(AUX_USB_PORT_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
+	indigo_release_property(X_AUX_SAVE_DEFAULTS_PROPERTY);
 	indigo_release_property(X_AUX_REBOOT_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
