@@ -19,6 +19,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_uch
 
-## Status: Under Development
+## Status: Stable
 
 Tested with physical device.
