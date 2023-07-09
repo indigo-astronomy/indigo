@@ -144,6 +144,9 @@
 #define X_AUX_VARIABLE_POWER_OUTLET_PROPERTY	(PRIVATE_DATA->variable_power_outlet_property)
 #define X_AUX_VARIABLE_POWER_OUTLET_1_ITEM		(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 0)
 
+#define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY		(PRIVATE_DATA->save_defaults_property)
+#define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM				(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY->items + 0)
+
 #define AUX_GROUP															"Powerbox"
 
 typedef struct {
@@ -163,6 +166,7 @@ typedef struct {
 	indigo_property *weather_property;
 	indigo_property *info_property;
 	indigo_property *hub_property;
+	indigo_property *save_defaults_property;
 	indigo_property *reboot_property;
 	indigo_property *variable_power_outlet_property;
 	int count;
@@ -315,6 +319,10 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
 		indigo_init_number_item(X_AUX_VARIABLE_POWER_OUTLET_1_ITEM, "OUTLET_1", "Variable voltage power outlet ", 3, 12, 1, 12);
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY = indigo_init_switch_property(NULL, device->name, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY_NAME, AUX_GROUP, "Save current outlet states as default", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME, "Save", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
@@ -364,6 +372,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 		if (indigo_property_match(X_AUX_HUB_PROPERTY, property))
 			indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
+		if (indigo_property_match(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, property))
+			indigo_define_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
 		if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property))
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		if (indigo_property_match(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property))
@@ -891,6 +901,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_define_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
 			upb_command(device, "PU:1", response, sizeof(response));
 			indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
 			indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
@@ -985,6 +996,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
 		indigo_delete_property(device, X_AUX_HUB_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
@@ -1099,6 +1111,23 @@ static void aux_hub_handler(indigo_device *device) {
 	upb_command(device, X_AUX_HUB_ENABLED_ITEM->sw.value ? "PU:1" : "PU:0", response, sizeof(response));
 	X_AUX_HUB_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_save_defaults_handler(indigo_device *device) {
+	char response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
+		char command[] = "PE:0000";
+		char *port_mask = command + 3;
+		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+			port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
+		}
+		upb_command(device, command, response, sizeof(response));
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -1229,6 +1258,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_hub_handler, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, property)) {
+		// -------------------------------------------------------------------------------- X_AUX_SAVE_DEFAULTS
+		indigo_property_copy_values(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, property, false);
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
+		indigo_set_timer(device, 0, aux_save_defaults_handler, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_AUX_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_REBOOT
 		indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
@@ -1269,6 +1305,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
+	indigo_release_property(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY);
 	indigo_release_property(X_AUX_HUB_PROPERTY);
 	indigo_release_property(X_AUX_REBOOT_PROPERTY);
 	indigo_release_property(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY);
