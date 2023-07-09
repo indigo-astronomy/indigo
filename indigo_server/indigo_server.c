@@ -166,6 +166,7 @@
 #include "ccd_rising/indigo_ccd_rising.h"
 #include "ccd_ogma/indigo_ccd_ogma.h"
 #include "focuser_primaluce/indigo_focuser_primaluce.h"
+#include "aux_uch/indigo_aux_uch.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -218,6 +219,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_rts,
 	indigo_aux_skyalert,
 	indigo_aux_sqm,
+	indigo_aux_uch,
 	indigo_aux_upb,
 	indigo_aux_usbdp,
 	indigo_ccd_altair,
