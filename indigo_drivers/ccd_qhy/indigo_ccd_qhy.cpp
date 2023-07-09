@@ -25,7 +25,7 @@
  \NOTE: This file should be .cpp as qhy headers are in C++
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 
 #include <stdlib.h>
 #include <string.h>
@@ -732,7 +732,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 					CCD_TEMPERATURE_ITEM->number.min = MIN_CCD_TEMP;
 					CCD_TEMPERATURE_ITEM->number.max = MAX_CCD_TEMP;
-					CCD_TEMPERATURE_ITEM->number.step = 0;
+					CCD_TEMPERATURE_ITEM->number.step = 1;
 					PRIVATE_DATA->cooler_on = (GetQHYCCDParam(PRIVATE_DATA->handle, CONTROL_CURPWM) > 0);
 				} else {
 					CCD_COOLER_PROPERTY->hidden = true;
