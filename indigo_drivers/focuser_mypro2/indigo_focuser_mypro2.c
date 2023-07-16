@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -465,7 +465,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 		return;
 	}
 
-	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - compensation;
+	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + compensation;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
 
 	uint32_t current_position;
