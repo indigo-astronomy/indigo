@@ -421,17 +421,17 @@ uint8_t *ptp_encode_uint8(uint8_t source, uint8_t *target) {
 }
 
 uint8_t *ptp_encode_uint16(uint16_t source, uint8_t *target) {
-	*(uint16_t *)target = source;
+	memcpy(target, &source, sizeof(uint16_t));
 	return target + sizeof(uint16_t);
 }
 
 uint8_t *ptp_encode_uint32(uint32_t source, uint8_t *target) {
-	*(uint32_t *)target = source;
+	memcpy(target, &source, sizeof(uint32_t));
 	return target + sizeof(uint32_t);
 }
 
 uint8_t *ptp_encode_uint64(uint64_t source, uint8_t *target) {
-	*(uint64_t *)target = source;
+	memcpy(target, &source, sizeof(uint64_t));
 	return target + sizeof(uint64_t);
 }
 
@@ -450,17 +450,17 @@ uint8_t *ptp_decode_uint8(uint8_t *source, uint8_t *target) {
 }
 
 uint8_t *ptp_decode_uint16(uint8_t *source, uint16_t *target) {
-	*target = *(uint16_t *)source;
+	memcpy(target, source, sizeof(uint16_t));
 	return source + sizeof(uint16_t);
 }
 
 uint8_t *ptp_decode_uint32(uint8_t *source, uint32_t *target) {
-	*target = *(uint32_t *)source;
+	memcpy(target, source, sizeof(uint32_t));
 	return source + sizeof(uint32_t);
 }
 
 uint8_t *ptp_decode_uint64(uint8_t *source, uint64_t *target) {
-	*target = *(uint64_t *)source;
+	memcpy(target, source, sizeof(uint64_t));
 	return source + sizeof(uint64_t);
 }
 
