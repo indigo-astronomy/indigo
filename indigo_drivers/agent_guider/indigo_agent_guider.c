@@ -1706,7 +1706,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			save_config(device);
 			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
 		} else {
-			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, "Warning: Can not change declination guiding method to/from 'Notrh and South' while guiding!");
+			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, "Warning: Can not change declination guiding method to/from 'North and South' while guiding!");
 		}
 	} else if (indigo_property_match(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_APPLY_DEC_BACKLASH
