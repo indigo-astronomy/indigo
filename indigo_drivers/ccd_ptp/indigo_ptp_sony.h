@@ -68,6 +68,7 @@ typedef enum {
 	ptp_property_sony_Capture = 0xD2C2,
 	ptp_property_sony_Movie = 0xD2C8,
 	ptp_property_sony_StillImage = 0xD2C7,
+	ptp_property_sony_NearFar = 0xD2D1,
 	ptp_property_sony_ZoomState = 0xD22D,
 	ptp_property_sony_ZoomRatio = 0xD22F,
 } ptp_property_sony_code;
@@ -80,6 +81,7 @@ typedef struct {
 	bool is_dual_compression;
 	bool did_capture;
 	bool did_liveview;
+	int steps;
 } sony_private_data;
 
 
@@ -95,6 +97,7 @@ extern bool ptp_sony_set_property(indigo_device *device, ptp_property *property)
 extern bool ptp_sony_exposure(indigo_device *device);
 extern bool ptp_sony_liveview(indigo_device *device);
 extern bool ptp_sony_af(indigo_device *device);
+extern bool ptp_sony_focus(indigo_device *device, int steps);
 extern bool ptp_sony_check_dual_compression(indigo_device *device);
 
 #endif /* indigo_ptp_sony_h */
