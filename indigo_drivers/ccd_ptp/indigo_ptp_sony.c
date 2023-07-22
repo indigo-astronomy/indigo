@@ -85,6 +85,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		case ptp_property_sony_Zoom: return "Zoom_Sony";
 		case ptp_property_sony_ZoomState: return "ADV_ZoomState";
 		case ptp_property_sony_ZoomRatio: return "ADV_ZoomRatio";
+		case ptp_property_sony_NearFar: return "NearFar";
 		case ptp_property_sony_ExposureCompensation: return "ADV_ExposureCompensation";
 		case ptp_property_sony_SensorCrop: return "ADV_SensorCrop";
 	}
@@ -114,6 +115,7 @@ char *ptp_property_sony_code_label(uint16_t code) {
 		case ptp_property_sony_StillImage: return "Still Image";
 		case ptp_property_sony_PCRemoteSaveDest: return "PC Remote Save Destination";
 		case ptp_property_sony_ExposureCompensation: return "Exposure compensation";
+		case ptp_property_sony_NearFar: return "Near/Far Manual Focus Adjustment";
 		case ptp_property_sony_ZoomState: return "Zoom State";
 		case ptp_property_sony_ZoomRatio: return "Zoom Ratio";
 	}
@@ -1032,6 +1034,69 @@ bool ptp_sony_af(indigo_device *device) {
 		}
 	}
 	return false;
+}
+
+bool ptp_sony_focus(indigo_device *device, int steps) {
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	if (steps == 0) {
+		pthread_mutex_lock(&mutex);
+		SONY_PRIVATE_DATA->steps = 0;
+		pthread_mutex_unlock(&mutex);
+		return true;
+	} else {
+		bool temporary_lv = true;
+		bool result = false;
+		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+			temporary_lv = false;
+		} else if (PRIVATE_DATA->model.product == 0x0ccc && !SONY_PRIVATE_DATA->did_liveview) {
+			// This part is copied from ptp_sony_set_property
+			// A7R4 needs 3s delay before first capture
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
+			for (int i = 0; i < 30; i++) {
+				if (PRIVATE_DATA->abort_capture)
+					return false;
+				indigo_usleep(100000);
+			}
+			pthread_mutex_lock(&mutex);
+			SONY_PRIVATE_DATA->did_liveview = true;
+			SONY_PRIVATE_DATA->did_capture = false;
+			pthread_mutex_unlock(&mutex);
+		}
+		pthread_mutex_lock(&mutex);
+		SONY_PRIVATE_DATA->steps = steps;
+		pthread_mutex_unlock(&mutex);
+		bool run = true;
+		// This apparently should be run once, but it doesn't seem to be necessary
+		uint16_t set_manual = 1;
+		if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, 0xD2D2, &set_manual, sizeof(uint16_t)))
+			run = false;
+		while (run) {
+			if (SONY_PRIVATE_DATA->steps == 0) {
+				result = true;
+				break;
+			}
+			int16_t value = SONY_PRIVATE_DATA->steps < 0 ? -2 : 2;
+			if (SONY_PRIVATE_DATA->steps < 0) {
+				pthread_mutex_lock(&mutex);
+				SONY_PRIVATE_DATA->steps++;
+				pthread_mutex_unlock(&mutex);
+			} else if (SONY_PRIVATE_DATA->steps > 0) {
+				pthread_mutex_lock(&mutex);
+				SONY_PRIVATE_DATA->steps--;
+				pthread_mutex_unlock(&mutex);
+			}
+			if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_NearFar, &value, sizeof(uint16_t))
+)
+				break;
+			indigo_usleep(50000);
+		}
+		if (temporary_lv) {
+			pthread_mutex_lock(&mutex);
+			SONY_PRIVATE_DATA->did_liveview=true;
+			pthread_mutex_unlock(&mutex);
+		}
+		return result;
+	}
 }
 
 bool ptp_sony_check_dual_compression(indigo_device *device) {
