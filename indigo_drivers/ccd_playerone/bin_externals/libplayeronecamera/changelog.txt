@@ -1,3 +1,7 @@
+2023.07.24(3.4.1)
+- Enhanced stability of transmitted image data when changing exposure.
+- On Mac OS and Linux, fix a bug that incompatibility of bandwidth between libusb and cameras, this bug may cause image data loss and SDK carshing when switching Image Format or changing USB Bandwidth.
+
 2023.06.27(3.4.0)
 - Add 'POA_MONO_BIN' in 'POAConfig', please update 'PlayerOneCamera.h' in your project
 - Support PlayerOne new camera model(Apollo MAX PRO series)
