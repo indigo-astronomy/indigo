@@ -815,6 +815,12 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
+		indigo_property_copy_values(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property, false);
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- SNOOP_DEVICES
 	} else if (indigo_property_match_changeable(MOUNT_SNOOP_DEVICES_PROPERTY, property)) {
 		indigo_remove_snoop_rule(MOUNT_PARK_PROPERTY, MOUNT_SNOOP_JOYSTICK_ITEM->text.value, MOUNT_PARK_PROPERTY_NAME);

@@ -85,6 +85,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		case ptp_property_sony_Zoom: return "Zoom_Sony";
 		case ptp_property_sony_ZoomState: return "ADV_ZoomState";
 		case ptp_property_sony_ZoomRatio: return "ADV_ZoomRatio";
+		case ptp_property_sony_NearFar: return "NearFar";
 		case ptp_property_sony_ExposureCompensation: return "ADV_ExposureCompensation";
 		case ptp_property_sony_SensorCrop: return "ADV_SensorCrop";
 	}
@@ -114,6 +115,7 @@ char *ptp_property_sony_code_label(uint16_t code) {
 		case ptp_property_sony_StillImage: return "Still Image";
 		case ptp_property_sony_PCRemoteSaveDest: return "PC Remote Save Destination";
 		case ptp_property_sony_ExposureCompensation: return "Exposure compensation";
+		case ptp_property_sony_NearFar: return "Near/Far Manual Focus Adjustment";
 		case ptp_property_sony_ZoomState: return "Zoom State";
 		case ptp_property_sony_ZoomRatio: return "Zoom Ratio";
 	}
@@ -1032,6 +1034,35 @@ bool ptp_sony_af(indigo_device *device) {
 		}
 	}
 	return false;
+}
+
+bool ptp_sony_focus(indigo_device *device, int steps) {
+	static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+	if (steps == 0) {
+		pthread_mutex_lock(&mutex);
+		SONY_PRIVATE_DATA->steps = 0;
+		pthread_mutex_unlock(&mutex);
+		return true;
+	} else {
+		pthread_mutex_lock(&mutex);
+		SONY_PRIVATE_DATA->steps = steps;
+		pthread_mutex_unlock(&mutex);		
+		while (true) {
+			pthread_mutex_lock(&mutex);
+			if (SONY_PRIVATE_DATA->steps == 0) {
+				pthread_mutex_unlock(&mutex);
+				return true;
+			}
+			int16_t value = SONY_PRIVATE_DATA->steps <= -7 ? -7 : (SONY_PRIVATE_DATA->steps >= 7 ? 7 : SONY_PRIVATE_DATA->steps);
+			SONY_PRIVATE_DATA->steps -= value;
+			pthread_mutex_unlock(&mutex);
+			if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_NearFar, &value, sizeof(uint16_t))) {
+				return false;
+			}
+			indigo_usleep(50000);
+		}
+	}
+	return true;
 }
 
 bool ptp_sony_check_dual_compression(indigo_device *device) {
