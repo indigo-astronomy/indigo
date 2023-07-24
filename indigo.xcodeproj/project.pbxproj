@@ -1300,6 +1300,7 @@
 		594C6FBF24DF2901000E4BF0 /* PROPERTY_MANIPULATION.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PROPERTY_MANIPULATION.md; sourceTree = "<group>"; };
 		594EF3172770FD15002D0EC8 /* indigo_align.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_align.c; sourceTree = "<group>"; };
 		594EF3182770FD15002D0EC8 /* indigo_fits.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_fits.c; sourceTree = "<group>"; };
+		59508B4F2A6F096A00A0B97D /* AtikDefs.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtikDefs.h; sourceTree = "<group>"; };
 		59519D431DB4231C008BAF29 /* indigo_ccd_ssag.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_ssag.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		59519D441DB4231C008BAF29 /* indigo_ccd_ssag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag.h; sourceTree = "<group>"; };
 		59519D461DB423E0008BAF29 /* indigo_ccd_ssag_firmware.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_ssag_firmware.h; sourceTree = "<group>"; };
@@ -5292,6 +5293,7 @@
 		591B015321A48F53006A1CD8 /* include */ = {
 			isa = PBXGroup;
 			children = (
+				59508B4F2A6F096A00A0B97D /* AtikDefs.h */,
 				591B015421A48F53006A1CD8 /* AtikCameras.h */,
 			);
 			path = include;
