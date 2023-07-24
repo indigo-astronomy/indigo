@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Ogmacam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 54.22812.20230618</li></ul>
+<hr/><ul><li>Version: 54.22993.20230723</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -379,7 +379,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  <tr>
         <td>E_UNEXPECTED</td>
         <td>Catastrophic failure</td>
-		<td>&nbsp;</td>
+		<td>Generally indicates that the conditions are not met, such as calling put_Option setting some options that do not support modification when the camera is running, and so on</td>
 		<td>0x8000ffff</td>
 	  </tr>
 	  <tr>
@@ -435,12 +435,12 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <ul><li><h2><a id="callback"><font color="#0000FF">Callback: POGMACAM_EVENT_CALLBACK and POGMACAM_DATA_CALLBACK_V4/V3</font></a></h2>
 	<p>These callback functions are called back from the internal thread in ogmacam.dll, so great attention should be paid to multithread issue.<br/>
         Please ensure that the callback funcion is simple and return quickly.<br/>
-        Otherwise, in callback mode, OGMACAM_OPTION_CALLBACK_THREAD can be setted to use a dedicated thread for callback.
-    </p>
-	<p><strong>Due to the need to wait for the callback function to return when performing the following actions, the callback function context has the following limitations:</strong></p>
-	<p><strong>(a) Do NOT call Ogmacam_Stop and Ogmacam_Close in this callback function, otherwise, deadlocks.</strong></p>
-	<p><strong>(b) <a id="wrongthread1">Do NOT call Ogmacam_put_Option with OGMACAM_OPTION_TRIGGER, OGMACAM_OPTION_BITDEPTH, OGMACAM_OPTION_PIXEL_FORMAT, OGMACAM_OPTION_BINNING, OGMACAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
-	<p><strong>(c) <a id="wrongthread2">Do NOT call Ogmacam_put_Roi, it will fail with the error code E_WRONG_THREAD.</a></strong></p>
+        Otherwise, in callback mode, OGMACAM_OPTION_CALLBACK_THREAD can be setted to use a dedicated thread for callback.</p>
+	<p><strong>Due to the need to wait for the callback function to return when performing the following actions, the callback function context has the following limitations:<br/>
+	(a) Do NOT call Ogmacam_Stop and Ogmacam_Close in this callback function, otherwise, deadlocks.<br/>
+	(b) <a id="wrongthread1">Do NOT call Ogmacam_put_Option with OGMACAM_OPTION_TRIGGER, OGMACAM_OPTION_BITDEPTH, OGMACAM_OPTION_PIXEL_FORMAT, OGMACAM_OPTION_BINNING, OGMACAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</a><br/>
+	(c) <a id="wrongthread2">Do NOT call Ogmacam_put_Roi, it will fail with the error code E_WRONG_THREAD.</a><br/>
+	(d) If try to acquire the same lock when performing the above operations and when callback functions, it will cause waiting forever for the callback to end, deadlock</strong></p>
 </li></ul>
 <ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
 <p>Functions with coordinate parameters, such as Ogmacam_put_Roi, Ogmacam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
@@ -482,7 +482,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="50">flag</td>
+   <td width="8%" rowspan="53">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
@@ -656,14 +656,6 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td>hardware level range</td>
   </tr>
   <tr>
-    <td>OGMACAM_FLAG_LIGHTSOURCE</td>
-    <td>light source</td>
-  </tr>
-  <tr>
-    <td>OGMACAM_FLAG_FILTERWHEEL</td>
-    <td>astro filter wheel</td>
-  </tr>
-  <tr>
     <td>OGMACAM_FLAG_GIGE</td>
     <td>1 Gigabit GigE</td>
   </tr>
@@ -680,8 +672,28 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     <td>2.5 Gigabit GigE</td>
   </tr>
   <tr>
+    <td>OGMACAM_FLAG_CAMERALINK</td>
+    <td>camera link</td>
+  </tr>
+  <tr>
+    <td>OGMACAM_FLAG_CXP</td>
+    <td>CXP: CoaXPress</td>
+  </tr>
+  <tr>
+    <td>OGMACAM_FLAG_FILTERWHEEL</td>
+    <td>astro filter wheel</td>
+  </tr>
+  <tr>
     <td>OGMACAM_FLAG_AUTOFOCUSER</td>
     <td>astro auto focuser</td>
+  </tr>
+  <tr>
+    <td>OGMACAM_FLAG_LIGHTSOURCE</td>
+    <td>embedded light source</td>
+  </tr>
+  <tr>
+    <td>OGMACAM_FLAG_LIGHT_SOURCE</td>
+    <td>stand alone light source</td>
   </tr>
  <tr>
    <td width="8%">maxspeed</td>
@@ -739,15 +751,15 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <p><strong>Return value: </strong> HOgmacam handle. Return NULL when fails (Such as the device has been pulled out).</p>
   <p><strong>Parameters:</strong></p>
   	<blockquote>
-  		<p>id: Ogmacam camera instance, enumerated by Ogmacam_EnumV2. <strong>If id is NULL, Ogmacam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Ogmacam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
+  		<p>camId: Ogmacam camera instance, enumerated by Ogmacam_EnumV2. <strong>If camId is NULL, Ogmacam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Ogmacam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
   	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
-  <p>(1) Supports attaching some additional parameters after id parameter, see table below: (Use ; to split, such as: Ogmacam_Open(L"0-1010;registry=;wb=rgb"))</p>
+  <p>(1) Supports attaching some additional parameters after camId parameter, see table below: (Use ; to split, such as: Ogmacam_Open(L"0-1010;registry=;wb=rgb"))</p>
   <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
         <td width="15%" rowspan="5"><a id="cfg">Camera Configuration</a></td>
-        <td width="85%" colspan="3">No parameter is required after id parameter if automatic parameter saving or loading is not required.<br/>Attach parameters, the camera configuration are automatically loaded when the camera is opened, and is automatically saved when the camera is close.</td>
+        <td width="85%" colspan="3">No parameter is required after camId parameter if automatic parameter saving or loading is not required.<br/>Attach parameters, the camera configuration are automatically loaded when the camera is opened, and is automatically saved when the camera is close.</td>
       </tr>
       <tr>
         <td width="15%">;registry=xxxx\yyyy</td>
@@ -1551,9 +1563,9 @@ typedef struct {
       </tr>
       <tr>
         <td>OGMACAM_OPTION_AUTOEXPOSURE_PERCENT</td>
-        <td>auto exposure percent to average<br/>
-        1~99: top percent average<br/>
-        0 or 100: full roi average</td>
+        <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
+        1~99: average brightness of specified percentage top brightest pixels in ROI<br/>
+        0 or 100: average brightness of whole pixels in ROI</td>
 		<td>10</td>
 		<td>Yes</td>
       </tr>
@@ -1590,13 +1602,19 @@ typedef struct {
       <tr>
         <td>OGMACAM_OPTION_OVERCLOCK_MAX</td>
         <td>maximum overclock</td>
-		<td>enable (1)</td>
+		<td>NA</td>
 		<td>Yes</td>
       </tr>
       <tr>
         <td>OGMACAM_OPTION_OVERCLOCK</td>
         <td>overclock</td>
-		<td>enable (0)</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>OGMACAM_OPTION_RESET_SENSOR</td>
+        <td>reset sensor</td>
+		<td>NA</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -2071,47 +2089,42 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
       </tr>
       <tr>
         <td>OGMACAM_IOCONTROLTYPE_GET_GPIODIR</td>
-        <td>0x00 =&gt; Input, 0x01 =&gt; Output</td>
+        <td rowspan="2">0x00 =&gt; Input, 0x01 =&gt; Output</td>
       </tr>
       <tr>
         <td>OGMACAM_IOCONTROLTYPE_SET_GPIODIR</td>
-        <td>&nbsp;</td>
       </tr>
       <tr>
         <td>OGMACAM_IOCONTROLTYPE_GET_FORMAT</td>
-        <td>format:<br/>0x00 =&gt; not connected<br/>0x01 =&gt; Tri-state<br/>0x02 =&gt; TTL<br/>0x03 =&gt; LVDS<br/>0x04 =&gt; RS422<br/>0x05 =&gt; Opto-coupled</td>
+        <td rowspan="2">format:<br/>0x00 =&gt; not connected<br/>0x01 =&gt; Tri-state<br/>0x02 =&gt; TTL<br/>0x03 =&gt; LVDS<br/>0x04 =&gt; RS422<br/>0x05 =&gt; Opto-coupled</td>
       </tr>
       <tr>
         <td>OGMACAM_IOCONTROLTYPE_SET_FORMAT</td>
-        <td>&nbsp;</td>
       </tr>
       <tr>
         <td>OGMACAM_IOCONTROLTYPE_GET_OUTPUTINVERTER</td>
-        <td>boolean, only support output signal</td>
+        <td rowspan="2">boolean, only support output signal</td>
       </tr>
       <tr>
         <td>OGMACAM_IOCONTROLTYPE_SET_OUTPUTINVERTER</td>
-        <td>&nbsp;</td>
       </tr>
       <tr>
         <td>OGMACAM_IOCONTROLTYPE_GET_INPUTACTIVATION</td>
-        <td>0x00 =&gt; Rising edge, 0x01 =&gt; Falling edge</td>
+        <td rowspan="2">0x00 =&gt; Rising edge, 0x01 =&gt; Falling edge, 0x02 =&gt; Level high, 0x03 =&gt; Level low</td>
       </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_INPUTACTIVATION</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_DEBOUNCERTIME</td>
-   <td>debouncer time in microseconds, [0, 20000]</td>
+   <td rowspan="2">debouncer time in microseconds, [0, 20000]</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_DEBOUNCERTIME</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_TRIGGERSOURCE</td>
-   <td>0x00 =&gt; Opto-isolated input<br/>
+   <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>
                                 0x01 =&gt; GPIO0<br/>
                                 0x02 =&gt; GPIO1<br/>
                                 0x03 =&gt; Counter<br/>
@@ -2120,39 +2133,34 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_TRIGGERSOURCE</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_TRIGGERDELAY</td>
-   <td>Trigger delay time in microseconds, [0, 5000000]</td>
+   <td rowspan="2">Trigger delay time in microseconds, [0, 5000000]</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_TRIGGERDELAY</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_BURSTCOUNTER</td>
-   <td>Burst Counter, range: [1 ~ 65535]</td>
+   <td rowspan="2">Burst Counter, range: [1 ~ 65535]</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_BURSTCOUNTER</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_COUNTERSOURCE</td>
-   <td>0x00 =&gt; Opto-isolated input<br/>0x01 =&gt; GPIO0<br/>0x02 =&gt; GPIO1</td>
+   <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>0x01 =&gt; GPIO0<br/>0x02 =&gt; GPIO1</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_COUNTERSOURCE</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_COUNTERVALUE</td>
-   <td>Counter Value, range: [1 ~ 65535]</td>
+   <td rowspan="2">Counter Value, range: [1 ~ 65535]</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_COUNTERVALUE</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_RESETCOUNTER</td>
@@ -2160,114 +2168,110 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_PWMSOURCE</td>
-   <td>0x00 =&gt; Opto-isolated input<br/>
+   <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>
 		0x01 =&gt; GPIO0<br/>
 		0x02 =&gt; GPIO1</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_PWMSOURCE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_OUTPUTMODE</td>
-   <td>0x00 =&gt; Frame Trigger Wait<br/>
+   <td rowspan="2">0x00 =&gt; Frame Trigger Wait<br/>
                                 0x01 =&gt; Exposure Active<br/>
                                 0x02 =&gt; Strobe<br/>
-                                0x03 =&gt; User output</td>
+                                0x03 =&gt; User output<br/>
+                                0x04 =&gt; Counter Output<br/>
+                                0x05 =&gt; Timer Output</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_OUTPUTMODE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_STROBEDELAYMODE</td>
-   <td>boolean, 0 =&gt; pre-delay, 1 =&gt; delay; compared to exposure active signal</td>
+   <td rowspan="2">boolean, 0 =&gt; pre-delay, 1 =&gt; delay; compared to exposure active signal</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_STROBEDELAYMODE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_STROBEDELAYTIME</td>
-   <td>Strobe delay or pre-delay time in microseconds, [0, 5000000]</td>
+   <td rowspan="2">Strobe delay or pre-delay time in microseconds, [0, 5000000]</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_STROBEDELAYTIME</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_STROBEDURATION</td>
-   <td>Strobe duration time in microseconds, [0, 5000000]</td>
+   <td rowspan="2">Strobe duration time in microseconds, [0, 5000000]</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_STROBEDURATION</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_USERVALUE</td>
-   <td>bit0 =&gt; Opto-isolated output<br/>
+   <td rowspan="2">bit0 =&gt; Opto-isolated output<br/>
        bit1 =&gt; GPIO0 output<br/>
        bit2 =&gt; GPIO1 output</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_USERVALUE</td>
-   <td>&nbsp;</td>
  </tr><tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_UART_ENABLE</td>
-   <td>UART enable: 1 =&gt; on; 0 =&gt; off</td>
+   <td rowspan="2">UART enable: 1 =&gt; on; 0 =&gt; off</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_UART_ENABLE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_UART_BAUDRATE</td>
-   <td>baud rate:<br/>
+   <td rowspan="2">baud rate:<br/>
    0 =&gt; 9600<br/>1 =&gt; 19200<br/>2 =&gt; 38400<br/>3 =&gt; 57600<br/>4 =&gt; 115200</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_UART_BAUDRATE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_UART_LINEMODE</td>
-   <td>Line Mode:<br/>0 =&gt; TX(GPIO_0)/RX(GPIO_1)<br/>1 =&gt; TX(GPIO_1)/RX(GPIO_0)</td>
+   <td rowspan="2">Line Mode:<br/>0 =&gt; TX(GPIO_0)/RX(GPIO_1)<br/>1 =&gt; TX(GPIO_1)/RX(GPIO_0)</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_UART_LINEMODE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE</td>
-   <td>exposure time signal:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
+   <td rowspan="2">exposure time signal:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE</td>
-   <td>exposure event:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
+   <td rowspan="2">exposure event:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE</td>
-   <td>&nbsp;</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_EXPO_START_LINE</td>
-   <td>exposure start line, default: 1</td>
+   <td rowspan="2">exposure start line, default: 1</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_EXPO_START_LINE</td>
-   <td>&nbsp;</td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_EXPO_END_LINE</td>
-   <td>exposure end line, default: 0<br/>end line must be no less than start line</td>
+   <td rowspan="2">exposure end line, default: 0<br/>end line must be no less than start line</td>
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_EXPO_END_LINE</td>
-   <td>&nbsp;</td>
+ </tr>
+  <tr>
+   <td>OGMACAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE</td>
+   <td rowspan="2">Output Counter Value, range: [0 ~ 65535]</td>
+ </tr>
+ <tr>
+   <td>OGMACAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE</td>
  </tr>
     </table>
   </div>
@@ -2374,7 +2378,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <p><strong>Return value: </strong> &gt;0: the number of device has been replug; = 0: no device found; E_ACCESSDENIED: no UAC Administrator privileges</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>id: camera ID</p>
+      <p>camId: camera ID</p>
     </blockquote>
     <p><strong>Remarks:</strong> simulate replug. for each device found, it will take about 3 seconds.</p>
 </li></ul>
@@ -2607,11 +2611,15 @@ public bool Snap(uint nResolutionIndex)
       </tr>
 	  <tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="8">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="16">C++</td>
-		<td rowspan="8">&nbsp;</td>
-		<td rowspan="8">console</td>
+		<td rowspan="9">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="18">C++</td>
+		<td rowspan="9">&nbsp;</td>
+		<td rowspan="9">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demostill</td>
+		<td>Open all the enumerated cameras (possibly multiple) and pull image, about 90 lines of code</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">demostill</td>
@@ -2645,13 +2653,13 @@ public bool Snap(uint nResolutionIndex)
 		<td colspan="2">demoqt</td>
 		<td>Win32<br/>Linux<br/>macOS</td>
 		<td>Qt</td>
-		<td rowspan="14">GUI</td>
+		<td rowspan="15">GUI</td>
 		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">democpp</td>
-		<td rowspan="7">Win32</td>
-		<td rowspan="5">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>
+		<td rowspan="8">Win32</td>
+		<td rowspan="6">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>
 		<td><a href="./images/democpp.png">snapshot</a>. demonstrates to enumerate device (Respone to <a href="#hotplugnotify">device plugin/unplug notifications</a>), <a href="#apigige">initialize support GigE</a>, open device, video preview, image capture, preview resolution, trigger, image saving multi-format (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control, read write EEPROM/FLASH, etc. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl" target="_blank">http://sourceforge.net/projects/wtl</a></td>
 	  </tr>
 	  <tr>
@@ -2669,6 +2677,10 @@ public bool Snap(uint nResolutionIndex)
 	  <tr>
 		<td colspan="2">democns</td>
 		<td><a href="./images/democns.png">snapshot</a>. Consistency test: The image is evenly divided into m*n zones, and each zone takes a small area in the center to calculate the average value, connect the average value into a line, and check the fluctuation range of the line up and down</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">triggertest</td>
+		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">demomfc</td>
