@@ -1573,24 +1573,24 @@ bool ptp_canon_focus(indigo_device *device, int steps) {
 		CANON_PRIVATE_DATA->steps = steps;
 		pthread_mutex_unlock(&mutex);
 		while (true) {
+			uint32_t value = 0;
+			pthread_mutex_lock(&mutex);
 			if (CANON_PRIVATE_DATA->steps == 0) {
 				result = true;
+				pthread_mutex_unlock(&mutex);
 				break;
 			}
 			if (CANON_PRIVATE_DATA->steps < 0) {
-				pthread_mutex_lock(&mutex);
 				CANON_PRIVATE_DATA->steps++;
-				pthread_mutex_unlock(&mutex);
-				if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x0001))
-					break;
+				value = 0x0001;
 			}
 			if (CANON_PRIVATE_DATA->steps > 0) {
-				pthread_mutex_lock(&mutex);
 				CANON_PRIVATE_DATA->steps--;
-				pthread_mutex_unlock(&mutex);
-				if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x8001))
-					break;
+				value = 0x8001;
 			}
+			pthread_mutex_unlock(&mutex);
+			if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, value))
+				break;
 			indigo_usleep(50000);
 		}
 		if (temporary_lv) {

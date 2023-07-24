@@ -584,7 +584,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->lock = NULL;
 				private_data->af = ptp_sony_af;
 				private_data->zoom = NULL;
-				private_data->focus = (CAMERA[i].flags && ptp_flag_lv) ? ptp_sony_focus : NULL;
+				private_data->focus = ptp_sony_focus;
 				private_data->set_host_time = NULL;
 				private_data->check_dual_compression = ptp_sony_check_dual_compression;
 			} else if (vendor == FUJI_VID) {
