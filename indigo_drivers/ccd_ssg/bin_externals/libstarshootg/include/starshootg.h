@@ -1,7 +1,7 @@
 #ifndef __starshootg_h__
 #define __starshootg_h__
 
-/* Version: 54.22812.20230618 */
+/* Version: 54.22993.20230723 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -157,13 +157,16 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_FLAG_LOW_NOISE           0x0000010000000000  /* support low noise mode (Higher signal noise ratio, lower frame rate) */
 #define STARSHOOTG_FLAG_LEVELRANGE_HARDWARE 0x0000020000000000  /* hardware level range, put(get)_LevelRangeV2 */
 #define STARSHOOTG_FLAG_EVENT_HARDWARE      0x0000040000000000  /* hardware event, such as exposure start & stop */
-#define STARSHOOTG_FLAG_LIGHTSOURCE         0x0000080000000000  /* light source */
+#define STARSHOOTG_FLAG_LIGHTSOURCE         0x0000080000000000  /* embedded light source */
 #define STARSHOOTG_FLAG_FILTERWHEEL         0x0000100000000000  /* astro filter wheel */
 #define STARSHOOTG_FLAG_GIGE                0x0000200000000000  /* 1 Gigabit GigE */
 #define STARSHOOTG_FLAG_10GIGE              0x0000400000000000  /* 10 Gigabit GigE */
 #define STARSHOOTG_FLAG_5GIGE               0x0000800000000000  /* 5 Gigabit GigE */
 #define STARSHOOTG_FLAG_25GIGE              0x0001000000000000  /* 2.5 Gigabit GigE */
 #define STARSHOOTG_FLAG_AUTOFOCUSER         0x0002000000000000  /* astro auto focuser */
+#define STARSHOOTG_FLAG_LIGHT_SOURCE        0x0004000000000000  /* stand alone light source */
+#define STARSHOOTG_FLAG_CAMERALINK          0x0008000000000000  /* camera link */
+#define STARSHOOTG_FLAG_CXP                 0x0010000000000000  /* CXP: CoaXPress */
 
 #define STARSHOOTG_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define STARSHOOTG_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
@@ -219,7 +222,7 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_DENOISE_MIN              0       /* denoise */
 #define STARSHOOTG_DENOISE_MAX              100     /* denoise */
 #define STARSHOOTG_TEC_TARGET_MIN           (-500)  /* TEC target: -50.0 degrees Celsius */
-#define STARSHOOTG_TEC_TARGET_DEF           0       /* 0.0 degrees Celsius */
+#define STARSHOOTG_TEC_TARGET_DEF           100     /* 0.0 degrees Celsius */
 #define STARSHOOTG_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define STARSHOOTG_HEARTBEAT_MIN            100     /* millisecond */
 #define STARSHOOTG_HEARTBEAT_MAX            10000   /* millisecond */
@@ -278,7 +281,7 @@ typedef struct {
 } StarshootgDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 54.22812.20230618
+    get the version of this dll/so/dylib, which is: 54.22993.20230723
 */
 #if defined(_WIN32)
 STARSHOOTG_API(const wchar_t*)   Starshootg_Version();
@@ -1000,6 +1003,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_feed_Pipe(HStarshootg h, unsigned pipeId);
 #define STARSHOOTG_OPTION_EEPROM_SIZE            0x5b       /* get EEPROM size */
 #define STARSHOOTG_OPTION_OVERCLOCK_MAX          0x5c       /* get overclock range: [0, max] */
 #define STARSHOOTG_OPTION_OVERCLOCK              0x5d       /* overclock, default: 0 */
+#define STARSHOOTG_OPTION_RESET_SENSOR           0x5e       /* reset sensor */
 
 /* pixel format */
 #define STARSHOOTG_PIXELFORMAT_RAW8              0x00
@@ -1065,9 +1069,9 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_AfParam(HStarshootg h, StarshootgAfParam
 #define STARSHOOTG_IOCONTROLTYPE_SET_FORMAT                  0x06
 #define STARSHOOTG_IOCONTROLTYPE_GET_OUTPUTINVERTER          0x07 /* boolean, only support output signal */
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUTINVERTER          0x08
-#define STARSHOOTG_IOCONTROLTYPE_GET_INPUTACTIVATION         0x09 /* 0x00 => Rising edge, 0x01 => Falling edge */
+#define STARSHOOTG_IOCONTROLTYPE_GET_INPUTACTIVATION         0x09 /* 0x00 => Rising edge, 0x01 => Falling edge, 0x02 => Level high, 0x03 => Level low */
 #define STARSHOOTG_IOCONTROLTYPE_SET_INPUTACTIVATION         0x0a
-#define STARSHOOTG_IOCONTROLTYPE_GET_DEBOUNCERTIME           0x0b /* debouncer time in microseconds, [0, 20000] */
+#define STARSHOOTG_IOCONTROLTYPE_GET_DEBOUNCERTIME           0x0b /* debouncer time in microseconds, range: [0, 20000] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_DEBOUNCERTIME           0x0c
 #define STARSHOOTG_IOCONTROLTYPE_GET_TRIGGERSOURCE           0x0d /*
                                                                   0x00 => Opto-isolated input
@@ -1078,7 +1082,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_AfParam(HStarshootg h, StarshootgAfParam
                                                                   0x05 => Software
                                                                */
 #define STARSHOOTG_IOCONTROLTYPE_SET_TRIGGERSOURCE           0x0e
-#define STARSHOOTG_IOCONTROLTYPE_GET_TRIGGERDELAY            0x0f /* Trigger delay time in microseconds, [0, 5000000] */
+#define STARSHOOTG_IOCONTROLTYPE_GET_TRIGGERDELAY            0x0f /* Trigger delay time in microseconds, range: [0, 5000000] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_TRIGGERDELAY            0x10
 #define STARSHOOTG_IOCONTROLTYPE_GET_BURSTCOUNTER            0x11 /* Burst Counter, range: [1 ~ 65535] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_BURSTCOUNTER            0x12
@@ -1098,13 +1102,15 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_AfParam(HStarshootg h, StarshootgAfParam
                                                                   0x01 => Exposure Active
                                                                   0x02 => Strobe
                                                                   0x03 => User output
+                                                                  0x04 => Counter Output
+                                                                  0x05 => Timer Output
                                                                */
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUTMODE              0x20
 #define STARSHOOTG_IOCONTROLTYPE_GET_STROBEDELAYMODE         0x21 /* boolean, 0 => pre-delay, 1 => delay; compared to exposure active signal */
 #define STARSHOOTG_IOCONTROLTYPE_SET_STROBEDELAYMODE         0x22
-#define STARSHOOTG_IOCONTROLTYPE_GET_STROBEDELAYTIME         0x23 /* Strobe delay or pre-delay time in microseconds, [0, 5000000] */
+#define STARSHOOTG_IOCONTROLTYPE_GET_STROBEDELAYTIME         0x23 /* Strobe delay or pre-delay time in microseconds, range: [0, 5000000] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_STROBEDELAYTIME         0x24
-#define STARSHOOTG_IOCONTROLTYPE_GET_STROBEDURATION          0x25 /* Strobe duration time in microseconds, [0, 5000000] */
+#define STARSHOOTG_IOCONTROLTYPE_GET_STROBEDURATION          0x25 /* Strobe duration time in microseconds, range: [0, 5000000] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_STROBEDURATION          0x26
 #define STARSHOOTG_IOCONTROLTYPE_GET_USERVALUE               0x27 /*
                                                                   bit0 => Opto-isolated output
@@ -1128,6 +1134,8 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_AfParam(HStarshootg h, StarshootgAfParam
 #define STARSHOOTG_IOCONTROLTYPE_SET_EXPO_END_LINE           0x34
 #define STARSHOOTG_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE       0x35 /* exposure event: 0 => specified line, 1 => common exposure time */
 #define STARSHOOTG_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE       0x36
+#define STARSHOOTG_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE      0x37 /* Output Counter Value, range: [0 ~ 65535] */
+#define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 
 #define STARSHOOTG_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1195,6 +1203,8 @@ STARSHOOTG_API(HRESULT)  Starshootg_ST4PlusGuide(HStarshootg h, unsigned nDirect
 */
 STARSHOOTG_API(HRESULT)  Starshootg_ST4PlusGuideState(HStarshootg h);
 
+STARSHOOTG_API(HRESULT)  Starshootg_Gain2TempTint(const int gain[3], int* temp, int* tint);
+STARSHOOTG_API(void)     Starshootg_TempTint2Gain(const int temp, const int tint, int gain[3]);
 /*
     calculate the clarity factor:
     pImageData: pointer to the image data
