@@ -181,6 +181,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+		// -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
 		MOUNT_RAW_COORDINATES_RA_ITEM->number.value = MOUNT_RAW_COORDINATES_RA_ITEM->number.target = 0;
 		MOUNT_RAW_COORDINATES_DEC_ITEM->number.value = MOUNT_RAW_COORDINATES_DEC_ITEM->number.target = 90;
