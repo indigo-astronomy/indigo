@@ -819,7 +819,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 		uint8_t *record = buffer;
 		ptp_property *updated[PTP_MAX_ELEMENTS] = { NULL }, **next_updated = updated;
 		while (true) {
-			if (record - (uint8_t *)buffer >= max_size)
+			if (record == NULL || record - (uint8_t *)buffer >= max_size)
 				break;
 			uint8_t *source = record;
 			uint32_t size, event;
