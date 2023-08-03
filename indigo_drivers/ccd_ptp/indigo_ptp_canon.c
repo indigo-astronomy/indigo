@@ -819,7 +819,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 		uint8_t *record = buffer;
 		ptp_property *updated[PTP_MAX_ELEMENTS] = { NULL }, **next_updated = updated;
 		while (true) {
-			if (record - (uint8_t *)buffer >= max_size)
+			if (record == NULL || record - (uint8_t *)buffer >= max_size)
 				break;
 			uint8_t *source = record;
 			uint32_t size, event;
@@ -1484,10 +1484,14 @@ bool ptp_canon_liveview(indigo_device *device) {
 		ptp_canon_get_event(device);
 		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer, NULL)) {
+			uint32_t buffer_size;
+			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer, &buffer_size)) {
 				uint8_t *source = buffer;
 				uint32_t length, type;
 				while (!PRIVATE_DATA->abort_capture) {
+          if (source == NULL || source >= (uint8_t *)buffer + buffer_size) {
+            break;
+          }
 					source = ptp_decode_uint32(source, &length);
 					source = ptp_decode_uint32(source, &type);
 					if (type == 1) {

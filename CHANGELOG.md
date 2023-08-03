@@ -2,6 +2,75 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-242] - 26 Jul Wed 2023
+### Overall:
+- indigo_docs: update SCRIPTING_BASICS.md
+- indigo_driver: property state fixes
+
+### New Drivers:
+- indigo_aux_uch: driver for Pegasus USB Control Hub
+
+### Driver fixes:
+- indigo_agent_mount:
+	- SIDE_OF_PIER propagation fixed
+
+- indigo_agent_astrometry & indigo_agent_astap:
+	- add precise GOTO process
+	- added AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY to enable and disable solving when imager agent is related
+	- move states to indigo_names.h
+	- fix indigo_release_property()
+	- add AGENT_PLATESOLVER_EXPOSURE_SETTINGS to replce AGENT_PLATESOLVER_PA_SETTINGS_EXPOSURE item in AGENT_PLATESOLVER_PA_SETTINGS
+
+- indigo_agent_guider:
+	- fix AGENT_START_PROCESS_PROPERTY and ABORT property rule
+	- do not guide close to the pole
+	- typo fix
+
+- indigo_aux_upb:
+	- fix minor LED issue
+	- fix firmware representation
+	- power up defaults support added
+
+- indigo_aux_ppb:
+	- fix firmware representation
+	- power up defaults support added
+
+- indigo_agent_imager:
+	- better focus estimation
+
+- indigo_ccd_ptp:
+	- fix uint64_t alignment issue on 32 bit ARM systems
+	- add NearFar for Sony cameras, implement focusing
+	- code cleanup for canon
+
+- indigo_ccd_playerone:
+	- upgrade to SDK 3.4.1
+	- deadlock on config load fixed
+
+- indigo_ccd_svb:
+	- sdk updated to 1.11.4
+
+- indigo_ccd_asi:
+	- sdk updated to 1.30
+
+- indigo_ccd_touptek & family:
+	- sdk updated to 54.22993.20230723
+
+- indigo_ccd_qhy & indigo_ccd_qhy2:
+	- fix CCD_TEMPERATURE step
+
+- indigo_ccd_atik:
+	- SDK updated to 2023.07.14
+
+- indigo_focuser_asi:
+	- fix focus compensation sign
+
+- indigo_focuser_dsd:
+	- fix focus compensation sign
+
+- indigo_focuser_mypro2:
+	- fix focus compensation sign
+
 # [2.0-240] - 08 Jun Thu 2023
 ### Driver fixes:
 - indigo_ccd_touptek & family:
