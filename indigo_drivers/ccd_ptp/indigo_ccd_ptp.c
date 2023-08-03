@@ -203,6 +203,14 @@ static void handle_connection(indigo_device *device) {
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
 	} else {
+		PRIVATE_DATA->abort_capture = true;
+		while (true) {
+			if (pthread_mutex_trylock(&PRIVATE_DATA->message_mutex) == 0) {
+				pthread_mutex_unlock(&PRIVATE_DATA->message_mutex);
+				break;
+			}
+			indigo_usleep(10000);
+		}
     indigo_cancel_timer_sync(device, &PRIVATE_DATA->event_checker);
 		indigo_detach_device(PRIVATE_DATA->focuser);
 #ifndef USE_ICA_TRANSPORT

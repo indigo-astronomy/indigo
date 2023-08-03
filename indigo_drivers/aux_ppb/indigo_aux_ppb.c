@@ -517,7 +517,7 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
-		ppb_command(device, "PE:1111", response, sizeof(response));
+		ppb_command(device, "PE:0011", response, sizeof(response));
 		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
@@ -597,8 +597,8 @@ static void aux_save_defaults_handler(indigo_device *device) {
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
-		char command[] = "PE:00";
-		char *port_mask = command + 3;
+		char command[] = "PE:0000";
+		char *port_mask = command + 5;
 		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 			port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
 		}
