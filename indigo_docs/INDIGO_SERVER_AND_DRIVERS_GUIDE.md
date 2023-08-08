@@ -172,7 +172,7 @@ It is a good practice to report any instability or crash to the developers provi
 Some devices support hotplug. If so, the chances are that the INDIGO driver will also support hotplug for this device.
 
 Usually USB devices are hotplug devices, but not all of them.
-Sometimes only the physical wiring is USB, but the device itself is basically a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to these serial ports. In this case most likely the device can not be automatically identified by the driver, therefore a proper serial port name should be providedm, in the DEVICE_PORT property, by the user in order to connect the driver to the device. Sometimes the serial port manifests itself as a particular device, based on USB vendor ID and product ID, the driver can make a good guess and automatically set DEVICE_PORT property.
+Sometimes only the physical wiring is USB, but the device itself is basically a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to these serial ports. In this case, most likely, the device can not be automatically identified by the driver, therefore a proper serial port name should be provided in the DEVICE_PORT property (or selected from the SERIAL_PORTS property list) in order to connect the driver to the device. If the serial port manifests itself as a particular device, based on USB vendor ID and product ID, the driver can make a good guess and automatically set DEVICE_PORT property.
 
 The README of each driver provides information if hotplug is supported or not.
 
