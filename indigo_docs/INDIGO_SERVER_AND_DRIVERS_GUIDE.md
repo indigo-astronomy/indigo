@@ -1,5 +1,5 @@
 # Guide to indigo_server and INDIGO Drivers
-Revision: 01.05.2023 (draft)
+Revision: 08.08.2023 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -172,9 +172,9 @@ It is a good practice to report any instability or crash to the developers provi
 Some devices support hotplug. If so, the chances are that the INDIGO driver will also support hotplug for this device.
 
 Usually USB devices are hotplug devices, but not all of them.
-Sometimes only the physical wiring is USB, but the device itself is basically a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to these serial ports. In this case most likely the device can not be automatically identified by the driver, therefore a proper serial port name should be provided by the user in order to connect the driver to the device. Sometimes if the serial port manifests itself as a particular device, based on USB vendor ID and product ID, the driver can make a good guess.
+Sometimes only the physical wiring is USB, but the device itself is basically a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to these serial ports. In this case most likely the device can not be automatically identified by the driver, therefore a proper serial port name should be providedm, in the DEVICE_PORT property, by the user in order to connect the driver to the device. Sometimes the serial port manifests itself as a particular device, based on USB vendor ID and product ID, the driver can make a good guess and automatically set DEVICE_PORT property.
 
-The README of each driver can provide information if hotplug is supported or not.
+The README of each driver provides information if hotplug is supported or not.
 
 #### USB to Serial Port Enumeration
 On Linux most of the USB to serial devices will be named '/dev/ttyUSB0', '/dev/ttyUSB1' etc. or  '/dev/ttyACM0', '/dev/ttyACM1' etc. Each device will always be ttyUSB or ttyACM but there is no way to know the number. Therefore it is advised to connect and power up (if external power is required) all USB serial devices before booting up the Linux system (for example the Raspberry Pi). Then identify devices by connecting the INDIGO drivers to them one by one. Once identified, save each driver configuration to "Profile 0".
