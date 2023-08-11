@@ -644,6 +644,7 @@ static void preview_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->find_stars = false;
 	uint8_t *saturation_mask = NULL;
 	allow_abort_by_mount_agent(device, false);
+	disable_solver(device);
 	while (capture_raw_frame(device, &saturation_mask) == INDIGO_OK_STATE);
 	indigo_safe_free(saturation_mask);
 
@@ -896,6 +897,7 @@ static void exposure_batch_process(indigo_device *device) {
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
 	allow_abort_by_mount_agent(device, true);
+	disable_solver(device);
 	indigo_send_message(device, "Batch started");
 	if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 		// Start batch on related imager agents
@@ -989,6 +991,7 @@ static void streaming_batch_process(indigo_device *device) {
 	AGENT_IMAGER_STATS_BATCHES_ITEM->number.value = 1;
 	AGENT_IMAGER_STATS_BATCH_INDEX_ITEM->number.value = 0;
 	allow_abort_by_mount_agent(device, true);
+	disable_solver(device);
 	indigo_send_message(device, "Streaming started");
 	if (streaming_batch(device)) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1567,6 +1570,7 @@ static void autofocus_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
 	DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
 	allow_abort_by_mount_agent(device, true);
+	disable_solver(device);
 	indigo_send_message(device, "Focusing started");
 	select_subframe(device);
 	DEVICE_PRIVATE_DATA->restore_initial_position = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value ? false : AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM->sw.value;
@@ -1868,6 +1872,7 @@ static void sequence_process(indigo_device *device) {
 	strcpy(sequence_text, indigo_get_text_item_value(AGENT_IMAGER_SEQUENCE_ITEM));
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		allow_abort_by_mount_agent(device, false);
+		disable_solver(device);
 		value = strchr(token, '=');
 		if (value) {
 			*value++ = 0;
@@ -1972,6 +1977,7 @@ static void find_stars_process(indigo_device *device) {
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
+	disable_solver(device);
 	if (capture_raw_frame(device, NULL) != INDIGO_OK_STATE) {
 		AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
