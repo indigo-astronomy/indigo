@@ -335,16 +335,14 @@ static int used_server_slots = 0;
 indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 
 void indigo_service_name(const char *host, int port, char *name) {
-  indigo_copy_name(name, host);
-  char *lastone = name + strlen(name) - 1;
-  if (*lastone == '.')
-    *lastone = 0;
-  char * local = strstr(name, ".local");
-  if (local != NULL && (!strcmp(local, ".local")))
-    *local = 0;
-  if (port != 7624) {
-    sprintf(name + strlen(name), ":%d", port);
-  }
+	indigo_copy_name(name, host);
+	char *dot;
+	if ((dot = strchr(name, '.'))) {
+		*dot = 0;
+	}
+	if (port != 7624) {
+		sprintf(name + strlen(name), ":%d", port);
+	}
 }
 
 static void *server_thread(indigo_server_entry *server) {
