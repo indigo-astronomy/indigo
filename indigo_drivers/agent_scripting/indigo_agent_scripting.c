@@ -319,7 +319,7 @@ static duk_ret_t enable_blob(duk_context *ctx) {
 	indigo_property property_template = { 0 };
 	indigo_copy_name(property_template.device, device);
 	indigo_copy_name(property_template.name, property);
-	indigo_enable_blob(agent_client, &property_template, state);
+	indigo_enable_blob(agent_client, &property_template, state ? INDIGO_ENABLE_BLOB_URL : INDIGO_ENABLE_BLOB_NEVER);
 	return 0;
 }
 

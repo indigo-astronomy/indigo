@@ -1053,7 +1053,7 @@ bool ptp_sony_focus(indigo_device *device, int steps) {
 				pthread_mutex_unlock(&mutex);
 				return true;
 			}
-			int16_t value = SONY_PRIVATE_DATA->steps <= -7 ? -7 : (SONY_PRIVATE_DATA->steps >= 7 ? 7 : SONY_PRIVATE_DATA->steps);
+			int16_t value = SONY_PRIVATE_DATA->steps <= -1 ? -1 : 1;
 			SONY_PRIVATE_DATA->steps -= value;
 			pthread_mutex_unlock(&mutex);
 			if (!ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_NearFar, &value, sizeof(uint16_t))) {
