@@ -91,12 +91,19 @@
 #define AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM				(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->items+0)
 #define AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM				(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->items+1)
 
+#define AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY			(DEVICE_PRIVATE_DATA->agent_display_coordinates_property)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM	(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+0)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM	(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+1)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+2)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM				(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+3)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM				(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+4)
+
 #define AGENT_ABORT_PROCESS_PROPERTY									(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      								(AGENT_ABORT_PROCESS_PROPERTY->items+0)
 
 #define AGENT_START_PROCESS_PROPERTY									(DEVICE_PRIVATE_DATA->agent_start_process_property)
-#define AGENT_MOUNT_START_SLEW_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+0)
-#define AGENT_MOUNT_START_SYNC_ITEM  								(AGENT_START_PROCESS_PROPERTY->items+1)
+#define AGENT_MOUNT_START_SLEW_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+0)
+#define AGENT_MOUNT_START_SYNC_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+1)
 
 typedef struct {
 	indigo_property *agent_geographic_property;
@@ -108,6 +115,7 @@ typedef struct {
 	indigo_property *agent_limits_property;
 	indigo_property *agent_fov_property;
 	indigo_property *agent_target_coordinates_property;
+	indigo_property *agent_display_coordinates_property;
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_start_process_property;
 	double mount_latitude, mount_longitude, mount_elevation;
@@ -305,13 +313,22 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_ANGLE_ITEM, AGENT_MOUNT_FOV_ANGLE_ITEM_NAME, "Angle (°)", -360, 360, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_WIDTH_ITEM, AGENT_MOUNT_FOV_WIDTH_ITEM_NAME, "Width (°)", 0, 360, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_FOV_HEIGHT_ITEM, AGENT_MOUNT_FOV_HEIGHT_ITEM_NAME, "Height (°)", 0, 360, 0, 0);
-		// -------------------------------------------------------------------------------- Process properties
+		// -------------------------------------------------------------------------------- AGENT_MOUNT_TARGET_COORDINATES
 		AGENT_MOUNT_TARGET_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY_NAME, "Agent", "Target coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_MOUNT_TARGET_COORDINATES_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM, AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 1, 0);
-		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 1, 0);
-
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM, AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 0, 0);
+		// -------------------------------------------------------------------------------- AGENT_MOUNT_DISPLAY_COORDINATES
+		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME, "Agent", "Display coordinates", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		if (AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM_NAME, "Right ascension JNow (0 to 24 hrs)", 0, 24, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM_NAME, "Declination JNow (-90° to +90°)", -90, 90, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM_NAME, "Altitude (0 to 180°)", 0, 180, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM_NAME, "Azimuth (0° to 360°)", -90, 360, 0, 0);
+		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM_NAME, "Hour angle (0 to 24 hrs)", 0, 24, 0, 0);
+		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -355,6 +372,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_MOUNT_FOV_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, property))
 		indigo_define_property(device,AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, property))
+		indigo_define_property(device,AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
 		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
@@ -638,7 +657,7 @@ static void mount_control(indigo_device *device, char *operation) {
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, operation, true);
 	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-	double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value };
+	double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
 	indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device_name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	for (int i = 0; i < 3000; i++) {
 		if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE) {
@@ -760,8 +779,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_TARGET_COORDINATES
+		double ra = AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value;
+		double dec = AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value;
 		indigo_property_copy_values(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, property, false);
-		AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
+		AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
+		if (AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+			AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		}
 		indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
@@ -817,6 +842,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_LIMITS_PROPERTY);
 	indigo_release_property(AGENT_MOUNT_FOV_PROPERTY);
 	indigo_release_property(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY);
+	indigo_release_property(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
@@ -825,6 +851,23 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
+static void update_display_coordinates(indigo_device *device) {
+	time_t utc = time(NULL);
+	double ra = DEVICE_PRIVATE_DATA->mount_ra;
+	double dec = DEVICE_PRIVATE_DATA->mount_dec;
+	AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
+	AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
+	indigo_j2k_to_jnow(&ra, &dec);
+	AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM->number.value = ra;
+	AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM->number.value = dec;
+	indigo_radec_to_altaz(ra, dec, &utc, DEVICE_PRIVATE_DATA->mount_latitude, DEVICE_PRIVATE_DATA->mount_longitude, DEVICE_PRIVATE_DATA->mount_elevation, &AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value);
+	AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value = fmod((indigo_lst(&utc, DEVICE_PRIVATE_DATA->mount_longitude) - ra + 24), 24);
+	AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
+	indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
+	AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
+	indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
+}
+
 static void process_snooping(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])) {
 		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
@@ -832,21 +875,23 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
 			}
 		} else if (!strcmp(property->name, GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
-			if (property->state == INDIGO_OK_STATE) {
-				bool changed = false;
-				for (int i = 0; i < property->count; i++) {
-					if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-						changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
-						CLIENT_PRIVATE_DATA->mount_latitude = property->items[i].number.value;
-					} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-						changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
-						CLIENT_PRIVATE_DATA->mount_longitude = property->items[i].number.value;
-					} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
-						CLIENT_PRIVATE_DATA->mount_elevation = property->items[i].number.value;
-					}
+			bool changed = false;
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
+					changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+					CLIENT_PRIVATE_DATA->mount_latitude = property->items[i].number.value;
+				} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
+					changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+					CLIENT_PRIVATE_DATA->mount_longitude = property->items[i].number.value;
+				} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->mount_elevation = property->items[i].number.value;
 				}
-				if (changed && CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[1].sw.value)
+			}
+			if (changed && CLIENT_PRIVATE_DATA->agent_site_data_source_property->items[1].sw.value) {
+				indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 0, update_display_coordinates, NULL);
+				if (property->state == INDIGO_OK_STATE) {
 					indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 1, set_site_coordinates, NULL);
+				}
 			}
 		} else if (!strcmp(property->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME)) {
 			CLIENT_PRIVATE_DATA->mount_side_of_pier = 0;
@@ -874,6 +919,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					indigo_change_number_property(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 				}
 			}
+			indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 0, update_display_coordinates, NULL);
 			if (property->state == INDIGO_OK_STATE) {
 				set_eq_coordinates(FILTER_CLIENT_CONTEXT->device);
 			} else {
