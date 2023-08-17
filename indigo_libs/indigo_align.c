@@ -37,7 +37,7 @@ const double RAD2DEG = 180.0 / M_PI;
 
 /* Convenience wrappers for indigo_precess(...) */
 
-static double jnow() {
+static double jnow(void) {
 	return 2000 + ((time(NULL) / 86400.0 + 2440587.5 - 0.477677 / 86400.0) - 2451545.0) / 365.25;
 }
 
