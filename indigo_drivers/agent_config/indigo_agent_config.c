@@ -259,7 +259,7 @@ static void load_configuration(indigo_device *device) {
 	} else {
 		AGENT_CONFIG_LOAD_PROPERTY->state = INDIGO_OK_STATE;
 		AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Configurtion loaded");
+		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Configuration loaded");
 	}
 	indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 }
