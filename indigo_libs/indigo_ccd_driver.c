@@ -1343,14 +1343,14 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				case '2':
 					strcat(tmp, "02d");
 					break;
-				case '3':
-					strcat(tmp, "03d");
-					break;
 				case '4':
 					strcat(tmp, "04d");
 					break;
 				case '5':
 					strcat(tmp, "05d");
+					break;
+				default:
+					strcat(tmp, "03d");
 					break;
 			}
 			strcat(tmp, fs + 3);
