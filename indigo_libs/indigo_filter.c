@@ -284,8 +284,10 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 		if (cached_property && indigo_property_match(cached_property, property))
 			indigo_define_property(device, cached_property, NULL);
 	}
-	if (indigo_property_match(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property))
+	if (indigo_property_match(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property)) {
+		FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->hidden = FILTER_RELATED_AGENT_LIST_PROPERTY->hidden;
 		indigo_define_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
+	}
 	if (indigo_property_match(CCD_LENS_FOV_PROPERTY, property))
 		indigo_define_property(device, CCD_LENS_FOV_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
