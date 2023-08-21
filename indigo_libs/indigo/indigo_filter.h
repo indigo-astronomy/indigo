@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define INDIGO_FILTER_LIST_COUNT							13
-#define INDIGO_FILTER_MAX_DEVICES							32
+#define INDIGO_FILTER_MAX_DEVICES							128
 #define INDIGO_FILTER_MAX_CACHED_PROPERTIES		256
 	
 #define INDIGO_FILTER_CCD_INDEX								0
