@@ -23,13 +23,7 @@
  \file indigo_agent_scripting.c
  */
 
-//#define API_CHANGE
-
-#ifdef API_CHANGE
 #define DRIVER_VERSION 0x0006
-#else
-#define DRIVER_VERSION 0x0005
-#endif
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -64,9 +58,7 @@
 
 #define AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY		(PRIVATE_DATA->agent_execute_script_property)
 #define AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY		(PRIVATE_DATA->agent_delete_script_property)
-#ifdef API_CHANGE
 #define AGENT_SCRIPTING_DELETE_SCRIPT_NAME_ITEM		(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items+0)
-#endif
 #define AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY		(PRIVATE_DATA->agent_on_load_script_property)
 #define AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY	(PRIVATE_DATA->agent_on_unload_script_property)
 
@@ -772,17 +764,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count = 0;
-#ifdef API_CHANGE
 		AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Delete script", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(AGENT_SCRIPTING_DELETE_SCRIPT_NAME_ITEM, AGENT_SCRIPTING_DELETE_SCRIPT_NAME_ITEM_NAME, "Name", "");
-#else
-		AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Delete script", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_ITEMS - 2);
-		if (AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count = 0;
-#endif
 		AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Exececute on agent load", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, MAX_ITEMS);
 		if (AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -955,33 +940,18 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, script_property, NULL);
 			int j = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count;
 			indigo_delete_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
-#ifndef API_CHANGE
-			indigo_delete_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
-#endif
 			indigo_delete_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
 			indigo_delete_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 			AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count++;
-#ifndef API_CHANGE
-			AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count++;
-#endif
 			AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->count++;
 			AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->count++;
 			indigo_init_switch_item(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + j, name, AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value, false);
-#ifndef API_CHANGE
-			indigo_init_switch_item(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + j, name, AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value, false);
-#endif
 			indigo_init_switch_item(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + (j + 1), name, AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items->sw.value);
 			indigo_init_switch_item(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + (j + 1), name, AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM->text.value, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items->sw.value);
 			indigo_property_sort_items(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, 0);
-#ifndef API_CHANGE
-			indigo_property_sort_items(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, 0);
-#endif
 			indigo_property_sort_items(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, 1);
 			indigo_property_sort_items(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, 1);
 			indigo_define_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
-#ifndef API_CHANGE
-			indigo_define_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
-#endif
 			indigo_define_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 		}
@@ -1017,7 +987,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_DELETE_SCRIPT
-#ifdef API_CHANGE
 		indigo_property_copy_values(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i;
@@ -1048,44 +1017,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		save_config(device);
 		return INDIGO_OK;
-#else
-		indigo_property_copy_values(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property, false);
-		for (int i = 0; i < AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count; i++) {
-			indigo_item *item = AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i;
-			if (item->sw.value) {
-				int j = atoi(item->name + AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME_LENGTH);
-				indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(j);
-				if (script_property) {
-					indigo_delete_property(device, script_property, NULL);
-					indigo_release_property(script_property);
-					AGENT_SCRIPTING_SCRIPT_PROPERTY(j) = NULL;
-					indigo_delete_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
-					indigo_delete_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
-					indigo_delete_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
-					indigo_delete_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
-					int count = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count;
-					if (i + 1 < count) {
-						memmove(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i + 1, sizeof(indigo_item) * (count - i - 1));
-						memmove(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items + i + 1, sizeof(indigo_item) * (count - i - 1));
-						memmove(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + (i + 1), AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 1));
-						memmove(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + (i + 1), AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + i + 2, sizeof(indigo_item) * (count - i - 1));
-					}
-					AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count--;
-					AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->count--;
-					AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->count--;
-					AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->count--;
-					AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_define_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
-					indigo_define_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
-					indigo_define_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
-					indigo_define_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
-					break;
-				}
-			}
-		}
-		save_config(device);
-		return INDIGO_OK;
-#endif
 	} else if (indigo_property_match(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_ON_LOAD_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, property, false);
@@ -1113,27 +1044,15 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 						indigo_item *item = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + j;
 						if (!strcmp(script_property->name, item->name)) {
 							indigo_delete_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
-#ifndef API_CHANGE
-							indigo_delete_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
-#endif
 							indigo_delete_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
 							indigo_delete_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 							strcpy(item->label, script_property->label);
-#ifndef API_CHANGE
-							strcpy(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY->items[j].label, script_property->label);
-#endif
 							strcpy(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items[j + 1].label, script_property->label);
 							strcpy(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items[j + 1].label, script_property->label);
 							indigo_property_sort_items(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, 0);
-#ifndef API_CHANGE
-							indigo_property_sort_items(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, 0);
-#endif
 							indigo_property_sort_items(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, 1);
 							indigo_property_sort_items(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, 1);
 							indigo_define_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
-#ifndef API_CHANGE
-							indigo_define_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
-#endif
 							indigo_define_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
 							indigo_define_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
 							break;
