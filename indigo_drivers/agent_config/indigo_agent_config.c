@@ -151,6 +151,7 @@ static void populate_list(indigo_device *device) {
 
 static void load_configuration(indigo_device *device) {
 	// request deselect everything from all agents first
+	indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Unloading current configuration, please wait...");
 	for (int i = 0; i < MAX_AGENTS; i++) {
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 		indigo_property *agent = DEVICE_PRIVATE_DATA->agents[i];
