@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0022
+#define DRIVER_VERSION 0x0023
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -81,6 +81,8 @@
 #define MOUNT_TYPE_AGOTINO_ITEM					(MOUNT_TYPE_PROPERTY->items+9)
 #define MOUNT_TYPE_ZWO_ITEM				 			(MOUNT_TYPE_PROPERTY->items+10)
 #define MOUNT_TYPE_NYX_ITEM				 			(MOUNT_TYPE_PROPERTY->items+11)
+#define MOUNT_TYPE_OAT_ITEM				 			(MOUNT_TYPE_PROPERTY->items+12)
+
 
 #define MOUNT_TYPE_PROPERTY_NAME				"X_MOUNT_TYPE"
 #define MOUNT_TYPE_DETECT_ITEM_NAME			"DETECT"
@@ -95,6 +97,7 @@
 #define MOUNT_TYPE_AGOTINO_ITEM_NAME		"AGOTINO"
 #define MOUNT_TYPE_ZWO_ITEM_NAME				"ZWO_AM"
 #define MOUNT_TYPE_NYX_ITEM_NAME				"NYX"
+#define MOUNT_TYPE_OAT_ITEM_NAME				"OAT"
 
 #define ZWO_BUZZER_PROPERTY				(PRIVATE_DATA->zwo_buzzer_property)
 #define ZWO_BUZZER_OFF_ITEM				(ZWO_BUZZER_PROPERTY->items+0)
@@ -229,15 +232,21 @@ static bool meade_open(indigo_device *device) {
 		PRIVATE_DATA->is_network = false;
 		if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+		} else if (MOUNT_TYPE_OAT_ITEM->sw.value){
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
 		} else {
 			PRIVATE_DATA->handle = indigo_open_serial(name);
 			if (PRIVATE_DATA->handle > 0) {
 				if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
 					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 19200);
 					if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
 						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = -1;
+						PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+						if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
+							close(PRIVATE_DATA->handle);
+							PRIVATE_DATA->handle = -1;
+						}
 					}
 				}
 			}
@@ -467,7 +476,7 @@ static bool gemini_set(indigo_device *device, int command, char *parameter) {
 	*end++ = checksum;
 	*end++ = '#';
 	*end++ = 0;
- 	return meade_command(device, buffer, NULL, 0, 0);
+	return meade_command(device, buffer, NULL, 0, 0);
 }
 
 static void meade_close(indigo_device *device) {
@@ -516,7 +525,7 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 }
 
 static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 		struct tm tm;
 		char response[128];
 		memset(&tm, 0, sizeof(tm));
@@ -644,7 +653,7 @@ static bool meade_get_coordinates(indigo_device *device, double *ra, double *dec
 		}
 	} else if (meade_command(device, ":GR#", response, sizeof(response), 0)) {
 		if (strlen(response) < 8) {
-			if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 				meade_command(device, ":P#", response, sizeof(response), 0);
 				meade_command(device, ":GR#", response, sizeof(response), 0);
 			} else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
@@ -718,9 +727,6 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		return false;
 	}
 	if (!meade_command(device, ":CM#", response, sizeof(response), 100000) || *response == 0) {
-		if (MOUNT_TYPE_STARGO2_ITEM->sw.value && !strncmp(response, " M31", 4))
-			return true;
-			
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		return false;
 	}
@@ -820,6 +826,8 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
 				return meade_command(device, ":TK#:Te#", response, sizeof(response), 0) && *response == '1';
 			}
+		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+			return meade_command(device, ":MT1#", response, sizeof(response), 0) && *response == '1';
 		} else {
 			return meade_command(device, ":AP#", NULL, 0, 0);
 		}
@@ -832,6 +840,8 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			return meade_command(device, ":RT9#", NULL, 0, 0);
 		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
 			return meade_command(device, ":Td#", NULL, 0, 0);
+		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+			return meade_command(device, ":MT0#", response, sizeof(response), 0) && *response == '1';
 		} else {
 			return meade_command(device, ":AL#", NULL, 0, 0);
 		}
@@ -846,6 +856,8 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 			return gemini_set(device, 131, "");
 		else if (MOUNT_TYPE_AP_ITEM->sw.value)
 			return meade_command(device, ":RT2#", NULL, 0, 0);
+		else if (MOUNT_TYPE_OAT_ITEM->sw.value)
+			return meade_command(device, ":XSS1.000#", NULL, 0, 0);
 		else
 			return meade_command(device, ":TQ#", NULL, 0, 0);
 	} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 's') {
@@ -856,6 +868,8 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 			return meade_command(device, ":TSOLAR#", NULL, 0, 0);
 		else if (MOUNT_TYPE_AP_ITEM->sw.value)
 			return meade_command(device, ":RT1#", NULL, 0, 0);
+		else if (MOUNT_TYPE_OAT_ITEM->sw.value)
+			return meade_command(device, ":XSS0.997#", NULL, 0, 0);
 		else
 			return meade_command(device, ":TS#", NULL, 0, 0);
 	} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'l') {
@@ -864,6 +878,8 @@ static bool meade_set_tracking_rate(indigo_device *device) {
 			return gemini_set(device, 133, "");
 		else if (MOUNT_TYPE_AP_ITEM->sw.value)
 			return meade_command(device, ":RT0#", NULL, 0, 0);
+		else if (MOUNT_TYPE_OAT_ITEM->sw.value)
+			return meade_command(device, ":XSS0.965#", NULL, 0, 0);
 		else
 			return meade_command(device, ":TL#", NULL, 0, 0);
 	} else if (MOUNT_TRACK_RATE_KING_ITEM->sw.value && PRIVATE_DATA->lastTrackRate != 'k') {
@@ -973,7 +989,7 @@ static bool meade_motion_ra(indigo_device *device) {
 
 static bool meade_park(indigo_device *device) {
 	char response[128];
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value)
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)
 		return meade_command(device, ":hP#", NULL, 0, 0);
 	if (MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value)
 		return meade_command(device, ":KA#", NULL, 0, 0);
@@ -986,7 +1002,7 @@ static bool meade_park(indigo_device *device) {
 
 static bool meade_unpark(indigo_device *device) {
 	char response[128];
-	if (MOUNT_TYPE_EQMAC_ITEM->sw.value)
+	if (MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)
 		return meade_command(device, ":hU#", NULL, 0, 0);
 	if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
 		return meade_command(device, ":hW#", NULL, 0, 0);
@@ -1008,7 +1024,7 @@ static bool meade_park_set(indigo_device *device) {
 
 static bool meade_home(indigo_device *device) {
 	char response[128];
-	if (MOUNT_TYPE_10MICRONS_ITEM->sw.value)
+	if (MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value)
 		return meade_command(device, ":hF#", NULL, 0, 0);
 	if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value)
 		return meade_command(device, ":hC#", NULL, 0, 0);
@@ -1077,11 +1093,11 @@ static bool meade_focus_rel(indigo_device *device, bool slow, int steps) {
 	if (steps == 0)
 		return true;
 	PRIVATE_DATA->focus_aborted = false;
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 		if (!meade_command(device, slow ? ":FS#" : ":FF#", NULL, 0, 0))
 			return false;
 	}
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 		if (!meade_command(device, steps > 0 ? ":F+#" : ":F-#", NULL, 0, 0))
 			return false;
 		if (steps < 0)
@@ -1112,7 +1128,7 @@ static bool meade_focus_rel(indigo_device *device, bool slow, int steps) {
 }
 
 static bool meade_focus_abort(indigo_device *device) {
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 		if (meade_command(device, ":FQ#", NULL, 0, 0)) {
 			PRIVATE_DATA->focus_aborted = true;
 			return true;
@@ -1151,6 +1167,8 @@ static bool meade_detect_mount(indigo_device *device) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_ZWO_ITEM, true);
 		} else if (!strncmp(PRIVATE_DATA->product, "NYX", 3)) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_NYX_ITEM, true);
+		} else if (!strncmp(PRIVATE_DATA->product, "OpenAstroTracker", 16)) {
+			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_OAT_ITEM, true);
 		} else {
 			MOUNT_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
 			result = false;
@@ -1505,7 +1523,7 @@ static void meade_init_nyx_mount(indigo_device *device) {
 		indigo_send_message(device, "Mount is connected to network '%s' with IP address %s", response, separator);
 	}
 
-	
+
 	if (meade_command(device, ":GX9D#", response, sizeof(response), 0) && (separator = strchr(response, ':'))) {
 		*separator++ = 0;
 		NYX_LEVELER_PICH_ITEM->number.value = atof(response);
@@ -1522,6 +1540,28 @@ static void meade_init_nyx_mount(indigo_device *device) {
 	indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 	indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 	indigo_define_property(device, NYX_LEVELER_PROPERTY, NULL);
+	meade_update_site_items(device);
+	meade_update_mount_state(device);
+}
+
+
+static void meade_init_oat_mount(indigo_device *device) {
+	char response[128];
+	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+	MOUNT_UTC_TIME_PROPERTY->hidden = false;
+	MOUNT_TRACKING_PROPERTY->hidden = false;
+	MOUNT_PARK_PROPERTY->count = 1;
+	MOUNT_PARK_PARKED_ITEM->sw.value = false;
+	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+	MOUNT_MODE_PROPERTY->hidden = true;
+	FORCE_FLIP_PROPERTY->hidden = true;
+	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "OpenAstroTech");
+	indigo_copy_value(MOUNT_INFO_MODEL_ITEM->text.value, "N/A");
+	if (meade_command(device, ":GVN#", response, sizeof(response), 0)) {
+		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
+		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
+	}
+	PRIVATE_DATA->use_dst_commands = false;
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
@@ -1567,6 +1607,8 @@ static void meade_init_mount(indigo_device *device) {
 		meade_init_zwo_mount(device);
 	else if (MOUNT_TYPE_NYX_ITEM->sw.value)
 		meade_init_nyx_mount(device);
+	else if (MOUNT_TYPE_OAT_ITEM->sw.value)
+		meade_init_oat_mount(device);
 	else
 		meade_init_generic_mount(device);
 }
@@ -2023,6 +2065,46 @@ static void meade_update_nyx_state(indigo_device *device) {
 	}
 }
 
+static void meade_update_oat_state(indigo_device *device) {
+	char response[128];
+	if (meade_command(device, ":D#", response, sizeof(response), 0)) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = *response ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+	} else {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	if (meade_command(device, ":GX#", response, sizeof(response), 0)) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strstr(response, "Slew") ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
+		if (!strncmp(response, "Idle", 4)) {
+			if (!MOUNT_TRACKING_ON_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				PRIVATE_DATA->tracking_changed = true;
+			}
+		} else if (!strncmp(response, "Tracking", 8)) {
+			if (!MOUNT_TRACKING_ON_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+				PRIVATE_DATA->tracking_changed = true;
+			}
+		} else if (!strncmp(response, "Parked", 6)) {
+			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->park_changed = true;
+			}
+		} else if (!strncmp(response, "Parking", 7)) {
+			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+				PRIVATE_DATA->park_changed = true;
+			}
+		} else if (!strncmp(response, "Homing", 7)) {
+			if (MOUNT_HOME_PROPERTY->state != INDIGO_BUSY_STATE) {
+				MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+				PRIVATE_DATA->home_changed = true;
+			}
+		}
+	}
+}
+
 static void meade_update_generic_state(indigo_device *device) {
 	if (PRIVATE_DATA->motioned) {
 		// After Motion NS or EW
@@ -2066,6 +2148,8 @@ static void meade_update_mount_state(indigo_device *device) {
 			meade_update_zwo_state(device);
 		} else if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 			meade_update_nyx_state(device);
+		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
+			meade_update_oat_state(device);
 		} else {
 			meade_update_generic_state(device);
 		}
@@ -2161,7 +2245,7 @@ static void mount_park_callback(indigo_device *device) {
 		if (MOUNT_PARK_PROPERTY->count == 1)
 			MOUNT_PARK_PARKED_ITEM->sw.value = false;
 		if (meade_park(device)) {
-			if (!(MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value))
+			if (!(MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value))
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2170,7 +2254,7 @@ static void mount_park_callback(indigo_device *device) {
 	}
 	if (MOUNT_PARK_UNPARKED_ITEM->sw.value) {
 		if (meade_unpark(device)) {
-			if (!(MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value))
+			if (!(MOUNT_TYPE_EQMAC_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_STARGO_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value))
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2478,7 +2562,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(FORCE_FLIP_DISABLED_ITEM, FORCE_FLIP_DISABLED_ITEM_NAME, "Disabled", false);
 		FORCE_FLIP_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
-		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 12);
+		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 13);
 		if (MOUNT_TYPE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_TYPE_DETECT_ITEM, MOUNT_TYPE_DETECT_ITEM_NAME, "Autodetect", true);
@@ -2493,6 +2577,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_AGOTINO_ITEM, MOUNT_TYPE_AGOTINO_ITEM_NAME, "aGotino", false);
 		indigo_init_switch_item(MOUNT_TYPE_ZWO_ITEM, MOUNT_TYPE_ZWO_ITEM_NAME, "ZWO AM", false);
 		indigo_init_switch_item(MOUNT_TYPE_NYX_ITEM, MOUNT_TYPE_NYX_ITEM_NAME, "Pegasus NYX", false);
+		indigo_init_switch_item(MOUNT_TYPE_OAT_ITEM, MOUNT_TYPE_OAT_ITEM_NAME, "OpenAstroTech", false);
 		// ---------------------------------------------------------------------------- ZWO_BUZZER
 		ZWO_BUZZER_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_BUZZER_PROPERTY_NAME, "Advanced", "Buzzer volume", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (ZWO_BUZZER_PROPERTY == NULL)
@@ -2941,7 +3026,7 @@ static void focuser_connect_callback(indigo_device *device) {
 		if (result) {
 			if (MOUNT_TYPE_DETECT_ITEM->sw.value)
 				meade_detect_mount(device->master_device);
-			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 				FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
 				FOCUSER_SPEED_ITEM->number.max = 2;
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
