@@ -134,6 +134,7 @@ This is the list of requirements taken into the consideration:
 104. Orion StarShotG CCD driver
 105. OGMA CCD driver
 106. PrimaLuceLab focuser driver
+107. ZWO ASIAIR Power Ports
 
 ## This is under development
 1. a-Box Adaptive optics driver
