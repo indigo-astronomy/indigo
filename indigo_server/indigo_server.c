@@ -948,6 +948,8 @@ static indigo_result attach(indigo_device *device) {
 		case INDIGO_LOG_TRACE:
 			SERVER_LOG_LEVEL_TRACE_ITEM->sw.value = true;
 			break;
+		default:
+			break;
 	}
 	if (!command_line_drivers)
 		indigo_load_properties(device, false);

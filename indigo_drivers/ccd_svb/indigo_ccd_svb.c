@@ -561,7 +561,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	};
 	
 	int id = PRIVATE_DATA->dev_id;
-	SVB_ERROR_CODE res;
+	SVB_ERROR_CODE res = SVB_SUCCESS;
 
 	while (CCD_STREAMING_COUNT_ITEM->number.value != 0 && CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);

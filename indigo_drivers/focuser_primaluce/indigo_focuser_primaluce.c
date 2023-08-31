@@ -204,7 +204,6 @@ static char *CMD_MOT1_MOVE[] = { "res", "cmd", "MOT1", "MOVE", NULL };
 static char *CMD_MOT1_MOT_STOP[] = { "res", "cmd", "MOT1", "MOT_STOP", NULL };
 static char *CMD_MOT2_MOT_STOP[] = { "res", "cmd", "MOT2", "MOT_STOP", NULL };
 static char *CMD_MOT2_CAL_STATUS[] = { "res", "cmd", "MOT2", "CAL_STATUS", NULL };
-static char *GET_MOT2_CAL_STATUS[] = { "res", "get", "MOT2", "CAL_STATUS", NULL };
 static char *GET_EXT_T[] = { "res", "get", "EXT_T", NULL };
 static char *GET_DIMLEDS[] = { "res", "get", "DIMLEDS", NULL };
 static char *GET_VIN_12V[] = { "res", "get", "VIN_12V", NULL };
@@ -1517,7 +1516,6 @@ static void rotator_abort_handler(indigo_device *device) {
 static void focuser_calibrate_a_handler(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
-	char *text;
 	if (X_CALIBRATE_SS_START_ITEM->sw.value) {
 		X_CALIBRATE_SS_START_ITEM->sw.value = false;
 		if (!primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT2\": {\"CAL_STATUS\":\"exec\"}}}}", response, sizeof(response), tokens, 128)) {

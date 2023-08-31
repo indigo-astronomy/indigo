@@ -488,7 +488,6 @@ indigo_result indigo_aux_uch(indigo_driver_action action, indigo_driver_info *in
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static upb_private_data *private_data = NULL;
 	static indigo_device *aux = NULL;
-	static indigo_device *focuser = NULL;
 
 	static indigo_device aux_template = INDIGO_DEVICE_INITIALIZER(
 		"USB Control Hub",
