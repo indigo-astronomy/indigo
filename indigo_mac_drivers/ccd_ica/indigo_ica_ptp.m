@@ -1488,6 +1488,34 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
   }
 }
 
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didAddItems:(nonnull NSArray<ICCameraItem *> *)items { 
+}
+
+
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didRemoveItems:(nonnull NSArray<ICCameraItem *> *)items { 
+}
+
+
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didRenameItems:(nonnull NSArray<ICCameraItem *> *)items { 
+}
+
+
+- (void)cameraDeviceDidChangeCapability:(nonnull ICCameraDevice *)camera { 
+}
+
+
+- (void)cameraDeviceDidEnableAccessRestriction:(nonnull ICDevice *)device { 
+}
+
+
+- (void)cameraDeviceDidRemoveAccessRestriction:(nonnull ICDevice *)device { 
+}
+
+
+- (void)deviceDidBecomeReadyWithCompleteContentCatalog:(nonnull ICCameraDevice *)device { 
+}
+
+
 
 @end
 
