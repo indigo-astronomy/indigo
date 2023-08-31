@@ -20,10 +20,10 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_mount_lx200:
 	- OpenAstroTech dialect support added
-	
+
 - indigo_agent_scripting:
 	- enable_blob mapping fixed
-	
+
 - indigo_focuser_asi:
 	- EAFMove error fixed
 
@@ -399,7 +399,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_ccd_asi:
 	- libasicamera v.1.28
 	- add permaned user defined camera suffix
- 
+
 
 # [2.0-220] - 08 Feb Wed 2023
 ### Overall
@@ -471,7 +471,7 @@ All notable changes to INDIGO framework will be documented in this file.
 # [2.0-214] - 20 Jan Thu 2023
 
 ### Driver Fixes:
-- indigo_agent_guider: fixed pixel scale 
+- indigo_agent_guider: fixed pixel scale
 
 # [2.0-212] - 19 Jan Thu 2023
 - replace usleep() with nanosleep() in indigo_usleep();
