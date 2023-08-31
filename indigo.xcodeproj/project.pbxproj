@@ -600,7 +600,6 @@
 		5995A91525AB3566003987F1 /* indigo_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DB918061DFEA42E00678721 /* indigo_io.c */; };
 		5996615822CF44D500330652 /* indigo_aux_ppb.c in Sources */ = {isa = PBXBuildFile; fileRef = 5996615122CF3E0F00330652 /* indigo_aux_ppb.c */; };
 		59986D761F9BA11600D68DC1 /* indigo_ccd_qsi.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */; };
-		59989A792A1BCEA200665AB7 /* libnncam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; };
 		59989A7A2A1BCEA200665AB7 /* libnncam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59989A7B2A1BCEB200665AB7 /* libmallincam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; };
 		59989A7C2A1BCEB200665AB7 /* libmallincam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -673,7 +672,6 @@
 		59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; };
 		59B348AA29E85F8A0062C2EA /* libnncam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		59B348AB29E85F8A0062C2EA /* libogmacam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59118C3F2996ED950004BEC8 /* libogmacam.dylib */; };
 		59B348AC29E85F8A0062C2EA /* libomegonprocam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0F029805E30003243AE /* libomegonprocam.dylib */; };
 		59B348AD29E85F8A0062C2EA /* libomegonprocam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F029805E30003243AE /* libomegonprocam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59B348AF29E85F8B0062C2EA /* libmallincam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; };
@@ -4849,7 +4847,6 @@
 				59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */,
 				59B348A729E85F8A0062C2EA /* libaltaircam.dylib in Frameworks */,
 				598A1C07259BA94A00C0B34C /* libfcusb.a in Frameworks */,
-				59B348AB29E85F8A0062C2EA /* libogmacam.dylib in Frameworks */,
 				598A1C08259BA94A00C0B34C /* libgpusb.a in Frameworks */,
 				59B348AC29E85F8A0062C2EA /* libomegonprocam.dylib in Frameworks */,
 				598A1C0B259BA94A00C0B34C /* libjpeg.a in Frameworks */,
@@ -4899,7 +4896,6 @@
 				9DDEFC0221EE35A000657C8F /* libhidapi.a in Frameworks */,
 				59989A7B2A1BCEB200665AB7 /* libmallincam.dylib in Frameworks */,
 				5980010A22E4E76700021D67 /* libapogee.a in Frameworks */,
-				59989A792A1BCEA200665AB7 /* libnncam.dylib in Frameworks */,
 				598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */,
 				5942229F22E34AA9009DAD5C /* libdc1394.dylib in Frameworks */,
 				9DDEFBFE21EE352F00657C8F /* libtoupcam.dylib in Frameworks */,
@@ -14232,8 +14228,9 @@
 		592662A51D9590630021746A /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				BuildIndependentTargetsInParallel = YES;
 				LastSwiftUpdateCheck = 0800;
-				LastUpgradeCheck = 1420;
+				LastUpgradeCheck = 1500;
 				ORGANIZATIONNAME = "CloudMakers, s. r. o.";
 				TargetAttributes = {
 					598A1B51259BA94A00C0B34C = {
@@ -14984,7 +14981,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = NO;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_SUSPICIOUS_MOVES = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
@@ -15056,7 +15053,7 @@
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
 				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
 				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = NO;
 				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_SUSPICIOUS_MOVES = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;

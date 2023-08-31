@@ -1976,11 +1976,9 @@ static void handle_focuser_connect_property(indigo_device *device) {
 }
 
 
-static void handle_focuser_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
-
-
-	if (client && property) indigo_focuser_change_property(device, client, property);
-}
+//static void handle_focuser_disconnect(indigo_device *device, indigo_client *client, indigo_property *property) {
+//	if (client && property) indigo_focuser_change_property(device, client, property);
+//}
 
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

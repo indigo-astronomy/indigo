@@ -2,6 +2,31 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-244] - 31 Aug Thu 2023
+### Overall:
+- indigo_docs: update INDIGO_SERVER_AND_DRIVERS_GUIDE.md
+- remote service discovery fixed
+
+### New Drivers:
+- indigo_aux_asiair: driver for ZWO ASIAIR Power Ports
+
+### Driver fixes:
+- indigo_ccd_ppt:
+	- Canon LV crash fixed
+	- Canon R7, R10, R6m2, R8, R50 and R100 support added
+	- Sony A7S III support added
+	- Sony lens focus support added
+	- disconnect race fixed
+
+- indigo_mount_lx200:
+	- OpenAstroTech dialect support added
+	
+- indigo_agent_scripting:
+	- enable_blob mapping fixed
+	
+- indigo_focuser_asi:
+	- EAFMove error fixed
+
 # [2.0-242] - 26 Jul Wed 2023
 ### Overall:
 - indigo_docs: update SCRIPTING_BASICS.md
