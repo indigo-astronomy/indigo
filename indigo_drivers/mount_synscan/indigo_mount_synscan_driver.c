@@ -376,7 +376,7 @@ static bool synscan_configure_axis_for_rate(indigo_device* device, enum AxisID a
 	synscan_axis_config_for_rate(device, axis, rate, &requiredConfig);
 
 	//  Determine if simple rate change is sufficient (or full reconfiguration)
-	bool reconfigure = synscan_should_reconfigure_axis(device, axis, &requiredConfig);
+	// bool reconfigure = synscan_should_reconfigure_axis(device, axis, &requiredConfig);
 
 	//  Reference relevant axis config cache
 	struct AxisConfig* cachedConfig = (axis == kAxisRA) ? &PRIVATE_DATA->raAxisConfig : &PRIVATE_DATA->decAxisConfig;

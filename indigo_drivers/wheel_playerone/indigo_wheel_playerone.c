@@ -252,7 +252,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(POA_CUSTOM_SUFFIX_PROPERTY, property)) {
 		indigo_property_copy_values(POA_CUSTOM_SUFFIX_PROPERTY, property, false);
 		POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
-		int length = strlen(POA_CUSTOM_SUFFIX_ITEM->text.value);
+		int length = (int)strlen(POA_CUSTOM_SUFFIX_ITEM->text.value);
 		if (length > 24) {
 			POA_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, POA_CUSTOM_SUFFIX_PROPERTY, "Custom siffux is too long.");
@@ -343,14 +343,14 @@ static int find_device_slot(int handle) {
 }
 
 
-static bool device_name_exists(const char *name) {
-	for(int slot = 0; slot < MAX_DEVICES; slot++) {
-		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
-		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) return true;
-	}
-	return false;
-}
+//static bool device_name_exists(const char *name) {
+//	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+//		indigo_device *device = devices[slot];
+//		if (device == NULL) continue;
+//		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) return true;
+//	}
+//	return false;
+//}
 
 
 static int find_unplugged_device_handle() {
