@@ -623,9 +623,9 @@ static beaver_rc_t beaver_close_shutter(indigo_device *device) {
 }
 
 
-static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
-	return BD_SUCCESS;
-}
+//static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
+//	return BD_SUCCESS;
+//}
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 static void dome_timer_callback(indigo_device *device) {
