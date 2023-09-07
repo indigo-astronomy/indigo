@@ -743,11 +743,11 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_MODE_PROPERTY->count = 3;
 				char name[32];
-				sprintf(name, "RAW 16 %dx%d", image_width, image_height);
+				snprintf(name, sizeof(name), "RAW 16 %dx%d", image_width, image_height);
 				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-				sprintf(name, "RAW 16 %dx%d", image_width/2, image_height/2);
+				snprintf(name, sizeof(name), "RAW 16 %dx%d", image_width/2, image_height/2);
 				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-				sprintf(name, "RAW 16 %dx%d", image_width/4, image_height/4);
+				snprintf(name, sizeof(name), "RAW 16 %dx%d", image_width/4, image_height/4);
 				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -979,7 +979,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		char name[32] = "";
-		sprintf(name, "BIN_%dx%d", horizontal_bin, vertical_bin);
+		snprintf(name, sizeof(name), "BIN_%dx%d", horizontal_bin, vertical_bin);
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			item->sw.value = !strcmp(item->name, name);

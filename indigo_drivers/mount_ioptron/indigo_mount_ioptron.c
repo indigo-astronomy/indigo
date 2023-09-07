@@ -748,7 +748,7 @@ static void position_timer_callback(indigo_device *device) {
 }
 
 static void mount_connect_callback(indigo_device *device) {
-	char command[128] = "", response[128] = "";
+	char response[128] = "";
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;

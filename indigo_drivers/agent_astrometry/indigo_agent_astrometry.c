@@ -603,7 +603,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 					char signature[7]={0};
 					FILE *fp=fopen(path,"rb");
 					if (fp) {
-						size_t read = fread(signature, 6, 1, fp);
+						fread(signature, 6, 1, fp);
 						fclose(fp);
 						if (strncmp(signature, "SIMPLE", 6)) {
 							failed = true;
