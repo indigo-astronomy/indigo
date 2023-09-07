@@ -64,9 +64,9 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 	}
 
 	int pixel_count = frame_width * frame_height;
-	int image_size = pixel_count * byte_per_pixel * components + FITS_HEADER_SIZE;
-	if (image_size % FITS_HEADER_SIZE) {
-		image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
+	int image_size = pixel_count * byte_per_pixel * components + FITS_RECORD_SIZE;
+	if (image_size % FITS_RECORD_SIZE) {
+		image_size = (image_size / FITS_RECORD_SIZE + 1) * FITS_RECORD_SIZE;
 	}
 
 	*fits = realloc(*fits, image_size);
@@ -96,7 +96,7 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 		t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
 	}
 	if (keywords) {
-		while (keywords->type && (p - (char *)buffer) < (FITS_HEADER_SIZE - 80)) {
+		while (keywords->type && (p - (char *)buffer) < (FITS_RECORD_SIZE - 80)) {
 			switch (keywords->type) {
 				case INDIGO_FITS_NUMBER:
 					t = sprintf(p += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
@@ -118,7 +118,7 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 	t = sprintf(p += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); p[t] = ' ';
 	t = sprintf(p += 80, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org"); p[t] = ' ';
 	t = sprintf(p += 80, "END"); p[t] = ' ';
-	p = buffer + FITS_HEADER_SIZE;
+	p = buffer + FITS_RECORD_SIZE;
 	if (components == 1) {
 		// mono
 		if (byte_per_pixel == 2) {

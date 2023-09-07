@@ -761,7 +761,7 @@ POACAMERA_API const char* POAGetErrorString(POAErrors err);
 /**
  * @brief POAGetAPIVersion: get the API version
  *
- * @return: it's a integer value, eg: 20200202
+ * @return: it's a integer value, easy to do version comparison, eg: 20200202
  */
 POACAMERA_API int POAGetAPIVersion();
 
@@ -769,7 +769,7 @@ POACAMERA_API int POAGetAPIVersion();
 /**
  * @brief POAGetSDKVersion: get the sdk version
  *
- * @return  point to const char* version, eg: 1.0.1
+ * @return  point to const char* version(major.minor.patch), eg: 1.0.1
  */
 POACAMERA_API const char* POAGetSDKVersion();
 
