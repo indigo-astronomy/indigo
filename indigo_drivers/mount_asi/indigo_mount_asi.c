@@ -457,7 +457,6 @@ static bool asi_slew(indigo_device *device, double ra, double dec, int *error_co
 
 static bool asi_sync(indigo_device *device, double ra, double dec, int *error_code) {
 	char command[128], response[128];
-	bool success = true;
 	sprintf(command, ":Sr%s#", indigo_dtos(ra, "%02d:%02d:%02.0f"));
 	if (!asi_command(device, command, response, sizeof(response), 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed with response: %s", command, response);
@@ -674,7 +673,7 @@ static void position_timer_callback(indigo_device *device) {
 		// read coordinates and moving state
 		double ra = 0, dec = 0;
 		bool success = false;
-		if (success = asi_get_coordinates(device, &ra, &dec)) {
+		if ((success = asi_get_coordinates(device, &ra, &dec))) {
 			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;

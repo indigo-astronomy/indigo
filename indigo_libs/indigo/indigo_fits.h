@@ -26,8 +26,8 @@
 extern "C" {
 #endif
 
-#ifndef FITS_HEADER_SIZE
-#define FITS_HEADER_SIZE 2880
+#ifndef FITS_RECORD_SIZE
+#define FITS_RECORD_SIZE 2880
 #endif
 
 typedef enum {

@@ -772,7 +772,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 			}
 			PRIVATE_DATA->mode = PRIVATE_DATA->left = PRIVATE_DATA->top = PRIVATE_DATA->width = PRIVATE_DATA->height = -1;
-			unsigned binning = 1;
+			int binning = 1;
 			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), &binning);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_BINNING, ->%d) -> %08x", binning, result);
 			CCD_BIN_HORIZONTAL_ITEM->number.value =
@@ -1454,12 +1454,10 @@ struct oem_2_toupcam {
 
 int OEMCamEnum(ToupcamDeviceV2 *cams, int max_count) {
 	int oem_count = 0;
-	int usb_count;
 	libusb_device **list;
-	usb_count = libusb_get_device_list(NULL, &list);
+	int usb_count = (int)libusb_get_device_list(NULL, &list);
 	for (int i = 0; (i < usb_count) && (oem_count < max_count); i++) {
 		libusb_device *dev = list[i];
-		const struct oem_camera *cam;
 		struct libusb_device_descriptor desc;
 		libusb_get_device_descriptor(dev, &desc);
 		for (int j = 0; oem_2_toupcam[j].name != NULL; j++) {
