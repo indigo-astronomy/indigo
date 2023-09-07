@@ -1,3 +1,7 @@
+2023.09.01(3.5.0)
+- Support PlayerOne new camera model(Zeus PRO series)
+- Fixed a bug that Ceres-C camera image quality is unstable when exposure changed
+
 2023.07.24(3.4.1)
 - Enhanced stability of transmitted image data when changing exposure.
 - On Mac OS and Linux, fix a bug that incompatibility of bandwidth between libusb and cameras, this bug may cause image data loss and SDK carshing when switching Image Format or changing USB Bandwidth.
@@ -11,7 +15,7 @@
 
 2023.05.04(3.3.0)
 - Add 'isSupportHardBin' and 'pID' in POACameraProperties struct in 'PlayerOneCamera.h', also, fixed some words spelling mistakes, please update 'PlayerOneCamera.h' in your project.
-- Support PlayerOne new camera model(Ares series & Uranus series)
+- Support PlayerOne new camera model(Ares RPO series & Uranus PRO series)
 
 2023.03.13(3.2.2)
 - Fix a issue that In some cases, the frame is incomplete in video mode
@@ -24,7 +28,7 @@
 - Add static version library
 
 2023.02.24(3.2.0)
-- Support PlayerOne new camera model(Artemis series)
+- Support PlayerOne new camera model(Artemis PRO series)
 - Enhance the stability of data transmission when using USB2.0 on the linux and mac
 - Fix the issue of failing to get iamge data on Nvidia Jestson
 - Fix the image flickering issue of Saturn SQR series cameras when the exposure is in the range [1-3]s
