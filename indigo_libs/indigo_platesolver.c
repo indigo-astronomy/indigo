@@ -417,6 +417,7 @@ static void solve(indigo_platesolver_task *task) {
 			process_failed(device, "Sync failed");
 			return;
 		}
+		indigo_send_message(device, "Synced");
 	}
 
 	if (AGENT_PLATESOLVER_SYNC_CENTER_ITEM->sw.value) {
@@ -426,6 +427,7 @@ static void solve(indigo_platesolver_task *task) {
 			process_failed(device, "Slew failed");
 			return;
 		}
+		indigo_send_message(device, "Centered");
 	}
 
 	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
