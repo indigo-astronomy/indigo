@@ -1728,6 +1728,7 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_SLEWING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (!strcmp(value, "precise")) {
+			DEVICE_PRIVATE_DATA->related_solver_process_state = INDIGO_IDLE_STATE;
 			solver_precise_goto(device);
 			wait_for_solver = true;
 		} else if (!strcmp(value, "slew")) {
@@ -1737,6 +1738,7 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 	} else if (!strcasecmp(name, "calibrate")) {
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_CALIBRATING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+		DEVICE_PRIVATE_DATA->related_guider_process_state = INDIGO_IDLE_STATE;
 		calibrate_guider(device, atof(value));
 		wait_for_guider = true;
 	} else if (!strcasecmp(name, "guide")) {
@@ -2830,15 +2832,23 @@ static void snoop_wheel_changes(indigo_client *client, indigo_property *property
 
 static void snoop_solver_process_state(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-		if (indigo_filter_first_related_agent_2(FILTER_CLIENT_CONTEXT->device, "Astrometry Agent", "ASTAP Agent")) {
+		char *agent = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Astrometry Agent");
+		if (agent != NULL && !strcmp(property->device, agent)) {
 			CLIENT_PRIVATE_DATA->related_solver_process_state = property->state;
+			return;
+		}
+		agent = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "ASTAP Agent");
+		if (agent != NULL && !strcmp(property->device, agent)) {
+			CLIENT_PRIVATE_DATA->related_solver_process_state = property->state;
+			return;
 		}
 	}
 }
 
 static void snoop_guider_process_state(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-		if (indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Guider Agent")) {
+		char *agent = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Guider Agent");
+		if (agent != NULL && !strcmp(property->device, agent)) {
 			CLIENT_PRIVATE_DATA->related_guider_process_state = property->state;
 		}
 	}
