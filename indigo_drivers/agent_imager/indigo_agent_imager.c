@@ -1806,6 +1806,8 @@ static void sequence_process(indigo_device *device) {
 	bool focuser_needed = strstr(sequence_text, "focus") != NULL;
 	bool wheel_needed = strstr(sequence_text, "filter") != NULL;
 	bool rotator_needed = strstr(sequence_text, "angle") != NULL;
+	bool mount_needed = strstr(sequence_text, "park") != NULL;
+	bool solver_needed = strstr(sequence_text, "precise") != NULL;
 	for (char *token = strtok_r(sequence_text, ";", &sequence_text_pnt); token; token = strtok_r(NULL, ";", &sequence_text_pnt)) {
 		if (strchr(token, '='))
 			continue;
@@ -1826,6 +1828,9 @@ static void sequence_process(indigo_device *device) {
 		}
 		if (strstr(AGENT_IMAGER_SEQUENCE_PROPERTY->items[batch_index].text.value, "angle") != NULL) {
 			rotator_needed = true;
+		}
+		if (strstr(AGENT_IMAGER_SEQUENCE_PROPERTY->items[batch_index].text.value, "precise") != NULL) {
+			solver_needed = true;
 		}
 	}
 	if (focuser_needed && FILTER_FOCUSER_LIST_PROPERTY->items->sw.value) {
@@ -1864,6 +1869,32 @@ static void sequence_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		FILTER_DEVICE_CONTEXT->running_process = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No rotator is selected");
+		indigo_safe_free(sequence_text);
+		return;
+	}
+	if (mount_needed && indigo_filter_first_related_agent(device, "Mount Agent") == NULL) {
+		AGENT_IMAGER_START_PREVIEW_ITEM->sw.value =
+		AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value =
+		AGENT_IMAGER_START_STREAMING_ITEM->sw.value =
+		AGENT_IMAGER_START_FOCUSING_ITEM->sw.value =
+		AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FILTER_DEVICE_CONTEXT->running_process = false;
+		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No mount agent is selected");
+		indigo_safe_free(sequence_text);
+		return;
+	}
+	if (mount_needed && indigo_filter_first_related_agent_2(device, "Astrometry Agent", "ASTAP Agent") == NULL) {
+		AGENT_IMAGER_START_PREVIEW_ITEM->sw.value =
+		AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value =
+		AGENT_IMAGER_START_STREAMING_ITEM->sw.value =
+		AGENT_IMAGER_START_FOCUSING_ITEM->sw.value =
+		AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		FILTER_DEVICE_CONTEXT->running_process = false;
+		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No solver agent is selected");
 		indigo_safe_free(sequence_text);
 		return;
 	}
