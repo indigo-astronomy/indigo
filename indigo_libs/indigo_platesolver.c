@@ -114,47 +114,32 @@ static bool abort_mount_move(indigo_device *device) {
 	return false;
 }
 
-#define mount_sync(device, ra, dec, settle_time) mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, ra, dec, settle_time)
-#define mount_slew(device, ra, dec, settle_time) mount_control(device, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, ra, dec, settle_time)
+#define mount_sync(device, ra, dec, settle_time) mount_control(device, AGENT_MOUNT_START_SYNC_ITEM_NAME, ra, dec, settle_time)
+#define mount_slew(device, ra, dec, settle_time) mount_control(device, AGENT_MOUNT_START_SLEW_ITEM_NAME, ra, dec, settle_time)
 
 static bool mount_control(indigo_device *device, char *operation, double ra, double dec, double settle_time) {
 	ra = fmod(ra + 24, 24.0);
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
 		if (item->sw.value && !strncmp(item->name, "Mount Agent", 11)) {
-			//indigo_debug("'%s'.'MOUNT_ON_COORDINATES_SET' requested %s", item->name, operation);
-			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->on_coordinates_set_state = INDIGO_IDLE_STATE;
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, operation, true);
-			for (int i = 0; i < 300; i++) { // wait 3s to become OK
-				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
-					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
-					return false;
-				}
-				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->on_coordinates_set_state == INDIGO_OK_STATE)
-					break;
-				indigo_usleep(10000);
-			}
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->on_coordinates_set_state != INDIGO_OK_STATE) {
-				indigo_error("MOUNT_ON_COORDINATES_SET didn't become OK in 3s");
-				return false;
-			}
-			const char *item_names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+			const char *item_names[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM_NAME, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM_NAME };
 			double item_values[] = { ra, dec };
-			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state = INDIGO_IDLE_STATE;
-			indigo_debug("'%s'.'MOUNT_EQUATORIAL_COORDINATES' requested RA=%g, DEC=%g", item->name, ra, dec);
-			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, item_names, item_values);
-			for (int i = 0; i < 300; i++) { // wait 3 s to become BUSY
+			indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY_NAME, 2, item_names, item_values);
+			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state = INDIGO_IDLE_STATE;
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, operation, true);
+			indigo_debug("'%s'.'TARGET_COORDINATES' requested RA=%g, DEC=%g", item->name, ra, dec);
+			for (int i = 0; i < 300; i++) { // wait 3s to become BUSY or ALERT
 				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
 					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
 					abort_mount_move(device);
 					return false;
 				}
-				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state == INDIGO_BUSY_STATE)
+				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_BUSY_STATE || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_ALERT_STATE)
 					break;
 				indigo_usleep(10000);
 			}
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_BUSY_STATE) {
-				indigo_debug("MOUNT_EQUATORIAL_COORDINATES didn't become BUSY in 3s");
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_BUSY_STATE) {
+				indigo_debug("AGENT_START_PROCESS didn't become BUSY in 3s");
 			}
 			for (int i = 0; i < 6000; i++) { // wait 60s to become not BUSY
 				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
@@ -162,12 +147,12 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 					abort_mount_move(device);
 					return false;
 				}
-				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_BUSY_STATE)
+				if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_BUSY_STATE)
 					break;
 				indigo_usleep(10000);
 			}
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state != INDIGO_OK_STATE) {
-				indigo_error("MOUNT_EQUATORIAL_COORDINATES didn't become OK in 60s");
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_OK_STATE) {
+				indigo_error("AGENT_START_PROCESS didn't become OK in 60s");
 				return false;
 			}
 			indigo_usleep(ONE_SECOND_DELAY * settle_time);
@@ -186,12 +171,12 @@ static bool start_exposure(indigo_device *device, double exposure) {
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure);
 				return true;
 			} else {
-				indigo_send_message(device, "No camera selected");
+				indigo_send_message(device, "Failed to start exposure - no camera selected");
 				return false;
 			}
 		}
 	}
-	indigo_send_message(device, "No image source agent selected");
+	indigo_send_message(device, "Failed to start exposure - no image source agent selected");
 	return false;
 }
 
@@ -805,8 +790,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		PROFILE_PROPERTY->hidden = true;
 		CONNECTION_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
-		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->on_coordinates_set_state = INDIGO_IDLE_STATE;
-		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates_state = INDIGO_IDLE_STATE;
+		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state = INDIGO_IDLE_STATE;
 
 		pthread_mutex_init(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex, NULL);
 		return INDIGO_OK;
@@ -974,7 +958,6 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 			if (related_agent_name) {
 					bool update = false;
 					double ra = NAN, dec = NAN;
-					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates_state = property->state;
 					if (property->state == INDIGO_BUSY_STATE) {
 						/* if mount is moved and polar alignment is in progress stop polar alignment and invalidate values */
 						reset_pa_state(device, false);
@@ -1023,11 +1006,10 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 				}
 				//indigo_debug("'%s'.'MOUNT_GEOGRAPHIC_COORDINATES' state %s, LAT=%g, LONG=%g", device_name, indigo_property_state_text[property->state], lat, lon);
 			}
-		} else if (!strcmp(property->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME)) {
+		} else if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name) {
-				INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->on_coordinates_set_state = property->state;
-				//indigo_debug("'%s'.'MOUNT_ON_COORDINATES_SET' state %s", device_name, indigo_property_state_text[property->state]);
+			if (related_agent_name && !strncmp(related_agent_name, "Mount Agent", 11)) {
+				INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_process_state = property->state;
 			}
 		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
 			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
