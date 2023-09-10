@@ -139,10 +139,9 @@ typedef struct {
 	indigo_property *polar_alignment_settings_property;
 	indigo_property *precise_goto_settings_property;
 	indigo_property *solve_images_property;
-	indigo_property_state on_coordinates_set_state;
+	indigo_property_state mount_process_state;
 	indigo_spherical_point_t eq_coordinates;
 	indigo_spherical_point_t eq_start_coordinates;
-	indigo_property_state eq_coordinates_state;
 	indigo_spherical_point_t geo_coordinates;
 	indigo_spherical_point_t pa_reference1;
 	indigo_spherical_point_t pa_reference2;
