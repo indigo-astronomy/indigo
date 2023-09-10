@@ -1007,8 +1007,8 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 				//indigo_debug("'%s'.'MOUNT_GEOGRAPHIC_COORDINATES' state %s, LAT=%g, LONG=%g", device_name, indigo_property_state_text[property->state], lat, lon);
 			}
 		} else if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name && !strncmp(related_agent_name, "Mount Agent", 11)) {
+			char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
+			if (related_agent_name && !strcmp(property->device, related_agent_name)) {
 				INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_process_state = property->state;
 			}
 		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {

@@ -2832,13 +2832,13 @@ static void snoop_wheel_changes(indigo_client *client, indigo_property *property
 
 static void snoop_solver_process_state(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-		char *agent = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Astrometry Agent");
-		if (agent != NULL && !strcmp(property->device, agent)) {
+		char *related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Astrometry Agent");
+		if (related_agent_name && !strcmp(property->device, related_agent_name)) {
 			CLIENT_PRIVATE_DATA->related_solver_process_state = property->state;
 			return;
 		}
-		agent = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "ASTAP Agent");
-		if (agent != NULL && !strcmp(property->device, agent)) {
+		related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "ASTAP Agent");
+		if (related_agent_name && !strcmp(property->device, related_agent_name)) {
 			CLIENT_PRIVATE_DATA->related_solver_process_state = property->state;
 			return;
 		}
@@ -2848,7 +2848,7 @@ static void snoop_solver_process_state(indigo_client *client, indigo_property *p
 static void snoop_guider_process_state(indigo_client *client, indigo_property *property) {
 	if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 		char *agent = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Guider Agent");
-		if (agent != NULL && !strcmp(property->device, agent)) {
+		if (agent && !strcmp(property->device, agent)) {
 			CLIENT_PRIVATE_DATA->related_guider_process_state = property->state;
 		}
 	}
