@@ -902,7 +902,9 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 indigo_property *indigo_init_blob_property_p(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
-	assert(perm == INDIGO_RO_PERM || perm == INDIGO_WO_PERM);
+	if (perm == INDIGO_RW_PERM) {
+		perm = INDIGO_RO_PERM;
+	}
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
