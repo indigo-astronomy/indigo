@@ -2189,11 +2189,13 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 
 			indigo_result res = INDIGO_FAILED;
 			if (radius >= 3) {
-				indigo_frame_digest center;
+				indigo_frame_digest center = {0};
 				res = indigo_selection_frame_digest_iterative(raw_type, data, &star.x, &star.y, radius, width, height, &center, 2);
 				star.x = center.centroid_x;
 				star.y = center.centroid_y;
-				indigo_delete_frame_digest(&center);
+				if(res == INDIGO_OK) {
+					indigo_delete_frame_digest(&center);
+				}
 			}
 
 			if (res == INDIGO_OK || radius < 3) {
