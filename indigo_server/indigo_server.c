@@ -1091,7 +1091,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 					indigo_update_property(device, SERVER_LOAD_PROPERTY, "Driver %s (%s) is already loaded", name, indigo_available_drivers[i].description);
 					return INDIGO_OK;
 				}
-			indigo_driver_entry *driver;
+			indigo_driver_entry *driver = NULL;
 			indigo_result result = INDIGO_OK;
 			if ((result = indigo_load_driver(SERVER_LOAD_ITEM->text.value, true, &driver)) == INDIGO_OK) {
 				bool found = false;
