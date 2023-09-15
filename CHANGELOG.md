@@ -2,6 +2,21 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-246] - 16 Sep Sat 2023
+### Overall:
+- indigo_fits: fix redefinition of FITS_HEADER_SIZE
+- indigo_sdk: fix crash issue on windows
+- forcing INDIGO_RW_PERM to INDIGO_RO_PERM instead of assertion crash (with same legacy INDI backends)
+- indigo_raw_utils: fix Invalid free() because of uninitialised value
+- indigo_server: fix occasional crash when trying to load nonexisting driver
+
+### Driver fixes:
+- indigo_ccd_playerone:
+	- update sdk to 3.5.0
+
+- indigo_ccd_mi:
+	- Update MI library to 0.8.3/0.7.3
+
 # [2.0-244] - 31 Aug Thu 2023
 ### Overall:
 - indigo_docs: update INDIGO_SERVER_AND_DRIVERS_GUIDE.md
