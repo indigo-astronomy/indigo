@@ -207,7 +207,7 @@ typedef struct {
 	int stack_size;
 	pthread_mutex_t mutex;
 	double focus_exposure;
-	bool dithering_started, dithering_finished;
+	bool dithering_started, dithering_finished, guiding;
 	bool allow_subframing;
 	bool frame_saturated;
 	bool find_stars;
@@ -355,7 +355,7 @@ static void calibrate_guider(indigo_device *device, double exposure_time) {
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, exposure_time);
-		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_CALIBRATION_ITEM_NAME, true);
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM_NAME, true);
 	}
 }
 
@@ -1746,6 +1746,7 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 			stop_guider(device);
 		} else {
 			start_guider(device, atof(value));
+			wait_for_guider = true;
 		}
 	} else if (!strcasecmp(name, "start")) {
 	} else {
@@ -1776,17 +1777,15 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 		restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 		restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 		return DEVICE_PRIVATE_DATA->related_solver_process_state == INDIGO_OK_STATE;
-	} else if (wait_for_guider) { // wait for guider calibration
-		while (DEVICE_PRIVATE_DATA->related_guider_process_state != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+	} else if (wait_for_guider) { // wait for guider
+		DEVICE_PRIVATE_DATA->guiding = false;
+		while (!DEVICE_PRIVATE_DATA->guiding && DEVICE_PRIVATE_DATA->related_guider_process_state != INDIGO_ALERT_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_usleep(200000);
 		}
-		while (DEVICE_PRIVATE_DATA->related_guider_process_state == INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
-			indigo_usleep(200000);
-		}
-		if (DEVICE_PRIVATE_DATA->related_guider_process_state == INDIGO_BUSY_STATE) {
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			stop_guider(device);
 		}
-		return DEVICE_PRIVATE_DATA->related_guider_process_state == INDIGO_OK_STATE;
+		return DEVICE_PRIVATE_DATA->guiding;
 	}
 	return true;
 }
@@ -2772,6 +2771,8 @@ static void snoop_guider_stats(indigo_client *client, indigo_property *property)
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 		if (related_agent_name && !strcmp(related_agent_name, property->device)) {
+			int phase = 0;
+			int frame = 0;
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME)) {
@@ -2781,10 +2782,14 @@ static void snoop_guider_stats(indigo_client *client, indigo_property *property)
 						DEVICE_PRIVATE_DATA->dithering_started = true;
 					else
 						DEVICE_PRIVATE_DATA->dithering_finished = true;
-					break;
+				} else if (!strcmp(item->name, AGENT_GUIDER_STATS_PHASE_ITEM_NAME)) {
+					phase = (int)item->number.value;
+				} else if (!strcmp(item->name, AGENT_GUIDER_STATS_FRAME_ITEM_NAME)) {
+					frame = (int)item->number.value;
 				}
 			}
-		}		
+			DEVICE_PRIVATE_DATA->guiding = (phase == INDIGO_GUIDER_PHASE_GUIDING) && (frame > 5);
+		}
 	}
 }
 
