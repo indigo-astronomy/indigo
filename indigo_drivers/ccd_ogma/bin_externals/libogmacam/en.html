@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Ogmacam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 54.22993.20230723</li></ul>
+<hr/><ul><li>Version: 54.23312.20230910</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -472,6 +472,9 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     unsigned           preview;  /* number of preview resolution, Ogmacam_get_ResolutionNumber */
     unsigned           still;    /* number of still resolution, Ogmacam_get_StillResolutionNumber */
     unsigned           maxfanspeed; /* maximum fan speed, fan speed range = [0, max], closed interval */
+    unsigned           ioctrol;     /* number of input/output control */
+    float              xpixsz;      /* physical pixel size in micrometer */
+    float              ypixsz;      /* physical pixel size in micrometer */
     OgmacamResolution  res[OGMACAM_MAX];
 }OgmacamModelV2;</pre></td></tr>
 </table><br/>
@@ -707,6 +710,14 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td width="8%">still</td>
    <td colspan="2">Number of still resolution, zero means still capture is not supported. Same with Ogmacam_get_StillResolutionNumber</td>
    </tr>
+ <tr>
+   <td width="8%">ioctrol</td>
+   <td colspan="2">Number of input/output control</td>
+   </tr>
+ <tr>
+   <td width="8%">xpixsz<br/>ypixsz</td>
+   <td colspan="2">Physical pixel size in micrometer, see Ogmacam_get_PixelSize</td>
+   </tr>
   <tr>
    <td width="8%">res</td>
    <td colspan="2">Resolution, width and height</td>
@@ -843,11 +854,12 @@ for (UsbDevice usbDevice : deviceList.values()) {
       </blockquote>
     <p><strong>Remarks:</strong> Obviously, Ogmacam_StartPullModeWithWndMsg is only supported in Windows OS.</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF"><a id="infov2">Ogmacam_PullImageV3<br/>Ogmacam_PullImageV2<br/>Ogmacam_PullStillImageV2<br/>Ogmacam_PullImageWithRowPitchV2<br/>Ogmacam_PullStillImageWithRowPitchV2</a><br/>
+<ul><li><h2><font color="#0000FF"><a id="infov2">Ogmacam_PullImageV3<br/>Ogmacam_WaitImageV3<br/>Ogmacam_PullImageV2<br/>Ogmacam_PullStillImageV2<br/>Ogmacam_PullImageWithRowPitchV2<br/>Ogmacam_PullStillImageWithRowPitchV2</a><br/>
 			Ogmacam_PullImage<br/>Ogmacam_PullStillImage<br/><a id="rowpitch1">Ogmacam_PullImageWithRowPitch</a><br/><a id="rowpitch2">Ogmacam_PullStillImageWithRowPitch</a></font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote><p>HOgmacam h: camera instance handle</p>
+	  <p>nWaitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If nWaitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Ogmacam_PullImageV3.</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bStill: to pull still image, set to 1, otherwise 0</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">OGMACAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
@@ -1088,7 +1100,7 @@ typedef struct {
   <blockquote>
     <p>HOgmacam h: camera instance handle</p>
     <p>unsigned* pFourCC: raw format, see  table below</p>
-    <p>unsigned* pBitsPerPixel: bit depth, such as 8, 10, 12, 14, 16</p>
+    <p>unsigned* pBitsPerPixel: bitdepth, such as 8, 10, 12, 14, 16</p>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
   <tr>
    <td>#ifndef MAKEFOURCC<br/>
@@ -1155,9 +1167,16 @@ typedef struct {
           (The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
+        <td><a id="rawo">OGMACAM_OPTION_ISP</a></td>
+        <td>Enable hardware ISP:<br/>0 => auto (disable in RAW mode, otherwise enable)<br/>1 => enable<br/>-1 => disable</td>
+        <td>0(Auto)</td>
+        <td><b>No</b><br/>
+          (The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr>
+      <tr>
       	<td>OGMACAM_OPTION_BITDEPTH</td>
-      	<td>Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.<br/>
-      	  0 = use 8 bits depth.<br/>1 = use the maximum bits depth of this camera.</td>
+      	<td>Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.<br/>
+      	  0 = use 8 bitdepth.<br/>1 = use the maximum bitdepth of this camera.</td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
@@ -1254,7 +1273,7 @@ typedef struct {
       	<td>digital binning:<br/><br/>
 					0x01 (no binning)<br/><br/>
                     n: (saturating add, n*n), 0x02(2*2), 0x03(3*3), 0x04(4*4), 0x05(5*5), 0x06(6*6), 0x07(7*7), 0x08(8*8). The Bitdepth of the data remains unchanged.<br/><br/>
-                    0x40 | n: (unsaturated add in <a href="#rawo">RAW</a> mode, n*n), 0x42(2*2), 0x43(3*3), 0x44(4*4), 0x45(5*5), 0x46(6*6), 0x47(7*7), 0x48(8*8). The Bitdepth of the data is increased. For example, the original data with bitdepth of 12 will increase the bitdepth by 2 bits and become 14 after 2*2 binning.<br/><br/>
+                    0x40 | n: (unsaturated add, n*n, works only in <a href="#rawo">RAW</a> mode), 0x42(2*2), 0x43(3*3), 0x44(4*4), 0x45(5*5), 0x46(6*6), 0x47(7*7), 0x48(8*8). The Bitdepth of the data is increased. For example, the original data with bitdepth of 12 will increase the bitdepth by 2 bits and become 14 after 2*2 binning.<br/><br/>
                     0x80 | n: (average, n*n), 0x82(2*2), 0x83(3*3), 0x84(4*4), 0x85(5*5), 0x86(6*6), 0x87(7*7), 0x88(8*8). The Bitdepth of the data remains unchanged.<br/><br/>
                     The final image size is rounded down to an even number, such as 640/3 to get 212</td>
       	<td>1</td>
@@ -1583,14 +1602,14 @@ typedef struct {
       </tr>
       <tr>
         <td>OGMACAM_OPTION_HDR_THRESHOLD</td>
-        <td>HDR synthesize<br/>threshold: [1, 4095]<br/>0xffffffff => set to default</td>
+        <td>HDR synthesize<br/>threshold: [1, 4094]<br/>0xffffffff => set to default</td>
 		<td>Model Specific</td>
 		<td>Yes</td>
       </tr>
       <tr>
         <td>OGMACAM_OPTION_DYNAMIC_DEFECT</td>
-        <td>Dynamic Defect Pixel Correction<br/>threshold:<br/>t1 (high 16 bits): [10, 100]<br/>t2 (low 16 bits): [0, 100]</td>
-		<td>disable (t1=0, t2=0)</td>
+        <td>Dynamic Defect Pixel Correction<br/>threshold, t1: (high 16 bits): [10, 100], means: [1.0, 10.0]<br/>value, t2: (low 16 bits): [0, 100], means: [0.00, 1.00]</td>
+		<td>disable (t1=10, t2=0)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1609,6 +1628,18 @@ typedef struct {
         <td>OGMACAM_OPTION_OVERCLOCK</td>
         <td>overclock</td>
 		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>OGMACAM_OPTION_ADC</td>
+        <td>Analog-Digital Conversion:<br/>
+			get:<br/><blockquote>
+					(option | 'C'): get the current value<br/>
+					(option | 'N'): get the supported ADC number<br/>
+					(option | n): get the nth supported ADC value, such as 11bits, 12bits, etc<br/>
+					</blockquote>
+			set: val = ADC value, such as 11bits, 12bits, etc</td>
+		<td>Model Specific<br/>(the first value is the default)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -2002,12 +2033,12 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <p><strong>Remarks:</strong> grey camera or not, find the flag in OgmacamModelV2: OGMACAM_FLAG_MONO</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Ogmacam_get_MaxBitDepth</font></h2>
-    <p><strong>Return value: </strong> the maximum bit depth this camera supports.</p>
+    <p><strong>Return value: </strong> the maximum bitdepth this camera supports.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HOgmacam h: camera instance handle</p>
     </blockquote>
-    <p><strong>Remarks:</strong> Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.</p>
+    <p><strong>Remarks:</strong> Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.</p>
 </li></ul>
 <ul><li>
     <h2><font color="#0000FF">Ogmacam_get_StillResolutionNumber<br/>Ogmacam_get_StillResolution</font></h2>
@@ -2272,6 +2303,10 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
  </tr>
  <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE</td>
+ </tr>
+  <tr>
+   <td>OGMACAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE</td>
+   <td>Output pause: 1 =&gt; puase, 0 =&gt; unpause</td>
  </tr>
     </table>
   </div>
@@ -2611,14 +2646,18 @@ public bool Snap(uint nResolutionIndex)
       </tr>
 	  <tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="9">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="18">C++</td>
-		<td rowspan="9">&nbsp;</td>
-		<td rowspan="9">console</td>
+		<td rowspan="10">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="20">C++</td>
+		<td rowspan="10">&nbsp;</td>
+		<td rowspan="10">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr>
 	  <tr>
-		<td colspan="2">demostill</td>
+		<td colspan="2">demowait</td>
+		<td>Instead of using the callback function, use the Ogmacam_WaitImageV3 to get the image, about 60 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demomulti</td>
 		<td>Open all the enumerated cameras (possibly multiple) and pull image, about 90 lines of code</td>
 	  </tr>
 	  <tr>
@@ -2651,10 +2690,14 @@ public bool Snap(uint nResolutionIndex)
 	  </tr>
 	  <tr>
 		<td colspan="2">demoqt</td>
-		<td>Win32<br/>Linux<br/>macOS</td>
-		<td>Qt</td>
-		<td rowspan="15">GUI</td>
+		<td rowspan="2">Win32<br/>Linux<br/>macOS</td>
+		<td rowspan="2">Qt</td>
+		<td rowspan="16">GUI</td>
 		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demotwoqt</td>
+		<td>Qt sample, <a href="./images/demotwoqt.png">snapshot</a>.<br/>Use two cameras simultaneously</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">democpp</td>
@@ -2680,7 +2723,7 @@ public bool Snap(uint nResolutionIndex)
 	  </tr>
 	  <tr>
 		<td colspan="2">triggertest</td>
-		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test</td>
+		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test, use a background thread to save the image file to disk (SSD is recommended, otherwise, when the disk speed is insufficient, the storage speed will not be able to keep up, more and more images will be stored in the deque, and the memory consumption will also increase).</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">demomfc</td>
@@ -2754,7 +2797,7 @@ public bool Snap(uint nResolutionIndex)
 	  <tr>
 		<td>qt</td>
 		<td>PyQt</td>
-		<td rowspan="5">GUI</td>
+		<td rowspan="9">GUI</td>
 		<td>PyQt sample, <a href="./images/pyqt.png">snapshot</a>.</td>
 	  </tr>
 	  <tr>
@@ -2779,6 +2822,30 @@ public bool Snap(uint nResolutionIndex)
 	  <tr>
 		<td colspan="2">LVDemo2</td>
 		<td>Labview program which opens two cameras and control them respectively</td>
+	  </tr>
+	  <tr>
+		<td rowspan="4">imagepro</td>
+		<td rowspan="2">liveedf</td>
+		<td rowspan="4">Win32</td>
+		<td>C++</td>
+		<td>Qt</td>
+		<td>Qt sample, <a href="./images/liveedfqt.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td>C#</td>
+		<td>WinForm</td>
+		<td>C# sample, <a href="./images/liveedfcs.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td rowspan="2">livestack</td>
+		<td>C++</td>
+		<td>Qt</td>
+		<td>Qt sample, <a href="./images/livestackqt.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td>C#</td>
+		<td>WinForm</td>
+		<td>C# sample, <a href="./images/livestackcs.png">snapshot</a>.</td>
 	  </tr>
 	</table>
 </div>
@@ -2835,11 +2902,11 @@ public bool Snap(uint nResolutionIndex)
 <p>v10: demosaic method: please see <a href="#demosaic">here</a></p>
 <p>v9: change the histogram data type from double to float</p>
 <p>v8: support simulated trigger, please see <a href="#trigger">here</a></p>
-<p>v7: support RGB48 when bit depth &gt; 8, please see <a href="#rgb">here</a></p>
+<p>v7: support RGB48 when bitdepth &gt; 8, please see <a href="#rgb">here</a></p>
 <p>v6: support trigger mode, please see <a href="#trigger">here</a></p>
 <p>v5: White Balance: Temp/Tint Mode vs RGB Gain Mode, please see <a href="#wb">here</a></p>
 <p>v4: ROI (Region Of Interest) supported: please see <a href="#roi">here</a></p>
-<p>v3: more bit depth supported: 10bits, 12bits, 14bits, 16bits</p>
+<p>v3: more bitdepth supported: 10bits, 12bits, 14bits, 16bits</p>
 <p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
 <p>v1: initial release</p>
 </body>

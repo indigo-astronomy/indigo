@@ -36,6 +36,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <jpeglib.h>
+#include <limits.h>
 
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_io.h>
@@ -49,6 +50,8 @@ struct indigo_jpeg_compress_struct {
 	struct jpeg_compress_struct pub;
 	jmp_buf jpeg_error;
 };
+
+static char default_image_path[PATH_MAX]={0};
 
 static void file_remove(char *file_name) {
 	struct stat file_stat;
@@ -123,6 +126,12 @@ void indigo_use_shortest_exposure_if_bias(indigo_device *device) {
 
 indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
+	if (indigo_is_sandboxed) {
+		snprintf(default_image_path, PATH_MAX, "%s/", getenv("HOME"));
+	} else {
+		snprintf(default_image_path, PATH_MAX, "%s/indigo_image_cache/", getenv("HOME"));
+	}
+
 	if (CCD_CONTEXT == NULL) {
 		device->device_context = indigo_safe_malloc(sizeof(indigo_ccd_context));
 	}
@@ -164,7 +173,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Save on server", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 			if (CCD_LOCAL_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_text_item(CCD_LOCAL_MODE_DIR_ITEM, CCD_LOCAL_MODE_DIR_ITEM_NAME, "Directory", "%s/", getenv("HOME"));
+			indigo_init_text_item(CCD_LOCAL_MODE_DIR_ITEM, CCD_LOCAL_MODE_DIR_ITEM_NAME, "Directory", default_image_path);
 			indigo_init_text_item(CCD_LOCAL_MODE_PREFIX_ITEM, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, "File name prefix", "IMAGE_XXX");
 			// -------------------------------------------------------------------------------- CCD_MODE
 			CCD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Capture mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 256);
@@ -723,7 +732,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_LOCAL_MODE_PROPERTY, property, false);
 		long len = strlen(CCD_LOCAL_MODE_DIR_ITEM->text.value);
 		if (len == 0)
-			snprintf(CCD_LOCAL_MODE_DIR_ITEM->text.value, INDIGO_VALUE_SIZE, "%s/", getenv("HOME"));
+			snprintf(CCD_LOCAL_MODE_DIR_ITEM->text.value, INDIGO_VALUE_SIZE, default_image_path);
 		else if (CCD_LOCAL_MODE_DIR_ITEM->text.value[len - 1] != '/')
 			strcat(CCD_LOCAL_MODE_DIR_ITEM->text.value, "/");
 		CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1371,6 +1380,33 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 	return true;
 }
 
+int mkpath(const char *dir) {
+	struct stat sb;
+	const mode_t mode=0774;
+
+    if (stat(dir, &sb) == 0) {
+		if (S_ISDIR(sb.st_mode)) {
+			return 0; /* path exists and is dir */
+		} else {
+			return -1; /* path exists but is not dir */
+		}
+	} else {
+		char tmp[PATH_MAX];
+		size_t len = strnlen(dir, PATH_MAX);
+		memcpy(tmp, dir, len);
+		if (tmp[len-1]=='/') {
+			tmp[len-1]='\0';
+		}
+		char *p = strrchr(tmp, '/');
+		*p='\0';
+		int ret = mkpath(tmp);
+		if (ret == 0) {
+			return mkdir(dir, mode);
+		}
+	}
+	return 0;
+}
+
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
@@ -1953,19 +1989,24 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		int handle = 0;
 		char file_name[INDIGO_VALUE_SIZE] = {0};
 		if (!(use_avi || use_ser) || CCD_CONTEXT->video_stream == NULL) {
-			if (create_file_name(device, blob_value, blob_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, suffix, file_name)) {
-				indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-				if (use_avi) {
-					CCD_CONTEXT->video_stream = gwavi_open(file_name, frame_width, frame_height, "MJPG", 5);
-				} else if (use_ser) {
-					CCD_CONTEXT->video_stream = indigo_ser_open(file_name, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), little_endian, byte_order_rgb);
+			if (indigo_is_sandboxed || !mkpath(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
+				if (create_file_name(device, blob_value, blob_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, suffix, file_name)) {
+					indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+					if (use_avi) {
+						CCD_CONTEXT->video_stream = gwavi_open(file_name, frame_width, frame_height, "MJPG", 5);
+					} else if (use_ser) {
+						CCD_CONTEXT->video_stream = indigo_ser_open(file_name, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), little_endian, byte_order_rgb);
+					} else {
+						handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+					}
 				} else {
-					handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = "Failed to create file name";
 				}
 			} else {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-				message = "Can't create file name";
+				message = "Failed to create storage directory, image can not be saved on server";
 			}
 		}
 		if (CCD_CONTEXT->video_stream != NULL) {
@@ -2074,26 +2115,31 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 				char file_name[INDIGO_VALUE_SIZE] = {0};
 				char *message = NULL;
-				if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, ".raw", file_name)) {
-					indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
-					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-					int handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-					if (handle > 0) {
-						if (!indigo_write(handle, image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
+				if (indigo_is_sandboxed || !mkpath(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
+					if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, ".raw", file_name)) {
+						indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
+						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+						int handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+						if (handle > 0) {
+							if (!indigo_write(handle, image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
+								CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+								message = strerror(errno);
+							}
+							close(handle);
+							if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
+								file_remove(file_name);
+							}
+						} else {
 							CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 							message = strerror(errno);
 						}
-						close(handle);
-						if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
-							file_remove(file_name);
-						}
 					} else {
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-						message = strerror(errno);
+						message = "Failed to create file name";
 					}
 				} else {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-					message = "dir + prefix + suffix is too long";
+					message = "Failed to create storage directory, image can not be saved on server";
 				}
 				indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, message);
 				INDIGO_DEBUG(indigo_debug("Local save in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
@@ -2157,34 +2203,39 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			use_avi = true;
 		}
 		if (!use_avi || CCD_CONTEXT->video_stream == NULL) {
-			if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, standard_suffix, file_name)) {
-				indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
-				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-				if (use_avi) {
-					struct indigo_jpeg_decompress_struct cinfo;
-					struct jpeg_error_mgr jerr;
-					cinfo.pub.err = jpeg_std_error(&jerr);
-					/* override default exit() and return 2 lines below */
-					jerr.error_exit = jpeg_decompress_error_callback;
-					/* Jump here in case of a decmpression error */
-					if (setjmp(cinfo.jpeg_error)) {
+			if (indigo_is_sandboxed || !mkpath(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
+				if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, standard_suffix, file_name)) {
+					indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
+					if (use_avi) {
+						struct indigo_jpeg_decompress_struct cinfo;
+						struct jpeg_error_mgr jerr;
+						cinfo.pub.err = jpeg_std_error(&jerr);
+						/* override default exit() and return 2 lines below */
+						jerr.error_exit = jpeg_decompress_error_callback;
+						/* Jump here in case of a decmpression error */
+						if (setjmp(cinfo.jpeg_error)) {
+							jpeg_destroy_decompress(&cinfo.pub);
+							INDIGO_ERROR(indigo_error("JPEG decompression failed"));
+							CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+							indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, "JPEG decompression failed");
+							return;
+						}
+						jpeg_create_decompress(&cinfo.pub);
+						jpeg_mem_src(&cinfo.pub, data, data_size);
+						jpeg_read_header(&cinfo.pub, TRUE);
 						jpeg_destroy_decompress(&cinfo.pub);
-						INDIGO_ERROR(indigo_error("JPEG decompression failed"));
-						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, "JPEG decompression failed");
-						return;
+						CCD_CONTEXT->video_stream = gwavi_open(file_name, cinfo.pub.image_width, cinfo.pub.image_height, "MJPG", 5);
+					} else {
+						handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 					}
-					jpeg_create_decompress(&cinfo.pub);
-					jpeg_mem_src(&cinfo.pub, data, data_size);
-					jpeg_read_header(&cinfo.pub, TRUE);
-					jpeg_destroy_decompress(&cinfo.pub);
-					CCD_CONTEXT->video_stream = gwavi_open(file_name, cinfo.pub.image_width, cinfo.pub.image_height, "MJPG", 5);
 				} else {
-					handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
+					message = "Failed to create file name";
 				}
 			} else {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
-				message = "Can't create file name";
+				message = "Failed to create storage directory, image can not be saved on server";
 			}
 		}
 		if (CCD_CONTEXT->video_stream != NULL) {
