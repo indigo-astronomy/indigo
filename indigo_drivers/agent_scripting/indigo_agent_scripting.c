@@ -926,8 +926,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	duk_push_global_object(PRIVATE_DATA->ctx);
 	if (duk_get_prop_string(PRIVATE_DATA->ctx, -1, "indigo_on_enumerate_properties")) {
-		duk_push_string(PRIVATE_DATA->ctx, device->name);
-		duk_push_string(PRIVATE_DATA->ctx, property ? property->name : NULL);
+		duk_push_string(PRIVATE_DATA->ctx, property && *property->device ? property->device : NULL);
+		duk_push_string(PRIVATE_DATA->ctx, property && *property->name ? property->name : NULL);
 		if (duk_pcall(PRIVATE_DATA->ctx, 2)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_enumerate_properties() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}

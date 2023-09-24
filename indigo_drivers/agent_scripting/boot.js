@@ -142,7 +142,9 @@ function indigo_on_send_message(device_name, message) {
 }
 
 function indigo_on_enumerate_properties(device_name, property_name) {
-	var property = { device: device_name };
+	var property = { };
+	if (device_name)
+		property.device = device_name;
 	if (property_name)
 		property.name = property_name;
 	indigo_call_handlers("on_enumerate_properties", device_name, property, false);
