@@ -26,7 +26,7 @@ Use URL in form ieq://host:port to connect to the mount over network. The defaul
 
 ![Alt text](ioptronsettings.jpg)
 
-Also make sure you are using the proper protocal version. Example the HEM27 needs to use Protocal 3.0
+Also make sure you are using the proper protocol version. Example the HEM27 needs to use PROTOCOL_VERSION 3.0
 
 ![Alt text](ioptronprotocal.jpg)
 
