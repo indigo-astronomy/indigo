@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 54.23312.20230910 */
+/* Version: 54.23385.20230918 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -281,7 +281,7 @@ typedef struct {
 } OgmacamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 54.23312.20230910
+    get the version of this dll/so/dylib, which is: 54.23385.20230918
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
