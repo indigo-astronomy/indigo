@@ -341,6 +341,7 @@ static void start_process(indigo_device *device) {
 	indigo_update_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY, NULL);
 	if (AGENT_PLATESOLVER_START_PRECISE_GOTO_ITEM->sw.value) {
 		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_GOTO;
+		AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		if (
 			!mount_slew(
