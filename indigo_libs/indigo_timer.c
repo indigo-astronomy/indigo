@@ -270,7 +270,7 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 	indigo_timer *timer_buffer = NULL;
 	pthread_mutex_lock(&cancel_timer_mutex);
 	if (*timer != NULL) {
-		if (*timer != *(*timer)->reference) {
+		if ((*timer)->reference != NULL && *timer != *(*timer)->reference) {
 			indigo_error("Attempt to cancel timer with outdated reference!");
 		} else {
 			INDIGO_TRACE(indigo_trace("timer #%d - cancel requested", (*timer)->timer_id));
