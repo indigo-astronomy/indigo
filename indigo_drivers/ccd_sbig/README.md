@@ -51,7 +51,7 @@ This will expose the device even if it is not really present.
 ### MacOS SDK distributed separately (MacOS only)
 
 On MacOS the driver requires the SDK provided by the camera manufacturer:
-ftp://ftp.sbig.com/pub/SBIGDriverInstallerUniv.dmg
+[SBIGDriverInstallerUniv.dmg](https://www.indigo-astronomy.org/download/SBIGDriverInstallerUniv.dmg)
 
 This third party software is not digitally signed by the vendor, therefore it may fail to load the camera
 firmware when camera is connected on the recent versions of MacOSX without disabling some security features
