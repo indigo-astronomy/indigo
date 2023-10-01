@@ -1819,22 +1819,63 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
 
-	static char string_1[128], string_2[128], string_3[128], string_4[128], buf[128];
+	if (format == NULL) {
+		format = "%d:%02d:%05.2f";
+	}
+
+	char buf[127];
+	static char string_1[128], string_2[128], string_3[128], string_4[128];
 	static char *string = string_4;
-	if (string == string_1)
+	if (string == string_1) {
 		string = string_2;
-	else if (string == string_2)
+	} else if (string == string_2) {
 		string = string_3;
-	else if (string == string_3)
+	} else if (string == string_3) {
 		string = string_4;
-	else if (string == string_4)
+	} else if (string == string_4) {
 		string = string_1;
-	if (format == NULL)
-		snprintf(buf, 128, "%d:%02d:%05.2f", (int)d, (int)m, (int)(s*100.0)/100.0);
-	else if (format[strlen(format) - 1] == 'd')
-		snprintf(buf, 128, format, (int)d, (int)m, (int)s);
-	else
-		snprintf(buf, 128, format, (int)d, (int)m, s);
+	}
+
+	int format_len = strlen(format);
+	if (format[format_len - 1] == 'd') {
+		s = round(s);
+		if (s >= 60) {
+			s = 0;
+			m++;
+		}
+		if (m >= 60) {
+			m = 0;
+			d++;
+		}
+		snprintf(buf, sizeof(buf), format, (int)d, (int)m, (int)s);
+	} else if (format[format_len - 1] == 'f') {
+		if (format[format_len - 3] == '.') {
+			if (format[format_len - 2] == '0') {
+				s = round(s);
+			} else if (format[format_len - 2] == '1') {
+				s = (round(s*10.0))/10.0;
+			} else if (format[format_len - 2] == '2') {
+				s = (round(s*100.0))/100.0;
+			} else if (format[format_len - 2] == '3') {
+				s = (round(s*1000.0))/1000.0;
+			}
+		} else {
+			s = (round(s*10000.0))/10000.0;
+		}
+
+		if (s >= 60) {
+			s = 0;
+			m++;
+		}
+		if (m >= 60) {
+			m = 0;
+			d++;
+		}
+		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
+	} else {
+		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
+	}
+
 	if (value < 0) {
 		if (buf[0] == '+') {
 			buf[0] = '-';
