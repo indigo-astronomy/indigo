@@ -249,10 +249,11 @@ static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
 	while (alpaca_device) {
 		if (alpaca_device->device_type) {
-			index += snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": \"%d\", \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
+			index += snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": %d, \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
 			alpaca_device = alpaca_device->next;
-			if (alpaca_device)
+			if (alpaca_device && alpaca_device->device_type) {
 				buffer[index++] = ',';
+			}
 			buffer[index++] = ' ';
 		} else {
 			alpaca_device = alpaca_device->next;
