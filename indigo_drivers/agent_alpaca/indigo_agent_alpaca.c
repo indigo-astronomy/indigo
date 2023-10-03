@@ -247,13 +247,17 @@ static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ \"Value\": [ ");
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	bool comma=false;
 	while (alpaca_device) {
 		if (alpaca_device->device_type) {
-			index += snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": \"%d\", \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
+			if (comma)
+			{
+				buffer[index++]=',';
+				buffer[index++]=' ';
+			}
+			comma = true;
+			index += snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": %d, \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
 			alpaca_device = alpaca_device->next;
-			if (alpaca_device)
-				buffer[index++] = ',';
-			buffer[index++] = ' ';
 		} else {
 			alpaca_device = alpaca_device->next;
 		}
