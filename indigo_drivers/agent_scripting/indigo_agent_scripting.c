@@ -23,7 +23,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -52,6 +52,9 @@
 #define MAX_TIMER_COUNT														32
 #define MAX_ITEMS																	128
 
+#define AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY				(PRIVATE_DATA->agent_run_script_property)
+#define AGENT_SCRIPTING_RUN_SCRIPT_ITEM						(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY->items+0)
+
 #define AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY				(PRIVATE_DATA->agent_add_script_property)
 #define AGENT_SCRIPTING_ADD_SCRIPT_NAME_ITEM			(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY->items+0)
 #define AGENT_SCRIPTING_ADD_SCRIPT_ITEM						(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY->items+1)
@@ -74,6 +77,7 @@ static char boot_js[] = {
 };
 
 typedef struct {
+	indigo_property *agent_run_script_property;
 	indigo_property *agent_add_script_property;
 	indigo_property *agent_execute_script_property;
 	indigo_property *agent_delete_script_property;
@@ -795,6 +799,10 @@ static indigo_result agent_device_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AGENT) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Script properties
+		AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Run script", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item_raw(AGENT_SCRIPTING_RUN_SCRIPT_ITEM, AGENT_SCRIPTING_RUN_SCRIPT_ITEM_NAME, "Script", "");
 		AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY_NAME, AGENT_MAIN_GROUP, "Add script", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -888,6 +896,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	if (indigo_property_match(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, property))
+		indigo_define_property(device, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property))
 		indigo_define_property(device, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property))
@@ -946,6 +956,18 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
+	} else if (indigo_property_match(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_RUN_SCRIPT
+		indigo_property_copy_values(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, property, false);
+		AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, NULL);
+		if (execute_script(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY)) {
+			AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_SCRIPTING_ADD_SCRIPT
 		indigo_property_copy_values(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property, false);
@@ -1156,6 +1178,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	indigo_release_property(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY);
 	indigo_release_property(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY);
+	indigo_release_property(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY);
 	indigo_release_property(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY);
 	indigo_release_property(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY);
 	indigo_release_property(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY);
