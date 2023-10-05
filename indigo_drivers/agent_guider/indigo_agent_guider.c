@@ -1740,14 +1740,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value = AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.target;
 		AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value = AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.target;
 
-		INDIGO_DRIVER_LOG(DRIVER_NAME,
-			"Dec guiding mode: NS=%d S=%d N=%d N=%d",
-			AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value,
-			AGENT_GUIDER_DEC_MODE_SOUTH_ITEM->sw.value,
-			AGENT_GUIDER_DEC_MODE_NORTH_ITEM->sw.value,
-			AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value
-		);
-
 		if (!AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
 			/* If Dec guiding is not "North and South" do not dither in Dec, however if cos(angle) == 0 we end up in devision by 0.
 			   In this case we set the limits -> DITH_X = 0 and DITH_Y = dith_total.
@@ -1765,7 +1757,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = 0;
 				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = dith_total;
 			}
-			INDIGO_DRIVER_LOG(DRIVER_NAME,
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,
 				"Dithering request altered as Dec dithering is disabled, requested X/Y: %.3f/%.3f calculated X/Y: %.3f/%.3f",
 				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target,
 				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target,
@@ -1773,7 +1765,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value
 			);
 		} else {
-			INDIGO_DRIVER_LOG(DRIVER_NAME,
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME,
 				"Dithering requested X/Y: %.3f/%.3f",
 				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value,
 				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value
@@ -1793,7 +1785,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_GUIDING && (dith_x != AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target || dith_y != AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target)) {
 			double diff_x = fabs(AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value - dith_x);
 			double diff_y = fabs(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value - dith_y);
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Dithering offset X/Y: %.3f/%.3f", diff_x, diff_y);
 			DEVICE_PRIVATE_DATA->rmse_ra_sum =
 			DEVICE_PRIVATE_DATA->rmse_dec_sum =
 			DEVICE_PRIVATE_DATA->rmse_ra_s_sum =
@@ -1801,7 +1792,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			DEVICE_PRIVATE_DATA->rmse_count = 0;
 			DEVICE_PRIVATE_DATA->rmse_ra_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value + AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value/2.0;
 			DEVICE_PRIVATE_DATA->rmse_dec_threshold = 1.5 * AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value + AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value/2.0;
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Dithering RMSE RA threshold = %g, RMSE DEC threshold = %g ", DEVICE_PRIVATE_DATA->rmse_ra_threshold, DEVICE_PRIVATE_DATA->rmse_dec_threshold);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RMSE RA threshold = %g, RMSE DEC threshold = %g ", DEVICE_PRIVATE_DATA->rmse_ra_threshold, DEVICE_PRIVATE_DATA->rmse_dec_threshold);
 			AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = round(1000 * fmax(fabs(diff_x), fabs(diff_y))) / 1000;
 			update_stats = true;
 		}
