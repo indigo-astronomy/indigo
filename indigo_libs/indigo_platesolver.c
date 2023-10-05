@@ -1120,7 +1120,7 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 					handle_polar_align_failure(FILTER_CLIENT_CONTEXT->device);
 				}
 			}
-		} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+		} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) && AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM->sw.value) {
 			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
 			if (related_agent_name) {
 				indigo_debug("%s(): %s.%s: state %d", __FUNCTION__, device_name, property->name, property->state);
