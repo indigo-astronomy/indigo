@@ -319,6 +319,7 @@ static void abort_process(indigo_device *device) {
 }
 
 static void start_process(indigo_device *device) {
+	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
 	for (int i = 0; i < AGENT_PLATESOLVER_SYNC_PROPERTY->count; i++) {
 		if (AGENT_PLATESOLVER_SYNC_PROPERTY->items[i].sw.value) {
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->saved_sync_mode = i;
