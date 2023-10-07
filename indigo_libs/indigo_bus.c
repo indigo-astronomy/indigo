@@ -363,7 +363,7 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 					break;
 				case INDIGO_NUMBER_VECTOR:
 					if (defs)
-						indigo_trace_bus("B <+   '%s' = %g (%g, %g, %g) // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->label);
+						indigo_trace_bus("B <+   '%s' = %g (%g, %g, %g, '%s') // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->number.format, item->label);
 					else
 						indigo_trace_bus("B <+   '%s' = %g ",item->name, item->number.value);
 					break;
