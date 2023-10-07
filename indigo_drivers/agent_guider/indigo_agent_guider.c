@@ -1757,19 +1757,23 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = 0;
 				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = dith_total;
 			}
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME,
-				"Dithering request altered as Dec dithering is disabled, requested X/Y: %.3f/%.3f calculated X/Y: %.3f/%.3f",
-				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target,
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target,
-				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value,
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value
-			);
+			if (dith_x != AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target || dith_y != AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+					"Dithering request altered as Dec dithering is disabled, requested X/Y: %.3f/%.3f calculated X/Y: %.3f/%.3f",
+					AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target,
+					AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target,
+					AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value,
+					AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value
+				);
+			}
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME,
-				"Dithering requested X/Y: %.3f/%.3f",
-				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value,
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value
-			);
+			if (dith_x != AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target || dith_y != AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+					"Dithering requested X/Y: %.3f/%.3f",
+					AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value,
+					AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value
+				);
+			}
 		}
 		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		bool update_stats = false;
