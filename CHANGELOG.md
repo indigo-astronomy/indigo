@@ -2,6 +2,42 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-248] - 09 Oct Mon 2023
+### Overall:
+- indigo_ccd_driver: default image directory changed (if not sandboxed) to avoid clutter in the user's home
+- insigo_bus: indigo_cancel_timer_sync() crash fixed
+- indigo_bus: fix indigo_dtos() rounding error that can result in DD:MM:60
+- indigo_bus: indigo_trace_property shows number format
+
+### Driver fixes:
+- indigo_agent_astometry / indigo_agent_astap:
+	- make AGENT_PLATESOLVER_WCS proeprty states consistent with other processes during precise goto process
+	- do not fail solving in case of image failure if no solving is requested
+	- abort_process_requested cleared when new process is started
+
+- indigo_agent_imager:
+	- Implemented multi-target sequences.
+	- sequencer waits for guiding to settle down before starting batch
+
+- indigo_agent_scripting:
+	- fixed deadlocks
+	- indigo_on_enumerate_properties params fixed
+	- mapping fixed
+	- AGENT_SCRIPTING_RUN_SCRIPT property added to run ad-hoc scripts without saving them
+
+- indigo_agent_alpaca:
+	- fix JSON issues, now it is more compliant to the standard
+
+- indigo_agent_guider:
+	- added some debug messages
+
+- indigo_ccd_playerone:
+	- update sdk to 3.6.0
+
+- indigo_ccd_ogma:
+	- update sdk v.54.23385.20230918
+
+
 # [2.0-246] - 16 Sep Sat 2023
 ### Overall:
 - indigo_fits: fix redefinition of FITS_HEADER_SIZE
