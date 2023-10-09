@@ -2,7 +2,7 @@
 
 export SAVED_PATH=$PATH 
 
-export VERSION=2.0-247
+export VERSION=2.0-248
 
 export PATH=/c/Qt/Tools/mingw810_32/bin/:$SAVED_PATH
 export ARCH=x86
