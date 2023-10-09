@@ -916,6 +916,10 @@ static void focuser_position_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	int steps = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ? (int)FOCUSER_STEPS_ITEM->number.target : -(int)FOCUSER_STEPS_ITEM->number.target;
 	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value + steps;
+	if (FOCUSER_POSITION_ITEM->number.target < 0)
+		FOCUSER_POSITION_ITEM->number.target = 0;
+	else if (FOCUSER_POSITION_ITEM->number.target > 65535)
+		FOCUSER_POSITION_ITEM->number.target = 65535;
 	focuser_position_handler(device);
 }
 
