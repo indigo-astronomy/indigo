@@ -23,7 +23,7 @@
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>
@@ -199,9 +199,10 @@ static char *SET_MOT1_BKLASH[] = { "res", "set", "MOT1", "BKLASH", NULL };
 static char *GET_MOT1_SPEED[] = { "res", "get", "MOT1", "SPEED", NULL };
 static char *SET_MOT1_SPEED[] = { "res", "set", "MOT1", "SPEED", NULL };
 static char *GET_MOT1_MST[] = { "res", "get", "MOT1", "STATUS", "MST", NULL };
-static char *CMD_MOT1_GOTO[] = { "res", "cmd", "MOT1", "GOTO", NULL };
-static char *CMD_MOT1_MOVE[] = { "res", "cmd", "MOT1", "MOVE", NULL };
+static char *CMD_MOT1_STEP[] = { "res", "cmd", "MOT1", "STEP", NULL };
+static char *CMD_MOT1_MOVE_REL[] = { "res", "cmd", "MOT1", "MOVE_REL", NULL };
 static char *CMD_MOT1_MOT_STOP[] = { "res", "cmd", "MOT1", "MOT_STOP", NULL };
+static char *CMD_MOT2_STEP[] = { "res", "cmd", "MOT2", "STEP", NULL };
 static char *CMD_MOT2_MOT_STOP[] = { "res", "cmd", "MOT2", "MOT_STOP", NULL };
 static char *CMD_MOT2_CAL_STATUS[] = { "res", "cmd", "MOT2", "CAL_STATUS", NULL };
 static char *GET_EXT_T[] = { "res", "get", "EXT_T", NULL };
@@ -636,7 +637,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
 	if (primaluce_command(device, "{\"req\":{\"get\":{\"EXT_T\":\"\", \"VIN_12V\": \"\", \"MOT1\":{\"NTC_T\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
-	double temp = get_number(response, tokens, GET_EXT_T);
+		double temp = get_number(response, tokens, GET_EXT_T);
 		if (temp != FOCUSER_TEMPERATURE_ITEM->number.value) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
@@ -874,14 +875,14 @@ static void focuser_position_handler(indigo_device *device) {
 	char command[1024];
 	char response[1024];
 	jsmntok_t tokens[128];
-	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"GOTO\":%d}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
+	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE_ABS\":{\"STEP\":%d}}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
 	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		return;
 	}
-	char *state = get_string(response, tokens, CMD_MOT1_GOTO);
+	char *state = get_string(response, tokens, CMD_MOT1_STEP);
 	if (state == NULL || strcmp(state, "done")) {
 		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -913,46 +914,13 @@ static void focuser_position_handler(indigo_device *device) {
 }
 
 static void focuser_steps_handler(indigo_device *device) {
-	char command[1024];
-	char response[1024];
-	jsmntok_t tokens[128];
 	int steps = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value ? (int)FOCUSER_STEPS_ITEM->number.target : -(int)FOCUSER_STEPS_ITEM->number.target;
-	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT1\":{\"MOVE\":{\"STEP\":%d}}}}}", steps);
-	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
-		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		return;
-	}
-	char *state = get_string(response, tokens, CMD_MOT1_MOVE);
-	if (state == NULL || strcmp(state, "done")) {
-		FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
-		return;
-	}
-	char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
-	while (true) {
-		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
-			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
-			if (!strcmp(get_string(response, tokens, GET_MOT1_MST), "stop")) {
-				break;
-			}
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-	}
-	for (int i = 0; i < 10; i++) {
-		indigo_usleep(100000);
-		if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
-			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
-			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-		}
-		if (FOCUSER_POSITION_ITEM->number.target == FOCUSER_POSITION_ITEM->number.value)
-			break;
-	}
-	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value + steps;
+	if (FOCUSER_POSITION_ITEM->number.target < 0)
+		FOCUSER_POSITION_ITEM->number.target = 0;
+	else if (FOCUSER_POSITION_ITEM->number.target > 65535)
+		FOCUSER_POSITION_ITEM->number.target = 65535;
+	focuser_position_handler(device);
 }
 
 static void focuser_bklash_handler(indigo_device *device) {
@@ -983,7 +951,7 @@ static void focuser_preset_1_handler(indigo_device *device) {
 	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		X_RUNPRESET_1_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, X_RUNPRESET_1_PROPERTY, NULL);
-			return;
+		return;
 	}
 	X_RUNPRESET_1_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, X_RUNPRESET_1_PROPERTY, NULL);
@@ -1459,13 +1427,13 @@ static void rotator_position_handler(indigo_device *device) {
 	char command[1024];
 	char response[1024];
 	jsmntok_t tokens[128];
-	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT2\":{\"GOTO\":%d}}}}", (int)FOCUSER_POSITION_ITEM->number.target);
+	snprintf(command, sizeof(command), "{\"req\":{\"cmd\":{\"MOT2\":{\"MOVE_ABS\":{\"DEG\":%g}}}}}", FOCUSER_POSITION_ITEM->number.target);
 	if (!primaluce_command(device, command, response, sizeof(response), tokens, 128)) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		return;
 	}
-	char *state = get_string(response, tokens, CMD_MOT1_GOTO);
+	char *state = get_string(response, tokens, CMD_MOT2_STEP);
 	if (state == NULL || strcmp(state, "done")) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
@@ -1538,7 +1506,7 @@ static void focuser_calibrate_a_handler(indigo_device *device) {
 				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			}
 		}
-
+		
 	}
 	X_CALIBRATE_SS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
@@ -1600,30 +1568,30 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 	static primaluce_private_data *private_data = NULL;
 	static indigo_device *focuser = NULL;
 	static indigo_device *rotator = NULL;
-
+	
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"PrimaluceLab Focuser",
-		focuser_attach,
-		focuser_enumerate_properties,
-		focuser_change_property,
-		NULL,
-		focuser_detach
-	);
-
+																																		"PrimaluceLab Focuser",
+																																		focuser_attach,
+																																		focuser_enumerate_properties,
+																																		focuser_change_property,
+																																		NULL,
+																																		focuser_detach
+																																		);
+	
 	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
-		"PrimaluceLab Rotator",
-		rotator_attach,
-		rotator_enumerate_properties,
-		rotator_change_property,
-		NULL,
-		rotator_detach
-	);
-
+																																		"PrimaluceLab Rotator",
+																																		rotator_attach,
+																																		rotator_enumerate_properties,
+																																		rotator_change_property,
+																																		NULL,
+																																		rotator_detach
+																																		);
+	
 	SET_DRIVER_INFO(info, "PrimaluceLab Focuser/Rotator", __FUNCTION__, DRIVER_VERSION, false, last_action);
-
+	
 	if (action == last_action)
 		return INDIGO_OK;
-
+	
 	switch (action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -1637,7 +1605,7 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 			rotator->master_device = focuser;
 			indigo_attach_device(rotator);
 			break;
-
+			
 		case INDIGO_DRIVER_SHUTDOWN:
 			VERIFY_NOT_CONNECTED(focuser);
 			VERIFY_NOT_CONNECTED(rotator);
@@ -1657,10 +1625,10 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 				private_data = NULL;
 			}
 			break;
-
+			
 		case INDIGO_DRIVER_INFO:
 			break;
 	}
-
+	
 	return INDIGO_OK;
 }
