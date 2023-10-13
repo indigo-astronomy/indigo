@@ -23,7 +23,7 @@
  \file indigo_agent_scripting.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 
 #define DRIVER_NAME	"indigo_agent_scripting"
 
@@ -168,6 +168,47 @@ static void push_items(indigo_property *property, bool use_target) {
 				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "format");
 				duk_push_pointer(PRIVATE_DATA->ctx, item);
 				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "reference");
+				break;
+		}
+		duk_put_prop_string(PRIVATE_DATA->ctx, -2, item->name);
+	}
+}
+
+static void push_item_descriptors(indigo_property *property) {
+	duk_push_object(PRIVATE_DATA->ctx);
+	for (int i = 0; i < property->count; i++) {
+		indigo_item *item = property->items + i;
+		duk_push_object(PRIVATE_DATA->ctx);
+		duk_push_string(PRIVATE_DATA->ctx, item->label);
+		duk_put_prop_string(PRIVATE_DATA->ctx, -2, "label");
+		switch (property->type) {
+			case INDIGO_TEXT_VECTOR:
+				duk_push_string(PRIVATE_DATA->ctx, "text");
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "type");
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				duk_push_string(PRIVATE_DATA->ctx, "number");
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "type");
+				duk_push_string(PRIVATE_DATA->ctx, item->number.format);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "format");
+				duk_push_number(PRIVATE_DATA->ctx, item->number.min);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "min");
+				duk_push_number(PRIVATE_DATA->ctx, item->number.max);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "max");
+				duk_push_number(PRIVATE_DATA->ctx, item->number.step);
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "step");
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				duk_push_string(PRIVATE_DATA->ctx, "switch");
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "type");
+				break;
+			case INDIGO_LIGHT_VECTOR:
+				duk_push_string(PRIVATE_DATA->ctx, "light");
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "type");
+				break;
+			case INDIGO_BLOB_VECTOR:
+				duk_push_string(PRIVATE_DATA->ctx, "blob");
+				duk_put_prop_string(PRIVATE_DATA->ctx, -2, "type");
 				break;
 		}
 		duk_put_prop_string(PRIVATE_DATA->ctx, -2, item->name);
@@ -1213,10 +1254,11 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 		duk_push_string(PRIVATE_DATA->ctx, property->device);
 		duk_push_string(PRIVATE_DATA->ctx, property->name);
 		push_items(property, false);
+		push_item_descriptors(property);
 		push_state(property->state);
 		duk_push_string(PRIVATE_DATA->ctx, property->perm == INDIGO_RW_PERM ? "RW" : property->perm == INDIGO_RO_PERM ? "RO" : "WO");
 		duk_push_string(PRIVATE_DATA->ctx, message);
-		if (duk_pcall(PRIVATE_DATA->ctx, 6)) {
+		if (duk_pcall(PRIVATE_DATA->ctx, 7)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_on_define_property() call failed (%s)", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 		}
 	}
