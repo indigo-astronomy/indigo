@@ -26,7 +26,7 @@
  */
 
 #define DRIVER_VERSION 0x000B
-#define DRIVER_NAME	"idnigo_gps_nmea"
+#define DRIVER_NAME	"indigo_gps_nmea"
 
 #include <stdlib.h>
 #include <string.h>
