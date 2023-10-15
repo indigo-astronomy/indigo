@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0023
+#define DRIVER_VERSION 0x0024
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -1889,6 +1889,18 @@ static void meade_update_onstep_state(indigo_device *device) {
 			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->park_changed = true;
+			}
+		} else if (strchr(response, 'p')) {
+			if (!MOUNT_PARK_UNPARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
+				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->park_changed = true;
+			}
+		} else if (strchr(response, 'I')) {
+			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_BUSY_STATE) {
+				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
+				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 				PRIVATE_DATA->park_changed = true;
 			}
 		} else if (strchr(response, 'F')) {
