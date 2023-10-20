@@ -23,7 +23,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x001F
+#define DRIVER_VERSION 0x0020
 
 #include <stdlib.h>
 #include <string.h>
@@ -1022,7 +1022,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		PRIVATE_DATA->aborting = false;
 		result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
-		double whatchdog_timeout = (CCD_EXPOSURE_ITEM->number.target > 40) ? 1.5 * CCD_EXPOSURE_ITEM->number.target : CCD_EXPOSURE_ITEM->number.target + 20;
+		double whatchdog_timeout = (CCD_EXPOSURE_ITEM->number.target > 50) ? 1.5 * CCD_EXPOSURE_ITEM->number.target : CCD_EXPOSURE_ITEM->number.target + 25;
 		indigo_set_timer(device, whatchdog_timeout, exposure_watchdog_callback, &PRIVATE_DATA->exposure_watchdog_timer);
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
