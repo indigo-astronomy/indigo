@@ -73,21 +73,112 @@ void indigo_j2k_to_eq(const double eq, double *ra, double *dec) {
 	}
 }
 
-double indigo_mean_gst(const time_t *utc) {
+double indigo_jd_to_mean_gst(double jd) {
 	long double gst;
 	long double t;
-	double jd;
-
-	if (utc)
-		jd = UT2JD(*utc);
-	else
-		jd = UT2JD(time(NULL));
 
 	t = (jd - 2451545.0) / 36525.0;
 	gst = 280.46061837 + (360.98564736629 * (jd - 2451545.0)) + (0.000387933 * t * t) - (t * t * t / 38710000.0);
 	gst = fmod(gst + 360.0, 360.0);
 	gst *= 24.0 / 360.0;
 	return gst;
+}
+
+double indigo_mean_gst(const time_t *utc) {
+	if (utc) {
+		return indigo_jd_to_mean_gst(UT2JD(*utc));
+	} else {
+		return indigo_jd_to_mean_gst(UT2JD(time(NULL)));
+	}
+}
+
+double indigo_time_to_transit(const double ra, const double lmst) {
+	return fmod((ra - lmst)+ 24.0, 24.0) / 1.0027379093508;
+}
+
+void indigo_raise_set(
+		const double jd,
+		const double latitude,
+		const double longitude,
+		const double ra,
+		const double dec,
+		double *raise_time,
+		double *transit_time,
+		double *set_time
+	) {
+	// use mathematical horizon + refraction
+	const double h0 = -0.5667 * DEG2RAD;
+
+	double dec_rad = dec * DEG2RAD;
+	double latitude_rad = latitude * DEG2RAD;
+
+	double gst = indigo_jd_to_mean_gst(jd) * 15;
+
+	// transit base in solar time
+	double transit_base = jd + 0.5 - floor(jd + 0.5);
+
+	// transit offset in sidereal time
+	double transit_offset = (ra * 15 - longitude - gst);
+
+	//indigo_error("transit_offset = %f", transit_offset);
+
+	// make sure we are working with the nearest transit
+	if (transit_offset < -180) {
+		transit_offset +=360;
+	} else if (transit_offset > 180) {
+		transit_offset -=360;
+	}
+	// indigo_error("normalized transit_offset = %f", transit_offset);
+
+	// offset is in sidereal time -> convert to solar time
+	transit_offset /= 360.9856473662880;
+
+	// transit time in solar time
+	double transit = fmod(transit_base + transit_offset + 1.0, 1.0);
+	if (transit_time) {
+		*transit_time = transit * 24;
+	}
+
+	double cosH = (sin(h0) - sin(latitude_rad) * sin(dec_rad)) / (cos(latitude_rad) * cos(dec_rad));
+	if (cosH < -1) { // target never sets
+		if (raise_time) {
+			*raise_time = 0;
+		}
+		if (set_time) {
+			*set_time = 24;
+		}
+		return;
+	}
+	if (cosH > 1) { // target never rises
+		if (raise_time) {
+			*raise_time = 0;
+		}
+		if (set_time) {
+			*set_time = 0;
+		}
+		return;
+	}
+
+	// get H0 in solar time
+	double H0 = acos(cosH) * RAD2DEG / 360.9856473662880;
+
+	// calculate rise time (solar time)
+	double rise = transit - H0;
+	if (raise_time) {
+		if (rise < 0) {
+			rise += 1;
+		}
+		*raise_time = rise * 24;
+	}
+
+	// calculate set time (solar time)
+	double set = transit + H0;
+	if (set_time) {
+		if (set > 1) {
+			set -= 1;
+		}
+		*set_time = set * 24;
+	}
 }
 
 double indigo_lst(const time_t *utc, const double longitude) {

@@ -1687,6 +1687,27 @@
 #define MOUNT_RAW_COORDINATES_DEC_ITEM_NAME			"DEC"
 
 //----------------------------------------------------------------------
+/** MOUNT_TARGET_INFO property name.
+ */
+#define MOUNT_TARGET_INFO_PROPERTY_NAME	"MOUNT_TARGET_INFO"
+
+/** MOUNT_TARGET_INFO.RISE_TIME property item name.
+ */
+#define MOUNT_TARGET_INFO_RISE_TIME_ITEM_NAME	"RISE_TIME"
+
+/** MOUNT_TARGET_INFO.TRANSIT_TIME property item name.
+ */
+#define MOUNT_TARGET_INFO_TRANSIT_TIME_ITEM_NAME	"TRANSIT_TIME"
+
+/** MOUNT_TARGET_INFO.SET_TIME property item name.
+ */
+#define MOUNT_TARGET_INFO_SET_TIME_ITEM_NAME	"SET_TIME"
+
+/** MOUNT_TARGET_INFO.TIME_TO_TRANSIT property item name.
+ */
+#define MOUNT_TARGET_INFO_TIME_TO_TRANSIT_ITEM_NAME	"TIME_TO_TRANSIT"
+
+//----------------------------------------------------------------------
 /** MOUNT_ABORT_MOTION property name.
  */
 #define MOUNT_ABORT_MOTION_PROPERTY_NAME				"MOUNT_ABORT_MOTION"
