@@ -26,10 +26,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
-#ifdef __LINUX__
-#include <cstdint>
-#endif
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
