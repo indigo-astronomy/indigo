@@ -869,50 +869,6 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-//static void set_black_white(indigo_device *device, unsigned long *histo, long count) {
-//	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
-//	if (black == 0) black = 1;
-//	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
-//		long total = 0;
-//		for (int i = 0; i < 4096; i++) {
-//			total += histo[i];
-//			if (total >= black) {
-//				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i / 16.0;
-//				break;
-//			}
-//		}
-//	} else {
-//		CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = CCD_JPEG_SETTINGS_BLACK_ITEM->number.target;
-//	}
-//	long white = CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
-//	if (white == 0) white = 1;
-//	if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.target == -1) {
-//		long total = 0;
-//		for (int i = 4095; i >= 0; i--) {
-//			total += histo[i];
-//			if (total >= white) {
-//				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i / 16.0;
-//				break;
-//			}
-//		}
-//	} else {
-//		CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = CCD_JPEG_SETTINGS_WHITE_ITEM->number.target;
-//	}
-//
-//	if (fabs(CCD_JPEG_SETTINGS_BLACK_ITEM->number.value - CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) < 2) {
-//		if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value >= 1) {
-//			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value -= 1;
-//		} else if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value <= 254) {
-//			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 1;
-//		}
-//	}
-//
-//	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value != CCD_JPEG_SETTINGS_BLACK_ITEM->number.target || CCD_JPEG_SETTINGS_WHITE_ITEM->number.value != CCD_JPEG_SETTINGS_WHITE_ITEM->number.target) {
-//		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
-//		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-//	}
-//}
-
 #define STRECH_SAMPLE_SIZE	0xFFFF
 #define SET_JPEG_ITEM(item, val) if (item->number.target == -1) item->number.value = val; else val = item->number.target;
 
