@@ -39,9 +39,9 @@ endif
 BIN_EXTERNALS = $(INDIGO_ROOT)/bin_externals
 
 ifeq ($(INDIGO_CUDA),)
-	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) indigo_build.o
+	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) $(addsuffix .o, $(basename $(wildcard *.cpp))) indigo_build.o
 else
-	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) $(addsuffix .o, $(basename $(wildcard *.cu))) indigo_build.o
+	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) $(addsuffix .o, $(basename $(wildcard *.cpp))) $(addsuffix .o, $(basename $(wildcard *.cu))) indigo_build.o
 endif
 
 %.o: %.cu
