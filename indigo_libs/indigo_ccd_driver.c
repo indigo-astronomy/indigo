@@ -45,6 +45,7 @@
 #include <indigo/indigo_ser.h>
 #include <indigo/indigo_dslr_raw.h>
 #include <indigo/indigo_md5.h>
+#include <indigo/indigo_stretch.h>
 
 struct indigo_jpeg_compress_struct {
 	struct jpeg_compress_struct pub;
@@ -319,14 +320,21 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_text_item(CCD_REMOVE_FITS_HEADER_NAME_ITEM, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
 			// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
-			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 5);
+			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 4);
 			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 5, 90);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_ITEM, CCD_JPEG_SETTINGS_BLACK_ITEM_NAME, "Black point", -1, 255, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_ITEM, CCD_JPEG_SETTINGS_WHITE_ITEM_NAME, "White point", -1, 255, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM_NAME, "Black point treshold (%iles)", 0, 10, 0, 0.01);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM, CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME, "White point treshold (%iles)", 0, 5, 0, 0.2);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 11, 90);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_ITEM, CCD_JPEG_SETTINGS_BLACK_ITEM_NAME, "R/M Black point", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_GRAY_ITEM, CCD_JPEG_SETTINGS_WHITE_ITEM_NAME, "R/M Gray point", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_ITEM, CCD_JPEG_SETTINGS_WHITE_ITEM_NAME, "R/M White point", -1, 1, 0, -1);
+
+			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_GREEN_ITEM, CCD_JPEG_SETTINGS_BLACK_GREEN_ITEM_NAME, "G Black point", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_GRAY_GREEN_ITEM, CCD_JPEG_SETTINGS_WHITE_GREEN_ITEM_NAME, "G Gray point", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_GREEN_ITEM, CCD_JPEG_SETTINGS_WHITE_GREEN_ITEM_NAME, "G White point", -1, 1, 0, -1);
+
+			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_BLUE_ITEM, CCD_JPEG_SETTINGS_BLACK_BLUE_ITEM_NAME, "B Black point", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_GRAY_BLUE_ITEM, CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM_NAME, "B Gray point", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM, CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM_NAME, "B White point", -1, 1, 0, -1);
 			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
 			CCD_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_RBI_FLUSH_ENABLE_PROPERTY_NAME, CCD_ADVANCED_GROUP, "RBI flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_RBI_FLUSH_ENABLE_PROPERTY == NULL)
@@ -861,57 +869,62 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-static void set_black_white(indigo_device *device, unsigned long *histo, long count) {
-	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
-	if (black == 0) black = 1;
-	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
-		long total = 0;
-		for (int i = 0; i < 4096; i++) {
-			total += histo[i];
-			if (total >= black) {
-				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i / 16.0;
-				break;
-			}
-		}
-	} else {
-		CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = CCD_JPEG_SETTINGS_BLACK_ITEM->number.target;
-	}
-	long white = CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
-	if (white == 0) white = 1;
-	if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.target == -1) {
-		long total = 0;
-		for (int i = 4095; i >= 0; i--) {
-			total += histo[i];
-			if (total >= white) {
-				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i / 16.0;
-				break;
-			}
-		}
-	} else {
-		CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = CCD_JPEG_SETTINGS_WHITE_ITEM->number.target;
-	}
+//static void set_black_white(indigo_device *device, unsigned long *histo, long count) {
+//	long black = CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
+//	if (black == 0) black = 1;
+//	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.target == -1) {
+//		long total = 0;
+//		for (int i = 0; i < 4096; i++) {
+//			total += histo[i];
+//			if (total >= black) {
+//				CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = i / 16.0;
+//				break;
+//			}
+//		}
+//	} else {
+//		CCD_JPEG_SETTINGS_BLACK_ITEM->number.value = CCD_JPEG_SETTINGS_BLACK_ITEM->number.target;
+//	}
+//	long white = CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM->number.value * count / 100.0; /* In percenitle */
+//	if (white == 0) white = 1;
+//	if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.target == -1) {
+//		long total = 0;
+//		for (int i = 4095; i >= 0; i--) {
+//			total += histo[i];
+//			if (total >= white) {
+//				CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = i / 16.0;
+//				break;
+//			}
+//		}
+//	} else {
+//		CCD_JPEG_SETTINGS_WHITE_ITEM->number.value = CCD_JPEG_SETTINGS_WHITE_ITEM->number.target;
+//	}
+//
+//	if (fabs(CCD_JPEG_SETTINGS_BLACK_ITEM->number.value - CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) < 2) {
+//		if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value >= 1) {
+//			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value -= 1;
+//		} else if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value <= 254) {
+//			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 1;
+//		}
+//	}
+//
+//	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value != CCD_JPEG_SETTINGS_BLACK_ITEM->number.target || CCD_JPEG_SETTINGS_WHITE_ITEM->number.value != CCD_JPEG_SETTINGS_WHITE_ITEM->number.target) {
+//		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+//		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+//	}
+//}
 
-	if (fabs(CCD_JPEG_SETTINGS_BLACK_ITEM->number.value - CCD_JPEG_SETTINGS_WHITE_ITEM->number.value) < 2) {
-		if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value >= 1) {
-			CCD_JPEG_SETTINGS_BLACK_ITEM->number.value -= 1;
-		} else if (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value <= 254) {
-			CCD_JPEG_SETTINGS_WHITE_ITEM->number.value += 1;
-		}
-	}
+#define STRECH_SAMPLE_SIZE	0xFFFF
+#define SET_JPEG_ITEM(item, val) if (item->number.target == -1) item->number.value = val; else val = item->number.target;
 
-	if (CCD_JPEG_SETTINGS_BLACK_ITEM->number.value != CCD_JPEG_SETTINGS_BLACK_ITEM->number.target || CCD_JPEG_SETTINGS_WHITE_ITEM->number.value != CCD_JPEG_SETTINGS_WHITE_ITEM->number.target) {
-		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-	}
-}
-
-void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size) {
+void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size) {
 	INDIGO_DEBUG(clock_t start = clock());
 	int size_in = frame_width * frame_height;
-	void *copy = indigo_safe_malloc_copy(size_in * bpp / 8, data_in + FITS_HEADER_SIZE);
-	unsigned long *histo = indigo_safe_malloc(4096 * sizeof(unsigned long));
+	int sample_by = size_in / STRECH_SAMPLE_SIZE;
+	void *copy = indigo_safe_malloc(size_in * bpp / 8);
 	unsigned char *mem = NULL;
 	unsigned long mem_size = 0;
+	unsigned long *histo[3] = { NULL, NULL, NULL };
+	double shadows[3], midtones[3], highlights[3];
 	struct indigo_jpeg_compress_struct cinfo;
 	struct jpeg_error_mgr jerr;
 	cinfo.pub.err = jpeg_std_error(&jerr);
@@ -921,7 +934,12 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	if (setjmp(cinfo.jpeg_error)) {
 		jpeg_destroy_compress(&cinfo.pub);
 		free(copy);
-		free(histo);
+		if (histo[0])
+			free(histo[0]);
+		if (histo[1])
+			free(histo[1]);
+		if (histo[2])
+			free(histo[2]);
 		INDIGO_ERROR(indigo_error("JPEG compression failed"));
 		return;
 	}
@@ -929,67 +947,39 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_mem_dest(&cinfo.pub, &mem, &mem_size);
 	cinfo.pub.image_width = frame_width;
 	cinfo.pub.image_height = frame_height;
-	if (bpp == 8 || bpp == 24) {
-		unsigned char *b8 = copy;
-		int count = size_in * (bpp == 8 ? 1 : 3);
-		for (int i = 0; i < count; i++) {
-			histo[*b8++ << 4]++;
-		}
-		set_black_white(device, histo, count);
-		double scale = rint(CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value) / 256.0;
-		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value;
-		b8 = copy;
-		for (int i = 0; i < count; i++) {
-			int value = (*b8 - offset) / scale;
-			if (value < 0)
-				value = 0;
-			else if (value > 255)
-				value = 255;
-			*b8++ = value;
-		}
-	} else if (bpp == 16 || bpp == 48) {
-		uint16_t *b16 = copy;
-		int count = size_in * (bpp == 16 ? 1 : 3);
-		if (little_endian) {
-			for (int i = 0; i < count; i++) {
-				histo[*b16++ >> 4]++;
-			}
-		} else {
-			for (int i = 0; i < count; i++) {
-				int value = *b16;
-				value = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				*b16++ = value;
-				histo[value >> 4]++;
-			}
-		}
-		set_black_white(device, histo, count);
-		int offset = CCD_JPEG_SETTINGS_BLACK_ITEM->number.value * 256;
-		double scale = (CCD_JPEG_SETTINGS_WHITE_ITEM->number.value - CCD_JPEG_SETTINGS_BLACK_ITEM->number.value);
-		unsigned char *b8 = copy;
-		b16 = copy;
-		for (int i = 0; i < count; i++) {
-			int value = rint((*b16++ - offset) / scale);
-			if (value < 0)
-				value = 0;
-			else if (value > 255)
-				value = 255;
-			*b8++ = value;
-		}
+	if (bpp == 8) {
+		indigo_compute_stretch_params_8((uint8_t *)(data_in + FITS_HEADER_SIZE), size_in, sample_by, shadows, midtones, highlights, histo);
+	} else if (bpp == 16) {
+		indigo_compute_stretch_params_16((uint16_t *)(data_in + FITS_HEADER_SIZE), size_in, sample_by, shadows, midtones, highlights, histo);
+	} else if (bpp == 24) {
+		indigo_compute_stretch_params_24((uint8_t *)(data_in + FITS_HEADER_SIZE), size_in, sample_by, shadows, midtones, highlights, histo);
+	} else if (bpp == 48) {
+		indigo_compute_stretch_params_48((uint16_t *)(data_in + FITS_HEADER_SIZE), size_in, sample_by, shadows, midtones, highlights, histo);
+	}
+	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_BLACK_ITEM, shadows[0]);
+	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_GRAY_ITEM, midtones[0]);
+	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_WHITE_ITEM, highlights[0]);
+	if (bpp == 24 || bpp == 48) {
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_BLACK_GREEN_ITEM, shadows[1]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_GRAY_GREEN_ITEM, midtones[1]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_WHITE_GREEN_ITEM, highlights[1]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_BLACK_BLUE_ITEM, shadows[2]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_GRAY_BLUE_ITEM, midtones[2]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM, highlights[2]);
+	}
+	if (bpp == 8) {
+		indigo_stretch_8((uint8_t *)(data_in + FITS_HEADER_SIZE), size_in, copy, shadows, midtones, highlights);
+	} else if (bpp == 16) {
+		indigo_stretch_16((uint16_t *)(data_in + FITS_HEADER_SIZE), size_in, copy, shadows, midtones, highlights);
+	} else if (bpp == 24) {
+		indigo_stretch_24((uint8_t *)(data_in + FITS_HEADER_SIZE), size_in, copy, shadows, midtones, highlights);
+	} else if (bpp == 48) {
+		indigo_stretch_48((uint16_t *)(data_in + FITS_HEADER_SIZE), size_in, copy, shadows, midtones, highlights);
 	}
 	if (bpp == 8 || bpp == 16) {
 		cinfo.pub.input_components = 1;
 		cinfo.pub.in_color_space = JCS_GRAYSCALE;
 	} else if (bpp == 24 || bpp == 48) {
-		if (!byte_order_rgb) {
-			unsigned char *b8 = copy;
-			for (int i = 0; i < size_in; i++) {
-				unsigned char b = *b8;
-				unsigned char r = *(b8 + 2);
-				*b8 = r;
-				*(b8 + 2) = b;
-				b8 += 3;
-			}
-		}
 		cinfo.pub.input_components = 3;
 		cinfo.pub.in_color_space = JCS_RGB;
 	}
@@ -1010,10 +1000,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		uint8_t raw[32][256];
 		memset(raw, 0, sizeof(raw));
 		for (int i = 0; i < 256; i++) {
-			int base = i * 16;
-			unsigned long val = 0;
-			for (int j = 0; j < 16; j++)
-				val += histo[base + j];
+			unsigned long val = histo[0][i];
 			unsigned long mask = 0x80000000;
 			uint8_t pixel = 0;
 			for (unsigned long j = 0; j < 32; j++) {
@@ -1044,7 +1031,12 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		*histogram_data = mem;
 		*histogram_size = mem_size;
 	}
-	free(histo);
+	if (histo[0])
+		free(histo[0]);
+	if (histo[1])
+		free(histo[1]);
+	if (histo[2])
+		free(histo[2]);
 	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 }
 
@@ -1065,11 +1057,11 @@ static void add_key(char **header, bool fits, char *format, ...) {
 	*header = buffer + length;
 }
 
-static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, indigo_fits_keyword *keywords) {
+static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, void **data_out, unsigned long *size_out, indigo_fits_keyword *keywords) {
 	indigo_tiff_memory_handle *memory_handle = indigo_safe_malloc(sizeof(indigo_tiff_memory_handle));
 	memory_handle->data = indigo_safe_malloc(memory_handle->size = 10240);
 	memory_handle->file_length = memory_handle->file_offset = 0;
-	TIFF *tiff = TIFFClientOpen("", little_endian ? "wl" : "wb", (thandle_t)memory_handle, indigo_tiff_read, indigo_tiff_write, indigo_tiff_seek, indigo_tiff_close, indigo_tiff_size, NULL, NULL);
+	TIFF *tiff = TIFFClientOpen("", "wl", (thandle_t)memory_handle, indigo_tiff_read, indigo_tiff_write, indigo_tiff_seek, indigo_tiff_close, indigo_tiff_size, NULL, NULL);
 	TIFFSetField(tiff, TIFFTAG_COMPRESSION, COMPRESSION_LZW);
 	time_t timer;
 	struct tm* tm_info;
@@ -1149,7 +1141,6 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		if ((next_key - fits_header) < (FITS_HEADER_SIZE - 80))
 			add_key(&next_key, false, "%-8s= %s", item->name, item->text.value);
 	}
-
 	add_key(&next_key, false, "END");
 	TIFFSetField(tiff, TIFFTAG_IMAGEDESCRIPTION, fits_header);
 	TIFFSetField(tiff, TIFFTAG_IMAGEWIDTH, frame_width);
@@ -1168,32 +1159,10 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 3);
 		TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, 8);
 		TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
-		if (!byte_order_rgb) {
-			int size_in = frame_width * frame_height;
-			unsigned char *b8 = data_in + FITS_HEADER_SIZE;
-			for (int i = 0; i < size_in; i++) {
-				unsigned char b = *b8;
-				unsigned char r = *(b8 + 2);
-				*b8 = r;
-				*(b8 + 2) = b;
-				b8 += 3;
-			}
-		}
 	} else if (bpp == 48) {
 		TIFFSetField(tiff, TIFFTAG_SAMPLESPERPIXEL, 3);
 		TIFFSetField(tiff, TIFFTAG_BITSPERSAMPLE, 16);
 		TIFFSetField(tiff, TIFFTAG_PHOTOMETRIC, PHOTOMETRIC_RGB);
-		if (!byte_order_rgb) {
-			int size_in = frame_width * frame_height;
-			uint16_t *b16 = (uint16_t *)(data_in + FITS_HEADER_SIZE);
-			for (int i = 0; i < size_in; i++) {
-				uint16_t b = *b16;
-				uint16_t r = *(b16 + 2);
-				*b16 = r;
-				*(b16 + 2) = b;
-				b16 += 3;
-			}
-		}
 	}
 	TIFFSetField(tiff, TIFFTAG_SAMPLEFORMAT, SAMPLEFORMAT_UINT);
 	TIFFSetField(tiff, TIFFTAG_ORIENTATION, ORIENTATION_TOPLEFT);
@@ -1425,13 +1394,41 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		byte_per_pixel = 2;
 		naxis = 3;
 	}
+	if (byte_per_pixel == 2 && !little_endian) {
+		uint16_t *raw = (uint16_t *)(data + FITS_HEADER_SIZE);
+		for (int i = 0; i < size; i++) {
+			uint16_t value = *raw;
+			*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+		}
+	}
+	if (naxis == 3 && !byte_order_rgb) {
+		if (byte_per_pixel == 1) {
+			unsigned char *b8 = data + FITS_HEADER_SIZE;
+			for (int i = 0; i < size; i++) {
+				unsigned char b = *b8;
+				unsigned char r = *(b8 + 2);
+				*b8 = r;
+				*(b8 + 2) = b;
+				b8 += 3;
+			}
+		} else if (byte_per_pixel == 2) {
+			unsigned char *b16 = data + FITS_HEADER_SIZE;
+			for (int i = 0; i < size; i++) {
+				unsigned char b = *b16;
+				unsigned char r = *(b16 + 2);
+				*b16 = r;
+				*(b16 + 2) = b;
+				b16 += 3;
+			}
+		}
+	}
 	unsigned header_size = 0;
 	void *jpeg_data = NULL;
 	unsigned long jpeg_size = 0;
 	void *histogram_data = NULL;
 	unsigned long histogram_size = 0;
 	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
-		indigo_raw_to_jpeg(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL);
+		indigo_raw_to_jpeg(device, data, frame_width, frame_height, bpp, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
@@ -1475,7 +1472,6 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			}
 		}
 	}
-
 	if (CCD_IMAGE_FORMAT_FITS_ITEM->sw.value) {
 		INDIGO_DEBUG(clock_t start = clock());
 		struct timeval tv;
@@ -1607,17 +1603,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		if (byte_per_pixel == 2 && naxis == 2) {
 			uint16_t *raw = (uint16_t *)(data + FITS_HEADER_SIZE);
-			if (little_endian) {
-				for (int i = 0; i < size; i++) {
-					int value = *raw - 32768;
-					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
-			} else {
-				for (int i = 0; i < size; i++) {
-					int value = *raw;
-					value = ((value & 0xff) << 8 | (value & 0xff00) >> 8) - 32768;
-					*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
+			for (int i = 0; i < size; i++) {
+				int value = *raw - 32768;
+				*raw++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 			}
 		} else if (byte_per_pixel == 1 && naxis == 3) {
 			unsigned char *raw = indigo_safe_malloc(3 * size);
@@ -1625,18 +1613,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			unsigned char *green = raw + size;
 			unsigned char *blue = raw + 2 * size;
 			unsigned char *tmp = data + FITS_HEADER_SIZE;
-			if (byte_order_rgb) {
-				for (int i = 0; i < size; i++) {
-					*red++ = *tmp++;
-					*green++ = *tmp++;
-					*blue++ = *tmp++;
-				}
-			} else {
-				for (int i = 0; i < size; i++) {
-					*blue++ = *tmp++;
-					*green++ = *tmp++;
-					*red++ = *tmp++;
-				}
+			for (int i = 0; i < size; i++) {
+				*red++ = *tmp++;
+				*green++ = *tmp++;
+				*blue++ = *tmp++;
 			}
 			memcpy(data + FITS_HEADER_SIZE, raw, 3 * size);
 			free(raw);
@@ -1646,40 +1626,13 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			uint16_t *green = raw + size;
 			uint16_t *blue = raw + 2 * size;
 			uint16_t *tmp = (uint16_t *)(data + FITS_HEADER_SIZE);
-			if (little_endian) {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						int value = *tmp++ - 32768;
-						*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						int value = *tmp++ - 32768;
-						*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *tmp++ - 32768;
-						*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				}
-			} else {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						*red++ = *tmp++;
-						*green++ = *tmp++;
-						*blue++ = *tmp++;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						*blue++ = *tmp++;
-						*green++ = *tmp++;
-						*red++ = *tmp++;
-					}
-				}
+			for (int i = 0; i < size; i++) {
+				int value = *tmp++ - 32768;
+				*red++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+				value = *tmp++ - 32768;
+				*green++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
+				value = *tmp++ - 32768;
+				*blue++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
 			}
 			memcpy(data + FITS_HEADER_SIZE, raw, 6 * size);
 			free(raw);
@@ -1801,59 +1754,6 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 #endif
 		header += sprintf(header, "<Property id='XISF:BlockAlignmentSize' type='UInt16' value='2880'/></Metadata></xisf>");
 		*(uint32_t *)(data + 8) = (uint32_t)(header - (char *)data) - 16;
-		if (naxis == 2 && byte_per_pixel == 2) {
-			if (!little_endian) {
-				uint16_t *b16 = (uint16_t *)(data + FITS_HEADER_SIZE);
-				for (int i = 0; i < size; i++) {
-					int value = *b16;
-					*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
-			}
-		} else if (naxis == 3 && byte_per_pixel == 1) {
-			if (!byte_order_rgb) {
-				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				for (int i = 0; i < size; i++) {
-					unsigned char b = *b8;
-					unsigned char r = *(b8 + 2);
-					*b8 = r;
-					*(b8 + 2) = b;
-					b8 += 3;
-				}
-			}
-		} else if (naxis == 3 && byte_per_pixel == 2) {
-			unsigned char *b16 = data + FITS_HEADER_SIZE;
-			if (little_endian) {
-				if (!byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						unsigned char b = *b16;
-						unsigned char r = *(b16 + 2);
-						*b16 = r;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			} else {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						unsigned b = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 1);
-						unsigned g = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 2);
-						unsigned r = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						*b16 = r;
-						*(b16 + 1) = g;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			}
-		}
 		INDIGO_DEBUG(indigo_debug("RAW to XISF conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	} else if (CCD_IMAGE_FORMAT_RAW_ITEM->sw.value || CCD_IMAGE_FORMAT_RAW_SER_ITEM->sw.value) {
 		indigo_raw_header *header = (indigo_raw_header *)(data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
@@ -1861,59 +1761,10 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			header->signature = INDIGO_RAW_MONO8;
 		else if (naxis == 2 && byte_per_pixel == 2) {
 			header->signature = INDIGO_RAW_MONO16;
-			if (!little_endian) {
-				uint16_t *b16 = (uint16_t *)(data + FITS_HEADER_SIZE);
-				for (int i = 0; i < size; i++) {
-					int value = *b16;
-					*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-				}
-			}
 		} else if (naxis == 3 && byte_per_pixel == 1) {
 			header->signature = INDIGO_RAW_RGB24;
-			if (!byte_order_rgb) {
-				unsigned char *b8 = data + FITS_HEADER_SIZE;
-				for (int i = 0; i < size; i++) {
-					unsigned char b = *b8;
-					unsigned char r = *(b8 + 2);
-					*b8 = r;
-					*(b8 + 2) = b;
-					b8 += 3;
-				}
-			}
 		} else if (naxis == 3 && byte_per_pixel == 2) {
 			header->signature = INDIGO_RAW_RGB48;
-			unsigned char *b16 = data + FITS_HEADER_SIZE;
-			if (little_endian) {
-				if (!byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						unsigned char b = *b16;
-						unsigned char r = *(b16 + 2);
-						*b16 = r;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			} else {
-				if (byte_order_rgb) {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						*b16++ = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-					}
-				} else {
-					for (int i = 0; i < size; i++) {
-						int value = *b16;
-						unsigned b = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 1);
-						unsigned g = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						value = *(b16 + 2);
-						unsigned r = (value & 0xff) << 8 | (value & 0xff00) >> 8;
-						*b16 = r;
-						*(b16 + 1) = g;
-						*(b16 + 2) = b;
-						b16 += 3;
-					}
-				}
-			}
 		}
 		header->width = frame_width;
 		header->height = frame_height;
@@ -1927,7 +1778,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	} else if (CCD_IMAGE_FORMAT_TIFF_ITEM->sw.value) {
 		void *tiff_data = NULL;
 		unsigned long tiff_size = 0;
-		raw_to_tiff(device, data, frame_width, frame_height, bpp, little_endian, byte_order_rgb, &tiff_data, &tiff_size, keywords);
+		raw_to_tiff(device, data, frame_width, frame_height, bpp, &tiff_data, &tiff_size, keywords);
 		if (tiff_data) {
 			if (tiff_size < blobsize + FITS_HEADER_SIZE) {
 				memcpy(data, tiff_data, tiff_size);
@@ -1996,7 +1847,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					if (use_avi) {
 						CCD_CONTEXT->video_stream = gwavi_open(file_name, frame_width, frame_height, "MJPG", 5);
 					} else if (use_ser) {
-						CCD_CONTEXT->video_stream = indigo_ser_open(file_name, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header), little_endian, byte_order_rgb);
+						CCD_CONTEXT->video_stream = indigo_ser_open(file_name, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 					} else {
 						handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 					}
@@ -2161,7 +2012,6 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		indigo_dslr_raw_image_s output_image = {0};
 		indigo_dslr_raw_image_info_s image_info;
 		int rc;
-
 		rc = indigo_dslr_raw_image_info((void *)data, data_size, &image_info);
 		if (rc == LIBRAW_SUCCESS) {
 			rc = indigo_dslr_raw_process_image((void *)data, data_size, &output_image);
@@ -2185,7 +2035,6 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		if (image_info.temperature > -273.15f) {
 			keywords[index++] = (indigo_fits_keyword) { INDIGO_FITS_NUMBER, "CCD-TEMP", .number = image_info.temperature, "CCD temperature [celcius]"};
 		}
-
 		image = indigo_alloc_blob_buffer(output_image.size + FITS_HEADER_SIZE);
 		memcpy(image + FITS_HEADER_SIZE, output_image.data, output_image.size);
 		free(output_image.data);
