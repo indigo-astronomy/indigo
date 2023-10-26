@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 54.23533.20231009 */
+/* Version: 54.23640.20231022 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -230,9 +230,9 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define ALTAIRCAM_HEARTBEAT_MIN            100     /* millisecond */
 #define ALTAIRCAM_HEARTBEAT_MAX            10000   /* millisecond */
-#define ALTAIRCAM_AE_PERCENT_MIN           0       /* auto exposure percent, 0 => full roi average */
+#define ALTAIRCAM_AE_PERCENT_MIN           0       /* auto exposure percent; 0 or 100 => full roi average, means "disabled" */
 #define ALTAIRCAM_AE_PERCENT_MAX           100
-#define ALTAIRCAM_AE_PERCENT_DEF           10
+#define ALTAIRCAM_AE_PERCENT_DEF           10      /* auto exposure percent: enabled, percentage = 10% */
 #define ALTAIRCAM_NOPACKET_TIMEOUT_MIN     500     /* no packet timeout minimum: 500ms */
 #define ALTAIRCAM_NOFRAME_TIMEOUT_MIN      500     /* no frame timeout minimum: 500ms */
 #define ALTAIRCAM_DYNAMIC_DEFECT_T1_MIN    10      /* dynamic defect pixel correction, threshold, means: 1.0 */
@@ -285,7 +285,7 @@ typedef struct {
 } AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 54.23533.20231009
+    get the version of this dll/so/dylib, which is: 54.23640.20231022
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -966,7 +966,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
                                                          */
 #define ALTAIRCAM_OPTION_AUTOEXPOSURE_PERCENT   0x4a       /* auto exposure percent to average:
                                                                 1~99: peak percent average
-                                                                0 or 100: full roi average
+                                                                0 or 100: full roi average, means "disabled"
                                                          */
 #define ALTAIRCAM_OPTION_ANTI_SHUTTER_EFFECT    0x4b       /* anti shutter effect: 1 => disable, 0 => disable; default: 1 */
 #define ALTAIRCAM_OPTION_CHAMBER_HT             0x4c       /* get chamber humidity & temperature:
