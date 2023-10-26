@@ -869,7 +869,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-#define STRECH_SAMPLE_SIZE	0xFFFF
+#define STRECH_SAMPLE_SIZE	0xFFFFFF
 #define SET_JPEG_ITEM(item, val) if (item->number.target == -1) item->number.value = val; else val = item->number.target;
 
 void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size) {
@@ -954,19 +954,21 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	*size_out = mem_size;
 	free(copy);
 	if (histogram_data != NULL) {
+		unsigned long histo_max = 1;
+		for (int i = 0; i < 256; i++) {
+			if (histo_max < histo[0][i]) {
+				histo_max = histo[0][i];
+			}
+		}
 		uint8_t raw[32][256];
 		memset(raw, 0, sizeof(raw));
 		for (int i = 0; i < 256; i++) {
-			unsigned long val = histo[0][i];
-			unsigned long mask = 0x80000000;
-			uint8_t pixel = 0;
-			for (unsigned long j = 0; j < 32; j++) {
-				if (val & mask) {
-					pixel = 0xF0;
-				}
-				raw[j][i] = pixel;
-				mask = mask >> 1;
+			double val = histo[0][i];
+			if (val > 0) {
+				val = log2(0xFFFFFFFF * val / histo_max);
 			}
+			for (int j = 0; j < val; j++)
+				raw[31 - j][i] = 0xF0;
 		}
 		mem = NULL;
 		mem_size = 0;
