@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 54.23385.20230918 */
+/* Version: 54.23640.20231022 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -167,6 +167,7 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_FLAG_LIGHT_SOURCE        0x0004000000000000  /* stand alone light source */
 #define OGMACAM_FLAG_CAMERALINK          0x0008000000000000  /* camera link */
 #define OGMACAM_FLAG_CXP                 0x0010000000000000  /* CXP: CoaXPress */
+#define OGMACAM_FLAG_RAW12PACK           0x0020000000000000  /* pixel format, RAW 12bits packed */
 
 #define OGMACAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define OGMACAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
@@ -215,6 +216,9 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define OGMACAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define OGMACAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
+#define OGMACAM_AUTOEXPO_STEP_DEF        1000    /* auto exposure step: thousandths */
+#define OGMACAM_AUTOEXPO_STEP_MIN        1       /* auto exposure step: thousandths */
+#define OGMACAM_AUTOEXPO_STEP_MAX        1000    /* auto exposure step: thousandths */
 #define OGMACAM_BANDWIDTH_DEF            100     /* bandwidth */
 #define OGMACAM_BANDWIDTH_MIN            1       /* bandwidth */
 #define OGMACAM_BANDWIDTH_MAX            100     /* bandwidth */
@@ -226,9 +230,9 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define OGMACAM_HEARTBEAT_MIN            100     /* millisecond */
 #define OGMACAM_HEARTBEAT_MAX            10000   /* millisecond */
-#define OGMACAM_AE_PERCENT_MIN           0       /* auto exposure percent, 0 => full roi average */
+#define OGMACAM_AE_PERCENT_MIN           0       /* auto exposure percent; 0 or 100 => full roi average, means "disabled" */
 #define OGMACAM_AE_PERCENT_MAX           100
-#define OGMACAM_AE_PERCENT_DEF           10
+#define OGMACAM_AE_PERCENT_DEF           10      /* auto exposure percent: enabled, percentage = 10% */
 #define OGMACAM_NOPACKET_TIMEOUT_MIN     500     /* no packet timeout minimum: 500ms */
 #define OGMACAM_NOFRAME_TIMEOUT_MIN      500     /* no frame timeout minimum: 500ms */
 #define OGMACAM_DYNAMIC_DEFECT_T1_MIN    10      /* dynamic defect pixel correction, threshold, means: 1.0 */
@@ -281,7 +285,7 @@ typedef struct {
 } OgmacamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 54.23385.20230918
+    get the version of this dll/so/dylib, which is: 54.23640.20231022
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -358,13 +362,13 @@ OGMACAM_API(HRESULT)  Ogmacam_StartPullModeWithWndMsg(HOgmacam h, HWND hWnd, UIN
 typedef void (__stdcall* POGMACAM_EVENT_CALLBACK)(unsigned nEvent, void* ctxEvent);
 OGMACAM_API(HRESULT)  Ogmacam_StartPullModeWithCallback(HOgmacam h, POGMACAM_EVENT_CALLBACK funEvent, void* ctxEvent);
 
-#define OGMACAM_FRAMEINFO_FLAG_SEQ          0x0001 /* frame sequence number */
-#define OGMACAM_FRAMEINFO_FLAG_TIMESTAMP    0x0002 /* timestamp */
-#define OGMACAM_FRAMEINFO_FLAG_EXPOTIME     0x0004 /* exposure time */
-#define OGMACAM_FRAMEINFO_FLAG_EXPOGAIN     0x0008 /* exposure gain */
-#define OGMACAM_FRAMEINFO_FLAG_BLACKLEVEL   0x0010 /* black level */
-#define OGMACAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x0020 /* sequence shutter counter */
-#define OGMACAM_FRAMEINFO_FLAG_STILL        0x8000 /* still image */
+#define OGMACAM_FRAMEINFO_FLAG_SEQ          0x00000001 /* frame sequence number */
+#define OGMACAM_FRAMEINFO_FLAG_TIMESTAMP    0x00000002 /* timestamp */
+#define OGMACAM_FRAMEINFO_FLAG_EXPOTIME     0x00000004 /* exposure time */
+#define OGMACAM_FRAMEINFO_FLAG_EXPOGAIN     0x00000008 /* exposure gain */
+#define OGMACAM_FRAMEINFO_FLAG_BLACKLEVEL   0x00000010 /* black level */
+#define OGMACAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x00000020 /* sequence shutter counter */
+#define OGMACAM_FRAMEINFO_FLAG_STILL        0x00008000 /* still image */
 
 typedef struct {
     unsigned            width;
@@ -962,7 +966,7 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
                                                          */
 #define OGMACAM_OPTION_AUTOEXPOSURE_PERCENT   0x4a       /* auto exposure percent to average:
                                                                 1~99: peak percent average
-                                                                0 or 100: full roi average
+                                                                0 or 100: full roi average, means "disabled"
                                                          */
 #define OGMACAM_OPTION_ANTI_SHUTTER_EFFECT    0x4b       /* anti shutter effect: 1 => disable, 0 => disable; default: 1 */
 #define OGMACAM_OPTION_CHAMBER_HT             0x4c       /* get chamber humidity & temperature:
@@ -1014,6 +1018,13 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
                                                                 set: val = ADC value, such as 11bits, 12bits, etc
                                                          */
 #define OGMACAM_OPTION_ISP                    0x5f       /* Enable hardware ISP: 0 => auto (disable in RAW mode, otherwise enable), 1 => enable, -1 => disable; default: 0 */
+#define OGMACAM_OPTION_AUTOEXP_EXPOTIME_STEP  0x60       /* Auto exposure: time step (thousandths) */
+#define OGMACAM_OPTION_AUTOEXP_GAIN_STEP      0x61       /* Auto exposure: gain step (thousandths) */
+#define OGMACAM_OPTION_MOTOR_NUMBER           0x62       /* range: [1, 20] */
+#define OGMACAM_OPTION_MOTOR_POS              0x10000000 /* range: [1, 702] */
+#define OGMACAM_OPTION_PSEUDO_COLOR_START     0x63       /* Pseudo: start color, BGR format */
+#define OGMACAM_OPTION_PSEUDO_COLOR_END       0x64       /* Pseudo: end color, BGR format */
+#define OGMACAM_OPTION_PSEUDO_COLOR_ENABLE    0x65       /* Pseudo: 1 => enable, 0 => disable */
 
 /* pixel format */
 #define OGMACAM_PIXELFORMAT_RAW8              0x00
@@ -1028,6 +1039,7 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
 #define OGMACAM_PIXELFORMAT_GMCY8             0x09   /* map to RGGB 8 bits */
 #define OGMACAM_PIXELFORMAT_GMCY12            0x0a   /* map to RGGB 12 bits */
 #define OGMACAM_PIXELFORMAT_UYVY              0x0b
+#define OGMACAM_PIXELFORMAT_RAW12PACK         0x0c
 
 OGMACAM_API(HRESULT)  Ogmacam_put_Option(HOgmacam h, unsigned iOption, int iValue);
 OGMACAM_API(HRESULT)  Ogmacam_get_Option(HOgmacam h, unsigned iOption, int* piValue);

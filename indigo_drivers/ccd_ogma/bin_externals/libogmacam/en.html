@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Ogmacam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 54.23385.20230918</li></ul>
+<hr/><ul><li>Version: 54.23640.20231022</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -343,12 +343,12 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  <tr>
         <td>S_OK</td>
         <td>Success</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x00000000</td>
 	  </tr>
 	  <tr>
         <td>S_FALSE</td>
-        <td>Yet another success</td>
+        <td>Yet another <strong>success</strong></td>
 		<td>Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop</td>
 		<td>0x00000001</td>
 	  </tr>
@@ -361,7 +361,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  <tr>
         <td>E_INVALIDARG</td>
         <td>One or more arguments are not valid</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x80070057</td>
 	  </tr>
 	  <tr>
@@ -409,13 +409,13 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  <tr>
         <td>E_TIMEOUT</td>
         <td>This operation returned because the timeout period expired</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x8001011f</td>
 	  </tr>
 	  <tr>
         <td>E_FAIL</td>
         <td>Unspecified failure</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x80004005</td>
 	  </tr>
     </table>
@@ -485,7 +485,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="53">flag</td>
+   <td width="8%" rowspan="54">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
@@ -543,6 +543,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <tr>
    <td>OGMACAM_FLAG_RAW12</td>
    <td>Pixel format, RAW 12 bits</td>
+ </tr>
+  <tr>
+   <td>OGMACAM_FLAG_RAW12PACK</td>
+   <td>Pixel format, RAW 12 bits, packed</td>
  </tr>
   <tr>
    <td>OGMACAM_FLAG_RAW14</td>
@@ -1296,7 +1300,19 @@ typedef struct {
       </tr>
       <tr>
       	<td>OGMACAM_OPTION_PIXEL_FORMAT</td>
-      	<td>pixel format</td>
+      	<td>OGMACAM_PIXELFORMAT_RAW8<br/>
+OGMACAM_PIXELFORMAT_RAW10<br/>
+OGMACAM_PIXELFORMAT_RAW12<br/>
+OGMACAM_PIXELFORMAT_RAW14<br/>
+OGMACAM_PIXELFORMAT_RAW16<br/>
+OGMACAM_PIXELFORMAT_YUV411<br/>
+OGMACAM_PIXELFORMAT_VUYY<br/>
+OGMACAM_PIXELFORMAT_YUV444<br/>
+OGMACAM_PIXELFORMAT_RGB888<br/>
+OGMACAM_PIXELFORMAT_GMCY8 (map to RGGB 8 bits)<br/>
+OGMACAM_PIXELFORMAT_GMCY12 (map to RGGB 12 bits)<br/>
+OGMACAM_PIXELFORMAT_UYVY<br/>
+OGMACAM_PIXELFORMAT_RAW12PACK</td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
@@ -1584,8 +1600,8 @@ typedef struct {
         <td>OGMACAM_OPTION_AUTOEXPOSURE_PERCENT</td>
         <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
         1~99: average brightness of specified percentage top brightest pixels in ROI<br/>
-        0 or 100: average brightness of whole pixels in ROI</td>
-		<td>10</td>
+        0 or 100: average brightness of whole pixels in ROI, means "disabled"</td>
+		<td>0(Disabled)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1693,6 +1709,18 @@ typedef struct {
 		<td>NA</td>
       </tr>
       <tr>
+        <td>OGMACAM_OPTION_AUTOEXP_EXPOTIME_STEP</td>
+        <td>Auto exposure: time step (thousandths)</td>
+		<td>1000</td>
+		<td>NA</td>
+      </tr>
+      <tr>
+        <td>OGMACAM_OPTION_AUTOEXP_GAIN_STEP</td>
+        <td>Auto exposure: gain step (thousandths)</td>
+		<td>1000</td>
+		<td>NA</td>
+      </tr>
+      <tr>
         <td>OGMACAM_OPTION_AUTOEXPO_TRIGGER</td>
         <td>auto exposure on trigger mode:<br/>1(Enable) or 0(Disable)</td>
 		<td>0</td>
@@ -1775,6 +1803,24 @@ typedef struct {
         return the number of soft flushed frames if successful, <a href="#hresult">HRESULT</a> if failed</td>
       	<td>NA</td>
       	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>OGMACAM_OPTION_PSEUDO_COLOR_START</td>
+      	<td>Pseudo: start color, BGR format</td>
+      	<td></td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>OGMACAM_OPTION_PSEUDO_COLOR_END</td>
+      	<td>Pseudo: end color, BGR format</td>
+      	<td></td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>OGMACAM_OPTION_PSEUDO_COLOR_ENABLE</td>
+      	<td>Pseudo:<br/>1 = enable<br/> 0 = disable</td>
+      	<td>0</td>
+      	<td>Yes</td>
       </tr>
       <tr>
       	<td>OGMACAM_OPTION_NUMBER_DROP_FRAME</td>
@@ -2195,7 +2241,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_SET_RESETCOUNTER</td>
-   <td>&nbsp;</td>
+   <td></td>
  </tr>
   <tr>
    <td>OGMACAM_IOCONTROLTYPE_GET_PWMSOURCE</td>
@@ -2443,7 +2489,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>120</td>
     <td>Ogmacam_get_AutoExpoTarget</td>
     <td>Ogmacam_put_AutoExpoTarget</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Exposure Gain</td>
@@ -2451,7 +2497,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>100</td>
     <td>Ogmacam_get_ExpoAGain</td>
     <td>Ogmacam_put_ExpoAGain</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td width="14%" rowspan="5">White Balance</td>
@@ -2515,7 +2561,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>0</td>
     <td>Ogmacam_get_Contrast</td>
     <td>Ogmacam_put_Contrast</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Hue</td>
@@ -2523,7 +2569,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>0</td>
     <td>Ogmacam_get_Hue</td>
     <td>Ogmacam_put_Hue</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Saturation</td>
@@ -2531,7 +2577,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>128</td>
     <td>Ogmacam_get_Saturation</td>
     <td>Ogmacam_put_Saturation</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Brightness</td>
@@ -2539,7 +2585,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>0</td>
     <td>Ogmacam_get_Brightness</td>
     <td>Ogmacam_put_Brightness</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Gamma</td>
@@ -2547,7 +2593,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>100</td>
     <td>Ogmacam_get_Gamma</td>
     <td>Ogmacam_put_Gamma</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Black Level</td>
@@ -2559,7 +2605,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td>Model Specific</td>
     <td>Ogmacam_get_Option</td>
     <td>Ogmacam_put_Option</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td rowspan="5">Auto Exposure</td>
@@ -2591,16 +2637,16 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
   <tr>
     <td colspan="2">Percent</td>
     <td>0~100</td>
-    <td>10</td>
+    <td>0(Disable)<br/>10(Enable)</td>
     <td colspan="2">OGMACAM_OPTION_AUTOEXPOSURE_PERCENT</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">TEC Target</td>
     <td>-500 ~ 400<br/>(-50℃ ~ 40℃)</td>
     <td>Model Specific</td>
     <td colspan="2">OGMACAM_OPTION_TECTARGET</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
  </table>
 </div>
@@ -2790,7 +2836,7 @@ public bool Snap(uint nResolutionIndex)
 		<td rowspan="2">demopython</td>
 		<td>simplest</td>
 		<td rowspan="2">Python</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>console</td>
 		<td>simplest python sample</td>
 	  </tr>
@@ -2809,7 +2855,7 @@ public bool Snap(uint nResolutionIndex)
 	  </tr>
 	  <tr>
 		<td colspan="2">amcap</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>Microsoft sample demonstrates various tasks related to video capture, see <a href="https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap" target="_blank">https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap</a></td>
 	  </tr>
 	  <tr>

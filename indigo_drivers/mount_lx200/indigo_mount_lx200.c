@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0024
+#define DRIVER_VERSION 0x0025
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -525,7 +525,16 @@ static bool meade_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 }
 
 static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_GEMINI_ITEM->sw.value || MOUNT_TYPE_10MICRONS_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
+	if (
+		MOUNT_TYPE_MEADE_ITEM->sw.value ||
+		MOUNT_TYPE_GEMINI_ITEM->sw.value ||
+		MOUNT_TYPE_10MICRONS_ITEM->sw.value ||
+		MOUNT_TYPE_AP_ITEM->sw.value ||
+		MOUNT_TYPE_ZWO_ITEM->sw.value ||
+		MOUNT_TYPE_NYX_ITEM->sw.value ||
+		MOUNT_TYPE_OAT_ITEM->sw.value ||
+		MOUNT_TYPE_ON_STEP_ITEM->sw.value
+	) {
 		struct tm tm;
 		char response[128];
 		memset(&tm, 0, sizeof(tm));
@@ -1364,8 +1373,9 @@ static void meade_init_onstep_mount(indigo_device *device) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Firmware: %s", response);
 		indigo_copy_value(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 	}
-	if (meade_command(device, ":$QZ?#", response, sizeof(response), 0))
+	if (meade_command(device, ":$QZ?#", response, sizeof(response), 0)) {
 		indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
+	}
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }

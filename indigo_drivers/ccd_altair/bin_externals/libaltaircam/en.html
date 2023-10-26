@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Altaircam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 54.23533.20231009</li></ul>
+<hr/><ul><li>Version: 54.23640.20231022</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -348,7 +348,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  </tr>
 	  <tr>
         <td>S_FALSE</td>
-        <td>Yet another success</td>
+        <td>Yet another <strong>success</strong></td>
 		<td>Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop</td>
 		<td>0x00000001</td>
 	  </tr>
@@ -485,7 +485,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="53">flag</td>
+   <td width="8%" rowspan="54">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
@@ -543,6 +543,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <tr>
    <td>ALTAIRCAM_FLAG_RAW12</td>
    <td>Pixel format, RAW 12 bits</td>
+ </tr>
+  <tr>
+   <td>ALTAIRCAM_FLAG_RAW12PACK</td>
+   <td>Pixel format, RAW 12 bits, packed</td>
  </tr>
   <tr>
    <td>ALTAIRCAM_FLAG_RAW14</td>
@@ -1296,7 +1300,19 @@ typedef struct {
       </tr>
       <tr>
       	<td>ALTAIRCAM_OPTION_PIXEL_FORMAT</td>
-      	<td>pixel format</td>
+      	<td>ALTAIRCAM_PIXELFORMAT_RAW8<br/>
+ALTAIRCAM_PIXELFORMAT_RAW10<br/>
+ALTAIRCAM_PIXELFORMAT_RAW12<br/>
+ALTAIRCAM_PIXELFORMAT_RAW14<br/>
+ALTAIRCAM_PIXELFORMAT_RAW16<br/>
+ALTAIRCAM_PIXELFORMAT_YUV411<br/>
+ALTAIRCAM_PIXELFORMAT_VUYY<br/>
+ALTAIRCAM_PIXELFORMAT_YUV444<br/>
+ALTAIRCAM_PIXELFORMAT_RGB888<br/>
+ALTAIRCAM_PIXELFORMAT_GMCY8 (map to RGGB 8 bits)<br/>
+ALTAIRCAM_PIXELFORMAT_GMCY12 (map to RGGB 12 bits)<br/>
+ALTAIRCAM_PIXELFORMAT_UYVY<br/>
+ALTAIRCAM_PIXELFORMAT_RAW12PACK</td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
@@ -1584,8 +1600,8 @@ typedef struct {
         <td>ALTAIRCAM_OPTION_AUTOEXPOSURE_PERCENT</td>
         <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
         1~99: average brightness of specified percentage top brightest pixels in ROI<br/>
-        0 or 100: average brightness of whole pixels in ROI</td>
-		<td>10</td>
+        0 or 100: average brightness of whole pixels in ROI, means "disabled"</td>
+		<td>0(Disabled)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -2621,7 +2637,7 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
   <tr>
     <td colspan="2">Percent</td>
     <td>0~100</td>
-    <td>10</td>
+    <td>0(Disable)<br/>10(Enable)</td>
     <td colspan="2">ALTAIRCAM_OPTION_AUTOEXPOSURE_PERCENT</td>
     <td></td>
   </tr>
