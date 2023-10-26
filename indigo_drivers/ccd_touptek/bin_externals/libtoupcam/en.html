@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Toupcam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 54.22993.20230723</li></ul>
+<hr/><ul><li>Version: 54.23640.20231022</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -343,12 +343,12 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  <tr>
         <td>S_OK</td>
         <td>Success</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x00000000</td>
 	  </tr>
 	  <tr>
         <td>S_FALSE</td>
-        <td>Yet another success</td>
+        <td>Yet another <strong>success</strong></td>
 		<td>Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop</td>
 		<td>0x00000001</td>
 	  </tr>
@@ -361,7 +361,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  <tr>
         <td>E_INVALIDARG</td>
         <td>One or more arguments are not valid</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x80070057</td>
 	  </tr>
 	  <tr>
@@ -409,13 +409,13 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	  <tr>
         <td>E_TIMEOUT</td>
         <td>This operation returned because the timeout period expired</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x8001011f</td>
 	  </tr>
 	  <tr>
         <td>E_FAIL</td>
         <td>Unspecified failure</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>0x80004005</td>
 	  </tr>
     </table>
@@ -472,6 +472,9 @@ for (unsigned i = 0; i &lt; cnt; ++i)
     unsigned           preview;  /* number of preview resolution, Toupcam_get_ResolutionNumber */
     unsigned           still;    /* number of still resolution, Toupcam_get_StillResolutionNumber */
     unsigned           maxfanspeed; /* maximum fan speed, fan speed range = [0, max], closed interval */
+    unsigned           ioctrol;     /* number of input/output control */
+    float              xpixsz;      /* physical pixel size in micrometer */
+    float              ypixsz;      /* physical pixel size in micrometer */
     ToupcamResolution  res[TOUPCAM_MAX];
 }ToupcamModelV2;</pre></td></tr>
 </table><br/>
@@ -482,7 +485,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="53">flag</td>
+   <td width="8%" rowspan="54">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
@@ -540,6 +543,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <tr>
    <td>TOUPCAM_FLAG_RAW12</td>
    <td>Pixel format, RAW 12 bits</td>
+ </tr>
+  <tr>
+   <td>TOUPCAM_FLAG_RAW12PACK</td>
+   <td>Pixel format, RAW 12 bits, packed</td>
  </tr>
   <tr>
    <td>TOUPCAM_FLAG_RAW14</td>
@@ -707,6 +714,14 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td width="8%">still</td>
    <td colspan="2">Number of still resolution, zero means still capture is not supported. Same with Toupcam_get_StillResolutionNumber</td>
    </tr>
+ <tr>
+   <td width="8%">ioctrol</td>
+   <td colspan="2">Number of input/output control</td>
+   </tr>
+ <tr>
+   <td width="8%">xpixsz<br/>ypixsz</td>
+   <td colspan="2">Physical pixel size in micrometer, see Toupcam_get_PixelSize</td>
+   </tr>
   <tr>
    <td width="8%">res</td>
    <td colspan="2">Resolution, width and height</td>
@@ -843,11 +858,12 @@ for (UsbDevice usbDevice : deviceList.values()) {
       </blockquote>
     <p><strong>Remarks:</strong> Obviously, Toupcam_StartPullModeWithWndMsg is only supported in Windows OS.</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF"><a id="infov2">Toupcam_PullImageV3<br/>Toupcam_PullImageV2<br/>Toupcam_PullStillImageV2<br/>Toupcam_PullImageWithRowPitchV2<br/>Toupcam_PullStillImageWithRowPitchV2</a><br/>
+<ul><li><h2><font color="#0000FF"><a id="infov2">Toupcam_PullImageV3<br/>Toupcam_WaitImageV3<br/>Toupcam_PullImageV2<br/>Toupcam_PullStillImageV2<br/>Toupcam_PullImageWithRowPitchV2<br/>Toupcam_PullStillImageWithRowPitchV2</a><br/>
 			Toupcam_PullImage<br/>Toupcam_PullStillImage<br/><a id="rowpitch1">Toupcam_PullImageWithRowPitch</a><br/><a id="rowpitch2">Toupcam_PullStillImageWithRowPitch</a></font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote><p>HToupcam h: camera instance handle</p>
+	  <p>nWaitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If nWaitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Toupcam_PullImageV3.</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bStill: to pull still image, set to 1, otherwise 0</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">TOUPCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
@@ -1088,7 +1104,7 @@ typedef struct {
   <blockquote>
     <p>HToupcam h: camera instance handle</p>
     <p>unsigned* pFourCC: raw format, see  table below</p>
-    <p>unsigned* pBitsPerPixel: bit depth, such as 8, 10, 12, 14, 16</p>
+    <p>unsigned* pBitsPerPixel: bitdepth, such as 8, 10, 12, 14, 16</p>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
   <tr>
    <td>#ifndef MAKEFOURCC<br/>
@@ -1155,9 +1171,16 @@ typedef struct {
           (The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
+        <td><a id="rawo">TOUPCAM_OPTION_ISP</a></td>
+        <td>Enable hardware ISP:<br/>0 => auto (disable in RAW mode, otherwise enable)<br/>1 => enable<br/>-1 => disable</td>
+        <td>0(Auto)</td>
+        <td><b>No</b><br/>
+          (The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr>
+      <tr>
       	<td>TOUPCAM_OPTION_BITDEPTH</td>
-      	<td>Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.<br/>
-      	  0 = use 8 bits depth.<br/>1 = use the maximum bits depth of this camera.</td>
+      	<td>Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.<br/>
+      	  0 = use 8 bitdepth.<br/>1 = use the maximum bitdepth of this camera.</td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
@@ -1254,7 +1277,7 @@ typedef struct {
       	<td>digital binning:<br/><br/>
 					0x01 (no binning)<br/><br/>
                     n: (saturating add, n*n), 0x02(2*2), 0x03(3*3), 0x04(4*4), 0x05(5*5), 0x06(6*6), 0x07(7*7), 0x08(8*8). The Bitdepth of the data remains unchanged.<br/><br/>
-                    0x40 | n: (unsaturated add in <a href="#rawo">RAW</a> mode, n*n), 0x42(2*2), 0x43(3*3), 0x44(4*4), 0x45(5*5), 0x46(6*6), 0x47(7*7), 0x48(8*8). The Bitdepth of the data is increased. For example, the original data with bitdepth of 12 will increase the bitdepth by 2 bits and become 14 after 2*2 binning.<br/><br/>
+                    0x40 | n: (unsaturated add, n*n, works only in <a href="#rawo">RAW</a> mode), 0x42(2*2), 0x43(3*3), 0x44(4*4), 0x45(5*5), 0x46(6*6), 0x47(7*7), 0x48(8*8). The Bitdepth of the data is increased. For example, the original data with bitdepth of 12 will increase the bitdepth by 2 bits and become 14 after 2*2 binning.<br/><br/>
                     0x80 | n: (average, n*n), 0x82(2*2), 0x83(3*3), 0x84(4*4), 0x85(5*5), 0x86(6*6), 0x87(7*7), 0x88(8*8). The Bitdepth of the data remains unchanged.<br/><br/>
                     The final image size is rounded down to an even number, such as 640/3 to get 212</td>
       	<td>1</td>
@@ -1277,7 +1300,19 @@ typedef struct {
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_PIXEL_FORMAT</td>
-      	<td>pixel format</td>
+      	<td>TOUPCAM_PIXELFORMAT_RAW8<br/>
+TOUPCAM_PIXELFORMAT_RAW10<br/>
+TOUPCAM_PIXELFORMAT_RAW12<br/>
+TOUPCAM_PIXELFORMAT_RAW14<br/>
+TOUPCAM_PIXELFORMAT_RAW16<br/>
+TOUPCAM_PIXELFORMAT_YUV411<br/>
+TOUPCAM_PIXELFORMAT_VUYY<br/>
+TOUPCAM_PIXELFORMAT_YUV444<br/>
+TOUPCAM_PIXELFORMAT_RGB888<br/>
+TOUPCAM_PIXELFORMAT_GMCY8 (map to RGGB 8 bits)<br/>
+TOUPCAM_PIXELFORMAT_GMCY12 (map to RGGB 12 bits)<br/>
+TOUPCAM_PIXELFORMAT_UYVY<br/>
+TOUPCAM_PIXELFORMAT_RAW12PACK</td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
@@ -1565,8 +1600,8 @@ typedef struct {
         <td>TOUPCAM_OPTION_AUTOEXPOSURE_PERCENT</td>
         <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
         1~99: average brightness of specified percentage top brightest pixels in ROI<br/>
-        0 or 100: average brightness of whole pixels in ROI</td>
-		<td>10</td>
+        0 or 100: average brightness of whole pixels in ROI, means "disabled"</td>
+		<td>0(Disabled)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1583,14 +1618,14 @@ typedef struct {
       </tr>
       <tr>
         <td>TOUPCAM_OPTION_HDR_THRESHOLD</td>
-        <td>HDR synthesize<br/>threshold: [1, 4095]<br/>0xffffffff => set to default</td>
+        <td>HDR synthesize<br/>threshold: [1, 4094]<br/>0xffffffff => set to default</td>
 		<td>Model Specific</td>
 		<td>Yes</td>
       </tr>
       <tr>
         <td>TOUPCAM_OPTION_DYNAMIC_DEFECT</td>
-        <td>Dynamic Defect Pixel Correction<br/>threshold:<br/>t1 (high 16 bits): [10, 100]<br/>t2 (low 16 bits): [0, 100]</td>
-		<td>disable (t1=0, t2=0)</td>
+        <td>Dynamic Defect Pixel Correction<br/>threshold, t1: (high 16 bits): [10, 100], means: [1.0, 10.0]<br/>value, t2: (low 16 bits): [0, 100], means: [0.00, 1.00]</td>
+		<td>disable (t1=10, t2=0)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1609,6 +1644,18 @@ typedef struct {
         <td>TOUPCAM_OPTION_OVERCLOCK</td>
         <td>overclock</td>
 		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_ADC</td>
+        <td>Analog-Digital Conversion:<br/>
+			get:<br/><blockquote>
+					(option | 'C'): get the current value<br/>
+					(option | 'N'): get the supported ADC number<br/>
+					(option | n): get the nth supported ADC value, such as 11bits, 12bits, etc<br/>
+					</blockquote>
+			set: val = ADC value, such as 11bits, 12bits, etc</td>
+		<td>Model Specific<br/>(the first value is the default)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1659,6 +1706,18 @@ typedef struct {
         <td>TOUPCAM_OPTION_AUTOEXPO_CONV</td>
         <td>get auto exposure convergence status:<br/>1(YES) or 0(NO), -1(NA)</td>
 		<td></td>
+		<td>NA</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_AUTOEXP_EXPOTIME_STEP</td>
+        <td>Auto exposure: time step (thousandths)</td>
+		<td>1000</td>
+		<td>NA</td>
+      </tr>
+      <tr>
+        <td>TOUPCAM_OPTION_AUTOEXP_GAIN_STEP</td>
+        <td>Auto exposure: gain step (thousandths)</td>
+		<td>1000</td>
 		<td>NA</td>
       </tr>
       <tr>
@@ -1744,6 +1803,24 @@ typedef struct {
         return the number of soft flushed frames if successful, <a href="#hresult">HRESULT</a> if failed</td>
       	<td>NA</td>
       	<td>NA</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_PSEUDO_COLOR_START</td>
+      	<td>Pseudo: start color, BGR format</td>
+      	<td></td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_PSEUDO_COLOR_END</td>
+      	<td>Pseudo: end color, BGR format</td>
+      	<td></td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_PSEUDO_COLOR_ENABLE</td>
+      	<td>Pseudo:<br/>1 = enable<br/> 0 = disable</td>
+      	<td>0</td>
+      	<td>Yes</td>
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_NUMBER_DROP_FRAME</td>
@@ -2002,12 +2079,12 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <p><strong>Remarks:</strong> grey camera or not, find the flag in ToupcamModelV2: TOUPCAM_FLAG_MONO</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_get_MaxBitDepth</font></h2>
-    <p><strong>Return value: </strong> the maximum bit depth this camera supports.</p>
+    <p><strong>Return value: </strong> the maximum bitdepth this camera supports.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
     	<p>HToupcam h: camera instance handle</p>
     </blockquote>
-    <p><strong>Remarks:</strong> Some cameras support the bit depth which is more than 8 such as 10, 12, 14, 16.</p>
+    <p><strong>Remarks:</strong> Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.</p>
 </li></ul>
 <ul><li>
     <h2><font color="#0000FF">Toupcam_get_StillResolutionNumber<br/>Toupcam_get_StillResolution</font></h2>
@@ -2164,7 +2241,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_RESETCOUNTER</td>
-   <td>&nbsp;</td>
+   <td></td>
  </tr>
   <tr>
    <td>TOUPCAM_IOCONTROLTYPE_GET_PWMSOURCE</td>
@@ -2272,6 +2349,10 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
  </tr>
  <tr>
    <td>TOUPCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE</td>
+ </tr>
+  <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE</td>
+   <td>Output pause: 1 =&gt; puase, 0 =&gt; unpause</td>
  </tr>
     </table>
   </div>
@@ -2408,7 +2489,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>120</td>
     <td>Toupcam_get_AutoExpoTarget</td>
     <td>Toupcam_put_AutoExpoTarget</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Exposure Gain</td>
@@ -2416,7 +2497,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>100</td>
     <td>Toupcam_get_ExpoAGain</td>
     <td>Toupcam_put_ExpoAGain</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td width="14%" rowspan="5">White Balance</td>
@@ -2480,7 +2561,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>0</td>
     <td>Toupcam_get_Contrast</td>
     <td>Toupcam_put_Contrast</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Hue</td>
@@ -2488,7 +2569,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>0</td>
     <td>Toupcam_get_Hue</td>
     <td>Toupcam_put_Hue</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Saturation</td>
@@ -2496,7 +2577,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>128</td>
     <td>Toupcam_get_Saturation</td>
     <td>Toupcam_put_Saturation</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Brightness</td>
@@ -2504,7 +2585,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>0</td>
     <td>Toupcam_get_Brightness</td>
     <td>Toupcam_put_Brightness</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Gamma</td>
@@ -2512,7 +2593,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>100</td>
     <td>Toupcam_get_Gamma</td>
     <td>Toupcam_put_Gamma</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">Black Level</td>
@@ -2524,7 +2605,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td>Model Specific</td>
     <td>Toupcam_get_Option</td>
     <td>Toupcam_put_Option</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td rowspan="5">Auto Exposure</td>
@@ -2556,16 +2637,16 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
   <tr>
     <td colspan="2">Percent</td>
     <td>0~100</td>
-    <td>10</td>
+    <td>0(Disable)<br/>10(Enable)</td>
     <td colspan="2">TOUPCAM_OPTION_AUTOEXPOSURE_PERCENT</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
   <tr>
     <td colspan="3">TEC Target</td>
     <td>-500 ~ 400<br/>(-50℃ ~ 40℃)</td>
     <td>Model Specific</td>
     <td colspan="2">TOUPCAM_OPTION_TECTARGET</td>
-    <td>&nbsp;</td>
+    <td></td>
   </tr>
  </table>
 </div>
@@ -2611,14 +2692,18 @@ public bool Snap(uint nResolutionIndex)
       </tr>
 	  <tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="9">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="18">C++</td>
-		<td rowspan="9">&nbsp;</td>
-		<td rowspan="9">console</td>
+		<td rowspan="10">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="20">C++</td>
+		<td rowspan="10">&nbsp;</td>
+		<td rowspan="10">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr>
 	  <tr>
-		<td colspan="2">demostill</td>
+		<td colspan="2">demowait</td>
+		<td>Instead of using the callback function, use the Toupcam_WaitImageV3 to get the image, about 60 lines of code</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demomulti</td>
 		<td>Open all the enumerated cameras (possibly multiple) and pull image, about 90 lines of code</td>
 	  </tr>
 	  <tr>
@@ -2651,10 +2736,14 @@ public bool Snap(uint nResolutionIndex)
 	  </tr>
 	  <tr>
 		<td colspan="2">demoqt</td>
-		<td>Win32<br/>Linux<br/>macOS</td>
-		<td>Qt</td>
-		<td rowspan="15">GUI</td>
+		<td rowspan="2">Win32<br/>Linux<br/>macOS</td>
+		<td rowspan="2">Qt</td>
+		<td rowspan="16">GUI</td>
 		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
+	  </tr>
+	  <tr>
+		<td colspan="2">demotwoqt</td>
+		<td>Qt sample, <a href="./images/demotwoqt.png">snapshot</a>.<br/>Use two cameras simultaneously</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">democpp</td>
@@ -2680,7 +2769,7 @@ public bool Snap(uint nResolutionIndex)
 	  </tr>
 	  <tr>
 		<td colspan="2">triggertest</td>
-		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test</td>
+		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test, use a background thread to save the image file to disk (SSD is recommended, otherwise, when the disk speed is insufficient, the storage speed will not be able to keep up, more and more images will be stored in the deque, and the memory consumption will also increase).</td>
 	  </tr>
 	  <tr>
 		<td colspan="2">demomfc</td>
@@ -2747,14 +2836,14 @@ public bool Snap(uint nResolutionIndex)
 		<td rowspan="2">demopython</td>
 		<td>simplest</td>
 		<td rowspan="2">Python</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>console</td>
 		<td>simplest python sample</td>
 	  </tr>
 	  <tr>
 		<td>qt</td>
 		<td>PyQt</td>
-		<td rowspan="5">GUI</td>
+		<td rowspan="9">GUI</td>
 		<td>PyQt sample, <a href="./images/pyqt.png">snapshot</a>.</td>
 	  </tr>
 	  <tr>
@@ -2766,7 +2855,7 @@ public bool Snap(uint nResolutionIndex)
 	  </tr>
 	  <tr>
 		<td colspan="2">amcap</td>
-		<td>&nbsp;</td>
+		<td></td>
 		<td>Microsoft sample demonstrates various tasks related to video capture, see <a href="https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap" target="_blank">https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap</a></td>
 	  </tr>
 	  <tr>
@@ -2779,6 +2868,30 @@ public bool Snap(uint nResolutionIndex)
 	  <tr>
 		<td colspan="2">LVDemo2</td>
 		<td>Labview program which opens two cameras and control them respectively</td>
+	  </tr>
+	  <tr>
+		<td rowspan="4">imagepro</td>
+		<td rowspan="2">liveedf</td>
+		<td rowspan="4">Win32</td>
+		<td>C++</td>
+		<td>Qt</td>
+		<td>Qt sample, <a href="./images/liveedfqt.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td>C#</td>
+		<td>WinForm</td>
+		<td>C# sample, <a href="./images/liveedfcs.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td rowspan="2">livestack</td>
+		<td>C++</td>
+		<td>Qt</td>
+		<td>Qt sample, <a href="./images/livestackqt.png">snapshot</a>.</td>
+	  </tr>
+	  <tr>
+		<td>C#</td>
+		<td>WinForm</td>
+		<td>C# sample, <a href="./images/livestackcs.png">snapshot</a>.</td>
 	  </tr>
 	</table>
 </div>
@@ -2835,11 +2948,11 @@ public bool Snap(uint nResolutionIndex)
 <p>v10: demosaic method: please see <a href="#demosaic">here</a></p>
 <p>v9: change the histogram data type from double to float</p>
 <p>v8: support simulated trigger, please see <a href="#trigger">here</a></p>
-<p>v7: support RGB48 when bit depth &gt; 8, please see <a href="#rgb">here</a></p>
+<p>v7: support RGB48 when bitdepth &gt; 8, please see <a href="#rgb">here</a></p>
 <p>v6: support trigger mode, please see <a href="#trigger">here</a></p>
 <p>v5: White Balance: Temp/Tint Mode vs RGB Gain Mode, please see <a href="#wb">here</a></p>
 <p>v4: ROI (Region Of Interest) supported: please see <a href="#roi">here</a></p>
-<p>v3: more bit depth supported: 10bits, 12bits, 14bits, 16bits</p>
+<p>v3: more bitdepth supported: 10bits, 12bits, 14bits, 16bits</p>
 <p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
 <p>v1: initial release</p>
 </body>
