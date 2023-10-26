@@ -869,7 +869,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	return indigo_device_detach(device);
 }
 
-#define STRECH_SAMPLE_SIZE	0xFFFFFF
+#define STRECH_SAMPLE_SIZE	0xFFFFF
 #define SET_JPEG_ITEM(item, val) if (item->number.target == -1) item->number.value = val; else val = item->number.target;
 
 void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size) {
@@ -889,13 +889,10 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	/* Jump here in case of a decmpression error */
 	if (setjmp(cinfo.jpeg_error)) {
 		jpeg_destroy_compress(&cinfo.pub);
-		free(copy);
-		if (histo[0])
-			free(histo[0]);
-		if (histo[1])
-			free(histo[1]);
-		if (histo[2])
-			free(histo[2]);
+		indigo_safe_free(copy);
+		indigo_safe_free(histo[0]);
+		indigo_safe_free(histo[1]);
+		indigo_safe_free(histo[2]);
 		INDIGO_ERROR(indigo_error("JPEG compression failed"));
 		return;
 	}
@@ -952,37 +949,59 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	jpeg_destroy_compress(&cinfo.pub);
 	*data_out = mem;
 	*size_out = mem_size;
-	free(copy);
+	indigo_safe_free(copy);
 	if (histogram_data != NULL) {
 		unsigned long histo_max = 1;
 		for (int i = 0; i < 256; i++) {
 			if (histo_max < histo[0][i]) {
 				histo_max = histo[0][i];
 			}
+			if (histo[1]) {
+				if (histo_max < histo[1][i]) {
+					histo_max = histo[1][i];
+				}
+			}
+			if (histo[2]) {
+				if (histo_max < histo[2][i]) {
+					histo_max = histo[2][i];
+				}
+			}
 		}
-		uint8_t raw[32][256];
+		double max = (log(histo_max + 1) + 1) / 127;
+		uint8_t raw[128 * 256 * 3];
 		memset(raw, 0, sizeof(raw));
 		for (int i = 0; i < 256; i++) {
-			double val = histo[0][i];
-			if (val > 0) {
-				val = log2(0xFFFFFFFF * val / histo_max);
+			double val = log(histo[0][i] + 1) / max + 1;
+			for (int j = 0; j < val; j++) {
+				int k = ((127 - j) * 256 + i) * 3 ;
+				raw[k + 0] = raw[k + 1] = raw[k + 2]= 0xF0;
 			}
-			for (int j = 0; j < val; j++)
-				raw[31 - j][i] = 0xF0;
+			if (histo[1]) {
+				val = log(histo[1][i] + 1) / max + 1;
+				for (int j = 0; j < val; j++) {
+					raw[((127 - j) * 256 + i) * 3 + 1] = 0xF0;
+				}
+			}
+			if (histo[2]) {
+				val = log(histo[2][i] + 1) / max + 1;
+				for (int j = 0; j < val; j++) {
+					raw[((127 - j) * 256 + i) * 3 + 2] = 0xF0;
+				}
+			}
 		}
 		mem = NULL;
 		mem_size = 0;
 		jpeg_create_compress(&cinfo.pub);
 		jpeg_mem_dest(&cinfo.pub, &mem, &mem_size);
 		cinfo.pub.image_width = 256;
-		cinfo.pub.image_height = 32;
-		cinfo.pub.input_components = 1;
-		cinfo.pub.in_color_space = JCS_GRAYSCALE;
+		cinfo.pub.image_height = 128;
+		cinfo.pub.input_components = 3;
+		cinfo.pub.in_color_space = JCS_RGB;
 		jpeg_set_defaults(&cinfo.pub);
 		JSAMPROW row_pointer[1];
 		jpeg_start_compress(&cinfo.pub, TRUE);
 		while (cinfo.pub.next_scanline < cinfo.pub.image_height) {
-			row_pointer[0] = ((JSAMPROW)((uint8_t *)raw + cinfo.pub.next_scanline * 256));
+			row_pointer[0] = ((JSAMPROW)((uint8_t *)raw + cinfo.pub.next_scanline * 256 * 3));
 			jpeg_write_scanlines(&cinfo.pub, row_pointer, 1);
 		}
 		jpeg_finish_compress(&cinfo.pub);
@@ -990,12 +1009,9 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		*histogram_data = mem;
 		*histogram_size = mem_size;
 	}
-	if (histo[0])
-		free(histo[0]);
-	if (histo[1])
-		free(histo[1]);
-	if (histo[2])
-		free(histo[2]);
+	indigo_safe_free(histo[0]);
+	indigo_safe_free(histo[1]);
+	indigo_safe_free(histo[2]);
 	INDIGO_DEBUG(indigo_debug("RAW to preview conversion in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 }
 
