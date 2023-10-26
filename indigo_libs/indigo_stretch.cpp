@@ -26,8 +26,11 @@
 #include <indigo/indigo_stretch.h>
 
 #include <vector>
+#include <thread>
 #include <algorithm>
 #include <math.h>
+
+#define MAX_THREADS	4
 
 template <typename T> void indigo_image_stats(const T *buffer, int size, int sample_by, T *min, T *median, T *max, unsigned long *histogram) {
 	if (sample_by < 1)
@@ -95,17 +98,33 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 	const T native_highlights = highlights * max_input;
 	const float k1 = (midtones - 1) * hs_range_factor * 0xFF / max_input;
 	const float k2 = ((2 * midtones) - 1) * hs_range_factor / max_input;
-	for (int i = 0; i < size; i++) {
-		T value = input_buffer[i * input_sample];
-		int output_index = i * output_sample;
-		if (value < native_shadows) {
-			output_buffer[output_index] = 0;
-		} else if (value > native_highlights) {
-			output_buffer[output_index] = 0xFF;
-		} else {
-			const T input_floored = (value - native_shadows);
-			output_buffer[output_index] = (input_floored * k1) / (input_floored * k2 - midtones);
+	const float k1_k2 = k1 / k2;
+	const float midtones_k2 = midtones / k2;
+	const int chunk = size / MAX_THREADS;
+	std::thread threads[MAX_THREADS];
+	for (int rank = 0; rank < MAX_THREADS; rank++) {
+		threads[rank] = std::thread { [=]() {
+			int start = chunk * rank;
+			int end = start + chunk;
+			if (end > size)
+				end = size;
+			for (int i = start; i < end; i++) {
+				T value = input_buffer[i * input_sample];
+				int output_index = i * output_sample;
+				if (value < native_shadows) {
+					output_buffer[output_index] = 0;
+				} else if (value > native_highlights) {
+					output_buffer[output_index] = 0xFF;
+				} else {
+					const T input_floored = (value - native_shadows);
+					output_buffer[output_index] = k1_k2 * input_floored / (input_floored - midtones_k2);
+				}
+			}
 		}
+		};
+	}
+	for (int rank = 0; rank < MAX_THREADS; rank++) {
+		threads[rank].join();
 	}
 }
 
