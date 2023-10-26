@@ -31,9 +31,10 @@
 #include <math.h>
 #include <unistd.h>
 
-template <typename T> void indigo_image_stats(const T *buffer, int size, int sample_by, T *min, T *median, T *max, unsigned long *histogram) {
-	if (sample_by < 1)
+template <typename T> void indigo_compute_stretch_params(T const *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, const float B = 0.25, const float C = -2.8) {
+	if (sample_by < 1) {
 		sample_by = 1;
+	}
 	const int downsampled_size = size / sample_by;
 	const int downsampled_size_2 = downsampled_size / 2;
 	const int histo_divider = (sizeof(T) == 1) ? 1 : 256;
@@ -41,31 +42,23 @@ template <typename T> void indigo_image_stats(const T *buffer, int size, int sam
 	for (int index = 0, i = 0; i < downsampled_size; ++i, index += sample_by) {
 		histogram[(samples[i] = buffer[index]) / histo_divider]++;
 	}
-	*min = *std::min_element(samples.begin(), samples.end());
-	*max = *std::max_element(samples.begin(), samples.end());
+	const T min_sample = *std::min_element(samples.begin(), samples.end());
+	const T max_sample = *std::max_element(samples.begin(), samples.end());
 	std::nth_element(samples.begin(), samples.begin() + downsampled_size_2, samples.end());
-	*median = samples[downsampled_size_2];
-}
-
-template <typename T> void indigo_compute_stretch_params(T const *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, const float B = 0.25, const float C = -2.8) {
-	if (sample_by < 1)
-		sample_by = 1;
-	T min_sample, max_sample, median_sample;
-	indigo_image_stats(buffer, size, sample_by, &min_sample, &median_sample, &max_sample, histogram);
+	const T median_sample = samples[downsampled_size_2];
 	// Find the Median deviation: 1.4826 * median of abs(sample[i] - median).
-	const int num_samples = size / sample_by;
-	std::vector<T> deviations(num_samples);
-	for (int index = 0, i = 0; i < num_samples; ++i, index += sample_by) {
+	std::vector<T> deviations(downsampled_size);
+	for (int index = 0, i = 0; i < downsampled_size; ++i, index += sample_by) {
 		if (median_sample > buffer[index]) {
 			deviations[i] = median_sample - buffer[index];
 		} else {
 			deviations[i] = buffer[index] - median_sample;
 		}
 	}
-	std::nth_element(deviations.begin(), deviations.begin() + num_samples / 2, deviations.end());
+	std::nth_element(deviations.begin(), deviations.begin() + downsampled_size / 2, deviations.end());
 	// scale to 0 -> 1.0.
 	const float input_range = (sizeof(T) == 1) ? 0x100L : 0X10000L;
-	const float median_deviation = deviations[num_samples / 2];
+	const float median_deviation = deviations[downsampled_size / 2];
 	const float normalized_median = median_sample / input_range;
 	const float MADN = 1.4826 * median_deviation / input_range;
 	const bool upperHalf = normalized_median > 0.5;
@@ -104,12 +97,13 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 	std::thread threads[max_threads];
 	for (int rank = 0; rank < max_threads; rank++) {
 		threads[rank] = std::thread([=]() {
-			int start = chunk * rank;
+			const int start = chunk * rank;
 			int end = start + chunk;
-			if (end > size)
+			if (end > size) {
 				end = size;
+			}
 			for (int i = start; i < end; i++) {
-				T value = input_buffer[i * input_sample];
+				const T value = input_buffer[i * input_sample];
 				int output_index = i * output_sample;
 				if (value < native_shadows) {
 					output_buffer[output_index] = 0;
