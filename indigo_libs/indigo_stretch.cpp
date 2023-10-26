@@ -22,6 +22,7 @@
 // based on https://pixinsight.com/doc/docs/XISF-1.0-spec/XISF-1.0-spec.html
 // and https://github.com/indigo-astronomy/indigo_imager/blob/master/common_src/stretcher.cpp
 
+#include <indigo/indigo_bus.h>
 #include <indigo/indigo_stretch.h>
 
 #include <vector>
@@ -29,6 +30,8 @@
 #include <math.h>
 
 template <typename T> void indigo_image_stats(const T *buffer, int size, int sample_by, T *min, T *median, T *max, unsigned long *histogram) {
+	if (sample_by < 1)
+		sample_by = 1;
 	const int downsampled_size = size / sample_by;
 	const int downsampled_size_2 = downsampled_size / 2;
 	const int histo_divider = (sizeof(T) == 8) ? 1 : 256;
@@ -43,6 +46,8 @@ template <typename T> void indigo_image_stats(const T *buffer, int size, int sam
 }
 
 template <typename T> void indigo_compute_stretch_params(T const *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, const float B = 0.25, const float C = -2.8) {
+	if (sample_by < 1)
+		sample_by = 1;
 	T min_sample, max_sample, median_sample;
 	indigo_image_stats(buffer, size, sample_by, &min_sample, &median_sample, &max_sample, histogram);
 	// Find the Median deviation: 1.4826 * median of abs(sample[i] - median).
@@ -105,22 +110,22 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 }
 
 extern "C" void indigo_compute_stretch_params_8(const uint8_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
-	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)malloc(sizeof(unsigned long) * 256));
+	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
 }
 
 extern "C" void indigo_compute_stretch_params_16(const uint16_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
-	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)malloc(sizeof(unsigned long) * 256));
+	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
 }
 
 extern "C" void indigo_compute_stretch_params_24(const uint8_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
 	for (int i = 0; i < 3; i++) {
-		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)malloc(sizeof(unsigned long) * 256));
+		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
 	}
 }
 
 extern "C" void indigo_compute_stretch_params_48(const uint16_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
 	for (int i = 0; i < 3; i++) {
-		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)malloc(sizeof(unsigned long) * 256));
+		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
 	}
 }
 
