@@ -34,7 +34,7 @@ template <typename T> void indigo_image_stats(const T *buffer, int size, int sam
 		sample_by = 1;
 	const int downsampled_size = size / sample_by;
 	const int downsampled_size_2 = downsampled_size / 2;
-	const int histo_divider = (sizeof(T) == 8) ? 1 : 256;
+	const int histo_divider = (sizeof(T) == 1) ? 1 : 256;
 	std::vector<T> samples(downsampled_size);
 	for (int index = 0, i = 0; i < downsampled_size; ++i, index += sample_by) {
 		histogram[(samples[i] = buffer[index]) / histo_divider]++;
@@ -62,7 +62,7 @@ template <typename T> void indigo_compute_stretch_params(T const *buffer, int si
 	}
 	std::nth_element(deviations.begin(), deviations.begin() + num_samples / 2, deviations.end());
 	// scale to 0 -> 1.0.
-	const float input_range = (sizeof(T) == 8) ? 0x100L : 0X10000L;
+	const float input_range = (sizeof(T) == 1) ? 0x100L : 0X10000L;
 	const float median_deviation = deviations[num_samples / 2];
 	const float normalized_median = median_sample / input_range;
 	const float MADN = 1.4826 * median_deviation / input_range;
@@ -89,7 +89,7 @@ template <typename T> void indigo_compute_stretch_params(T const *buffer, int si
 }
 
 template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int size, uint8_t *output_buffer, int output_sample, double shadows, double midtones, double highlights) {
-	const double max_input = (sizeof(T) == 8) ? 0xFF : 0xFFFF;
+	const double max_input = (sizeof(T) == 1) ? 0xFF : 0xFFFF;
 	const float hs_range_factor = highlights == shadows ? 1.0f : 1.0f / (highlights - shadows);
 	const T native_shadows = shadows * max_input;
 	const T native_highlights = highlights * max_input;
