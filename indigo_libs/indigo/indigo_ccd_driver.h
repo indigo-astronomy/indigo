@@ -462,6 +462,13 @@ extern "C" {
  */
 #define CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+9)
 
+/** CCD_JPEG_SETTINGS.BACKGROUND property item pointer.
+ */
+#define CCD_JPEG_SETTINGS_BACKGROUND_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+10)
+
+/** CCD_JPEG_SETTINGS.CONTRAST property item pointer.
+ */
+#define CCD_JPEG_SETTINGS_CONTRAST_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+11)
 
 /** CCD_RBI_FLUSH property pointer.
  */
