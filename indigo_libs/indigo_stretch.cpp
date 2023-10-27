@@ -31,7 +31,9 @@
 #include <math.h>
 #include <unistd.h>
 
-template <typename T> void indigo_compute_stretch_params(T const *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, const float B = 0.25, const float C = -2.8) {
+#define MIN_SIZE_TO_PARALLELIZE 0x3FFFF
+
+template <typename T> void indigo_compute_stretch_params(T const *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, float B = 0.25, float C = -2.8) {
 	if (sample_by < 1) {
 		sample_by = 1;
 	}
@@ -92,53 +94,67 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 	const float k2 = ((2 * midtones) - 1) * hs_range_factor / max_input;
 	const float k1_k2 = k1 / k2;
 	const float midtones_k2 = midtones / k2;
-	const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
-	const int chunk = size / max_threads;
-	std::thread threads[max_threads];
-	for (int rank = 0; rank < max_threads; rank++) {
-		threads[rank] = std::thread([=]() {
-			const int start = chunk * rank;
-			int end = start + chunk;
-			if (end > size) {
-				end = size;
-			}
-			for (int i = start; i < end; i++) {
-				const T value = input_buffer[i * input_sample];
-				int output_index = i * output_sample;
-				if (value < native_shadows) {
-					output_buffer[output_index] = 0;
-				} else if (value > native_highlights) {
-					output_buffer[output_index] = 0xFF;
-				} else {
-					const T input_floored = (value - native_shadows);
-					output_buffer[output_index] = k1_k2 * input_floored / (input_floored - midtones_k2);
-				}
+	if (size < MIN_SIZE_TO_PARALLELIZE) {
+		for (int i = 0; i < size; i++) {
+			const T value = input_buffer[i * input_sample];
+			int output_index = i * output_sample;
+			if (value < native_shadows) {
+				output_buffer[output_index] = 0;
+			} else if (value > native_highlights) {
+				output_buffer[output_index] = 0xFF;
+			} else {
+				const T input_floored = (value - native_shadows);
+				output_buffer[output_index] = k1_k2 * input_floored / (input_floored - midtones_k2);
 			}
 		}
-		);
+	} else {
+		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		const int chunk = size / max_threads;
+		std::thread threads[max_threads];
+		for (int rank = 0; rank < max_threads; rank++) {
+			threads[rank] = std::thread([=]() {
+				const int start = chunk * rank;
+				int end = start + chunk;
+				if (end > size) {
+					end = size;
+				}
+				for (int i = start; i < end; i++) {
+					const T value = input_buffer[i * input_sample];
+					int output_index = i * output_sample;
+					if (value < native_shadows) {
+						output_buffer[output_index] = 0;
+					} else if (value > native_highlights) {
+						output_buffer[output_index] = 0xFF;
+					} else {
+						const T input_floored = (value - native_shadows);
+						output_buffer[output_index] = k1_k2 * input_floored / (input_floored - midtones_k2);
+					}
+				}
+			});
+		}
+		for (int rank = 0; rank < max_threads; rank++) {
+			threads[rank].join();
+		}
 	}
-	for (int rank = 0; rank < max_threads; rank++) {
-		threads[rank].join();
-	}
 }
 
-extern "C" void indigo_compute_stretch_params_8(const uint8_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
-	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
+extern "C" void indigo_compute_stretch_params_8(const uint8_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, float B, float C) {
+	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), B, C);
 }
 
-extern "C" void indigo_compute_stretch_params_16(const uint16_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
-	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
+extern "C" void indigo_compute_stretch_params_16(const uint16_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, float B, float C) {
+	indigo_compute_stretch_params(buffer + 0, size, sample_by * 3, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), B, C);
 }
 
-extern "C" void indigo_compute_stretch_params_24(const uint8_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
+extern "C" void indigo_compute_stretch_params_24(const uint8_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, float B, float C) {
 	for (int i = 0; i < 3; i++) {
-		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
+		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), B, C);
 	}
 }
 
-extern "C" void indigo_compute_stretch_params_48(const uint16_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram) {
+extern "C" void indigo_compute_stretch_params_48(const uint16_t *buffer, int size, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, float B, float C) {
 	for (int i = 0; i < 3; i++) {
-		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256));
+		indigo_compute_stretch_params(buffer + i, size, sample_by * 3, &shadows[i], &midtones[i], &highlights[i], histogram[i] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), B, C);
 	}
 }
 

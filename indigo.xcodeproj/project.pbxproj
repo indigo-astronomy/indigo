@@ -4657,7 +4657,7 @@
 		9D9EA6A01DBE1F7300E11841 /* indigo_ccd_atik_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik_main.c; sourceTree = "<group>"; };
 		9D9EA6A11DBE1F7300E11841 /* indigo_ccd_atik.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_atik.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D9EA6A21DBE1F7300E11841 /* indigo_ccd_atik.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_atik.h; sourceTree = "<group>"; };
-		9D9EA6AC1DBFA30600E11841 /* indigo_ccd_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_driver.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
+		9D9EA6AC1DBFA30600E11841 /* indigo_ccd_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_driver.c; sourceTree = "<group>"; wrapsLines = 0; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D9EA6AD1DBFA30600E11841 /* indigo_ccd_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_driver.h; sourceTree = "<group>"; };
 		9D9EA6AE1DBFA30600E11841 /* indigo_guider_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_guider_driver.c; sourceTree = "<group>"; };
 		9D9EA6AF1DBFA30600E11841 /* indigo_guider_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_guider_driver.h; sourceTree = "<group>"; };
