@@ -44,18 +44,12 @@ template <typename T> void indigo_compute_stretch_params(T const *buffer, int si
 	for (int index = 0, i = 0; i < downsampled_size; ++i, index += sample_by) {
 		histogram[(samples[i] = buffer[index]) / histo_divider]++;
 	}
-	const T min_sample = *std::min_element(samples.begin(), samples.end());
-	const T max_sample = *std::max_element(samples.begin(), samples.end());
 	std::nth_element(samples.begin(), samples.begin() + downsampled_size_2, samples.end());
 	const T median_sample = samples[downsampled_size_2];
 	// Find the Median deviation: 1.4826 * median of abs(sample[i] - median).
 	std::vector<T> deviations(downsampled_size);
 	for (int index = 0, i = 0; i < downsampled_size; ++i, index += sample_by) {
-		if (median_sample > buffer[index]) {
-			deviations[i] = median_sample - buffer[index];
-		} else {
-			deviations[i] = buffer[index] - median_sample;
-		}
+		deviations[i] = abs(median_sample - buffer[index]);
 	}
 	std::nth_element(deviations.begin(), deviations.begin() + downsampled_size / 2, deviations.end());
 	// scale to 0 -> 1.0.
