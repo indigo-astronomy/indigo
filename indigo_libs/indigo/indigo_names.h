@@ -638,42 +638,6 @@
  */
 #define CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME		"QUALITY"
 
-/** CCD_JPEG_SETTINGS.RM_SHADOW property item name.
- */
-#define CCD_JPEG_SETTINGS_SHADOWS_RED_MONO_ITEM_NAME			"SHADOWS_RED_MONO"
-
-/** CCD_JPEG_SETTINGS.MIDTONES_RED_MONO property item name.
- */
-#define CCD_JPEG_SETTINGS_MIDTONES_RED_MONO_ITEM_NAME			"MIDTONES_RED_MONO"
-
-/** CCD_JPEG_SETTINGS.HIGHLIGHTS_RED_MONO property item name.
- */
-#define CCD_JPEG_SETTINGS_HIGHLIGHTS_RED_MONO_ITEM_NAME			"HIGHLIGHTS_RED_MONO"
-
-/** CCD_JPEG_SETTINGS_SHADOWS_GREEN property item name.
- */
-#define CCD_JPEG_SETTINGS_SHADOWS_GREEN_ITEM_NAME			"SHADOWS_GREEN"
-
-/** CCD_JPEG_SETTINGS.MIDTONES_GREEN property item name.
- */
-#define CCD_JPEG_SETTINGS_MIDTONES_GREEN_ITEM_NAME			"MIDTONES_GREEN"
-
-/** CCD_JPEG_SETTINGS.HIGHLIGHTS_GREEN property item name.
- */
-#define CCD_JPEG_SETTINGS_HIGHLIGHTS_GREEN_ITEM_NAME			"HIGHLIGHTS_GREEN"
-
-/** CCD_JPEG_SETTINGS.SHADOWS_BLUE property item name.
- */
-#define CCD_JPEG_SETTINGS_SHADOWS_BLUE_ITEM_NAME			"SHADOWS_BLUE"
-
-/** CCD_JPEG_SETTINGS.MIDTONES_BLUE property item name.
- */
-#define CCD_JPEG_SETTINGS_MIDTONES_BLUE_ITEM_NAME			"MIDTONES_BLUE"
-
-/** CCD_JPEG_SETTINGS.HIGHLIGHTS_BLUE property item name.
- */
-#define CCD_JPEG_SETTINGS_HIGHLIGHTS_BLUE_ITEM_NAME			"HIGHLIGHTS_BLUE"
-
 /** CCD_JPEG_SETTINGS.TARGET_BACKGROUND property item name.
  */
 #define CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME     "TARGET_BACKGROUND"
@@ -681,6 +645,24 @@
 /** CCD_JPEG_SETTINGS.CLIPPING_POINT property item name.
  */
 #define CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME     "CLIPPING_POINT"
+
+// obsolete CCD_JPEG_SETTINGS item names kept for backward compatibility
+
+/** (obsolete) CCD_JPEG_SETTINGS.BLACK property item name.
+ */
+#define CCD_JPEG_SETTINGS_BLACK_ITEM_NAME                      "BLACK"
+ 
+/** (obsolete) CCD_JPEG_SETTINGS.WHITE property item name.
+ */
+#define CCD_JPEG_SETTINGS_WHITE_ITEM_NAME                      "WHITE"
+
+/** (obsolete) CCD_JPEG_SETTINGS.BLACK_TRESHOLD property item name.
+ */
+#define CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM_NAME                     "BLACK_TRESHOLD"
+
+/** (obsolete) CCD_JPEG_SETTINGS.WHITE_TRESHOLD property item name.
+ */
+#define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME                     "WHITE_TRESHOLD"
 
 //------------------------------------------------------------------------
 /** CCD_RBI_FLUSH_ENABLE property name.

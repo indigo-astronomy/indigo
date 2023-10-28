@@ -320,19 +320,10 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_text_item(CCD_REMOVE_FITS_HEADER_NAME_ITEM, CCD_REMOVE_FITS_HEADER_KEYWORD_ITEM_NAME, "Keyword", "");
 			// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
-			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
+			CCD_JPEG_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_JPEG_SETTINGS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 11, 90);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_SHADOWS_RED_MONO_ITEM, CCD_JPEG_SETTINGS_SHADOWS_RED_MONO_ITEM_NAME, "Red (Mono) shadows clipping", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_MIDTONES_RED_MONO_ITEM, CCD_JPEG_SETTINGS_MIDTONES_RED_MONO_ITEM_NAME, "Red (Mono) midtones balance", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_HIGHLIGHTS_RED_MONO_ITEM, CCD_JPEG_SETTINGS_HIGHLIGHTS_RED_MONO_ITEM_NAME, "Red (Mono) highlights clipping", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_SHADOWS_GREEN_ITEM, CCD_JPEG_SETTINGS_SHADOWS_GREEN_ITEM_NAME, "Green shadows clipping", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_MIDTONES_GREEN_ITEM, CCD_JPEG_SETTINGS_MIDTONES_GREEN_ITEM_NAME, "Green midtones balance", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_HIGHLIGHTS_GREEN_ITEM, CCD_JPEG_SETTINGS_HIGHLIGHTS_GREEN_ITEM_NAME, "Green highlights clipping", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_SHADOWS_BLUE_ITEM, CCD_JPEG_SETTINGS_SHADOWS_BLUE_ITEM_NAME, "Blue shadows clipping", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_MIDTONES_BLUE_ITEM, CCD_JPEG_SETTINGS_MIDTONES_BLUE_ITEM_NAME, "Blue midtones balance", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_HIGHLIGHTS_BLUE_ITEM, CCD_JPEG_SETTINGS_HIGHLIGHTS_BLUE_ITEM_NAME, "Blue highlights clipping", -1, 1, 0, -1);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME, "Target mean background", 0, 1, 0.05, 0.25);
 			indigo_init_number_item(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME, "Clipping point", -3, 0, 0.1, -2.8);
 			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
@@ -909,18 +900,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	} else if (bpp == 48) {
 		indigo_compute_stretch_params_48((uint16_t *)(data_in), 3 * size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
 	}
-	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_SHADOWS_RED_MONO_ITEM, shadows[0]);
-	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_MIDTONES_RED_MONO_ITEM, midtones[0]);
-	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_HIGHLIGHTS_RED_MONO_ITEM, highlights[0]);
-	if (bpp == 24 || bpp == 48) {
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_SHADOWS_GREEN_ITEM, shadows[1]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_MIDTONES_GREEN_ITEM, midtones[1]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_HIGHLIGHTS_GREEN_ITEM, highlights[1]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_SHADOWS_BLUE_ITEM, shadows[2]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_MIDTONES_BLUE_ITEM, midtones[2]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_HIGHLIGHTS_BLUE_ITEM, highlights[2]);
-	}
-	indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+
 	if (bpp == 8) {
 		indigo_stretch_8((uint8_t *)(data_in), size_in, copy, shadows, midtones, highlights);
 	} else if (bpp == 16) {
