@@ -324,17 +324,17 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 11, 90);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_ITEM, CCD_JPEG_SETTINGS_BLACK_ITEM_NAME, "R/M Black point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_GRAY_ITEM, CCD_JPEG_SETTINGS_GRAY_ITEM_NAME, "R/M Gray point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_ITEM, CCD_JPEG_SETTINGS_WHITE_ITEM_NAME, "R/M White point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_GREEN_ITEM, CCD_JPEG_SETTINGS_BLACK_GREEN_ITEM_NAME, "G Black point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_GRAY_GREEN_ITEM, CCD_JPEG_SETTINGS_GRAY_GREEN_ITEM_NAME, "G Gray point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_GREEN_ITEM, CCD_JPEG_SETTINGS_WHITE_GREEN_ITEM_NAME, "G White point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_BLACK_BLUE_ITEM, CCD_JPEG_SETTINGS_BLACK_BLUE_ITEM_NAME, "B Black point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_GRAY_BLUE_ITEM, CCD_JPEG_SETTINGS_GRAY_BLUE_ITEM_NAME, "B Gray point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM, CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM_NAME, "B White point", -1, 1, 0, -1);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_BACKGROUND_ITEM, CCD_JPEG_SETTINGS_BACKGROUND_ITEM_NAME, "Background", 0, 1, 0.05, 0.25);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_CONTRAST_ITEM, CCD_JPEG_SETTINGS_CONTRAST_ITEM_NAME, "Contrast", -3, -2.5, 0.1, -2.8);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_SHADOWS_RED_MONO_ITEM, CCD_JPEG_SETTINGS_SHADOWS_RED_MONO_ITEM_NAME, "Red (Mono) shadows clipping", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_MIDTONES_RED_MONO_ITEM, CCD_JPEG_SETTINGS_MIDTONES_RED_MONO_ITEM_NAME, "Red (Mono) midtones balance", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_HIGHLIGHTS_RED_MONO_ITEM, CCD_JPEG_SETTINGS_HIGHLIGHTS_RED_MONO_ITEM_NAME, "Red (Mono) highlights clipping", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_SHADOWS_GREEN_ITEM, CCD_JPEG_SETTINGS_SHADOWS_GREEN_ITEM_NAME, "Green shadows clipping", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_MIDTONES_GREEN_ITEM, CCD_JPEG_SETTINGS_MIDTONES_GREEN_ITEM_NAME, "Green midtones balance", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_HIGHLIGHTS_GREEN_ITEM, CCD_JPEG_SETTINGS_HIGHLIGHTS_GREEN_ITEM_NAME, "Green highlights clipping", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_SHADOWS_BLUE_ITEM, CCD_JPEG_SETTINGS_SHADOWS_BLUE_ITEM_NAME, "Blue shadows clipping", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_MIDTONES_BLUE_ITEM, CCD_JPEG_SETTINGS_MIDTONES_BLUE_ITEM_NAME, "Blue midtones balance", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_HIGHLIGHTS_BLUE_ITEM, CCD_JPEG_SETTINGS_HIGHLIGHTS_BLUE_ITEM_NAME, "Blue highlights clipping", -1, 1, 0, -1);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME, "Target mean background", 0, 1, 0.05, 0.25);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME, "Clipping point", -3, 0, 0.1, -2.8);
 			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
 			CCD_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_RBI_FLUSH_ENABLE_PROPERTY_NAME, CCD_ADVANCED_GROUP, "RBI flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_RBI_FLUSH_ENABLE_PROPERTY == NULL)
@@ -901,24 +901,24 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	cinfo.pub.image_width = frame_width;
 	cinfo.pub.image_height = frame_height;
 	if (bpp == 8) {
-		indigo_compute_stretch_params_8((uint8_t *)(data_in), size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CONTRAST_ITEM->number.target);
+		indigo_compute_stretch_params_8((uint8_t *)(data_in), size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
 	} else if (bpp == 16) {
-		indigo_compute_stretch_params_16((uint16_t *)(data_in), size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CONTRAST_ITEM->number.target);
+		indigo_compute_stretch_params_16((uint16_t *)(data_in), size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
 	} else if (bpp == 24) {
-		indigo_compute_stretch_params_24((uint8_t *)(data_in), 3 * size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CONTRAST_ITEM->number.target);
+		indigo_compute_stretch_params_24((uint8_t *)(data_in), 3 * size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
 	} else if (bpp == 48) {
-		indigo_compute_stretch_params_48((uint16_t *)(data_in), 3 * size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CONTRAST_ITEM->number.target);
+		indigo_compute_stretch_params_48((uint16_t *)(data_in), 3 * size_in, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
 	}
-	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_BLACK_ITEM, shadows[0]);
-	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_GRAY_ITEM, midtones[0]);
-	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_WHITE_ITEM, highlights[0]);
+	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_SHADOWS_RED_MONO_ITEM, shadows[0]);
+	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_MIDTONES_RED_MONO_ITEM, midtones[0]);
+	SET_JPEG_ITEM(CCD_JPEG_SETTINGS_HIGHLIGHTS_RED_MONO_ITEM, highlights[0]);
 	if (bpp == 24 || bpp == 48) {
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_BLACK_GREEN_ITEM, shadows[1]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_GRAY_GREEN_ITEM, midtones[1]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_WHITE_GREEN_ITEM, highlights[1]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_BLACK_BLUE_ITEM, shadows[2]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_GRAY_BLUE_ITEM, midtones[2]);
-		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_WHITE_BLUE_ITEM, highlights[2]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_SHADOWS_GREEN_ITEM, shadows[1]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_MIDTONES_GREEN_ITEM, midtones[1]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_HIGHLIGHTS_GREEN_ITEM, highlights[1]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_SHADOWS_BLUE_ITEM, shadows[2]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_MIDTONES_BLUE_ITEM, midtones[2]);
+		SET_JPEG_ITEM(CCD_JPEG_SETTINGS_HIGHLIGHTS_BLUE_ITEM, highlights[2]);
 	}
 	indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
 	if (bpp == 8) {
