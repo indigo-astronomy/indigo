@@ -531,7 +531,7 @@ extern indigo_result indigo_ccd_detach(indigo_device *device);
 
 /** Convert RAW data to JPEG
  */
-extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size);
+extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size);
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
