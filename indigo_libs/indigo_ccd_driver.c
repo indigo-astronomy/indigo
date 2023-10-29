@@ -985,8 +985,12 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 		for (int i = 0; i < 256; i++) {
 			double val = log(histo[0][i] + 1) / max + 1;
 			for (int j = 0; j < val; j++) {
-				int k = ((127 - j) * 256 + i) * 3 ;
-				raw[k + 0] = raw[k + 1] = raw[k + 2]= 0xF0;
+				int k = ((127 - j) * 256 + i) * 3;
+				if (histo[1] && histo[2]) {
+					raw[k] = 0xF0;
+				} else {
+					raw[k] = raw[k + 1] = raw[k + 2] = 0xF0;
+				}
 			}
 			if (histo[1]) {
 				val = log(histo[1][i] + 1) / max + 1;
