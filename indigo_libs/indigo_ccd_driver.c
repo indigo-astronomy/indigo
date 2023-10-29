@@ -866,7 +866,7 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	INDIGO_DEBUG(clock_t start = clock());
 	int size_in = frame_width * frame_height;
 	int sample_by = frame_width < STRECH_SAMPLE_SIZE ? 1 : frame_width / STRECH_SAMPLE_SIZE;
-	void *copy = indigo_safe_malloc(size_in * bpp / 8);
+	void *copy = indigo_safe_malloc(3 * size_in * bpp / 8);
 	unsigned char *mem = NULL;
 	unsigned long mem_size = 0;
 	unsigned long *histo[3] = { NULL, NULL, NULL };

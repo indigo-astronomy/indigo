@@ -15407,10 +15407,7 @@
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"-w",
-					"-allow-multiple-definition",
-				);
+				OTHER_LDFLAGS = "-w";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					indigo_drivers/ccd_iidc/externals/libdc1394,
@@ -15477,10 +15474,7 @@
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
-				OTHER_LDFLAGS = (
-					"-w",
-					"-allow-multiple-definition",
-				);
+				OTHER_LDFLAGS = "-w";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					indigo_drivers/ccd_iidc/externals/libdc1394,
