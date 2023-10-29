@@ -32,7 +32,7 @@
 #include <unistd.h>
 
 #define MIN_SIZE_TO_PARALLELIZE 0x3FFFF
-#define AWB
+//#define HISTOGRAM_AWB
 
 template <typename T> static inline void debayer(T *raw, int index, int row, int column, int width, int height, int offsets, float &red, float &green, float &blue) {
 	switch (offsets ^ ((column & 1) << 4 | (row & 1))) {
@@ -269,7 +269,7 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 	}
 }
 
-#ifdef AWB
+#ifdef HISTOGRAM_AWB
 
 template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, int height, int offsets, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
 	const int size = width * height;
@@ -342,7 +342,7 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 	}
 }
 
-#else
+#else  // unlincked stretch AWB
 
 template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, int height, int offsets, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
 	const int size = width * height;
@@ -412,7 +412,7 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 	}
 }
 
-#endif
+#endif // HISTOGRAM_AWB
 
 extern "C" void indigo_compute_stretch_params_8(const uint8_t *buffer, int width, int height, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, float B, float C) {
 	indigo_compute_stretch_params(buffer + 0, width, height, sample_by, 1, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), NULL, B, C);
