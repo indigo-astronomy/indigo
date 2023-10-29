@@ -191,7 +191,7 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 			for (int column_index = 0; column_index < width; column_index += sample_columns_by) {
 				deviations[i++] = abs(median_sample - line[column_index]);
 			}
-			line += width;
+			line += width * sample_rows_by;
 		}
 	}
 	std::nth_element(deviations.begin(), deviations.begin() + sample_size / 2, deviations.end());
