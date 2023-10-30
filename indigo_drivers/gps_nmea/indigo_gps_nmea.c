@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME	"indigo_gps_nmea"
 
 #include <stdlib.h>
@@ -95,9 +95,9 @@ static char **parse(char *buffer) {
 		if (c1 != c2)
 			return NULL;
 	}
-	static char *tokens[32];
+	char **tokens = indigo_safe_malloc(32 * sizeof(char *));
 	int token = 0;
-	memset(tokens, 0, sizeof(tokens));
+	memset(tokens, 0, 32 * sizeof(char *));
 	index = buffer + 3;
 	while (index) {
 		tokens[token++] = index;
@@ -108,18 +108,21 @@ static char **parse(char *buffer) {
 	return tokens;
 }
 
+static void gps_connect_callback(indigo_device *device);
+
 static void gps_refresh_callback(indigo_device *device) {
 	char buffer[128];
+	int length;
 	char **tokens;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader started");
 	while (IS_CONNECTED && PRIVATE_DATA->handle >= 0) {
 		//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		if (indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer)) > 0 && (tokens = parse(buffer))) {
+		if ((length = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer))) > 0 && (tokens = parse(buffer))) {
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
 				int time = atoi(tokens[1]);
 				int date = atoi(tokens[9]);
 				sprintf(GPS_UTC_ITEM->text.value, "20%02d-%02d-%02dT%02d:%02d:%02d", date % 100, (date / 100) % 100, date / 10000, time / 10000, (time / 100) % 100, time % 100);
-				GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+				GPS_UTC_TIME_PROPERTY->state = *tokens[2] == 'A' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 				double lat = indigo_atod(tokens[3]);
 				lat = floor(lat / 100) + fmod(lat, 100) / 60;
@@ -134,7 +137,7 @@ static void gps_refresh_callback(indigo_device *device) {
 				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
 					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = *tokens[2] == 'A' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 					indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 				}
 			} else if (!strcmp(tokens[0], "GGA")) { // Global Positioning System Fix Data
@@ -230,6 +233,16 @@ static void gps_refresh_callback(indigo_device *device) {
 						indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 					}
 				}
+			}
+			indigo_safe_free(tokens);
+		} else {
+			if (tokens == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid response from device");
+			} else if (length == -1) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost connection");
+				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+				indigo_set_timer(device, 0, gps_connect_callback, NULL);
+				break;
 			}
 		}
 		//pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
