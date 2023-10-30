@@ -891,55 +891,77 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	cinfo.pub.image_width = frame_width;
 	cinfo.pub.image_height = frame_height;
 	cinfo.pub.input_components = 3;
+	double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
+	double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
 	if (bpp == 8) {
 		if (bayerpat) {
 			if (!strcmp(bayerpat, "RGGB")) {
-				indigo_compute_stretch_params_8_rggb((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
-				indigo_stretch_8_rggb((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_8_rggb((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_8_rggb((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_8_rggb((uint8_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else if (!strcmp(bayerpat, "GBRG")) {
-				indigo_compute_stretch_params_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
-				indigo_stretch_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_8_gbrg((uint8_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else if (!strcmp(bayerpat, "GRBG")) {
-				indigo_compute_stretch_params_8_grbg((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
-				indigo_stretch_8_grbg((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_8_grbg((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_8_grbg((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_8_grbg((uint8_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else if (!strcmp(bayerpat, "BGGR")) {
-				indigo_compute_stretch_params_8_bggr((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
-				indigo_stretch_8_bggr((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				if (B != 0 && C != 0) {
+					indigo_compute_stretch_params_8_bggr((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+					indigo_stretch_8_bggr((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+				} else {
+					indigo_debayer_8_bggr((uint8_t *)(data_in), frame_width, frame_height, copy);
+				}
 			} else {
 				assert(false);
 			}
 		} else {
-			indigo_compute_stretch_params_8((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
-			indigo_stretch_8((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights);
+			if (B != 0 && C != 0) {
+				indigo_compute_stretch_params_8((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, B, C);
+				indigo_stretch_8((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights);
+			} else {
+				memcpy(copy, (uint8_t *)(data_in), size_in);
+			}
 			cinfo.pub.input_components = 1;
 		}
 	} else if (bpp == 16) {
 		if (bayerpat) {
 			if (!strcmp(bayerpat, "RGGB")) {
-				indigo_compute_stretch_params_16_rggb((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
+				indigo_compute_stretch_params_16_rggb((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
 				indigo_stretch_16_rggb((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 			} else if (!strcmp(bayerpat, "GBRG")) {
-				indigo_compute_stretch_params_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
+				indigo_compute_stretch_params_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
 				indigo_stretch_16_gbrg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 			} else if (!strcmp(bayerpat, "GRBG")) {
-				indigo_compute_stretch_params_16_grbg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
+				indigo_compute_stretch_params_16_grbg((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
 				indigo_stretch_16_grbg((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 			} else if (!strcmp(bayerpat, "BGGR")) {
-				indigo_compute_stretch_params_16_bggr((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
+				indigo_compute_stretch_params_16_bggr((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
 				indigo_stretch_16_bggr((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 			} else {
 				assert(false);
 			}
 		} else {
-			indigo_compute_stretch_params_16((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
+			indigo_compute_stretch_params_16((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, B, C);
 			indigo_stretch_16((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights);
 			cinfo.pub.input_components = 1;
 		}
 	} else if (bpp == 24) {
-		indigo_compute_stretch_params_24((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
+		indigo_compute_stretch_params_24((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
 		indigo_stretch_24((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 	} else if (bpp == 48) {
-		indigo_compute_stretch_params_48((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target);
+		indigo_compute_stretch_params_48((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
 		indigo_stretch_48((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
 	} else {
 		assert(false);
@@ -963,45 +985,47 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	*size_out = mem_size;
 	indigo_safe_free(copy);
 	if (histogram_data != NULL) {
-		unsigned long histo_max = 1;
-		for (int i = 0; i < 256; i++) {
-			if (histo_max < histo[0][i]) {
-				histo_max = histo[0][i];
-			}
-			if (histo[1]) {
-				if (histo_max < histo[1][i]) {
-					histo_max = histo[1][i];
-				}
-			}
-			if (histo[2]) {
-				if (histo_max < histo[2][i]) {
-					histo_max = histo[2][i];
-				}
-			}
-		}
-		double max = (log(histo_max + 1) + 1) / 127;
 		uint8_t raw[128 * 256 * 3];
 		memset(raw, 0, sizeof(raw));
-		for (int i = 0; i < 256; i++) {
-			double val = log(histo[0][i] + 1) / max + 1;
-			for (int j = 0; j < val; j++) {
-				int k = ((127 - j) * 256 + i) * 3;
-				if (histo[1] && histo[2]) {
-					raw[k] = 0xF0;
-				} else {
-					raw[k] = raw[k + 1] = raw[k + 2] = 0xF0;
+		if (histo[0]) {
+			unsigned long histo_max = 1;
+			for (int i = 0; i < 256; i++) {
+				if (histo_max < histo[0][i]) {
+					histo_max = histo[0][i];
+				}
+				if (histo[1]) {
+					if (histo_max < histo[1][i]) {
+						histo_max = histo[1][i];
+					}
+				}
+				if (histo[2]) {
+					if (histo_max < histo[2][i]) {
+						histo_max = histo[2][i];
+					}
 				}
 			}
-			if (histo[1]) {
-				val = log(histo[1][i] + 1) / max + 1;
+			double max = (log(histo_max + 1) + 1) / 127;
+			for (int i = 0; i < 256; i++) {
+				double val = log(histo[0][i] + 1) / max + 1;
 				for (int j = 0; j < val; j++) {
-					raw[((127 - j) * 256 + i) * 3 + 1] = 0xF0;
+					int k = ((127 - j) * 256 + i) * 3;
+					if (histo[1] && histo[2]) {
+						raw[k] = 0xF0;
+					} else {
+						raw[k] = raw[k + 1] = raw[k + 2] = 0xF0;
+					}
 				}
-			}
-			if (histo[2]) {
-				val = log(histo[2][i] + 1) / max + 1;
-				for (int j = 0; j < val; j++) {
-					raw[((127 - j) * 256 + i) * 3 + 2] = 0xF0;
+				if (histo[1]) {
+					val = log(histo[1][i] + 1) / max + 1;
+					for (int j = 0; j < val; j++) {
+						raw[((127 - j) * 256 + i) * 3 + 1] = 0xF0;
+					}
+				}
+				if (histo[2]) {
+					val = log(histo[2][i] + 1) / max + 1;
+					for (int j = 0; j < val; j++) {
+						raw[((127 - j) * 256 + i) * 3 + 2] = 0xF0;
+					}
 				}
 			}
 		}
