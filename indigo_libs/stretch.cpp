@@ -34,6 +34,13 @@
 #define MIN_SIZE_TO_PARALLELIZE 0x3FFFF
 //#define HISTOGRAM_AWB
 
+// raw - raw pixels, any unsigned int
+// index - offset of the current pixel in raw
+// row, column - row, column of the current pixel (to skip line + to detect edges of the frame)
+// width, height - width, height of the frame
+// offsets - 0x00 = RGGB, 0x01 = GBRG, 0x10 = GRBG, 0x11 = BGGR
+// red, gree, blue - debayered pixel as an mean value of 1 to 4 pixels
+
 template <typename T> static inline void debayer(T *raw, int index, int row, int column, int width, int height, int offsets, float &red, float &green, float &blue) {
 	switch (offsets ^ ((column & 1) << 4 | (row & 1))) {
 		case 0x00:
@@ -147,10 +154,18 @@ template <typename T> static inline void debayer(T *raw, int index, int row, int
 	}
 }
 
+// buffer - pixels, 8 or 16 bit unsigned int
+// width, height - width, height of the frame
+// sample_columns_by, sample_rows_by - to subsample buffer
+// shadows, midtones, highlights - stretch thresholds
+// histogram - 256x values
+// totals - sum of all pixels in subsample
+// B, C - background, contrast params
+
 template <typename T> void indigo_compute_stretch_params(const T *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, unsigned long *totals, float B = 0.25, float C = -2.8) {
 	const int sample_size = width * height / sample_columns_by / sample_rows_by;
 	const int sample_size_2 = sample_size / 2;
-	const int histo_divider = (sizeof(T) == 1) ? 1 : 256;
+	const int histo_divider = (sizeof(T) == 1) ? 1 : 256; // TBD for 32 bits
 	unsigned long total = 0;
 	std::vector<T> samples(sample_size);
 	if (sample_rows_by == 1) {
@@ -196,7 +211,7 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	}
 	std::nth_element(deviations.begin(), deviations.begin() + sample_size / 2, deviations.end());
 	// scale to 0 -> 1.0.
-	const float input_range = (sizeof(T) == 1) ? 0xFFL : 0XFFFFL;
+	const float input_range = (sizeof(T) == 1) ? 0xFFL : 0XFFFFL; // TBD for 32 bits
 	const float median_deviation = deviations[sample_size / 2];
 	const float normalized_median = median_sample / input_range;
 	const float MADN = 1.4826 * median_deviation / input_range;
@@ -222,6 +237,11 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	}
 }
 
+// value - pixel value
+// native_shadows, native_highlights - shadows and highlights thresholds in input range
+// k1_k2 = k1 * k2
+// midtones_k2 = midtones / k2
+
 inline static uint8_t stretch(float value, int native_shadows, int native_highlights, float k1_k2, float midtones_k2) {
 	if (value < native_shadows) {
 		return 0;
@@ -233,9 +253,17 @@ inline static uint8_t stretch(float value, int native_shadows, int native_highli
 	}
 }
 
+// input_buffer - source data as 8 or 16 bit integer
+// input_sample - 1 for mono or single channel, 3 for rgb
+// width, height - height, width of frame
+// output_buffer - JPEG conversion source buffer
+// output_sample - 1 for mono or single channel, 3 for rgb
+// shadows, midtones, highlights - stretch thresholds
+// coef - each pixel value is divided by this value before stretching (e.g. for AWB)
+
 template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int width, int height, uint8_t *output_buffer, int output_sample, double shadows, double midtones, double highlights, float coef) {
 	const int size = width * height;
-	const double max_input = (sizeof(T) == 1) ? 0xFF : 0xFFFF;
+	const double max_input = (sizeof(T) == 1) ? 0xFF : 0xFFFF; // TBD for 32 bits
 	const float hs_range_factor = highlights == shadows ? 1.0f : 1.0f / (highlights - shadows);
 	const int native_shadows = shadows * max_input;
 	const int native_highlights = highlights * max_input;
@@ -270,6 +298,13 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 }
 
 #ifdef HISTOGRAM_AWB
+
+// input_buffer - source data as 8 or 16 bit integer
+// width, height - height, width of frame
+// offsets - 0x00 = RGGB, 0x01 = GBRG, 0x10 = GRBG, 0x11 = BGGR
+// output_buffer - JPEG conversion source buffer
+// shadows, midtones, highlights - stretch thresholds
+// totals - sum of all pixels in subsample to compute coeficients for AWB
 
 template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, int height, int offsets, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
 	const int size = width * height;
@@ -343,6 +378,13 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 }
 
 #else  // unlincked stretch AWB
+
+// input_buffer - source data as 8 or 16 bit integer
+// width, height - height, width of frame
+// offsets - 0x00 = RGGB, 0x01 = GBRG, 0x10 = GRBG, 0x11 = BGGR
+// output_buffer - JPEG conversion source buffer
+// shadows, midtones, highlights - stretch thresholds
+// totals - unused
 
 template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, int height, int offsets, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
 	const int size = width * height;
