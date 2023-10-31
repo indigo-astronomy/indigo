@@ -426,21 +426,13 @@ extern "C" {
  */
 #define CCD_JPEG_SETTINGS_QUALITY_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+0)
 
-/** CCD_JPEG_SETTINGS.BLACK property item pointer.
+/** CCD_JPEG_SETTINGS.TARGET_BACKGROUND property item pointer.
  */
-#define CCD_JPEG_SETTINGS_BLACK_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+1)
+#define CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+1)
 
-/** CCD_JPEG_SETTINGS.WHITE property item pointer.
+/** CCD_JPEG_SETTINGS.CLIPPING_POINT property item pointer.
  */
-#define CCD_JPEG_SETTINGS_WHITE_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+2)
-
-/** CCD_JPEG_SETTINGS.BLACK_TRESHOLD property item pointer.
- */
-#define CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+3)
-
-/** CCD_JPEG_SETTINGS.WHITE_TRESHOLD property item pointer.
- */
-#define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+4)
+#define CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+2)
 
 /** CCD_RBI_FLUSH property pointer.
  */
@@ -539,7 +531,7 @@ extern indigo_result indigo_ccd_detach(indigo_device *device);
 
 /** Convert RAW data to JPEG
  */
-extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size);
+extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size);
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
