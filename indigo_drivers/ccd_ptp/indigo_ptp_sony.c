@@ -121,7 +121,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		//case ptp_property_sony_D256: return "ADV_SONY_D256";
 		//case ptp_property_sony_D259: return "ADV_SONY_D259";
 		// all model has D25A (writable 2 items, [0, 1])
-		case ptp_property_sony_D25A: return "ADV_SONY_D25A";
+		//case ptp_property_sony_D25A: return "ADV_SONY_D25A";
 		//case ptp_property_sony_D25B: return "ADV_SONY_D25B";
 		case ptp_property_sony_ZoomSetting: return "ADV_ZoomSetting";
 		//case ptp_property_sony_D260: return "ADV_SONY_D260";
@@ -176,7 +176,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 
 char *ptp_property_sony_code_label(uint16_t code) {
 	switch (code) {
-		case ptp_property_sony_DPCCompensation: return "DPC Compensation";
+		case ptp_property_sony_DPCCompensation: return "Flash Compensation";
 		case ptp_property_sony_DRangeOptimize: return "D Range Optimize";
 		case ptp_property_sony_ImageSize: return "Image size";
 		case ptp_property_sony_ShutterSpeed: return "Shutter speed";
@@ -600,20 +600,17 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_sony_ShutterSpeed: {
-			if (code == SONY_ITERATE_DOWN) {
-				return "-";
-			} else if (code == SONY_ITERATE_UP) {
-				return "+";
-			} else if (code == 0) {
-				return "Bulb";
-			} else {
-				int a = (int)code >> 16;
-				int b = (int)code & 0xFFFF;
-				if (b == 10)
-					sprintf(label, "%g\"", (double)a / b);
-				else
-					sprintf(label, "1/%d", b);
+			switch (code) {
+				case SONY_ITERATE_DOWN: return "-";
+				case SONY_ITERATE_UP: return "+";
+				case 0: return "Bulb";
 			}
+			int a = (int)code >> 16;
+			int b = (int)code & 0xFFFF;
+			if (b == 10)
+				sprintf(label, "%g\"", (double)a / b);
+			else
+				sprintf(label, "1/%d", b);
 			return label;
 		}
 		case ptp_property_sony_AspectRatio: {
