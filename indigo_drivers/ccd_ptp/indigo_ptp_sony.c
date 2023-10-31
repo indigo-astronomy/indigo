@@ -344,10 +344,6 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_ExposureBiasCompensation: {
-			switch (code) {
-				case SONY_ITERATE_DOWN: return "-";
-				case SONY_ITERATE_UP: return "+";
-			}
 			sprintf(label, "%+.1f", (int)code / 1000.0);
 			return label;
 		}
@@ -1259,13 +1255,6 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			case ptp_property_sony_ImageSize:
 				target->count = 3;
 				break;
-			case ptp_property_ExposureBiasCompensation:
-				target->count = 3;
-				target->value.sw.values[0] = SONY_ITERATE_DOWN;
-				target->value.sw.values[1] = target->value.number.value;
-				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
-				break;
 			case ptp_property_sony_ISO:
 				target->count = 3;
 				target->value.sw.values[0] = SONY_ITERATE_DOWN;
@@ -1291,6 +1280,11 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 		}
 	}
 	switch (code) {
+		case ptp_property_ExposureBiasCompensation: // never really writable and sometimes not a list
+			target->count = 1;
+			target->value.sw.values[0] = target->value.number.value;
+			target->writable = false;
+			break;
 		case ptp_property_FocusMode:
 			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
 			SONY_PRIVATE_DATA->focus_mode = target->value.number.value;
@@ -1465,7 +1459,6 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 	if (IS_OLD_API()) {
 		switch (property->code) {
-			case ptp_property_ExposureBiasCompensation:
 			case ptp_property_sony_ISO:
 			case ptp_property_sony_ShutterSpeed:
 			case ptp_property_FNumber: {
