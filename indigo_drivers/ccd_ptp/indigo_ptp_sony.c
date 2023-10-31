@@ -121,7 +121,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 		//case ptp_property_sony_D256: return "ADV_SONY_D256";
 		//case ptp_property_sony_D259: return "ADV_SONY_D259";
 		// all model has D25A (writable 2 items, [0, 1])
-		case ptp_property_sony_D25A: return "ADV_SONY_D25A";
+		//case ptp_property_sony_D25A: return "ADV_SONY_D25A";
 		//case ptp_property_sony_D25B: return "ADV_SONY_D25B";
 		case ptp_property_sony_ZoomSetting: return "ADV_ZoomSetting";
 		//case ptp_property_sony_D260: return "ADV_SONY_D260";
@@ -176,7 +176,7 @@ char *ptp_property_sony_code_name(uint16_t code) {
 
 char *ptp_property_sony_code_label(uint16_t code) {
 	switch (code) {
-		case ptp_property_sony_DPCCompensation: return "DPC Compensation";
+		case ptp_property_sony_DPCCompensation: return "Flash Compensation";
 		case ptp_property_sony_DRangeOptimize: return "D Range Optimize";
 		case ptp_property_sony_ImageSize: return "Image size";
 		case ptp_property_sony_ShutterSpeed: return "Shutter speed";
@@ -230,35 +230,35 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 	static char label[PTP_MAX_CHARS];
 	switch (property) {
 		case ptp_property_CompressionSetting: {
-			switch (code) {
-				case 2: return "Standard";
-				case 3: return "Fine";
-				case 4: return "Extra Fine";
-				case 16: return "RAW";
-				case 18: return "RAW + JPEG (Standard)";
-				case 19: return "RAW + JPEG";
-				case 20: return "RAW + JPEG (Extra Fine)";
+			switch (code & 0xFF) {
+				case 0x02: return "Standard";
+				case 0x03: return "Fine";
+				case 0x04: return "Extra Fine";
+				case 0x10: return "RAW";
+				case 0x12: return "RAW + JPEG (Standard)";
+				case 0x13: return "RAW + JPEG";
+				case 0x14: return "RAW + JPEG (Extra Fine)";
 			}
 			break;
 		}
 		case ptp_property_WhiteBalance: {
-			switch (code) {
-				case 2: return "Auto";
-				case 4: return "Daylight";
-				case 32785: return "Shade";
-				case 32784: return "Cloudy";
-				case 6: return "Incandescent";
-				case 32769: return "Flourescent warm white";
-				case 32770: return "Flourescent cool white";
-				case 32771: return "Flourescent day white";
-				case 32772: return "Flourescent daylight";
-				case 7: return "Flash";
-				case 32786: return "C.Temp/Filter";
-				case 32816: return "Underwater";
-				case 32800: return "Custom 1";
-				case 32801: return "Custom 2";
-				case 32802: return "Custom 3";
-				case 32803: return "Custom 4";
+			switch (code & 0xFFFF) {
+				case 0x0002: return "Auto";
+				case 0x0004: return "Daylight";
+				case 0x8011: return "Shade";
+				case 0x8010: return "Cloudy";
+				case 0x0006: return "Incandescent";
+				case 0x8001: return "Flourescent warm white";
+				case 0x8002: return "Flourescent cool white";
+				case 0x8003: return "Flourescent day white";
+				case 0x8004: return "Flourescent daylight";
+				case 0x0007: return "Flash";
+				case 0x8012: return "C.Temp/Filter";
+				case 0x8030: return "Underwater";
+				case 0x8020: return "Custom 1";
+				case 0x8021: return "Custom 2";
+				case 0x8022: return "Custom 3";
+				case 0x8023: return "Custom 4";
 			}
 			break;
 		}
@@ -271,43 +271,35 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			return label;
 		}
 		case ptp_property_FocusMode: {
-			switch (code) {
-				case 1: return "MF";
-				case 2: return "AF-S";
-				case 32772: return "AF-C";
-				case 32773: return "AF-A";
-				case 32774: return "DMF";
+			switch (code & 0xFFFF) {
+				case 0x0001: return "MF";
+				case 0x0002: return "AF-S";
+				case 0x8004: return "AF-C";
+				case 0x8005: return "AF-A";
+				case 0x8006: return "DMF";
 			}
 			break;
 		}
 		case ptp_property_ExposureMeteringMode: {
-			// Type changed in new API
-			// `code & 0xff` will work, but make the value explicit
-			switch (code) {
-				case 1:
-				case 0x8001: return "Multi";
-				case 2:
-				case 0x8002: return "Center";
-				case 3:
-				case 0x8003: return "Entire Screen Avg.";
-				case 4:
-				case 0x8004: return "Spot";
-				case 5:
-				case 0x8005: return "Spot (Large)";
-				case 6:
-				case 0x8006: return "Highlight";
+			switch (code & 0xFF) {
+				case 0x01: return "Multi";
+				case 0x02: return "Center";
+				case 0x03: return "Entire Screen Avg.";
+				case 0x04: return "Spot";
+				case 0x05: return "Spot (Large)";
+				case 0x06: return "Highlight";
 			}
 			break;
 		}
 		case ptp_property_FlashMode: {
-			switch (code) {
-				case 0: return "Undefined";
-				case 1: return "Automatic flash";
-				case 2: return "Flash off";
-				case 3: return "Fill flash";
-				case 4: return "Automatic Red-eye Reduction";
-				case 5: return "Red-eye fill flash";
-				case 6: return "External sync";
+			switch (code & 0xFFFF) {
+				case 0x0000: return "Undefined";
+				case 0x0001: return "Automatic flash";
+				case 0x0002: return "Flash off";
+				case 0x0003: return "Fill flash";
+				case 0x0004: return "Automatic Red-eye Reduction";
+				case 0x0005: return "Red-eye fill flash";
+				case 0x0006: return "External sync";
 				case 0x8032: return "Slow Sync";
 				case 0x8001: return "Slow Sync";
 				case 0x8003: return "Reer Sync";
@@ -315,236 +307,181 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_ExposureProgramMode: {
-			switch (code) {
-				case 1: return "M";
-				case 2: return "P";
-				case 3: return "A";
-				case 4: return "S";
-				case 7: return "Portrait";
-				case 32768: return "Intelligent auto";
-				case 32769: return "Superior auto";
-				case 32785: return "Sport";
-				case 32786: return "Sunset";
-				case 32787: return "Night scene";
-				case 32788: return "Landscape";
-				case 32789: return "Macro";
-				case 32790: return "Handheld twilight";
-				case 32791: return "Night portrait";
-				case 32792: return "Anti motion blur";
-				case 32848: return "Movie P";
-				case 32849: return "Movie A";
-				case 32850: return "Movie S";
-				case 32851: return "Movie M";
-				case 32833: return "Sweep panorama";
-				case 32857: return "Q&S auto";
-				case 32858: return "Q&S A";
-				case 32859: return "Q&S S";
-				case 32860: return "Q&S M";
+			switch (code & 0xFFFF) {
+				case 0x0001: return "M";
+				case 0x0002: return "P";
+				case 0x0003: return "A";
+				case 0x0004: return "S";
+				case 0x0007: return "Portrait";
+				case 0x8000: return "Intelligent auto";
+				case 0x8001: return "Superior auto";
+				case 0x8011: return "Sport";
+				case 0x8012: return "Sunset";
+				case 0x8013: return "Night scene";
+				case 0x8014: return "Landscape";
+				case 0x8015: return "Macro";
+				case 0x8016: return "Handheld twilight";
+				case 0x8017: return "Night portrait";
+				case 0x8018: return "Anti motion blur";
+				case 0x8050: return "Movie P";
+				case 0x8051: return "Movie A";
+				case 0x8052: return "Movie S";
+				case 0x8053: return "Movie M";
+				case 0x8041: return "Sweep panorama";
+				case 0x8059: return "Q&S auto";
+				case 0x805A: return "Q&S A";
+				case 0x805B: return "Q&S S";
+				case 0x805C: return "Q&S M";
 			}
 			break;
 		}
 		case ptp_property_ExposureBiasCompensation: {
-			switch (code) {
-				case SONY_ITERATE_DOWN: return "-";
-				case SONY_ITERATE_UP: return "+";
-			}
 			sprintf(label, "%+.1f", (int)code / 1000.0);
 			return label;
 		}
 		case ptp_property_StillCaptureMode: {
-			// Type changed in new API
-			// `code & 0xffff` will work, but make the value explicit
-			switch (code) {
+			switch (code & 0xFFFF) {
 				case 0x0001: return "Single shooting";
-				case 0x0002:
-				case 0x10002: return "Cont. shooting Hi";
-				case 0x8012:
-				case 0x18012: return "Cont. shooting Lo";
+				case 0x0002: return "Cont. shooting Hi";
+				case 0x8012: return "Cont. shooting Lo";
 				case 0x8013: return "Cont. shooting";
-				case 0x8015:
-				case 0x18015: return "Cont. shooting Mi";
-				case 0x8010:
-				case 0x18010: return "Cont. shooting Hi+";
+				case 0x8015: return "Cont. shooting Mi";
+				case 0x8010: return "Cont. shooting Hi+";
 				case 0x8014: return "Spd priority cont.";
-				case 0x8005:
-				case 0x38005: return "Self-timer 2s";
-				case 0x8003:
-				case 0x38003: return "Self-timer 5s";
-				case 0x8004:
-				case 0x38004: return "Self-time 10s";
-				case 0x8008:
-				case 0x88008: return "Self-timer 10s 3x";
-				case 0x8009:
-				case 0x88009: return "Self-timer 10s 5x";
-				case 0x800c:
-				case 0x8800c: return "Self-timer 5s 3x";
-				case 0x800d:
-				case 0x8800d: return "Self-timer 5s 5x";
-				case 0x800e:
-				case 0x8800e: return "Self-timer 2s 3x";
-				case 0x800f:
-				case 0x8800f: return "Self-timer 2s 5x";
-				case 0x4c237: return "Bracket 1/3EV 2x(+) cont.";
-				case 0x4c23f: return "Bracket 1/3EV 2x(-) cont.";
-				case 0x8337:
-				case 0x48337: return "Bracket 1/3EV 3x cont.";
-				case 0x8537:
-				case 0x48537: return "Bracket 1/3EV 5x cont.";
-				case 0x48737: return "Bracket 1/3EV 7x cont.";
-				case 0x8937:
-				case 0x48937: return "Bracket 1/3EV 9x cont.";
-				case 0x4c257: return "Bracket 1/2EV 2x(+) cont.";
-				case 0x4c25f: return "Bracket 1/2EV 2x(-) cont.";
-				case 0x8357:
-				case 0x48357: return "Bracket 1/2EV 3x cont.";
-				case 0x8557:
-				case 0x48557: return "Bracket 1/2EV 5x cont.";
-				case 0x48757: return "Bracket 1/2EV 7x cont.";
-				case 0x8957:
-				case 0x48957: return "Bracket 1/2EV 9x cont.";
-				case 0x4c277: return "Bracket 2/3EV 2x(+) cont.";
-				case 0x4c27f: return "Bracket 2/3EV 2x(-) cont.";
-				case 0x8377:
-				case 0x48377: return "Bracket 2/3EV 3x cont.";
-				case 0x8577:
-				case 0x48577: return "Bracket 2/3EV 5x cont.";
-				case 0x48777: return "Bracket 2/3EV 7x cont.";
-				case 0x8977:
-				case 0x48977: return "Bracket 2/3EV 9x cont.";
-				case 0x4c211: return "Bracket 1EV 2x(+) cont.";
-				case 0x4c219: return "Bracket 1EV 2x(-) cont.";
-				case 0x8311:
-				case 0x48311: return "Bracket 1EV 3x cont.";
-				case 0x8511:
-				case 0x48511: return "Bracket 1EV 5x cont.";
-				case 0x48711: return "Bracket 1EV 7x cont.";
-				case 0x8911:
-				case 0x48911: return "Bracket 1EV 9x cont.";
-				case 0x4c241: return "Bracket 1.3EV 2x(+) cont.";
-				case 0x4c249: return "Bracket 1.3EV 2x(-) cont.";
-				case 0x48341: return "Bracket 1.3EV 3x cont.";
-				case 0x48541: return "Bracket 1.3EV 5x cont.";
-				case 0x48741: return "Bracket 1.3EV 7x cont.";
-				case 0x4c261: return "Bracket 1.5EV 2x(+) cont.";
-				case 0x4c269: return "Bracket 1.5EV 2x(-) cont.";
-				case 0x48361: return "Bracket 1.5EV 3x cont.";
-				case 0x48561: return "Bracket 1.5EV 5x cont.";
-				case 0x48761: return "Bracket 1.5EV 7x cont.";
-				case 0x4c281: return "Bracket 1.7EV 2x(+) cont.";
-				case 0x4c289: return "Bracket 1.7EV 2x(-) cont.";
-				case 0x48381: return "Bracket 1.7EV 3x cont.";
-				case 0x48581: return "Bracket 1.7EV 5x cont.";
-				case 0x48781: return "Bracket 1.7EV 7x cont.";
-				case 0x4c221: return "Bracket 2EV 2x(+) cont.";
-				case 0x4c229: return "Bracket 2EV 2x(-) cont.";
-				case 0x8321:
-				case 0x48321: return "Bracket 2EV 3x cont.";
-				case 0x8521:
-				case 0x48521: return "Bracket 2EV 5x cont.";
-				case 0x48721: return "Bracket 2EV 7x cont.";
-				case 0x4c251: return "Bracket 2.3EV 2x(+) cont.";
-				case 0x4c259: return "Bracket 2.3EV 2x(-) cont.";
-				case 0x48351: return "Bracket 2.3EV 3x cont.";
-				case 0x48551: return "Bracket 2.3EV 5x cont.";
-				case 0x4c271: return "Bracket 2.5EV 2x(+) cont.";
-				case 0x4c279: return "Bracket 2.5EV 2x(-) cont.";
-				case 0x48371: return "Bracket 2.5EV 3x cont.";
-				case 0x48571: return "Bracket 2.5EV 5x cont.";
-				case 0x4c291: return "Bracket 2.7EV 2x(+) cont.";
-				case 0x4c299: return "Bracket 2.7EV 2x(-) cont.";
-				case 0x48391: return "Bracket 2.7EV 3x cont.";
-				case 0x48591: return "Bracket 2.7EV 5x cont.";
-				case 0x4c231: return "Bracket 3EV 2x(+) cont.";
-				case 0x4c239: return "Bracket 3EV 2x(-) cont.";
-				case 0x8331:
-				case 0x48331: return "Bracket 3EV 3x cont.";
-				case 0x8531:
-				case 0x48531: return "Bracket 3EV 5x cont.";
-				case 0x5c236: return "Bracket 1/3EV 2x(+)";
-				case 0x5c23e: return "Bracket 1/3EV 2x(-)";
-				case 0x8336:
-				case 0x58336: return "Bracket 1/3EV 3x";
-				case 0x8536:
-				case 0x58536: return "Bracket 1/3EV 5x";
-				case 0x58736: return "Bracket 1/3EV 7x";
-				case 0x8936:
-				case 0x58936: return "Bracket 1/3EV 9x";
-				case 0x5c256: return "Bracket 1/3EV 2x(+)";
-				case 0x5c25e: return "Bracket 1/3EV 2x(-)";
-				case 0x8356:
-				case 0x58356: return "Bracket 1/2EV 3x";
-				case 0x8556:
-				case 0x58556: return "Bracket 1/2EV 5x";
-				case 0x58756: return "Bracket 1/2EV 7x";
-				case 0x8956:
-				case 0x58956: return "Bracket 1/2EV 9x";
-				case 0x5c276: return "Bracket 2/3EV 2x(+)";
-				case 0x5c27e: return "Bracket 2/3EV 2x(-)";
-				case 0x8376:
-				case 0x58376: return "Bracket 2/3EV 3x";
-				case 0x8576:
-				case 0x58576: return "Bracket 2/3EV 5x";
-				case 0x58776: return "Bracket 2/3EV 7x";
-				case 0x8976:
-				case 0x58976: return "Bracket 2/3EV 9x";
-				case 0x5c210: return "Bracket 1EV 2x(+)";
-				case 0x5c218: return "Bracket 1EV 2x(-)";
-				case 0x8310:
-				case 0x58310: return "Bracket 1EV 3x";
-				case 0x8510:
-				case 0x58510: return "Bracket 1EV 5x";
-				case 0x58710: return "Bracket 1EV 7x";
-				case 0x8910:
-				case 0x58910: return "Bracket 1EV 9x";
-				case 0x5c240: return "Bracket 1.3EV 2x(+)";
-				case 0x5c248: return "Bracket 1.3EV 2x(-)";
-				case 0x58340: return "Bracket 1.3EV 3x";
-				case 0x58540: return "Bracket 1.3EV 5x";
-				case 0x58740: return "Bracket 1.3EV 7x";
-				case 0x5c260: return "Bracket 1.5EV 2x(+)";
-				case 0x5c268: return "Bracket 1.5EV 2x(-)";
-				case 0x58360: return "Bracket 1.5EV 3x";
-				case 0x58560: return "Bracket 1.5EV 5x";
-				case 0x58760: return "Bracket 1.5EV 7x";
-				case 0x5c280: return "Bracket 1.7EV 2x(+)";
-				case 0x5c288: return "Bracket 1.7EV 2x(-)";
-				case 0x58380: return "Bracket 1.7EV 3x";
-				case 0x58580: return "Bracket 1.7EV 5x";
-				case 0x58780: return "Bracket 1.7EV 7x";
-				case 0x5c220: return "Bracket 2EV 2x(+)";
-				case 0x5c228: return "Bracket 2EV 2x(-)";
-				case 0x8320:
-				case 0x58320: return "Bracket 2EV 3x";
-				case 0x8520:
-				case 0x58520: return "Bracket 2EV 5x";
-				case 0x58720: return "Bracket 2EV 7x";
-				case 0x5c250: return "Bracket 2.3EV 2x(+)";
-				case 0x5c258: return "Bracket 2.3EV 2x(-)";
-				case 0x58350: return "Bracket 2.3EV 3x";
-				case 0x58550: return "Bracket 2.3EV 5x";
-				case 0x5c270: return "Bracket 2.5EV 2x(+)";
-				case 0x5c278: return "Bracket 2.5EV 2x(-)";
-				case 0x58370: return "Bracket 2.5EV 3x";
-				case 0x58570: return "Bracket 2.5EV 5x";
-				case 0x5c290: return "Bracket 2.7EV 2x(+)";
-				case 0x5c298: return "Bracket 2.7EV 2x(-)";
-				case 0x58390: return "Bracket 2.7EV 3x";
-				case 0x58590: return "Bracket 2.7EV 5x";
-				case 0x5c230: return "Bracket 3EV 2x(+)";
-				case 0x5c238: return "Bracket 3EV 2x(-)";
-				case 0x8330:
-				case 0x58330: return "Bracket 3EV 3x";
-				case 0x8530:
-				case 0x58530: return "Bracket 3EV 5x";
-				case 0x8018:
-				case 0x68018: return "Bracket WB Lo";
-				case 0x8028:
-				case 0x68028: return "Bracket WB Hi";
-				case 0x8019:
-				case 0x78019: return "Bracket DRO Lo";
-				case 0x8029:
-				case 0x78029: return "Bracket DRO Hi";
-				case 0xa8040: return "Focus Bracket";
+				case 0x8005: return "Self-timer 2s";
+				case 0x8003: return "Self-timer 5s";
+				case 0x8004: return "Self-time 10s";
+				case 0x8008: return "Self-timer 10s 3x";
+				case 0x8009: return "Self-timer 10s 5x";
+				case 0x800c: return "Self-timer 5s 3x";
+				case 0x800d: return "Self-timer 5s 5x";
+				case 0x800e: return "Self-timer 2s 3x";
+				case 0x800f: return "Self-timer 2s 5x";
+				case 0xc237: return "Bracket 1/3EV 2x(+) cont.";
+				case 0xc23f: return "Bracket 1/3EV 2x(-) cont.";
+				case 0x8337: return "Bracket 1/3EV 3x cont.";
+				case 0x8537: return "Bracket 1/3EV 5x cont.";
+				case 0x8737: return "Bracket 1/3EV 7x cont.";
+				case 0x8937: return "Bracket 1/3EV 9x cont.";
+				case 0xc257: return "Bracket 1/2EV 2x(+) cont.";
+				case 0xc25f: return "Bracket 1/2EV 2x(-) cont.";
+				case 0x8357: return "Bracket 1/2EV 3x cont.";
+				case 0x8557: return "Bracket 1/2EV 5x cont.";
+				case 0x8757: return "Bracket 1/2EV 7x cont.";
+				case 0x8957: return "Bracket 1/2EV 9x cont.";
+				case 0xc277: return "Bracket 2/3EV 2x(+) cont.";
+				case 0xc27f: return "Bracket 2/3EV 2x(-) cont.";
+				case 0x8377: return "Bracket 2/3EV 3x cont.";
+				case 0x8577: return "Bracket 2/3EV 5x cont.";
+				case 0x8777: return "Bracket 2/3EV 7x cont.";
+				case 0x8977: return "Bracket 2/3EV 9x cont.";
+				case 0xc211: return "Bracket 1EV 2x(+) cont.";
+				case 0xc219: return "Bracket 1EV 2x(-) cont.";
+				case 0x8311: return "Bracket 1EV 3x cont.";
+				case 0x8511: return "Bracket 1EV 5x cont.";
+				case 0x8711: return "Bracket 1EV 7x cont.";
+				case 0x8911: return "Bracket 1EV 9x cont.";
+				case 0xc241: return "Bracket 1.3EV 2x(+) cont.";
+				case 0xc249: return "Bracket 1.3EV 2x(-) cont.";
+				case 0x8341: return "Bracket 1.3EV 3x cont.";
+				case 0x8541: return "Bracket 1.3EV 5x cont.";
+				case 0x8741: return "Bracket 1.3EV 7x cont.";
+				case 0xc261: return "Bracket 1.5EV 2x(+) cont.";
+				case 0xc269: return "Bracket 1.5EV 2x(-) cont.";
+				case 0x8361: return "Bracket 1.5EV 3x cont.";
+				case 0x8561: return "Bracket 1.5EV 5x cont.";
+				case 0x8761: return "Bracket 1.5EV 7x cont.";
+				case 0xc281: return "Bracket 1.7EV 2x(+) cont.";
+				case 0xc289: return "Bracket 1.7EV 2x(-) cont.";
+				case 0x8381: return "Bracket 1.7EV 3x cont.";
+				case 0x8581: return "Bracket 1.7EV 5x cont.";
+				case 0x8781: return "Bracket 1.7EV 7x cont.";
+				case 0xc221: return "Bracket 2EV 2x(+) cont.";
+				case 0xc229: return "Bracket 2EV 2x(-) cont.";
+				case 0x8321: return "Bracket 2EV 3x cont.";
+				case 0x8521: return "Bracket 2EV 5x cont.";
+				case 0x8721: return "Bracket 2EV 7x cont.";
+				case 0xc251: return "Bracket 2.3EV 2x(+) cont.";
+				case 0xc259: return "Bracket 2.3EV 2x(-) cont.";
+				case 0x8351: return "Bracket 2.3EV 3x cont.";
+				case 0x8551: return "Bracket 2.3EV 5x cont.";
+				case 0xc271: return "Bracket 2.5EV 2x(+) cont.";
+				case 0xc279: return "Bracket 2.5EV 2x(-) cont.";
+				case 0x8371: return "Bracket 2.5EV 3x cont.";
+				case 0x8571: return "Bracket 2.5EV 5x cont.";
+				case 0xc291: return "Bracket 2.7EV 2x(+) cont.";
+				case 0xc299: return "Bracket 2.7EV 2x(-) cont.";
+				case 0x8391: return "Bracket 2.7EV 3x cont.";
+				case 0x8591: return "Bracket 2.7EV 5x cont.";
+				case 0xc231: return "Bracket 3EV 2x(+) cont.";
+				case 0xc239: return "Bracket 3EV 2x(-) cont.";
+				case 0x8331: return "Bracket 3EV 3x cont.";
+				case 0x8531: return "Bracket 3EV 5x cont.";
+				case 0xc236: return "Bracket 1/3EV 2x(+)";
+				case 0xc23e: return "Bracket 1/3EV 2x(-)";
+				case 0x8336: return "Bracket 1/3EV 3x";
+				case 0x8536: return "Bracket 1/3EV 5x";
+				case 0x8736: return "Bracket 1/3EV 7x";
+				case 0x8936: return "Bracket 1/3EV 9x";
+				case 0xc256: return "Bracket 1/3EV 2x(+)";
+				case 0xc25e: return "Bracket 1/3EV 2x(-)";
+				case 0x8356: return "Bracket 1/2EV 3x";
+				case 0x8556: return "Bracket 1/2EV 5x";
+				case 0x8756: return "Bracket 1/2EV 7x";
+				case 0x8956: return "Bracket 1/2EV 9x";
+				case 0xc276: return "Bracket 2/3EV 2x(+)";
+				case 0xc27e: return "Bracket 2/3EV 2x(-)";
+				case 0x8376: return "Bracket 2/3EV 3x";
+				case 0x8576: return "Bracket 2/3EV 5x";
+				case 0x8776: return "Bracket 2/3EV 7x";
+				case 0x8976: return "Bracket 2/3EV 9x";
+				case 0xc210: return "Bracket 1EV 2x(+)";
+				case 0xc218: return "Bracket 1EV 2x(-)";
+				case 0x8310: return "Bracket 1EV 3x";
+				case 0x8510: return "Bracket 1EV 5x";
+				case 0x8710: return "Bracket 1EV 7x";
+				case 0x8910: return "Bracket 1EV 9x";
+				case 0xc240: return "Bracket 1.3EV 2x(+)";
+				case 0xc248: return "Bracket 1.3EV 2x(-)";
+				case 0x8340: return "Bracket 1.3EV 3x";
+				case 0x8540: return "Bracket 1.3EV 5x";
+				case 0x8740: return "Bracket 1.3EV 7x";
+				case 0xc260: return "Bracket 1.5EV 2x(+)";
+				case 0xc268: return "Bracket 1.5EV 2x(-)";
+				case 0x8360: return "Bracket 1.5EV 3x";
+				case 0x8560: return "Bracket 1.5EV 5x";
+				case 0x8760: return "Bracket 1.5EV 7x";
+				case 0xc280: return "Bracket 1.7EV 2x(+)";
+				case 0xc288: return "Bracket 1.7EV 2x(-)";
+				case 0x8380: return "Bracket 1.7EV 3x";
+				case 0x8580: return "Bracket 1.7EV 5x";
+				case 0x8780: return "Bracket 1.7EV 7x";
+				case 0xc220: return "Bracket 2EV 2x(+)";
+				case 0xc228: return "Bracket 2EV 2x(-)";
+				case 0x8320: return "Bracket 2EV 3x";
+				case 0x8520: return "Bracket 2EV 5x";
+				case 0x8720: return "Bracket 2EV 7x";
+				case 0xc250: return "Bracket 2.3EV 2x(+)";
+				case 0xc258: return "Bracket 2.3EV 2x(-)";
+				case 0x8350: return "Bracket 2.3EV 3x";
+				case 0x8550: return "Bracket 2.3EV 5x";
+				case 0xc270: return "Bracket 2.5EV 2x(+)";
+				case 0xc278: return "Bracket 2.5EV 2x(-)";
+				case 0x8370: return "Bracket 2.5EV 3x";
+				case 0x8570: return "Bracket 2.5EV 5x";
+				case 0xc290: return "Bracket 2.7EV 2x(+)";
+				case 0xc298: return "Bracket 2.7EV 2x(-)";
+				case 0x8390: return "Bracket 2.7EV 3x";
+				case 0x8590: return "Bracket 2.7EV 5x";
+				case 0xc230: return "Bracket 3EV 2x(+)";
+				case 0xc238: return "Bracket 3EV 2x(-)";
+				case 0x8330: return "Bracket 3EV 3x";
+				case 0x8530: return "Bracket 3EV 5x";
+				case 0x8018: return "Bracket WB Lo";
+				case 0x8028: return "Bracket WB Hi";
+				case 0x8019: return "Bracket DRO Lo";
+				case 0x8029: return "Bracket DRO Hi";
+				case 0x8040: return "Focus Bracket";
 			}
 			break;
 		}
@@ -573,7 +510,7 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_sony_DRangeOptimize: {
-			switch (code) {
+			switch (code & 0xFF) {
 				case 0x01: return "Off";
 				case 0x1f: return "DRO:Auto";
 				case 0x11: return "DRO:Lv1";
@@ -592,82 +529,79 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_sony_ImageSize: {
-			switch (code) {
-				case 1: return "Large";
-				case 2: return "Medium";
-				case 3: return "Small";
+			switch (code & 0xFF) {
+				case 0x01: return "Large";
+				case 0x02: return "Medium";
+				case 0x03: return "Small";
 			}
 			break;
 		}
 		case ptp_property_sony_ShutterSpeed: {
-			if (code == SONY_ITERATE_DOWN) {
-				return "-";
-			} else if (code == SONY_ITERATE_UP) {
-				return "+";
-			} else if (code == 0) {
-				return "Bulb";
-			} else {
-				int a = (int)code >> 16;
-				int b = (int)code & 0xFFFF;
-				if (b == 10)
-					sprintf(label, "%g\"", (double)a / b);
-				else
-					sprintf(label, "1/%d", b);
+			switch (code) {
+				case SONY_ITERATE_DOWN: return "-";
+				case SONY_ITERATE_UP: return "+";
+				case 0: return "Bulb";
 			}
+			int a = (int)code >> 16;
+			int b = (int)code & 0xFFFF;
+			if (b == 10)
+				sprintf(label, "%g\"", (double)a / b);
+			else
+				sprintf(label, "1/%d", b);
 			return label;
 		}
 		case ptp_property_sony_AspectRatio: {
-			switch (code) {
-				case 1: return "3:2";
-				case 2: return "16:9";
-				case 3: return "4:3";
-				case 4: return "1:1";
+			switch (code & 0xFF) {
+				case 0x01: return "3:2";
+				case 0x02: return "16:9";
+				case 0x03: return "4:3";
+				case 0x04: return "1:1";
 			}
 			break;
 		}
 		case ptp_property_sony_SensorCrop: {
-			switch (code) {
-				case 1: return "OFF";
-				case 2: return "ON";
+			switch (code & 0xFF) {
+				case 0x01: return "OFF";
+				case 0x02: return "ON";
 			}
 			break;
 		}
 		case ptp_property_sony_PictureEffect: {
-			switch (code) {
-				case 32768: return "Off";
-				case 32769: return "Toy camera - normal";
-				case 32770: return "Toy camera - cool";
-				case 32771: return "Toy camera - warm";
-				case 32772: return "Toy camera - green";
-				case 32773: return "Toy camera - magenta";
-				case 32784: return "Pop Color";
-				case 32800: return "Posterisation B/W";
-				case 32801: return "Posterisation Color";
-				case 32816: return "Retro";
-				case 32832: return "Soft high key";
-				case 32848: return "Partial color - red";
-				case 32849: return "Partial color - green";
-				case 32850: return "Partial color - blue";
-				case 32851: return "Partial color - yellow";
-				case 32864: return "High contrast mono";
-				case 32880: return "Soft focus - low";
-				case 32881: return "Soft focus - mid";
-				case 32882: return "Soft focus - high";
-				case 32896: return "HDR painting - low";
-				case 32897: return "HDR painting - mid";
-				case 32898: return "HDR painting - high";
-				case 32912: return "Rich tone mono";
-				case 32928: return "Miniature - auto";
-				case 32929: return "Miniature - top";
-				case 32930: return "Miniature - middle horizontal";
-				case 32931: return "Miniature - bottom";
-				case 32932: return "Miniature - right";
-				case 32933: return "Miniature - middle vertical";
-				case 32934: return "Miniature - left";
-				case 32944: return "Watercolor";
-				case 32960: return "Illustration - low";
-				case 32961: return "Illustration - mid";
-				case 32962: return "Illustration - high";
+			switch (code & 0xFFFF) {
+				case 0x8000: return "Off";
+				case 0x8001: return "Toy camera - normal";
+				case 0x8002: return "Toy camera - cool";
+				case 0x8003: return "Toy camera - warm";
+				case 0x8004: return "Toy camera - green";
+				case 0x8005: return "Toy camera - magenta";
+				case 0x8010: return "Pop Color";
+				case 0x8020: return "Posterisation B/W";
+				case 0x8021: return "Posterisation Color";
+				case 0x8030: return "Retro";
+				case 0x8040: return "Soft high key";
+				case 0x8050: return "Partial color - red";
+				case 0x8051: return "Partial color - green";
+				case 0x8052: return "Partial color - blue";
+				case 0x8053: return "Partial color - yellow";
+				case 0x8060: return "High contrast mono";
+				case 0x8070: return "Soft focus - low";
+				case 0x8071: return "Soft focus - mid";
+				case 0x8072: return "Soft focus - high";
+				case 0x8080: return "HDR painting - low";
+				case 0x8081: return "HDR painting - mid";
+				case 0x8082: return "HDR painting - high";
+				case 0x8090: return "Rich tone mono";
+				case 0x80A0: return "Miniature - auto";
+				case 0x80A1: return "Miniature - top";
+				case 0x80A2: return "Miniature - middle horizontal";
+				case 0x80A3: return "Miniature - bottom";
+				case 0x80A4: return "Miniature - right";
+				case 0x80A5: return "Miniature - middle vertical";
+				case 0x80A6: return "Miniature - left";
+				case 0x80B0: return "Watercolor";
+				case 0x80C0: return "Illustration - low";
+				case 0x80C1: return "Illustration - mid";
+				case 0x80C2: return "Illustration - high";
 			}
 			break;
 		}
@@ -681,7 +615,7 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			return label;
 		}
 		case ptp_property_sony_PCRemoteSaveDest: {
-			switch (code) {
+			switch (code & 0xFF) {
 				case 0x01: return "PC";
 				case 0x10: return "Camera";
 				case 0x11: return "PC+Camera";
@@ -689,7 +623,7 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_sony_FocusArea: {
-			switch (code) {
+			switch (code & 0xFFFF) {
 				case 0x0001: return "Wide";
 				case 0x0002: return "Zone";
 				case 0x0003: return "Center";
@@ -709,68 +643,68 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 		}
 		case ptp_property_sony_LiveViewDisplay: {
 			switch (code) {
-				case 1: return "Setting Effect ON";
-				case 2: return "Setting Effect OFF";
+				case 0x01: return "Setting Effect ON";
+				case 0x02: return "Setting Effect OFF";
 			}
 			break;
 		}
 		case ptp_property_sony_PictureProfile: {
-			switch (code) {
-				case 0: return "None";
-				case 1: return "PP1";
-				case 2: return "PP2";
-				case 3: return "PP3";
-				case 4: return "PP4";
-				case 5: return "PP5";
-				case 6: return "PP6";
-				case 7: return "PP7";
-				case 8: return "PP8";
-				case 9: return "PP9";
-				case 10: return "PP10";
-				case 11: return "PP11";
+			switch (code & 0xFF) {
+				case 0x00: return "None";
+				case 0x01: return "PP1";
+				case 0x02: return "PP2";
+				case 0x03: return "PP3";
+				case 0x04: return "PP4";
+				case 0x05: return "PP5";
+				case 0x06: return "PP6";
+				case 0x07: return "PP7";
+				case 0x08: return "PP8";
+				case 0x09: return "PP9";
+				case 0x0A: return "PP10";
+				case 0x0B: return "PP11";
 			}
 			break;
 		}
 		case ptp_property_sony_CreativeStyle: {
-			switch (code) {
-				case 1: return "Standard";
-				case 2: return "Vivid";
-				case 3: return "Portrait";
-				case 4: return "Landscape";
-				case 5: return "Sunset";
-				case 6: return "Black/White";
-				case 7: return "Light";
-				case 8: return "Neutral";
-				case 9: return "Clear";
-				case 10: return "Deep";
-				case 11: return "Night Scene";
-				case 12: return "Autumn leaves";
-				case 13: return "Sepia";
-				case 14: return "Custom 1";
-				case 15: return "Custom 2";
-				case 16: return "Custom 3";
-				case 17: return "Custom 4";
-				case 18: return "Custom 5";
-				case 19: return "Custom 6";
+			switch (code & 0xFF) {
+				case 0x01: return "Standard";
+				case 0x02: return "Vivid";
+				case 0x03: return "Portrait";
+				case 0x04: return "Landscape";
+				case 0x05: return "Sunset";
+				case 0x06: return "Black/White";
+				case 0x07: return "Light";
+				case 0x08: return "Neutral";
+				case 0x09: return "Clear";
+				case 0x0A: return "Deep";
+				case 0x0B: return "Night Scene";
+				case 0x0C: return "Autumn leaves";
+				case 0x0D: return "Sepia";
+				case 0x0E: return "Custom 1";
+				case 0x0F: return "Custom 2";
+				case 0x10: return "Custom 3";
+				case 0x11: return "Custom 4";
+				case 0x12: return "Custom 5";
+				case 0x13: return "Custom 6";
 			}
 			break;
 		}
 		case ptp_property_sony_MovieFileFormat: {
-			switch (code) {
-				case 3: return "AVCHD";
-				case 8: return "XAVC S 4K";
-				case 9: return "XAVC S HD";
-				case 10: return "XAVC HS 8K";
-				case 11: return "XAVC HS 4K";
-				case 12: return "XAVC S 4K";
-				case 13: return "XAVC S HD";
-				case 14: return "XAVC S-I 4K";
-				case 15: return "XAVC S-I HD";
+			switch (code & 0xFF) {
+				case 0x03: return "AVCHD";
+				case 0x08: return "XAVC S 4K";
+				case 0x09: return "XAVC S HD";
+				case 0x0A: return "XAVC HS 8K";
+				case 0x0B: return "XAVC HS 4K";
+				case 0x0C: return "XAVC S 4K";
+				case 0x0D: return "XAVC S HD";
+				case 0x0E: return "XAVC S-I 4K";
+				case 0x0F: return "XAVC S-I HD";
 			}
 			break;
 		}
 		case ptp_property_sony_MovieRecordSetting: {
-			switch (code) {
+			switch (code & 0xFF) {
 				case 0x01: return "60p 50M";
 				case 0x02: return "30p 50M";
 				case 0x03: return "24p 50M";
@@ -794,7 +728,7 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_sony_MemoryCameraSettings: {
-			switch (code) {
+			switch (code & 0xFF) {
 				case 0x00: return "Not selected";
 				case 0x01: return "1";
 				case 0x02: return "2";
@@ -807,35 +741,35 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_sony_IntervalShoot: {
-			switch (code) {
-				case 1: return "Off";
-				case 2: return "On";
+			switch (code & 0xFF) {
+				case 0x01: return "Off";
+				case 0x02: return "On";
 			}
 			break;
 		}
 		case ptp_property_sony_JPEGQuality: {
-			switch (code) {
-				case 1: return "X.FINE";
-				case 2: return "FINE";
-				case 3: return "STD";
-				case 4: return "LIGHT";
+			switch (code & 0xFF) {
+				case 0x01: return "X.FINE";
+				case 0x02: return "FINE";
+				case 0x03: return "STD";
+				case 0x04: return "LIGHT";
 			}
 			break;
 		}
 		case ptp_property_sony_CompressionSetting: {
-			switch (code) {
-				case 1: return "RAW";
-				case 2: return "RAW+JPEG";
-				case 3: return "JPEG";
-				case 4: return "RAW+HEIF";
-				case 5: return "HEIF";
+			switch (code & 0xFF) {
+				case 0x01: return "RAW";
+				case 0x02: return "RAW+JPEG";
+				case 0x03: return "JPEG";
+				case 0x04: return "RAW+HEIF";
+				case 0x05: return "HEIF";
 			}
 			break;
 		}
 		case ptp_property_sony_FocusMagnifier: {
-			switch (code) {
-				case 0xffffffff: return "None";
-				case 0xaffffffff: return "x1.0";
+			switch (code & 0xFFFFFFFFFF) {
+				case 0x00ffffffff: return "None";
+				case 0x0affffffff: return "x1.0";
 				case 0x15ffffffff: return "x2.1";
 				case 0x29ffffffff: return "x4.1";
 				case 0x2affffffff: return "x4.2";
@@ -853,106 +787,106 @@ char *ptp_property_sony_value_code_label(indigo_device *device, uint16_t propert
 			break;
 		}
 		case ptp_property_sony_AFTrackingSensitivity: {
-			switch (code) {
-				case 1: return "1(Locked on)";
-				case 2: return "2";
-				case 3: return "3(Standard)";
-				case 4: return "4";
-				case 5: return "5(Responsive)";
+			switch (code & 0xFF) {
+				case 0x01: return "1(Locked on)";
+				case 0x02: return "2";
+				case 0x03: return "3(Standard)";
+				case 0x04: return "4";
+				case 0x05: return "5(Responsive)";
 			}
 			break;
 		}
 		case ptp_property_sony_TouchFuncInShooting: {
-			switch (code) {
-				case 1: return "Off";
-				case 2: return "Touch Shutter";
-				case 3: return "Touch Focus";
-				case 4: return "Touch Tracking";
-				case 5: return "Touch AE";
-				case 6: return "Touch Shutter+AE On";
-				case 7: return "Touch Shutter+AE Off";
-				case 8: return "Touch Focus+AE On";
-				case 9: return "Touch Focus+AE Off";
-				case 10: return "Touch Tracking+AE On";
-				case 11: return "Touch Tracking+AE Off";
+			switch (code & 0xFF) {
+				case 0x01: return "Off";
+				case 0x02: return "Touch Shutter";
+				case 0x03: return "Touch Focus";
+				case 0x04: return "Touch Tracking";
+				case 0x05: return "Touch AE";
+				case 0x06: return "Touch Shutter+AE On";
+				case 0x07: return "Touch Shutter+AE Off";
+				case 0x08: return "Touch Focus+AE On";
+				case 0x09: return "Touch Focus+AE Off";
+				case 0x0A: return "Touch Tracking+AE On";
+				case 0x0B: return "Touch Tracking+AE Off";
 			}
 			break;
 		}
 		case ptp_property_sony_ZoomSetting: {
-			switch (code) {
-				case 1: return "Optical zoom only";
-				case 3: return "ClearImage Zoom";
-				case 4: return "Digital Zoom";
+			switch (code & 0xFF) {
+				case 0x01: return "Optical zoom only";
+				case 0x03: return "ClearImage Zoom";
+				case 0x04: return "Digital Zoom";
 			}
 			break;
 		}
 		case ptp_property_sony_WirelessFlash: {
-			switch (code) {
-				case 0: return "Off";
-				case 1: return "On";
+			switch (code & 0xFF) {
+				case 0x00: return "Off";
+				case 0x01: return "On";
 			}
 			break;
 		}
 		case ptp_property_sony_RedEyeReduction: {
-			switch (code) {
-				case 0: return "Off";
-				case 1: return "On";
+			switch (code & 0xFF) {
+				case 0x00: return "Off";
+				case 0x01: return "On";
 			}
 			break;
 		}
 		case ptp_property_sony_PCSaveImageSize: {
-			switch (code) {
-				case 1: return "Original";
-				case 2: return "2M";
+			switch (code & 0xFF) {
+				case 0x01: return "Original";
+				case 0x02: return "2M";
 			}
 			break;
 		}
 		case ptp_property_sony_PCSaveImg: {
-			switch (code) {
-				case 1: return "RAW+JPEG";
-				case 2: return "JPEG";
-				case 3: return "RAW";
-				case 4: return "RAW+HEIF";
-				case 5: return "HEIF";
+			switch (code & 0xFF) {
+				case 0x01: return "RAW+JPEG";
+				case 0x02: return "JPEG";
+				case 0x03: return "RAW";
+				case 0x04: return "RAW+HEIF";
+				case 0x05: return "HEIF";
 			}
 			break;
 		}
 		case ptp_property_sony_HiFrequencyFlicker: {
-			switch (code) {
-				case 0: return "Off";
-				case 1: return "On";
+			switch (code & 0xFF) {
+				case 0x00: return "Off";
+				case 0x01: return "On";
 			}
 			break;
 		}
 		case ptp_property_sony_RecFrameRate: {
-			switch (code) {
-				case 1: return "120p";
-				case 3: return "60p";
-				case 5: return "30p";
-				case 7: return "24p";
+			switch (code & 0xFF) {
+				case 0x01: return "120p";
+				case 0x03: return "60p";
+				case 0x05: return "30p";
+				case 0x07: return "24p";
 			}
 			break;
 		}
 		case ptp_property_sony_JPEG_HEIFSwitch: {
-			switch (code) {
-				case 1: return "JPEG";
-				case 2: return "HEIF(4:2:2)";
-				case 3: return "HEIF(4:2:0)";
+			switch (code & 0xFF) {
+				case 0x01: return "JPEG";
+				case 0x02: return "HEIF(4:2:2)";
+				case 0x03: return "HEIF(4:2:0)";
 			}
 			break;
 		}
 		case ptp_property_sony_SaveHEIFSize: {
-			switch (code) {
-				case 1: return "Large Size";
-				case 2: return "Small Size";
+			switch (code & 0xFF) {
+				case 0x01: return "Large Size";
+				case 0x02: return "Small Size";
 			}
 			break;
 		}
 		case ptp_property_sony_ZoomState: {
-			switch (code) {
-				case 0: return "Normal";
-				case 1: return "x1.0";
-				case 2: return "Zooming";
+			switch (code & 0xFF) {
+				case 0x00: return "Normal";
+				case 0x01: return "x1.0";
+				case 0x02: return "Zooming";
 			}
 			break;
 		}
@@ -1262,26 +1196,19 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			case ptp_property_sony_ImageSize:
 				target->count = 3;
 				break;
-			case ptp_property_ExposureBiasCompensation:
-				target->count = 3;
-				target->value.sw.values[0] = SONY_ITERATE_DOWN;
-				target->value.sw.values[1] = target->value.number.value;
-				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
-				break;
 			case ptp_property_sony_ISO:
 				target->count = 3;
 				target->value.sw.values[0] = SONY_ITERATE_DOWN;
 				target->value.sw.values[1] = target->value.number.value;
 				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
+				target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 0x8050 || mode == 0x8051 || mode == 0x8052 || mode == 0x8053;
 				break;
 			case ptp_property_sony_ShutterSpeed:
 				target->count = 3;
 				target->value.sw.values[0] = SONY_ITERATE_DOWN;
 				target->value.sw.values[1] = target->value.number.value;
 				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 1 || mode == 4 || mode == 32850 || mode == 32851;
+				target->writable = mode == 1 || mode == 4 || mode == 0x8052 || mode == 0x8053;
 				SONY_PRIVATE_DATA->shutter_speed = target->value.number.value;
 				break;
 			case ptp_property_FNumber:
@@ -1289,13 +1216,49 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 				target->value.sw.values[0] = SONY_ITERATE_DOWN;
 				target->value.sw.values[1] = target->value.number.value;
 				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 1 ||  mode == 3 ||mode == 32849 || mode == 32851;
+				target->writable = mode == 1 ||  mode == 3 || mode == 0x8051 || mode == 0x8053;
+				break;
+		}
+	} else {
+		switch (code) {
+			case ptp_property_sony_ISO:
+				if (target->count == 0) {
+					target->count = 1;
+					target->value.sw.values[1] = target->value.number.value;
+					target->writable = false;
+				} else {
+					target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 0x8050 || mode == 0x8051 || mode == 0x8052 || mode == 0x8053;
+				}
+				break;
+			case ptp_property_sony_ShutterSpeed:
+				if (target->count == 0) {
+					target->count = 1;
+					target->value.sw.values[1] = target->value.number.value;
+					target->writable = false;
+				} else {
+					target->writable = mode == 1 || mode == 4 || mode == 0x8052 || mode == 0x8053;
+				}
+				SONY_PRIVATE_DATA->shutter_speed = target->value.number.value;
+				break;
+			case ptp_property_FNumber:
+				if (target->count == 0) {
+					target->count = 1;
+					target->value.sw.values[1] = target->value.number.value;
+					target->writable = false;
+				} else {
+					target->writable = mode == 1 ||  mode == 3 || mode == 0x8051 || mode == 0x8053;
+				}
 				break;
 		}
 	}
 	switch (code) {
+		case ptp_property_ExposureBiasCompensation: // never really writable and sometimes not a list
+			target->count = 1;
+			target->value.sw.values[0] = target->value.number.value;
+			target->writable = false;
+			break;
 		case ptp_property_FocusMode:
-			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
+			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 0x8050 || mode == 0x8051 || mode == 0x8052 || mode == 0x8053;
 			SONY_PRIVATE_DATA->focus_mode = target->value.number.value;
 			break;
 		case ptp_property_ExposureMeteringMode:
@@ -1306,8 +1269,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 				target->count = 1;
 				target->value.sw.values[0] = target->value.sw.value;
 			}
-			if (SONY_PRIVATE_DATA->mode != target->value.sw.value) {
-				SONY_PRIVATE_DATA->mode = target->value.sw.value;
+			int mode = target->value.sw.value & 0xFFFF;
+			if (SONY_PRIVATE_DATA->mode != mode) {
+				SONY_PRIVATE_DATA->mode = mode;
 				ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_PropertyChanged, NULL);
 			}
 			break;
@@ -1468,7 +1432,6 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 	if (IS_OLD_API()) {
 		switch (property->code) {
-			case ptp_property_ExposureBiasCompensation:
 			case ptp_property_sony_ISO:
 			case ptp_property_sony_ShutterSpeed:
 			case ptp_property_FNumber: {
