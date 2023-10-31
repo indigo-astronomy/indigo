@@ -813,13 +813,13 @@ static void kill_children() {
 	indigo_device *device = agent_device;
 	if (device && device->private_data) {
 		if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
-			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
 		indigo_device **additional_devices = DEVICE_CONTEXT->additional_device_instances;
 		if (additional_devices) {
 			for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
 				device = additional_devices[i];
 				if (device && device->private_data && ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
-					kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+					kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
 			}
 		}
 	}
