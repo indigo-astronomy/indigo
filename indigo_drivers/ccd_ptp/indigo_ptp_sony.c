@@ -1201,14 +1201,14 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 				target->value.sw.values[0] = SONY_ITERATE_DOWN;
 				target->value.sw.values[1] = target->value.number.value;
 				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
+				target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 0x8050 || mode == 0x8051 || mode == 0x8052 || mode == 0x8053;
 				break;
 			case ptp_property_sony_ShutterSpeed:
 				target->count = 3;
 				target->value.sw.values[0] = SONY_ITERATE_DOWN;
 				target->value.sw.values[1] = target->value.number.value;
 				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 1 || mode == 4 || mode == 32850 || mode == 32851;
+				target->writable = mode == 1 || mode == 4 || mode == 0x8052 || mode == 0x8053;
 				SONY_PRIVATE_DATA->shutter_speed = target->value.number.value;
 				break;
 			case ptp_property_FNumber:
@@ -1216,7 +1216,38 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 				target->value.sw.values[0] = SONY_ITERATE_DOWN;
 				target->value.sw.values[1] = target->value.number.value;
 				target->value.sw.values[2] = SONY_ITERATE_UP;
-				target->writable = mode == 1 ||  mode == 3 ||mode == 32849 || mode == 32851;
+				target->writable = mode == 1 ||  mode == 3 || mode == 0x8051 || mode == 0x8053;
+				break;
+		}
+	} else {
+		switch (code) {
+			case ptp_property_sony_ISO:
+				if (target->count == 0) {
+					target->count = 1;
+					target->value.sw.values[1] = target->value.number.value;
+					target->writable = false;
+				} else {
+					target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 0x8050 || mode == 0x8051 || mode == 0x8052 || mode == 0x8053;
+				}
+				break;
+			case ptp_property_sony_ShutterSpeed:
+				if (target->count == 0) {
+					target->count = 1;
+					target->value.sw.values[1] = target->value.number.value;
+					target->writable = false;
+				} else {
+					target->writable = mode == 1 || mode == 4 || mode == 0x8052 || mode == 0x8053;
+				}
+				SONY_PRIVATE_DATA->shutter_speed = target->value.number.value;
+				break;
+			case ptp_property_FNumber:
+				if (target->count == 0) {
+					target->count = 1;
+					target->value.sw.values[1] = target->value.number.value;
+					target->writable = false;
+				} else {
+					target->writable = mode == 1 ||  mode == 3 || mode == 0x8051 || mode == 0x8053;
+				}
 				break;
 		}
 	}
@@ -1227,7 +1258,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			target->writable = false;
 			break;
 		case ptp_property_FocusMode:
-			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 32848 || mode == 32849 || mode == 32850 || mode == 32851;
+			target->writable = mode == 1 || mode == 2 || mode == 3 || mode == 4 || mode == 0x8050 || mode == 0x8051 || mode == 0x8052 || mode == 0x8053;
 			SONY_PRIVATE_DATA->focus_mode = target->value.number.value;
 			break;
 		case ptp_property_ExposureMeteringMode:
@@ -1238,8 +1269,9 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 				target->count = 1;
 				target->value.sw.values[0] = target->value.sw.value;
 			}
-			if (SONY_PRIVATE_DATA->mode != target->value.sw.value) {
-				SONY_PRIVATE_DATA->mode = target->value.sw.value;
+			int mode = target->value.sw.value & 0xFFFF;
+			if (SONY_PRIVATE_DATA->mode != mode) {
+				SONY_PRIVATE_DATA->mode = mode;
 				ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_PropertyChanged, NULL);
 			}
 			break;
