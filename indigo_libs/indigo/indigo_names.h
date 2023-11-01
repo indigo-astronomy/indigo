@@ -664,6 +664,27 @@
  */
 #define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM_NAME                     "WHITE_TRESHOLD"
 
+//----------------------------------------------------------------------------------------
+/** CCD_JPEG_STRETCH_PRESETS property name.
+ */
+#define CCD_JPEG_STRETCH_PRESETS_PROPERTY_NAME         "CCD_JPEG_STRETCH_PRESETS"
+
+/** CCD_JPEG_STRETCH_PRESETS.SLIGHT property item name.
+ */
+#define  CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM_NAME      "SLIGHT"
+
+/** CCD_JPEG_STRETCH_PRESETS.MODERATE property item name.
+ */
+#define  CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM_NAME      "MODERATE"
+
+/** CCD_JPEG_STRETCH_PRESETS.NORMAL property item name.
+ */
+#define  CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM_NAME      "NORMAL"
+
+/** CCD_JPEG_STRETCH_PRESETS.HARD property item name.
+ */
+#define  CCD_JPEG_STRETCH_PRESETS_HARD_ITEM_NAME      "HARD"
+
 //------------------------------------------------------------------------
 /** CCD_RBI_FLUSH_ENABLE property name.
  */
