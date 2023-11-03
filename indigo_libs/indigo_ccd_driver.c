@@ -324,8 +324,16 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			if (CCD_JPEG_SETTINGS_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(CCD_JPEG_SETTINGS_QUALITY_ITEM, CCD_JPEG_SETTINGS_QUALITY_ITEM_NAME, "Conversion quality", 10, 100, 11, 90);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME, "Target mean background", 0, 1, 0.05, 0.25);
-			indigo_init_number_item(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME, "Clipping point", -3, 0, 0.1, -2.8);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM, CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM_NAME, "Target mean background", 0, 1, 0.05, ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background);
+			indigo_init_number_item(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM, CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM_NAME, "Clipping point", -3, 0, 0.1, ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point);
+			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
+			CCD_JPEG_STRETCH_PRESETS_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_JPEG_STRETCH_PRESETS_PROPERTY_NAME, CCD_IMAGE_GROUP, "JPEG Strecthing Presets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 4);
+			if (CCD_JPEG_STRETCH_PRESETS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM, CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM_NAME, "Slight", false);
+			indigo_init_switch_item(CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM, CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM_NAME, "Moderate", false);
+			indigo_init_switch_item(CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM, CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM_NAME, "Normal", true);
+			indigo_init_switch_item(CCD_JPEG_STRETCH_PRESETS_HARD_ITEM, CCD_JPEG_STRETCH_PRESETS_HARD_ITEM_NAME, "Hard", false);
 			// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
 			CCD_RBI_FLUSH_ENABLE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_RBI_FLUSH_ENABLE_PROPERTY_NAME, CCD_ADVANCED_GROUP, "RBI flush", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (CCD_RBI_FLUSH_ENABLE_PROPERTY == NULL)
@@ -411,6 +419,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, CCD_REMOVE_FITS_HEADER_PROPERTY, NULL);
 		if (indigo_property_match(CCD_JPEG_SETTINGS_PROPERTY, property))
 			indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+		if (indigo_property_match(CCD_JPEG_STRETCH_PRESETS_PROPERTY, property))
+			indigo_define_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
 		if (indigo_property_match(CCD_RBI_FLUSH_ENABLE_PROPERTY, property))
 			indigo_define_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 		if (indigo_property_match(CCD_RBI_FLUSH_PROPERTY, property))
@@ -474,6 +484,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_SET_FITS_HEADER_PROPERTY, NULL);
 			indigo_define_property(device, CCD_REMOVE_FITS_HEADER_PROPERTY, NULL);
 			indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+			indigo_define_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
 			CCD_CONTEXT->countdown_enabled = true;
@@ -516,6 +527,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_SET_FITS_HEADER_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_REMOVE_FITS_HEADER_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
 		}
@@ -545,6 +557,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			strcpy(CCD_SET_FITS_HEADER_NAME_ITEM->text.value, name_backup);
 			strcpy(CCD_SET_FITS_HEADER_VALUE_ITEM->text.value,value_backup);
 			indigo_save_property(device, NULL, CCD_JPEG_SETTINGS_PROPERTY);
+			indigo_save_property(device, NULL, CCD_JPEG_STRETCH_PRESETS_PROPERTY);
 			indigo_save_property(device, NULL, CCD_RBI_FLUSH_ENABLE_PROPERTY);
 			indigo_save_property(device, NULL, CCD_RBI_FLUSH_PROPERTY);
 		}
@@ -792,6 +805,63 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_JPEG_SETTINGS
 		indigo_property_copy_values(CCD_JPEG_SETTINGS_PROPERTY, property, false);
 		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_JPEG_STRETCH_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		if (
+			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].clipping_point) < 0.001 &&
+			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].target_background) < 0.001
+		) {
+			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM, true);
+		} else if (
+			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].clipping_point) < 0.001 &&
+			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].target_background) < 0.001
+		) {
+			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM, true);
+		} else if (
+			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point) < 0.001 &&
+			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background) < 0.001
+		) {
+			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM, true);
+		} else if (
+			fabs(CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].clipping_point) < 0.001 &&
+			fabs(CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value - ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].target_background) < 0.001
+		) {
+			indigo_set_switch(CCD_JPEG_STRETCH_PRESETS_PROPERTY, CCD_JPEG_STRETCH_PRESETS_HARD_ITEM, true);
+		} else {
+			CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM->sw.value =
+			CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM->sw.value =
+			CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM->sw.value =
+			CCD_JPEG_STRETCH_PRESETS_HARD_ITEM->sw.value = false;
+		}
+		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
+		indigo_update_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(CCD_JPEG_STRETCH_PRESETS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_JPEG_STRETCH_PRESETS
+		indigo_property_copy_values(CCD_JPEG_STRETCH_PRESETS_PROPERTY, property, false);
+		CCD_JPEG_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
+		CCD_JPEG_STRETCH_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
+		if (CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM->sw.value) {
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].clipping_point;
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].target_background;
+		} else if(CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM->sw.value) {
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].clipping_point;
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].target_background;
+		} else if(CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM->sw.value) {
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point;
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background;
+		} else if(CCD_JPEG_STRETCH_PRESETS_HARD_ITEM->sw.value) {
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
+			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].clipping_point;
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
+			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].target_background;
+		}
+		indigo_update_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
 		indigo_update_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_RBI_FLUSH_ENABLE
@@ -853,6 +923,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_SET_FITS_HEADER_PROPERTY);
 	indigo_release_property(CCD_REMOVE_FITS_HEADER_PROPERTY);
 	indigo_release_property(CCD_JPEG_SETTINGS_PROPERTY);
+	indigo_release_property(CCD_JPEG_STRETCH_PRESETS_PROPERTY);
 	indigo_release_property(CCD_RBI_FLUSH_ENABLE_PROPERTY);
 	indigo_release_property(CCD_RBI_FLUSH_PROPERTY);
 	if (CCD_CONTEXT->preview_image)

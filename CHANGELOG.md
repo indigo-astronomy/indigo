@@ -2,6 +2,48 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-250] - 02 Thu Wed 2023
+### Overall:
+- indigo_ccd_driver: JPEG previews are debayered
+- indigo_ccd_driver: JPEG previews use STF for stretching (also stretch parameter items changed)
+- indigo_ccd_driver: add 4 stretch presets - SLIGHT, MODERATE, NORMAL & HARD
+- indigo_mount_driver: add MOUNT_TARGET_INFO property to show rise/transit/set times and time to next transit of the object
+
+### Driver fixes:
+- indigo_agent_astrometry:
+	- astrometry processes are killed more aggressively
+
+- indigo_agent_scripting:
+	- item_defs parameter added to indigo_on_define_property call
+
+- indigo_focuser_primaluce:
+	- support ESATTO2
+
+- indigo_gps_nmea:
+	- typo fixed
+	- lost connection handled correctly
+
+- indigo_mount_lx200:
+	- OnStep: park state fixed
+	- OnStep: times fix
+	- OnStep: side of pier support
+
+- indigo_mount_nexstar:
+	- error messages fixed
+
+- indigo_ccd_touptek & family:
+	- increase exposure wachdog timeout
+	- update SDK v.54.23640.20231022
+
+- indigo_ccd_ptp:
+	- implement new API for SONY cameras
+	- ptp_property_ExposureBiasCompensation is never writable
+	- all list values masked to avoid future surprises and case values translated to hex
+	- forced a correct behaviour of aperture and shutter during exposure mode change
+
+- indigo_ccd_simulator:
+	- BAYERPAT added
+
 # [2.0-248] - 09 Oct Mon 2023
 ### Overall:
 - indigo_ccd_driver: default image directory changed (if not sandboxed) to avoid clutter in the user's home

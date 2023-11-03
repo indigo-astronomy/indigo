@@ -572,11 +572,11 @@ extern "C" void indigo_compute_stretch_params_16_bggr(const uint16_t *buffer, in
 }
 
 extern "C" void indigo_stretch_8(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights) {
-	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, 1, shadows[0], midtones[0], highlights[0], false);
+	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, 1, shadows[0], midtones[0], highlights[0], 1);
 }
 
 extern "C" void indigo_stretch_16(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights) {
-	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, 1, shadows[0], midtones[0], highlights[0], false);
+	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, 1, shadows[0], midtones[0], highlights[0], 1);
 }
 
 extern "C" void indigo_stretch_24(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
