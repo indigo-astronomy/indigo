@@ -1026,6 +1026,7 @@
 		59019E0A1DE0AC7400CCB3ED /* indigo_client.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_client.h; sourceTree = "<group>"; };
 		5903563A25AB0BCC001DC5DB /* solver_test.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = solver_test.c; sourceTree = "<group>"; };
 		5903564325AB0C02001DC5DB /* solver_test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = solver_test; sourceTree = BUILT_PRODUCTS_DIR; };
+		590929A62AF667200040B8FC /* 99-sx_wheel.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-sx_wheel.rules"; sourceTree = "<group>"; };
 		590A863F1DB80A04002F12FB /* indigo_ccd_asi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_asi_main.c; sourceTree = "<group>"; };
 		590A86401DB80A04002F12FB /* indigo_ccd_asi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_asi.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		590A86411DB80A04002F12FB /* indigo_ccd_asi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_asi.h; sourceTree = "<group>"; };
@@ -9500,6 +9501,7 @@
 			isa = PBXGroup;
 			children = (
 				594107CC1EC8E8AB00C44F92 /* README.md */,
+				590929A62AF667200040B8FC /* 99-sx_wheel.rules */,
 				59C8E7FA1DBBDF7400AA3F0A /* indigo_wheel_sx.h */,
 				59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */,
 				59C8E7F81DBBDF7400AA3F0A /* indigo_wheel_sx_main.c */,
