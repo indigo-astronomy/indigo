@@ -278,15 +278,13 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 		}
 	} else {
 		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
-		const int chunk = size / max_threads;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
+			const int chunk = ceil(height / (double)max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
-				if (end > size) {
-					end = size;
-				}
+				end = (end > height) ? height : end;
 				for (int i = start; i < end; i++) {
 					output_buffer[i * output_sample] = stretch(input_buffer[i * input_sample] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
 				}
@@ -349,15 +347,13 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 		}
 	} else {
 		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
-		const int chunk = height / max_threads;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
+			const int chunk = ceil(height / (double)max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
-				if (end > height) {
-					end = height;
-				}
+				end = (end > height) ? height : end;
 				int input_index = start * width;
 				for (int row_index = start; row_index < end; row_index++) {
 					for (int column_index = 0; column_index < width; column_index++) {
@@ -426,15 +422,13 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 		}
 	} else {
 		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
-		const int chunk = height / max_threads;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
+			const int chunk = ceil(height / (double)max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
-				if (end > height) {
-					end = height;
-				}
+				end = (end > height) ? height : end;
 				int input_index = start * width;
 				for (int row_index = start; row_index < end; row_index++) {
 					for (int column_index = 0; column_index < width; column_index++) {
@@ -474,15 +468,13 @@ template <typename T> void indigo_debayer(T *input_buffer, int width, int height
 		}
 	} else {
 		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
-		const int chunk = height / max_threads;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
+			const int chunk = ceil(height / (double)max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
-				if (end > height) {
-					end = height;
-				}
+				end = (end > height) ? height : end;
 				int input_index = start * width;
 				for (int row_index = start; row_index < end; row_index++) {
 					for (int column_index = 0; column_index < width; column_index++) {
