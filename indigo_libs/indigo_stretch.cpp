@@ -31,6 +31,7 @@
 #include <math.h>
 #include <unistd.h>
 
+#define INDIGO_DEFAULT_THREADS 4
 #define MIN_SIZE_TO_PARALLELIZE 0x3FFFF
 //#define HISTOGRAM_AWB
 
@@ -277,7 +278,8 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 			output_buffer[i * output_sample] = stretch(input_buffer[i * input_sample] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
 		}
 	} else {
-		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		max_threads = (max_threads > 0) ? max_threads : INDIGO_DEFAULT_THREADS;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
 			const int chunk = ceil(height / (double)max_threads);
@@ -346,7 +348,8 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 			}
 		}
 	} else {
-		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		max_threads = (max_threads > 0) ? max_threads : INDIGO_DEFAULT_THREADS;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
 			const int chunk = ceil(height / (double)max_threads);
@@ -421,7 +424,8 @@ template <typename T> void indigo_debayer_stretch(T *input_buffer, int width, in
 			}
 		}
 	} else {
-		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		max_threads = (max_threads > 0) ? max_threads : INDIGO_DEFAULT_THREADS;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
 			const int chunk = ceil(height / (double)max_threads);
@@ -467,7 +471,8 @@ template <typename T> void indigo_debayer(T *input_buffer, int width, int height
 			}
 		}
 	} else {
-		const int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
+		max_threads = (max_threads > 0) ? max_threads : INDIGO_DEFAULT_THREADS;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
 			const int chunk = ceil(height / (double)max_threads);
