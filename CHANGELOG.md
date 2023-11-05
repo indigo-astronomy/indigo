@@ -2,7 +2,16 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-250] - 02 Thu Wed 2023
+# [2.0-252] - 05 Nov Sun 2023
+### Overall:
+- indigo_ccd_driver: JPEG previews - crash fixed
+- indigo_ccd_driver: JPEG previews - fix broken lines at the botom of the frame
+
+### Driver fixes:
+- indigo_wheel_sx:
+	- USB rules file added
+
+# [2.0-250] - 02 Nov Thu 2023
 ### Overall:
 - indigo_ccd_driver: JPEG previews are debayered
 - indigo_ccd_driver: JPEG previews use STF for stretching (also stretch parameter items changed)
@@ -43,6 +52,7 @@ All notable changes to INDIGO framework will be documented in this file.
 
 - indigo_ccd_simulator:
 	- BAYERPAT added
+
 
 # [2.0-248] - 09 Oct Mon 2023
 ### Overall:
