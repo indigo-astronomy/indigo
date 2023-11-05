@@ -171,7 +171,8 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	std::vector<T> samples(sample_size);
 	if (sample_rows_by == 1) {
 		int i = 0;
-		for (int index = 0; i < sample_size; index += sample_columns_by) {
+		int size = width * height;
+		for (int index = 0; index < size; index += sample_columns_by) {
 			T value = buffer[index];
 			histogram[(samples[i++] = value) / histo_divider]++;
 			total += value;
@@ -197,7 +198,8 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	std::vector<T> deviations(sample_size);
 	if (sample_rows_by == 1) {
 		int i = 0;
-		for (int index = 0; i < sample_size; index += sample_columns_by) {
+		int size = width * height;
+		for (int index = 0; index < size; index += sample_columns_by) {
 			deviations[i++] = abs(median_sample - buffer[index]);
 		}
 	} else {
