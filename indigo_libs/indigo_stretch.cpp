@@ -164,7 +164,7 @@ template <typename T> static inline void debayer(T *raw, int index, int row, int
 // B, C - background, contrast params
 
 template <typename T> void indigo_compute_stretch_params(const T *buffer, int width, int height, int sample_columns_by, int sample_rows_by, double *shadows, double *midtones, double *highlights, unsigned long *histogram, unsigned long *totals, float B = 0.25, float C = -2.8) {
-	const int sample_size = width * height / sample_columns_by / sample_rows_by;
+	const int sample_size = ceil((float)width / sample_columns_by) * ceil((float)height / sample_rows_by);
 	const int sample_size_2 = sample_size / 2;
 	const int histo_divider = (sizeof(T) == 1) ? 1 : 256; // TBD for 32 bits
 	unsigned long total = 0;

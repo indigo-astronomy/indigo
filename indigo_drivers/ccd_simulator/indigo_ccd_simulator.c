@@ -353,7 +353,7 @@ static void create_frame(indigo_device *device) {
 			{ 0 }
 		};
 
-		indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, keywords, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
+		indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, strlen(BAYERPAT_ITEM->text.value) == 4 ? keywords : NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 	} else {
 		uint16_t *raw = (uint16_t *)((device == PRIVATE_DATA->guider ? PRIVATE_DATA->guider_image : PRIVATE_DATA->imager_image) + FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
