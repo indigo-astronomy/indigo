@@ -282,11 +282,11 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 		max_threads = (max_threads > 0) ? max_threads : INDIGO_DEFAULT_THREADS;
 		std::thread threads[max_threads];
 		for (int rank = 0; rank < max_threads; rank++) {
-			const int chunk = ceil(height / (double)max_threads);
+			const int chunk = ceil(size / (double)max_threads);
 			threads[rank] = std::thread([=]() {
 				const int start = chunk * rank;
 				int end = start + chunk;
-				end = (end > height) ? height : end;
+				end = (end > size) ? size : end;
 				for (int i = start; i < end; i++) {
 					output_buffer[i * output_sample] = stretch(input_buffer[i * input_sample] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
 				}
