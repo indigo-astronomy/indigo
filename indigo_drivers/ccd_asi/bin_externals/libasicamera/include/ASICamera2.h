@@ -110,6 +110,11 @@ typedef enum ASI_ERROR_CODE{ //ASI ERROR CODE
 	ASI_ERROR_EXPOSURE_IN_PROGRESS,
 	ASI_ERROR_GENERAL_ERROR,//general error, eg: value is out of valid range
 	ASI_ERROR_INVALID_MODE,//the current mode is wrong
+	ASI_ERROR_GPS_NOT_SUPPORTED, //this camera do not support GPS
+	ASI_ERROR_GPS_VER_ERR, //the FPGA GPS ver is too low
+	ASI_ERROR_GPS_FPGA_ERR, //failed to read or write data to FPGA
+	ASI_ERROR_GPS_PARAM_OUT_OF_RANGE, //start line or end line out of range, should make them between 0 ~ MaxHeight - 1
+	ASI_ERROR_GPS_DATA_INVALID, //GPS has not yet found the satellite or FPGA cannot read GPS data
 	ASI_ERROR_END
 }ASI_ERROR_CODE;
 
@@ -170,7 +175,12 @@ typedef enum ASI_CONTROL_TYPE{ //Control type//
 	ASI_FAN_ON,
 	ASI_PATTERN_ADJUST,
 	ASI_ANTI_DEW_HEATER,
-
+	ASI_FAN_ADJUST,
+	ASI_PWRLED_BRIGNT,
+	ASI_GPS_SUPPORT,
+	ASI_GPS_START_LINE,
+	ASI_GPS_END_LINE,
+	ASI_ROLLING_INTERVAL,//microsecond
 }ASI_CONTROL_TYPE;
 
 typedef struct _ASI_CONTROL_CAPS
@@ -203,6 +213,27 @@ typedef ASI_ID ASI_SN;
 typedef struct _ASI_SUPPORTED_MODE{
 	ASI_CAMERA_MODE SupportedCameraMode[16];// this array will content with the support camera mode type.ASI_MODE_END is the end of supported camera mode
 }ASI_SUPPORTED_MODE;
+
+typedef struct _ASI_DATE_TIME{
+	int Year; 
+	int Month; 
+	int Day;
+	int Hour;
+	int Minute;
+	int Second;
+	int Msecond;
+	int Usecond;  //Minimum Unit 0.1us, Maximum number 9999
+	char Unused[64]; //Using the Unused field to store concatenated strings
+} ASI_DATE_TIME;
+
+typedef struct _ASI_GPS_DATA {
+	ASI_DATE_TIME Datetime;
+	double Latitude;  // +: North Latitude -: South Latitude
+	double Longitude; // +: East longitude -: West longitude
+	int Altitude;     // Minimum Unit 0.1m, Maximum number 99999
+	int SatelliteNum; // Maximum number 99
+	char Unused[64];  
+} ASI_GPS_DATA;
 
 #ifndef __cplusplus
 #define ASI_CONTROL_TYPE int
@@ -931,6 +962,25 @@ ASI_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of b
 ASI_ERROR_GENERAL_ERROR : the parameter is not right
 ***************************************************************************/
 ASICAMERA_API ASI_ERROR_CODE  ASIGetTriggerOutputIOConf(int iCameraID, ASI_TRIG_OUTPUT_PIN pin, ASI_BOOL *bPinHigh, long *lDelay, long *lDuration);
+
+/***************************************************************************
+Description:
+Get the GPS data
+Paras:
+int CameraID: this is get from the camera property use the API ASIGetCameraProperty.
+ASI_GPS_DATA* startLineGPSData: the GPS data of the start line. the start line number is set by ASISetControlValue(..., ASI_GPS_START_LINE,...). the default value is 0
+ASI_GPS_DATA* endLineGPSData: the GPS data of the end line. the end line number is set by ASISetControlValue(..., ASI_GPS_END_LINE,...). the default value is MaxHeight - 1
+
+return:
+ASI_SUCCESS : Operation is successful
+ASI_ERROR_CAMERA_CLOSED : camera didn't open
+ASI_ERROR_INVALID_ID  : no camera of this ID is connected or ID value is out of boundary
+ASI_ERROR_GPS_NOT_SUPPORTED : this camera do not support GPS
+ASI_ERROR_GPS_VER_ERR : the FPGA GPS ver is too low
+ASI_ERROR_GPS_FPGA_ERR : failed to read or write data to FPGA
+ASI_ERROR_GPS_DATA_INVALID : GPS has not yet found the satellite or FPGA cannot read GPS data
+***************************************************************************/
+ASICAMERA_API ASI_ERROR_CODE ASIGPSGetData(int iCameraID, ASI_GPS_DATA* startLineGPSData, ASI_GPS_DATA* endLineGPSData);
 
 #ifdef __cplusplus
 }
