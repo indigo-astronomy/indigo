@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0027
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -200,7 +200,7 @@ static char *meade_zwo_error_string(unsigned int code) {
 	return (char *)error_string[code];
 }
 
-static char *meade_nyx_error_string(unsigned int code) {
+static char *meade_onstep_error_string(unsigned int code) {
 	const char *error_string[] = {
 		NULL,
 		"Below the horizon limit",
@@ -215,6 +215,10 @@ static char *meade_nyx_error_string(unsigned int code) {
 	};
 	if (code > 9) return NULL;
 	return (char *)error_string[code];
+}
+
+static char *meade_nyx_error_string(unsigned int code) {
+	return meade_onstep_error_string(code);
 }
 
 static void str_replace(char *string, char c0, char c1) {
@@ -714,6 +718,13 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 		if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 			int error_code = atoi(response);
 			char *message = meade_nyx_error_string(error_code);
+			if (message) {
+				indigo_send_message(device, "Error: %s", message);
+			}
+		}
+		if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+			int error_code = atoi(response);
+			char *message = meade_onstep_error_string(error_code);
 			if (message) {
 				indigo_send_message(device, "Error: %s", message);
 			}
