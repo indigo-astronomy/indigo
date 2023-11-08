@@ -1371,6 +1371,7 @@ static void meade_init_onstep_mount(indigo_device *device) {
 	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
 	MOUNT_PEC_PROPERTY->hidden = false;
 	MOUNT_PARK_PROPERTY->count = 2;
+	MOUNT_TRACK_RATE_PROPERTY->count = 4;
 	MOUNT_PARK_PARKED_ITEM->sw.value = false;
 	MOUNT_PARK_SET_PROPERTY->hidden = false;
 	MOUNT_PARK_SET_PROPERTY->count = 1;
@@ -1918,6 +1919,31 @@ static void meade_update_onstep_state(indigo_device *device) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				PRIVATE_DATA->tracking_changed = true;
 			}
+			if (strchr(response, '(')) {
+				if (!MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			} else if (strchr(response, 'O')) {
+				if (!MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			} else if (strchr(response, 'k')) {
+				if (!MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			} else {
+				if (!MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			}
+			if (PRIVATE_DATA->tracking_rate_changed == true) {
+				PRIVATE_DATA->tracking_rate_changed = false;
+				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			}
 		}
 		if (strchr(response, 'P')) {
 			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
@@ -2025,6 +2051,31 @@ static void meade_update_nyx_state(indigo_device *device) {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
 				PRIVATE_DATA->tracking_changed = true;
 			}
+			if (strchr(response, '(')) {
+				if (!MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			} else if (strchr(response, 'O')) {
+				if (!MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			} else if (strchr(response, 'k')) {
+				if (!MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			} else {
+				if (!MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
+					indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
+					PRIVATE_DATA->tracking_rate_changed = true;
+				}
+			}
+			if (PRIVATE_DATA->tracking_rate_changed == true) {
+				PRIVATE_DATA->tracking_rate_changed = false;
+				indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+			}
 		}
 		if (strchr(response, 'P')) {
 			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
@@ -2060,27 +2111,6 @@ static void meade_update_nyx_state(indigo_device *device) {
 			if (MOUNT_HOME_PROPERTY->state != INDIGO_BUSY_STATE) {
 				MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 				PRIVATE_DATA->home_changed = true;
-			}
-		}
-		if (strchr(response, '(')) {
-			if (!MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
-				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_LUNAR_ITEM, true);
-				PRIVATE_DATA->tracking_rate_changed = true;
-			}
-		} else if (strchr(response, 'O')) {
-			if (!MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
-				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SOLAR_ITEM, true);
-				PRIVATE_DATA->tracking_rate_changed = true;
-			}
-		} else if (strchr(response, 'k')) {
-			if (!MOUNT_TRACK_RATE_KING_ITEM->sw.value) {
-				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_KING_ITEM, true);
-				PRIVATE_DATA->tracking_rate_changed = true;
-			}
-		} else {
-			if (!MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
-				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
-				PRIVATE_DATA->tracking_rate_changed = true;
 			}
 		}
 		if (strchr(response, 'W')) {
