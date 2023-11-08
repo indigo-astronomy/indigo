@@ -1375,6 +1375,7 @@ static void meade_init_onstep_mount(indigo_device *device) {
 	MOUNT_PARK_PARKED_ITEM->sw.value = false;
 	MOUNT_PARK_SET_PROPERTY->hidden = false;
 	MOUNT_PARK_SET_PROPERTY->count = 1;
+	MOUNT_HOME_PROPERTY->hidden = false;
 	MOUNT_HOME_SET_PROPERTY->hidden = false;
 	MOUNT_HOME_SET_PROPERTY->count = 1;
 	MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
@@ -1974,6 +1975,21 @@ static void meade_update_onstep_state(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 
+	if (strchr(response, 'H')) {
+		if (PRIVATE_DATA->prev_home_state == false) {
+			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
+			PRIVATE_DATA->home_changed = true;
+		}
+		PRIVATE_DATA->prev_home_state = true;
+	} else {
+		if (PRIVATE_DATA->prev_home_state == true) {
+			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, false);
+			PRIVATE_DATA->home_changed = true;
+		}
+		PRIVATE_DATA->prev_home_state = false;
+	}
+
 	if (meade_command(device, ":Gm#", response, sizeof(response), 0)) {
 		if (strchr(response, 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
 			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
@@ -2358,10 +2374,10 @@ static void mount_park_set_callback(indigo_device *device) {
 		MOUNT_PARK_SET_CURRENT_ITEM->sw.value = false;
 		if (meade_park_set(device)) {
 			MOUNT_PARK_SET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Current park position set");
+			indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Current position set as park position");
 		} else {
 			MOUNT_PARK_SET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Setting current park position failed");
+			indigo_update_property(device, MOUNT_PARK_SET_PROPERTY, "Setting park position failed");
 		}
 	}
 }
@@ -2384,10 +2400,10 @@ static void mount_home_set_callback(indigo_device *device) {
 		MOUNT_HOME_SET_CURRENT_ITEM->sw.value = false;
 		if (meade_home_set(device)) {
 			MOUNT_HOME_SET_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, "Current home position set");
+			indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, "Current position set as home");
 		} else {
 			MOUNT_HOME_SET_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, "Setting current home position failed");
+			indigo_update_property(device, MOUNT_HOME_SET_PROPERTY, "Setting home position failed");
 		}
 	}
 }
