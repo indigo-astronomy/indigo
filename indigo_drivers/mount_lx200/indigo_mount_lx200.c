@@ -184,41 +184,38 @@ typedef struct {
 	bool prev_home_state;
 } lx200_private_data;
 
-static char *meade_zwo_error_string(unsigned int code) {
-	const char *error_string[] = {
-		NULL,
-		"Prameters out of range",
-		"Format error",
-		"Mount not initialized",
-		"Mount is Moving",
-		"Target is below horizon",
-		"Target is beow the altitude limit",
-		"Time and location is not set",
-		"Unkonwn error"
-	};
-	if (code > 8) return NULL;
-	return (char *)error_string[code];
-}
-
-static char *meade_onstep_error_string(unsigned int code) {
-	const char *error_string[] = {
-		NULL,
-		"Below the horizon limit",
-		"Above overhead limit",
-		"Controller in standby",
-		"Mount is parked",
-		"Slew in progress",
-		"Outside limits",
-		"Hardware fault",
-		"Already in motion",
-		"Unspecified error"
-	};
-	if (code > 9) return NULL;
-	return (char *)error_string[code];
-}
-
-static char *meade_nyx_error_string(unsigned int code) {
-	return meade_onstep_error_string(code);
+static char *meade_error_string(indigo_device *device, unsigned int code) {
+	if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		const char *error_string[] = {
+			NULL,
+			"Prameters out of range",
+			"Format error",
+			"Mount not initialized",
+			"Mount is Moving",
+			"Target is below horizon",
+			"Target is beow the altitude limit",
+			"Time and location is not set",
+			"Unkonwn error"
+		};
+		if (code > 8) return NULL;
+		return (char *)error_string[code];
+	} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+		const char *error_string[] = {
+			NULL,
+			"Below the horizon limit",
+			"Above overhead limit",
+			"Controller in standby",
+			"Mount is parked",
+			"Slew in progress",
+			"Outside limits",
+			"Hardware fault",
+			"Already in motion",
+			"Unspecified error"
+		};
+		if (code > 9) return NULL;
+		return (char *)error_string[code];
+	}
+	return NULL;
 }
 
 static void str_replace(char *string, char c0, char c1) {
@@ -710,21 +707,21 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 		if (MOUNT_TYPE_ZWO_ITEM->sw.value && *response == 'e') {
 			int error_code = 0;
 			sscanf(response, "e%d", &error_code);
-			char *message = meade_zwo_error_string(error_code);
+			char *message = meade_error_string(device, error_code);
 			if (message) {
 				indigo_send_message(device, "Error: %s", message);
 			}
 		}
 		if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 			int error_code = atoi(response);
-			char *message = meade_nyx_error_string(error_code);
+			char *message = meade_error_string(device, error_code);
 			if (message) {
 				indigo_send_message(device, "Error: %s", message);
 			}
 		}
 		if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 			int error_code = atoi(response);
-			char *message = meade_onstep_error_string(error_code);
+			char *message = meade_error_string(device, error_code);
 			if (message) {
 				indigo_send_message(device, "Error: %s", message);
 			}
@@ -754,7 +751,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		int error_code = 0;
 		sscanf(response, "e%d", &error_code);
-		char *message = meade_zwo_error_string(error_code);
+		char *message = meade_error_string(device, error_code);
 		if (message) {
 			indigo_send_message(device, "Error: %s", message);
 		}
@@ -764,7 +761,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, ":CM# failed with response: %s", response);
 		int error_code = 0;
 		sscanf(response, "E%d", &error_code);
-		char *message = meade_nyx_error_string(error_code);
+		char *message = meade_error_string(device, error_code);
 		if (message) {
 			indigo_send_message(device, "Error: %s", message);
 		}
