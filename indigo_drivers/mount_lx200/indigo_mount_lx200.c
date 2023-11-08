@@ -834,9 +834,9 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
 				return meade_command(device, ":RT0#", NULL, 0, 0);
 			}
-		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 			return meade_command(device, ":Te#", response, sizeof(response), 0) && *response == '1';
-		} else if (MOUNT_TYPE_NYX_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 			if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
 				return meade_command(device, ":TQ#:Te#", response, sizeof(response), 0) && *response == '1';
 			} else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value) {
@@ -925,16 +925,16 @@ static bool meade_set_slew_rate(indigo_device *device) {
 			PRIVATE_DATA->lastSlewRate = 's';
 			return meade_command(device, ":RC3#", NULL, 0, 0);
 		}
-	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+	} else if (MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 		if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'g') {
 			PRIVATE_DATA->lastSlewRate = 'g';
 			return meade_command(device, ":R1#", NULL, 0, 0);
 		} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
 			PRIVATE_DATA->lastSlewRate = 'c';
-			return meade_command(device, ":R4#", NULL, 0, 0);
+			return meade_command(device, ":R3#", NULL, 0, 0);
 		} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
 			PRIVATE_DATA->lastSlewRate = 'm';
-			return meade_command(device, ":R8#", NULL, 0, 0);
+			return meade_command(device, ":R6#", NULL, 0, 0);
 		} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
 			PRIVATE_DATA->lastSlewRate = 's';
 			return meade_command(device, ":R9#", NULL, 0, 0);
@@ -1908,6 +1908,17 @@ static void meade_update_onstep_state(indigo_device *device) {
 	char response[128];
 	if (meade_command(device, ":GU#", response, sizeof(response), 0)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = strchr(response, 'N') ? INDIGO_OK_STATE : INDIGO_BUSY_STATE;
+		if (strchr(response, 'n')) {
+			if (MOUNT_TRACKING_ON_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
+				PRIVATE_DATA->tracking_changed = true;
+			}
+		} else {
+			if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+				PRIVATE_DATA->tracking_changed = true;
+			}
+		}
 		if (strchr(response, 'P')) {
 			if (!MOUNT_PARK_PARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
