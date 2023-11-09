@@ -156,7 +156,7 @@ typedef struct {
 	int device_count;
 	bool is_network;
 	indigo_timer *position_timer;
-	indigo_timer *guider_keep_alive_timer;
+	indigo_timer *keep_alive_timer;
 	pthread_mutex_t port_mutex;
 	char lastMotionNS, lastMotionWE, lastSlewRate, lastTrackRate;
 	double lastRA, lastDec;
@@ -2326,6 +2326,9 @@ static void mount_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 		if (--PRIVATE_DATA->device_count == 0) {
+			if(PRIVATE_DATA->keep_alive_timer) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
+			}
 			meade_stop(device);
 			meade_close(device);
 		}
@@ -2991,10 +2994,10 @@ static indigo_result mount_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
-static void guider_keepalive_callback(indigo_device *device) {
+static void keep_alive_callback(indigo_device *device) {
 	char response[128];
 	meade_command(device, ":GVP#", response, sizeof(response), 0);
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->guider_keep_alive_timer);
+	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->keep_alive_timer);
 }
 
 static indigo_result guider_attach(indigo_device *device) {
@@ -3028,11 +3031,11 @@ static void guider_connect_callback(indigo_device *device) {
 					GUIDER_GUIDE_WEST_ITEM->number.max = 3000;
 				}
 			}
-			if (PRIVATE_DATA->is_network) {
+			if (PRIVATE_DATA->is_network & !PRIVATE_DATA->keep_alive_timer) {
 				/* In case of a network connection and there is no mount connected (to create chatter)
 				   the commection is closed in several seconds. So we send :GVP# on a regular basis
 				   to keep the connection alive */
-				indigo_set_timer(device, 0, guider_keepalive_callback, &PRIVATE_DATA->guider_keep_alive_timer);
+				indigo_set_timer(device, 0, keep_alive_callback, &PRIVATE_DATA->keep_alive_timer);
 			}
 		} else {
 			PRIVATE_DATA->device_count--;
@@ -3040,10 +3043,10 @@ static void guider_connect_callback(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		if(PRIVATE_DATA->guider_keep_alive_timer) {
-			indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_keep_alive_timer);
-		}
 		if (--PRIVATE_DATA->device_count == 0) {
+			if(PRIVATE_DATA->keep_alive_timer) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
+			}
 			meade_close(device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -3151,6 +3154,12 @@ static void focuser_connect_callback(indigo_device *device) {
 				FOCUSER_SPEED_ITEM->number.max = 2;
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				if (PRIVATE_DATA->is_network & !PRIVATE_DATA->keep_alive_timer) {
+					/* In case of a network connection and there is no mount connected (to create chatter)
+					the commection is closed in several seconds. So we send :GVP# on a regular basis
+					to keep the connection alive */
+					indigo_set_timer(device, 0, keep_alive_callback, &PRIVATE_DATA->keep_alive_timer);
+				}
 			} else {
 				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -3163,6 +3172,9 @@ static void focuser_connect_callback(indigo_device *device) {
 		}
 	} else {
 		if (--PRIVATE_DATA->device_count == 0) {
+			if(PRIVATE_DATA->keep_alive_timer) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
+			}
 			meade_close(device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -3353,6 +3365,9 @@ static void aux_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		if (--PRIVATE_DATA->device_count == 0) {
+			if(PRIVATE_DATA->keep_alive_timer) {
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
+			}
 			meade_close(device);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
