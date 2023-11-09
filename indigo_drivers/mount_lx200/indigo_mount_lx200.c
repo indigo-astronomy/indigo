@@ -326,7 +326,6 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 			return false;
 		}
 		result = read(PRIVATE_DATA->handle, &c, 1);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "is_network = %d", PRIVATE_DATA->is_network);
 		if (result < 1) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			if (PRIVATE_DATA->is_network) {
@@ -2456,6 +2455,10 @@ static void mount_abort_callback(indigo_device *device) {
 			MOUNT_MOTION_EAST_ITEM->sw.value = false;
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+			if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+				MOUNT_HOME_PROPERTY->state=INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+			}
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -2821,16 +2824,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_ABORT_MOTION
-		if (IS_PARKED) {
-			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Mount is parked!");
-		} else {
-			PRIVATE_DATA->motioned = true; // WTF?
-			indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
-			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_abort_callback, NULL);
-		}
+		PRIVATE_DATA->motioned = true; // WTF?
+		indigo_property_copy_values(MOUNT_ABORT_MOTION_PROPERTY, property, false);
+		MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_abort_callback, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_DEC
