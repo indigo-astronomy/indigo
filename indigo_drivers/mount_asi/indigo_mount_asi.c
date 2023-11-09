@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -1024,7 +1024,7 @@ static void mount_abort_callback(indigo_device *device) {
 			PRIVATE_DATA->prev_home_state = false;
 			MOUNT_HOME_ITEM->sw.value = false;
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home");
+			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
 
 			MOUNT_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, MOUNT_ABORT_MOTION_PROPERTY, "Aborted");
