@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 54.23640.20231022 */
+/* Version: 54.23860.20231112 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -285,7 +285,7 @@ typedef struct {
 } AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 54.23640.20231022
+    get the version of this dll/so/dylib, which is: 54.23860.20231112
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -968,7 +968,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
                                                                 1~99: peak percent average
                                                                 0 or 100: full roi average, means "disabled"
                                                          */
-#define ALTAIRCAM_OPTION_ANTI_SHUTTER_EFFECT    0x4b       /* anti shutter effect: 1 => disable, 0 => disable; default: 1 */
+#define ALTAIRCAM_OPTION_ANTI_SHUTTER_EFFECT    0x4b       /* anti shutter effect: 1 => disable, 0 => disable; default: 0 */
 #define ALTAIRCAM_OPTION_CHAMBER_HT             0x4c       /* get chamber humidity & temperature:
                                                                 high 16 bits: humidity, in 0.1%, such as: 325 means humidity is 32.5%
                                                                 low 16 bits: temperature, in 0.1 degrees Celsius, such as: 32 means 3.2 degrees Celsius
