@@ -196,38 +196,25 @@ template <typename T> void indigo_compute_stretch_params(const T *buffer, int wi
 	const float median_sample = samples[sample_size_2];
 	// Find the Median deviation: 1.4826 * median of abs(sample[i] - median).
 	std::vector<T> deviations(sample_size);
-	if (sample_rows_by == 1) {
-		int i = 0;
-		int size = width * height;
-		for (int index = 0; index < size; index += sample_columns_by) {
-			deviations[i++] = abs(median_sample - buffer[index]);
-		}
-	} else {
-		int i = 0;
-		const T *line = buffer;
-		for (int line_index = 0; line_index < height; line_index += sample_rows_by) {
-			for (int column_index = 0; column_index < width; column_index += sample_columns_by) {
-				deviations[i++] = abs(median_sample - line[column_index]);
-			}
-			line += width * sample_rows_by;
-		}
+	for (int i = 0; i < sample_size; i++) {
+		deviations[i] = abs(median_sample - samples[i]);
 	}
 	std::nth_element(deviations.begin(), deviations.begin() + sample_size / 2, deviations.end());
 	// scale to 0 -> 1.0.
 	const float input_range = (sizeof(T) == 1) ? 0xFFL : 0XFFFFL; // TBD for 32 bits
-	const float median_deviation = deviations[sample_size / 2];
+	const float median_deviation = deviations[sample_size_2];
 	const float normalized_median = median_sample / input_range;
 	const float MADN = 1.4826 * median_deviation / input_range;
 	const bool upperHalf = normalized_median > 0.5;
 	*shadows = (upperHalf || MADN == 0) ? 0.0 : fmin(1.0, fmax(0.0, (normalized_median + C * MADN)));
 	*highlights = (!upperHalf || MADN == 0) ? 1.0 : fmin(1.0, fmax(0.0, (normalized_median - C * MADN)));
 	float X, M;
-	if (!upperHalf) {
-		X = normalized_median - *shadows;
-		M = B;
-	} else {
+	if (upperHalf) {
 		X = B;
 		M = *highlights - normalized_median;
+	} else {
+		X = normalized_median - *shadows;
+		M = B;
 	}
 	if (X == 0) {
 		*midtones = 0.0f;
@@ -595,7 +582,7 @@ extern "C" void indigo_stretch_24(const uint8_t *input_buffer, int width, int he
 		coef[1] = (float)totals[1] / totals[2];
 	}
 	for (int i = 0; i < 3; i++) {
-		indigo_stretch(input_buffer + i, 1, 3 * width, height, output_buffer + i, 1, shadows[reference], midtones[reference], highlights[reference], coef[i]);
+		indigo_stretch(input_buffer + i, 3, 3 * width, height, output_buffer + i, 3, shadows[reference], midtones[reference], highlights[reference], coef[i]);
 	}
 }
 
@@ -616,7 +603,7 @@ extern "C" void indigo_stretch_48(const uint16_t *input_buffer, int width, int h
 		coef[1] = (float)totals[1] / totals[2];
 	}
 	for (int i = 0; i < 3; i++) {
-		indigo_stretch(input_buffer + i, 1, 3 * width, height, output_buffer + i, 1, shadows[reference], midtones[reference], highlights[reference], coef[i]);
+		indigo_stretch(input_buffer + i, 3, 3 * width, height, output_buffer + i, 3, shadows[reference], midtones[reference], highlights[reference], coef[i]);
 	}
 }
 
