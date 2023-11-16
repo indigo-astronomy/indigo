@@ -154,9 +154,8 @@ static bool ieq_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_is_device_url(name, "ieq")) {
-		int baud_rate = atoi(DEVICE_BAUDRATE_ITEM->text.value);
-		if (baud_rate) {
-			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, baud_rate);
+		if (DEVICE_BAUDRATE_ITEM->text.value[0] != '\0') {
+			PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
 		} else {
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
 			if (PRIVATE_DATA->handle > 0) {
