@@ -497,6 +497,9 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(DEVICE_BAUDRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
+		if (*DEVICE_BAUDRATE_ITEM->text.value && strchr(DEVICE_BAUDRATE_ITEM->text.value, '-') == NULL) {
+			strcat(DEVICE_BAUDRATE_ITEM->text.value, "-8N1");
+		}
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
 		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
