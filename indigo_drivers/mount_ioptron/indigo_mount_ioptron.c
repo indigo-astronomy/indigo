@@ -156,6 +156,10 @@ static bool ieq_open(indigo_device *device) {
 	if (!indigo_is_device_url(name, "ieq")) {
 		if (DEVICE_BAUDRATE_ITEM->text.value[0] != '\0') {
 			PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
+			if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4) {
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = -1;
+			}
 		} else {
 			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
 			if (PRIVATE_DATA->handle > 0) {
