@@ -649,6 +649,7 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 			indigo_save_property(device, NULL, MOUNT_GUIDE_RATE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_ALIGNMENT_MODE_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_PARK_POSITION_PROPERTY);
+			indigo_save_property(device, NULL, MOUNT_HOME_POSITION_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_EPOCH_PROPERTY);
 			indigo_save_property(device, NULL, MOUNT_PEC_PROPERTY);
 			indigo_mount_save_alignment_points(device);
