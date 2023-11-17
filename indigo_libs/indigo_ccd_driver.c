@@ -933,7 +933,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 
 #define STRECH_SAMPLE_SIZE	0x1FF
 
-void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size) {
+void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C) {
 	INDIGO_DEBUG(clock_t start = clock());
 	int size_in = frame_width * frame_height;
 	int sample_by = frame_width < STRECH_SAMPLE_SIZE ? 1 : frame_width / STRECH_SAMPLE_SIZE;
@@ -962,8 +962,6 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 	cinfo.pub.image_width = frame_width;
 	cinfo.pub.image_height = frame_height;
 	cinfo.pub.input_components = 3;
-	double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
-	double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
 	if (bpp == 8) {
 		if (bayerpat) {
 			if (!strcmp(bayerpat, "RGGB")) {
@@ -1029,8 +1027,12 @@ void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, i
 			cinfo.pub.input_components = 1;
 		}
 	} else if (bpp == 24) {
-		indigo_compute_stretch_params_24((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
-		indigo_stretch_24((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+		if (B != 0 && C != 0) {
+			indigo_compute_stretch_params_24((uint8_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
+			indigo_stretch_24((uint8_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
+		} else {
+			memcpy(copy, data_in, 3 * frame_width * frame_height);
+		}
 	} else if (bpp == 48) {
 		indigo_compute_stretch_params_48((uint16_t *)(data_in), frame_width, frame_height, sample_by, shadows, midtones, highlights, histo, totals, B, C);
 		indigo_stretch_48((uint16_t *)(data_in), frame_width, frame_height, copy, shadows, midtones, highlights, totals);
@@ -1526,7 +1528,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 				}
 			}
 		}
-		indigo_raw_to_jpeg(device, data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL);
+		double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
+		double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
+		indigo_raw_to_jpeg(device, data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C);
 		if (CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);

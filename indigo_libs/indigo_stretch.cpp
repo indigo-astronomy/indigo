@@ -245,14 +245,13 @@ inline static uint8_t stretch(float value, int native_shadows, int native_highli
 }
 
 // input_buffer - source data as 8 or 16 bit integer
-// input_sample - 1 for mono or single channel, 3 for rgb
+// step - 1 for mono or single channel, 3 for rgb
 // width, height - height, width of frame
 // output_buffer - JPEG conversion source buffer
-// output_sample - 1 for mono or single channel, 3 for rgb
 // shadows, midtones, highlights - stretch thresholds
 // coef - each pixel value is divided by this value before stretching (e.g. for AWB)
 
-template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int width, int height, uint8_t *output_buffer, int output_sample, double shadows, double midtones, double highlights, float coef) {
+template <typename T> void indigo_stretch(T *input_buffer, int step, int width, int height, uint8_t *output_buffer, double shadows, double midtones, double highlights, float coef) {
 	const int size = width * height;
 	const double max_input = (sizeof(T) == 1) ? 0xFF : 0xFFFF; // TBD for 32 bits
 	const float hs_range_factor = highlights == shadows ? 1.0f : 1.0f / (highlights - shadows);
@@ -264,7 +263,7 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 	const float midtones_k2 = midtones / k2;
 	if (size < MIN_SIZE_TO_PARALLELIZE) {
 		for (int i = 0; i < size; i++) {
-			output_buffer[i * output_sample] = stretch(input_buffer[i * input_sample] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
+			output_buffer[i * step] = stretch(input_buffer[i * step] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
 		}
 	} else {
 		int max_threads = (int)sysconf(_SC_NPROCESSORS_ONLN);
@@ -277,7 +276,7 @@ template <typename T> void indigo_stretch(T *input_buffer, int input_sample, int
 				int end = start + chunk;
 				end = (end > size) ? size : end;
 				for (int i = start; i < end; i++) {
-					output_buffer[i * output_sample] = stretch(input_buffer[i * input_sample] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
+					output_buffer[i * step] = stretch(input_buffer[i * step] / coef, native_shadows, native_highlights, k1_k2, midtones_k2);
 				}
 			});
 		}
@@ -558,11 +557,11 @@ extern "C" void indigo_compute_stretch_params_16_bggr(const uint16_t *buffer, in
 }
 
 extern "C" void indigo_stretch_8(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights) {
-	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, 1, shadows[0], midtones[0], highlights[0], 1);
+	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, shadows[0], midtones[0], highlights[0], 1);
 }
 
 extern "C" void indigo_stretch_16(const uint16_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights) {
-	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, 1, shadows[0], midtones[0], highlights[0], 1);
+	indigo_stretch(input_buffer + 0, 1, width, height, output_buffer + 0, shadows[0], midtones[0], highlights[0], 1);
 }
 
 extern "C" void indigo_stretch_24(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer, double *shadows, double *midtones, double *highlights, unsigned long *totals) {
@@ -582,7 +581,7 @@ extern "C" void indigo_stretch_24(const uint8_t *input_buffer, int width, int he
 		coef[1] = (float)totals[1] / totals[2];
 	}
 	for (int i = 0; i < 3; i++) {
-		indigo_stretch(input_buffer + i, 3, 3 * width, height, output_buffer + i, 3, shadows[reference], midtones[reference], highlights[reference], coef[i]);
+		indigo_stretch(input_buffer + i, 3, width, height, output_buffer + i, shadows[reference], midtones[reference], highlights[reference], coef[i]);
 	}
 }
 
@@ -603,7 +602,7 @@ extern "C" void indigo_stretch_48(const uint16_t *input_buffer, int width, int h
 		coef[1] = (float)totals[1] / totals[2];
 	}
 	for (int i = 0; i < 3; i++) {
-		indigo_stretch(input_buffer + i, 3, 3 * width, height, output_buffer + i, 3, shadows[reference], midtones[reference], highlights[reference], coef[i]);
+		indigo_stretch(input_buffer + i, 3, width, height, output_buffer + i, shadows[reference], midtones[reference], highlights[reference], coef[i]);
 	}
 }
 
