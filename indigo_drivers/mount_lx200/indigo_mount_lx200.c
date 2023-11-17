@@ -774,7 +774,7 @@ static bool meade_sync(indigo_device *device, double ra, double dec) {
 static bool meade_force_flip(indigo_device *device, bool on) {
 	char response[128];
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value)
-		return meade_command(device, on ? ":TTSFd#" : ":TTRFd#", response, 1, 0);
+		return meade_command(device, on ? ":TTSFd#" : ":TTSFs#", response, 1, 0);
 	return false;
 }
 
