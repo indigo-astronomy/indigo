@@ -1216,6 +1216,21 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 					break;
 				case INDIGO_FITS_STRING:
 					add_key(&next_key, false, "%-8s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+					if (!strcmp(keywords->name, "BAYERPAT")) {
+						if (!strcmp(keywords->string, "RGGB")) {
+							add_key(&next_key, true, "%-8s= %20d / %s", "XBAYROFF", 0, "X offset of Bayer array");
+							add_key(&next_key, true, "%-8s= %20d / %s", "YBAYROFF", 0, "Y offset of Bayer array");
+						} else if (!strcmp(keywords->string, "GBRG")) {
+							add_key(&next_key, true, "%-8s= %20d / %s", "XBAYROFF", 0, "X offset of Bayer array");
+							add_key(&next_key, true, "%-8s= %20d / %s", "YBAYROFF", 1, "Y offset of Bayer array");
+						} else if (!strcmp(keywords->string, "GRBG")) {
+							add_key(&next_key, true, "%-8s= %20d / %s", "XBAYROFF", 1, "X offset of Bayer array");
+							add_key(&next_key, true, "%-8s= %20d / %s", "YBAYROFF", 0, "Y offset of Bayer array");
+						} else if (!strcmp(keywords->string, "BGGR")) {
+							add_key(&next_key, true, "%-8s= %20d / %s", "XBAYROFF", 1, "X offset of Bayer array");
+							add_key(&next_key, true, "%-8s= %20d / %s", "YBAYROFF", 1, "Y offset of Bayer array");
+						}
+					}
 					break;
 				case INDIGO_FITS_LOGICAL:
 					add_key(&next_key, false, "%-8s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
