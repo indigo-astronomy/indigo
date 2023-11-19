@@ -1902,7 +1902,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		header->height = frame_height;
 		char *appendix = data + FITS_HEADER_SIZE + blobsize;
 		if (bayerpat) {
-			blobsize += sprintf(appendix, "BAYERPAT='%s'", bayerpat);
+			blobsize += sprintf(appendix, "SIMPLE=T;BAYERPAT='%s';", bayerpat);
 		}
 		// use semicolon as separator to append other items later
 	} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value) {
