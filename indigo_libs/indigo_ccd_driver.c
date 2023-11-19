@@ -1682,6 +1682,21 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 						break;
 					case INDIGO_FITS_STRING:
 						add_key(&header, true,  "%-8s= '%s'%*c / %s", keywords->name, keywords->string, (int)(18 - strlen(keywords->string)), ' ', keywords->comment);
+						if (!strcmp(keywords->name, "BAYERPAT")) {
+							if (!strcmp(keywords->string, "RGGB")) {
+								add_key(&header, true, "%-8s= %20d / %s", "XBAYROFF", 0, "X offset of Bayer array");
+								add_key(&header, true, "%-8s= %20d / %s", "YBAYROFF", 0, "Y offset of Bayer array");
+							} else if (!strcmp(keywords->string, "GBRG")) {
+								add_key(&header, true, "%-8s= %20d / %s", "XBAYROFF", 0, "X offset of Bayer array");
+								add_key(&header, true, "%-8s= %20d / %s", "YBAYROFF", 1, "Y offset of Bayer array");
+							} else if (!strcmp(keywords->string, "GRBG")) {
+								add_key(&header, true, "%-8s= %20d / %s", "XBAYROFF", 1, "X offset of Bayer array");
+								add_key(&header, true, "%-8s= %20d / %s", "YBAYROFF", 0, "Y offset of Bayer array");
+							} else if (!strcmp(keywords->string, "BGGR")) {
+								add_key(&header, true, "%-8s= %20d / %s", "XBAYROFF", 1, "X offset of Bayer array");
+								add_key(&header, true, "%-8s= %20d / %s", "YBAYROFF", 1, "Y offset of Bayer array");
+							}
+						}
 						break;
 					case INDIGO_FITS_LOGICAL:
 						add_key(&header, true,  "%-8s=                    %c / %s", keywords->name, keywords->logical ? 'T' : 'F', keywords->comment);
@@ -2127,13 +2142,11 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 		}
 		indigo_fits_keyword keywords[] = {
 			{ INDIGO_FITS_STRING, "BAYERPAT", .string = output_image.bayer_pattern, "Bayer color pattern" },
-			{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" }, /* index 1 */
-			{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 			{ INDIGO_FITS_NUMBER, "ISOSPEED", .number = image_info.iso_speed, "ISO camera setting" },
 			{ 0 }, //Placeholder for trmerature
 			{ 0 }
 		};
-		int index = 4;
+		int index = 1;
 		if (image_info.temperature > -273.15f) {
 			keywords[index++] = (indigo_fits_keyword) { INDIGO_FITS_NUMBER, "CCD-TEMP", .number = image_info.temperature, "CCD temperature [celcius]"};
 		}

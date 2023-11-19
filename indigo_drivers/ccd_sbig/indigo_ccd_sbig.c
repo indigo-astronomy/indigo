@@ -858,8 +858,6 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 	indigo_fits_keyword *bayer_keys = NULL;
 	static indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = "BGGR", "Bayer color pattern" }, /* index 0 */
-		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" }, /* index 1 */
-		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" }, /* index 2 */
 		{ 0 }
 	};
 

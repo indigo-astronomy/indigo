@@ -212,8 +212,6 @@ static void exposure_timer_callback(indigo_device *device) {
 				   the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
 					{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
-					{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
-					{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 					{ 0 }
 				};
 				indigo_process_image(

@@ -323,8 +323,6 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
-		{ INDIGO_FITS_NUMBER, "XBAYROFF", .number = 0, "X offset of Bayer array" },
-		{ INDIGO_FITS_NUMBER, "YBAYROFF", .number = 0, "Y offset of Bayer array" },
 		{ 0 }
 	};
 	indigo_fits_keyword *fits_keywords = NULL;
