@@ -1530,19 +1530,19 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	unsigned long jpeg_size = 0;
 	void *histogram_data = NULL;
 	unsigned long histogram_size = 0;
-	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
-		const char *bayerpat = NULL;
-		if (keywords) {
-			for (int i = 0;; i++) {
-				indigo_fits_keyword *keyword = keywords + i;
-				if (keyword->type == 0)
-					break;
-				if (keyword->type == INDIGO_FITS_STRING && !strcmp(keyword->name, "BAYERPAT")) {
-					bayerpat = keyword->string;
-					break;
-				}
+	const char *bayerpat = NULL;
+	if (keywords) {
+		for (int i = 0;; i++) {
+			indigo_fits_keyword *keyword = keywords + i;
+			if (keyword->type == 0)
+				break;
+			if (keyword->type == INDIGO_FITS_STRING && !strcmp(keyword->name, "BAYERPAT")) {
+				bayerpat = keyword->string;
+				break;
 			}
 		}
+	}
+	if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value || CCD_PREVIEW_ENABLED_ITEM->sw.value || CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value) {
 		double B = CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target;
 		double C = CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target;
 		indigo_raw_to_jpeg(device, data + FITS_HEADER_SIZE, frame_width, frame_height, bpp, bayerpat, &jpeg_data, &jpeg_size,  CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_data : NULL, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM->sw.value ? &histogram_size : NULL, B, C);
@@ -1900,6 +1900,11 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		}
 		header->width = frame_width;
 		header->height = frame_height;
+		char *appendix = data + FITS_HEADER_SIZE + blobsize;
+		if (bayerpat) {
+			blobsize += sprintf(appendix, "BAYERPAT='%s'", bayerpat);
+		}
+		// use semicolon as separator to append other items later
 	} else if (CCD_IMAGE_FORMAT_JPEG_ITEM->sw.value || CCD_IMAGE_FORMAT_JPEG_AVI_ITEM->sw.value) {
 		if (jpeg_data && jpeg_size < blobsize + FITS_HEADER_SIZE) {
 			memcpy(data, jpeg_data, jpeg_size);

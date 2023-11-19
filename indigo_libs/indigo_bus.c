@@ -1074,6 +1074,7 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 }
 
 void *indigo_alloc_blob_buffer(long size) {
+	size += 2880;
 	int mod2880 = size % 2880;
 	if (mod2880) {
 		return indigo_safe_malloc(size + 2880 - mod2880);
