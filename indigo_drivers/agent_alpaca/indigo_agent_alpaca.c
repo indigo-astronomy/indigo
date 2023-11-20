@@ -516,7 +516,9 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, INFO_DEVICE_INTERFACE_ITEM_NAME)) {
 				alpaca_device->indigo_interface = atoll(item->text.value);
-				if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {
+				if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AGENT)) {
+					continue;
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {
 					alpaca_device->ccd.ccdtemperature = NAN;
 					alpaca_device->device_type = "Camera";
 				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_DOME)) {
