@@ -82,6 +82,7 @@
 #define MOUNT_TYPE_ZWO_ITEM				 			(MOUNT_TYPE_PROPERTY->items+10)
 #define MOUNT_TYPE_NYX_ITEM				 			(MOUNT_TYPE_PROPERTY->items+11)
 #define MOUNT_TYPE_OAT_ITEM				 			(MOUNT_TYPE_PROPERTY->items+12)
+#define MOUNT_TYPE_GENERIC_ITEM         (MOUNT_TYPE_PROPERTY->items+13)
 
 
 #define MOUNT_TYPE_PROPERTY_NAME				"X_MOUNT_TYPE"
@@ -98,6 +99,7 @@
 #define MOUNT_TYPE_ZWO_ITEM_NAME				"ZWO_AM"
 #define MOUNT_TYPE_NYX_ITEM_NAME				"NYX"
 #define MOUNT_TYPE_OAT_ITEM_NAME				"OAT"
+#define MOUNT_TYPE_GENERIC_ITEM_NAME		"GENERIC"
 
 #define ZWO_BUZZER_PROPERTY				(PRIVATE_DATA->zwo_buzzer_property)
 #define ZWO_BUZZER_OFF_ITEM				(ZWO_BUZZER_PROPERTY->items+0)
@@ -535,7 +537,8 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 		MOUNT_TYPE_ZWO_ITEM->sw.value ||
 		MOUNT_TYPE_NYX_ITEM->sw.value ||
 		MOUNT_TYPE_OAT_ITEM->sw.value ||
-		MOUNT_TYPE_ON_STEP_ITEM->sw.value
+		MOUNT_TYPE_ON_STEP_ITEM->sw.value ||
+		MOUNT_TYPE_GENERIC_ITEM->sw.value
 	) {
 		struct tm tm;
 		char response[128];
@@ -1162,6 +1165,52 @@ static void meade_update_site_items(indigo_device *device) {
 	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
 }
 
+static bool meade_detect_generic_mount(indigo_device *device) {
+	char response[128];
+	response[0] = 0;
+	// These commands are found in the classic LX200 Instruction Manual, and the compatible mounts refer to that manual.
+	if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":GR# failed."));
+		return false;
+	}
+	response[0] = 0;
+	if (!meade_command(device, ":GD#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":GD# failed."));
+		return false;
+	}
+	response[0] = 0;
+	if (!meade_command(device, ":GC#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":GC# failed."));
+		return false;
+	}
+	response[0] = 0;
+	if (!meade_command(device, ":GL#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":GL# failed."));
+		return false;
+	}
+	response[0] = 0;
+	if (!meade_command(device, ":GG#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":GG# failed."));
+		return false;
+	}
+	response[0] = 0;
+	if (!meade_command(device, ":GS#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":GS# failed."));
+		return false;
+	}
+	response[0] = 0;
+	if (!meade_command(device, ":Gg#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":Gg# failed."));
+		return false;
+	}
+	response[0] = 0;
+	if (!meade_command(device, ":Gt#", response, sizeof(response), 0) || strlen(response) == 0) {
+		INDIGO_LOG(indigo_log(":Gt# failed."));
+		return false;
+	}
+	return true;
+}
+
 static bool meade_detect_mount(indigo_device *device) {
 	char response[128];
 	bool result = true;
@@ -1188,8 +1237,13 @@ static bool meade_detect_mount(indigo_device *device) {
 		} else if (!strncmp(PRIVATE_DATA->product, "OpenAstroTracker", 16)) {
 			indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_OAT_ITEM, true);
 		} else {
-			MOUNT_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
-			result = false;
+			// The classic LX200 and some of the LX200-compatible mounts doesn't implement ":GVP#"
+			if (meade_detect_generic_mount(device)) {
+				indigo_set_switch(MOUNT_TYPE_PROPERTY, MOUNT_TYPE_GENERIC_ITEM, true);
+			} else {
+				MOUNT_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
+				result = false;
+			}
 		}
 	} else {
 		MOUNT_TYPE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1590,15 +1644,23 @@ static void meade_init_oat_mount(indigo_device *device) {
 }
 
 static void meade_init_generic_mount(indigo_device *device) {
-	MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
-	MOUNT_UTC_TIME_PROPERTY->hidden = true;
+	// A list of commands can be found in the classic LX200 Instruction Manual.
+	// It is assumed that some of the compatible mounts (very old) are created
+	// with reference to that list.
+	// This type provides a generic mount with the such minimum necessary commands.
+	// See also: meade_detect_generic_mount()
+	MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
+	MOUNT_UTC_TIME_PROPERTY->hidden = false;
+	// NOTE: The classic LX200 have broken `:D#` (distance-bar) command response.
+	//   If this command is used, it would be better to separate the mount types.
 	MOUNT_TRACKING_PROPERTY->hidden = true;
-	MOUNT_GUIDE_RATE_PROPERTY->hidden = true;
+	MOUNT_GUIDE_RATE_PROPERTY->hidden = false;
 	MOUNT_PARK_PROPERTY->hidden = true;
-	MOUNT_MOTION_RA_PROPERTY->hidden = true;
-	MOUNT_MOTION_DEC_PROPERTY->hidden = true;
+	MOUNT_MOTION_RA_PROPERTY->hidden = false;
+	MOUNT_MOTION_DEC_PROPERTY->hidden = false;
 	MOUNT_INFO_PROPERTY->count = 1;
 	strcpy(MOUNT_INFO_VENDOR_ITEM->text.value, "Generic");
+	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
 
@@ -2219,6 +2281,7 @@ static void meade_update_generic_state(indigo_device *device) {
 		}
 	} else {
 		// After Track or Slew
+		// NOTE: Distance bar `:D#` is not working (e.g. classic LX200).
 		if (fabs(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value - PRIVATE_DATA->lastRA) < 2.0/60.0 && fabs(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value - PRIVATE_DATA->lastDec) < 2.0/60.0)
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		else
@@ -2673,7 +2736,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(FORCE_FLIP_DISABLED_ITEM, FORCE_FLIP_DISABLED_ITEM_NAME, "Disabled", false);
 		FORCE_FLIP_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- MOUNT_TYPE
-		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 13);
+		MOUNT_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_TYPE_PROPERTY_NAME, MAIN_GROUP, "Mount type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 14);
 		if (MOUNT_TYPE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_TYPE_DETECT_ITEM, MOUNT_TYPE_DETECT_ITEM_NAME, "Autodetect", true);
@@ -2689,6 +2752,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		indigo_init_switch_item(MOUNT_TYPE_ZWO_ITEM, MOUNT_TYPE_ZWO_ITEM_NAME, "ZWO AM", false);
 		indigo_init_switch_item(MOUNT_TYPE_NYX_ITEM, MOUNT_TYPE_NYX_ITEM_NAME, "Pegasus NYX", false);
 		indigo_init_switch_item(MOUNT_TYPE_OAT_ITEM, MOUNT_TYPE_OAT_ITEM_NAME, "OpenAstroTech", false);
+		indigo_init_switch_item(MOUNT_TYPE_GENERIC_ITEM, MOUNT_TYPE_GENERIC_ITEM_NAME, "Generic", false);
 		// ---------------------------------------------------------------------------- ZWO_BUZZER
 		ZWO_BUZZER_PROPERTY = indigo_init_switch_property(NULL, device->name, ZWO_BUZZER_PROPERTY_NAME, "Advanced", "Buzzer volume", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (ZWO_BUZZER_PROPERTY == NULL)
