@@ -2,6 +2,51 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-254] - 21 Nov Tue 2023
+### Overall:
+- stretching: optimisations and bug fixes
+- indigo_mount_driver: save MOUNT_HOME_POSITION property
+- XBAYROFF/YBAYROFF header is added by the base code according BAYERPAT value
+- RAW format can store embedded FITS keywords
+- indigo_raw_to_fits: add support for embedded FITS keywords
+
+### Driver fixes:
+- indigo_agent_alpaca:
+	- JSON syntax fixed
+	- Agents are not exported
+
+- indigo_ccd_asi:
+	- update SDK v.1.31
+	- fix PID buffer size
+
+- indigo_mount_lx200:
+	 - OnStep: slew errors are sent as indigo_messages
+	 - OnStep: fix tracking state
+	 - OnStep: fix home proeprty
+	 - Avalon: fixed command to disable meridian flip
+	 - change slew speed mapping
+	 - proper handling of tracking rate property
+	 - use common function for error strings
+	 - add keepalive for network connections to prevent disconnect
+	 - fix abort motion
+
+- indigo_ccd_ptp:
+	- use linusb transport for xcode project
+
+- indigo_mount_asi:
+	- better slew spped mapping
+	- cosmetic fix
+
+- indigo_ccd_altair:
+	- sdk 54.23860.20231112
+
+- indigo_mount_ioptron:
+	- baudrate can be set manually
+	- protocol validation fixed
+
+- indigo_ccd_simulator:
+	- DSLR simulator fixed
+
 # [2.0-252] - 05 Nov Sun 2023
 ### Overall:
 - indigo_ccd_driver: JPEG previews - crash fixed
