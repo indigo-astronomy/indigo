@@ -47,7 +47,7 @@ typedef struct {
 	const char *comment;
 } indigo_fits_keyword;
 
-extern indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fits_keyword *keywords);
+extern indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fits_size, indigo_fits_keyword *keywords);
 
 #ifdef __cplusplus
 }
