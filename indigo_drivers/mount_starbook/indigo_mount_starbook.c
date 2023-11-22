@@ -1476,9 +1476,6 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		DEVICE_PORT_PROPERTY->hidden = false;
-		strcpy(DEVICE_PORT_ITEM->text.value, STARBOOK_DEFAULT_IP_ADDR);
-
 		pthread_mutex_init(&PRIVATE_DATA->port_mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
@@ -1491,7 +1488,7 @@ static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
-			result = starbook_open(device);
+			result = starbook_open(device->master_device);
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

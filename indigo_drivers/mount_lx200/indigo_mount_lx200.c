@@ -3271,10 +3271,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
-		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
+		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
 	}

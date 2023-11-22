@@ -1103,7 +1103,7 @@ static void guider_handle_connect(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
-			if (mount_open(device)) {
+			if (mount_open(device->master_device)) {
 				device->is_connected = true;
 				indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
 				PRIVATE_DATA->guider_timer_ra = NULL;
@@ -1142,10 +1142,6 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- DEVICE_PORTS
-		DEVICE_PORTS_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		PRIVATE_DATA->guide_rate = 1; /* 1 -> 0.5 siderial rate , 2 -> siderial rate */
 		COMMAND_GUIDE_RATE_PROPERTY = indigo_init_switch_property(NULL, device->name, COMMAND_GUIDE_RATE_PROPERTY_NAME, GUIDER_MAIN_GROUP, "Guide rate", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
