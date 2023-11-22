@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <nex_open.h>
 
+extern void (*tc_debug)(const char *format, ...);
 
 int parse_devname(char *device, char *host, int *port) {
 	char *strp;
@@ -46,6 +47,9 @@ int open_telescope_rs(char *dev_file) {
 	struct termios options;
 
 	if ((dev_fd = open(dev_file, O_RDWR | O_NOCTTY | O_SYNC))==-1) {
+		if(tc_debug) {
+			tc_debug("Open Failed");
+		}
 		return -1;
 	}
 
@@ -54,6 +58,9 @@ int open_telescope_rs(char *dev_file) {
 		int temp = errno;
 		close(dev_fd);
 		errno = temp;
+		if(tc_debug) {
+			tc_debug("tcgetattr Failed");
+		}
 		return -1;
 	}
 
@@ -74,6 +81,9 @@ int open_telescope_rs(char *dev_file) {
 		int temp = errno;
 		close(dev_fd);
 		errno = temp;
+		if(tc_debug) {
+			tc_debug("tcsetattr Failed");
+		}
 		return -1;
 	}
 
