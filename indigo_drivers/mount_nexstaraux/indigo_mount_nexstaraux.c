@@ -705,7 +705,7 @@ static indigo_result guider_attach(indigo_device *device) {
 static void guider_connect_handler(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		bool result = nexstaraux_open(device);
+		bool result = nexstaraux_open(device->master_device);
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {

@@ -744,7 +744,7 @@ static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
-			result = temma_open(device);
+			result = temma_open(device->master_device);
 		}
 		if (result) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
