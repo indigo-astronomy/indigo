@@ -100,8 +100,6 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 static indigo_result gps_detach(indigo_device *device);
 
 static bool mount_open(indigo_device *device) {
-	if (device->is_connected)
-		return false;
 	if (PRIVATE_DATA->count_open++ == 0) {
 		int dev_id = open_telescope(DEVICE_PORT_ITEM->text.value);
 		if (dev_id == -1) {
@@ -123,8 +121,6 @@ static bool mount_open(indigo_device *device) {
 }
 
 static void mount_close(indigo_device *device) {
-	if (!device->is_connected)
-		return;
 	if (--PRIVATE_DATA->count_open == 0) {
 		close_telescope(PRIVATE_DATA->dev_id);
 		PRIVATE_DATA->dev_id = -1;
