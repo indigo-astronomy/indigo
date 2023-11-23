@@ -27,7 +27,7 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_fits.h>
 
-static int read_keyword_value(const uint8_t *ptr8, char *keyword, char *value) {
+static int raw_read_keyword_value(const uint8_t *ptr8, char *keyword, char *value) {
 	int i;
 	int length = strlen(ptr8);
 
@@ -168,7 +168,7 @@ indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fit
 				char keyword[80];
 				char value[80];
 				*pos = '\0';
-				read_keyword_value(extension_start, keyword, value);
+				raw_read_keyword_value(extension_start, keyword, value);
 				extension_start = pos+1;
 				t = sprintf(p += 80, "%7s= %s", keyword, value);
 				p[t] = ' ';
