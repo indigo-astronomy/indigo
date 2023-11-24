@@ -501,7 +501,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			strcat(DEVICE_BAUDRATE_ITEM->text.value, "-8N1");
 		}
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
+		//indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
 		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
