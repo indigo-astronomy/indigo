@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0027
+#define DRIVER_VERSION 0x0028
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -177,6 +177,7 @@ typedef struct {
 	indigo_property *info_property;
 	indigo_timer *focuser_timer;
 	indigo_timer *aux_timer;
+	bool is_site_set;
 	bool use_dst_commands;
 	bool park_changed;
 	bool home_changed;
@@ -652,6 +653,7 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 			result = false;
 		}
 	}
+	PRIVATE_DATA->is_site_set = result;
 	return result;
 }
 
@@ -725,7 +727,10 @@ static bool meade_slew(indigo_device *device, double ra, double dec) {
 		}
 		if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 			int error_code = atoi(response);
-			char *message = meade_error_string(device, error_code);
+			char *message = "Location not set, please set site coordinates";
+			if (PRIVATE_DATA->is_site_set || error_code != 6) {
+				message = meade_error_string(device, error_code);
+			}
 			if (message) {
 				indigo_send_message(device, "Error: %s", message);
 			}
@@ -1443,6 +1448,11 @@ static void meade_init_onstep_mount(indigo_device *device) {
 	if (meade_command(device, ":$QZ?#", response, sizeof(response), 0)) {
 		indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
 	}
+
+	time_t secs = time(NULL);
+	int utc_offset = indigo_get_utc_offset();
+	meade_set_utc(device, &secs, utc_offset);
+
 	meade_update_site_items(device);
 	meade_update_mount_state(device);
 }
@@ -2357,6 +2367,7 @@ static void position_timer_callback(indigo_device *device) {
 static void mount_connect_callback(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		PRIVATE_DATA->is_site_set = false;
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
 			result = meade_open(device);
