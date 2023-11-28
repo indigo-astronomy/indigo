@@ -129,10 +129,10 @@ static int port_type(char *path) {
 	res = ioctl(fd, TIOCGSERIAL, &serinfo);
 	if (res != 0) {
 		sp_type = -1;
-		INDIGO_DEBUG(indigo_debug("%s(): path = %s, type = %d, res = %d error = '%s'", __FUNCTION__, path, serinfo.type, res, strerror(errno)));
+		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d error = '%s'", __FUNCTION__, path, serinfo.type, res, strerror(errno)));
 	} else {
 		sp_type = serinfo.type;
-		INDIGO_DEBUG(indigo_debug("%s(): path = %s, type = %d, res = %d", __FUNCTION__, path, serinfo.type, res));
+		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d", __FUNCTION__, path, serinfo.type, res));
 	}
 	close(fd);
 	return sp_type;
@@ -168,9 +168,10 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 #elif defined(INDIGO_LINUX)
 	DIR *dir;
 	char target[PATH_MAX];
-	char serial_links[MAX_DEVICE_PORTS][PATH_MAX]={0};
+	char serial_links_id[MAX_DEVICE_PORTS][PATH_MAX]={0};
+	char serial_links_path[MAX_DEVICE_PORTS][PATH_MAX]={0};
 	struct dirent *entry;
-	int link_num = 0;
+	int link_num_id = 0;
 	/* Some serial devices seem to report PORT_UNKNOWN but they have simlinks
 	   in /dev/serial/by-id/ in that case we consider them real ports
 	*/
@@ -180,8 +181,25 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 			if (entry->d_name[0] != '.') {
 				snprintf(name, PATH_MAX, "/dev/serial/by-id/%s", entry->d_name);
 				if (realpath(name, target)) {
-						strncpy(serial_links[link_num], target, PATH_MAX);
-						link_num++;
+						strncpy(serial_links_id[link_num_id], target, PATH_MAX);
+						link_num_id++;
+				}
+			}
+		}
+		closedir(dir);
+	}
+	int link_num_path = 0;
+	/* Some serial devices seem to report PORT_UNKNOWN but they have simlinks
+	   in /dev/serial/by-path/ in that case we consider them real ports
+	*/
+	dir = opendir("/dev/serial/by-path");
+	if (dir) {
+		while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+			if (entry->d_name[0] != '.') {
+				snprintf(name, PATH_MAX, "/dev/serial/by-path/%s", entry->d_name);
+				if (realpath(name, target)) {
+						strncpy(serial_links_path[link_num_path], target, PATH_MAX);
+						link_num_path++;
 				}
 			}
 		}
@@ -197,13 +215,25 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 		bool is_serial = false;
 		/* port is unknown -> will be considerd serial port if there is a link in /dev/serial/by-id */
 		if (ser_type <= PORT_UNKNOWN) {
-			for (int i = 0; i < link_num; i++) {
-				if (!strncmp(target, serial_links[i], PATH_MAX)) {
+			for (int i = 0; i < link_num_id; i++) {
+				if (!strncmp(target, serial_links_id[i], PATH_MAX)) {
 					is_serial = true;
-					INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link)", __FUNCTION__, name));
+					INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link by-id)", __FUNCTION__, name));
 					break;
 				}
-				INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links[i]));
+				/* INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links_id[i]));
+				 */
+			}
+			if(!is_serial) {
+				for (int i = 0; i < link_num_path; i++) {
+					if (!strncmp(target, serial_links_path[i], PATH_MAX)) {
+						is_serial = true;
+						INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link by-path)", __FUNCTION__, name));
+						break;
+					}
+					/* INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links_path[i]));
+					 */
+				}
 			}
 		} else {
 			is_serial = true;
