@@ -2,6 +2,34 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-256] - 29 Nov Wed 2023
+### Overall:
+- indigo_driver:
+	- PORT property on master device is used by secondary devices
+	- DEVICE_BAUDRATE change fixed
+	- fix indigo_enumerate_serial_ports() on linux
+
+### Driver fixes:
+- indigo_agent_alpaca:
+	- GEOGRAPHIC_COORDINATES processing fixed
+
+- indigo_mount_nexstar:
+	- fixed tracking rate reading at connect
+	- support for new version command format
+	- impproved Advanced VX support
+	- fix device open and close
+
+- indigo_mount_nexstaraux:
+	- open fixed
+
+- indigo_ccd_touptek & family:
+	- updated to SDK v.54.23945.20231121
+
+- indigo_mount_lx200:
+	- add generic mount for Meade Classic LX200
+	- OnStep: fix initialization and better error handling
+
+
 # [2.0-254] - 21 Nov Tue 2023
 ### Overall:
 - stretching: optimisations and bug fixes
