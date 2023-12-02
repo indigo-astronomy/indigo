@@ -25,7 +25,7 @@
 
 #include "indigo_aux_rpio.h"
 
-#define DRIVER_VERSION         0x0006
+#define DRIVER_VERSION         0x0007
 #define AUX_RPIO_NAME     "Raspberry Pi GPIO"
 
 #include <stdlib.h>
@@ -860,7 +860,13 @@ static void handle_aux_connect_property(indigo_device *device) {
 						rpio_pwm_set_enable(1, false);
 						rpio_pwm_set_enable(1, true);
 					}
+					AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = false;
+					AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = false;
+				} else {
+					AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = true;
+					AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = true;
 				}
+
 				for (int i = 0; i < 8; i++) {
 					(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
 					PRIVATE_DATA->relay_active[i] = false;
