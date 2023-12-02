@@ -306,6 +306,14 @@ static bool asiair_pin_export(int pin) {
 	char buffer[10];
 	ssize_t bytes_written;
 	int fd;
+	char path[256];
+	struct stat sb = {0};
+
+	sprintf(path, "/sys/class/gpio/gpio%d", pin);
+	if (stat(path, &sb) == 0 && (S_ISDIR(sb.st_mode))) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pin #%d already exported!", pin);
+		return true;
+	}
 
 	fd = open("/sys/class/gpio/export", O_WRONLY);
 	if (fd < 0) {
@@ -339,9 +347,46 @@ static bool asiair_pin_unexport(int pin) {
 }
 
 
+static bool asiair_get_pin_direction(int pin, bool *input) {
+	char path[255];
+	char direction_str[32] = {0};
+	int fd;
+
+	if (input == NULL) return false;
+
+	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio%d direction for reading", pin);
+		return false;
+	}
+
+	if (read(fd, direction_str, 3) < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read direction!\n");
+		close(fd);
+		return false;
+	}
+	close(fd);
+	if (direction_str[0] == 'i') {
+		*input = true;
+	} else if (direction_str[0] == 'o') {
+		*input = false;
+	} else {
+		return false;
+	}
+	return true;
+}
+
+
 static bool asiair_set_output(int pin) {
 	char path[256];
 	int fd;
+	bool is_input = false;
+
+	if (asiair_get_pin_direction(pin, &is_input) && !is_input) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pin gpio%d direction is already output", pin);
+		return true;
+	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
 	fd = open(path, O_WRONLY);
@@ -419,7 +464,6 @@ static bool asiair_set_output_line(uint16_t line, int value, bool use_pwm) {
 		return asiair_pin_write(output_pins[line], value);
 	}
 }
-
 
 static bool asiair_read_output_lines(int *values, bool use_pwm) {
 	if (use_pwm) {
@@ -695,7 +739,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 						asiair_pwm_set_enable(0, false);
 						asiair_pwm_set_enable(0, true);
 					}
-					if (relay_value[1] == 1) {
+					if (relay_value[3] == 1) {
 						asiair_pwm_set_enable(1, false);
 						asiair_pwm_set_enable(1, true);
 					}
