@@ -261,7 +261,7 @@ static bool rpio_pwm_set(int channel, int period, int duty_cycle) {
 	sprintf(buf, "%d", 0);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Clear duty_cycle = %d channel = %d", duty_cycle, channel);
 	if (write(fd, buf, strlen(buf)) <= 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle for channel %d!", channel);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to clear PWM duty_cycle for channel %d!", channel);
 		close(fd);
 	}
 	close(fd);
