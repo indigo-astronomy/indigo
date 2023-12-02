@@ -411,8 +411,10 @@ static bool asiair_pin_write(int pin, int value) {
 
 static bool asiair_set_output_line(uint16_t line, int value, bool use_pwm) {
 	if (line >= 4) return false;
-	if (line < 2 && use_pwm) {
-		return asiair_pwm_set_enable(line, value);
+	if (use_pwm && line == 0) {
+		return asiair_pwm_set_enable(0, value);
+	} else if(use_pwm && line == 3) {
+		return asiair_pwm_set_enable(1, value);
 	} else {
 		return asiair_pin_write(output_pins[line], value);
 	}
@@ -420,14 +422,15 @@ static bool asiair_set_output_line(uint16_t line, int value, bool use_pwm) {
 
 
 static bool asiair_read_output_lines(int *values, bool use_pwm) {
-	int first = 0;
 	if (use_pwm) {
 		if (!asiair_pwm_get_enable(0, &values[0])) return false;
-		if (!asiair_pwm_get_enable(1, &values[1])) return false;
-		first = 2;
-	}
-	for (int i = first; i < 4; i++) {
-		if (!asiair_pin_read(output_pins[i], &values[i])) return false;
+		if (!asiair_pwm_get_enable(1, &values[3])) return false;
+		if (!asiair_pin_read(output_pins[1], &values[1])) return false;
+		if (!asiair_pin_read(output_pins[2], &values[2])) return false;
+	} else {
+		for (int i = 0; i < 4; i++) {
+			if (!asiair_pin_read(output_pins[i], &values[i])) return false;
+		}
 	}
 	return true;
 }
