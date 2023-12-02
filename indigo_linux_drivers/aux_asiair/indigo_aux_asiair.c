@@ -224,7 +224,7 @@ static bool asiair_pwm_set(int channel, int period, int duty_cycle) {
 	sprintf(buf, "%d", 0);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Clear duty_cycle = %d channel = %d", duty_cycle, channel);
 	if (write(fd, buf, strlen(buf)) <= 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set PWM duty_cycle for channel %d!", channel);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to clear PWM duty_cycle for channel %d!", channel);
 		close(fd);
 	}
 	close(fd);
@@ -663,7 +663,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 		if(PRIVATE_DATA->pwm_present) {
 			AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = false;
 			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = false;
-			indigo_send_message(device, "PWM on Outputs #1 and #2 is present");
+			indigo_send_message(device, "PWM on Outputs #1 and #4 is present");
 		} else {
 			AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = true;
 			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = true;
