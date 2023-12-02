@@ -25,7 +25,7 @@
 
 #include "indigo_aux_asiair.h"
 
-#define DRIVER_VERSION         0x0006
+#define DRIVER_VERSION         0x0002
 #define AUX_ASIAIR_NAME     "ZWO Power Ports ASIAIR"
 
 #include <stdlib.h>
@@ -88,10 +88,10 @@ typedef struct {
 	pthread_mutex_t port_mutex;
 	bool pwm_present;
 
-	bool relay_active[8];
-	indigo_timer *relay_timers[8];
+	bool relay_active[4];
+	indigo_timer *relay_timers[4];
 	pthread_mutex_t relay_mutex;
-	indigo_timer *sensors_timer;
+	indigo_timer *pwm_settings_timer;
 
 	indigo_property *outlet_names_property,
 	                *gpio_outlet_property,
@@ -111,8 +111,7 @@ static void create_device();
 static void delete_device();
 
 
-static int input_pins[]  = {19, 17, 27, 22, 23, 24, 25, 20};
-static int output_pins[] = {12, 13, 26, 18, 16,  5,  6, 21};
+static int output_pins[] = {12, 13, 26, 18};
 
 static bool asiair_pwm_present() {
 	struct stat sb;
@@ -340,28 +339,6 @@ static bool asiair_pin_unexport(int pin) {
 }
 
 
-static bool asiair_set_input(int pin) {
-	char path[256];
-	int fd;
-
-	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
-	fd = open(path, O_WRONLY);
-	if (fd < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to open gpio%d direction for writing!", pin);
-		return false;
-	}
-
-	if (write(fd, "in", 2) < 0) {
-		fprintf(stderr, "Failed to set direction!\n");
-		close(fd);
-		return false;
-	}
-
-	close(fd);
-	return true;
-}
-
-
 static bool asiair_set_output(int pin) {
 	char path[256];
 	int fd;
@@ -433,7 +410,7 @@ static bool asiair_pin_write(int pin, int value) {
 }
 
 static bool asiair_set_output_line(uint16_t line, int value, bool use_pwm) {
-	if (line >= 8) return false;
+	if (line >= 4) return false;
 	if (line < 2 && use_pwm) {
 		return asiair_pwm_set_enable(line, value);
 	} else {
@@ -441,17 +418,6 @@ static bool asiair_set_output_line(uint16_t line, int value, bool use_pwm) {
 	}
 }
 
-static bool asiair_read_input_line(uint16_t line, int *value) {
-	if (line >= 8) return false;
-	return asiair_pin_read(input_pins[line], value);
-}
-
-static bool asiair_read_input_lines(int *values) {
-	for (int i = 0; i < 8; i++) {
-		if (!asiair_pin_read(input_pins[i], &values[i])) return false;
-	}
-	return true;
-}
 
 static bool asiair_read_output_lines(int *values, bool use_pwm) {
 	int first = 0;
@@ -460,7 +426,7 @@ static bool asiair_read_output_lines(int *values, bool use_pwm) {
 		if (!asiair_pwm_get_enable(1, &values[1])) return false;
 		first = 2;
 	}
-	for (int i = first; i < 8; i++) {
+	for (int i = first; i < 4; i++) {
 		if (!asiair_pin_read(output_pins[i], &values[i])) return false;
 	}
 	return true;
@@ -471,23 +437,14 @@ bool asiair_export_all(bool use_pwm) {
 	if (use_pwm) {
 		if (!asiair_pwm_export(0)) return false;
 		if (!asiair_pwm_export(1)) return false;
-		if (!asiair_pin_export(input_pins[0])) return false;
-		if (!asiair_pin_export(input_pins[1])) return false;
 		first = 2;
 	}
-	for (int i = first; i < 8; i++) {
+	for (int i = first; i < 4; i++) {
 		if (!asiair_pin_export(output_pins[i])) return false;
-		if (!asiair_pin_export(input_pins[i])) return false;
 	}
 	indigo_usleep(1000000);
-	if (use_pwm) {
-		if (!asiair_set_input(input_pins[0])) return false;
-		if (!asiair_set_input(input_pins[1])) return false;
-		first = 2;
-	}
-	for (int i = first; i < 8; i++) {
+	for (int i = first; i < 4; i++) {
 		if (!asiair_set_output(output_pins[i])) return false;
-		if (!asiair_set_input(input_pins[i])) return false;
 	}
 	return true;
 }
@@ -497,13 +454,10 @@ bool asiair_unexport_all(bool use_pwm) {
 	if (use_pwm) {
 		if (!asiair_pwm_unexport(0)) return false;
 		if (!asiair_pwm_unexport(1)) return false;
-		if (!asiair_pin_unexport(input_pins[0])) return false;
-		if (!asiair_pin_unexport(input_pins[1])) return false;
 		first = 2;
 	}
-	for (int i = first; i < 8; i++) {
+	for (int i = first; i < 4; i++) {
 		if (!asiair_pin_unexport(output_pins[i])) return false;
-		if (!asiair_pin_unexport(input_pins[i])) return false;
 	}
 	return true;
 }
@@ -558,8 +512,7 @@ static int asiair_init_properties(indigo_device *device) {
 }
 
 
-static void sensors_timer_callback(indigo_device *device) {
-	int sensors[8];
+static void pwm_settings_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->pwm_present) {
 		int period, duty_cycle;
 		if (!asiair_pwm_get(0, &period, &duty_cycle)) {
@@ -580,7 +533,7 @@ static void sensors_timer_callback(indigo_device *device) {
 
 	indigo_update_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 	indigo_update_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->sensors_timer);
+	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->pwm_settings_timer);
 }
 
 
@@ -632,14 +585,14 @@ static void (*relay_timer_callbacks[])(indigo_device*) = {
 
 static bool set_gpio_outlets(indigo_device *device) {
 	bool success = true;
-	int relay_value[8];
+	int relay_value[4];
 
 	if (!asiair_read_output_lines(relay_value, PRIVATE_DATA->pwm_present)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "asiair_pin_read(%d) failed", PRIVATE_DATA->handle);
 		return false;
 	}
 
-	for (int i = 0; i < 8; i++) {
+	for (int i = 0; i < 4; i++) {
 		if ((AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value != relay_value[i]) {
 			if (((AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value > 0) && (AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value && !PRIVATE_DATA->relay_active[i]) {
 				if (!asiair_set_output_line(i, (int)(AUX_OUTLET_PULSE_LENGTHS_PROPERTY->items + i)->number.value, PRIVATE_DATA->pwm_present)) {
@@ -712,7 +665,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 			indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, firmware);
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 
-			int relay_value[8];
+			int relay_value[4];
 			if (!asiair_read_output_lines(relay_value, PRIVATE_DATA->pwm_present)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "asiair_pin_read(%d) failed", PRIVATE_DATA->handle);
 				AUX_GPIO_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -736,7 +689,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 						asiair_pwm_set_enable(1, true);
 					}
 				}
-				for (int i = 0; i < 8; i++) {
+				for (int i = 0; i < 4; i++) {
 					(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
 					PRIVATE_DATA->relay_active[i] = false;
 				}
@@ -746,7 +699,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
 			indigo_define_property(device, AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY, NULL);
 			indigo_define_property(device, AUX_GPIO_OUTLET_DUTY_PROPERTY, NULL);
-			indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
+			indigo_set_timer(device, 0, pwm_settings_timer_callback, &PRIVATE_DATA->pwm_settings_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -754,10 +707,10 @@ static void handle_aux_connect_property(indigo_device *device) {
 		}
 	} else {
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
-		for (int i = 0; i < 8; i++) {
+		for (int i = 0; i < 4; i++) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->relay_timers[i]);
 		}
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->sensors_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->pwm_settings_timer);
 		asiair_unexport_all(PRIVATE_DATA->pwm_present);
 		indigo_delete_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
