@@ -343,6 +343,14 @@ static bool rpio_pin_export(int pin) {
 	char buffer[10];
 	ssize_t bytes_written;
 	int fd;
+	char path[256];
+	struct stat sb = {0};
+
+	sprintf(path, "/sys/class/gpio/gpio%d", pin);
+	if (stat(path, &sb) == 0 && (S_ISDIR(sb.st_mode))) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Pin #%d already exported!", pin);
+		return true;
+	}
 
 	fd = open("/sys/class/gpio/export", O_WRONLY);
 	if (fd < 0) {
@@ -375,10 +383,46 @@ static bool rpio_pin_unexport(int pin) {
 	return true;
 }
 
+static bool rpio_get_pin_direction(int pin, bool *input) {
+	char path[255];
+	char direction_str[32] = {0};
+	int fd;
+
+	if (input == NULL) return false;
+
+	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
+	fd = open(path, O_RDONLY);
+	if (fd < 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Failed to open gpio%d direction for reading", pin);
+		return false;
+	}
+
+	if (read(fd, direction_str, 3) < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read direction!\n");
+		close(fd);
+		return false;
+	}
+	close(fd);
+	if (direction_str[0] == 'i') {
+		*input = true;
+	} else if (direction_str[0] == 'o') {
+		*input = false;
+	} else {
+		return false;
+	}
+	return true;
+}
+
 
 static bool rpio_set_input(int pin) {
 	char path[256];
 	int fd;
+	bool is_input = false;
+
+	if (rpio_get_pin_direction(pin, &is_input) && is_input) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pin gpio%d direction is already input", pin);
+		return true;
+	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
 	fd = open(path, O_WRONLY);
@@ -401,6 +445,12 @@ static bool rpio_set_input(int pin) {
 static bool rpio_set_output(int pin) {
 	char path[256];
 	int fd;
+	bool is_input = true;
+
+	if (rpio_get_pin_direction(pin, &is_input) && !is_input) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Pin gpio%d direction is already output", pin);
+		return true;
+	}
 
 	sprintf(path, "/sys/class/gpio/gpio%d/direction", pin);
 	fd = open(path, O_WRONLY);
