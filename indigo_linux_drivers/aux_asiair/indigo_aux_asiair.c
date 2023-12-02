@@ -111,7 +111,7 @@ static void create_device();
 static void delete_device();
 
 
-static int output_pins[] = {12, 13, 26, 18};
+static int output_pins[] = {12, 13, 26, 18}; /* 12 -> PWM0, 18 -> PWM1 */
 
 static bool asiair_pwm_present() {
 	struct stat sb;
@@ -433,18 +433,24 @@ static bool asiair_read_output_lines(int *values, bool use_pwm) {
 }
 
 bool asiair_export_all(bool use_pwm) {
-	int first = 0;
 	if (use_pwm) {
 		if (!asiair_pwm_export(0)) return false;
 		if (!asiair_pwm_export(1)) return false;
-		first = 2;
-	}
-	for (int i = first; i < 4; i++) {
-		if (!asiair_pin_export(output_pins[i])) return false;
+		if (!asiair_pin_export(output_pins[1])) return false;
+		if (!asiair_pin_export(output_pins[2])) return false;
+	} else {
+		for (int i = 0; i < 4; i++) {
+			if (!asiair_pin_export(output_pins[i])) return false;
+		}
 	}
 	indigo_usleep(1000000);
-	for (int i = first; i < 4; i++) {
-		if (!asiair_set_output(output_pins[i])) return false;
+	if (use_pwm) {
+		if (!asiair_set_output(output_pins[1])) return false;
+		if (!asiair_set_output(output_pins[2])) return false;
+	} else {
+		for (int i = 0; i < 4; i++) {
+			if (!asiair_set_output(output_pins[i])) return false;
+		}
 	}
 	return true;
 }
@@ -454,10 +460,12 @@ bool asiair_unexport_all(bool use_pwm) {
 	if (use_pwm) {
 		if (!asiair_pwm_unexport(0)) return false;
 		if (!asiair_pwm_unexport(1)) return false;
-		first = 2;
-	}
-	for (int i = first; i < 4; i++) {
-		if (!asiair_pin_unexport(output_pins[i])) return false;
+		if (!asiair_pin_unexport(output_pins[1])) return false;
+		if (!asiair_pin_unexport(output_pins[2])) return false;
+	} else {
+		for (int i = 0; i < 4; i++) {
+			if (!asiair_pin_unexport(output_pins[i])) return false;
+		}
 	}
 	return true;
 }
@@ -688,7 +696,13 @@ static void handle_aux_connect_property(indigo_device *device) {
 						asiair_pwm_set_enable(1, false);
 						asiair_pwm_set_enable(1, true);
 					}
+					AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = false;
+					AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = false;
+				} else {
+					AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = true;
+					AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = true;
 				}
+
 				for (int i = 0; i < 4; i++) {
 					(AUX_GPIO_OUTLET_PROPERTY->items + i)->sw.value = relay_value[i];
 					PRIVATE_DATA->relay_active[i] = false;
