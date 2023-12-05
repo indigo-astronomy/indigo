@@ -2,6 +2,21 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-258] - 05 Dec Tue 2023
+### Driver fixes:
+- indigo_aux_asiair:
+	- code cleanup
+	- fix PWM and Power handling
+	- preserve output pin states at connect
+
+- indigo_aux_rpio:
+	- hide PWM proeprties if PWM is not enabled
+	- preserve output pin states at connect
+
+- indigo_ccd_asi:
+	- emergeny workaround for asi SDK bug - setting ASI_GPS_* capsabilities render camera unable to take exposure
+
+
 # [2.0-256] - 29 Nov Wed 2023
 ### Overall:
 - indigo_driver:
