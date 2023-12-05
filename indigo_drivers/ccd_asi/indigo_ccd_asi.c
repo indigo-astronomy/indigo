@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0027
+#define DRIVER_VERSION 0x0028
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -975,6 +975,16 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIGetControlValue(%d, ASI_COOLER_POWER_PERC) = %d", id, res);
 		CCD_COOLER_POWER_ITEM->number.value = CCD_COOLER_POWER_ITEM->number.target = value;
+		return INDIGO_OK;
+	}
+
+	if (ctrl_caps.ControlType == ASI_GPS_SUPPORT ||
+		ctrl_caps.ControlType == ASI_GPS_START_LINE ||
+		ctrl_caps.ControlType == ASI_GPS_END_LINE ||
+		ctrl_caps.ControlType == ASI_ROLLING_INTERVAL
+	) {
+		// trying to set these causes camera to be unable to get exposure
+		// so we ignore them (and I have no idea what they mean and do)
 		return INDIGO_OK;
 	}
 
