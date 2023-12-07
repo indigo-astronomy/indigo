@@ -1536,6 +1536,11 @@ bool ptp_initialise(indigo_device *device) {
 	if (ptp_transaction_0_0_i(device, ptp_operation_GetDeviceInfo, &buffer, NULL)) {
 		ptp_decode_device_info(buffer, device);
 		PTP_DUMP_DEVICE_INFO();
+		if (PRIVATE_DATA->inject_property) {
+			PRIVATE_DATA->inject_property(device);
+		indigo_log("injected:");
+			PTP_DUMP_DEVICE_INFO();
+		}
 		if (buffer)
 			free(buffer);
 		buffer = NULL;
