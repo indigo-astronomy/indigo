@@ -246,6 +246,7 @@ package: reconfigure init all
 ifeq ($(ARCH_DETECTED),$(filter $(ARCH_DETECTED),arm arm64))
 	install -d $(INSTALL_ROOT)/usr/bin
 	install -m 0755 tools/rpi_ctrl.sh $(INSTALL_ROOT)/usr/bin
+	install -m 0755 tools/rpi_ctrl_v2.sh $(INSTALL_ROOT)/usr/bin
 	install -m 0755 tools/wifi_channel_selector.pl $(INSTALL_ROOT)/usr/bin
 endif
 	install -d $(INSTALL_ROOT)/usr/sbin
