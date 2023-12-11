@@ -28,7 +28,7 @@
 # 2. Setup WiFi client to connect to an access point.
 #
 # This version of the script uses network manager to setup WiFi
-# AP and client. 
+# AP and client.
 
 VERSION=2.00
 
@@ -91,15 +91,14 @@ OPT_VERBOSE=0
 # Valid WIFI channels
 WIFI_CHANNELS=('0' '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '36' '40' '44' '48' '56' '60' '64' '100' '104' '108' '112' '116')
 
-# Required config files.
-CONF_SYSCTL="/etc/sysctl.conf"
-PROC_FORWARD="/proc/sys/net/ipv4/ip_forward"
+# Connection network manager connection name
 CON_NAME="indigo-wifi"
 
 # Required executable files.
 CAT_EXE=$(which cat)
 GREP_EXE=$(which grep)
 SED_EXE=$(which sed)
+NFT_EXE=$(which nft)
 NM_CLI=$(which nmcli)
 POWEROFF_EXE=$(which poweroff)
 REBOOT_EXE=$(which reboot)
@@ -114,6 +113,7 @@ WIFI_CH_SELECT_EXE=$(which wifi_channel_selector.pl)
 # Show usage and exit with code 1.
 ###############################################
 __usage() {
+
     echo -e "usage: ${0}\n" \
 	 "\t--get-wifi-server\n" \
 	 "\t--set-wifi-server <ssid> <password>\n" \
@@ -133,7 +133,9 @@ __usage() {
 	 "\t--poweroff\n" \
 	 "\t--reboot\n" \
 	 "\t--verbose"
-    echo "version: ${VERSION}, written by Thomas Stibor <thomas@stibor.net>"
+    echo "version: ${VERSION}, written by Rumen G.Bogdanovski <rumen@skyarchive.oer>"
+    echo ""
+    echo "Based ot the original script by Thomas Stibor <thomas@stibor.net>"
     echo "and Rumen G.Bogdanovski <rumen@skyarchive.oer>"
     exit 1
 }
@@ -142,6 +144,7 @@ __usage() {
 # Return 1 of channel is a valid WIFI channel
 ###############################################
 __validate_channel() {
+
     local IFS=$'\n';
     if [ "$1" == "$(compgen -W "${WIFI_CHANNELS[*]}" "$1" | head -1)" ] ; then
         return 1
@@ -155,6 +158,7 @@ __validate_channel() {
 # Output to stdout "OK" and exit with 0.
 ###############################################
 __OK() {
+
     { echo "OK"; exit 0; }
 }
 
@@ -164,6 +168,7 @@ __OK() {
 # "ALERT: {reason} and exit with 1.
 ###############################################
 __ALERT() {
+
     [[ ! -z "${1}" ]] && { echo "ALERT: $@"; exit 1; }
     { echo "ALERT"; exit 1; }
 }
@@ -173,6 +178,7 @@ __ALERT() {
 # with 1 when not.
 ###############################################
 __check_file_exists() {
+
     [[ ! -f ${1} ]] && __ALERT "file ${1} does not exist"
 }
 
@@ -181,6 +187,7 @@ __check_file_exists() {
 # value when successful, otherwise "".
 ###############################################
 __get() {
+
     local key=${1}
     local conf_file=${2}
     local delim=${3-=}		# Default value '='
@@ -189,6 +196,7 @@ __get() {
 }
 
 __nm_get() {
+
     local key=${1}
 
     echo $(${NM_CLI} -s con show ${CON_NAME} 2>/dev/null | grep -oPm1 "(?<=${key}:).*")
@@ -199,6 +207,7 @@ __nm_get() {
 # when successful, otherwise 1.
 ###############################################
 __set() {
+
     local key=${1}
     local value=${2}
     local conf_file=${3}
@@ -217,16 +226,19 @@ __set() {
 ###############################################
 __get-forwarding() {
 
-    local enabled=`${CAT_EXE} ${PROC_FORWARD}`
-    echo $enabled
+    local res=`${NFT_EXE} list tables | grep "ip nat"`
+    [[ -z ${res} ]] && { echo 0; exit 0; }
+    echo 1
 }
 
 ###############################################
 # Enable ipv4 forwarding
 ###############################################
 __enable-forwarding() {
-    __set "net.ipv4.ip_forward" 1 ${CONF_SYSCTL} >/dev/null 2>&1
-    echo 1 2>/dev/null >${PROC_FORWARD}
+
+    ${SYSTEMCTL_EXE} enable nftables >/dev/null 2>&1
+    [[ $? -ne 0 ]] && { __ALERT "cannot enable forwarding"; }
+    ${SYSTEMCTL_EXE} start nftables >/dev/null 2>&1
     [[ $? -ne 0 ]] && { __ALERT "cannot enable forwarding"; }
 
     __OK
@@ -236,8 +248,10 @@ __enable-forwarding() {
 # Disable ipv4 forwarding
 ###############################################
 __disable-forwarding() {
-    __set "net.ipv4.ip_forward" 0 ${CONF_SYSCTL} >/dev/null 2>&1
-    echo 0 2>/dev/null >${PROC_FORWARD}
+
+    ${SYSTEMCTL_EXE} stop nftables >/dev/null 2>&1
+    [[ $? -ne 0 ]] && { __ALERT "cannot disable forwarding"; }
+    ${SYSTEMCTL_EXE} disable nftables >/dev/null 2>&1
     [[ $? -ne 0 ]] && { __ALERT "cannot disable forwarding"; }
 
     __OK
@@ -249,6 +263,7 @@ __disable-forwarding() {
 # or "wifi-client".
 ###############################################
 __get-wifi-mode() {
+
     # RPi is in wifi-client mode.
     MODE=$(__nm_get "802-11-wireless.mode")
 
@@ -261,20 +276,22 @@ __get-wifi-mode() {
 
 
 ###############################################
-# Read SSID PW and CHANNEL from hostapd.conf.
+# Read SSID PW and CHANNEL
 ###############################################
 __read-wifi-credentials() {
+
     WIFI_AP_SSID=$(__nm_get "802-11-wireless.ssid")
     WIFI_AP_PW=$(__nm_get "802-11-wireless-security.psk")
 }
 
 __read-wifi-channel() {
+
     local wifi_ch=$(__nm_get "802-11-wireless.channel")
     [[ -z ${WIFI_AP_CH} ]] || WIFI_AP_CH=$(__nm_get "802-11-wireless.channel")
 }
 
 ###############################################
-# Set SSID and PW in conf file hostapd.conf.
+# Set SSID and PW
 ###############################################
 __set-wifi-server() {
 
@@ -315,7 +332,7 @@ __set-wifi-server() {
 }
 
 ###############################################
-# Get SSID and PW from conf file hostapd.conf.
+# Get SSID and PW
 ###############################################
 __get-wifi-server() {
 
@@ -337,7 +354,7 @@ __get-wifi-server() {
 }
 
 ###############################################
-# Get CHANNEL from conf file hostapd.conf.
+# Get CHANNEL
 ###############################################
 __get-wifi-channel() {
 
@@ -362,6 +379,7 @@ __get-wifi-channel() {
 # set Wifi channel
 ###############################################
 __set-wifi-channel() {
+
     local mode=$(__get-wifi-mode)
 
     __validate_channel ${WIFI_AP_CH}
@@ -377,9 +395,6 @@ __set-wifi-channel() {
         [[ $? -ne 0 ]] && { __ALERT "cannot auto select WiFi channel"; }
     fi
 
-    echo 1 2>/dev/null >${PROC_FORWARD}
-    [[ $? -ne 0 ]] && { __ALERT "cannot change WiFi channel"; }
-
     if [[ "${mode}" == "wifi-server" ]]; then
         ${NM_CLI} con modify ${CON_NAME} 802-11-wireless.band ${WIFI_HW_MODE} 802-11-wireless.channel ${WIFI_AP_CH} && \
         ${NM_CLI} con up ${CON_NAME}
@@ -389,12 +404,11 @@ __set-wifi-channel() {
 
     fi
 
-    __ALERT "not in AP mode, change will take effect when switched to AP mode";
+    __ALERT "not in AP mode";
 }
 
 ###############################################
-# Set SSID and PW in conf
-# file /etc/wpa_supplicant/wpa_supplicant.conf.
+# Set client SSID and PW
 ###############################################
 __set-wifi-client() {
 
@@ -418,8 +432,7 @@ __set-wifi-client() {
 }
 
 ###############################################
-# Set SSID and PW in conf
-# file /etc/wpa_supplicant/wpa_supplicant.conf.
+# Get client SSID and PW
 ###############################################
 __get-wifi-client() {
 
@@ -604,9 +617,6 @@ __check_file_exists ${APT_CACHE_EXE}
 __check_file_exists ${APT_GET_EXE}
 __check_file_exists ${DATE_EXE}
 __check_file_exists ${IW_EXE}
-# Config files.
-__check_file_exists ${CONF_SYSCTL}
-__check_file_exists ${PROC_FORWARD}
 
 [[ ${OPT_GET_FORWARDING} -eq 1 ]] && { __get-forwarding; }
 [[ ${OPT_ENABLE_FORWARDING} -eq 1 ]] && { __enable-forwarding; }
