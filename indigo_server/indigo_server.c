@@ -816,6 +816,38 @@ static void check_versions(indigo_device *device) {
 	}
 }
 
+static void update_wifi_setings(indigo_device *device) {
+	char *line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
+	if (line) {
+		char *pnt, *token = strtok_r(line, "\t", &pnt);
+		if (token) {
+			indigo_copy_value(SERVER_WIFI_AP_SSID_ITEM->text.value, token);
+		}
+		token = strtok_r(NULL, "\t", &pnt);
+		if (token) {
+			indigo_copy_value(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token);
+		}
+		free(line);
+	}
+	line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
+	if (line) {
+		char *pnt, *token = strtok_r(line, "\t", &pnt);
+		if (token) {
+			indigo_copy_value(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token);
+			SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value[0] = '\0';
+		}
+		free(line);
+	}
+	line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
+	if (line) {
+		SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = atoi(line);
+		free(line);
+	}
+	indigo_update_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
+	indigo_update_property(device, SERVER_WIFI_CHANNEL_PROPERTY, NULL);
+	indigo_update_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
+}
+
 #endif
 
 static indigo_result attach(indigo_device *device) {
@@ -905,7 +937,7 @@ static indigo_result attach(indigo_device *device) {
 				indigo_copy_value(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token);
 			free(line);
 		}
-		SERVER_WIFI_CHANNEL_PROPERTY = indigo_init_number_property(NULL, server_device.name, SERVER_WIFI_CHANNEL_PROPERTY_NAME, MAIN_GROUP, "WiFi channel", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		SERVER_WIFI_CHANNEL_PROPERTY = indigo_init_number_property(NULL, server_device.name, SERVER_WIFI_CHANNEL_PROPERTY_NAME, MAIN_GROUP, "WiFi server channel", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_number_item(SERVER_WIFI_CHANNEL_ITEM, SERVER_WIFI_CHANNEL_ITEM_NAME, "Channel (0 = auto, [0-13] = 2.4G, [36-116] = 5G)", 0, 116, 1, 0);
 		line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
 		if (line) {
@@ -1204,11 +1236,15 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_WIFI_AP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
 		indigo_property_copy_values(SERVER_WIFI_AP_PROPERTY, property, false);
-		return execute_command(device, SERVER_WIFI_AP_PROPERTY, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"", SERVER_WIFI_AP_SSID_ITEM->text.value, SERVER_WIFI_AP_PASSWORD_ITEM->text.value);
+		execute_command(device, SERVER_WIFI_AP_PROPERTY, "s_rpi_ctrl.sh --set-wifi-server \"%s\" \"%s\"", SERVER_WIFI_AP_SSID_ITEM->text.value, SERVER_WIFI_AP_PASSWORD_ITEM->text.value);
+		update_wifi_setings(device);
+		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_INFRASTRUCTURE
 		indigo_property_copy_values(SERVER_WIFI_INFRASTRUCTURE_PROPERTY, property, false);
-		return execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value);
+		execute_command(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-client \"%s\" \"%s\"", SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value);
+		update_wifi_setings(device);
+		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_CHANNEL_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SERVER_WIFI_CHANNEL
 		indigo_property_copy_values(SERVER_WIFI_CHANNEL_PROPERTY, property, false);
