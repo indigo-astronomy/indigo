@@ -833,6 +833,8 @@ static void update_wifi_setings(indigo_device *device) {
 			token = strtok_r(NULL, "\t", &pnt);
 			if (token) {
 				indigo_copy_value(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token);
+			} else {
+				SERVER_WIFI_AP_PASSWORD_ITEM->text.value[0] = '\0';
 			}
 		}
 		free(line);
