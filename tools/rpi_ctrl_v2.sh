@@ -297,7 +297,7 @@ __set-wifi-server() {
 
     [[ -z ${WIFI_AP_SSID} ]] && __ALERT "WIFI_AP_SSID not set"
     [[ -z ${WIFI_AP_PW} ]] && __ALERT "WIFI_AP_PW not set"
-    [[ -z ${WIFI_AP_CH} ]] && __ALERT "WIFI_AP_CH not set"
+    [[ -z ${WIFI_AP_CH} ]] && WIFI_AP_CH=0
 
     [[ ${#WIFI_AP_PW} -lt 8 ]] && __ALERT "WIFI_AP_PW length < 8"
     [[ ${#WIFI_AP_PW} -gt 63 ]] && __ALERT "WIFI_AP_PW length > 63"
