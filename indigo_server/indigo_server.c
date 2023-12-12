@@ -819,13 +819,20 @@ static void check_versions(indigo_device *device) {
 static void update_wifi_setings(indigo_device *device) {
 	char *line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
 	if (line) {
-		char *pnt, *token = strtok_r(line, "\t", &pnt);
-		if (token) {
-			indigo_copy_value(SERVER_WIFI_AP_SSID_ITEM->text.value, token);
-		}
-		token = strtok_r(NULL, "\t", &pnt);
-		if (token) {
-			indigo_copy_value(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token);
+		if (!strncmp(line, "ALERT:",6)) {
+			SERVER_WIFI_AP_SSID_ITEM->text.value[0] = '\0';
+			SERVER_WIFI_AP_PASSWORD_ITEM->text.value[0] = '\0';
+			INDIGO_ERROR(indigo_error("%s", line));
+			SERVER_WIFI_AP_PROPERTY->state=INDIGO_ALERT_STATE;
+		} else {
+			char *pnt, *token = strtok_r(line, "\t", &pnt);
+			if (token) {
+				indigo_copy_value(SERVER_WIFI_AP_SSID_ITEM->text.value, token);
+			}
+			token = strtok_r(NULL, "\t", &pnt);
+			if (token) {
+				indigo_copy_value(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token);
+			}
 		}
 		free(line);
 	} else {
@@ -835,10 +842,17 @@ static void update_wifi_setings(indigo_device *device) {
 
 	line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
 	if (line) {
-		char *pnt, *token = strtok_r(line, "\t", &pnt);
-		if (token) {
-			indigo_copy_value(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token);
+		if (!strncmp(line, "ALERT:",6)) {
+			SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value[0] = '\0';
 			SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value[0] = '\0';
+			INDIGO_ERROR(indigo_error("%s", line));
+			SERVER_WIFI_INFRASTRUCTURE_PROPERTY->state=INDIGO_ALERT_STATE;
+		} else {
+			char *pnt, *token = strtok_r(line, "\t", &pnt);
+			if (token) {
+				indigo_copy_value(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token);
+				SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value[0] = '\0';
+			}
 		}
 		free(line);
 	} else {
@@ -848,7 +862,13 @@ static void update_wifi_setings(indigo_device *device) {
 
 	line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
 	if (line) {
-		SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = atoi(line);
+		if (!strncmp(line, "ALERT:",6)) {
+			SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = 0;
+			INDIGO_ERROR(indigo_error("%s", line));
+			SERVER_WIFI_CHANNEL_PROPERTY->state=INDIGO_ALERT_STATE;
+		} else {
+			SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = atoi(line);
+		}
 		free(line);
 	} else {
 		SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = 0;
@@ -905,6 +925,7 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_text_item(SERVER_UNLOAD_ITEM,SERVER_UNLOAD_ITEM_NAME, "Unload driver", "");
 	SERVER_RESTART_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_RESTART_PROPERTY_NAME, MAIN_GROUP, "Restart", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 	indigo_init_switch_item(SERVER_RESTART_ITEM, SERVER_RESTART_ITEM_NAME, "Restart server", false);
+	strcpy(SERVER_RESTART_ITEM->hints,"warn_on_set:\"Restart INDIGO Server?\";");
 	SERVER_LOG_LEVEL_PROPERTY = indigo_init_switch_property(NULL, device->name, SERVER_LOG_LEVEL_PROPERTY_NAME, MAIN_GROUP, "Log level", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_ERROR_ITEM, SERVER_LOG_LEVEL_ERROR_ITEM_NAME, "Error", false);
 	indigo_init_switch_item(SERVER_LOG_LEVEL_INFO_ITEM, SERVER_LOG_LEVEL_INFO_ITEM_NAME, "Info", false);
@@ -969,8 +990,10 @@ static indigo_result attach(indigo_device *device) {
 		indigo_init_text_item(SERVER_HOST_TIME_ITEM, SERVER_HOST_TIME_ITEM_NAME, "Host time", "");
 		SERVER_SHUTDOWN_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_SHUTDOWN_PROPERTY_NAME, MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(SERVER_SHUTDOWN_ITEM, SERVER_SHUTDOWN_ITEM_NAME, "Shutdown", false);
+		strcpy(SERVER_SHUTDOWN_ITEM->hints,"warn_on_set:\"Shutdown host computer?\";");
 		SERVER_REBOOT_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_REBOOT_PROPERTY_NAME, MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(SERVER_REBOOT_ITEM, SERVER_REBOOT_ITEM_NAME, "Reboot", false);
+		strcpy(SERVER_SHUTDOWN_ITEM->hints,"warn_on_set:\"Reboot host computer?\";");
 		indigo_async((void *(*)(void *))check_versions, device);
 	}
 #endif /* RPI_MANAGEMENT */
