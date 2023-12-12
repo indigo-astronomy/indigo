@@ -818,8 +818,8 @@ static void check_versions(indigo_device *device) {
 
 static void update_wifi_setings(indigo_device *device) {
 	char *line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
+	SERVER_WIFI_AP_PROPERTY->state=INDIGO_OK_STATE;
 	if (line) {
-		SERVER_WIFI_AP_PROPERTY->state=INDIGO_OK_STATE;
 		if (!strncmp(line, "ALERT:",6)) {
 			SERVER_WIFI_AP_SSID_ITEM->text.value[0] = '\0';
 			SERVER_WIFI_AP_PASSWORD_ITEM->text.value[0] = '\0';
@@ -839,11 +839,12 @@ static void update_wifi_setings(indigo_device *device) {
 	} else {
 		SERVER_WIFI_AP_SSID_ITEM->text.value[0] = '\0';
 		SERVER_WIFI_AP_PASSWORD_ITEM->text.value[0] = '\0';
+		SERVER_WIFI_AP_PROPERTY->state=INDIGO_IDLE_STATE;
 	}
 
 	line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
+	SERVER_WIFI_INFRASTRUCTURE_PROPERTY->state=INDIGO_OK_STATE;
 	if (line) {
-		SERVER_WIFI_INFRASTRUCTURE_PROPERTY->state=INDIGO_OK_STATE;
 		if (!strncmp(line, "ALERT:",6)) {
 			SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value[0] = '\0';
 			SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value[0] = '\0';
@@ -860,11 +861,12 @@ static void update_wifi_setings(indigo_device *device) {
 	} else {
 		SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value[0] = '\0';
 		SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM->text.value[0] = '\0';
+		SERVER_WIFI_INFRASTRUCTURE_PROPERTY->state=INDIGO_IDLE_STATE;
 	}
 
 	line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
+	SERVER_WIFI_CHANNEL_PROPERTY->state=INDIGO_OK_STATE;
 	if (line) {
-		SERVER_WIFI_CHANNEL_PROPERTY->state=INDIGO_OK_STATE;
 		if (!strncmp(line, "ALERT:",6)) {
 			SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = 0;
 			INDIGO_ERROR(indigo_error("%s", line));
