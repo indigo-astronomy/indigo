@@ -199,7 +199,7 @@ __nm_get() {
 
     local key=${1}
 
-    echo $(${NM_CLI} -s con show ${CON_NAME} 2>/dev/null | grep -oPm1 "(?<=${key}:).*")
+    echo $(${NM_CLI} -s con show --active ${CON_NAME} 2>/dev/null | grep -oPm1 "(?<=${key}:).*")
 }
 
 ###############################################
