@@ -948,41 +948,23 @@ static indigo_result attach(indigo_device *device) {
 	indigo_init_switch_item(SERVER_WEB_APPS_ITEM, SERVER_WEB_APPS_ITEM_NAME, "Web applications", use_web_apps);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
-		char *line;
 		SERVER_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_AP_PROPERTY_NAME, MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(SERVER_WIFI_AP_SSID_ITEM, SERVER_WIFI_AP_SSID_ITEM_NAME, "Network name", "");
 		indigo_init_text_item(SERVER_WIFI_AP_PASSWORD_ITEM, SERVER_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
-		line = execute_query("s_rpi_ctrl.sh --get-wifi-server");
-		if (line) {
-			char *pnt, *token = strtok_r(line, "\t", &pnt);
-			if (token)
-				indigo_copy_value(SERVER_WIFI_AP_SSID_ITEM->text.value, token);
-			token = strtok_r(NULL, "\t", &pnt);
-			if (token)
-				indigo_copy_value(SERVER_WIFI_AP_PASSWORD_ITEM->text.value, token);
-			free(line);
-		}
+
 		SERVER_WIFI_INFRASTRUCTURE_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_INFRASTRUCTURE_PROPERTY_NAME, MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM, SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM_NAME, "SSID", "");
 		indigo_init_text_item(SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM_NAME, "Password", "");
-		line = execute_query("s_rpi_ctrl.sh --get-wifi-client");
-		if (line) {
-			char *pnt, *token = strtok_r(line, "\t", &pnt);
-			if (token)
-				indigo_copy_value(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM->text.value, token);
-			free(line);
-		}
+
 		SERVER_WIFI_CHANNEL_PROPERTY = indigo_init_number_property(NULL, server_device.name, SERVER_WIFI_CHANNEL_PROPERTY_NAME, MAIN_GROUP, "WiFi server channel", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_number_item(SERVER_WIFI_CHANNEL_ITEM, SERVER_WIFI_CHANNEL_ITEM_NAME, "Channel (0 = auto, [0-13] = 2.4G, [36-116] = 5G)", 0, 116, 1, 0);
-		line = execute_query("s_rpi_ctrl.sh --get-wifi-channel");
-		if (line) {
-			SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = atoi(line);
-			free(line);
-		}
+
+		update_wifi_setings(device);
+
 		SERVER_INTERNET_SHARING_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_INTERNET_SHARING_PROPERTY_NAME, MAIN_GROUP, "Internet sharing", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		indigo_init_switch_item(SERVER_INTERNET_SHARING_DISABLED_ITEM, SERVER_INTERNET_SHARING_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(SERVER_INTERNET_SHARING_ENABLED_ITEM, SERVER_INTERNET_SHARING_ENABLED_ITEM_NAME, "Enabled", false);
-		line = execute_query("s_rpi_ctrl.sh --get-forwarding");
+		char *line = execute_query("s_rpi_ctrl.sh --get-forwarding");
 		if (line) {
 			if (!strncmp(line, "1", 1)) {
 				indigo_set_switch(SERVER_INTERNET_SHARING_PROPERTY, SERVER_INTERNET_SHARING_ENABLED_ITEM, true);
