@@ -2,6 +2,11 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-258] - 12 Dec Tue 2023
+### Overall:
+- indigo_server: handle indigosky wifi setting proeprties
+- rpi_ctrl_v2.sh: indigosky management script for debian bookworm added
+
 # [2.0-258] - 05 Dec Tue 2023
 ### Driver fixes:
 - indigo_aux_asiair:
