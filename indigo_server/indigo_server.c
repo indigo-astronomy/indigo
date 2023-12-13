@@ -975,6 +975,9 @@ static indigo_result attach(indigo_device *device) {
 			}
 			free(line);
 		}
+		if (SERVER_WIFI_INFRASTRUCTURE_PROPERTY->state == INDIGO_ALERT_STATE && SERVER_WIFI_AP_PROPERTY->state == INDIGO_ALERT_STATE) {
+			indigo_set_timer(device, 30, update_wifi_setings, NULL);
+		}
 		SERVER_HOST_TIME_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_HOST_TIME_PROPERTY_NAME, MAIN_GROUP, "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(SERVER_HOST_TIME_ITEM, SERVER_HOST_TIME_ITEM_NAME, "Host time", "");
 		SERVER_SHUTDOWN_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_SHUTDOWN_PROPERTY_NAME, MAIN_GROUP, "Shutdown host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
