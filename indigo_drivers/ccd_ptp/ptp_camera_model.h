@@ -140,6 +140,7 @@ static ptp_camera_model CAMERA[] = {
   { NIKON_VID, 0x044B, "Nikon Z 7II", ptp_flag_lv, 8256, 5504, 4.3 },
   { NIKON_VID, 0x044C, "Nikon Z 6II", ptp_flag_lv, 6048, 4024, 5.9 },
   { NIKON_VID, 0x0450, "Nikon Z 9", ptp_flag_lv, 8256, 5504, 4.3 },
+  { NIKON_VID, 0x0451, "Nikon Z 8", ptp_flag_lv, 8256, 5504, 4.3 },
   { NIKON_VID, 0xFFFF, "Nikon Camera", ptp_flag_lv, 0, 0, 0 },
   { SONY_VID, 0x079b, "Sony Alpha A68", ptp_flag_lv, 6000, 4000, 3.92 },
   { SONY_VID, 0x079c, "Sony Alpha A6300", ptp_flag_lv, 6000, 4000, 3.92 },
