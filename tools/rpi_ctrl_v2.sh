@@ -94,6 +94,10 @@ WIFI_CHANNELS=('0' '1' '2' '3' '4' '5' '6' '7' '8' '9' '10' '11' '12' '13' '36' 
 # Connection network manager connection name
 CON_NAME="indigo-wifi"
 
+# Required config files.
+CONF_SYSCTL="/etc/sysctl.conf"
+PROC_FORWARD="/proc/sys/net/ipv4/ip_forward"
+
 # Required executable files.
 CAT_EXE=$(which cat)
 GREP_EXE=$(which grep)
@@ -226,19 +230,16 @@ __set() {
 ###############################################
 __get-forwarding() {
 
-    local res=`${NFT_EXE} list tables | grep "ip nat"`
-    [[ -z ${res} ]] && { echo 0; exit 0; }
-    echo 1
+    local enabled=`${CAT_EXE} ${PROC_FORWARD}`
+    echo $enabled
 }
 
 ###############################################
 # Enable ipv4 forwarding
 ###############################################
 __enable-forwarding() {
-
-    ${SYSTEMCTL_EXE} enable nftables >/dev/null 2>&1
-    [[ $? -ne 0 ]] && { __ALERT "cannot enable forwarding"; }
-    ${SYSTEMCTL_EXE} start nftables >/dev/null 2>&1
+    __set "net.ipv4.ip_forward" 1 ${CONF_SYSCTL} >/dev/null 2>&1
+    echo 1 2>/dev/null >${PROC_FORWARD}
     [[ $? -ne 0 ]] && { __ALERT "cannot enable forwarding"; }
 
     __OK
@@ -248,15 +249,12 @@ __enable-forwarding() {
 # Disable ipv4 forwarding
 ###############################################
 __disable-forwarding() {
-
-    ${SYSTEMCTL_EXE} stop nftables >/dev/null 2>&1
-    [[ $? -ne 0 ]] && { __ALERT "cannot disable forwarding"; }
-    ${SYSTEMCTL_EXE} disable nftables >/dev/null 2>&1
+    __set "net.ipv4.ip_forward" 0 ${CONF_SYSCTL} >/dev/null 2>&1
+    echo 0 2>/dev/null >${PROC_FORWARD}
     [[ $? -ne 0 ]] && { __ALERT "cannot disable forwarding"; }
 
     __OK
 }
-
 
 ###############################################
 # Get active wifi-mode, returns "wifi-server"
