@@ -547,6 +547,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->property_value_code_label = ptp_property_canon_value_code_label;
 				private_data->initialise = ptp_canon_initialise;
 				private_data->handle_event = NULL;
+				private_data->inject_property = NULL;
 				private_data->fix_property = NULL;
 				private_data->set_property = ptp_canon_set_property;
 				private_data->exposure = ptp_canon_exposure;
@@ -566,6 +567,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->property_value_code_label = ptp_property_nikon_value_code_label;
 				private_data->initialise = ptp_nikon_initialise;
 				private_data->handle_event = ptp_nikon_handle_event;
+				private_data->inject_property = ptp_nikon_inject_property;
 				private_data->fix_property = ptp_nikon_fix_property;
 				private_data->set_property = ptp_nikon_set_property;
 				private_data->exposure = ptp_nikon_exposure;
@@ -585,6 +587,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->property_value_code_label = ptp_property_sony_value_code_label;
 				private_data->initialise = ptp_sony_initialise;
 				private_data->handle_event = ptp_sony_handle_event;
+				private_data->inject_property = NULL;
 				private_data->fix_property = NULL;
 				private_data->set_property = ptp_sony_set_property;
 				private_data->exposure = ptp_sony_exposure;
@@ -604,6 +607,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->property_value_code_label = ptp_property_fuji_value_code_label;
 				private_data->initialise = ptp_fuji_initialise;
 				private_data->handle_event = NULL;
+				private_data->inject_property = NULL;
 				private_data->fix_property = ptp_fuji_fix_property;
 				private_data->set_property = ptp_fuji_set_property;
 				private_data->exposure = ptp_fuji_exposure;
@@ -623,6 +627,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->property_value_code_label = ptp_property_value_code_label;
 				private_data->initialise = ptp_initialise;
 				private_data->handle_event = ptp_handle_event;
+				private_data->inject_property = NULL;
 				private_data->fix_property = NULL;
 				private_data->set_property = ptp_set_property;
 				private_data->exposure = ptp_exposure;

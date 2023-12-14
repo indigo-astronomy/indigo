@@ -125,6 +125,7 @@ static struct dslr_model_info {
   { "CANON EOS 1000D", 3888, 2592, 5.7 },
   { "CANON CAMERA", 0, 0, 0 },
   { "NIKON Z 9", 8256, 5504, 4.3 },
+  { "NIKON Z 8", 8256, 5504, 4.3 },
   { "NIKON Z 7II", 8256, 5504, 4.3 },
   { "NIKON Z 7", 8256, 5504, 4.34 },
   { "NIKON Z 6II", 6048, 4024, 5.9 },
