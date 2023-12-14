@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 263
+INDIGO_BUILD = 264
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
@@ -397,9 +397,9 @@ debs-remote:
 
 debs-docker:
 	sh tools/make_source_tarball.sh $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "i386/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "amd64/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
-	sh tools/build_debs.sh "arm32v7/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
+	#sh tools/build_debs.sh "i386/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-i386.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
+	#sh tools/build_debs.sh "amd64/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-amd64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
+	#sh tools/build_debs.sh "arm32v7/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-armhf.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
 	sh tools/build_debs.sh "arm64v8/debian:buster-slim" "indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-arm64.deb" $(INDIGO_VERSION)-$(INDIGO_BUILD)
 	rm indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD).tar.gz
 

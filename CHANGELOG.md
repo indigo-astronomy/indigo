@@ -2,6 +2,10 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-264] - 14 Dec Thu 2023
+### Overall:
+- rpi_ctrl_v2: fix internet sharing
+
 # [2.0-262] - 13 Dec Wed 2023
 ### Overall:
 - indigo_server: fix wifi setting properties states at boot
