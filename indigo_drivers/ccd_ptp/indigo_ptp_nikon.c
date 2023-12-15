@@ -812,6 +812,7 @@ bool ptp_nikon_inject_property(indigo_device *device) {
 			PRIVATE_DATA->info_properties_supported[i] = ptp_property_nikon_ExposureIndexHi;
 		}
 	}
+	return true;
 }
 
 bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
