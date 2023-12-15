@@ -76,7 +76,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
+	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE*10);
 	char *pnt = output_buffer;
 	int size;
 	char b1[32], b2[32], b3[32], b4[32], b5[32];

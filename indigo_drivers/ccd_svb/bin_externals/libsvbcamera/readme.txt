@@ -315,3 +315,66 @@ Date: 2023-03-27
 Version: v1.11.2
 Date: 2023-03-27
 1. Support image flip
+
+
+##########################################################
+版本:v1.11.3
+日期:2023-05-12
+1.修改SV605CC的增益
+
+Version: v1.11.3
+Date: 2023-05-12
+1. Modify SV605CC gain setting
+
+
+##########################################################
+版本:v1.11.4
+日期:2023-06-03
+1.修改SV605CC/SV605MC的增益设置
+2.修正SV905C长曝光时无法取到图像的问题
+3.移除MacOS中的x86版本库
+4.修正软触发模式下可能会读取到上一次曝光图像的问题
+
+Version: v1.11.4
+Date: 2023-06-03
+1. Modify the gain setting of SV605CC/SV605MC
+2. Fix up the problem that the image cannot be obtained when the SV905C is exposed for a long time
+3. Remove the x86 version library in MacOS
+4. Fix up the problem that the last exposure image may be read in soft trigger mode
+
+
+##########################################################
+版本:v1.11.5
+日期:2023-09-26
+1.修正SV505C和SV705C在触发模式下偶尔拍照时间过长的问题
+2.增加API函数SVBSetROIFormatEx和SVBGetROIFormatEx，支持设置bin average模式
+
+Version: v1.11.5
+Date:2023-09-26
+1. Fixed the issue where SV505C and SV705C occasionally take too long to take pictures in trigger mode.
+2. Add API functions SVBSetROIFormatEx and SVBGetROIFormatEx to support setting bin average mode
+
+
+##########################################################
+版本:v1.12.0
+日期:2023-10-23
+1.支持SC432M相机
+2.增加SVB_BAD_PIXEL_CORRECTION_THRESHOLD参数，可以设置坏点修正的阈值大小，与周围像素差值超过阈值大小就会动态修正。
+  SVB_BAD_PIXEL_CORRECTION_ENABLE参数开启后才生效
+
+Version: v1.12.0
+Date:2023-10-23
+1.Support SC432M camera
+2. Add the SVB_BAD_PIXEL_CORRECTION_THRESHOLD parameter to set the threshold for bad pixel correction. 
+   If the difference with surrounding pixels exceeds the threshold, it will be dynamically corrected. 
+   It takes effect only when the SVB_BAD_PIXEL_CORRECTION_ENABLE parameter is turned on
+   
+   
+##########################################################
+版本:v1.12.1
+日期:2023-11-30
+1. 制冷相机在设置某些参数时不再关闭制冷和风扇
+
+Version: v1.12.1
+Date:2023-11-30
+1. The cooling camera will no longer turn off cooling and fan when certain parameters are set
