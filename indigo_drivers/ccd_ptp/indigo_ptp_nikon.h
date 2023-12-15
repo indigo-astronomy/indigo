@@ -378,6 +378,7 @@ extern char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t
 
 extern bool ptp_nikon_initialise(indigo_device *device);
 extern bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params);
+extern bool ptp_nikon_inject_property(indigo_device *device);
 extern bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property);
 extern bool ptp_nikon_set_property(indigo_device *device, ptp_property *property);
 extern bool ptp_nikon_exposure(indigo_device *device);

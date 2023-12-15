@@ -62,26 +62,27 @@
 #define NIKON_PRODUCT_Z6II  0x044C
 // Nikon EXPEED 7 series
 #define NIKON_PRODUCT_Z9    0x0450
+#define NIKON_PRODUCT_Z8    0x0451
 
-#define IS_NIKON_D3000_OR_D3100() \
+#define IS_NIKON_D3000_OR_D3100() ( \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3000 || \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3100
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3100 )
 
 // TODO: there is a doubt if 3200 and 3300 can really zoom in LV and control the lens!!!
 
-#define IS_NIKON_D3200_OR_LATER() \
+#define IS_NIKON_D3200_OR_LATER() ( \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3200 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3300 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3400 || \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3500
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D3500 )
 
-#define IS_NIKON_EXPEED5_SERIES() \
+#define IS_NIKON_EXPEED5_SERIES() ( \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D5 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D500 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D7500 || \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_D850
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D850 )
 
-#define IS_NIKON_EXPEED6_SERIES() \
+#define IS_NIKON_EXPEED6_SERIES() ( \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z7 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z6 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z7II || \
@@ -89,19 +90,20 @@
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z50 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z5 || \
 	PRIVATE_DATA->model.product == NIKON_PRODUCT_D780 || \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_D6
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_D6 )
 
-#define IS_NIKON_EXPEED7_SERIES() \
-	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z9
+#define IS_NIKON_EXPEED7_SERIES() ( \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z9 || \
+	PRIVATE_DATA->model.product == NIKON_PRODUCT_Z8 )
 
-#define IS_NIKON_EXPEED5_OR_LATER() \
+#define IS_NIKON_EXPEED5_OR_LATER() ( \
 	IS_NIKON_EXPEED5_SERIES() || \
 	IS_NIKON_EXPEED6_SERIES() || \
-	IS_NIKON_EXPEED7_SERIES()
+	IS_NIKON_EXPEED7_SERIES() )
 
-#define IS_NIKON_EXPEED6_OR_LATER() \
+#define IS_NIKON_EXPEED6_OR_LATER() ( \
 	IS_NIKON_EXPEED6_SERIES() || \
-	IS_NIKON_EXPEED7_SERIES()
+	IS_NIKON_EXPEED7_SERIES() )
 
 char *ptp_operation_nikon_code_label(uint16_t code) {
 	switch (code) {
@@ -204,6 +206,7 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_nikon_LongExposureNoiseReduction: return "ADV_LongExposureNoiseReduction";
 		case ptp_property_nikon_NrHighISO: return "ADV_NrHighISO";
 		case ptp_property_nikon_VignetteCtrl: return "ADV_VignetteCtrl";
+		case ptp_property_nikon_ExposureTime: return DSLR_SHUTTER_PROPERTY_NAME;  // overwrite ptp_property_ExposureTime
 		case ptp_property_nikon_ActiveDLighting: return "ADV_ActiveDLighting";
 		case ptp_property_nikon_ImageCommentString: return "ADV_ImageCommentString";
 		case ptp_property_nikon_ImageCommentEnable: return "ADV_ImageCommentEnable";
@@ -218,7 +221,7 @@ char *ptp_property_nikon_code_name(uint16_t code) {
 		case ptp_property_nikon_RawBitMode: return "ADV_RawBitMode";
 		case ptp_property_nikon_RawCompression: return "ADV_RawCompression";
 		case ptp_property_nikon_CameraInclination: return "ADV_CameraInclination";
-		case ptp_property_nikon_ExposureIndexHi: return "ADV_ExposureIndexHi";
+		case ptp_property_nikon_ExposureIndexHi: return DSLR_ISO_PROPERTY_NAME;  // overwrite ptp_property_ExposureIndex
 	}
 	return ptp_property_code_name(code);
 }
@@ -300,7 +303,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_MeterOff: return "MeterOff_Nikon";
 		case ptp_property_nikon_SelfTimer: return "SelfTimer_Nikon";
 		case ptp_property_nikon_MonitorOff: return "MonitorOff_Nikon";
-		case ptp_property_nikon_ExposureIndexHi: return "ExposureIndexHi_Nikon";
+		case ptp_property_nikon_ExposureIndexHi: return "ISO";  // overwrite ptp_property_ExposureIndex
 		case ptp_property_nikon_ISOSensitivity: return "ISOSensitivity_Nikon";
 		case ptp_property_nikon_ImgConfTime: return "ImgConfTime_Nikon";
 		case ptp_property_nikon_AutoOffTimers: return "AutoOffTimers_Nikon";
@@ -380,7 +383,7 @@ char *ptp_property_nikon_code_label(uint16_t code) {
 		case ptp_property_nikon_SceneMode: return "SceneMode_Nikon";
 		case ptp_property_nikon_SceneMode2: return "SceneMode2_Nikon";
 		case ptp_property_nikon_SelfTimerInterval: return "SelfTimerInterval_Nikon";
-		case ptp_property_nikon_ExposureTime: return "ExposureTime_Nikon";
+		case ptp_property_nikon_ExposureTime: return "Shutter";  // overwrite ptp_property_ExposureTime
 		case ptp_property_nikon_ACPower: return "ACPower_Nikon";
 		case ptp_property_nikon_WarningStatus: return "WarningStatus_Nikon";
 		case ptp_property_nikon_RemainingShots: return "RemainingShots_Nikon";
@@ -519,7 +522,7 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			return label;
 		}
 		case ptp_property_StillCaptureMode: {
-			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; case 33024: return "Quick release-mode selection"; }
+			switch (code) { case 1: return "Single shot"; case 2: return "Continuous"; case 3:return "Timelapse"; case 32784: return "Continuous low speed"; case 32785: return "Timer"; case 32786: return "Mirror up"; case 32787: return "Remote"; case 32788: return "Timer + Remote"; case 32789: return "Delayed remote"; case 32790: return "Quiet shutter release"; case 32793: return "Continuous *"; case 33024: return "Quick release-mode selection"; case 33054: return "C30"; case 33084: return "C60"; case 33144: return "C120"; }
 			break;
 		}
 		case ptp_property_FocusMeteringMode: {
@@ -686,6 +689,26 @@ char *ptp_property_nikon_value_code_label(indigo_device *device, uint16_t proper
 			sprintf(label, "%lld", code);
 			return label;
 		}
+		case ptp_property_nikon_ExposureTime: {
+			if (code == 0xffffffff)
+				return "Bulb";
+			if (code == 0xfffffffd)
+				return "Time";
+			const uint32_t denominator = code & 0xffff;
+			const uint32_t numerator = (code >> 16) & 0xffff;
+			if (denominator == 1) {
+				snprintf(label, PTP_MAX_CHARS,  "%ds", numerator);
+			} else if (denominator == 10) {
+				snprintf(label, PTP_MAX_CHARS,  "%.1fs", numerator / 10.0);
+			} else if (numerator == 1) {
+				snprintf(label, PTP_MAX_CHARS,  "1/%ds", denominator);
+			} else if (numerator == 10) {
+				snprintf(label, PTP_MAX_CHARS,  "1/%.1fs", denominator / 10.0);
+			} else {
+				snprintf(label, PTP_MAX_CHARS,  "0x%x", code);
+			}
+			return label;
+		}
 	}
 	return ptp_property_value_code_label(device, property, code);
 }
@@ -776,6 +799,19 @@ bool ptp_nikon_initialise(indigo_device *device) {
 
 bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t *params) {
 	return ptp_handle_event(device, code, params);
+}
+
+bool ptp_nikon_inject_property(indigo_device *device) {
+	for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; ++i) {
+	    const uint16_t code = PRIVATE_DATA->info_properties_supported[i];
+		if (code == ptp_property_ExposureTime && IS_NIKON_EXPEED7_SERIES()) {
+			// support 1/32000 (for Z 8, Z 9)
+			PRIVATE_DATA->info_properties_supported[i] = ptp_property_nikon_ExposureTime;
+		} else if (code == ptp_property_ExposureIndex && IS_NIKON_EXPEED7_SERIES()) {
+			// support Hi-2.0 = ISO102400 (for Z 8, Z 9)
+			PRIVATE_DATA->info_properties_supported[i] = ptp_property_nikon_ExposureIndexHi;
+		}
+	}
 }
 
 bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
@@ -1086,7 +1122,11 @@ bool ptp_nikon_exposure(indigo_device *device) {
 		}
 		result = result && ptp_transaction_0_1_o(device, ptp_operation_SetDevicePropValue, ptp_property_nikon_ExposureDelayMode, &value, sizeof(uint8_t));
 	}
-	property = ptp_property_supported(device, ptp_property_ExposureTime);
+	if (IS_NIKON_EXPEED7_SERIES()) {
+		property = ptp_property_supported(device, ptp_property_nikon_ExposureTime);
+	} else {
+		property = ptp_property_supported(device, ptp_property_ExposureTime);
+	}
 	if (property && (property->value.sw.value != 0xffffffff || CCD_EXPOSURE_ITEM->number.value > 0)) { // if shutter time is BULB and exposure time is 0, just wait for external shutter exposure
 		if (ptp_operation_supported(device, ptp_operation_nikon_InitiateCaptureRecInMedia)) {
 			result = result && ptp_transaction_2_0(device, ptp_operation_nikon_InitiateCaptureRecInMedia, -1, 0);
