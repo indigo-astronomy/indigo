@@ -1679,11 +1679,11 @@ static indigo_result guider_detach(indigo_device *device) {
 
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-#define MAX_DEVICES                   12
+#define MAX_DEVICES                   24
 #define NO_DEVICE                 (-1000)
 
 
-static int asi_products[512];
+static int asi_products[ASICAMERA_ID_MAX];
 static int asi_id_count = 0;
 
 static indigo_device *devices[MAX_DEVICES] = {NULL};
