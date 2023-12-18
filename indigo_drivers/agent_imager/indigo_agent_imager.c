@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0028
+#define DRIVER_VERSION 0x0029
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1709,15 +1709,16 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 				}
 			}
 		}
-	} else if (!strcasecmp(name, "angle")) {
-		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_ROTATING;
-		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		if (indigo_filter_cached_property(device, INDIGO_FILTER_ROTATOR_INDEX, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, &device_property, NULL)) {
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_property->device, device_property->name, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
-			if (indigo_filter_cached_property(device, INDIGO_FILTER_ROTATOR_INDEX, ROTATOR_POSITION_PROPERTY_NAME, &device_property, NULL)) {
-				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device_property->device, device_property->name, ROTATOR_POSITION_ITEM_NAME, indigo_atod(value));
-			}
-		}
+// rotator is moved to mount agent
+//	} else if (!strcasecmp(name, "angle")) {
+//		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_ROTATING;
+//		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+//		if (indigo_filter_cached_property(device, INDIGO_FILTER_ROTATOR_INDEX, ROTATOR_ON_POSITION_SET_PROPERTY_NAME, &device_property, NULL)) {
+//			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device_property->device, device_property->name, ROTATOR_ON_POSITION_SET_GOTO_ITEM_NAME, true);
+//			if (indigo_filter_cached_property(device, INDIGO_FILTER_ROTATOR_INDEX, ROTATOR_POSITION_PROPERTY_NAME, &device_property, NULL)) {
+//				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device_property->device, device_property->name, ROTATOR_POSITION_ITEM_NAME, indigo_atod(value));
+//			}
+//		}
 	} else if (!strcasecmp(name, "ra")) {
 		DEVICE_PRIVATE_DATA->solver_goto_ra = indigo_atod(value);
 	} else if (!strcasecmp(name, "dec")) {
@@ -1865,19 +1866,20 @@ static void sequence_process(indigo_device *device) {
 		indigo_safe_free(sequence_text);
 		return;
 	}
-	if (rotator_needed && FILTER_ROTATOR_LIST_PROPERTY->items->sw.value) {
-		AGENT_IMAGER_START_PREVIEW_ITEM->sw.value =
-		AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value =
-		AGENT_IMAGER_START_STREAMING_ITEM->sw.value =
-		AGENT_IMAGER_START_FOCUSING_ITEM->sw.value =
-		AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
-		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
-		FILTER_DEVICE_CONTEXT->running_process = false;
-		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No rotator is selected");
-		indigo_safe_free(sequence_text);
-		return;
-	}
+// rotator is moved to mount agent
+//	if (rotator_needed && FILTER_ROTATOR_LIST_PROPERTY->items->sw.value) {
+//		AGENT_IMAGER_START_PREVIEW_ITEM->sw.value =
+//		AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value =
+//		AGENT_IMAGER_START_STREAMING_ITEM->sw.value =
+//		AGENT_IMAGER_START_FOCUSING_ITEM->sw.value =
+//		AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
+//		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+//		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+//		FILTER_DEVICE_CONTEXT->running_process = false;
+//		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No rotator is selected");
+//		indigo_safe_free(sequence_text);
+//		return;
+//	}
 	if (mount_needed && indigo_filter_first_related_agent(device, "Mount Agent") == NULL) {
 		AGENT_IMAGER_START_PREVIEW_ITEM->sw.value =
 		AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value =
@@ -2151,7 +2153,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_WHEEL_LIST_PROPERTY->hidden = false;
 		FILTER_FOCUSER_LIST_PROPERTY->hidden = false;
-		FILTER_ROTATOR_LIST_PROPERTY->hidden = false;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_1_LIST_PROPERTY->hidden = false;
 		strcpy(FILTER_AUX_1_LIST_PROPERTY->label, "External shutter list");

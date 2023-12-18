@@ -23,7 +23,7 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0011
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
@@ -258,6 +258,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_MOUNT_LIST_PROPERTY->hidden = false;
 		FILTER_DOME_LIST_PROPERTY->hidden = false;
+		FILTER_ROTATOR_LIST_PROPERTY->hidden = false;
 		FILTER_GPS_LIST_PROPERTY->hidden = false;
 		FILTER_JOYSTICK_LIST_PROPERTY->hidden = false;
 		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
