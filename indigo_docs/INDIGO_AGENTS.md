@@ -1,5 +1,5 @@
 # INDIGO Agents
-Revision: 19.01.2023 (early draft)
+Revision: 22.12.2023 (early draft)
 
 Authors: **Rumen G.Bogdanovski** & **Peter Polakovic**
 
@@ -25,13 +25,13 @@ Agent code contains the most of the application logic for the typical operations
 
 - **Auxiliary Agent** controls auxiliary devices like power boxes, flat boxes, weather stations, sky quality meters, etc. The agent name is "*indigo_agent_auxiliary*".
 
-- **Scripting Agent** manages and executes INDIGO scripts. The agent name is "*indigo_agent_scripting*".
+- **Scripting Agent** manages and executes INDIGO scripts. The agent name is "*indigo_agent_scripting*". More on INDIGO scripting can be found in the agent's [README.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/README.md) and in [Basics of INDIGO Scripting](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/SCRIPTING_BASICS.md)
 
 - **Snoop Agent** is a special agent that enables the communication between the device drivers. Device drivers can not communicate between each other natively. To make it possible the **Snoop Agent** is used. For example The Mount can synchronize the time and the geographical coordinates from the GPS using the **Snoop Agent**. The agent name is "*indigo_agent_snoop*".
 
 - **Astrometry Agent** solves images using Astrometry.net, manages indexes and syncs the current position to the mount. It is also responsible for the mount polar alignment. The agent name is "*indigo_agent_astrometry*"
 
-- **ATAP Agent** solves images using ASTAP, manages indexes and syncs the current position to the mount. It is also responsible for the mount polar alignment. The agent name is "*indigo_agent_astrometry*"
+- **ATAP Agent** *(deprocated)* solves images using ASTAP, manages indexes and syncs the current position to the mount. It is also responsible for the mount polar alignment. The agent name is "*indigo_agent_astap*"
 
 - **Configuration Agent** is responsible for managing the system configuration. The agent's [README.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_config/README.md) contains useful information. The agent name is "*indigo_agent_config*".
 
