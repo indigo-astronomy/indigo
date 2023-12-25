@@ -42,12 +42,10 @@
 #define SONY_ISO_AUTO     0xFFFFFFULL
 #define SONY_ILCE_7RM4_PRODUCT_ID 0x0ccc
 #define SONY_ILCE_7RM4A_PRODUCT_ID 0x0d9f
-#define SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER 0x0c43
 // SONY ILCE-9M2 with Camera Remote SDK Ver.1.10.00
+#define SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER SONY_ILCE_7RM4_PRODUCT_ID
 #define SONY_NEW_API 300
 #define SONY_OLD_API 200
-#define IS_NEW_API() (PRIVATE_DATA->model.product >= SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER)
-#define IS_OLD_API() (PRIVATE_DATA->model.product < SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER)
 
 char *ptp_operation_sony_code_label(uint16_t code) {
 	switch (code) {
@@ -1133,7 +1131,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			break;
 		}
 	}
-	if (IS_NEW_API()) {
+	if (SONY_PRIVATE_DATA->api_version == SONY_NEW_API) {
 		// Second enum part (some item cannot set caused by current device state)
 		// e.g. ILCE-7RM4's ptp_property_FocusMode (0x500a)
 		//   1st enum:
@@ -1190,7 +1188,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 			}
 	}
 	uint64_t mode = SONY_PRIVATE_DATA->mode;
-	if (IS_OLD_API()) {
+	if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API) {
 		// before ILCE-7RM4
 		switch (code) {
 			case ptp_property_sony_ImageSize:
@@ -1321,8 +1319,15 @@ bool ptp_sony_initialise(indigo_device *device) {
 		uint32_t size;
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 1, 0, 0);
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 2, 0, 0);
-		uint32_t api_version = IS_NEW_API() ? SONY_NEW_API : SONY_OLD_API;
-		if (ptp_transaction_1_0_i(device, ptp_operation_sony_GetSDIOGetExtDeviceInfo, api_version, &buffer, &size)) {
+		if (PRIVATE_DATA->model.product >= SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER)
+			SONY_PRIVATE_DATA->api_version = SONY_NEW_API;
+		else
+			SONY_PRIVATE_DATA->api_version = SONY_OLD_API;
+		if (PRIVATE_DATA->model.product == SONY_ILCE_7RM4_PRODUCT_ID || PRIVATE_DATA->model.product == SONY_ILCE_7RM4A_PRODUCT_ID)
+			SONY_PRIVATE_DATA->needs_pre_capture_delay = true;
+		else
+			SONY_PRIVATE_DATA->needs_pre_capture_delay = false;
+		if (ptp_transaction_1_0_i(device, ptp_operation_sony_GetSDIOGetExtDeviceInfo, SONY_PRIVATE_DATA->api_version, &buffer, &size)) {
 			uint32_t count = size / 2;
 			uint16_t operations[PTP_MAX_ELEMENTS] = { 0 }, *last_operation = operations;
 			uint16_t events[PTP_MAX_ELEMENTS] = { 0 }, *last_event = events;
@@ -1430,7 +1435,7 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 }
 
 bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
-	if (IS_OLD_API()) {
+	if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API) {
 		switch (property->code) {
 			case ptp_property_sony_ISO:
 			case ptp_property_sony_ShutterSpeed:
@@ -1486,7 +1491,7 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_sony_exposure(indigo_device *device) {
-	if ((PRIVATE_DATA->model.product == SONY_ILCE_7RM4_PRODUCT_ID || PRIVATE_DATA->model.product == SONY_ILCE_7RM4A_PRODUCT_ID) && !SONY_PRIVATE_DATA->did_capture) {
+	if (SONY_PRIVATE_DATA->needs_pre_capture_delay && !SONY_PRIVATE_DATA->did_capture) {
 		// A7R4/A7R4A needs 3s delay before first capture
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
 		for (int i = 0; i < 30; i++) {
@@ -1513,7 +1518,7 @@ bool ptp_sony_exposure(indigo_device *device) {
 			usleep(1000000);
 		}
 	}
-	if (IS_OLD_API() && SONY_PRIVATE_DATA->shutter_speed == 0) {
+	if (SONY_PRIVATE_DATA->api_version != SONY_NEW_API && SONY_PRIVATE_DATA->shutter_speed == 0) {
 		value = 1;
 		ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, ptp_property_sony_Autofocus, &value, sizeof(uint16_t));
 	}
@@ -1531,7 +1536,7 @@ bool ptp_sony_exposure(indigo_device *device) {
 			CCD_PREVIEW_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
-		if (IS_NEW_API()) {
+		if (SONY_PRIVATE_DATA->api_version == SONY_NEW_API) {
 			// readout memory buffer
 			while (true) {
 				// NOTE: DO NOT ABORT HERE
@@ -1587,7 +1592,7 @@ bool ptp_sony_liveview(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size;
 	int retry_count = 0;
-	if ((PRIVATE_DATA->model.product == SONY_ILCE_7RM4_PRODUCT_ID || PRIVATE_DATA->model.product == SONY_ILCE_7RM4A_PRODUCT_ID) && !SONY_PRIVATE_DATA->did_liveview) {
+	if (SONY_PRIVATE_DATA->needs_pre_capture_delay && !SONY_PRIVATE_DATA->did_liveview) {
 		// A7R4/A7R4A needs 3s delay before first capture
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
 		for (int i = 0; i < 30; i++) {
