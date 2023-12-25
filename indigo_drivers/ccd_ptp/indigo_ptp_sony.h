@@ -148,6 +148,8 @@ typedef struct {
 	bool did_capture;
 	bool did_liveview;
 	int steps;
+	uint32_t api_version;
+	bool needs_pre_capture_delay;
 } sony_private_data;
 
 
