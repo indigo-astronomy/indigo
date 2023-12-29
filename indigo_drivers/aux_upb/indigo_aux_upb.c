@@ -775,7 +775,7 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			upb_open(device->master_device);
+			upb_open(device);
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			if (PRIVATE_DATA->version == 1) {
@@ -1698,7 +1698,6 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 			private_data = indigo_safe_malloc(sizeof(upb_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
-			aux->master_device = aux;
 			indigo_attach_device(aux);
 			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
