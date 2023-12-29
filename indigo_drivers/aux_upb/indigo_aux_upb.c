@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -189,6 +189,36 @@ static bool upb_command(indigo_device *device, char *command, char *response, in
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
+}
+
+static void upb_open(indigo_device *device) {
+	char response[128];
+	PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+	if (PRIVATE_DATA->handle > 0) {
+		int attempt = 0;
+		while (true) {
+			if (upb_command(device, "P#", response, sizeof(response))) {
+				if (!strcmp(response, "UPB_OK")) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
+					PRIVATE_DATA->version = 1;
+					break;
+				} else if (!strcmp(response, "UPB2_OK")) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
+					PRIVATE_DATA->version = 2;
+					break;
+				} else {
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
+			}
+			if (attempt++ == 3) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
+				break;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying in 1 second...");
+			indigo_usleep(ONE_SECOND_DELAY);
+		}
+	}
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -745,44 +775,22 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
-			if (PRIVATE_DATA->handle > 0) {
-				bool connected = false;
-				int attempt = 0;
-				while (!connected) {
-					if (upb_command(device, "P#", response, sizeof(response))) {
-						if (!strcmp(response, "UPB_OK")) {
-							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->version = 1;
-							AUX_HEATER_OUTLET_PROPERTY->count = 2;
-							AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
-							AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
-							X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
-							break;
-						} else if (!strcmp(response, "UPB2_OK")) {
-							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->version = 2;
-							AUX_HEATER_OUTLET_PROPERTY->count = 3;
-							AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
-							AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
-							X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
-							AUX_USB_PORT_PROPERTY->hidden = false;
-							AUX_USB_PORT_STATE_PROPERTY->hidden = true;
-							break;
-						}
-					}
-					if (attempt++ == 3) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-						break;
-					}
-					indigo_usleep(ONE_SECOND_DELAY);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying...");
-				}
-			}
+			upb_open(device->master_device);
 		}
 		if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->version == 1) {
+				AUX_HEATER_OUTLET_PROPERTY->count = 2;
+				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
+				AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
+				X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
+			} else {
+				AUX_HEATER_OUTLET_PROPERTY->count = 3;
+				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
+				AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
+				X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
+				AUX_USB_PORT_PROPERTY->hidden = false;
+				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+			}
 			if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
@@ -1329,20 +1337,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
 		FOCUSER_BACKLASH_ITEM->number.max = 9999;
 		FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
-		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
-#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "usbserial")) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-				break;
-			}
-		}
-#endif
-#ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUPB");
-#endif
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
@@ -1416,30 +1410,11 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void focuser_connection_handler(indigo_device *device) {
 	char response[128];
-	indigo_unlock_master_device(device);
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
-			if (PRIVATE_DATA->handle > 0) {
-				if (upb_command(device, "P#", response, sizeof(response))) {
-					if (!strcmp(response, "UPB_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 1;
-					} else if (!strcmp(response, "UPB2_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 2;
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-					}
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
-				}
-			}
+			upb_open(device->master_device);
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			if (upb_command(device, "SA", response, sizeof(response))) {
@@ -1723,6 +1698,7 @@ indigo_result indigo_aux_upb(indigo_driver_action action, indigo_driver_info *in
 			private_data = indigo_safe_malloc(sizeof(upb_private_data));
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
+			aux->master_device = aux;
 			indigo_attach_device(aux);
 			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
