@@ -945,7 +945,7 @@ static bool streaming_batch(indigo_device *device) {
 	AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	if (!indigo_filter_cached_property(device, INDIGO_FILTER_CCD_INDEX, CCD_STREAMING_PROPERTY_NAME, &device_streaming_property, &agent_streaming_property)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE not found");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_STREAMING not found");
 		return false;
 	}
 	set_headers(device);
