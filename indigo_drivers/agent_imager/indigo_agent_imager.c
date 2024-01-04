@@ -133,6 +133,9 @@
 #define AGENT_IMAGER_DITHERING_STRATEGY_RANDOM_ITEM			(AGENT_IMAGER_DITHERING_STRATEGY_PROPERTY->items+1)
 #define AGENT_IMAGER_DITHERING_STRATEGY_SPIRAL_ITEM			(AGENT_IMAGER_DITHERING_STRATEGY_PROPERTY->items+2)
 
+#define AGENT_IMAGER_DITHER_NOW_PROPERTY				(DEVICE_PRIVATE_DATA->agent_dither_now_property)
+#define AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM					(AGENT_IMAGER_DITHER_NOW_PROPERTY->items+0)
+
 #define MAX_STAR_COUNT												50
 #define AGENT_IMAGER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
 #define AGENT_IMAGER_STARS_REFRESH_ITEM  			(AGENT_IMAGER_STARS_PROPERTY->items+0)
@@ -199,6 +202,7 @@ typedef struct {
 	indigo_property *agent_barrier_property;
 	indigo_property *saved_frame;
 	indigo_property *agent_dithering_strategy_property;
+	indigo_property *agent_dither_now_property;
 	double saved_frame_left, saved_frame_top;
 	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
@@ -731,6 +735,92 @@ static void spiral_dither_values(unsigned int dither_number, double amount, bool
 	}
 }
 
+static bool do_dither(indigo_device *device) {
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
+	if (!related_agent_name) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed, no guider agent selected");
+		indigo_send_message(device, "Dithering failed, no guider agent selected");
+		AGENT_IMAGER_DITHER_NOW_PROPERTY->state = INDIGO_ALERT_STATE;
+		AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM->sw.value = false;
+		indigo_update_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
+		return false;
+	}
+	AGENT_IMAGER_DITHER_NOW_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
+	double x_value = 0;
+	double y_value = 0;
+	if (AGENT_IMAGER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM->sw.value) {
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * 2, true, &x_value, &y_value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOMIZED_SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
+	} else if (AGENT_IMAGER_DITHERING_STRATEGY_SPIRAL_ITEM->sw.value) {
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * 2, false, &x_value, &y_value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
+	} else {
+		random_dither_values(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * 2, &x_value, &y_value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOM x_value = %.4f y_value = %.4f", x_value, y_value);
+	}
+	static const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
+	double item_values[] = { x_value, y_value };
+	DEVICE_PRIVATE_DATA->dithering_started = false;
+	indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
+	for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
+		if (DEVICE_PRIVATE_DATA->dithering_started) {
+			break;
+		}
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			AGENT_IMAGER_DITHER_NOW_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM->sw.value = false;
+			indigo_update_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
+			return false;
+		}
+		indigo_usleep(200000);
+	}
+	if (DEVICE_PRIVATE_DATA->dithering_started) {
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
+		DEVICE_PRIVATE_DATA->dithering_finished = false;
+		double time_limit = AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM->number.value * 5;
+		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
+			if (DEVICE_PRIVATE_DATA->dithering_finished) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
+				AGENT_IMAGER_DITHER_NOW_PROPERTY->state = INDIGO_OK_STATE;
+				AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM->sw.value = false;
+				indigo_update_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
+				break;
+			}
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				AGENT_IMAGER_DITHER_NOW_PROPERTY->state = INDIGO_ALERT_STATE;
+				AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM->sw.value = false;
+				indigo_update_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
+				return false;
+			}
+			indigo_usleep(200000);
+		}
+		if (!DEVICE_PRIVATE_DATA->dithering_finished) {
+			AGENT_IMAGER_DITHER_NOW_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM->sw.value = false;
+			indigo_update_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed");
+			indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
+			indigo_usleep(200000);
+		}
+	}
+	return true;
+}
+
+static void dither_process(indigo_device *device) {
+	if (AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM->sw.value) {
+		int saved_phase = AGENT_IMAGER_STATS_PHASE_ITEM->number.value;
+		do_dither(device);
+		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = saved_phase;
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+	} else {
+		AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM->sw.value = false;
+		indigo_update_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
+	}
+}
+
 static bool exposure_batch(indigo_device *device) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_exposure_property, *agent_exposure_property, *device_aux_1_exposure_property, *agent_aux_1_exposure_property, *device_frame_type_property;
@@ -856,51 +946,9 @@ static bool exposure_batch(indigo_device *device) {
 						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.target;
 						char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 						if (related_agent_name) {
-							double x_value = 0;
-							double y_value = 0;
-							if (AGENT_IMAGER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM->sw.value) {
-								spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * 2, true, &x_value, &y_value);
-								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOMIZED_SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
-							} else if (AGENT_IMAGER_DITHERING_STRATEGY_SPIRAL_ITEM->sw.value) {
-								spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * 2, false, &x_value, &y_value);
-								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
-							} else {
-								random_dither_values(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target * 2, &x_value, &y_value);
-								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOM x_value = %.4f y_value = %.4f", x_value, y_value);
-							}
-							static const char *item_names[] = { AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME };
-							double item_values[] = { x_value, y_value };
 							check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DITHER_ITEM);
-							DEVICE_PRIVATE_DATA->dithering_started = false;
-							indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
-							for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
-								if (DEVICE_PRIVATE_DATA->dithering_started) {
-									break;
-								}
-								if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-									return false;
-								indigo_usleep(200000);
-							}
-							if (DEVICE_PRIVATE_DATA->dithering_started) {
-								AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
-								indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
-								DEVICE_PRIVATE_DATA->dithering_finished = false;
-								double time_limit = AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM->number.value * 5;
-								for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
-									if (DEVICE_PRIVATE_DATA->dithering_finished) {
-										INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
-										break;
-									}
-									if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-										return false;
-									indigo_usleep(200000);
-								}
-								if (!DEVICE_PRIVATE_DATA->dithering_finished) {
-									INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed");
-									indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
-									indigo_usleep(200000);
-								}
+							if(!do_dither(device)) {
+								return false;
 							}
 							check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DITHER_ITEM);
 						}
@@ -2257,6 +2305,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_IMAGER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM, AGENT_IMAGER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM_NAME, "Randomized spiral", true);
 		indigo_init_switch_item(AGENT_IMAGER_DITHERING_STRATEGY_RANDOM_ITEM, AGENT_IMAGER_DITHERING_STRATEGY_RANDOM_ITEM_NAME, "Random", false);
 		indigo_init_switch_item(AGENT_IMAGER_DITHERING_STRATEGY_SPIRAL_ITEM, AGENT_IMAGER_DITHERING_STRATEGY_SPIRAL_ITEM_NAME, "Spiral", false);
+		// -------------------------------------------------------------------------------- Dither now
+		AGENT_IMAGER_DITHER_NOW_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_DITHER_NOW_PROPERTY_NAME, "Agent", "Trigger dithering", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (AGENT_IMAGER_DITHER_NOW_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM, AGENT_IMAGER_DITHER_NOW_TRIGGER_ITEM_NAME, "Trigger", false);
 		// -------------------------------------------------------------------------------- Process properties
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 5);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
@@ -2437,6 +2490,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_IMAGER_DITHERING_STRATEGY_PROPERTY, property))
 		indigo_define_property(device, AGENT_IMAGER_DITHERING_STRATEGY_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_IMAGER_DITHER_NOW_PROPERTY, property))
+		indigo_define_property(device, AGENT_IMAGER_DITHER_NOW_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -2492,6 +2547,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		DEVICE_PRIVATE_DATA->dither_num = 0;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_DITHERING_STRATEGY_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_IMAGER_DITHER_NOW_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_DITHER_NOW
+		indigo_property_copy_values(AGENT_IMAGER_DITHER_NOW_PROPERTY, property, false);
+		indigo_set_timer(device, 0, dither_process, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_IMAGER_STARS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_STARS
@@ -2813,6 +2873,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_DITHERING_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_DITHERING_STRATEGY_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_DITHER_NOW_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY);
