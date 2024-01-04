@@ -3045,9 +3045,8 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (item->sw.value && !strncmp(item->name, "Imager Agent", 12)) {
-					// On related imager agents duplicate AGENT_IMAGER_BREAKPOINT_PROPERTY and reset AGENT_IMAGER_RESUME_CONDITION_PROPERTY to AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM
 					AGENT_IMAGER_BARRIER_STATE_PROPERTY = indigo_resize_property(AGENT_IMAGER_BARRIER_STATE_PROPERTY, AGENT_IMAGER_BARRIER_STATE_PROPERTY->count + 1);
-					indigo_init_light_item(AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + AGENT_IMAGER_BARRIER_STATE_PROPERTY->count, item->name, item->label, INDIGO_IDLE_STATE);
+					indigo_init_light_item(AGENT_IMAGER_BARRIER_STATE_PROPERTY->items + AGENT_IMAGER_BARRIER_STATE_PROPERTY->count - 1, item->name, item->label, INDIGO_IDLE_STATE);
 					if (AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
 						// On related imager agents duplicate AGENT_IMAGER_BREAKPOINT_PROPERTY and reset AGENT_IMAGER_RESUME_CONDITION_PROPERTY to AGENT_IMAGER_RESUME_CONDITION_TRIGGER_ITEM
 						strcpy(clone->device, item->name);
