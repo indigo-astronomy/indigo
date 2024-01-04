@@ -501,6 +501,7 @@ static void set_reverse_relation(indigo_device *device, void *data) {
 
 static indigo_result update_related_agent_list(indigo_device *device, indigo_property *property) {
 	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	bool is_imager_agent = !strncmp(device->name, "Imager Agent", 12);
 	for (int i = 0; i < property->count; i++) {
 		indigo_item *remote_item = property->items + i;
 		for (int j = 0; j < related_agents_property->count; j++) {
@@ -509,7 +510,9 @@ static indigo_result update_related_agent_list(indigo_device *device, indigo_pro
 				if (remote_item->sw.value == local_item->sw.value)
 					break;
 				local_item->sw.value = remote_item->sw.value;
-				indigo_set_timer_with_data(device, 0, set_reverse_relation, NULL, local_item);
+				if (!is_imager_agent || strncmp(local_item->name, "Imager Agent", 12)) {
+					indigo_set_timer_with_data(device, 0, set_reverse_relation, NULL, local_item);
+				}
 				break;
 			}
 		}
