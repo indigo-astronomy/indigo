@@ -182,6 +182,7 @@ static void set_eq_coordinates(indigo_device *device) {
 	if (related_agent_name) {
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTRA", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_ra), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_ra) * 3600)) % 60);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTDEC", "'%d %02d %02d'", (int)(DEVICE_PRIVATE_DATA->mount_dec), ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 60)) % 60, ((int)(fabs(DEVICE_PRIVATE_DATA->mount_dec) * 3600)) % 60);
+		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "OBJCTHA", "'%d %02d %02d'", (int)(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value), ((int)(fabs(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value) * 3600)) % 60);
 	}
 	related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
@@ -974,15 +975,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 								if (!agent_park_property->items[j].sw.value) {
 									bool park = false;
 									double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target;
-									if (ha < 12 && target < 12 && ha > target) {
-										park = true;
-										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
-									}
-									if (ha > 12 && target > 12 && ha > target) {
-										park = true;
-										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
-									}
-									if (ha < 12 && target > 12 && ha + 24 > target) {
+									if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
 										park = true;
 										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
 									}
