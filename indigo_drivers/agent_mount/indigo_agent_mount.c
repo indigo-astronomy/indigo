@@ -973,11 +973,20 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 							if (!strcmp(agent_park_property->items[j].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
 								if (!agent_park_property->items[j].sw.value) {
 									bool park = false;
-									if (ha > CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target) {
+									double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target;
+									if (ha < 12 && target < 12 && ha > target) {
 										park = true;
 										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
 									}
-									double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
+									if (ha > 12 && target > 12 && ha > target) {
+										park = true;
+										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
+									}
+									if (ha < 12 && target > 12 && ha + 24 > target) {
+										park = true;
+										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
+									}
+									target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
 									if (now < 12 && target < 12 && now > target) {
 										park = true;
 										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
