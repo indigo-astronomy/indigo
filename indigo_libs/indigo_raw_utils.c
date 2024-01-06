@@ -461,9 +461,21 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 
 indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest, int converge_iterations) {
 	int result = INDIGO_FAILED;
-	while (converge_iterations--) {
-		// indigo_debug("%s: X = %.3f, Y= %3f", __FUNCTION__, *x, *y);
+	int ci = converge_iterations;
+	while (ci--) {
 		result = indigo_selection_frame_digest(raw_type, data, x, y, radius, width, height, digest);
+		if (result != INDIGO_OK) {
+			break;
+		}
+	}
+	if (result != INDIGO_OK) {
+		/* No star found in the selection -> search in wider vicinity then converge again */
+		indigo_debug("%s(): No star found around X = %.3f, Y= %3f. Searching in wider vicinity", __FUNCTION__, *x, *y, converge_iterations);
+		result = indigo_selection_frame_digest(raw_type, data, x, y, (int)(radius * 2.5), width, height, digest);
+		ci = converge_iterations;
+		while (ci--) {
+			result = indigo_selection_frame_digest(raw_type, data, x, y, radius, width, height, digest);
+		}
 	}
 	return result;
 }

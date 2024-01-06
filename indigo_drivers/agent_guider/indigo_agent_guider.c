@@ -45,6 +45,8 @@
 
 #define MIN_COS_DEC (0.017)       /* DEC = ~89 degrees */
 
+#define SAFE_RADIUS_FACTOR (0.9)   /* factor to multiply SELECTION_RADIUS in which the star will not be lost */
+
 #define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
@@ -1275,6 +1277,7 @@ static void guide_process(indigo_device *device) {
 			AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = round(1000 * drift_ra_s) / 1000;
 			AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = round(1000 * drift_dec_s) / 1000;
 			double correction_ra = 0, correction_dec = 0;
+			double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
 			if (fabs(drift_ra) > min_error) {
 				correction_ra = indigo_guider_reponse(
 					AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100,
@@ -1283,6 +1286,22 @@ static void guide_process(indigo_device *device) {
 					drift_ra,
 					avg_drift_ra
 				);
+
+				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
+				if (
+					(AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) &&
+					(fabs(correction_ra) > max_safe_correction)
+				) {
+					INDIGO_DRIVER_DEBUG(
+						DRIVER_NAME,
+						"RA correction = %.4fpx will lose stars with radius = %.2fpx, reduced RA correction = %.4fpx",
+						correction_ra,
+						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+						copysign(1.0, correction_ra) * max_safe_correction
+					);
+					correction_ra = copysign(1.0, correction_ra) * max_safe_correction;
+				}
+
 				double cos_dec = (DEVICE_PRIVATE_DATA->cos_dec > MIN_COS_DEC) ? DEVICE_PRIVATE_DATA->cos_dec : MIN_COS_DEC;
 				correction_ra = correction_ra / (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * cos_dec);
 				if (correction_ra > max_pulse)
@@ -1300,6 +1319,22 @@ static void guide_process(indigo_device *device) {
 					drift_dec,
 					avg_drift_dec
 				);
+
+				/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
+				if (
+					(AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) &&
+					(fabs(correction_dec) > max_safe_correction)
+				) {
+					INDIGO_DRIVER_DEBUG(
+						DRIVER_NAME,
+						"Dec correction = %.4fpx will lose stars with radius = %.2fpx, reduced Dec correction = %.4fpx",
+						correction_dec,
+						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+						copysign(1.0, correction_dec) * max_safe_correction
+					);
+					correction_dec = copysign(1.0, correction_dec) * max_safe_correction;
+				}
+
 				correction_dec = correction_dec / get_dec_speed(device);
 				if (correction_dec > max_pulse)
 					correction_dec = max_pulse;
