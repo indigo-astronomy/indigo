@@ -553,7 +553,7 @@ indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, 
 	} else if (!strcmp(format + format_length - 2, "5m")) {
 		snprintf(buffer, buffer_size, "%d:%04.1f", (int)value, m);
 		return INDIGO_OK;
-	} else if (!strcmp(format + format_length - 2, "4m")) {
+	} else if (!strcmp(format + format_length - 2, "3m")) {
 		snprintf(buffer, buffer_size, "%d:%02d", (int)value, (int)m);
 		return INDIGO_OK;
 	} else if (!strcmp(format + format_length - 1, "m")) {
