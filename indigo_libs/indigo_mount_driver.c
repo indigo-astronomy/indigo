@@ -1241,8 +1241,8 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 		MOUNT_HORIZONTAL_COORDINATES_PROPERTY->state = MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state;
 		indigo_update_property(device, MOUNT_HORIZONTAL_COORDINATES_PROPERTY, NULL);
 
+		// DEPRECATED, moved to Mount Agent and AGENT_MOUNT_DISPLAY_COORDINATES
 		MOUNT_LST_TIME_ITEM->number.value = indigo_lst(&utc, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-		double rise_time, transit_time, set_time;
 		indigo_raise_set(
 			UT2JD(utc),
 			MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value,

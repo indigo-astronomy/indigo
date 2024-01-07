@@ -2212,6 +2212,7 @@
 		59A4132B2971E54C00F0A80B /* license.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = license.txt; sourceTree = "<group>"; };
 		59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_playerone.h; sourceTree = "<group>"; };
 		59A4132D2971E54C00F0A80B /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		59A4BABE2B397EBE002D3B13 /* Sequencer.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = Sequencer.js; sourceTree = "<group>"; };
 		59A4ED5B22DD888E00384056 /* LOGS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = LOGS.md; sourceTree = "<group>"; };
 		59A52D2D21A330FB000B6F27 /* 51-sbig-debian.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "51-sbig-debian.rules"; sourceTree = "<group>"; };
 		59A52D2F21A330FB000B6F27 /* sbigucam.hex */ = {isa = PBXFileReference; lastKnownFileType = text; path = sbigucam.hex; sourceTree = "<group>"; };
@@ -4606,7 +4607,7 @@
 		9D69408B2180B9F600AB112C /* indigo_aux_upb_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_upb_main.c; sourceTree = "<group>"; };
 		9D69408D2180BA1800AB112C /* upb_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = upb_simulator.ino; sourceTree = "<group>"; };
 		9D69408E2180BA4300AB112C /* Ultimate_Powerbox_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Ultimate_Powerbox_Serial_Command_Table.pdf; sourceTree = "<group>"; };
-		9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_mount.c; sourceTree = "<group>"; };
+		9D7244E921F1CFEB0028FDF4 /* indigo_agent_mount.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_mount.c; sourceTree = "<group>"; wrapsLines = 0; };
 		9D7244EA21F1CFEB0028FDF4 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D7244EB21F1CFEB0028FDF4 /* indigo_agent_mount.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_mount.h; sourceTree = "<group>"; };
 		9D7244F621F1D6A50028FDF4 /* mount.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = mount.html; sourceTree = "<group>"; };
@@ -5015,6 +5016,7 @@
 				5910D9C42580284E0015D915 /* duktape.c */,
 				5910D9DF25814C4E0015D915 /* boot.js */,
 				5910D9E5258150AA0015D915 /* boot.js.dat */,
+				59A4BABD2B397EA6002D3B13 /* library */,
 			);
 			path = agent_scripting;
 			sourceTree = "<group>";
@@ -7662,6 +7664,14 @@
 				59A413292971E54C00F0A80B /* libPlayerOnePW.so */,
 			);
 			path = arm64;
+			sourceTree = "<group>";
+		};
+		59A4BABD2B397EA6002D3B13 /* library */ = {
+			isa = PBXGroup;
+			children = (
+				59A4BABE2B397EBE002D3B13 /* Sequencer.js */,
+			);
+			path = library;
 			sourceTree = "<group>";
 		};
 		59A52D2A21A330FB000B6F27 /* bin_externals */ = {
