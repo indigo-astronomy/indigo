@@ -427,10 +427,14 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 |  |  |  |  | DISABLED | yes | |
 | AGENT_START_PROCESS | switch | no | yes | EXPOSURE | yes | Start exposure |
 |  |  |  |  | STREAMING | yes | Start streaming |
+| AGENT_PAUSE_PROCESS | switch | no | yes | PAUSE | yes | Pause batch immediately (abort running capture) or resume |
+|  |  |  |  | PAUSE_WAIT | yes | Pause batch after running capture or resume |
+|  |  |  |  | PAUSE_AT_HA | yes | Resume batch paused at configured HA (e.g. after meridian flip) |
 | AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
 | AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count |
 |  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) |
 |  |  |  |  | DELAY | yes | Delay between exposures duration (in seconds) |
+|  |  |  |  | PAUSE_AT_HA | yes | Pause batch when HA reached; e.g. before meridian flip; use 24:00:00 to turn it off  |
 | AGENT_IMAGER_DOWNLOADFILE | text | no | yes | FILE | yes | Files to load into AGENT_IMAGER_DOWNLOAD_IMAGE property and remove on the host |
 | AGENT_IMAGER_DOWNLOADFILES | switch | no | yes | REFRESH | yes | Refresh the list of available files |
 |  |  |  |  | file name | yes | Set the file to AGENT_IMAGER_DOWNLOADFILE |
