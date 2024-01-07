@@ -54,7 +54,7 @@
 #define AGENT_IMAGER_BATCH_COUNT_ITEM    			(AGENT_IMAGER_BATCH_PROPERTY->items+0)
 #define AGENT_IMAGER_BATCH_EXPOSURE_ITEM  		(AGENT_IMAGER_BATCH_PROPERTY->items+1)
 #define AGENT_IMAGER_BATCH_DELAY_ITEM     		(AGENT_IMAGER_BATCH_PROPERTY->items+2)
-#define AGENT_IMAGER_BATCH_PAUSE_BEFORE_TRANSIT_ITEM     	(AGENT_IMAGER_BATCH_PROPERTY->items+3)
+#define AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM     	(AGENT_IMAGER_BATCH_PROPERTY->items+3)
 
 #define AGENT_IMAGER_FOCUS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_imager_focus_property)
 #define AGENT_IMAGER_FOCUS_INITIAL_ITEM    		(AGENT_IMAGER_FOCUS_PROPERTY->items+0)
@@ -103,7 +103,7 @@
 #define AGENT_PAUSE_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_pause_process_property)
 #define AGENT_PAUSE_PROCESS_ITEM      				(AGENT_PAUSE_PROCESS_PROPERTY->items+0)
 #define AGENT_PAUSE_PROCESS_WAIT_ITEM      		(AGENT_PAUSE_PROCESS_PROPERTY->items+1)
-#define AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM      	(AGENT_PAUSE_PROCESS_PROPERTY->items+2)
+#define AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM      	(AGENT_PAUSE_PROCESS_PROPERTY->items+2)
 
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
@@ -824,6 +824,7 @@ static void dither_process(indigo_device *device) {
 }
 
 static bool exposure_batch(indigo_device *device) {
+	bool pauseOnTTT = AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.target < 24;
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_exposure_property, *agent_exposure_property, *device_aux_1_exposure_property, *agent_aux_1_exposure_property, *device_frame_type_property;
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = 0;
@@ -866,22 +867,28 @@ static bool exposure_batch(indigo_device *device) {
 		for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
 			if (FILTER_DEVICE_CONTEXT->property_removed)
 				return INDIGO_ALERT_STATE;
-			bool pausedOnHA = false;
+			bool pausedOnTTT = false;
 			double exposure_time = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
-			if (AGENT_IMAGER_BATCH_PAUSE_BEFORE_TRANSIT_ITEM->number.target < 24 && indigo_filter_first_related_agent(device, "Mount Agent")) {
+			if (pauseOnTTT && indigo_filter_first_related_agent(device, "Mount Agent")) {
 				double time_to_transit = DEVICE_PRIVATE_DATA->time_to_transit;
 				if (time_to_transit > 12)
 					time_to_transit = time_to_transit - 24;
-				if (time_to_transit <= AGENT_IMAGER_BATCH_PAUSE_BEFORE_TRANSIT_ITEM->number.target + exposure_time / 3600) {
-					AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM->sw.value = pausedOnHA = true;
+				if (time_to_transit <= exposure_time / 3600 - AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.target) {
+					pauseOnTTT = false; // pause only once per batch
+					AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = pausedOnTTT = true;
 					AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, "Paused, %s to transit ", indigo_dtos(DEVICE_PRIVATE_DATA->time_to_transit, NULL));
+					indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
+					if (DEVICE_PRIVATE_DATA->time_to_transit >= 0) {
+						indigo_send_message(device, "Batch paused, transit in %s", indigo_dtos(time_to_transit, NULL));
+					} else {
+						indigo_send_message(device, "Batch paused, transit %s ago", indigo_dtos(-time_to_transit, NULL));
+					}
 					allow_abort_by_mount_agent(device, false);
 				}
 			}
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				indigo_usleep(200000);
-			if (pausedOnHA) {
+			if (pausedOnTTT) {
 				allow_abort_by_mount_agent(device, true);
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -2282,8 +2289,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_BATCH_COUNT_ITEM, AGENT_IMAGER_BATCH_COUNT_ITEM_NAME, "Frame count", -1, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_EXPOSURE_ITEM, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_DELAY_ITEM, AGENT_IMAGER_BATCH_DELAY_ITEM_NAME, "Delay after each exposure (s)", 0, 0xFFFF, 1, 0);
-		indigo_init_number_item(AGENT_IMAGER_BATCH_PAUSE_BEFORE_TRANSIT_ITEM, AGENT_IMAGER_BATCH_PAUSE_BEFORE_TRANSIT_ITEM_NAME, "Pause before transit (0 to 24)", 0, 24, 1, 24);
-		strcpy(AGENT_IMAGER_BATCH_PAUSE_BEFORE_TRANSIT_ITEM->number.format, "%12.3m");
+		indigo_init_number_item(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM, AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM_NAME, "Pause after transit (hrs)", -1, 24, 1, 24);
+		strcpy(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.format, "%12.3m");
 		// -------------------------------------------------------------------------------- Focus properties
 		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
 		if (AGENT_IMAGER_FOCUS_PROPERTY == NULL)
@@ -2342,7 +2349,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_PAUSE_PROCESS_ITEM, AGENT_PAUSE_PROCESS_ITEM_NAME, "Pause/resume process (with abort)", false);
 		indigo_init_switch_item(AGENT_PAUSE_PROCESS_WAIT_ITEM, AGENT_PAUSE_PROCESS_WAIT_ITEM_NAME, "Pause/resume process (with wait)", false);
-		indigo_init_switch_item(AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM, AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM_NAME, "Pause/resume process (at HA)", false);
+		indigo_init_switch_item(AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM, AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM_NAME, "Pause/resume process (at HA)", false);
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -2648,7 +2655,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No CCD is selected");
 			}
 		}
-		AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM->sw.value = false;
+		AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false;
 		AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
@@ -2661,11 +2668,11 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_PAUSE_PROCESS_PROPERTY, property, false);
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM->sw.value = false;
+				AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false;
 				AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
-				if (AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM->sw.value) {
-					AGENT_PAUSE_PROCESS_BEFORE_TRANSIT_ITEM->sw.value = false; // can be only cleared when set by agent
+				if (AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value) {
+					AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false; // can be only cleared when set by agent
 				} else {
 					AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					if (AGENT_PAUSE_PROCESS_ITEM->sw.value)
