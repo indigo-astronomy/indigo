@@ -15,7 +15,7 @@ protocols:
 ## INDIGO XML protocol
 
 INDIGO XML is a backward compatible extension of legacy INDI protocol 1.7 as described by Elwood C. Downey in
-<http://www.clearskyinstitute.com/INDI/INDI.pdf> and implemented by INDI framework version 0.7 and later.
+<http://docs.indilib.org/protocol/INDI.pdf> and implemented by INDI framework version 0.7 and later.
 
 Extensions are enabled only in case of succesfull handshake with two possible variants:
 
