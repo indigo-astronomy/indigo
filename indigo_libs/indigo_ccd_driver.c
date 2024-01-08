@@ -935,7 +935,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 
 void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C) {
 	INDIGO_DEBUG(clock_t start = clock());
-	int size_in = frame_width * frame_height;
+	size_t size_in = frame_width * frame_height;
 	int sample_by = frame_width < STRECH_SAMPLE_SIZE ? 1 : frame_width / STRECH_SAMPLE_SIZE;
 	void *copy = indigo_safe_malloc(3 * size_in * bpp / 8);
 	unsigned char *mem = NULL;
