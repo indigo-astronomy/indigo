@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Mallincam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 54.23945.20231121</li></ul>
+<hr/><ul><li>Version: 55.24390.$WCDATE=%Y%m%d$</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -152,7 +152,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr>
  <tr>
    <td>MALLINCAM_EVENT_EXPOSURE</td>
-   <td rowspan="18">Software</td>
+   <td rowspan="19">Software</td>
    <td>exposure time changed</td>
  </tr>
  <tr>
@@ -202,6 +202,10 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
   <tr>
    <td>MALLINCAM_EVENT_DFC</td>
    <td>dark field correction status changed</td>
+ </tr>
+  <tr>
+   <td>MALLINCAM_EVENT_FPNC</td>
+   <td>fixed pattern noise correction status changed</td>
  </tr>
   <tr>
    <td>MALLINCAM_EVENT_ROI</td>
@@ -485,7 +489,7 @@ for (unsigned i = 0; i &lt; cnt; ++i)
    <td colspan="2">The name of this model</td>
    </tr>
  <tr>
-   <td width="8%" rowspan="54">flag</td>
+   <td width="8%" rowspan="56">flag</td>
    <td colspan="2">Bitwise flag</td>
    </tr>
  <tr>
@@ -538,23 +542,27 @@ for (unsigned i = 0; i &lt; cnt; ++i)
  </tr>
   <tr>
    <td>MALLINCAM_FLAG_RAW10</td>
-   <td>Pixel format, RAW 10 bits</td>
+   <td>MALLINCAM_PIXELFORMAT_RAW10 Pixel format, RAW 10 bits</td>
+ </tr>
+  <tr>
+   <td>MALLINCAM_FLAG_RAW11</td>
+   <td>MALLINCAM_PIXELFORMAT_RAW11 Pixel format, RAW 11 bits</td>
  </tr>
   <tr>
    <td>MALLINCAM_FLAG_RAW12</td>
-   <td>Pixel format, RAW 12 bits</td>
+   <td>MALLINCAM_PIXELFORMAT_RAW12 Pixel format, RAW 12 bits</td>
  </tr>
   <tr>
    <td>MALLINCAM_FLAG_RAW12PACK</td>
-   <td>Pixel format, RAW 12 bits, packed</td>
+   <td>MALLINCAM_PIXELFORMAT_RAW12PACK Pixel format, RAW 12 bits, packed</td>
  </tr>
   <tr>
    <td>MALLINCAM_FLAG_RAW14</td>
-   <td>Pixel format, RAW 14 bits</td>
+   <td>MALLINCAM_PIXELFORMAT_RAW14 Pixel format, RAW 14 bits</td>
  </tr>
   <tr>
    <td>MALLINCAM_FLAG_RAW16</td>
-   <td>Pixel format, RAW 16 bits</td>
+   <td>MALLINCAM_PIXELFORMAT_RAW16 Pixel format, RAW 16 bits</td>
  </tr>
   <tr>
    <td>MALLINCAM_FLAG_FAN</td>
@@ -616,31 +624,31 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_YUV411</td>
-    <td>pixel format, yuv411</td>
+    <td>MALLINCAM_PIXELFORMAT_YUV411 Pixel format</td>
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_YUV422</td>
-    <td>pixel format, yuv422</td>
+    <td>MALLINCAM_PIXELFORMAT_YUV422 Pixel format</td>
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_YUV444</td>
-    <td>pixel format, yuv444</td>
+    <td>MALLINCAM_PIXELFORMAT_YUV444 Pixel format</td>
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_RGB888</td>
-    <td>pixel format, RGB888</td>
+    <td>MALLINCAM_PIXELFORMAT_RGB888 Pixel format</td>
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_RAW8</td>
-    <td>pixel format, RAW 8 bits</td>
+    <td>MALLINCAM_PIXELFORMAT_RAW8 Pixel format, RAW 8 bits</td>
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_GMCY8</td>
-    <td>pixel format, GMCY, 8 bits</td>
+    <td>MALLINCAM_PIXELFORMAT_GMCY8 Pixel format, GMCY 8 bits</td>
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_GMCY12</td>
-    <td>pixel format, GMCY, 12 btis</td>
+    <td>MALLINCAM_PIXELFORMAT_GMCY12 Pixel format, GMCY 12 btis</td>
   </tr>
   <tr>
     <td>MALLINCAM_FLAG_GLOBALSHUTTER</td>
@@ -701,6 +709,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   <tr>
     <td>MALLINCAM_FLAG_LIGHT_SOURCE</td>
     <td>stand alone light source</td>
+  </tr>
+  <tr>
+    <td>MALLINCAM_FLAG_GHOPTO</td>
+    <td>ghopto sensor</td>
   </tr>
  <tr>
    <td width="8%">maxspeed</td>
@@ -845,7 +857,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>HWND hWnd: event occurs, message will be posted in this window</p>
       <p>UINT nMsg: Windows custom message type. Its WPARAM parameter means event type MALLINCAM_EVENT_xxxx, LPARAM is useless (always zero)</p>
       <p>PMALLINCAM_EVENT_CALLBACK funEvent, void* ctxEvent: callback function specified by user's application and callback context parameter.</p>
@@ -862,7 +874,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
 			Mallincam_PullImage<br/>Mallincam_PullStillImage<br/><a id="rowpitch1">Mallincam_PullImageWithRowPitch</a><br/><a id="rowpitch2">Mallincam_PullStillImageWithRowPitch</a></font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
       <p><strong>Parameters:</strong></p>
-      <blockquote><p>HMallincam h: camera instance handle</p>
+      <blockquote><p>HMallincam h: camera handle</p>
 	  <p>nWaitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If nWaitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Mallincam_PullImageV3.</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bStill: to pull still image, set to 1, otherwise 0</p>
@@ -978,7 +990,7 @@ typedef struct {
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle.</p>
+      <p>HMallincam h: camera handle.</p>
       <p>funData, void* ctxData: the callback function and callback context parameters that are specified by the user's program. Mallincam.dll gets image data from the camera, then calls back this function.</p>
     </blockquote>
   <blockquote>
@@ -1012,7 +1024,7 @@ typedef struct {
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     	<blockquote>
-    		<p>HMallincam h: camera instance handle</p>
+    		<p>HMallincam h: camera handle</p>
 			<p>int bPause: 1 =&gt; pause, 0 =&gt; continue</p>
     	</blockquote>
     <p><strong>Remarks:</strong> temporarily pause the video stream</p>
@@ -1021,7 +1033,7 @@ typedef struct {
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>unsigned nResolutionIndex: resolution index. 0xffffffff means use the cureent preview resolution</p>
 	<p><a id="snapn">unsigned nNum: the number to be snapped.</a></p>
   </blockquote>
@@ -1041,7 +1053,7 @@ typedef struct {
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>unsigned short nNumber: 0xffff(trigger continuously), 0(stop / cancel trigger), others(number of images to be triggered)</p>
   </blockquote>
   <p><strong>Remarks:</strong> in trigger mode, call this function to trigger an image:</p>
@@ -1054,7 +1066,7 @@ typedef struct {
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned nResolutionIndex: current/present resolution index</p>
       <p>int nWidth, int nHeight: width and height of current resolution index</p>
     </blockquote>
@@ -1072,7 +1084,7 @@ typedef struct {
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned xOffset: x offset, must be even number</p>
       <p>unsigned yOffset: y offset, must be even number</p>
       <p>unsigned xWidth: width, must be even number and must not be less than 16</p>
@@ -1089,7 +1101,7 @@ typedef struct {
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned nResolutionIndex: resolution index</p>
       <p>int* pWidth, int* pHeight: width/height</p>
     </blockquote>
@@ -1102,8 +1114,8 @@ typedef struct {
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
-    <p>unsigned* pFourCC: raw format, see  table below</p>
+    <p>HMallincam h: camera handle</p>
+    <p>unsigned* pFourCC: One of 4 Bayer pixel arrangement(MAKEFOURCC('G', 'B', 'R', 'G'), MAKEFOURCC('R', 'G', 'G', 'B'), MAKEFOURCC('B', 'G', 'G', 'R'), MAKEFOURCC('G', 'R', 'B', 'G'), see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm" target="_blank">here</a>). <strong>Please note that the Y-axis direction of the coordinate system used by different software to define Bayer may be different (Y-axis upward or downward), so some mapping may be required during interoperation. Like the same pixel arrangement, Bayer is GRBG when the Y-axis is downward, and BGGR when the Y-axis is upward.</strong></p>
     <p>unsigned* pBitsPerPixel: bitdepth, such as 8, 10, 12, 14, 16</p>
 <div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
   <tr>
@@ -1111,46 +1123,31 @@ typedef struct {
 #define MAKEFOURCC(a, b, c, d) ((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) &lt;&lt; 8) | ((unsigned)(unsigned char)(c) &lt;&lt; 16) | ((unsigned)(unsigned char)(d) &lt;&lt; 24))<br/>
 #endif<br/></td>
   </tr>
-</table></div><br/>
-  <div align="center">
-    <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
-      <tr>
-        <td width="40%">MAKEFOURCC('G', 'B', 'R', 'G')</td>
-        <td width="60%">GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>...<br/>see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm" target="_blank">here</a></td>
-      </tr>
-      <tr>
-        <td>MAKEFOURCC('R', 'G', 'G', 'B')</td>
-        <td>RGRGRG...<br/>GBGBGB...<br/>RGRGRG...<br/>GBGBGB...<br/>...<br/></td>
-      </tr>
-      <tr>
-        <td>MAKEFOURCC('B', 'G', 'G', 'R')</td>
-        <td>BGBGBG...<br/>GRGRGR...<br/>BGBGBG...<br/>GRGRGR...<br/>...<br/></td>
-      </tr>
-      <tr>
-        <td>MAKEFOURCC('G', 'R', 'B', 'G')</td>
-        <td>GRGRGR...<br/>BGBGBG...<br/>GRGRGR...<br/>BGBGBG...<br/>...<br/></td>
-      </tr>
-      <tr>
-        <td>MAKEFOURCC('V', 'U', 'Y', 'Y')</td>
-        <td>YUV4:2:2, please see: <a href="http://www.fourcc.org" target="_blank">http://www.fourcc.org</a></td>
-      </tr>
-      <tr>
-        <td>MAKEFOURCC('U', 'Y', 'V', 'Y')</td>
-        <td>YUV4:2:2</td>
-      </tr>
-      <tr>
-        <td>MAKEFOURCC('Y', 'Y', 'Y', 'Y')</td>
-        <td>Black / White camera</td>
-      </tr>      
-    </table>
-  </div>
+</table></div><br/></blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Mallincam_get_PixelFormatSupport</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HMallincam h: camera handle</p>
+    <p>char cmd:<blockquote>
+		-1: query the number<br/>
+		0~number: query the nth pixel format</blockquote></p>
+    <p>int* piValue: output, MALLINCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
+  </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Mallincam_get_PixelFormatName</font></h2>
+      <p><strong>Return value:</strong> name of pixel format, such as "RAW10", "HDR12HL", etc</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>int val: MALLINCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
   </blockquote>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Mallincam_put_Option<br/>Mallincam_get_Option</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>unsigned iOption: see table below</p>
     <p>int iValue: see table below</p>
   <div align="center">
@@ -1171,7 +1168,7 @@ typedef struct {
           (The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
       <tr>
-        <td><a id="rawo">MALLINCAM_OPTION_ISP</a></td>
+        <td>MALLINCAM_OPTION_ISP</td>
         <td>Enable hardware ISP:<br/>0 => auto (disable in RAW mode, otherwise enable)<br/>1 => enable<br/>-1 => disable</td>
         <td>0(Auto)</td>
         <td><b>No</b><br/>
@@ -1294,13 +1291,14 @@ typedef struct {
       	<td>Conversion Gain:<br/>
 			0: LCG<br/>
 			1: HCG<br/>
-			2: HDR</td>
+			2: HDR (for camera with flag MALLINCAM_FLAG_CGHDR)<br/>
+			2: MCG (for camera with flag MALLINCAM_FLAG_GHOPTO)</td>
       	<td>Model Specific</td>
       	<td>Yes</td>
       </tr>
       <tr>
       	<td>MALLINCAM_OPTION_PIXEL_FORMAT</td>
-      	<td>MALLINCAM_PIXELFORMAT_RAW8<br/>
+      	<td><a id="pflist">MALLINCAM_PIXELFORMAT_RAW8<br/>
 MALLINCAM_PIXELFORMAT_RAW10<br/>
 MALLINCAM_PIXELFORMAT_RAW12<br/>
 MALLINCAM_PIXELFORMAT_RAW14<br/>
@@ -1312,7 +1310,13 @@ MALLINCAM_PIXELFORMAT_RGB888<br/>
 MALLINCAM_PIXELFORMAT_GMCY8 (map to RGGB 8 bits)<br/>
 MALLINCAM_PIXELFORMAT_GMCY12 (map to RGGB 12 bits)<br/>
 MALLINCAM_PIXELFORMAT_UYVY<br/>
-MALLINCAM_PIXELFORMAT_RAW12PACK</td>
+MALLINCAM_PIXELFORMAT_RAW12PACK<br/>
+MALLINCAM_PIXELFORMAT_RAW11<br/>
+MALLINCAM_PIXELFORMAT_HDR8HL (HDR, Bitdepth: 8, Conversion Gain: High + Low)<br/>
+MALLINCAM_PIXELFORMAT_HDR10HL (HDR, Bitdepth: 10, Conversion Gain: High + Low)<br/>
+MALLINCAM_PIXELFORMAT_HDR11HL (HDR, Bitdepth: 11, Conversion Gain: High + Low)<br/>
+MALLINCAM_PIXELFORMAT_HDR12HL (HDR, Bitdepth: 12, Conversion Gain: High + Low)<br/>
+MALLINCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a></td>
       	<td>Model Specific</td>
       	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
       </tr>
@@ -1345,6 +1349,21 @@ MALLINCAM_PIXELFORMAT_RAW12PACK</td>
       <tr>
       	<td><a id="dfc">MALLINCAM_OPTION_DFC</a></td>
       	<td>Dark Field Correction:<br/>
+					set:
+                        <blockquote>0: disable<br/>
+                        1: enable<br/>
+						-1: reset<br/>
+                        (0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                    get:
+                        <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
+                        ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
+                        ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
+      	<td>0</td>
+      	<td>Yes</td>
+      </tr>
+      <tr>
+      	<td>MALLINCAM_OPTION_FPNC</td>
+      	<td>Fixed Pattern Noise Correction:<br/>
 					set:
                         <blockquote>0: disable<br/>
                         1: enable<br/>
@@ -1418,21 +1437,15 @@ MALLINCAM_PIXELFORMAT_RAW12PACK</td>
       </tr>
 	  <tr>
       	<td>MALLINCAM_OPTION_AFMODE</td>
-      	<td>auto focus mode:<br/>0: manul focus<br/>1: auto focus<br/>2: once focus<br/>3: conjugate calibration</td>
+      	<td>auto focus mode: see MallincamAFMode</td>
       	<td>NA</td>
       	<td>Yes</td>
       </tr>
 	  <tr>
-      	<td>MALLINCAM_OPTION_AFZONE</td>
-      	<td>auto focus zone</td>
+      	<td>MALLINCAM_OPTION_AFSTATUS</td>
+      	<td>auto focus status: see MallincamAFStaus</td>
       	<td>NA</td>
-      	<td>Yes</td>
-      </tr>
-	  <tr>
-      	<td>MALLINCAM_OPTION_AFFEEDBACK</td>
-      	<td>auto focus information feedback:<br/>0: unknown<br/>1: focused<br/>2: focusing<br/>3: defocus<br/>4: up<br/>5: down</td>
       	<td>NA</td>
-      	<td>Yes</td>
       </tr>
 	  <tr>
       	<td>MALLINCAM_OPTION_TESTPATTERN</td>
@@ -1493,7 +1506,7 @@ MALLINCAM_PIXELFORMAT_RAW12PACK</td>
       </tr>
 	  <tr>
         <td>MALLINCAM_OPTION_CALLBACK_THREAD</td>
-        <td>dedicated thread for callback, only available in pull mode</td>
+        <td>dedicated thread for callback, only available in pull mode:<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>0</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr>
@@ -1585,8 +1598,14 @@ MALLINCAM_PIXELFORMAT_RAW12PACK</td>
         Sub-switch: Yes</td>
       </tr>
       <tr>
+        <td>MALLINCAM_OPTION_LOW_POWERCONSUMPTION</td>
+        <td>Low Power Consumption:<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>Model Specific</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
         <td><a id="lownoise">MALLINCAM_OPTION_LOW_NOISE</a></td>
-        <td>low noise mode (Higher signal noise ratio, lower frame rate)</td>
+        <td>low noise mode (Higher signal noise ratio, lower frame rate):<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td>
 		<td>Yes</td>
       </tr>
@@ -1644,18 +1663,6 @@ MALLINCAM_PIXELFORMAT_RAW12PACK</td>
         <td>MALLINCAM_OPTION_OVERCLOCK</td>
         <td>overclock</td>
 		<td>0</td>
-		<td>Yes</td>
-      </tr>
-      <tr>
-        <td>MALLINCAM_OPTION_ADC</td>
-        <td>Analog-Digital Conversion:<br/>
-			get:<br/><blockquote>
-					(option | 'C'): get the current value<br/>
-					(option | 'N'): get the supported ADC number<br/>
-					(option | n): get the nth supported ADC value, such as 11bits, 12bits, etc<br/>
-					</blockquote>
-			set: val = ADC value, such as 11bits, 12bits, etc</td>
-		<td>Model Specific<br/>(the first value is the default)</td>
 		<td>Yes</td>
       </tr>
       <tr>
@@ -1920,7 +1927,7 @@ MALLINCAM_PIXELFORMAT_RAW12PACK</td>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>int val:</p>
     <blockquote>0: stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full<br/>
     1: realtime
@@ -1937,7 +1944,7 @@ Mallincam_get_MaxAutoExpoTimeAGain<br/>Mallincam_put_MinAutoExpoTimeAGain<br/>Ma
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p><a id="aexpo">int bAutoExposure:</a></p>
 		<blockquote>0: disable auto exposure<br/>
 		1: auto exposure continue mode<br/>
@@ -1952,7 +1959,7 @@ Mallincam_get_MaxAutoExpoTimeAGain<br/>Mallincam_put_MinAutoExpoTimeAGain<br/>Ma
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned Time: exposure time, unit: microsecond</p>
       <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
     </blockquote>
@@ -1962,7 +1969,7 @@ Mallincam_get_MaxAutoExpoTimeAGain<br/>Mallincam_put_MinAutoExpoTimeAGain<br/>Ma
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned short AGain: gain, shown in percentage, eg, 200 means the gain is 200%</p>
       <p>unsigned short* nMin, unsigned short* nMax, unsigned short* nDef: the minimum, maximum and default value of gain.</p>
     </blockquote>
@@ -1973,7 +1980,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HMallincam h: camera instance handle</p>
+    	<p>HMallincam h: camera handle</p>
     </blockquote>
     <p><strong>Remarks:</strong> set or get hue, saturation, brightness, contrast and gamma.</p>
 </li></ul>
@@ -1981,21 +1988,21 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>int bChrome: 1(monochromatic) or color(0)</p>
     </blockquote>
     <p><strong>Remarks:</strong> color or monochromatic mode</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Mallincam_get_VFlip<br/>Mallincam_put_VFlip<br/>Mallincam_get_HFlip<br/>Mallincam_put_HFlip</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
-      <p><strong>Parameters:</strong> HMallincam h: camera instance handle</p>
+      <p><strong>Parameters:</strong> HMallincam h: camera handle</p>
       <p><strong>Remarks:</strong> vertical/horizontal flip.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Mallincam_put_Speed<br/>Mallincam_get_Speed<br/>Mallincam_get_MaxSpeed</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned short nSpeed: frame rate level</p>
     </blockquote>
     <p><strong>Remarks:</strong> the minimum frame rate level is "0", the maximum one can be achieved through Function "Mallincam_get_MaxSpeed" which equals to maxspeed in MallincamModelV2.<br/>
@@ -2005,7 +2012,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>int nHZ: 0: 60Hz alternating current, 1: 50Hz alternating current, 2: direct current</p>
     </blockquote>
     <p><strong>Remarks:</strong> set the light source power frequency</p>
@@ -2014,7 +2021,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure, E_NOTIMPL means not supporting get or set the temperature</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃).</p>
     </blockquote>
     <p><strong>Remarks:</strong> get the temperature of the sensor. see MALLINCAM_FLAG_GETTEMPERATURE.</p>
@@ -2024,7 +2031,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>int bSkip: Bin mode or Skip mode.</p>
   </blockquote>
   <p><strong>Remarks:</strong> set Bin mode or Skip mode. Cameras with higher resolution can support two sampling modes, one is Bin mode (Neighborhood averaging), the other is Skip (sampling extraction). In comparison, the former is with better image effect but decreasing frame rate while the latter is just the reverse.</p>
@@ -2033,7 +2040,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HMallincam h: camera instance handle</p>
+    	<p>HMallincam h: camera handle</p>
     	<p>int nTemp, int nTint: color temperature and Tint</p>
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
@@ -2042,7 +2049,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>PIMALLINCAM_TEMPTINT_CALLBACK funTT, void* ctxTT: callback function and callback context when the automatic white balance completes.</p>
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in Temp/Tint Mode. When the "auto white balance" completes, MALLINCAM_EVENT_TEMPTINT event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
@@ -2051,7 +2058,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HMallincam h: camera instance handle</p>
+    	<p>HMallincam h: camera handle</p>
     	<p>int aGain[3]: RGB Gain</p>
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the RGB gain parameters of white balance (RGB Gain Mode, please see <a href="#wb">here</a>).</p>
@@ -2060,7 +2067,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>PIMALLINCAM_WHITEBALANCE_CALLBACK funWB, void* ctxWB: callback function and callback context when the automatic white balance completes.</p>
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, MALLINCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
@@ -2069,7 +2076,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. For mono camera, return value always is E_NOTIMPL.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>PIMALLINCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB: callback function and callback context when the automatic black balance completes.</p>
     </blockquote>
     <p><strong>Remarks:</strong> Call this function to perform one "auto black balance". When the "auto black balance" completes, MALLINCAM_EVENT_BLACK event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
@@ -2078,7 +2085,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
       <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HMallincam h: camera instance handle</p>
+    	<p>HMallincam h: camera handle</p>
     	<p>unsigned short aSub[3]: RGB Offset</p>
 	</blockquote>
   <p><strong>Remarks:</strong> set/get the RGB offset parameters of black balance.</p>
@@ -2087,7 +2094,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
-      	<p>HMallincam h: camera instance handle</p>
+      	<p>HMallincam h: camera handle</p>
       </blockquote>
       <p><strong>Remarks:</strong> set/get the rectangle of automatic white balance and auto-exposure and automatic black balance. The default Rectangle is in the center of the image, its width is 20% image with, its height is 20% image height.</p>
 	  <p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
@@ -2098,7 +2105,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong> S_OK means mono mode, S_FALSE means color mode</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>Mallincam h: camera instance handle</p>
+    	<p>Mallincam h: camera handle</p>
     </blockquote>
     <p><strong>Remarks:</strong> grey camera or not, find the flag in MallincamModelV2: MALLINCAM_FLAG_MONO</p>
 </li></ul>
@@ -2106,7 +2113,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong> the maximum bitdepth this camera supports.</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-    	<p>HMallincam h: camera instance handle</p>
+    	<p>HMallincam h: camera handle</p>
     </blockquote>
     <p><strong>Remarks:</strong> Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.</p>
 </li></ul>
@@ -2115,7 +2122,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned nResolutionIndex: resolution index</p>
       <p>int* pWidth, int* pHeight: width/height</p>
     </blockquote>
@@ -2126,7 +2133,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>char sn[32]: buffer to the serial number, such as: TP110826145730ABCD1234FEDC56787</p>
     <p>char fwver[16]: buffer to the firmware version, such as: 3.2.1.20140922</p>
     <p>char hwver[16]: buffer to the hardware version, such as: 3.12</p>
@@ -2140,7 +2147,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>unsigned nResolutionIndex: resolution index</p>
     <p>float* x, float* y: sensor physical pixel size, such as 2.4μm × 2.4μm</p>
   </blockquote>
@@ -2150,7 +2157,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>unsigned short iLed: the index of LED light</p>
     <p>unsigned short iState: LED status, 1 =&gt; Ever bright; 2 =&gt; Flashing; other =&gt; Off</p>
     <p>unsigned short iPeriod: Flashing Period (&gt;= 500ms)</p>
@@ -2161,7 +2168,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>unsigned addr: EEPROM address</p>
     <p>const unsigned char* pBuffer: data buffer to be written</p>
     <p>unsigned char* pBuffer: read EEPROM to buffer</p>
@@ -2173,7 +2180,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>unsigned ioLineNumber:</p>
 	<blockquote>0 =&gt; Opto-isolated input<br/>
     1 =&gt; Opto-isolated output<br/>
@@ -2386,34 +2393,34 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>const unsigned char* pBuffer: data buffer to be written</p>
     <p>unsigned char* pBuffer: read buffer</p>
     <p>unsigned nBufferLen: buffer length</p>
   </blockquote>
   <p><strong>Remarks:</strong> If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Mallincam_FfcOnce<br/>Mallincam_DfcOnce</font></h2>
+<ul><li><h2><font color="#0000FF">Mallincam_FfcOnce<br/>Mallincam_DfcOnce<br/>Mallincam_FpncOnce</font></h2>
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
   </blockquote>
 </li></ul>
-<ul><li><h2><font color="#0000FF">Mallincam_FfcExport<br/>Mallincam_FfcImport<br/>Mallincam_DfcExport<br/>Mallincam_DfcImport</font></h2>
+<ul><li><h2><font color="#0000FF">Mallincam_FfcExport<br/>Mallincam_FfcImport<br/>Mallincam_DfcExport<br/>Mallincam_DfcImport<br/>Mallincam_FpncExport<br/>Mallincam_FpncImport</font></h2>
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
 	<p>filepath: file path</p>
   </blockquote>
-  <p><strong>Remarks:</strong> Export or import *.dfc or *.ffc file.</p>
+  <p><strong>Remarks:</strong> Export or import *.dfc, *.ffc or *.fpnc file.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Mallincam_LevelRangeAuto</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
       <blockquote>
-      	<p>HMallincam h: camera instance handle</p>
+      	<p>HMallincam h: camera handle</p>
       </blockquote>
       <p><strong>Remarks:</strong> auto Level Range.</p>
 </li></ul>
@@ -2421,7 +2428,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
       <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Grey. RGB is only available for color image, and grey is only available for grey image.</p>
     </blockquote>
     <p><strong>Remarks:</strong> level range related.</p>
@@ -2430,7 +2437,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
     <blockquote>
-      <p>HMallincam h: camera instance handle</p>
+      <p>HMallincam h: camera handle</p>
 	  <p>unsigned short mode:</p>
 	  <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
@@ -2491,7 +2498,7 @@ Mallincam_put_Brightness<br/>Mallincam_get_Brightness<br/>Mallincam_get_Contrast
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>HMallincam h: camera instance handle</p>
+    <p>HMallincam h: camera handle</p>
     <p>PIMALLINCAM_HISTOGRAM_CALLBACK funHistogram, void* ctxHistogram: callback function and callback context of histogram data.</p>
   </blockquote>
   <p><strong>Remarks:</strong> get histogram data.</p>
@@ -2920,6 +2927,7 @@ public bool Snap(uint nResolutionIndex)
 	</table>
 </div>
 <hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v55: Add Support to HDR Pixel Format</p>
 <p>v54: Add support to GigE. Please see <a href="#apigige">here</a></p>
 <p>v53: Add MallincamFrameInfoV3, Mallincam_PullImageV3, Mallincam_StartPushModeV4</p>
 <p>v52: Android Java side transfer file descriptor to <a href="#apiopen">Mallincam_Open</a> to open camera. Please see <a href="#androidopen">here</a></p>
