@@ -305,7 +305,15 @@ static void spiral_dither_values(unsigned int dither_number, double amount, bool
 }
 
 static void do_dither(indigo_device *device) {
-	// TODO: possibly check if guiding us started
+	// if not guiding clear state and return
+	if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING) {
+		AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+		AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+		AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dither request igored, not guiding");
+		return;
+	}
 	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
 	AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
@@ -1776,7 +1784,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_GUIDER_DITHERING_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_DITHERING_SETTINGS_AMMOUNT_ITEM, AGENT_GUIDER_DITHERING_SETTINGS_AMMOUNT_ITEM_NAME, "Ammount (px)", -15, 15, 1, 1);
-		indigo_init_number_item(AGENT_GUIDER_DITHERING_SETTINGS_TIME_LIMIT_ITEM, AGENT_GUIDER_DITHERING_SETTINGS_TIME_LIMIT_ITEM_NAME, "Settle time limit (s)", 0, 600, 1, 60);
+		indigo_init_number_item(AGENT_GUIDER_DITHERING_SETTINGS_TIME_LIMIT_ITEM, AGENT_GUIDER_DITHERING_SETTINGS_TIME_LIMIT_ITEM_NAME, "Settle time limit (s)", 0, 300, 1, 60);
 		// -------------------------------------------------------------------------------- Dithering strategy
 		AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY_NAME, "Agent", "Dithering strategy", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY == NULL)
@@ -2115,7 +2123,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_DITHER_PROPERTY, property)) {
-// -------------------------------------------------------------------------------- AGENT_DITHER_NOW
+// -------------------------------------------------------------------------------- AGENT_DITHER
 		indigo_property_copy_values(AGENT_GUIDER_DITHER_PROPERTY, property, false);
 		if (AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value) {
 			indigo_set_timer(device, 0, do_dither, NULL);
