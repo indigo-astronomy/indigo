@@ -2883,10 +2883,6 @@ static void snoop_guider_stats(indigo_client *client, indigo_property *property)
 				if (!strcmp(item->name, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME)) {
 					AGENT_IMAGER_STATS_DITHERING_ITEM->number.value = item->number.value;
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-					if (item->number.value)
-						DEVICE_PRIVATE_DATA->dithering_started = true;
-					else
-						DEVICE_PRIVATE_DATA->dithering_finished = true;
 				} else if (!strcmp(item->name, AGENT_GUIDER_STATS_PHASE_ITEM_NAME)) {
 					phase = (int)item->number.value;
 				} else if (!strcmp(item->name, AGENT_GUIDER_STATS_FRAME_ITEM_NAME)) {
@@ -2894,6 +2890,26 @@ static void snoop_guider_stats(indigo_client *client, indigo_property *property)
 				}
 			}
 			DEVICE_PRIVATE_DATA->guiding = (phase == INDIGO_GUIDER_PHASE_GUIDING) && (frame > 5);
+		}
+	}
+}
+
+static void snoop_guider_dithering_state(indigo_client *client, indigo_property *property) {
+	if (!strcmp(property->name, AGENT_GUIDER_DITHER_PROPERTY_NAME)) {
+		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+		char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
+		if (related_agent_name && !strcmp(related_agent_name, property->device)) {
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME)) {
+					if (item->sw.value && property->state == INDIGO_BUSY_STATE) {
+						DEVICE_PRIVATE_DATA->dithering_started = true;
+					} else {
+						DEVICE_PRIVATE_DATA->dithering_finished = true;
+					}
+					break;
+				}
+			}
 		}
 	}
 }
@@ -3001,6 +3017,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	} else {
 		snoop_wheel_changes(client, property);
 		snoop_guider_stats(client, property);
+		snoop_guider_dithering_state(client, property);
 		snoop_barrier_state(client, property);
 		snoop_solver_process_state(client, property);
 		snoop_guider_process_state(client, property);
@@ -3113,6 +3130,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	} else {
 		snoop_wheel_changes(client, property);
 		snoop_guider_stats(client, property);
+		snoop_guider_dithering_state(client, property);
 		snoop_barrier_state(client, property);
 		snoop_solver_process_state(client, property);
 		snoop_guider_process_state(client, property);
