@@ -54,7 +54,7 @@
 #define AGENT_IMAGER_BATCH_COUNT_ITEM    			(AGENT_IMAGER_BATCH_PROPERTY->items+0)
 #define AGENT_IMAGER_BATCH_EXPOSURE_ITEM  		(AGENT_IMAGER_BATCH_PROPERTY->items+1)
 #define AGENT_IMAGER_BATCH_DELAY_ITEM     		(AGENT_IMAGER_BATCH_PROPERTY->items+2)
-#define AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM	(AGENT_IMAGER_BATCH_PROPERTY->items+3)
+#define AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM	(AGENT_IMAGER_BATCH_PROPERTY->items+3)
 #define AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM     	(AGENT_IMAGER_BATCH_PROPERTY->items+4)
 
 #define AGENT_IMAGER_FOCUS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_imager_focus_property)
@@ -759,7 +759,7 @@ static bool exposure_batch(indigo_device *device) {
 	AGENT_IMAGER_STATS_DELAY_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_COUNT_ITEM->number.target;
-	AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.target;
+	AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->use_aux_1 = false;
 	if (indigo_filter_cached_property(device, INDIGO_FILTER_AUX_1_INDEX, CCD_EXPOSURE_PROPERTY_NAME, &device_aux_1_exposure_property, &agent_aux_1_exposure_property)) {
@@ -896,7 +896,7 @@ static bool exposure_batch(indigo_device *device) {
 					if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value > 0) {
 						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value--;
 					} else {
-						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.target;
+						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
 						char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 						if (related_agent_name) {
 							if(!do_dither(device)) {
@@ -905,7 +905,7 @@ static bool exposure_batch(indigo_device *device) {
 						}
 					}
 				} else {
-					AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.target;
+					AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
 				}
 				check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM);
 				double reported_delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
@@ -2219,7 +2219,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_BATCH_COUNT_ITEM, AGENT_IMAGER_BATCH_COUNT_ITEM_NAME, "Frame count", -1, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_EXPOSURE_ITEM, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_DELAY_ITEM, AGENT_IMAGER_BATCH_DELAY_ITEM_NAME, "Delay after each exposure (s)", 0, 0xFFFF, 1, 0);
-		indigo_init_number_item(AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM, AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM_NAME, "Skip frames after dither (-1 no dithering)", -1, 1000, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM, AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM_NAME, "Frames to skip before dither (-1 no dithering)", -1, 1000, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM, AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM_NAME, "Pause after transit (h, 24 disabled)", -2, 24, 1, 24);
 		strcpy(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.format, "%12.3m");
 		// -------------------------------------------------------------------------------- Focus properties
@@ -2444,8 +2444,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_BATCH
 		indigo_property_copy_values(AGENT_IMAGER_BATCH_PROPERTY, property, false);
 		AGENT_IMAGER_BATCH_PROPERTY->state = INDIGO_OK_STATE;
-		AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.target = AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.target;
-		AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.value;
+		AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.target = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
+		AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.value;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_IMAGER_DITHERING_PROPERTY, NULL);
@@ -2479,8 +2479,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_DITHERING
 		indigo_property_copy_values(AGENT_IMAGER_DITHERING_PROPERTY, property, false);
 		AGENT_IMAGER_DITHERING_PROPERTY->state = INDIGO_OK_STATE;
-		AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.target = AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.target;
-		AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.value = AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.value;
+		AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target = AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.target;
+		AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.value = AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM->number.value;
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_DITHERING_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
