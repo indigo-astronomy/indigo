@@ -904,6 +904,8 @@ static bool exposure_batch(indigo_device *device) {
 							}
 						}
 					}
+				} else {
+					AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_SKIP_FRAMES_AFTER_DITHER_ITEM->number.target;
 				}
 				check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM);
 				double reported_delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
