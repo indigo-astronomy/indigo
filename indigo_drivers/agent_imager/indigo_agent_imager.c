@@ -704,14 +704,14 @@ static bool do_dither(indigo_device *device) {
 
 	// tobe removed - for backwords compatibility only
 	static const char *item_names[] = {
-		AGENT_GUIDER_DITHERING_SETTINGS_AMMOUNT_ITEM_NAME,
-		AGENT_GUIDER_DITHERING_SETTINGS_TIME_LIMIT_ITEM_NAME
+		AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM_NAME,
+		AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME
 	};
 	double item_values[] = {
 		AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM->number.target,
 		AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM->number.target
 	};
-	indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_DITHERING_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
+	indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, 2, item_names, item_values);
 	// tobe removed end
 
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_DITHER_PROPERTY_NAME, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, true);
@@ -2249,7 +2249,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_IMAGER_DITHERING_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_DITHERING_PROPERTY_NAME, "Agent", "Dithering settings (obsolete)", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_IMAGER_DITHERING_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM_NAME, "Aggressivity (px)", -10, 10, 1, 1);
+		indigo_init_number_item(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM_NAME, "Aggressivity (px)", 0, 15, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM, AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM_NAME, "Time limit (s)", 0, 600, 1, 60);
 		indigo_init_number_item(AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM, AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM_NAME, "Skip frames", -1, 1000, 1, 0);
 		// -------------------------------------------------------------------------------- Process properties
