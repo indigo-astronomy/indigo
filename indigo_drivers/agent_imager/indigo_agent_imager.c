@@ -110,6 +110,10 @@
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
 
+#define AGENT_PROCESS_FEATURES_PROPERTY				(DEVICE_PRIVATE_DATA->agent_process_features_property)
+#define AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM	(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
+#define AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
+
 #define AGENT_WHEEL_FILTER_PROPERTY						(DEVICE_PRIVATE_DATA->agent_wheel_filter_property)
 #define FILTER_SLOT_COUNT											24
 
@@ -185,6 +189,7 @@ typedef struct {
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_pause_process_property;
 	indigo_property *agent_abort_process_property;
+	indigo_property *agent_process_features_property;
 	indigo_property *agent_wheel_filter_property;
 	indigo_property *agent_stars_property;
 	indigo_property *agent_selection_property;
@@ -245,6 +250,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_IMAGER_SEQUENCE_PROPERTY);
 		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_PROCESS_FEATURES_PROPERTY);
 		char *selection_property_items[] = { AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_IMAGER_SELECTION_PROPERTY, 2, (const char **)selection_property_items);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
@@ -752,7 +758,7 @@ static bool do_dither(indigo_device *device) {
 }
 
 static bool exposure_batch(indigo_device *device) {
-	bool pauseOnTTT = AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.target < 24;
+	bool pauseOnTTT = AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM->sw.value;
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *device_exposure_property, *agent_exposure_property, *device_aux_1_exposure_property, *agent_aux_1_exposure_property, *device_frame_type_property;
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = 0;
@@ -892,7 +898,7 @@ static bool exposure_batch(indigo_device *device) {
 		}
 		if (light_frame && !is_controlled_instance) {
 			if (remaining_exposures != 0) {
-				if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value >= 0) { // < 0 dithering is disabled
+				if (AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM->number.value) {
 					if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value > 0) {
 						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value--;
 					} else {
@@ -2219,8 +2225,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_BATCH_COUNT_ITEM, AGENT_IMAGER_BATCH_COUNT_ITEM_NAME, "Frame count", -1, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_EXPOSURE_ITEM, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 0xFFFF, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_BATCH_DELAY_ITEM, AGENT_IMAGER_BATCH_DELAY_ITEM_NAME, "Delay after each exposure (s)", 0, 0xFFFF, 1, 0);
-		indigo_init_number_item(AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM, AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM_NAME, "Frames to skip before dither (-1 no dithering)", -1, 1000, 1, 0);
-		indigo_init_number_item(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM, AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM_NAME, "Pause after transit (h, 24 disabled)", -2, 24, 1, 24);
+		indigo_init_number_item(AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM, AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM_NAME, "Frames to skip before dither", 0, 1000, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM, AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM_NAME, "Pause after transit (h)", -2, 2, 1, 0);
 		strcpy(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.format, "%12.3m");
 		// -------------------------------------------------------------------------------- Focus properties
 		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
@@ -2253,7 +2259,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM, AGENT_IMAGER_DITHERING_AGGRESSIVITY_ITEM_NAME, "Aggressivity (px)", 0, 15, 1, 1);
 		indigo_init_number_item(AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM, AGENT_IMAGER_DITHERING_TIME_LIMIT_ITEM_NAME, "Time limit (s)", 0, 600, 1, 60);
-		indigo_init_number_item(AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM, AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM_NAME, "Skip frames", -1, 1000, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM, AGENT_IMAGER_DITHERING_SKIP_FRAMES_ITEM_NAME, "Skip frames", 0, 1000, 1, 0);
 		// -------------------------------------------------------------------------------- Process properties
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 5);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
@@ -2273,6 +2279,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort process", false);
+		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM, AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM_NAME, "Enable dithering", false);
+		indigo_init_switch_item(AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM, AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM_NAME, "Pause after transit", false);
 		// -------------------------------------------------------------------------------- Download properties
 		AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY_NAME, "Agent", "Download image", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY == NULL)
@@ -2415,6 +2426,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
 		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property))
+		indigo_define_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_IMAGER_STARS_PROPERTY, property))
 		indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_IMAGER_SELECTION_PROPERTY, property))
@@ -2606,6 +2619,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_PROCESS_FEATURES
+		indigo_property_copy_values(AGENT_PROCESS_FEATURES_PROPERTY, property, false);
+		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DOWNLOAD_FILE
 	} else if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property)) {
@@ -2858,6 +2877,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_PAUSE_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_release_property(AGENT_PROCESS_FEATURES_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_SEQUENCE_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_BREAKPOINT_PROPERTY);
