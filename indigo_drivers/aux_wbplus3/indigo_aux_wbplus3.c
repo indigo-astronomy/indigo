@@ -273,7 +273,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		AUX_POWER_OUTLET_VOLTAGE_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_POWER_OUTLET_VOLTAGE_PROPERTY_NAME, AUX_GROUP, "Regulated outlets voltage", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_POWER_OUTLET_VOLTAGE_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_POWER_OUTLET_VOLTAGE_1_ITEM, AUX_POWER_OUTLET_VOLTAGE_1_ITEM_NAME, "Regulated outlet (DC2) [V]", 5, 13.2, 0.2, 13.2);
+		indigo_init_number_item(AUX_POWER_OUTLET_VOLTAGE_1_ITEM, AUX_POWER_OUTLET_VOLTAGE_1_ITEM_NAME, "Regulated outlet (DC2) [V]", 0, 13.2, 0.2, 13.2);
 		// -------------------------------------------------------------------------------- USB_PORT
 		AUX_USB_PORT_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_USB_PORT_PROPERTY_NAME, AUX_GROUP, "USB Ports", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		if (AUX_USB_PORT_PROPERTY == NULL)
