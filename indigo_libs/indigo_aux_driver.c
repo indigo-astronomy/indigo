@@ -59,3 +59,9 @@ indigo_result indigo_aux_detach(indigo_device *device) {
 	assert(device != NULL);
 	return indigo_device_detach(device);
 }
+
+double indigo_aux_dewpoint(double temperature, double rh) {
+	double ln_rh = log(rh/100.0);
+	double a = (17.625 * temperature) / (243.04 + temperature);
+	return (243.04 * (ln_rh + a)) / (17.625 - ln_rh - a);
+}

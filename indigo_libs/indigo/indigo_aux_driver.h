@@ -50,6 +50,10 @@ extern indigo_result indigo_aux_change_property(indigo_device *device, indigo_cl
  */
 extern indigo_result indigo_aux_detach(indigo_device *device);
 
+/** Calculate dewpoint in degC from temperature in degC and relative humidity in % using Magnus formula
+*/
+extern double indigo_aux_dewpoint(double temperature, double rh);
+
 #ifdef __cplusplus
 }
 #endif
