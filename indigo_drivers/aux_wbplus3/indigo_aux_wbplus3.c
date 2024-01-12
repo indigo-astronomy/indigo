@@ -72,6 +72,13 @@
 #define AUX_DEW_CONTROL_MANUAL_ITEM	(AUX_DEW_CONTROL_PROPERTY->items + 0)
 #define AUX_DEW_CONTROL_AUTOMATIC_ITEM	(AUX_DEW_CONTROL_PROPERTY->items + 1)
 
+#define AUX_TEMPERATURE_SENSORS_PROPERTY		(PRIVATE_DATA->temperature_sensors_property)
+#define AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM	(AUX_TEMPERATURE_SENSORS_PROPERTY->items + 0)
+#define AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM	(AUX_TEMPERATURE_SENSORS_PROPERTY->items + 1)
+
+#define AUX_DEW_WARNING_PROPERTY			(PRIVATE_DATA->dew_warning_property)
+#define AUX_DEW_WARNING_SENSOR_1_ITEM		(AUX_DEW_WARNING_PROPERTY->items + 0)
+
 #define AUX_INFO_PROPERTY	(PRIVATE_DATA->info_property)
 #define AUX_INFO_VOLTAGE_ITEM	(AUX_INFO_PROPERTY->items + 0)
 #define AUX_INFO_CURRENT_ITEM	(AUX_INFO_PROPERTY->items + 1)
@@ -96,6 +103,8 @@ typedef struct {
 	indigo_property *calibrate_property;
 	indigo_property *usb_ports_proeprty;
 	indigo_property *power_outlet_voltage_property;
+	indigo_property *temperature_sensors_property;
+	indigo_property *dew_warning_property;
 	pthread_mutex_t mutex;
 } ppb_private_data;
 
@@ -200,7 +209,7 @@ static bool wbplusv3_parse_status(char *status_line, wbplusv3_status_t *status) 
 	}
 	status->dc2_voltage = atof(token)/10.0;
 	
-	INDIGO_DRIVER_LOG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nprobe_temperature = %.2fC\ndht22_hunidity = %.2f%%\ndht22_temperature = %.2fC\ninput_current = %.2fA\ninput_voltage = %.2fV\nusb_status = %d\ndc2_status = %d\ndc3_pwm = %d\ndc4_6_status = %d\ndc2_voltage = %.1fV\n",
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nprobe_temperature = %.2fC\ndht22_hunidity = %.2f%%\ndht22_temperature = %.2fC\ninput_current = %.2fA\ninput_voltage = %.2fV\nusb_status = %d\ndc2_status = %d\ndc3_pwm = %d\ndc4_6_status = %d\ndc2_voltage = %.1fV\n",
 	status->model_id, status->firmware, status->probe_temperature, status->dht22_hunidity, status->dht22_temperature, status->input_current, status->input_voltage, status->usb_status, status->dc2_status, status->dc3_pwm, status->dc4_6_status, status->dc2_voltage);
  
 	return true;
@@ -283,12 +292,23 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_switch_item(AUX_DEW_CONTROL_AUTOMATIC_ITEM, AUX_DEW_CONTROL_AUTOMATIC_ITEM_NAME, "Automatic", false);
 		//AUX_DEW_CONTROL_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- WEATHER
-		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather info (DHT22)", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_WEATHER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [°C]", -50, 100, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Humidity [%]", 0, 100, 0, 0);
-		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint [°C]", -50, 100, 0, 0);
+		// -------------------------------------------------------------------------------- AUX_TEMPERATURE_SENSORS
+		AUX_TEMPERATURE_SENSORS_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_TEMPERATURE_SENSORS_PROPERTY_NAME, WEATHER_GROUP, "Temperature sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		if (AUX_TEMPERATURE_SENSORS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM_NAME, "Temperature (DHT22) [°C]", -50, 100, 0, 0);
+		indigo_init_number_item(AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM, AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM_NAME, "Temperature (Temp probe) [°C]", -50, 100, 0, 0);
+		// -------------------------------------------------------------------------------- DEW_WARNING
+		AUX_DEW_WARNING_PROPERTY = indigo_init_light_property(NULL, device->name, AUX_DEW_WARNING_PROPERTY_NAME, WEATHER_GROUP, "Dew warning", INDIGO_IDLE_STATE, 1);
+		if (AUX_DEW_WARNING_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_light_item(AUX_DEW_WARNING_SENSOR_1_ITEM, AUX_DEW_WARNING_SENSOR_1_ITEM_NAME, "Dew warning (DHT22)", INDIGO_IDLE_STATE);
 		// -------------------------------------------------------------------------------- INFO
 		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, AUX_GROUP, "Sensors", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_INFO_PROPERTY == NULL)
@@ -337,6 +357,10 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
+		if (indigo_property_match(AUX_TEMPERATURE_SENSORS_PROPERTY, property))
+			indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
+		if (indigo_property_match(AUX_DEW_WARNING_PROPERTY, property))
+			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 		if (indigo_property_match(AUX_INFO_PROPERTY, property))
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 		if (indigo_property_match(X_AUX_CALIBRATE_PROPERTY, property))
@@ -350,8 +374,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 static void aux_update_states(indigo_device *device) {
 	wbplusv3_status_t wb_stat;
 	if (wbplusv3_read_status(device, &wb_stat)) {
-		// float probe_temperature;
-
 		AUX_WEATHER_TEMPERATURE_ITEM->number.value = wb_stat.dht22_temperature;
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = wb_stat.dht22_hunidity;
 		// calculate dew point
@@ -363,6 +385,16 @@ static void aux_update_states(indigo_device *device) {
 			AUX_WEATHER_DEWPOINT_ITEM->number.value = -273.15;
 		} 
 		indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
+
+		AUX_TEMPERATURE_SENSORS_SENSOR_1_ITEM->number.value = wb_stat.dht22_temperature;
+		AUX_TEMPERATURE_SENSORS_SENSOR_2_ITEM->number.value = wb_stat.probe_temperature;
+
+		if (wb_stat.dht22_temperature < -100 && wb_stat.probe_temperature <-100) {
+			AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_IDLE_STATE;
+		} else {
+			AUX_TEMPERATURE_SENSORS_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
 
 		AUX_INFO_VOLTAGE_ITEM->number.value = wb_stat.input_voltage;
 		AUX_INFO_CURRENT_ITEM->number.value = wb_stat.input_current;
@@ -379,7 +411,6 @@ static void aux_update_states(indigo_device *device) {
 			indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 		}
 
-		indigo_send_message(device, "V = %.2f", wb_stat.dc2_voltage);
 		if (AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state != INDIGO_BUSY_STATE) {
 			AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.value = wb_stat.dc2_voltage;
 			indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
@@ -401,6 +432,19 @@ static void aux_update_states(indigo_device *device) {
 				indigo_send_message(device, "Heating stopped: Conditions are dry");
 			}
 		}
+
+		// Dew point warning
+		if (wb_stat.dht22_temperature < -100) { // no sensor
+			AUX_DEW_WARNING_PROPERTY->state = INDIGO_IDLE_STATE;
+			AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_IDLE_STATE;
+		} else if (wb_stat.dht22_temperature - 1 <= AUX_WEATHER_DEWPOINT_ITEM->number.value) {
+			AUX_DEW_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+			AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_ALERT_STATE;
+		} else {
+			AUX_DEW_WARNING_PROPERTY->state = INDIGO_OK_STATE;
+			AUX_DEW_WARNING_SENSOR_1_ITEM->light.value = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 	}
 }
 
@@ -447,6 +491,8 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
+			indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
+			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_CALIBRATE_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
@@ -464,6 +510,8 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_CALIBRATE_PROPERTY, NULL);
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
@@ -628,6 +676,8 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_HEATER_OUTLET_PROPERTY);
 	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
+	indigo_release_property(AUX_TEMPERATURE_SENSORS_PROPERTY);
+	indigo_release_property(AUX_DEW_WARNING_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
 	indigo_release_property(X_AUX_CALIBRATE_PROPERTY);
 	indigo_release_property(AUX_OUTLET_NAMES_PROPERTY);
