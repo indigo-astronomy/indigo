@@ -121,9 +121,9 @@ typedef struct {
 	uint8_t dc3_pwm;
 	bool dc4_6_status;
 	float dc2_voltage;
-} wbplusv3_status_t;
+} wbplus3_status_t;
 
-static bool wbplusv3_parse_status(char *status_line, wbplusv3_status_t *status) {
+static bool wbplus3_parse_status(char *status_line, wbplus3_status_t *status) {
 	char *buf;
 	
 	char* token = strtok_r(status_line, "A", &buf);
@@ -215,7 +215,7 @@ static bool wbplusv3_parse_status(char *status_line, wbplusv3_status_t *status) 
 	return true;
 }
 
-static bool wbplusv3_read_status(indigo_device *device, wbplusv3_status_t *wb_stat) {
+static bool wbplus3_read_status(indigo_device *device, wbplus3_status_t *wb_stat) {
 	char status[256] = {0};
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	int res = indigo_read_line(PRIVATE_DATA->handle, status, 256);
@@ -227,7 +227,7 @@ static bool wbplusv3_read_status(indigo_device *device, wbplusv3_status_t *wb_st
 		return false;
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Read: \"%s\" %d", status, res);
-		return wbplusv3_parse_status(status, wb_stat);
+		return wbplus3_parse_status(status, wb_stat);
 	}
 }
 
@@ -372,8 +372,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_update_states(indigo_device *device) {
-	wbplusv3_status_t wb_stat;
-	if (wbplusv3_read_status(device, &wb_stat)) {
+	wbplus3_status_t wb_stat;
+	if (wbplus3_read_status(device, &wb_stat)) {
 		AUX_WEATHER_TEMPERATURE_ITEM->number.value = wb_stat.dht22_temperature;
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = wb_stat.dht22_hunidity;
 		// calculate dew point
@@ -451,7 +451,7 @@ static void aux_update_states(indigo_device *device) {
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
-	wbplusv3_status_t wb_stat;
+	wbplus3_status_t wb_stat;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 
 	aux_update_states(device);
@@ -467,8 +467,8 @@ static void aux_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_usleep(ONE_SECOND_DELAY);
-			wbplusv3_status_t wb_stat;
-			if (wbplusv3_read_status(device, &wb_stat)) {
+			wbplus3_status_t wb_stat;
+			if (wbplus3_read_status(device, &wb_stat)) {
 				if (!strcmp(wb_stat.model_id, DEVICE_ID)) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, wb_stat.model_id);
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, wb_stat.firmware);
