@@ -710,7 +710,7 @@ static bool do_dither(indigo_device *device) {
 
 	// tobe removed - for backwords compatibility only
 	static const char *item_names[] = {
-		AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM_NAME,
+		AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM_NAME,
 		AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME
 	};
 	double item_values[] = {
