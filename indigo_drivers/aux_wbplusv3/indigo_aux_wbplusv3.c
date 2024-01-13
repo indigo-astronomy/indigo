@@ -20,11 +20,11 @@
 // 2.0 by Rumen G. Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO WandererBox Plus V3 aux driver
- \file indigo_aux_wbplus3.c
+ \file indigo_aux_wbplusv3.c
  */
 
 #define DRIVER_VERSION 0x0002
-#define DRIVER_NAME "indigo_aux_wbplus3"
+#define DRIVER_NAME "indigo_aux_wbplusv3"
 
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +41,7 @@
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
 
-#include "indigo_aux_wbplus3.h"
+#include "indigo_aux_wbplusv3.h"
 
 #define PRIVATE_DATA	((ppb_private_data *)device->private_data)
 
@@ -121,9 +121,9 @@ typedef struct {
 	uint8_t dc3_pwm;
 	bool dc4_6_status;
 	float dc2_voltage;
-} wbplus3_status_t;
+} wbplusv3_status_t;
 
-static bool wbplus3_parse_status(char *status_line, wbplus3_status_t *status) {
+static bool wbplusv3_parse_status(char *status_line, wbplusv3_status_t *status) {
 	char *buf;
 	
 	char* token = strtok_r(status_line, "A", &buf);
@@ -215,7 +215,7 @@ static bool wbplus3_parse_status(char *status_line, wbplus3_status_t *status) {
 	return true;
 }
 
-static bool wbplus3_read_status(indigo_device *device, wbplus3_status_t *wb_stat) {
+static bool wbplusv3_read_status(indigo_device *device, wbplusv3_status_t *wb_stat) {
 	char status[256] = {0};
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	int res = indigo_read_line(PRIVATE_DATA->handle, status, 256);
@@ -227,13 +227,13 @@ static bool wbplus3_read_status(indigo_device *device, wbplus3_status_t *wb_stat
 		return false;
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Read: \"%s\" %d", status, res);
-		return wbplus3_parse_status(status, wb_stat);
+		return wbplusv3_parse_status(status, wb_stat);
 	}
 }
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
-static bool wbplus3_command(indigo_device *device, char *command) {
+static bool wbplusv3_command(indigo_device *device, char *command) {
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	int res = indigo_write(PRIVATE_DATA->handle, "\n", 1);
@@ -372,8 +372,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_update_states(indigo_device *device) {
-	wbplus3_status_t wb_stat;
-	if (wbplus3_read_status(device, &wb_stat)) {
+	wbplusv3_status_t wb_stat;
+	if (wbplusv3_read_status(device, &wb_stat)) {
 		AUX_WEATHER_TEMPERATURE_ITEM->number.value = wb_stat.dht22_temperature;
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = wb_stat.dht22_hunidity;
 		// calculate dew point
@@ -423,12 +423,12 @@ static void aux_update_states(indigo_device *device) {
 
 		if (AUX_DEW_CONTROL_AUTOMATIC_ITEM->sw.value && AUX_WEATHER_PROPERTY->state == INDIGO_OK_STATE) {
 			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 1) > wb_stat.dht22_temperature) && wb_stat.dc3_pwm != 255) {
-				wbplus3_command(device, "3255");
+				wbplusv3_command(device, "3255");
 				indigo_send_message(device, "Heating started: Aproaching dewpoint");
 			}
 
 			if (((AUX_WEATHER_DEWPOINT_ITEM->number.value + 2) < wb_stat.dht22_temperature) && wb_stat.dc3_pwm != 0) {
-				wbplus3_command(device, "3000");
+				wbplusv3_command(device, "3000");
 				indigo_send_message(device, "Heating stopped: Conditions are dry");
 			}
 		}
@@ -451,7 +451,7 @@ static void aux_update_states(indigo_device *device) {
 static void aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED)
 		return;
-	wbplus3_status_t wb_stat;
+	wbplusv3_status_t wb_stat;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 
 	aux_update_states(device);
@@ -467,8 +467,8 @@ static void aux_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_usleep(ONE_SECOND_DELAY);
-			wbplus3_status_t wb_stat;
-			if (wbplus3_read_status(device, &wb_stat)) {
+			wbplusv3_status_t wb_stat;
+			if (wbplusv3_read_status(device, &wb_stat)) {
 				if (!strcmp(wb_stat.model_id, DEVICE_ID)) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, wb_stat.model_id);
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, wb_stat.firmware);
@@ -531,8 +531,8 @@ static void aux_connection_handler(indigo_device *device) {
 
 static void aux_power_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	wbplus3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "121" : "120");
-	wbplus3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "101" : "100");
+	wbplusv3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "121" : "120");
+	wbplusv3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "101" : "100");
 	indigo_usleep(ONE_SECOND_DELAY);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
@@ -541,7 +541,7 @@ static void aux_power_outlet_handler(indigo_device *device) {
 
 static void aux_usb_port_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	wbplus3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? "111" : "110");
+	wbplusv3_command(device, AUX_USB_PORT_1_ITEM->sw.value ? "111" : "110");
 	indigo_usleep(ONE_SECOND_DELAY);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
@@ -552,7 +552,7 @@ static void aux_power_outlet_voltage_handler(indigo_device *device) {
 	char command[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	sprintf(command, "%d", 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
-	wbplus3_command(device, command);
+	wbplusv3_command(device, command);
 	indigo_usleep(ONE_SECOND_DELAY);
 	AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
@@ -563,7 +563,7 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	char command[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	sprintf(command, "%d", 3000 + (int)(AUX_HEATER_OUTLET_1_ITEM->number.target * 255.0 / 100.0));
-	wbplus3_command(device, command);
+	wbplusv3_command(device, command);
 	indigo_usleep(ONE_SECOND_DELAY);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
@@ -573,7 +573,7 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 static void aux_calibrate_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (X_AUX_CALIBRATE_ITEM->sw.value) {
-		wbplus3_command(device, "66300744");
+		wbplusv3_command(device, "66300744");
 		indigo_usleep(ONE_SECOND_DELAY);
 		X_AUX_CALIBRATE_ITEM->sw.value = false;
 		X_AUX_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -688,7 +688,7 @@ static indigo_result aux_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO driver implementation
 
-indigo_result indigo_aux_wbplus3(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_aux_wbplusv3(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static ppb_private_data *private_data = NULL;
 	static indigo_device *aux = NULL;
