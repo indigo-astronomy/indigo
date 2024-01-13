@@ -109,6 +109,11 @@
 #define AGENT_MOUNT_START_SLEW_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+0)
 #define AGENT_MOUNT_START_SYNC_ITEM  									(AGENT_START_PROCESS_PROPERTY->items+1)
 
+#define AGENT_PROCESS_FEATURES_PROPERTY								(DEVICE_PRIVATE_DATA->agent_process_features_property)
+#define AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
+#define AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
+
+
 typedef struct {
 	indigo_property *agent_geographic_property;
 	indigo_property *agent_site_data_source_property;
@@ -122,6 +127,7 @@ typedef struct {
 	indigo_property *agent_display_coordinates_property;
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_start_process_property;
+	indigo_property *agent_process_features_property;
 	double mount_latitude, mount_longitude, mount_elevation;
 	double dome_latitude, dome_longitude, dome_elevation;
 	double gps_latitude, gps_longitude, gps_elevation;
@@ -145,6 +151,7 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_MOUNT_FOV_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_SET_HOST_TIME_PROPERTY);
 		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_PROCESS_FEATURES_PROPERTY);
 		double tmp_ha_tracking_limit = AGENT_HA_TRACKING_LIMIT_ITEM->number.value;
 		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
 		double tmp_local_time_limit = AGENT_LOCAL_TIME_LIMIT_ITEM->number.value;
@@ -308,8 +315,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LIMITS_PROPERTY_NAME, "Agent", "Limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_LIMITS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_sexagesimal_number_item(AGENT_HA_TRACKING_LIMIT_ITEM, AGENT_HA_TRACKING_LIMIT_ITEM_NAME, "HA tracking limit (0 to 24)", 0, 24, 0, 24);
-		indigo_init_sexagesimal_number_item(AGENT_LOCAL_TIME_LIMIT_ITEM, AGENT_LOCAL_TIME_LIMIT_ITEM_NAME, "Time limit (0 to 24)", 0, 24, 0, 12);
+		indigo_init_sexagesimal_number_item(AGENT_HA_TRACKING_LIMIT_ITEM, AGENT_HA_TRACKING_LIMIT_ITEM_NAME, "HA tracking limit (0 to 24 hrs)", 0, 24, 0, 24);
+		indigo_init_sexagesimal_number_item(AGENT_LOCAL_TIME_LIMIT_ITEM, AGENT_LOCAL_TIME_LIMIT_ITEM_NAME, "Time limit (0 to 24 hrs)", 0, 24, 0, 12);
 		indigo_init_sexagesimal_number_item(AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM, AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM_NAME, "Change threshold (°)", 0, 360, 0, 5.0/3600.0);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_FOV
 		AGENT_MOUNT_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_FOV_PROPERTY_NAME, "Agent", "FOV", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
@@ -343,12 +350,15 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_MOUNT_START_SLEW_ITEM, AGENT_MOUNT_START_SLEW_ITEM_NAME, "Slew", false);
 		indigo_init_switch_item(AGENT_MOUNT_START_SYNC_ITEM, AGENT_MOUNT_START_SYNC_ITEM_NAME, "Sync", false);
-
 		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
-
+		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM, AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM_NAME, "Enable dithering", false);
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM, AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM_NAME, "Pause after transit", false);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
@@ -387,6 +397,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
 		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property))
+		indigo_define_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -829,6 +841,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_PROCESS_FEATURES
+		indigo_property_copy_values(AGENT_PROCESS_FEATURES_PROPERTY, property, false);
+		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
@@ -854,6 +872,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_release_property(AGENT_PROCESS_FEATURES_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
 }
@@ -984,19 +1003,23 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 							if (!strcmp(agent_park_property->items[j].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
 								if (!agent_park_property->items[j].sw.value) {
 									bool park = false;
-									double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target;
-									if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
-										park = true;
-										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
+									if (CLIENT_PRIVATE_DATA->agent_process_features_property->items[0].sw.value) {
+										double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target;
+										if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
+											park = true;
+											indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
+										}
 									}
-									target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
-									if (now < 12 && target < 12 && now > target) {
-										park = true;
-										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
-									}
-									if (now > 12 && target > 12 && now > target) {
-										park = true;
-										indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+									if (CLIENT_PRIVATE_DATA->agent_process_features_property->items[1].sw.value) {
+										double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
+										if (now < 12 && target < 12 && now > target) {
+											park = true;
+											indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+										}
+										if (now > 12 && target > 12 && now > target) {
+											park = true;
+											indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+										}
 									}
 									if (park) {
 										abort_capture(FILTER_CLIENT_CONTEXT->device);
