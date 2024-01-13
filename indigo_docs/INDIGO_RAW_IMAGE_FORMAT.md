@@ -50,9 +50,9 @@ typedef enum {
 * **INDIGO_RAW_RGB48** - Little endian, unsigned 6 bytes per pixel array. The first 2 bytes represent the Red value, the second 2 bytes represent Green, and the third 2 bytes represent Green. Data size is *width x height x 6* bytes.
 
 ### Image Metadata
-Image metadata is optional. It is an ASCII extension to store additional information using standard FITS keywords. Its presence is indicated by "SIMPLE T" card right after the end of the **Image data**. Keywords are separated by semicolon (;) and do not need to follow strictly the FITS card format. Heading and trailing spaces are skipped and cards are variable length.
+Image metadata is optional. It is an ASCII extension to store additional information using standard FITS keywords. Its presence is indicated by "SIMPLE=T" card right after the end of the **Image data**. Keywords are separated by semicolon (;) and do not need to follow strictly the FITS card format. Heading and trailing spaces are skipped and cards are variable length.
 
 For example:
 ```
-<Image Header><Image data>SIMPLE T;BAYERPAT='RGGB';<EOF>
+<Image Header><Image data>SIMPLE=T;BAYERPAT='RGGB';<EOF>
 ```  

@@ -2176,6 +2176,11 @@
 		599E6A73214D8EEB00E45C9E /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		599E6A75214D8EEB00E45C9E /* nstep_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; path = nstep_simulator.ino; sourceTree = "<group>"; };
 		599E6A76214D8EEB00E45C9E /* indigo_focuser_nstep.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_nstep.c; sourceTree = "<group>"; };
+		599EB1542B52EC3900B333E4 /* GUIDING_MISCONCEPTIONS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = GUIDING_MISCONCEPTIONS.md; sourceTree = "<group>"; };
+		599EB1552B52EC3900B333E4 /* INDIGO_RAW_IMAGE_FORMAT.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = INDIGO_RAW_IMAGE_FORMAT.md; sourceTree = "<group>"; };
+		599EB1562B52EC3900B333E4 /* CCD_DRIVER_SAVED_IMAGES.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CCD_DRIVER_SAVED_IMAGES.md; sourceTree = "<group>"; };
+		599EB1572B52EC3900B333E4 /* PLATE_SOLVING.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = PLATE_SOLVING.md; sourceTree = "<group>"; };
+		599EB1582B52EC3900B333E4 /* SCRIPTING_BASICS.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = SCRIPTING_BASICS.md; sourceTree = "<group>"; };
 		59A0772A21FE1C2F00244521 /* indigocat_star.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigocat_star.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_steeldrive2.h; sourceTree = "<group>"; };
 		59A242F222A5B45E001C38F8 /* indigo_focuser_steeldrive2_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2_main.c; sourceTree = "<group>"; };
@@ -5175,6 +5180,11 @@
 		5912C80723D2447400A48B75 /* indigo_docs */ = {
 			isa = PBXGroup;
 			children = (
+				599EB1562B52EC3900B333E4 /* CCD_DRIVER_SAVED_IMAGES.md */,
+				599EB1542B52EC3900B333E4 /* GUIDING_MISCONCEPTIONS.md */,
+				599EB1552B52EC3900B333E4 /* INDIGO_RAW_IMAGE_FORMAT.md */,
+				599EB1572B52EC3900B333E4 /* PLATE_SOLVING.md */,
+				599EB1582B52EC3900B333E4 /* SCRIPTING_BASICS.md */,
 				59CEDA6127D514B700D9277A /* MULTI-INSTANCE_SUPPORT.md */,
 				5984C90A27C2E22A0090204B /* GUIDING_PI_CONTROLLER_TUNING.md */,
 				5984C90827C2E2290090204B /* IMAGING_AF_TUNING.md */,
