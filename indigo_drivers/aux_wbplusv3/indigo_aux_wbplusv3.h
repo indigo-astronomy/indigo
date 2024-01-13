@@ -37,7 +37,7 @@ extern "C" {
 /** Register WBPlus3 driver
  */
 
-extern indigo_result indigo_aux_wbplus3(indigo_driver_action action, indigo_driver_info *info);
+extern indigo_result indigo_aux_wbplusv3(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
