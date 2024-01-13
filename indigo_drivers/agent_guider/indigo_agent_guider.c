@@ -101,7 +101,7 @@
 #define AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
 #define AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
 #define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
-#define AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
+#define AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
 #define AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM 		(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
 //#define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+22)
 //#define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+23)
@@ -321,13 +321,13 @@ static void do_dither(indigo_device *device) {
 	double x_value = 0;
 	double y_value = 0;
 	if (AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM->sw.value) {
-		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM->number.target * 2, true, &x_value, &y_value);
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, true, &x_value, &y_value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOMIZED_SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
 	} else if (AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM->sw.value) {
-		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM->number.target * 2, false, &x_value, &y_value);
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, false, &x_value, &y_value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
 	} else {
-		random_dither_values(AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM->number.target * 2, &x_value, &y_value);
+		random_dither_values(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, &x_value, &y_value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOM x_value = %.4f y_value = %.4f", x_value, y_value);
 	}
 	static const char *item_names[] = { AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME };
@@ -1724,7 +1724,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM_NAME, "RA Integral gain", 0, 10, 0.05, 0.5);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM_NAME, "Dec Integral gain", 0, 10, 0.05, 0.5);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Integral stack size (frames)", 1, MAX_STACK, 1, 1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_AMMOUNT_ITEM_NAME, "Dithering max ammount (px)", 0, 15, 1, 1);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM_NAME, "Dithering max amount (px)", 0, 15, 1, 1);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME, "Dithering Settle time limit (s)", 0, 300, 1, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering settling limit (frames)", 1, 50, 1, 5);
 		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
@@ -1935,7 +1935,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (!AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
 			/* If Dec guiding is not "North and South" do not dither in Dec, however if cos(angle) == 0 we end up in devision by 0.
 			   In this case we set the limits -> DITH_X = 0 and DITH_Y = dith_total.
-			   Note: we preserve the requested ammount of dithering but we do it in RA only.
+			   Note: we preserve the requested amount of dithering but we do it in RA only.
 			*/
 			double angle = -PI * get_rotation_angle(device) / 180;
 			double sign = copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target) * copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target);
