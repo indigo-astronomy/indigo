@@ -56,6 +56,15 @@ static inline int hexValue(char h) {
 		return 0;
 }
 
+static inline bool hexValueValidate(char h) {
+	if (h >= '0' && h <= '9')
+		return true;
+	else if (h >= 'A' && h <= 'F')
+		return true;
+	else
+		return false;
+}
+
 static const char* longToHex(long n) {
 	static char num[7];
 	num[1] = hexDigit[n & 0xF];	n >>= 4;
@@ -78,15 +87,13 @@ static long hexToLong(const char* b) {
 	return num;
 }
 
-static long hexResponseToLong(const char* b) {
-	long num = 0;
-	num |= hexValue(b[4]); num <<= 4;
-	num |= hexValue(b[5]); num <<= 4;
-	num |= hexValue(b[2]); num <<= 4;
-	num |= hexValue(b[3]); num <<= 4;
-	num |= hexValue(b[0]); num <<= 4;
-	num |= hexValue(b[1]);
-	return num;
+static bool hexToLongValidate(const char* b) {
+	while (*b != 0) {
+		if (!hexValueValidate(*b++)) {
+			return false;
+		}
+	}
+	return true;
 }
 
 static bool synscan_flush(indigo_device* device) {
@@ -221,18 +228,22 @@ static bool synscan_command_with_long_result(indigo_device* device, char* cmd, l
 	if (!synscan_command(device, cmd, buffer)) {
 		return false;
 	}
-	if (val)
-		*val = hexResponseToLong(buffer);
-	return true;
-}
-
-static bool synscan_command_with_code_result(indigo_device* device, char* cmd, long* val) {
-	char buffer[20];
-	if (!synscan_command(device, cmd, buffer)) {
-		return false;
+	if (hexToLongValidate(buffer)) {
+		if (val) {
+			*val = hexToLong(buffer);
+		}
+	} else {
+		if (!synscan_command(device, cmd, buffer)) {
+			return false;
+		}
+		if (hexToLongValidate(buffer)) {
+			if (val) {
+				*val = hexToLong(buffer);
+			}
+		} else {
+			return false;
+		}
 	}
-	if (val)
-		*val = hexToLong(buffer);
 	return true;
 }
 
@@ -276,7 +287,7 @@ bool synscan_high_speed_ratio(indigo_device* device, enum AxisID axis, long* v) 
 bool synscan_motor_status(indigo_device* device, enum AxisID axis, long* v) {
 	char buffer[5];
 	sprintf(buffer, ":f%c", axis);
-	return synscan_command_with_code_result(device, buffer, v);
+	return synscan_command_with_long_result(device, buffer, v);
 }
 
 //  Read back the motor position
