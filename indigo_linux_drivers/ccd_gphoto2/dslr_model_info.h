@@ -203,6 +203,7 @@ static struct dslr_model_info {
   { "SONY ALPHA A68", 6000, 4000, 3.92 },
   { "SONY ALPHA A6700", 6192, 4128, 3.76 },
   { "SONY ALPHA A6500", 6000, 4000, 3.92 },
+  { "SONY ALPHA A6400", 6000, 4000, 3.92 },
   { "SONY ALPHA A6300", 6000, 4000, 3.92 },
   { "SONY ALPHA A6000", 6000, 4000, 3.92 },
   { "SONY ALPHA A5100", 6000, 4000, 3.92 },
