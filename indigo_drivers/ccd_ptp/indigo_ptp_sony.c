@@ -1319,10 +1319,13 @@ bool ptp_sony_initialise(indigo_device *device) {
 		uint32_t size;
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 1, 0, 0);
 		ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 2, 0, 0);
-		if (PRIVATE_DATA->model.product >= SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER)
+		if (PRIVATE_DATA->model.product >= SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER) {
 			SONY_PRIVATE_DATA->api_version = SONY_NEW_API;
-		else
+			indigo_log("0x%04x >= 0x%04x new API used", PRIVATE_DATA->model.product, SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER);
+		} else {
 			SONY_PRIVATE_DATA->api_version = SONY_OLD_API;
+			indigo_log("0x%04x < 0x%04x old API used", PRIVATE_DATA->model.product, SONY_NEW_API_SUPPORT_PRODUCT_ID_BORDER);
+		}
 		if (PRIVATE_DATA->model.product == SONY_ILCE_7RM4_PRODUCT_ID || PRIVATE_DATA->model.product == SONY_ILCE_7RM4A_PRODUCT_ID)
 			SONY_PRIVATE_DATA->needs_pre_capture_delay = true;
 		else
