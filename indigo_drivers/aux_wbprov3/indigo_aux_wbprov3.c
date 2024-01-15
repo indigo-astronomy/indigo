@@ -610,13 +610,11 @@ static void aux_update_states(indigo_device *device) {
 }
 
 static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
-	wbprov3_status_t wb_stat;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-
 	aux_update_states(device);
-	
 	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->aux_timer);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
