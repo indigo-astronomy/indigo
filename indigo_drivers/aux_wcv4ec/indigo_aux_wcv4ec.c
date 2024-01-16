@@ -23,7 +23,7 @@
  \file indigo_aux_wcv4ec.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_wcv4ec"
 
 #include <stdlib.h>
@@ -65,6 +65,12 @@
 #define AUX_SET_OPEN_CLOSE_CLOSE_ITEM            		(AUX_SET_OPEN_CLOSE_PROPERTY->items+0)
 #define AUX_SET_OPEN_CLOSE_OPEN_ITEM           			(AUX_SET_OPEN_CLOSE_PROPERTY->items+1)
 
+#define AUX_HEATER_PROPERTY          	(PRIVATE_DATA->heater_property)
+#define AUX_HEATER_OFF_ITEM            (AUX_HEATER_PROPERTY->items+0)
+#define AUX_HEATER_LOW_ITEM           (AUX_HEATER_PROPERTY->items+1)
+#define AUX_HEATER_HIGH_ITEM            (AUX_HEATER_PROPERTY->items+2)
+#define AUX_HEATER_MAX_ITEM           (AUX_HEATER_PROPERTY->items+3)
+
 #define DEVICE_ID "WandererCoverV4"
 
 typedef struct {
@@ -74,6 +80,7 @@ typedef struct {
 	indigo_property *cover_property;
 	indigo_property *detect_open_close_property;
 	indigo_property *set_open_close_property;
+	indigo_property *heater_property;
 	indigo_timer *aux_timer;
 	pthread_mutex_t mutex;
 	bool operation_running;
@@ -258,18 +265,26 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AUX_COVER_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Open", false);
 		indigo_init_switch_item(AUX_COVER_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Close", false);
-		// -------------------------------------------------------------------------------- AUX_COVER_DETECT_OPEN_CLOSE
+		// -------------------------------------------------------------------------------- X_COVER_DETECT_OPEN_CLOSE
 		AUX_DETECT_OPEN_CLOSE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_COVER_DETECT_OPEN_CLOSE", AUX_ADVANCED_GROUP, "Detect cover open/close position", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AUX_DETECT_OPEN_CLOSE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AUX_DETECT_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Detect Open", false);
 		indigo_init_switch_item(AUX_DETECT_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Detect Close", false);
-		// -------------------------------------------------------------------------------- AUX_COVER_SET_OPEN_CLOSE
+		// -------------------------------------------------------------------------------- X_COVER_SET_OPEN_CLOSE
 		AUX_SET_OPEN_CLOSE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_COVER_SET_OPEN_CLOSE", AUX_ADVANCED_GROUP, "Set cover open/close position", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AUX_SET_OPEN_CLOSE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_SET_OPEN_CLOSE_OPEN_ITEM, AUX_COVER_OPEN_ITEM_NAME, "Set Open [°]", 0, 290, 1, 110);
 		indigo_init_number_item(AUX_SET_OPEN_CLOSE_CLOSE_ITEM, AUX_COVER_CLOSE_ITEM_NAME, "Set Close [°]", 0, 290, 1, 22);
+		// -------------------------------------------------------------------------------- X_HEATER
+		AUX_HEATER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_HEATER", AUX_MAIN_GROUP, "Heater", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+		if (AUX_HEATER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AUX_HEATER_OFF_ITEM, "OFF", "Off", true);
+		indigo_init_switch_item(AUX_HEATER_LOW_ITEM, "LOW", "Low", false);
+		indigo_init_switch_item(AUX_HEATER_HIGH_ITEM, "HIGH", "High", false);
+		indigo_init_switch_item(AUX_HEATER_MAX_ITEM, "MAX", "Max", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -305,6 +320,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_DETECT_OPEN_CLOSE_PROPERTY, NULL);
 		if (indigo_property_match(AUX_SET_OPEN_CLOSE_PROPERTY, property))
 			indigo_define_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
+		if (indigo_property_match(AUX_HEATER_PROPERTY, property))
+			indigo_define_property(device, AUX_HEATER_PROPERTY, NULL);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -338,11 +355,20 @@ static void aux_connection_handler(indigo_device *device) {
 			AUX_LIGHT_SWITCH_ON_ITEM->sw.value = false;
 			AUX_LIGHT_SWITCH_OFF_ITEM->sw.value = true;
 			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+
+			wcv4ec_command(device, "2000"); // turn the heater off as the state is not known
+			AUX_HEATER_OFF_ITEM->sw.value = true;
+			AUX_HEATER_LOW_ITEM->sw.value = false;
+			AUX_HEATER_HIGH_ITEM->sw.value = false;
+			AUX_HEATER_MAX_ITEM->sw.value = false;
+			AUX_HEATER_PROPERTY->state = INDIGO_OK_STATE;
+
 			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
 			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
 			indigo_define_property(device, AUX_COVER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_DETECT_OPEN_CLOSE_PROPERTY, NULL);
 			indigo_define_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
+			indigo_define_property(device, AUX_HEATER_PROPERTY, NULL);
 			PRIVATE_DATA->operation_running = true; //force open close status update;
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -358,10 +384,12 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_COVER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_DETECT_OPEN_CLOSE_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_HEATER_PROPERTY, NULL);
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
 		wcv4ec_command(device, "9999"); // turn light off
+		wcv4ec_command(device, "2000"); // turn the heater off
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Disconnected");
@@ -485,6 +513,27 @@ static void aux_set_open_close_handler(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
+static void aux_heater_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	bool success = true;
+	if (AUX_HEATER_OFF_ITEM->sw.value) {
+		success = wcv4ec_command(device, "2000");
+	} else if (AUX_HEATER_LOW_ITEM->sw.value) {
+		success = wcv4ec_command(device, "2050");
+	} else if (AUX_HEATER_HIGH_ITEM->sw.value) {
+		success = wcv4ec_command(device, "2100");
+	} else if (AUX_HEATER_MAX_ITEM->sw.value) {
+		success = wcv4ec_command(device, "2150");
+	}
+	if (success) {
+		AUX_HEATER_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		AUX_HEATER_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, AUX_HEATER_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -550,8 +599,14 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_set_open_close_handler, NULL);
 		return INDIGO_OK;
-	}
-	else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AUX_HEATER
+	} else if (indigo_property_match_changeable(AUX_HEATER_PROPERTY, property)) {
+		indigo_property_copy_values(AUX_HEATER_PROPERTY, property, false);
+		AUX_HEATER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_HEATER_PROPERTY, NULL);
+		indigo_set_timer(device, 0, aux_heater_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, AUX_LIGHT_INTENSITY_PROPERTY);
@@ -571,6 +626,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_COVER_PROPERTY);
 	indigo_release_property(AUX_DETECT_OPEN_CLOSE_PROPERTY);
 	indigo_release_property(AUX_SET_OPEN_CLOSE_PROPERTY);
+	indigo_release_property(AUX_HEATER_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
