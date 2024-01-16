@@ -127,6 +127,10 @@
 		592007892A5B2D050063C472 /* indigo_aux_uch.h in Headers */ = {isa = PBXBuildFile; fileRef = 592007842A5B2D050063C472 /* indigo_aux_uch.h */; };
 		5920078A2A5B2D050063C472 /* indigo_aux_uch.h in Headers */ = {isa = PBXBuildFile; fileRef = 592007842A5B2D050063C472 /* indigo_aux_uch.h */; };
 		592E79192168E06B00E856F3 /* indigo_focuser_mjkzz.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */; };
+		592E8B982B56E9DA008E0AFC /* indigo_aux_wcv4ec.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E8B942B56E9DA008E0AFC /* indigo_aux_wcv4ec.c */; };
+		592E8B992B56E9DA008E0AFC /* indigo_aux_wcv4ec.c in Sources */ = {isa = PBXBuildFile; fileRef = 592E8B942B56E9DA008E0AFC /* indigo_aux_wcv4ec.c */; };
+		592E8B9C2B56E9DA008E0AFC /* indigo_aux_wcv4ec.h in Headers */ = {isa = PBXBuildFile; fileRef = 592E8B972B56E9DA008E0AFC /* indigo_aux_wcv4ec.h */; };
+		592E8B9D2B56E9DA008E0AFC /* indigo_aux_wcv4ec.h in Headers */ = {isa = PBXBuildFile; fileRef = 592E8B972B56E9DA008E0AFC /* indigo_aux_wcv4ec.h */; };
 		5931B7282535FA8A008F74A1 /* libindigo.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5931B7272535FA8A008F74A1 /* libindigo.dylib */; };
 		593287A62409AD1000ED61C0 /* indigo_rotator_lunatico.c in Sources */ = {isa = PBXBuildFile; fileRef = 593287A22409ACC700ED61C0 /* indigo_rotator_lunatico.c */; };
 		59399D902177D67C002886CA /* indigo_focuser_optec.c in Sources */ = {isa = PBXBuildFile; fileRef = 59399D892177D316002886CA /* indigo_focuser_optec.c */; };
@@ -1222,6 +1226,11 @@
 		592E79162168DD7A00E856F3 /* indigo_focuser_mjkzz.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz.c; sourceTree = "<group>"; };
 		592E79172168DD7A00E856F3 /* indigo_focuser_mjkzz_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mjkzz_main.c; sourceTree = "<group>"; };
 		592E79182168DDC700E856F3 /* MJKZZ.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = MJKZZ.pdf; sourceTree = "<group>"; };
+		592E8B932B56E9DA008E0AFC /* Serial protocol for WandererCover V4-EC(20231225).pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Serial protocol for WandererCover V4-EC(20231225).pdf"; sourceTree = "<group>"; };
+		592E8B942B56E9DA008E0AFC /* indigo_aux_wcv4ec.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_wcv4ec.c; sourceTree = "<group>"; };
+		592E8B952B56E9DA008E0AFC /* indigo_aux_wcv4ec_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_wcv4ec_main.c; sourceTree = "<group>"; };
+		592E8B962B56E9DA008E0AFC /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		592E8B972B56E9DA008E0AFC /* indigo_aux_wcv4ec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_wcv4ec.h; sourceTree = "<group>"; };
 		5931B7202535F726008F74A1 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		5931B7212535F726008F74A1 /* dynamic_driver_client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dynamic_driver_client.c; sourceTree = "<group>"; };
 		5931B7222535F726008F74A1 /* client.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = client.c; sourceTree = "<group>"; };
@@ -5922,6 +5931,18 @@
 			path = mjkzz_simulator;
 			sourceTree = "<group>";
 		};
+		592E8B922B56E9DA008E0AFC /* aux_wcv4ec */ = {
+			isa = PBXGroup;
+			children = (
+				592E8B962B56E9DA008E0AFC /* README.md */,
+				592E8B972B56E9DA008E0AFC /* indigo_aux_wcv4ec.h */,
+				592E8B942B56E9DA008E0AFC /* indigo_aux_wcv4ec.c */,
+				592E8B952B56E9DA008E0AFC /* indigo_aux_wcv4ec_main.c */,
+				592E8B932B56E9DA008E0AFC /* Serial protocol for WandererCover V4-EC(20231225).pdf */,
+			);
+			path = aux_wcv4ec;
+			sourceTree = "<group>";
+		};
 		5931B71F2535F726008F74A1 /* indigo_examples */ = {
 			isa = PBXGroup;
 			children = (
@@ -9711,6 +9732,7 @@
 				5951E13F235CDBD900D2DEF1 /* aux_usbdp */,
 				599EB1592B52ECE300B333E4 /* aux_wbplusv3 */,
 				599EB1632B52ECE300B333E4 /* aux_wbprov3 */,
+				592E8B922B56E9DA008E0AFC /* aux_wcv4ec */,
 				59BBD16F21823693008199D6 /* ccd_altair */,
 				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
 				590A863E1DB8096A002F12FB /* ccd_asi */,
@@ -13978,6 +14000,7 @@
 				591CD11229806D42003243AE /* indigo_ccd_mallin.h in Headers */,
 				59111D11285F53D100E57194 /* indigocat_vsop87.h in Headers */,
 				598A1C95259BA94A00C0B34C /* indigo_ptp_canon.h in Headers */,
+				592E8B9D2B56E9DA008E0AFC /* indigo_aux_wcv4ec.h in Headers */,
 				598A1C96259BA94A00C0B34C /* DDHidAppleMikey.h in Headers */,
 				9DA71D102A029BE600CFA533 /* indigo_ica_ptp.h in Headers */,
 				598A1C97259BA94A00C0B34C /* indigo_filter.h in Headers */,
@@ -14005,6 +14028,7 @@
 				59C3BAFC254DE8AD000720B4 /* indigo_ser.h in Headers */,
 				597BD14D2601381F00239274 /* indigo_agent_alpaca.h in Headers */,
 				9DAC59D41DC0A8AD00AE410D /* indigo_focuser_driver.h in Headers */,
+				592E8B9C2B56E9DA008E0AFC /* indigo_aux_wcv4ec.h in Headers */,
 				59111D15285F53D500E57194 /* indigocat_transform.h in Headers */,
 				9D743A5D23FD58080093319F /* indigo_rotator_driver.h in Headers */,
 				59FFB069288D3D6500F172AC /* PlayerOneCamera.h in Headers */,
@@ -14583,6 +14607,7 @@
 				9D3E9075289967980093C9EB /* indigo_focuser_prodigy.c in Sources */,
 				59540AD726D00D3C000C2A1B /* indigo_aux_geoptikflat.c in Sources */,
 				598A1BB9259BA94A00C0B34C /* indigo_guider_cgusbst4.c in Sources */,
+				592E8B992B56E9DA008E0AFC /* indigo_aux_wcv4ec.c in Sources */,
 				598A1BBA259BA94A00C0B34C /* indigo_timer.c in Sources */,
 				59B348B529E85FC50062C2EA /* indigo_focuser_primaluce.c in Sources */,
 				59A4132F2971E54C00F0A80B /* indigo_wheel_playerone.c in Sources */,
@@ -14917,6 +14942,7 @@
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				9DAD522621246C18002FCC79 /* indigo_mount_synscan_driver.c in Sources */,
 				595F291D211E211100380EF4 /* DDHidAppleRemote.m in Sources */,
+				592E8B982B56E9DA008E0AFC /* indigo_aux_wcv4ec.c in Sources */,
 				59D2B9F6294A332E002F0F90 /* indigo_mount_asi.c in Sources */,
 				9DFC61A723854DD0003977C7 /* indigo_aux_flipflat.c in Sources */,
 				597BD1B4260A597400239274 /* alpaca_guider.c in Sources */,

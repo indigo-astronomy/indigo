@@ -169,6 +169,7 @@
 #include "aux_uch/indigo_aux_uch.h"
 #include "aux_wbplusv3/indigo_aux_wbplusv3.h"
 #include "aux_wbprov3/indigo_aux_wbprov3.h"
+#include "aux_wcv4ec/indigo_aux_wcv4ec.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -226,6 +227,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_usbdp,
 	indigo_aux_wbplusv3,
 	indigo_aux_wbprov3,
+	indigo_aux_wcv4ec,
 	indigo_ccd_altair,
 	indigo_ccd_apogee,
 	indigo_ccd_asi,
