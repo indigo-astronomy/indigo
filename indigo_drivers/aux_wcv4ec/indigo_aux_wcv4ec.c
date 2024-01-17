@@ -83,6 +83,7 @@ typedef struct {
 	indigo_property *heater_property;
 	indigo_timer *aux_timer;
 	pthread_mutex_t mutex;
+	time_t operation_start_time;
 	bool operation_running;
 } wcv4ec_private_data;
 
@@ -179,6 +180,7 @@ static void aux_update_states(indigo_device *device) {
 			AUX_COVER_OPEN_ITEM->sw.value = false;
 			AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->operation_running = false;
+			PRIVATE_DATA->operation_start_time = 0;
 			update = true;
 		} else if (fabs(wc_stat.open_position - wc_stat.current_position) < 6 && PRIVATE_DATA->operation_running) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"Open");
@@ -186,11 +188,13 @@ static void aux_update_states(indigo_device *device) {
 			AUX_COVER_OPEN_ITEM->sw.value = true;
 			AUX_COVER_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->operation_running = false;
+			PRIVATE_DATA->operation_start_time = 0;
 			update = true;
 		} else if (PRIVATE_DATA->operation_running && AUX_COVER_PROPERTY->state != INDIGO_BUSY_STATE) {
 			AUX_COVER_CLOSE_ITEM->sw.value = false;
 			AUX_COVER_OPEN_ITEM->sw.value = false;
 			PRIVATE_DATA->operation_running = false;
+			PRIVATE_DATA->operation_start_time = 0;
 			update = true;
 		}
 		if (update) {
@@ -214,6 +218,17 @@ static void aux_update_states(indigo_device *device) {
 			}
 			indigo_update_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
 		}
+	}
+
+	// timeout if open or close get stuck somewhere
+	if(time(NULL) - PRIVATE_DATA->operation_start_time > 60 && PRIVATE_DATA->operation_start_time > 0) {
+		AUX_COVER_CLOSE_ITEM->sw.value = false;
+		AUX_COVER_OPEN_ITEM->sw.value = false;
+		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
+		PRIVATE_DATA->operation_running = false;
+		PRIVATE_DATA->operation_start_time = 0;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME,"Open/close operation timeout");
+		indigo_update_property(device, AUX_COVER_PROPERTY, "Open/close operation timeout");
 	}
 }
 
@@ -351,6 +366,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
+			PRIVATE_DATA->operation_start_time = 0;
 			wcv4ec_command(device, "9999"); // turn light off as the state is not known
 			AUX_LIGHT_SWITCH_ON_ITEM->sw.value = false;
 			AUX_LIGHT_SWITCH_OFF_ITEM->sw.value = true;
@@ -442,9 +458,10 @@ static void aux_cover_handler(indigo_device *device) {
 	char command[16];
 	strcpy(command, AUX_COVER_OPEN_ITEM->sw.value ? "1001" : "1000");
 	if (wcv4ec_command(device, command)) {
-		indigo_usleep(ONE_SECOND_DELAY);
+		PRIVATE_DATA->operation_start_time = time(NULL);
 		PRIVATE_DATA->operation_running = true;
 		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_usleep(ONE_SECOND_DELAY);
 	} else {
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
