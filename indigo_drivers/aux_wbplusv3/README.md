@@ -19,6 +19,6 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_aux_wbplusv3
 
-## Status: Under Development
+## Status: Stable
 
 Tested with physical device.

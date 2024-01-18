@@ -2,6 +2,71 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-266] - 19 Jan Fri 2024
+### Overall:
+- JSON driver adapter: buffer overflow fixed
+- indigo_docs: fixes in INDIGO_AGENTS.md
+- indigo_docs: explain device classes in INDIGO_SERVER_AND_DRIVERS_GUIDE.md
+- indigo_docs: PROTOCOLS.md: INDI.pdf URL fixed
+- indigo_docs: INDIGO_RAW_IMAGE_FORMAT.md added
+- indigo_client: %.4m format fixed to %.3m according to INDI specs
+- indigo_ccd_driver: indigo_raw_to_jpeg() fix crash
+- indigo_aux_driver: add indigo_aux_dewpoint() utility function
+- Script base sequencer added
+
+### New Drivers:
+- indigo_aux_wbplus3:
+	- Wanderer Astro WandererBox Plus V3 driver added
+
+- indigo_aux_wbpro3:
+	- Wanderer Astro WandererBox Pro V3 driver added
+
+ indigo_aux_wcv4ec:
+	- Wanderer Astro WandererCover V4-EC driver added
+
+### Driver fixes:
+- indigo_guider_agent:
+	- dithering moved from imager agent and API changed
+	- add dithering strategies: Randomized spiral, random and spiral
+	- make drift correction more robust and make it more resilient to looding stars
+
+- indigo_agent_mount:
+	- rotator support moved from imager agent
+	- AGENT_PROCESS_FEATURES proeprty added
+
+- indigo_agent_imager:
+	- rotator support moved to mount agent
+	- dithering moved to gider agent
+	- multi-agent synchronyzation fixed
+	- removed PRE_DITHER and POST_DITHER breakpoints as they do not make sense
+	- pause after transit implemented
+	- AGENT_PROCESS_FEATURES property added
+	- typo fixed
+- indigo_ccd_touptek & family:
+	- update SDK 55.24390.20240108
+
+- indigo_ccd_asi:
+	- update SDK 1.32
+
+- indigo_ccd_mi:
+	- updated MI SDK 0.9.0/0.8.0
+
+- indigo_ccd_ptp:
+	- add support for Nikon Z8
+	- Sony A6400 added
+	- typo fixed
+	- data/dslr.csv updated
+
+- indigo_ccd_svb:
+	- update SDK v.1.12.1
+
+- indigo_aux_upb:
+	- PORT/PORTS is now only on master device
+	- code cleanup
+
+- indigo_mount_synscan:
+	- validate if reply is hexdecimal value
+
 # [2.0-264] - 14 Dec Thu 2023
 ### Overall:
 - rpi_ctrl_v2: fix internet sharing

@@ -21,6 +21,6 @@ indigo_server indigo_aux_wcv4ec
 
 ## Comments
 
-## Status: Under Development
+## Status: Stable
 
 Tested with physical WandererCover V4-EC device
