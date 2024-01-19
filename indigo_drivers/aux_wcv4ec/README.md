@@ -3,7 +3,7 @@
 https://www.wandererastro.com/en/
 
 ## Supported devices
-WandererAstro WandererCover V4-EC flat pannel/dust cover
+WandererAstro WandererCover V4-EC flat panel/dust cover
 
 Single device is present on the first startup (no hot-plug support). Additional devices can be configured on runtime.
 
