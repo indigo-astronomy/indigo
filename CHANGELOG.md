@@ -2,6 +2,12 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-268] - 20 Jan Fri 2024
+
+### Driver fixes:
+- indigo_mount_synscan:
+	- sanity check reverted as it introduced another issues
+
 # [2.0-266] - 19 Jan Fri 2024
 ### Overall:
 - JSON driver adapter: buffer overflow fixed
