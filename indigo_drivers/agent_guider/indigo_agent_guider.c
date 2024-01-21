@@ -159,8 +159,8 @@
 #define AGENT_GUIDER_DITHER_TRIGGER_ITEM					(AGENT_GUIDER_DITHER_PROPERTY->items+0)
 #define AGENT_GUIDER_DITHER_RESET_ITEM					(AGENT_GUIDER_DITHER_PROPERTY->items+1)
 
-#define IS_DITHERING (fabs(AGENT_GUIDER_STATS_DITHERING_ITEM->number.value * 1000) > 1000)
-#define NOT_DITHERING (fabs(AGENT_GUIDER_STATS_DITHERING_ITEM->number.value * 1000) < 1000)
+#define IS_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0)
+#define NOT_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value == 0)
 
 #define BUSY_TIMEOUT 5
 
@@ -2124,21 +2124,25 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_DITHER_PROPERTY, property)) {
-// -------------------------------------------------------------------------------- AGENT_DITHER
-		indigo_property_copy_values(AGENT_GUIDER_DITHER_PROPERTY, property, false);
-		if (AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value) {
-			indigo_set_timer(device, 0, do_dither, NULL);
-		} else if (AGENT_GUIDER_DITHER_RESET_ITEM->sw.value) {
-			srand(time(NULL));
-			DEVICE_PRIVATE_DATA->dither_num = 0;
-			AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
-			AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
-			AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, "Dithering reset");
-		} else {
-			AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
-			AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
-			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+		// -------------------------------------------------------------------------------- AGENT_DITHER
+		if (AGENT_GUIDER_DITHER_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_property_copy_values(AGENT_GUIDER_DITHER_PROPERTY, property, false);
+			if (AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value) {
+				AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+				indigo_set_timer(device, 0, do_dither, NULL);
+			} else if (AGENT_GUIDER_DITHER_RESET_ITEM->sw.value) {
+				srand(time(NULL));
+				DEVICE_PRIVATE_DATA->dither_num = 0;
+				AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+				AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+				AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, "Dithering reset");
+			} else {
+				AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+				AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+			}
 		}
 		return INDIGO_OK;
 // -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES

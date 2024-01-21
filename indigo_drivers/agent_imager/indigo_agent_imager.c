@@ -723,6 +723,7 @@ static bool do_dither(indigo_device *device) {
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_DITHER_PROPERTY_NAME, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, true);
 
 	DEVICE_PRIVATE_DATA->dithering_started = false;
+	DEVICE_PRIVATE_DATA->dithering_finished = false;
 	for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
 		if (DEVICE_PRIVATE_DATA->dithering_started) {
 			break;
@@ -736,7 +737,6 @@ static bool do_dither(indigo_device *device) {
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
-		DEVICE_PRIVATE_DATA->dithering_finished = false;
 		double time_limit = 300 * 5; // 300 * 5 * 200ms = 300s
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (DEVICE_PRIVATE_DATA->dithering_finished) {
