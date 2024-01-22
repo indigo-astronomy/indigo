@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0020
+#define DRIVER_VERSION 0x0021
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -367,6 +367,8 @@ static void do_dither(indigo_device *device) {
 			AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
 			AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
 			AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+			AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
+			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering failed");
 			indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
