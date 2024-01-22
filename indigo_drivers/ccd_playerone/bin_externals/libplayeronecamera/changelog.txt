@@ -1,3 +1,7 @@
+2023.12.29(3.6.1)
+- Support Ceres 462M camera
+- Optimized camera data transmission under Linux and Mac, especially expo in Snap Mode.
+
 2023.09.16(3.6.0)
 - Support PlayerOne new camera model(Neptune 664 series)
 
