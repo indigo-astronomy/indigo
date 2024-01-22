@@ -2,8 +2,15 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-268] - 20 Jan Fri 2024
+# [2.0-270] - 22 Jan Mon 2024
+### Driver fixes:
+- indigo_agent_guider:
+	- dithering fixes
 
+- indigo_agent_imager:
+	- dithering fixes
+
+# [2.0-268] - 20 Jan Fri 2024
 ### Driver fixes:
 - indigo_mount_synscan:
 	- sanity check reverted as it introduced another issues
@@ -27,11 +34,11 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_aux_wbpro3:
 	- Wanderer Astro WandererBox Pro V3 driver added
 
- indigo_aux_wcv4ec:
+- indigo_aux_wcv4ec:
 	- Wanderer Astro WandererCover V4-EC driver added
 
 ### Driver fixes:
-- indigo_guider_agent:
+- indigo_agent_guider:
 	- dithering moved from imager agent and API changed
 	- add dithering strategies: Randomized spiral, random and spiral
 	- make drift correction more robust and make it more resilient to looding stars
@@ -48,6 +55,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- pause after transit implemented
 	- AGENT_PROCESS_FEATURES property added
 	- typo fixed
+
 - indigo_ccd_touptek & family:
 	- update SDK 55.24390.20240108
 
