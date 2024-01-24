@@ -6,7 +6,7 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-Before the first sequence is created, content of [Sequencer.js](https://github.com/indigo-astronomy/indigo/blob/master/indigo_drivers/agent_scripting/Library/Sequencer.js) file must be executed as a script by setting it to the value of AGENT\_SCRIPTING\_RUN\_SCRIPT\_ITEM in AGENT\_SCRIPTING\_RUN\_SCRIPT\_PROPERTY.
+Before the first sequence is created, content of [Sequencer.js](Sequencer.js) file must be executed as a script by setting it to the value of AGENT\_SCRIPTING\_RUN\_SCRIPT\_ITEM in AGENT\_SCRIPTING\_RUN\_SCRIPT\_PROPERTY.
 
 ## State: under development
 
