@@ -4483,6 +4483,9 @@
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
 		9D2696E422A56BD8008BE82C /* steeldrive2_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = steeldrive2_simulator.ino; sourceTree = "<group>"; };
 		9D2696E522A56BD8008BE82C /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9D285A572B61373500B2642A /* Sequencer.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = Sequencer.md; sourceTree = "<group>"; };
+		9D285A5E2B61453F00B2642A /* Sequencer_screenshot_2.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sequencer_screenshot_2.jpg; sourceTree = "<group>"; };
+		9D285A5F2B61453F00B2642A /* Sequencer_screenshot_1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sequencer_screenshot_1.jpg; sourceTree = "<group>"; };
 		9D335BB0288036E6004D9F30 /* Apx60 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Apx60 Programmers Guide.pdf"; sourceTree = "<group>"; };
 		9D335BB1288036E7004D9F30 /* TE-77 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-77 Programmers Guide.pdf"; sourceTree = "<group>"; };
 		9D335BB2288036E7004D9F30 /* TE-47 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-47 Programmers Guide.pdf"; sourceTree = "<group>"; };
@@ -7738,6 +7741,9 @@
 		59A4BABD2B397EA6002D3B13 /* library */ = {
 			isa = PBXGroup;
 			children = (
+				9D285A5F2B61453F00B2642A /* Sequencer_screenshot_1.jpg */,
+				9D285A5E2B61453F00B2642A /* Sequencer_screenshot_2.jpg */,
+				9D285A572B61373500B2642A /* Sequencer.md */,
 				59A4BABE2B397EBE002D3B13 /* Sequencer.js */,
 			);
 			path = library;
