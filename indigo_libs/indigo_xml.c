@@ -228,10 +228,12 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				indigo_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
 				client->version = version;
 			}
-		} else if (!strncmp(name, "device",INDIGO_NAME_SIZE)) {
+		} else if (!strcmp(name, "device")) {
 			indigo_copy_name(property->device, value);
-		} else if (!strncmp(name, "name",INDIGO_NAME_SIZE)) {
+		} else if (!strcmp(name, "name")) {
 			indigo_copy_property_name(client->version, property, value);;
+		} else if (!strcmp(name, "client")) {
+			indigo_copy_name(client->name, value);
 		}
 	} else if (state == END_TAG) {
 		indigo_enumerate_properties(client, property);
@@ -808,6 +810,7 @@ static void def_property(parser_context *context, indigo_property *other, char *
 			case INDIGO_TEXT_VECTOR:
 				property = indigo_init_text_property(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->count);
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
+				indigo_copy_value(property->hints, other->hints);
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *property_item = property->items + i;
 					indigo_item *other_item = other->items + i;
@@ -819,18 +822,22 @@ static void def_property(parser_context *context, indigo_property *other, char *
 			case INDIGO_NUMBER_VECTOR:
 				property = indigo_init_number_property(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->count);
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
+				indigo_copy_value(property->hints, other->hints);
 				break;
 			case INDIGO_SWITCH_VECTOR:
 				property = indigo_init_switch_property(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->rule, other->count);
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
+				indigo_copy_value(property->hints, other->hints);
 				break;
 			case INDIGO_LIGHT_VECTOR:
 				property = indigo_init_light_property(property, other->device, other->name, other->group, other->label, other->state, other->count);
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
+				indigo_copy_value(property->hints, other->hints);
 				break;
 			case INDIGO_BLOB_VECTOR:
 				property = indigo_init_blob_property_p(property, other->device, other->name, other->group, other->label, other->state, other->perm, other->count);
 				memcpy(property->items, other->items, other->count * sizeof(indigo_item));
+				indigo_copy_value(property->hints, other->hints);
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					item->blob.value = NULL;
@@ -1364,7 +1371,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			pointer = buffer;
 			buffer_end = buffer + count;
 			buffer[count] = 0;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", handle, buffer));
 		}
 		if (c == '&') {
 			entity_pointer = entity_buffer;

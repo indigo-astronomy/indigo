@@ -404,12 +404,13 @@ static void ptp_fuji_get_event(indigo_device *device) {
 	}
 	if (buffer)
 		free(buffer);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
 }
 
 static void ptp_fuji_check_event(indigo_device *device) {
 	ptp_fuji_get_event(device);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	if (IS_CONNECTED) {
+		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	}
 }
 
 bool ptp_fuji_initialise(indigo_device *device) {
@@ -724,7 +725,7 @@ bool ptp_fuji_liveview(indigo_device *device) {
 		}
 		indigo_usleep(100000);  // 100ms
 	}
-	indigo_finalize_video_stream(device);
+	indigo_finalize_dslr_video_stream(device);
 	ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
 	return !PRIVATE_DATA->abort_capture;
 }

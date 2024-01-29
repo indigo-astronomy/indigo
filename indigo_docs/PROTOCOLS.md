@@ -15,19 +15,19 @@ protocols:
 ## INDIGO XML protocol
 
 INDIGO XML is a backward compatible extension of legacy INDI protocol 1.7 as described by Elwood C. Downey in
-<http://www.clearskyinstitute.com/INDI/INDI.pdf> and implemented by INDI framework version 0.7 and later.
+<http://docs.indilib.org/protocol/INDI.pdf> and implemented by INDI framework version 0.7 and later.
 
 Extensions are enabled only in case of succesfull handshake with two possible variants:
 
 1. client request INDIGO protocol:
 
 ```
-→ <getProperties version='2.0'/>
+→ <getProperties client='My Client' version='2.0'/>
 ```
 2. client offers INDIGO protocol and server accept it:
 
 ```
-→ <getProperties version='1.7' switch='2.0'>
+→ <getProperties version='1.7' client='My Client' switch='2.0'>
 ← <switchProtocol version='2.0'/>
 ```
 In case of successful handshake for version 2.0 the following extensions can be used:
@@ -84,11 +84,11 @@ The mapping of XML to JSON messages demonstrated on a few examples is as follows
 
 XML message
 ```
-→ <getProperties version='2.0'/>
+→ <getProperties client='My Client' version='2.0'/>
 ```
 is mapped to JSON message
 ```
-→ { "getProperties": { "version": 512 } }
+→ { "getProperties": { "version": 512, "client": "My Client" } }
 ```
 XML message
 ```
@@ -178,6 +178,22 @@ show or hide target value on client side, value is show or hide; makes a sense o
 
 ```
 widget: list;
+```
+
+show yes/no warning when the client is going to send property chanage request
+
+```
+warn_on_change: "Warning text";
+```
+
+show yes/no warning when the client is going to send switch item set request
+```
+warn_on_set: "Warning text";
+```
+
+show yes/no warning when the client is going to send switch item unset (clear) request
+```
+warn_on_clear: "Warning text";
 ```
 
 GUI widget(s) to use for the items on client side, the list can consist of values edit-box, multiline-edit-box, combo-box, push, radio-button, check-box, slider or stepper

@@ -23,7 +23,7 @@
  \file indigo_ccd_uvc.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME "indigo_ccd_uvc"
 
 #include <stdlib.h>
@@ -239,6 +239,7 @@ static void ccd_connect_callback(indigo_device *device) {
 									CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
 								PRIVATE_DATA->format = formats[frame_format].format;
 							}
+							CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0;
 							char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 							sprintf(name, "%d_%dx%d", frame_format, frame->wWidth, frame->wHeight);
 							sprintf(label, formats[frame_format].label_format, frame->wWidth, frame->wHeight);
@@ -529,7 +530,8 @@ static void process_plug_event(libusb_device *dev) {
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			char usb_path[INDIGO_NAME_SIZE];
 			indigo_get_usb_path(dev, usb_path);
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s %s #%s", descriptor->manufacturer, descriptor->product, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s %s", descriptor->manufacturer, descriptor->product);
+			indigo_make_name_unique(device->name, "%s", usb_path);
 			device->private_data = private_data;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {

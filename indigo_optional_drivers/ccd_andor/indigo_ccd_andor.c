@@ -23,7 +23,7 @@
   \file indigo_ccd_andor.c
   */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_ccd_andor"
 
 #include <stdlib.h>
@@ -656,7 +656,6 @@ static void exposure_timer_callback(indigo_device *device) {
 
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
-	PRIVATE_DATA->exposure_timer = NULL;
 	PRIVATE_DATA->no_check_temperature = true;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -1127,7 +1126,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			}
 		}
 		indigo_update_property(device, CCD_FRAME_PROPERTY, NULL);
-	} else if (indigo_property_match_d (CCD_BIN_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		CCD_BIN_PROPERTY->state = INDIGO_OK_STATE;

@@ -22,7 +22,12 @@ indigo_server indigo_ccd_altair
 
 ## Status: Stable
 
-Tested with GP 224C and 183M
+## Driver is developed and tested with:
+
+* Altair GP 224C
+* Altair GP 290C
+* Altair 183M
+* Altair 183C
 
 ## Comments
 

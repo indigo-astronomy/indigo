@@ -32,6 +32,9 @@
 extern "C" {
 #endif
 
+#define MDNS_INDIGO_TYPE    "_indigo._tcp"
+#define MDNS_HTTP_TYPE      "_http._tcp"
+
 /** Prototype of callback function for network server (providing number of active clients).
  */
 typedef void (*indigo_server_tcp_callback)(int);
@@ -39,6 +42,10 @@ typedef void (*indigo_server_tcp_callback)(int);
 /** TCP port to run on.
  */
 extern int indigo_server_tcp_port;
+
+/** Use bonjour.
+ */
+extern bool indigo_use_bonjour;
 
 /** TCP port is ephemeral.
  */

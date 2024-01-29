@@ -23,7 +23,7 @@
  \file indigo_aux_upb.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME "indigo_aux_upb"
 
 #include <stdlib.h>
@@ -144,6 +144,9 @@
 #define X_AUX_VARIABLE_POWER_OUTLET_PROPERTY	(PRIVATE_DATA->variable_power_outlet_property)
 #define X_AUX_VARIABLE_POWER_OUTLET_1_ITEM		(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->items + 0)
 
+#define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY		(PRIVATE_DATA->save_defaults_property)
+#define AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM				(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY->items + 0)
+
 #define AUX_GROUP															"Powerbox"
 
 typedef struct {
@@ -163,6 +166,7 @@ typedef struct {
 	indigo_property *weather_property;
 	indigo_property *info_property;
 	indigo_property *hub_property;
+	indigo_property *save_defaults_property;
 	indigo_property *reboot_property;
 	indigo_property *variable_power_outlet_property;
 	int count;
@@ -185,6 +189,36 @@ static bool upb_command(indigo_device *device, char *command, char *response, in
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
+}
+
+static void upb_open(indigo_device *device) {
+	char response[128];
+	PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
+	if (PRIVATE_DATA->handle > 0) {
+		int attempt = 0;
+		while (true) {
+			if (upb_command(device, "P#", response, sizeof(response))) {
+				if (!strcmp(response, "UPB_OK")) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
+					PRIVATE_DATA->version = 1;
+					break;
+				} else if (!strcmp(response, "UPB2_OK")) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
+					PRIVATE_DATA->version = 2;
+					break;
+				} else {
+					close(PRIVATE_DATA->handle);
+					PRIVATE_DATA->handle = 0;
+				}
+			}
+			if (attempt++ == 3) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
+				break;
+			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying in 1 second...");
+			indigo_usleep(ONE_SECOND_DELAY);
+		}
+	}
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation
@@ -315,6 +349,10 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
 		indigo_init_number_item(X_AUX_VARIABLE_POWER_OUTLET_1_ITEM, "OUTLET_1", "Variable voltage power outlet ", 3, 12, 1, 12);
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY = indigo_init_switch_property(NULL, device->name, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY_NAME, AUX_GROUP, "Save current outlet states as default", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM_NAME, "Save", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
@@ -364,6 +402,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
 		if (indigo_property_match(X_AUX_HUB_PROPERTY, property))
 			indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
+		if (indigo_property_match(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, property))
+			indigo_define_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
 		if (indigo_property_match(X_AUX_REBOOT_PROPERTY, property))
 			indigo_define_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		if (indigo_property_match(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property))
@@ -731,47 +771,26 @@ static void aux_timer_callback(indigo_device *device) {
 
 static void aux_connection_handler(indigo_device *device) {
 	char response[128];
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
-			if (PRIVATE_DATA->handle > 0) {
-				bool connected = false;
-				int attempt = 0;
-				while (!connected) {
-					if (upb_command(device, "P#", response, sizeof(response))) {
-						if (!strcmp(response, "UPB_OK")) {
-							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->version = 1;
-							AUX_HEATER_OUTLET_PROPERTY->count = 2;
-							AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
-							AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
-							X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
-							break;
-						} else if (!strcmp(response, "UPB2_OK")) {
-							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
-							PRIVATE_DATA->version = 2;
-							AUX_HEATER_OUTLET_PROPERTY->count = 3;
-							AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
-							AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
-							X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
-							AUX_USB_PORT_PROPERTY->hidden = false;
-							AUX_USB_PORT_STATE_PROPERTY->hidden = true;
-							break;
-						}
-					}
-					if (attempt++ == 3) {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-						break;
-					}
-					indigo_usleep(ONE_SECOND_DELAY);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying...");
-				}
-			}
+			upb_open(device);
 		}
 		if (PRIVATE_DATA->handle > 0) {
+			if (PRIVATE_DATA->version == 1) {
+				AUX_HEATER_OUTLET_PROPERTY->count = 2;
+				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 2;
+				AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 2;
+				X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
+			} else {
+				AUX_HEATER_OUTLET_PROPERTY->count = 3;
+				AUX_HEATER_OUTLET_STATE_PROPERTY->count = 3;
+				AUX_HEATER_OUTLET_CURRENT_PROPERTY->count = 3;
+				X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = false;
+				AUX_USB_PORT_PROPERTY->hidden = false;
+				AUX_USB_PORT_STATE_PROPERTY->hidden = true;
+			}
 			if (upb_command(device, "PA", response, sizeof(response)) && !strncmp(response, "UPB", 3)) {
 				char *pnt, *token = strtok_r(response, ":", &pnt);
 				if ((token = strtok_r(NULL, ":", &pnt))) { // Voltage
@@ -870,7 +889,7 @@ static void aux_connection_handler(indigo_device *device) {
 					PRIVATE_DATA->handle = 0;
 				}
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'SA' response");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read 'PA' response");
 				close(PRIVATE_DATA->handle);
 				PRIVATE_DATA->handle = 0;
 			}
@@ -878,7 +897,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			if (upb_command(device, "PV", response, sizeof(response)) ) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
@@ -890,6 +909,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_define_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
 			upb_command(device, "PU:1", response, sizeof(response));
 			indigo_set_switch(X_AUX_HUB_PROPERTY, X_AUX_HUB_ENABLED_ITEM, true);
 			indigo_define_property(device, X_AUX_HUB_PROPERTY, NULL);
@@ -950,6 +970,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_define_property(device, AUX_USB_PORT_PROPERTY, NULL);
 			indigo_define_property(device, AUX_USB_PORT_STATE_PROPERTY, NULL);
 			indigo_define_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
+			upb_command(device, "PL:1", response, sizeof(response));
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -983,6 +1004,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_delete_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
 		indigo_delete_property(device, X_AUX_HUB_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_REBOOT_PROPERTY, NULL);
 		indigo_delete_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
@@ -1005,6 +1027,7 @@ static void aux_connection_handler(indigo_device *device) {
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
 
 static void aux_power_outlet_handler(indigo_device *device) {
@@ -1096,6 +1119,23 @@ static void aux_hub_handler(indigo_device *device) {
 	upb_command(device, X_AUX_HUB_ENABLED_ITEM->sw.value ? "PU:1" : "PU:0", response, sizeof(response));
 	X_AUX_HUB_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_save_defaults_handler(indigo_device *device) {
+	char response[128];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
+		char command[] = "PE:0000";
+		char *port_mask = command + 3;
+		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
+			port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
+		}
+		upb_command(device, command, response, sizeof(response));
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value = false;
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -1226,6 +1266,13 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, X_AUX_HUB_PROPERTY, NULL);
 		indigo_set_timer(device, 0, aux_hub_handler, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, property)) {
+		// -------------------------------------------------------------------------------- X_AUX_SAVE_DEFAULTS
+		indigo_property_copy_values(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, property, false);
+		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY, NULL);
+		indigo_set_timer(device, 0, aux_save_defaults_handler, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(X_AUX_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_AUX_REBOOT
 		indigo_property_copy_values(X_AUX_REBOOT_PROPERTY, property, false);
@@ -1266,6 +1313,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(AUX_DEW_CONTROL_PROPERTY);
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
+	indigo_release_property(AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY);
 	indigo_release_property(X_AUX_HUB_PROPERTY);
 	indigo_release_property(X_AUX_REBOOT_PROPERTY);
 	indigo_release_property(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY);
@@ -1289,20 +1337,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_BACKLASH_ITEM->number.min = 0;
 		FOCUSER_BACKLASH_ITEM->number.max = 9999;
 		FOCUSER_BACKLASH_ITEM->number.target = FOCUSER_BACKLASH_ITEM->number.value = 100;
-		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
-#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "usbserial")) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-				break;
-			}
-		}
-#endif
-#ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUPB");
-#endif
 		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- FOCUSER_TEMPERATURE
@@ -1376,29 +1410,11 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void focuser_connection_handler(indigo_device *device) {
 	char response[128];
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0) {
-			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
-			if (PRIVATE_DATA->handle > 0) {
-				if (upb_command(device, "P#", response, sizeof(response))) {
-					if (!strcmp(response, "UPB_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPB %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 1;
-					} else if (!strcmp(response, "UPB2_OK")) {
-						INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to UPBv2 %s", DEVICE_PORT_ITEM->text.value);
-						PRIVATE_DATA->version = 2;
-					} else {
-						INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
-						close(PRIVATE_DATA->handle);
-						PRIVATE_DATA->handle = 0;
-					}
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
-				}
-			}
+			upb_open(device->master_device);
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			if (upb_command(device, "SA", response, sizeof(response))) {
@@ -1457,6 +1473,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
 
 static void focuser_speed_handler(indigo_device *device) {

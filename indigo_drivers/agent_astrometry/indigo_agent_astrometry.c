@@ -23,7 +23,7 @@
  \file indigo_agent_astrometry.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x0010
 #define DRIVER_NAME	"indigo_agent_astrometry"
 
 #include <stdio.h>
@@ -331,7 +331,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = SOLVER_WCS_SOLVING;
+		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SOLVING;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -542,6 +542,11 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 		if (AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value > 0) {
 			hints_index += sprintf(hints + hints_index, " --depth %d", (int)AGENT_PLATESOLVER_HINTS_DEPTH_ITEM->number.value);
 		}
+		if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0) {
+			hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 0.9 * 3600, AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * 1.1 * 3600);
+		} else if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale > 0 && AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value < 0) {
+			hints_index += sprintf(hints + hints_index, " --scale-units arcsecperpix --scale-low %.3f --scale-high %.3f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 0.9 * 3600, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * 1.1 * 3600);
+		}
 		if (AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value > 0) {
 			hints_index += sprintf(hints + hints_index, " --cpulimit %d", (int)AGENT_PLATESOLVER_HINTS_CPU_LIMIT_ITEM->number.value);
 		}
@@ -590,6 +595,31 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 						pthread_mutex_unlock(&mutex);
 						return;
 					}
+
+					/* basic index file integritiy check as curl saves HTTP
+					   errors like "404: not found" in the output file
+					*/
+					bool failed = false;
+					char signature[7]={0};
+					FILE *fp=fopen(path,"rb");
+					if (fp) {
+						fread(signature, 6, 1, fp);
+						fclose(fp);
+						if (strncmp(signature, "SIMPLE", 6)) {
+							failed = true;
+						}
+					} else {
+						failed = true;
+					}
+					if (failed) {
+						unlink(path);
+						item->sw.value = false;
+						property->state = INDIGO_ALERT_STATE;
+						indigo_update_property(device, property, "Index download failed: '%s'", path);
+						pthread_mutex_unlock(&mutex);
+						return;
+					}
+
 					indigo_send_message(device, "Done", file_name);
 					add = true;
 					continue;
@@ -618,9 +648,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 		if (remove) {
 			for (int j = 0; j < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; j++) {
 				if (!strcmp(item->name, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[j].name)) {
-					indigo_item tmp[AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j];
-					memcpy(tmp, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + (j + 1), (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
-					memcpy(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + j, tmp, (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
+					memmove(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + j, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + (j + 1), (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
 					AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count--;
 					break;
 				}
@@ -666,6 +694,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE], path[INDIGO_VALUE_SIZE];
 		bool present;
 		AGENT_ASTROMETRY_INDEX_41XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY_NAME, "Index managememt", "Installed Tycho-2 catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 13);
+		strcpy(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->hints,"warn_on_clear:\"Delete Tycho-2 index file?\";");
 		if (AGENT_ASTROMETRY_INDEX_41XX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		for (int i = 19; i >=7; i--) {
@@ -686,6 +715,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				}
 			}
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->items - (i - 19), name, label, present);
+			sprintf((AGENT_ASTROMETRY_INDEX_41XX_PROPERTY->items - (i - 19))->hints, "warn_on_clear:\"Delete Tycho-2 index 41%02d?\";", i);
 			if (present) {
 				char long_label[INDIGO_VALUE_SIZE];
 				snprintf(long_label, INDIGO_VALUE_SIZE, "Tycho-2 %s", label);
@@ -693,6 +723,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			}
 		}
 		AGENT_ASTROMETRY_INDEX_42XX_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY_NAME, "Index managememt", "Installed 2MASS catalog indexes", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 20);
+		strcpy(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->hints, "warn_on_clear:\"Delete 2MASS index file?\";");
 		if (AGENT_ASTROMETRY_INDEX_42XX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		for (int i = 19; i >=0; i--) {
@@ -713,6 +744,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 				}
 			}
 			indigo_init_switch_item(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items - (i - 19), name, label, present);
+			sprintf((AGENT_ASTROMETRY_INDEX_42XX_PROPERTY->items - (i - 19))->hints, "warn_on_clear:\"Delete 2MASS index 42%02d?\";", i);
 			if (present) {
 				char long_label[INDIGO_VALUE_SIZE];
 				snprintf(long_label, INDIGO_VALUE_SIZE, "2MASS %s", label);
@@ -781,13 +813,13 @@ static void kill_children() {
 	indigo_device *device = agent_device;
 	if (device && device->private_data) {
 		if (ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
-			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+			kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
 		indigo_device **additional_devices = DEVICE_CONTEXT->additional_device_instances;
 		if (additional_devices) {
 			for (int i = 0; i < MAX_ADDITIONAL_INSTANCES; i++) {
 				device = additional_devices[i];
 				if (device && device->private_data && ASTROMETRY_DEVICE_PRIVATE_DATA->pid)
-					kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGTERM);
+					kill(-ASTROMETRY_DEVICE_PRIVATE_DATA->pid, SIGKILL);
 			}
 		}
 	}
@@ -823,7 +855,7 @@ indigo_result indigo_agent_astrometry(indigo_driver_action action, indigo_driver
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			if (!indigo_platesolver_validate_executable("solve-field") || !indigo_platesolver_validate_executable("image2xy") || !indigo_platesolver_validate_executable("curl")) {
-				indigo_error("astrometry.net is not available");
+				indigo_error("Astrometry.net or curl is not available");
 				return INDIGO_UNRESOLVED_DEPS;
 			}
 			last_action = action;

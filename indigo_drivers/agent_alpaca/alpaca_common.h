@@ -210,6 +210,33 @@ typedef struct indigo_alpaca_device_struct {
 	struct indigo_alpaca_device_struct *next;
 } indigo_alpaca_device;
 
+typedef enum {
+	indigo_alpaca_type_unknown = 0, // 0 to 3 are values already used in the Alpaca standard
+	indigo_alpaca_type_int16 = 1,
+	indigo_alpaca_type_int32 = 2,
+	indigo_alpaca_type_double = 3,
+	indigo_alpaca_type_single = 4, // 4 to 9 are an extension to include other numeric types
+	indigo_alpaca_type_uint64 = 5,
+	indigo_alpaca_type_byte = 6,
+	indigo_alpaca_type_int64 = 7,
+	indigo_alpaca_type_uint16 = 8,
+	indigo_alpaca_type_uint32 = 9
+} indigo_alpaca_element_type;
+
+typedef struct {
+	int32_t metadata_version; // Bytes 0..3 - Metadata version = 1
+	int32_t error_number; // Bytes 4..7 - Alpaca error number or zero for success
+	uint32_t client_transaction_id; // Bytes 8..11 - Client's transaction ID
+	uint32_t server_transaction_id; // Bytes 12..15 - Device's transaction ID
+	int32_t data_start; // Bytes 16..19 - Offset of the start of the data bytes
+	int32_t image_element_type; // Bytes 20..23 - Element type of the source image array
+	int32_t transmission_element_type; // Bytes 24..27 - Element type as sent over the network
+	int32_t rank; // Bytes 28..31 - Image array rank (2 or 3)
+	int32_t dimension1; // Bytes 32..35 - Length of image array first dimension
+	int32_t dimension2; // Bytes 36..39 - Length of image array second dimension
+	int32_t dimension3; // Bytes 40..43 - Length of image array third dimension (0 for 2D array)
+} indigo_alpaca_metadata;
+
 extern char *indigo_alpaca_error_string(int code);
 extern long indigo_alpaca_append_error(char *buffer, long buffer_length, indigo_alpaca_error result);
 extern long indigo_alpaca_append_value_bool(char *buffer, long buffer_length, bool value, indigo_alpaca_error result);
@@ -227,7 +254,7 @@ extern long indigo_alpaca_set_command(indigo_alpaca_device *alpaca_device, int v
 extern void indigo_alpaca_ccd_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);
 extern long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length, char *param_1, char *param_2);
-extern void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip);
+extern void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes);
 
 extern void indigo_alpaca_wheel_update_property(indigo_alpaca_device *alpaca_device, indigo_property *property);
 extern long indigo_alpaca_wheel_get_command(indigo_alpaca_device *alpaca_device, int version, char *command, char *buffer, long buffer_length);

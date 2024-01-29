@@ -1,7 +1,7 @@
 /*
  * The Moravian Instruments (MI) camera library.
  *
- * Copyright (c) 2016-2022, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
+ * Copyright (c) 2016-2023, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
  * All rights reserved.
  *
  * Redistribution.  Redistribution and use in binary form, without
@@ -103,7 +103,7 @@ typedef struct camera camera_t;
  * setting "ClearTime" to 0 or -1 and clear the chip manualy with gxusb_clear().
  * "HWBinning" controls whether the library bins the image itself or the camera
  * does the binning directly in hardware. This setting is valid only for C1x,
- * C3, C4 and C5 cameras.
+ * C2-9000, C3, C4 and C5 cameras.
  * "BinningSum" controls whether the library/camera sums binned pixels instead
  * of averaging them.
  * "BinningSaturate" controls whether the library/camera sets resulting binned
@@ -235,6 +235,8 @@ enum
     GBP_GAIN,                      /* true if camera can return gain in gxccd_get_value() */
     GBP_ELECTRONIC_SHUTTER,        /* true if camera has electronic shutter */
     GBP_GPS,                       /* true if camera has gps module */
+    GBP_CONTINUOUS_EXPOSURES,      /* true if camera supports continuous exposures */
+    GBP_TRIGGER,                   /* true if camera supports trigger port */
     GBP_CONFIGURED = 127,          /* true if camera is configured */
     GBP_RGB,                       /* true if camera has Bayer RGBG filters on the chip */
     GBP_CMY,                       /* true if camera has CMY filters on the chip */
@@ -243,8 +245,10 @@ enum
                              odd pixel */
     GBP_DEBAYER_Y_ODD,             /* true if camera Bayer masks starts on vertical
                              odd pixel */
-    GBP_INTERLACED = 256           /* true if chip is interlaced
+    GBP_INTERLACED = 256,           /* true if chip is interlaced
                              (else progressive) */
+    GBP_HEX_VERSION_NUMBER = 1024  /* true if GIP_FIRMWARE_MAJOR should be represented
+                                   as hexadecimal number */
 };
 
 /* Returns true or false in "value" depending on the "index". */
@@ -367,6 +371,13 @@ int gxccd_set_preflash(camera_t *camera, double preflash_time, int clear_num);
 int gxccd_start_exposure(camera_t *camera, double exp_time, bool use_shutter, int x, int y, int w, int h);
 
 /*
+ * The camera enters waiting state and when a signal is detected on trigger port,
+ * it starts a new exposure.
+ * The parameters are the same as for gxccd_start_exposure.
+ */
+int gxccd_start_exposure_trigger(camera_t *camera, double exp_time, bool use_shutter, int x, int y, int w, int h);
+
+/*
  * When the exposure already started by gxccd_start_exposure() call has to be
  * terminated before the exposure time expires, this function has to be called.
  * Parameter "download" indicates whether the image should be digitized, because
@@ -417,6 +428,14 @@ int gxccd_image_ready(camera_t *camera, bool *ready);
  *     + width * 2 - 1)
  */
 int gxccd_read_image(camera_t *camera, void *buf, size_t size);
+
+/*
+ * Functionality and parameters are the same as for gxccd_read_image.
+ * The only difference is that the camera starts another exposure before returning
+ * the image. The time between continous exposures is therefore reduced by the time
+ * of downloading the image to the PC.s
+ */
+int gxccd_read_image_exposure(camera_t *camera, void *buf, size_t size);
 
 /*
  * Enumerates all read modes provided by the camera.

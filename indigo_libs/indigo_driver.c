@@ -72,18 +72,15 @@
 indigo_result indigo_try_global_lock(indigo_device *device) {
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
+	if (device->master_device != NULL)
+		device = device->master_device;
+	if (device->lock > 0)
+		return INDIGO_FAILED;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	if (device->master_device != NULL && device->master_device != device) {
-		if (device->master_device->lock > 0) return INDIGO_FAILED;
-		strncat(tmp_lock_file, device->master_device->name, 250);
-	} else {
-		if (device->lock > 0) return INDIGO_FAILED;
-		strncat(tmp_lock_file, device->name, 250);
-	}
+	strncat(tmp_lock_file, device->name, 250);
 	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
-	if (fd == -1) {
+	if (fd == -1)
 		return -1;
-	}
 
 	static struct flock lock;
 	lock.l_type = F_WRLCK;
@@ -99,28 +96,23 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 		fd = -1;
 		errno = local_errno;
 	}
-	if (device->master_device) device->master_device->lock = fd;
-	else device->lock = fd;
-	if (fd > 0) return INDIGO_OK;
+	device->lock = fd;
+	if (fd > 0)
+		return INDIGO_OK;
 	return INDIGO_LOCK_ERROR;
 }
-
 
 indigo_result indigo_global_unlock(indigo_device *device) {
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
+	if (device->master_device != NULL)
+		device = device->master_device;
+	if (device->lock <= 0)
+		return INDIGO_FAILED;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	if (device->master_device) {
-		if (device->master_device->lock <= 0) return INDIGO_FAILED;
-		close(device->master_device->lock);
-		device->master_device->lock = -1;
-		strncat(tmp_lock_file, device->master_device->name, 250);
-	} else {
-		if (device->lock <= 0) return INDIGO_FAILED;
-		close(device->lock);
-		device->lock = -1;
-		strncat(tmp_lock_file, device->name, 250);
-	}
+	close(device->lock);
+	device->lock = -1;
+	strncat(tmp_lock_file, device->name, 250);
 	unlink(tmp_lock_file);
 	return INDIGO_OK;
 }
@@ -137,10 +129,10 @@ static int port_type(char *path) {
 	res = ioctl(fd, TIOCGSERIAL, &serinfo);
 	if (res != 0) {
 		sp_type = -1;
-		INDIGO_DEBUG(indigo_debug("%s(): path = %s, type = %d, res = %d error = '%s'", __FUNCTION__, path, serinfo.type, res, strerror(errno)));
+		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d error = '%s'", __FUNCTION__, path, serinfo.type, res, strerror(errno)));
 	} else {
 		sp_type = serinfo.type;
-		INDIGO_DEBUG(indigo_debug("%s(): path = %s, type = %d, res = %d", __FUNCTION__, path, serinfo.type, res));
+		INDIGO_TRACE(indigo_trace("%s(): path = %s, type = %d, res = %d", __FUNCTION__, path, serinfo.type, res));
 	}
 	close(fd);
 	return sp_type;
@@ -176,9 +168,10 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 #elif defined(INDIGO_LINUX)
 	DIR *dir;
 	char target[PATH_MAX];
-	char serial_links[MAX_DEVICE_PORTS][PATH_MAX]={0};
+	char serial_links_id[MAX_DEVICE_PORTS][PATH_MAX]={0};
+	char serial_links_path[MAX_DEVICE_PORTS][PATH_MAX]={0};
 	struct dirent *entry;
-	int link_num = 0;
+	int link_num_id = 0;
 	/* Some serial devices seem to report PORT_UNKNOWN but they have simlinks
 	   in /dev/serial/by-id/ in that case we consider them real ports
 	*/
@@ -188,8 +181,25 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 			if (entry->d_name[0] != '.') {
 				snprintf(name, PATH_MAX, "/dev/serial/by-id/%s", entry->d_name);
 				if (realpath(name, target)) {
-						strncpy(serial_links[link_num], target, PATH_MAX);
-						link_num++;
+						strncpy(serial_links_id[link_num_id], target, PATH_MAX);
+						link_num_id++;
+				}
+			}
+		}
+		closedir(dir);
+	}
+	int link_num_path = 0;
+	/* Some serial devices seem to report PORT_UNKNOWN but they have simlinks
+	   in /dev/serial/by-path/ in that case we consider them real ports
+	*/
+	dir = opendir("/dev/serial/by-path");
+	if (dir) {
+		while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
+			if (entry->d_name[0] != '.') {
+				snprintf(name, PATH_MAX, "/dev/serial/by-path/%s", entry->d_name);
+				if (realpath(name, target)) {
+						strncpy(serial_links_path[link_num_path], target, PATH_MAX);
+						link_num_path++;
 				}
 			}
 		}
@@ -205,13 +215,25 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 		bool is_serial = false;
 		/* port is unknown -> will be considerd serial port if there is a link in /dev/serial/by-id */
 		if (ser_type <= PORT_UNKNOWN) {
-			for (int i = 0; i < link_num; i++) {
-				if (!strncmp(target, serial_links[i], PATH_MAX)) {
+			for (int i = 0; i < link_num_id; i++) {
+				if (!strncmp(target, serial_links_id[i], PATH_MAX)) {
 					is_serial = true;
-					INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link)", __FUNCTION__, name));
+					INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link by-id)", __FUNCTION__, name));
 					break;
 				}
-				INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links[i]));
+				/* INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links_id[i]));
+				 */
+			}
+			if(!is_serial) {
+				for (int i = 0; i < link_num_path; i++) {
+					if (!strncmp(target, serial_links_path[i], PATH_MAX)) {
+						is_serial = true;
+						INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link by-path)", __FUNCTION__, name));
+						break;
+					}
+					/* INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links_path[i]));
+					 */
+				}
 			}
 		} else {
 			is_serial = true;
@@ -301,15 +323,25 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		indigo_init_switch_item(CONFIG_LOAD_ITEM, CONFIG_LOAD_ITEM_NAME, "Load", false);
 		indigo_init_switch_item(CONFIG_SAVE_ITEM, CONFIG_SAVE_ITEM_NAME, "Save", false);
 		indigo_init_switch_item(CONFIG_REMOVE_ITEM, CONFIG_REMOVE_ITEM_NAME, "Remove", false);
+		// -------------------------------------------------------------------------------- PROFILE_NAME
+		PROFILE_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, PROFILE_NAME_PROPERTY_NAME, MAIN_GROUP, "Profile names", INDIGO_OK_STATE, INDIGO_RW_PERM, PROFILE_COUNT);
+		if (PROFILE_NAME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		for (int i = 0; i < PROFILE_COUNT; i++) {
+			char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE], value[INDIGO_VALUE_SIZE];
+			sprintf(name, PROFILE_NAME_ITEM_NAME, i);
+			sprintf(label, "Name #%d", i);
+			sprintf(value, "Profile #%d", i);
+			indigo_init_text_item(PROFILE_NAME_ITEM + i, name, label, value);
+		}
 		// -------------------------------------------------------------------------------- PROFILE
 		PROFILE_PROPERTY = indigo_init_switch_property(NULL, device->name, PROFILE_PROPERTY_NAME, MAIN_GROUP, "Profile selection", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, PROFILE_COUNT);
 		if (PROFILE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		for (int i = 0; i < PROFILE_COUNT; i++) {
-			char name[INDIGO_NAME_SIZE], label [INDIGO_NAME_SIZE];
+			char name[INDIGO_NAME_SIZE];
 			sprintf(name, PROFILE_ITEM_NAME, i);
-			sprintf(label, "Profile #%d", i);
-			indigo_init_switch_item(PROFILE_ITEM + i, name, label, i == 0);
+			indigo_init_switch_item(PROFILE_ITEM + i, name, (PROFILE_NAME_ITEM + i)->text.value, i == 0);
 		}
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY = indigo_init_switch_property(NULL, device->name, DEVICE_PORTS_PROPERTY_NAME, MAIN_GROUP, "Serial ports", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_DEVICE_PORTS);
@@ -347,6 +379,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = true;
 		indigo_init_number_item(ADDITIONAL_INSTANCES_COUNT_ITEM, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, "Count", 0, MAX_ADDITIONAL_INSTANCES, 1, 0);
 		pthread_mutex_init(&DEVICE_CONTEXT->config_mutex, NULL);
+		pthread_mutex_init(&DEVICE_CONTEXT->multi_device_mutex, NULL);
 		indigo_device *master_device = device->master_device;
 		if (DEVICE_CONTEXT->base_device == NULL && master_device != NULL && master_device != device) {
 			// create the same number of additional devices as defined on the master device
@@ -371,6 +404,8 @@ indigo_result indigo_device_enumerate_properties(indigo_device *device, indigo_c
 		indigo_define_property(device, SIMULATION_PROPERTY, NULL);
 	if (indigo_property_match(CONFIG_PROPERTY, property) && !CONFIG_PROPERTY->hidden)
 		indigo_define_property(device, CONFIG_PROPERTY, NULL);
+	if (indigo_property_match(PROFILE_NAME_PROPERTY, property) && !PROFILE_PROPERTY->hidden)
+		indigo_define_property(device, PROFILE_NAME_PROPERTY, NULL);
 	if (indigo_property_match(PROFILE_PROPERTY, property) && !PROFILE_PROPERTY->hidden)
 		indigo_define_property(device, PROFILE_PROPERTY, NULL);
 	if (indigo_property_match(DEVICE_PORT_PROPERTY, property) && !DEVICE_PORT_PROPERTY->hidden)
@@ -424,10 +459,10 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			indigo_save_property(device, NULL, SIMULATION_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 			indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
+			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			if (DEVICE_CONTEXT->base_device == NULL)
 				indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 			if (DEVICE_CONTEXT->property_save_file_handle) {
-				CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 				close(DEVICE_CONTEXT->property_save_file_handle);
 				DEVICE_CONTEXT->property_save_file_handle = 0;
 			} else {
@@ -442,6 +477,31 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			CONFIG_REMOVE_ITEM->sw.value = false;
 		}
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
+	} else if (indigo_property_match_changeable(PROFILE_NAME_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- PROFILE_NAME_PROPERTY
+		indigo_property_copy_values(PROFILE_NAME_PROPERTY, property, false);
+		indigo_delete_property(device, PROFILE_PROPERTY, NULL);
+		for (int i = 0; i < PROFILE_COUNT; i++) {
+			indigo_item *profile_item = PROFILE_ITEM + i;
+			indigo_item *name_item = PROFILE_NAME_ITEM + i;
+			if (strlen(name_item->text.value) == 0)
+				sprintf(name_item->text.value, "Profile #%d", i);
+			indigo_copy_name(profile_item->label, name_item->text.value);
+		}
+		indigo_define_property(device, PROFILE_PROPERTY, NULL);
+		if (strcmp(client->name, CONFIG_READER)) {
+			indigo_save_property(device, NULL, PROFILE_NAME_PROPERTY);
+			if (DEVICE_CONTEXT->property_save_file_handle) {
+				PROFILE_NAME_PROPERTY->state = INDIGO_OK_STATE;
+				close(DEVICE_CONTEXT->property_save_file_handle);
+				DEVICE_CONTEXT->property_save_file_handle = 0;
+			} else {
+				PROFILE_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else {
+			PROFILE_NAME_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, PROFILE_NAME_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(PROFILE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- PROFILE
 		indigo_property_copy_values(PROFILE_PROPERTY, property, false);
@@ -467,8 +527,11 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(DEVICE_BAUDRATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		indigo_property_copy_values(DEVICE_BAUDRATE_PROPERTY, property, false);
+		if (*DEVICE_BAUDRATE_ITEM->text.value && strchr(DEVICE_BAUDRATE_ITEM->text.value, '-') == NULL) {
+			strcat(DEVICE_BAUDRATE_ITEM->text.value, "-8N1");
+		}
 		DEVICE_BAUDRATE_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
+		//indigo_save_property(device, NULL, DEVICE_BAUDRATE_PROPERTY);
 		indigo_update_property(device, DEVICE_BAUDRATE_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(DEVICE_PORTS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -498,7 +561,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(AUTHENTICATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AUTHENTICATION
 		indigo_property_copy_values(AUTHENTICATION_PROPERTY, property, false);
-		PROFILE_PROPERTY->state = INDIGO_OK_STATE;
+		AUTHENTICATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AUTHENTICATION_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
@@ -608,13 +671,12 @@ indigo_result indigo_device_detach(indigo_device *device) {
 	indigo_release_property(DEVICE_PORTS_PROPERTY);
 	indigo_release_property(SIMULATION_PROPERTY);
 	indigo_release_property(CONFIG_PROPERTY);
+	indigo_release_property(PROFILE_NAME_PROPERTY);
 	indigo_release_property(PROFILE_PROPERTY);
 	indigo_release_property(AUTHENTICATION_PROPERTY);
 	indigo_release_property(ADDITIONAL_INSTANCES_PROPERTY);
-	indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
-	indigo_delete_property(device, all_properties, NULL);
-	indigo_release_property(all_properties);
 	pthread_mutex_destroy(&DEVICE_CONTEXT->config_mutex);
+	pthread_mutex_destroy(&DEVICE_CONTEXT->multi_device_mutex);
 	free(DEVICE_CONTEXT);
 	device->device_context = NULL;
 	return INDIGO_OK;
@@ -652,11 +714,15 @@ int indigo_open_config_file(char *device_name, int profile, int mode, const char
 	static char path[512];
 	if (make_config_file_name(device_name, profile, suffix, path, sizeof(path))) {
 		int handle = open(path, mode, 0644);
-		if (handle < 0)
-			INDIGO_DEBUG(indigo_debug("Can't %s %s (%s)", mode == O_RDONLY ? "open" : "create", path, strerror(errno)));
+		if (handle < 0) {
+			if (errno == ENOENT)
+				INDIGO_TRACE(indigo_trace("Can't %s %s (%s)", mode == O_RDONLY ? "open" : "create", path, strerror(errno)));
+			else
+				indigo_error("Can't %s %s (%s)", mode == O_RDONLY ? "open" : "create", path, strerror(errno));
+		}
 		return handle;
 	} else {
-		INDIGO_DEBUG(indigo_debug("Can't create %s (%s)", path, strerror(errno)));
+		indigo_error("Can't create %s (%s)", path, strerror(errno));
 	}
 	return -1;
 }
@@ -672,9 +738,23 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 				break;
 			}
 	}
-	int handle = indigo_open_config_file(device->name, profile, O_RDONLY, default_properties ? ".default" : ".config");
+	int handle = indigo_open_config_file(device->name, profile, O_RDONLY, ".common");
 	if (handle > 0) {
-		INDIGO_TRACE(indigo_trace("Config file open for '%s' with descriptor %d", device->name, handle));
+		INDIGO_TRACE(indigo_trace("%d -> // Common config file for '%s'", handle, device->name));
+		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
+		strcpy(client->name, CONFIG_READER);
+		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
+		context->input = handle;
+		client->client_context = context;
+		client->version = INDIGO_VERSION_CURRENT;
+		indigo_xml_parse(NULL, client);
+		close(handle);
+		free(context);
+		free(client);
+	}
+	handle = indigo_open_config_file(device->name, profile, O_RDONLY, default_properties ? ".default" : ".config");
+	if (handle > 0) {
+		INDIGO_TRACE(indigo_trace("%d -> // Config file for '%s'", handle, device->name));
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
@@ -712,7 +792,10 @@ indigo_result indigo_save_property(indigo_device *device, int *file_handle, indi
 						break;
 					}
 			}
-			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
+			bool common_property = false;
+			if (!strcmp(property->name, PROFILE_NAME_PROPERTY_NAME))
+				common_property = true;
+			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, common_property ? ".common" : ".config");
 			if (handle == 0) {
 				if (DEVICE_CONTEXT)
 					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
@@ -977,4 +1060,14 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 
 	/* reqquest is valid */
 	return false;
+}
+
+void indigo_lock_master_device(indigo_device *device) {
+	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL)
+		pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+}
+
+void indigo_unlock_master_device(indigo_device *device) {
+	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL)
+		pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
 }

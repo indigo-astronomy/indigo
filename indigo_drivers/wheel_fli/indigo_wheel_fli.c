@@ -466,10 +466,10 @@ static libusb_hotplug_callback_handle callback_handle;
 extern void (*debug_ext)(int level, char *format, va_list arg);
 
 static void _debug_ext(int level, char *format, va_list arg) {
-	char _format[1024];
-	snprintf(_format, sizeof(_format), "FLISDK: %s", format);
 	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-		INDIGO_DEBUG_DRIVER(indigo_log_message(_format, arg));
+		char _format[1024];
+		snprintf(_format, sizeof(_format), "FLISDK: %s", format);
+		INDIGO_DEBUG_DRIVER(indigo_debug(_format, arg));
 	}
 }
 

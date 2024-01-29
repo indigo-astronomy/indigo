@@ -96,6 +96,10 @@ extern bool indigo_set_timer_with_data(indigo_device *device, double delay, indi
  */
 extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer);
 
+/** Rescheduled timer (if not null) with different handler.
+ */
+extern bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
+
 /** Cancel timer.
  */
 extern bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);

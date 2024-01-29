@@ -23,7 +23,7 @@
  \file indigo_ccd_atik.c
  */
 
-#define DRIVER_VERSION 0x001B
+#define DRIVER_VERSION 0x001D
 #define DRIVER_NAME "indigo_ccd_atik"
 
 #include <stdlib.h>
@@ -100,7 +100,6 @@ static void debug_log(const char *message) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	CCD_EXPOSURE_ITEM->number.value = 0;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);
@@ -149,6 +148,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -307,6 +307,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
@@ -560,7 +561,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
 
@@ -591,6 +591,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -622,6 +623,7 @@ static void guider_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -729,10 +731,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
-			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				PRIVATE_DATA->handle = NULL;
@@ -773,6 +774,7 @@ static void wheel_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result wheel_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -879,7 +881,8 @@ static void plug_handler(indigo_device *device) {
 			char name[INDIGO_NAME_SIZE], usb_path[INDIGO_NAME_SIZE];
 			ArtemisDeviceName(j, name);
 			indigo_get_usb_path(dev, usb_path);
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%s", name, usb_path);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s", name);
+			indigo_make_name_unique(device->name, "%s", usb_path);
 			device->private_data = private_data;
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] == NULL) {
@@ -890,7 +893,8 @@ static void plug_handler(indigo_device *device) {
 			if (ArtemisDeviceHasGuidePort(j)) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%s", name, usb_path);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider)", name);
+				indigo_make_name_unique(device->name, "%s", usb_path);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -902,7 +906,8 @@ static void plug_handler(indigo_device *device) {
 			if (ArtemisDeviceHasFilterWheel(j)) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%s", name, usb_path);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel)", name);
+				indigo_make_name_unique(device->name, "%s", usb_path);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {

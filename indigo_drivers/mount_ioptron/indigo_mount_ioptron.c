@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0022
+#define DRIVER_VERSION 0x0026
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -51,6 +51,26 @@
 #define MOUNT_HOME_SEARCH_ITEM				(MOUNT_HOME_PROPERTY->items+1)
 #define MOUNT_HOME_SEARCH_ITEM_NAME		"SEARCH"
 
+#define MOUNT_PROTOCOL_PROPERTY       (PRIVATE_DATA->protocol_property)
+#define PROTOCOL_AUTO_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+0)
+#define PROTOCOL_8406_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+1)
+#define PROTOCOL_8407_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+2)
+#define PROTOCOL_0000_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+3)
+#define PROTOCOL_0100_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+4)
+#define PROTOCOL_0200_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+5)
+#define PROTOCOL_0205_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+6)
+#define PROTOCOL_0300_ITEM            (MOUNT_PROTOCOL_PROPERTY->items+7)
+
+#define MOUNT_PROTOCOL_PROPERTY_NAME	"PROTOCOL_VERSION"
+#define PROTOCOL_AUTO_ITEM_NAME       "AUTO"
+#define PROTOCOL_8406_ITEM_NAME       "8406"
+#define PROTOCOL_8407_ITEM_NAME       "8407"
+#define PROTOCOL_0000_ITEM_NAME       "0000"
+#define PROTOCOL_0100_ITEM_NAME       "0100"
+#define PROTOCOL_0200_ITEM_NAME       "0200"
+#define PROTOCOL_0205_ITEM_NAME       "0205"
+#define PROTOCOL_0300_ITEM_NAME       "0300"
+
 #define RA_MIN_DIF					0.1
 #define DEC_MIN_DIF					0.1
 
@@ -62,13 +82,14 @@ typedef struct {
 	indigo_timer *position_timer;
 	pthread_mutex_t port_mutex, mutex;
 	char lastSlewRate, lastTrackRate, lastMotionRA, lastMotionDec;
-	double lastRA, lastDec;
+	double lastRA, lastDec, lastCustomTrackingRate;
 	char lastUTC[INDIGO_VALUE_SIZE];
 	char product[64];
 	unsigned protocol;
 	bool hc8406;
 	bool hc8407;
 	bool no_park;
+	indigo_property *protocol_property;
 } ioptron_private_data;
 
 static bool ieq_command(indigo_device *device, char *command, char *response, int max) {
@@ -133,20 +154,28 @@ static bool ieq_open(indigo_device *device) {
 	char response[128] = "";
 	char *name = DEVICE_PORT_ITEM->text.value;
 	if (!indigo_is_device_url(name, "ieq")) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
-		if (PRIVATE_DATA->handle > 0) {
-			bool reopenAt115200 = true;
-			if (ieq_command(device, ":V#", response, sizeof(response)) && *response == 'V') {
-				reopenAt115200 = false;
-			} else if (ieq_command(device, ":MountInfo#", response, sizeof(response)) && strlen(response) >= 4) {
-				reopenAt115200 = false;
-			}
-			if (reopenAt115200) {
+		if (DEVICE_BAUDRATE_ITEM->text.value[0] != '\0') {
+			PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
+			if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4) {
 				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
-				if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4) {
+				PRIVATE_DATA->handle = -1;
+			}
+		} else {
+			PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 9600);
+			if (PRIVATE_DATA->handle > 0) {
+				bool reopenAt115200 = true;
+				if (ieq_command(device, ":V#", response, sizeof(response)) && *response == 'V') {
+					reopenAt115200 = false;
+				} else if (ieq_command(device, ":MountInfo#", response, sizeof(response)) && strlen(response) >= 4) {
+					reopenAt115200 = false;
+				}
+				if (reopenAt115200) {
 					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = -1;
+					PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+					if (!ieq_command(device, ":MountInfo#", response, sizeof(response)) || strlen(response) < 4) {
+						close(PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = -1;
+					}
 				}
 			}
 		}
@@ -222,7 +251,6 @@ static bool ieq_get_utc(indigo_device *device, time_t *secs, int *utc_offset) {
 	struct tm tm;
 	char response[128], sep;
 	memset(&tm, 0, sizeof(tm));
-	tm.tm_isdst = daylight;
 	MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 	if (PRIVATE_DATA->hc8406) {
 		if (ieq_command(device, ":GC#", response, sizeof(response)) && sscanf(response, "%2d%c%2d%c%2d", &tm.tm_mon, &sep, &tm.tm_mday, &sep, &tm.tm_year) == 5) {
@@ -277,18 +305,17 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 	char command[128], response[128];
 	time_t seconds = *secs + utc_offset * 3600;
 	struct tm tm;
-	tm.tm_isdst = daylight;
 	gmtime_r(&seconds, &tm);
 	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->protocol == 0x0000) {
-		sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+		sprintf(command, ":SL %02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
 		if (!ieq_command(device, command, response, 1) || *response != '1') {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+			sprintf(command, ":SC %02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
 			if (!ieq_command(device, command, response, 1)) {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				sprintf(command, ":SG%+03d#", utc_offset);
+				sprintf(command, ":SG %+03d#", utc_offset);
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
@@ -297,19 +324,19 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 			}
 		}
 	} else if (PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0100) {
-		sprintf(command, ":SL%02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
+		sprintf(command, ":SL %02d:%02d:%02d#", tm.tm_hour, tm.tm_min, tm.tm_sec);
 		if (!ieq_command(device, command, response, 1) || *response != '1') {
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			sprintf(command, ":SC%02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
+			sprintf(command, ":SC %02d/%02d/%02d#", tm.tm_mon + 1, tm.tm_mday, tm.tm_year % 100);
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				sprintf(command, ":SG%+03d:00#", utc_offset);
+				sprintf(command, ":SG %+03d:00#", utc_offset);
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":SDS%d#", daylight);
+					sprintf(command, ":SDS%d#", indigo_get_dst_state());
 					if (!ieq_command(device, command, response, 1) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
@@ -331,7 +358,7 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
-					sprintf(command, ":SDS%d#", daylight);
+					sprintf(command, ":SDS%d#", indigo_get_dst_state());
 					if (!ieq_command(device, command, response, 1) || *response != '1') {
 						MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 					} else {
@@ -349,7 +376,7 @@ static bool ieq_set_utc(indigo_device *device, time_t *secs, int utc_offset) {
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
 				MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 			} else {
-				sprintf(command, ":SDS%d#", daylight);
+				sprintf(command, ":SDS%d#", indigo_get_dst_state());
 				if (!ieq_command(device, command, response, 1) || *response != '1') {
 					MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 				} else {
@@ -729,7 +756,7 @@ static void position_timer_callback(indigo_device *device) {
 }
 
 static void mount_connect_callback(indigo_device *device) {
-	char command[128] = "", response[128] = "";
+	char response[128] = "";
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
@@ -882,6 +909,38 @@ static void mount_connect_callback(indigo_device *device) {
 					}
 				}
 			}
+			if (PROTOCOL_8406_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = true;
+				PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = -1;
+			} else if (PROTOCOL_8407_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = false;
+				PRIVATE_DATA->hc8407 = true;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = -1;
+			} else if (PROTOCOL_0000_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0000;
+			} else if (PROTOCOL_0100_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0100;
+			} else if (PROTOCOL_0200_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0200;
+			} else if (PROTOCOL_0205_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0205;
+			} else if (PROTOCOL_0300_ITEM->sw.value) {
+				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->protocol = 0x0300;
+			}
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s (%s), firmware %s, protocol %d.%d %s", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF, PRIVATE_DATA->hc8406 ? "HC8406" : (PRIVATE_DATA->hc8407 ? "HC8407" : "" ));
 			if (PRIVATE_DATA->hc8406) {
 				MOUNT_PARK_PROPERTY->hidden = true;
@@ -906,11 +965,6 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = -0.01;
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 0.01;
 				MOUNT_TRACK_RATE_PROPERTY->hidden = false;
-				sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
-				if (ieq_command(device, command, response, 1) && *response == '1')
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				else
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				if (ieq_command(device, ":AP#", response, 1)) {
 					if (*response == '0') {
 						indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -980,7 +1034,6 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = -0.01;
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 0.01;
-				sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
 				if (ieq_command(device, ":GAS#", response, sizeof(response))) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1037,11 +1090,6 @@ static void mount_connect_callback(indigo_device *device) {
 				MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->hidden = false;
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.min = -0.01;
 				MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.max = 0.01;
-				sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
-				if (ieq_command(device, command, response, 1) && *response == '1')
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				else
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				if (ieq_command(device, ":GAS#", response, sizeof(response))) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1102,11 +1150,6 @@ static void mount_connect_callback(indigo_device *device) {
 					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
 				if (!strncmp(PRIVATE_DATA->product, "CEM60", 5) || !strncmp(PRIVATE_DATA->product, "CEM40", 5) || !strncmp(PRIVATE_DATA->product, "CEM45", 5) || !strncmp(PRIVATE_DATA->product, "CEM70", 5) || !strncmp(PRIVATE_DATA->product, "CEM120", 6))
 					MOUNT_HOME_PROPERTY->count = 2;
-				sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
-				if (ieq_command(device, command, response, 1) && *response == '1')
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				else
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				if (ieq_command(device, ":GLS#", response, sizeof(response))) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1190,11 +1233,6 @@ static void mount_connect_callback(indigo_device *device) {
 				if (MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value == 0)
 					MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value = 1;
 				MOUNT_HOME_PROPERTY->count = 2;
-				sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
-				if (ieq_command(device, command, response, 1) && *response == '1')
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-				else
-					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
 				if (ieq_command(device, ":GLS#", response, sizeof(response))) {
 					indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 					indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
@@ -1371,8 +1409,8 @@ static void mount_geographic_coordinates_callback(indigo_device *device) {
 	if (MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value < 0)
 		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value += 360;
 	MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0100 || PRIVATE_DATA->protocol == 0x0100)
-		sprintf(command, ":St%s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d:%02.0f"));
+	if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000 || PRIVATE_DATA->protocol == 0x0100)
+		sprintf(command, ":St %s#", indigo_dtos(MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value, "%+03d*%02d:%02.0f"));
 	else if (PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205)
 		sprintf(command, ":St%+07.0f#", MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value * 60 * 60);
 	else if (PRIVATE_DATA->protocol == 0x0300)
@@ -1384,8 +1422,8 @@ static void mount_geographic_coordinates_callback(indigo_device *device) {
 		double longitude = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 		if (longitude > 180)
 			longitude -= 360;
-		if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0100 || PRIVATE_DATA->protocol == 0x0100)
-			sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f"));
+		if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000 || PRIVATE_DATA->protocol == 0x0100)
+			sprintf(command, ":Sg %s#", indigo_dtos(longitude, "%+04d*%02d:%02.0f"));
 		else if (PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205)
 			sprintf(command, ":Sg%+07.0f#", longitude * 60 * 60);
 		else if (PRIVATE_DATA->protocol == 0x0300)
@@ -1432,12 +1470,28 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 				ieq_command(device, ":RT4#", response, 1);
 				PRIVATE_DATA->lastTrackRate = '4';
 			}
+			if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value && PRIVATE_DATA->lastCustomTrackingRate != MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value) {
+				if (PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0100) {
+					sprintf(command, ":RR %+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
+				} else if (PRIVATE_DATA->protocol == 0x0200) {
+					sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
+				} else if (PRIVATE_DATA->protocol >= 0x0205) {
+					sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
+				}
+				if (ieq_command(device, command, response, 1) && *response == '1') {
+					PRIVATE_DATA->lastCustomTrackingRate = MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value;
+					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+				} else {
+					MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
+				}
+				indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
+			}
 			ieq_command(device, ":ST1#", response, 1);
 		}
 		if (PRIVATE_DATA->hc8406)
-			sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%04.1f"));
+			sprintf(command, ":Sr %s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%04.1f"));
 		else if (PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000 || PRIVATE_DATA->protocol == 0x0100)
-			sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
+			sprintf(command, ":Sr %s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 		else if (PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205)
 			sprintf(command, ":Sr%08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
 		else if (PRIVATE_DATA->protocol == 0x0300)
@@ -1447,7 +1501,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000 || PRIVATE_DATA->protocol == 0x0100)
-				sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
+				sprintf(command, ":Sd %s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 			else if (PRIVATE_DATA->protocol >= 0x0200)
 				sprintf(command, ":Sd%+09.0f#", MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * 60 * 60 * 100);
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
@@ -1476,9 +1530,9 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		char command[128], response[128];
 		if (PRIVATE_DATA->hc8406)
-			sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%04.1f"));
+			sprintf(command, ":Sr %s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%04.1f"));
 		else if (PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000 || PRIVATE_DATA->protocol == 0x0100)
-			sprintf(command, ":Sr%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
+			sprintf(command, ":Sr %s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%02.0f"));
 		else if (PRIVATE_DATA->protocol == 0x0200 || PRIVATE_DATA->protocol == 0x0205)
 			sprintf(command, ":Sr%08.0f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 60 * 60 * 1000);
 		else if (PRIVATE_DATA->protocol == 0x0300)
@@ -1488,7 +1542,7 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			if (PRIVATE_DATA->hc8406 || PRIVATE_DATA->hc8407 || PRIVATE_DATA->protocol == 0x0000 || PRIVATE_DATA->protocol == 0x0100)
-				sprintf(command, ":Sd%s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
+				sprintf(command, ":Sd %s#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%02.0f"));
 			else if (PRIVATE_DATA->protocol >= 0x0200)
 				sprintf(command, ":Sd%+08.0f#", MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * 60 * 60 * 100);
 			if (!ieq_command(device, command, response, 1) || *response != '1') {
@@ -1630,8 +1684,7 @@ static void mount_set_host_time_callback(indigo_device *device) {
 	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
 		time_t secs = time(NULL);
-		int offset = (int)(-timezone / 3600) + daylight;
-		if (ieq_set_utc(device, &secs, offset)) {
+		if (ieq_set_utc(device, &secs, indigo_get_utc_offset())) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -1660,26 +1713,6 @@ static void mount_set_utc_callback(indigo_device *device) {
 		}
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	}
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-}
-
-static void mount_custom_tracking_rate_callback(indigo_device *device) {
-	char command[128], response[128];
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (PRIVATE_DATA->protocol == 0x0100 || PRIVATE_DATA->protocol == 0x0200) {
-		sprintf(command, ":RR%+8.4f#", MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value);
-		if (ieq_command(device, command, response, 1) && *response == '1')
-			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else if (PRIVATE_DATA->protocol >= 0x0205) {
-		sprintf(command, ":RR%05d#", (int)(MOUNT_CUSTOM_TRACKING_RATE_ITEM->number.value * 1e4));
-		if (ieq_command(device, command, response, 1) && *response == '1')
-			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
-		else
-			MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-	}
-	indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -1825,12 +1858,26 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = false;
 		MOUNT_UTC_TIME_PROPERTY->hidden = false;
 		MOUNT_TRACK_RATE_PROPERTY->count = 5;
+		DEVICE_BAUDRATE_PROPERTY->hidden = false;
+		*DEVICE_BAUDRATE_ITEM->text.value = 0;
 		// -------------------------------------------------------------------------------- MOUNT_HOME
 		MOUNT_HOME_PROPERTY = indigo_resize_property(MOUNT_HOME_PROPERTY, 2);
 		if (MOUNT_HOME_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_HOME_SEARCH_ITEM, MOUNT_HOME_SEARCH_ITEM_NAME, "Search mechanical zero position", false);
 		MOUNT_HOME_PROPERTY->count = 1;
+		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL
+		MOUNT_PROTOCOL_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_PROTOCOL_PROPERTY_NAME, MAIN_GROUP, "Mount protocol version", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		if (MOUNT_PROTOCOL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(PROTOCOL_AUTO_ITEM, PROTOCOL_AUTO_ITEM_NAME, "Autodetection", true);
+		indigo_init_switch_item(PROTOCOL_8406_ITEM, PROTOCOL_8406_ITEM_NAME, "HC 8406", false);
+		indigo_init_switch_item(PROTOCOL_8407_ITEM, PROTOCOL_8407_ITEM_NAME, "HC 8407", false);
+		indigo_init_switch_item(PROTOCOL_0000_ITEM, PROTOCOL_0000_ITEM_NAME, "0.0 (unknown)", false);
+		indigo_init_switch_item(PROTOCOL_0100_ITEM, PROTOCOL_0100_ITEM_NAME, "1.0", false);
+		indigo_init_switch_item(PROTOCOL_0200_ITEM, PROTOCOL_0200_ITEM_NAME, "2.0", false);
+		indigo_init_switch_item(PROTOCOL_0205_ITEM, PROTOCOL_0205_ITEM_NAME, "2.5", false);
+		indigo_init_switch_item(PROTOCOL_0300_ITEM, PROTOCOL_0300_ITEM_NAME, "3.0", false);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1840,6 +1887,7 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	indigo_define_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
 
@@ -1958,13 +2006,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_set_utc_callback, NULL);
-	} else if (indigo_property_match_changeable(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
-		indigo_property_copy_values(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property, false);
-		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, mount_custom_tracking_rate_callback, NULL);
-		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		if (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PARKED_ITEM->sw.value) {
@@ -1984,6 +2025,17 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_update_property(device, MOUNT_GUIDE_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_guide_rate_callback, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(MOUNT_PROTOCOL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_PROTOCOL
+		indigo_property_copy_values(MOUNT_PROTOCOL_PROPERTY, property, false);
+		MOUNT_PROTOCOL_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_PROTOCOL_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, MOUNT_PROTOCOL_PROPERTY);
+		}
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_mount_change_property(device, client, property);
@@ -1995,6 +2047,7 @@ static indigo_result mount_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		mount_connect_callback(device);
 	}
+	indigo_release_property(MOUNT_PROTOCOL_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }
@@ -2099,6 +2152,7 @@ indigo_result indigo_mount_ioptron(indigo_driver_action action, indigo_driver_in
 			private_data = indigo_safe_malloc(sizeof(ioptron_private_data));
 			mount = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_template);
 			mount->private_data = private_data;
+			mount->master_device = mount;
 			indigo_attach_device(mount);
 			mount_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &mount_guider_template);
 			mount_guider->private_data = private_data;

@@ -27,7 +27,46 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_fits.h>
 
-indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fits_keyword *keywords) {
+static int raw_read_keyword_value(const uint8_t *ptr8, char *keyword, char *value) {
+	int i;
+	int length = strlen(ptr8);
+
+	for (i = 0; i < 8 && ptr8[i] != ' '; i++) {
+		keyword[i] = ptr8[i];
+	}
+	keyword[i] = '\0';
+
+	if (ptr8[8] == '=') {
+		i++;
+		while (i < length && ptr8[i] == ' ') {
+			i++;
+		}
+
+		if (i < length) {
+			*value++ = ptr8[i];
+			i++;
+			if (ptr8[i-1] == '\'') {
+				for (; i < length && ptr8[i] != '\''; i++) {
+					*value++ = ptr8[i];
+				}
+				*value++ = '\'';
+			} else if (ptr8[i-1] == '(') {
+				for (; i < length && ptr8[i] != ')'; i++) {
+					*value++ = ptr8[i];
+				}
+				*value++ = ')';
+			} else {
+				for (; i < length && ptr8[i] != ' ' && ptr8[i] != '/'; i++) {
+					*value++ = ptr8[i];
+				}
+			}
+		}
+	}
+	*value = '\0';
+	return 0;
+}
+
+indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fits_size, indigo_fits_keyword *keywords) {
 	int byte_per_pixel = 0, components = 0;
 	int frame_width = 0, frame_height = 0;
 	if (!strncmp("RAW1", (const char *)(image), 4)) {
@@ -64,9 +103,10 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 	}
 
 	int pixel_count = frame_width * frame_height;
-	int image_size = pixel_count * byte_per_pixel * components + FITS_HEADER_SIZE;
-	if (image_size % FITS_HEADER_SIZE) {
-		image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
+	int data_size = pixel_count * byte_per_pixel;
+	int image_size = data_size * components + FITS_RECORD_SIZE;
+	if (image_size % FITS_RECORD_SIZE) {
+		image_size = (image_size / FITS_RECORD_SIZE + 1) * FITS_RECORD_SIZE;
 	}
 
 	*fits = realloc(*fits, image_size);
@@ -96,7 +136,7 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 		t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
 	}
 	if (keywords) {
-		while (keywords->type && (p - (char *)buffer) < (FITS_HEADER_SIZE - 80)) {
+		while (keywords->type && (p - (char *)buffer) < (FITS_RECORD_SIZE - 80)) {
 			switch (keywords->type) {
 				case INDIGO_FITS_NUMBER:
 					t = sprintf(p += 80, "%7s= %20f / %s", keywords->name, keywords->number, keywords->comment);
@@ -113,12 +153,36 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 			keywords++;
 		}
 	}
+
+	/* add embedded keywords to the fits header */
+	int extension_length = in_size - data_size - sizeof(indigo_raw_header);
+	if (extension_length > 9) {
+		char *extension = indigo_safe_malloc(extension_length + 1);
+		char *extension_start = extension;
+		strncpy(extension, image + data_size, extension_length);
+		if (!strncmp(extension_start, "SIMPLE=T;", 9)) {
+			extension_start += 9;
+			extension_length -= 9;
+			char *pos = NULL;
+			while(pos = strchr(extension_start, ';')) {
+				char keyword[80];
+				char value[80];
+				*pos = '\0';
+				raw_read_keyword_value(extension_start, keyword, value);
+				extension_start = pos+1;
+				t = sprintf(p += 80, "%7s= %s", keyword, value);
+				p[t] = ' ';
+			}
+		}
+		indigo_safe_free(extension);
+	}
+
 	t = sprintf(p += 80, "ROWORDER= %20s / Image row order", "'TOP-DOWN'"); p[t] = ' ';
 	t = sprintf(p += 80, "COMMENT   FITS (Flexible Image Transport System) format is defined in 'Astronomy"); p[t] = ' ';
 	t = sprintf(p += 80, "COMMENT   and Astrophysics', volume 376, page 359; bibcode: 2001A&A...376..359H"); p[t] = ' ';
 	t = sprintf(p += 80, "COMMENT   Converted from INDIGO RAW format. See www.indigo-astronomy.org"); p[t] = ' ';
 	t = sprintf(p += 80, "END"); p[t] = ' ';
-	p = buffer + FITS_HEADER_SIZE;
+	p = buffer + FITS_RECORD_SIZE;
 	if (components == 1) {
 		// mono
 		if (byte_per_pixel == 2) {
@@ -162,6 +226,6 @@ indigo_result indigo_raw_to_fits(char *image, char **fits, int *size, indigo_fit
 		}
 	}
 	*fits = buffer;
-	*size = image_size;
+	*fits_size = image_size;
 	return INDIGO_OK;
 }

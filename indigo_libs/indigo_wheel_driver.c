@@ -109,6 +109,14 @@ indigo_result indigo_wheel_change_property(indigo_device *device, indigo_client 
 		}
 		// -------------------------------------------------------------------------------- WHEEL_SLOT_NAME
 	} else if (indigo_property_match_changeable(WHEEL_SLOT_NAME_PROPERTY, property)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (strlen(item->text.value) > 50) {
+				WHEEL_SLOT_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, WHEEL_SLOT_NAME_PROPERTY, "Filter name is too long");
+				return INDIGO_OK;
+			}
+		}
 		indigo_property_copy_values(WHEEL_SLOT_NAME_PROPERTY, property, false);
 		WHEEL_SLOT_NAME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);

@@ -17,7 +17,7 @@ else
 	endif
 endif
 
-all: executable_driver_client dynamic_driver_client remote_server_client
+all: executable_driver_client dynamic_driver_client remote_server_client servce_discovery
 
 executable_driver_client: executable_driver_client.c
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
@@ -28,7 +28,10 @@ dynamic_driver_client: dynamic_driver_client.c
 remote_server_client: remote_server_client.c
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
+servce_discovery: service_discovery.c
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
 .PHONY: clean
 
 clean:
-	rm executable_driver_client dynamic_driver_client remote_server_client
+	rm executable_driver_client dynamic_driver_client remote_server_client service_discovery

@@ -26,7 +26,7 @@
  \file indigo_ccd_ssag.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_ccd_ssag"
 
 #include <stdlib.h>
@@ -275,8 +275,6 @@ static void ssag_close(indigo_device *device) {
 static void exposure_timer_callback(indigo_device *device) {
 	if (!CONNECTION_CONNECTED_ITEM->sw.value)
 		return;
-
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -346,6 +344,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -374,6 +373,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -467,6 +467,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
@@ -485,6 +486,7 @@ static void guider_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -565,6 +567,11 @@ static indigo_result guider_detach(indigo_device *device) {
 #define OTI_LOADER_VENDOR_ID 0x16C0
 #define OTI_LOADER_PRODUCT_ID 0x296D
 
+/* custom uninitialized VID/PID */
+
+static int custom_vid = 0;
+static int custom_pid = 0;
+
 static indigo_device *devices[MAX_DEVICES];
 static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -588,7 +595,7 @@ static void process_plug_event(libusb_device *dev) {
 	struct libusb_device_descriptor descriptor;
 	pthread_mutex_lock(&device_mutex);
 	INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
-	if ((descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID) || (descriptor.idVendor == OTI_LOADER_VENDOR_ID && descriptor.idProduct == OTI_LOADER_PRODUCT_ID)) {
+	if ((custom_vid != 0 && custom_pid != 0 && descriptor.idVendor == custom_vid && descriptor.idProduct == custom_pid) || (descriptor.idVendor == SSAG_LOADER_VENDOR_ID && descriptor.idProduct == SSAG_LOADER_PRODUCT_ID) || (descriptor.idVendor == QHY5_LOADER_VENDOR_ID && descriptor.idProduct == QHY5_LOADER_PRODUCT_ID) || (descriptor.idVendor == OTI_LOADER_VENDOR_ID && descriptor.idProduct == OTI_LOADER_PRODUCT_ID)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s (0x%04x, 0x%04x)", rc < 0 ? libusb_error_name(rc) : "OK", descriptor.idVendor, descriptor.idProduct);
 		libusb_ref_device(dev);
 		indigo_async((void *)(void *)ssag_firmware, dev);
@@ -598,10 +605,13 @@ static void process_plug_event(libusb_device *dev) {
 		libusb_ref_device(dev);
 		private_data->dev = dev;
 		indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+		indigo_device *master_device = device;
 		char usb_path[INDIGO_NAME_SIZE];
 		indigo_get_usb_path(dev, usb_path);
-		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG #%s", usb_path);
+		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG");
+		indigo_make_name_unique(device->name, "%s", usb_path);
 		device->private_data = private_data;
+		device->master_device = master_device;
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
 				indigo_attach_device(devices[j] = device);
@@ -609,8 +619,10 @@ static void process_plug_event(libusb_device *dev) {
 			}
 		}
 		device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
-		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG (guider) #%s", usb_path);
+		snprintf(device->name, INDIGO_NAME_SIZE, "SSAG (guider)");
+		indigo_make_name_unique(device->name, "%s", usb_path);
 		device->private_data = private_data;
+		device->master_device = master_device;
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
 				indigo_attach_device(devices[j] = device);
@@ -673,6 +685,13 @@ indigo_result indigo_ccd_ssag(indigo_driver_action action, indigo_driver_info *i
 			devices[i] = 0;
 		}
 		indigo_start_usb_event_handler();
+		char *env;
+		if ((env = getenv("SSAG_VID")))
+			custom_vid = (int)strtol(env, NULL, 16);
+		if ((env = getenv("SSAG_PID")))
+			custom_pid = (int)strtol(env, NULL, 16);
+		if (custom_vid && custom_pid)
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "using custom VID = 0x%04x, PID = 0x%04x", custom_vid, custom_pid);
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 		return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;

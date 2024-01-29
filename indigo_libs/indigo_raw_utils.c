@@ -461,9 +461,21 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 
 indigo_result indigo_selection_frame_digest_iterative(indigo_raw_type raw_type, const void *data, double *x, double *y, const int radius, const int width, const int height, indigo_frame_digest *digest, int converge_iterations) {
 	int result = INDIGO_FAILED;
-	while (converge_iterations--) {
-		// indigo_debug("%s: X = %.3f, Y= %3f", __FUNCTION__, *x, *y);
+	int ci = converge_iterations;
+	while (ci--) {
 		result = indigo_selection_frame_digest(raw_type, data, x, y, radius, width, height, digest);
+		if (result != INDIGO_OK) {
+			break;
+		}
+	}
+	if (result != INDIGO_OK) {
+		/* No star found in the selection -> search in wider vicinity then converge again */
+		indigo_debug("%s(): No star found around X = %.3f, Y= %3f. Searching in wider vicinity", __FUNCTION__, *x, *y, converge_iterations);
+		result = indigo_selection_frame_digest(raw_type, data, x, y, (int)(radius * 2.5), width, height, digest);
+		ci = converge_iterations;
+		while (ci--) {
+			result = indigo_selection_frame_digest(raw_type, data, x, y, radius, width, height, digest);
+		}
 	}
 	return result;
 }
@@ -2189,11 +2201,13 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 
 			indigo_result res = INDIGO_FAILED;
 			if (radius >= 3) {
-				indigo_frame_digest center;
+				indigo_frame_digest center = {0};
 				res = indigo_selection_frame_digest_iterative(raw_type, data, &star.x, &star.y, radius, width, height, &center, 2);
 				star.x = center.centroid_x;
 				star.y = center.centroid_y;
-				indigo_delete_frame_digest(&center);
+				if(res == INDIGO_OK) {
+					indigo_delete_frame_digest(&center);
+				}
 			}
 
 			if (res == INDIGO_OK || radius < 3) {

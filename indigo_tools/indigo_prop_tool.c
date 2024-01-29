@@ -24,7 +24,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
-#include <pthread.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <ctype.h>
@@ -32,9 +31,13 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+#if !defined(INDIGO_WINDOWS)
+#include <net/if.h>
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
-#include <indigo/indigo_xml.h>
+#include <indigo/indigo_service_discovery.h>
 
 #define INDIGO_DEFAULT_PORT 7624
 #define REMINDER_MAX_SIZE 2048
@@ -50,6 +53,7 @@ static bool list_state_requested = false;
 static bool get_state_requested = false;
 static bool print_verbose = false;
 static bool save_blobs = false;
+static bool discover_requested = false;
 
 typedef struct {
 	int item_count;
@@ -776,6 +780,30 @@ static indigo_client client = {
 	client_detach
 };
 
+void resolve_callback(const char *name, uint32_t interface_index, const char *host, int port) {
+	if (host == NULL) {
+		return;
+	}
+	if (print_verbose) {
+#if !defined(INDIGO_WINDOWS)
+		char ifname[255] = {0};
+		if_indextoname(interface_index, ifname);
+		printf("%s: %s -> %s:%u \n", ifname, name, host, port);
+#else
+		printf("%d: %s -> %s:%u \n", interface_index, name, host, port);
+#endif
+	} else {
+		printf("%s -> %s:%u \n", name, host, port);
+	}
+}
+
+void discover_callback(indigo_service_discovery_event event, const char *service_name, uint32_t interface_index) {
+	if (event == INDIGO_SERVICE_ADDED && print_verbose) {
+		indigo_resolve_service(service_name, interface_index, resolve_callback);
+	} else if (event == INDIGO_SERVICE_ADDED_GROUPED && !print_verbose) {
+		indigo_resolve_service(service_name, interface_index, resolve_callback);
+	}
+}
 
 static void print_help(const char *name) {
 	printf("INDIGO property manipulation tool v.%d.%d-%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
@@ -786,6 +814,7 @@ static void print_help(const char *name) {
 	printf("       %s get_state [options] device.property\n", name);
 	printf("       %s list [options] [device[.property]]\n", name);
 	printf("       %s list_state [options] [device[.property]]\n", name);
+	printf("       %s discover [options]\n", name);
 	printf("set write-only BLOBs:\n");
 	printf("       %s set [options] device.property.item=filename[;NAME=filename]\n", name);
 	printf("options:\n"
@@ -843,6 +872,10 @@ int main(int argc, const char * argv[]) {
 	} else if (!strcmp(argv[1], "set_script")) {
 		set_requested = true;
 		set_script_requested = true;
+		arg_base = 2;
+	} else if (!strcmp(argv[1], "discover")) {
+		set_requested = false;
+		discover_requested = true;
 		arg_base = 2;
 	}
 
@@ -949,6 +982,13 @@ int main(int argc, const char * argv[]) {
 		#ifdef DEBUG
 		printf("PARSED: %s * %s\n", list_request.device_name, list_request.property_name);
 		#endif
+	} else if (discover_requested) {
+		indigo_start();
+		indigo_start_service_browser(discover_callback);
+		indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
+		indigo_stop_service_browser();
+		indigo_stop();
+		return 0;
 	} else {
 		if (parse_list_property_string(prop_string, &list_request) < 0) {
 			fprintf(stderr, "Invalid property string format\n");

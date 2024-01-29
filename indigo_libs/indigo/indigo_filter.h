@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #define INDIGO_FILTER_LIST_COUNT							13
-#define INDIGO_FILTER_MAX_DEVICES							32
+#define INDIGO_FILTER_MAX_DEVICES							128
 #define INDIGO_FILTER_MAX_CACHED_PROPERTIES		256
 	
 #define INDIGO_FILTER_CCD_INDEX								0
@@ -167,7 +167,41 @@ extern "C" {
 /** Related agent list switch property.
  */
 #define FILTER_RELATED_AGENT_LIST_PROPERTY		(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property)
-	
+
+/** FILTER_FORCE_SYMMETRIC_RELATIONS property pointer, property is mandatory, property change request is fully handled by indigo_filter_change_property().
+ */
+#define FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY	(FILTER_DEVICE_CONTEXT->filter_force_SYMMETRIC_relations_property)
+
+/** FILTER_FORCE_SYMMETRIC_RELATIONS.ENABLED property item pointer.
+ */
+#define FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM	(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->items+0)
+
+/** FILTER_FORCE_SYMMETRIC_RELATIONS.DISABLED property item pointer.
+ */
+#define FILTER_FORCE_SYMMETRIC_RELATIONS_DISABLED_ITEM	(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->items+1)
+
+
+/** CCD_LENS_FOV property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_LENS_FOV_PROPERTY                (FILTER_DEVICE_CONTEXT->ccd_lens_info_property)
+
+/** CCD_LENS_FOV.FOV_WIDTH property item pointer.
+ */
+#define CCD_LENS_FOV_FOV_WIDTH_ITEM          (CCD_LENS_FOV_PROPERTY->items+0)
+
+/** CCD_LENS_FOV.FOV_HEIGHT property item pointer.
+ */
+#define CCD_LENS_FOV_FOV_HEIGHT_ITEM         (CCD_LENS_FOV_PROPERTY->items+1)
+
+/** CCD_LENS_FOV.PIXEL_SCALE_WIDTH property item pointer.
+ */
+#define CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM  (CCD_LENS_FOV_PROPERTY->items+2)
+
+/** CCD_LENS_FOV.PIXEL_SCALE_HEIGHT property item pointer.
+ */
+#define CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM (CCD_LENS_FOV_PROPERTY->items+3)
+
+
 /** Filter device context structure.
  */
 typedef struct {
@@ -178,16 +212,22 @@ typedef struct {
 	indigo_property *filter_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_related_device_list_properties[INDIGO_FILTER_LIST_COUNT];
 	indigo_property *filter_related_agent_list_property;
+	indigo_property *filter_force_SYMMETRIC_relations_property;
 	indigo_property *device_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *agent_property_cache[INDIGO_FILTER_MAX_CACHED_PROPERTIES];
 	indigo_property *connection_property_cache[INDIGO_FILTER_MAX_DEVICES];
-	char *connection_property_device_cache[INDIGO_FILTER_MAX_DEVICES];
 	bool running_process;
 	bool property_removed;
 	bool (*validate_related_agent)(indigo_device *device, indigo_property *info_property, int mask);
 	bool (*validate_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
 	bool (*validate_related_device)(indigo_device *device, int index, indigo_property *info_property, int mask);
 	indigo_client *additional_client_instances[MAX_ADDITIONAL_INSTANCES];
+	indigo_property *ccd_lens_info_property;
+	int frame_width, frame_height;
+	int bin_horizontal, bin_vertical;
+	double pixel_width, pixel_height;
+	double focal_length;
+	double fov_width, fov_height;
 } indigo_filter_context;
 
 /** Device attach callback function.
@@ -225,6 +265,13 @@ extern bool indigo_filter_cached_property(indigo_device *device, int index, char
 /** Forward property change to a different device.
  */
 extern indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name);
+/** Find the full name of the first related agent starting with a given base name.
+ */
+extern char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1);
+/** Find the full name of the first related agent starting with any of given base names.
+ */
+extern char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2);
+
 #ifdef __cplusplus
 }
 #endif

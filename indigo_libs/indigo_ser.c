@@ -52,7 +52,7 @@ static bool write_long(int handle, uint64_t n) {
 	return indigo_write(handle, (const char *)buffer, 8);
 }
 
-indigo_ser *indigo_ser_open(const char *filename, void *buffer, bool little_endian, bool byte_order_rgb) {
+indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	indigo_ser *ser = NULL;
 	int handle;
 	if ((handle = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1) {
@@ -78,14 +78,14 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer, bool little_endi
 			bits_per_pixel = 16;
 			break;
 		case INDIGO_RAW_RGB24:
-			result = result && write_int(handle, byte_order_rgb ? 101 : 100); // 18
+			result = result && write_int(handle, 101); // 18
 			break;
 		case INDIGO_RAW_RGB48:
-			result = result && write_int(handle, byte_order_rgb ? 101 : 100); // 18
+			result = result && write_int(handle, 101); // 18
 			bits_per_pixel = 16;
 			break;
 	}
-	result = result && write_int(handle, !little_endian); // 22
+	result = result && write_int(handle, false); // 22
 	result = result && write_int(handle, header->width); // 26
 	result = result && write_int(handle, header->height); // 30
 	result = result && write_int(handle, bits_per_pixel); // 34

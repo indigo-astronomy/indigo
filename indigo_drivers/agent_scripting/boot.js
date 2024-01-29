@@ -32,14 +32,54 @@ function indigo_log_with_property(message, property) {
 		var value = property.items[name];
 		if (typeof value == "string")
 			value = "'"+value+"'";
+		if (typeof value == "object") {
+			var str = "[";
+			var next = false;
+			for (field in value) {
+				var subvalue = value[field];
+				if (next)
+					str += ", ";
+				next = true;
+				if (typeof subvalue == "string")
+					subvalue = "'"+subvalue+"'";
+				str += field + ": " + subvalue;
+			}
+			value = str + "]";
+		}
 		indigo_log("  "+name+" = "+value+"");
 	}
 	if (property.message)
 		indigo_log("  message: "+message);
 }
 
-function indigo_on_define_property(device_name, property_name, items, state, perm, message) {
-	var property = { device: device_name, name: property_name, items: items, state: state, perm: perm, message: message };
+function indigo_error_with_property(message, property) {
+	indigo_error(message + " property '"+property.device+"'."+property.name+", state = "+property.state+", perm = "+property.perm);
+	for (name in property.items) {
+		var value = property.items[name];
+		if (typeof value == "string")
+			value = "'"+value+"'";
+		if (typeof value == "object") {
+			var str = "[";
+			var next = false;
+			for (field in value) {
+				var subvalue = value[field];
+				if (next)
+					str += ", ";
+				next = true;
+				if (typeof subvalue == "string")
+					subvalue = "'"+subvalue+"'";
+				str += field + ": " + subvalue;
+			}
+			value = str + "]";
+		}
+		indigo_error("  "+name+" = "+value+"");
+	}
+	if (property.message)
+		indigo_error("  message: "+message);
+}
+
+function indigo_on_define_property(device_name, property_name, items, item_defs, state, perm, message) {
+	var property = { device: device_name, name: property_name, items: items, item_defs: item_defs, state: state, perm: perm, message: message };
 	var properties = indigo_devices[device_name];
 	if (properties == null) {
 		indigo_devices[device_name] = { [property_name]: property };
@@ -102,7 +142,9 @@ function indigo_on_send_message(device_name, message) {
 }
 
 function indigo_on_enumerate_properties(device_name, property_name) {
-	var property = { device: device_name };
+	var property = { };
+	if (device_name)
+		property.device = device_name;
 	if (property_name)
 		property.name = property_name;
 	indigo_call_handlers("on_enumerate_properties", device_name, property, false);

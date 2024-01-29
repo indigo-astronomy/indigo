@@ -39,9 +39,9 @@ endif
 BIN_EXTERNALS = $(INDIGO_ROOT)/bin_externals
 
 ifeq ($(INDIGO_CUDA),)
-	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c)))
+	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) $(addsuffix .o, $(basename $(wildcard *.cpp))) indigo_build.o
 else
-	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) $(addsuffix .o, $(basename $(wildcard *.cu)))
+	LIBINDIGO_FILES = $(addsuffix .o, $(basename $(wildcard *.c))) $(addsuffix .o, $(basename $(wildcard *.cpp))) $(addsuffix .o, $(basename $(wildcard *.cu))) indigo_build.o
 endif
 
 %.o: %.cu
@@ -84,29 +84,35 @@ clean-all: status
 
 #---------------------------------------------------------------------
 #
+#	Make version dependent files
+#
+#---------------------------------------------------------------------
+
+indigo_build_c:
+	sh ../tools/make_indigo_build.sh >indigo_build.c
+	$(CC) $(CFLAGS) -c indigo_build.c -o indigo_build.o
+
+indigo_config.h:	../Makefile.inc
+	cp indigo/indigo_config.h indigo/indigo_config.h.orig
+	sed 's/INDIGO_BUILD\s.*/INDIGO_BUILD "$(INDIGO_BUILD)"/' indigo/indigo_config.h.orig >indigo/indigo_config.h
+
+#---------------------------------------------------------------------
+#
 #	Build libindigo
 #
 #---------------------------------------------------------------------
 
-libindigo: version libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
+libindigo: indigo_build_c indigo_config.h libusb libhidapi libjpeg libtiff libftd2xx libraw libindigocat $(BUILD_LIB)/libindigo.a $(BUILD_LIB)/libindigo.$(SOEXT)
 
 $(BUILD_LIB)/libindigo.a: $(LIBINDIGO_FILES)
 	$(AR) $(ARFLAGS) $@ $^
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(LIBINDIGO_FILES)
+ifeq ($(OS_DETECTED),Darwin)
 	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a $(FORCE_ALL_ON) $(LIBHIDAPI).a $(FORCE_ALL_OFF) -ldl -lusb-1.0 -lz -lstdc++
-
-#---------------------------------------------------------------------
-#
-#	Make version dependent files
-#
-#---------------------------------------------------------------------
-
-version: indigo_config.h
-
-indigo_config.h:	../Makefile.inc
-	cp indigo/indigo_config.h indigo/indigo_config.h.orig
-	sed 's/INDIGO_BUILD.*/INDIGO_BUILD "$(INDIGO_BUILD)"/' indigo/indigo_config.h.orig >indigo/indigo_config.h
+else
+	$(CC) -shared -o $@ $^ $(LDFLAGS) $(FORCE_ALL_ON) $(BUILD_LIB)/libjpeg.a $(FORCE_ALL_OFF) $(BUILD_LIB)/libtiff.a $(BUILD_LIB)/libtiffxx.a $(BUILD_LIB)/libraw.a $(FORCE_ALL_ON) $(LIBHIDAPI).a $(FORCE_ALL_OFF) -ldl -lusb-1.0 -ldns_sd -lz -lstdc++
+endif
 
 #---------------------------------------------------------------------
 #

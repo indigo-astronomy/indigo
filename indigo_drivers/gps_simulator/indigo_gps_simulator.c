@@ -25,7 +25,7 @@
  */
 
 #define DRIVER_VERSION 0x0008
-#define DRIVER_NAME	"idnigo_gps_simulator"
+#define DRIVER_NAME	"indigo_gps_simulator"
 
 #include <stdlib.h>
 #include <string.h>

@@ -1,0 +1,36 @@
+2023.03.30(1.2.0)
+- Add a space between PW name and custom name
+- Add static library
+- Add linux x86 version lib
+
+2023.01.31(1.1.0)
+- Optimization: After opening the Phoenix Wheel, it is not moving to 1st position any more.
+Note:When the PW is connected to the host and the PW is detected for the first time(call POAGetPWCount()), it will self-check and goto to the 1st position.
+
+2022.12.19(1.0.0)
+- Initial Release, support all Player One filter wheel(Phoenix Wheel)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

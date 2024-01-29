@@ -11,6 +11,7 @@
 **/.deps
 **/*.log
 *.deb
+**/configure~
 Dockerfile
 /externals/
 /build/
@@ -31,3 +32,4 @@ indigo.xcodeproj/xcshareddata/
 /indigo_windows/test/Debug
 /indigo_drivers/gps_gpsd/externals/libgps/libgps.a
 /tools/fxload/fxload
+indigo_libs/indigo_build.c

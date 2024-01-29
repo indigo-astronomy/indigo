@@ -292,7 +292,8 @@ static int open_socket(const char *host, int port, int type) {
 	srv_info.sin_family = AF_INET;
 	srv_info.sin_port = htons(port);
 	srv_info.sin_addr = *((struct in_addr *)he->h_addr);
-	if (connect(sock, (struct sockaddr *)&srv_info, sizeof(struct sockaddr))<0) {
+	if (connect(sock, (struct sockaddr *)&srv_info, sizeof(struct sockaddr)) < 0) {
+		close(sock);
 		return -1;
 	}
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
@@ -379,7 +380,7 @@ int indigo_read(int handle, char *buffer, long length) {
 #endif
 		if (bytes_read <= 0) {
 			if (bytes_read < 0)
-				INDIGO_ERROR(indigo_error("%s(): %s", __FUNCTION__, strerror(errno)));
+				INDIGO_ERROR(indigo_error("%d -> // %s", handle, strerror(errno)));
 			return (int)bytes_read;
 		}
 		total_bytes += bytes_read;
@@ -430,12 +431,12 @@ int indigo_read_line(int handle, char *buffer, int length) {
 				break;
 		} else {
 			errno = ECONNRESET;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → Connection reset", handle));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> // Connection reset", handle));
 			return -1;
 		}
 	}
 	buffer[total_bytes] = '\0';
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", handle, buffer));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", handle, buffer));
 	return (int)total_bytes;
 }
 
@@ -449,7 +450,7 @@ bool indigo_write(int handle, const char *buffer, long length) {
 		long bytes_written = write(handle, buffer, remains);
 #endif
 		if (bytes_written < 0) {
-			INDIGO_ERROR(indigo_error("%s(%d): %s", __FUNCTION__, handle, strerror(errno)));
+			INDIGO_ERROR(indigo_error("%d <- // %s", handle, strerror(errno)));
 			return false;
 		}
 		if (bytes_written == remains)
@@ -466,12 +467,12 @@ bool indigo_printf(int handle, const char *format, ...) {
 		va_start(args, format);
 		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
 		va_end(args);
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s", handle, buffer));
 		bool result = indigo_write(handle, buffer, length);
 		indigo_free_large_buffer(buffer);
 		return result;
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s", handle, format));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s", handle, format));
 		return indigo_write(handle, format, strlen(format));
 	}
 }

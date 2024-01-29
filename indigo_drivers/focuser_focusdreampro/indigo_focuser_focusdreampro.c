@@ -23,7 +23,7 @@
  \file indigo_focuser_focusdreampro.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_focusdreampro"
 
 #include <stdlib.h>
@@ -113,12 +113,21 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_STEPS_ITEM->number.step = 1;
 		// -------------------------------------------------------------------------------- FOCUSER_ON_POSITION_SET
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION & FOCUSER_LIMITS
 		FOCUSER_POSITION_PROPERTY->hidden = false;
-		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
-		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target = FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.min = 0;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.max = 1000000;
+
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.target =
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value =
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min =
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min =
+		FOCUSER_POSITION_ITEM->number.min = 0;
+
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target =
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value =
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max =
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max =
+		FOCUSER_POSITION_ITEM->number.max = 1000000;
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);

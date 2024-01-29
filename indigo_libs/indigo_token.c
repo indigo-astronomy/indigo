@@ -29,6 +29,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <pthread.h>
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_bus.h>
 
@@ -171,7 +172,7 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 		// skip empty lines
 		if (buffer[0] == '\0') continue;
 
-		if (sscanf(buffer, "%llx %256[^\n]s", &token, device) == 2) {
+		if (sscanf(buffer, "%llx %127[^\n]s", &token, device) == 2) {
 			if (!strncmp(device, "@", 256)) {
 				indigo_set_master_token(token);
 			} else {

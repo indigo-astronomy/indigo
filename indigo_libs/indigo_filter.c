@@ -238,6 +238,25 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 				return INDIGO_FAILED;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = true;
 			FILTER_RELATED_AGENT_LIST_PROPERTY->count = 0;
+			// -------------------------------------------------------------------------------- FILTER_FORCE_SYMMETRIC_RELATIONS
+			FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY_NAME, "Main", "Force symmetric relations", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+			if (FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_switch_item(FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM, FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM_NAME, "Enable", true);
+			indigo_init_switch_item(FILTER_FORCE_SYMMETRIC_RELATIONS_DISABLED_ITEM, FILTER_FORCE_SYMMETRIC_RELATIONS_DISABLED_ITEM_NAME, "Disable", false);
+			// -------------------------------------------------------------------------------- CCD_LENS_FOV
+			CCD_LENS_FOV_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_LENS_FOV_PROPERTY_NAME, "Camera", "FOV and pixel scale", INDIGO_IDLE_STATE, INDIGO_RO_PERM, 4);
+			if (CCD_LENS_FOV_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(CCD_LENS_FOV_FOV_WIDTH_ITEM, CCD_LENS_FOV_FOV_WIDTH_ITEM_NAME, "FOV width (°)", 0, 180, 0, 0);
+			indigo_init_number_item(CCD_LENS_FOV_FOV_HEIGHT_ITEM, CCD_LENS_FOV_FOV_HEIGHT_ITEM_NAME, "FOV height (°)", 0, 180, 0, 0);
+			indigo_init_number_item(CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM, CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM_NAME, "Pixel scale width (°/px)", 0, 5, 0, 0);
+			indigo_init_number_item(CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM, CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM_NAME, "Pixel scale height (°/px)", 0, 5, 0, 0);
+			strcpy(CCD_LENS_FOV_FOV_WIDTH_ITEM->number.format, "%m");
+			strcpy(CCD_LENS_FOV_FOV_HEIGHT_ITEM->number.format, "%m");
+			strcpy(CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.format, "%.10m");
+			strcpy(CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.format, "%.10m");
+			CCD_LENS_FOV_PROPERTY->hidden = true;
 			// --------------------------------------------------------------------------------
 			CONFIG_PROPERTY->hidden = true;
 			PROFILE_PROPERTY->hidden = true;
@@ -265,6 +284,12 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 		if (cached_property && indigo_property_match(cached_property, property))
 			indigo_define_property(device, cached_property, NULL);
 	}
+	if (indigo_property_match(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property)) {
+		FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY->hidden = FILTER_RELATED_AGENT_LIST_PROPERTY->hidden;
+		indigo_define_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
+	}
+	if (indigo_property_match(CCD_LENS_FOV_PROPERTY, property))
+		indigo_define_property(device, CCD_LENS_FOV_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
@@ -312,6 +337,63 @@ static void update_additional_instances(indigo_device *device) {
 	indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, NULL);
 }
 
+static void add_cached_connection_property(indigo_device *device, indigo_property *property) {
+	int free_index = -1;
+	for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
+		indigo_property *cached_property = FILTER_DEVICE_CONTEXT->connection_property_cache[i];
+		if (cached_property == property) {
+			return;
+		} else if (cached_property == NULL) {
+			free_index = i;
+			break;
+		}
+	}
+	if (free_index == -1)
+		indigo_error("[%s:%d] Max cached device count reached", __FUNCTION__, __LINE__);
+	else
+		FILTER_DEVICE_CONTEXT->connection_property_cache[free_index] = property;
+}
+
+static void remove_cached_connection_property(indigo_device *device, indigo_property *property) {
+	if (*property->name) {
+		for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
+			if (FILTER_DEVICE_CONTEXT->connection_property_cache[i] == property) {
+				FILTER_DEVICE_CONTEXT->connection_property_cache[i] = NULL;
+				break;
+			}
+		}
+	} else {
+		for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
+			if (FILTER_DEVICE_CONTEXT->connection_property_cache[i] && !strcmp(FILTER_DEVICE_CONTEXT->connection_property_cache[i]->device, property->device)) {
+				FILTER_DEVICE_CONTEXT->connection_property_cache[i] = NULL;
+				break;
+			}
+		}
+	}
+}
+
+static bool device_is_available(indigo_device *device, char* name) {
+	bool available = true;
+	for (int j = 0; j < INDIGO_FILTER_MAX_DEVICES; j++) {
+		indigo_property *cached_connection_property = FILTER_DEVICE_CONTEXT->connection_property_cache[j];
+		if (cached_connection_property != NULL && !strcmp(cached_connection_property->device, name)) {
+			available = cached_connection_property->state == INDIGO_OK_STATE || cached_connection_property->state == INDIGO_ALERT_STATE;
+			if (available) {
+				available = false;
+				for (int k = 0; k < cached_connection_property->count; k++) {
+					indigo_item *item = cached_connection_property->items + k;
+					if (!strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME) && item->sw.value) {
+						available = true;
+						break;
+					}
+				}
+			}
+			break;
+		}
+	}
+	return available;
+}
+
 static indigo_result update_device_list(indigo_device *device, indigo_client *client, indigo_property *device_list, indigo_property *property, char *device_name) {
 	for (int i = 0; i < property->count; i++) {
 		if (property->items[i].sw.value) {
@@ -345,6 +427,10 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 					}
 				}
 			}
+			if (!CCD_LENS_FOV_PROPERTY->hidden) {
+				indigo_delete_property(device, CCD_LENS_FOV_PROPERTY, NULL);
+				CCD_LENS_FOV_PROPERTY->hidden = true;
+			}
 			indigo_init_switch_item(connection_property->items, CONNECTION_DISCONNECTED_ITEM_NAME, NULL, true);
 			connection_property->access_token = indigo_get_device_or_master_token(connection_property->device);
 			indigo_change_property(client, connection_property);
@@ -355,25 +441,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 	for (int i = 1; i < device_list->count; i++) {
 		if (device_list->items[i].sw.value) {
 			char *name = device_list->items[i].name;
-			bool disconnected = true;
-			for (int j = 0; j < INDIGO_FILTER_MAX_DEVICES; j++) {
-				indigo_property *cached_connection_property = FILTER_DEVICE_CONTEXT->connection_property_cache[j];
-				if (cached_connection_property != NULL && !strcmp(cached_connection_property->device, name)) {
-					disconnected = cached_connection_property->state == INDIGO_OK_STATE || cached_connection_property->state == INDIGO_ALERT_STATE;
-					if (disconnected) {
-						disconnected = false;
-						for (int k = 0; k < cached_connection_property->count; k++) {
-							indigo_item *item = cached_connection_property->items + k;
-							if (!strcmp(item->name, CONNECTION_DISCONNECTED_ITEM_NAME) && item->sw.value) {
-								disconnected = true;
-								break;
-							}
-						}
-					}
-					break;
-				}
-			}
-			if (disconnected) {
+			if (device_is_available(device, name)) {
 				device_list->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, device_list, NULL);
 				strcpy(connection_property->device, name);
@@ -384,7 +452,7 @@ static indigo_result update_device_list(indigo_device *device, indigo_client *cl
 			} else {
 				indigo_set_switch(device_list, device_list->items, true);
 				device_list->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, device_list, "'%s' is already connected and maybe in use, please disconnect it first.", name);
+				indigo_update_property(device, device_list, "'%s' is busy or in use and can not be selected.", name);
 			}
 			indigo_release_property(connection_property);
 			return INDIGO_OK;
@@ -413,19 +481,44 @@ static indigo_result update_related_device_list(indigo_device *device, indigo_pr
 	return INDIGO_OK;
 }
 
+static void set_reverse_relation(indigo_device *device, void *data) {
+	indigo_item *item = (indigo_item *)data;
+	if (FILTER_FORCE_SYMMETRIC_RELATIONS_ENABLED_ITEM->sw.value) {
+		char reverse_item_name[INDIGO_NAME_SIZE];
+		strcpy(reverse_item_name, device->name);
+		if (strchr(item->name, '@')) {
+			snprintf(reverse_item_name, sizeof(reverse_item_name), "%s @ %s", device->name, indigo_local_service_name);
+		} else {
+			indigo_copy_name(reverse_item_name, device->name);
+		}
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, reverse_item_name, item->sw.value);
+	}
+	indigo_property all_properties;
+	memset(&all_properties, 0, sizeof(all_properties));
+	strcpy(all_properties.device, item->name);
+	indigo_enumerate_properties(FILTER_DEVICE_CONTEXT->client, &all_properties);
+}
+
 static indigo_result update_related_agent_list(indigo_device *device, indigo_property *property) {
-	indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	indigo_property_copy_values(device_list, property, false);
-	for (int i = 0; i < device_list->count; i++) {
-		if (device_list->items[i].sw.value) {
-			device_list->state = INDIGO_OK_STATE;
-			indigo_property all_properties;
-			memset(&all_properties, 0, sizeof(all_properties));
-			strcpy(all_properties.device, device_list->items[i].name);
-			indigo_enumerate_properties(FILTER_DEVICE_CONTEXT->client, &all_properties);
+	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	bool is_imager_agent = !strncmp(device->name, "Imager Agent", 12);
+	for (int i = 0; i < property->count; i++) {
+		indigo_item *remote_item = property->items + i;
+		for (int j = 0; j < related_agents_property->count; j++) {
+			indigo_item *local_item = related_agents_property->items + j;
+			if (!strcmp(remote_item->name, local_item->name)) {
+				if (remote_item->sw.value == local_item->sw.value)
+					break;
+				local_item->sw.value = remote_item->sw.value;
+				if (!is_imager_agent || strncmp(local_item->name, "Imager Agent", 12)) {
+					indigo_set_timer_with_data(device, 0, set_reverse_relation, NULL, local_item);
+				}
+				break;
+			}
 		}
 	}
-	indigo_update_property(device, device_list, NULL);
+	related_agents_property->state = INDIGO_OK_STATE;
+	indigo_update_property(device, related_agents_property, NULL);
 	return INDIGO_OK;
 }
 
@@ -437,7 +530,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 	for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 		indigo_property *device_list = FILTER_DEVICE_CONTEXT->filter_device_list_properties[i];
 		if (indigo_property_match(device_list, property)) {
-			if (FILTER_DEVICE_CONTEXT->running_process) {
+			if (FILTER_DEVICE_CONTEXT->running_process || device_list->state == INDIGO_BUSY_STATE) {
 				indigo_update_property(device, device_list, "You can't change selection now!");
 				return INDIGO_OK;
 			}
@@ -447,8 +540,9 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 		if (indigo_property_match(device_list, property))
 			return update_related_device_list(device, device_list, property);
 	}
-	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property))
+	if (indigo_property_match(FILTER_DEVICE_CONTEXT->filter_related_agent_list_property, property)) {
 		return update_related_agent_list(device, property);
+	}
 	indigo_property **agent_cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		if (agent_cache[i] && indigo_property_match_defined(agent_cache[i], property)) {
@@ -472,7 +566,12 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 			return INDIGO_OK;
 		}
 	}
-	if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+	if (indigo_property_match(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FILTER_FORCE_SYMMETRIC_RELATIONS
+		indigo_property_copy_values(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, property, false);
+		indigo_update_property(device, FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		assert(DEVICE_CONTEXT->base_device == NULL);
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
@@ -499,6 +598,7 @@ indigo_result indigo_filter_device_detach(indigo_device *device) {
 			FILTER_DEVICE_CONTEXT->additional_client_instances[i] = NULL;
 		}
 	}
+	indigo_release_property(CCD_LENS_FOV_PROPERTY);
 	return indigo_device_detach(device);
 }
 
@@ -519,25 +619,108 @@ indigo_result indigo_filter_client_attach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
-static bool device_in_list(indigo_property *device_list, indigo_property *property) {
+static bool device_in_list(indigo_property *device_list, char *name) {
 	int count = device_list->count;
 	for (int i = 0; i < count; i++) {
-		if (!strcmp(property->device, device_list->items[i].name)) {
+		if (!strcmp(name, device_list->items[i].name)) {
 			return true;
 		}
 	}
 	return false;
 }
 
-static void add_to_list(indigo_device *device, indigo_property *device_list, indigo_property *property) {
+static void add_to_list(indigo_device *device, indigo_property *device_list, char *name) {
 	int count = device_list->count;
 	if (count < INDIGO_FILTER_MAX_DEVICES) {
 		indigo_delete_property(device, device_list, NULL);
-		indigo_init_switch_item(device_list->items + count, property->device, property->device, false);
+		indigo_init_switch_item(device_list->items + count, name, name, false);
 		device_list->count++;
 		indigo_define_property(device, device_list, NULL);
 	} else {
 		indigo_error("[%s:%d] Max device count reached", __FUNCTION__, __LINE__);
+	}
+}
+
+static void remove_from_list(indigo_device *device, indigo_property *device_list, int start, char *name, char *selected_name) {
+	for (int i = start; i < device_list->count; i++) {
+		if (!strcmp(name, device_list->items[i].name)) {
+			if (device_list->items[i].sw.value && selected_name) {
+				device_list->items[0].sw.value = true;
+				if (selected_name)
+					*selected_name = 0;
+				device_list->state = INDIGO_ALERT_STATE;
+			}
+			int size = (device_list->count - i - 1) * sizeof(indigo_item);
+			if (size > 0) {
+				char buffer[size];
+				memcpy(buffer, device_list->items + i + 1, size);
+				memcpy(device_list->items + i, buffer, size);
+			}
+			indigo_delete_property(device, device_list, NULL);
+			device_list->count--;
+			indigo_define_property(device, device_list, NULL);
+			break;
+		}
+	}
+}
+
+static void update_ccd_lens_info(indigo_device *device, indigo_property *property) {
+	bool update = false;
+	if (!strcmp(property->name, CCD_LENS_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_LENS_FOCAL_LENGTH_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->focal_length = item->number.value;
+				CCD_LENS_FOV_PROPERTY->state = item->number.value > 0 ? INDIGO_OK_STATE : INDIGO_IDLE_STATE;
+				break;
+			}
+		}
+		update = true;
+	}
+	if (!strcmp(property->name, CCD_INFO_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_INFO_PIXEL_WIDTH_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->pixel_width = item->number.value;
+			}
+			if (!strcmp(item->name, CCD_INFO_PIXEL_HEIGHT_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->pixel_height = item->number.value;
+			}
+		}
+		update = true;
+	}
+	if (!strcmp(property->name, CCD_FRAME_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->frame_width = item->number.value;
+			}
+			if (!strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->frame_height = item->number.value;
+			}
+		}
+		update = true;
+	}
+	if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->bin_horizontal = item->number.value;
+			}
+			if (!strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME)) {
+				FILTER_DEVICE_CONTEXT->bin_vertical = item->number.value;
+			}
+		}
+		update = true;
+	}
+	if (update) {
+		CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value = indigo_pixel_scale(FILTER_DEVICE_CONTEXT->focal_length, FILTER_DEVICE_CONTEXT->pixel_width) / 3600.0;
+		CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value = indigo_pixel_scale(FILTER_DEVICE_CONTEXT->focal_length, FILTER_DEVICE_CONTEXT->pixel_height) / 3600.0;
+		CCD_LENS_FOV_FOV_WIDTH_ITEM->number.value = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * FILTER_DEVICE_CONTEXT->frame_width;
+		CCD_LENS_FOV_FOV_HEIGHT_ITEM->number.value = CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value * FILTER_DEVICE_CONTEXT->frame_height;
+		CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * FILTER_DEVICE_CONTEXT->bin_horizontal;
+		CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value = CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value * FILTER_DEVICE_CONTEXT->bin_vertical;
+		indigo_update_property(device, CCD_LENS_FOV_PROPERTY, NULL);
 	}
 }
 
@@ -557,44 +740,30 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 			indigo_property *tmp;
 			if ((mask & INDIGO_INTERFACE_AGENT) == INDIGO_INTERFACE_AGENT) {
 				tmp = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
-				if (!tmp->hidden && !device_in_list(tmp, property) && (FILTER_CLIENT_CONTEXT->validate_related_agent == NULL || FILTER_CLIENT_CONTEXT->validate_related_agent(FILTER_CLIENT_CONTEXT->device, property, mask)))
-					add_to_list(device, tmp, property);
+				if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_related_agent == NULL || FILTER_CLIENT_CONTEXT->validate_related_agent(FILTER_CLIENT_CONTEXT->device, property, mask)))
+					add_to_list(device, tmp, property->device);
 			} else {
 				for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 					if ((mask & interface_mask[i]) == interface_mask[i]) {
 						tmp = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
-						if (!tmp->hidden && !device_in_list(tmp, property) && (FILTER_CLIENT_CONTEXT->validate_device == NULL || FILTER_CLIENT_CONTEXT->validate_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
-							add_to_list(device, tmp, property);
+						if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_device == NULL || FILTER_CLIENT_CONTEXT->validate_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
+							add_to_list(device, tmp, property->device);
 						tmp = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i];
-						if (!tmp->hidden && !device_in_list(tmp, property) && (FILTER_CLIENT_CONTEXT->validate_related_device == NULL || FILTER_CLIENT_CONTEXT->validate_related_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
-							add_to_list(device, tmp, property);
+						if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_related_device == NULL || FILTER_CLIENT_CONTEXT->validate_related_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
+							add_to_list(device, tmp, property->device);
 					}
 				}
 			}
 			return INDIGO_OK;
 		}
 	} else if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-		int free_index = -1;
-		for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
-			indigo_property *connection_property = FILTER_CLIENT_CONTEXT->connection_property_cache[i];
-			if (connection_property == NULL)
-				free_index = i;
-			else if (connection_property == property) {
-				free_index = i;
-				break;
-			}
-		}
-		if (free_index == -1 && property == NULL) {
-			indigo_error("[%s:%d] Max cached device count reached", __FUNCTION__, __LINE__);
-		}
-		if (free_index >= 0 && FILTER_CLIENT_CONTEXT->connection_property_cache[free_index] == NULL) {
-			FILTER_CLIENT_CONTEXT->connection_property_cache[free_index] = property;
-			FILTER_CLIENT_CONTEXT->connection_property_device_cache[free_index] = strdup(property->device);
-		}
-		if (property->state != INDIGO_BUSY_STATE) {
-			for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
+		add_cached_connection_property(device, property);
+		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
+			indigo_property *device_list = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
+			if (!device_list->hidden)
+				continue;
+			if (property->state != INDIGO_BUSY_STATE) {
 				indigo_item *connected_device = indigo_get_item(property, CONNECTION_CONNECTED_ITEM_NAME);
-				indigo_property *device_list = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
 				for (int j = 1; j < device_list->count; j++) {
 					if (!strcmp(property->device, device_list->items[j].name) && device_list->items[j].sw.value) {
 						if (device_list->state == INDIGO_BUSY_STATE) {
@@ -632,6 +801,8 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 			int name_prefix_length = property_name_prefix_len[i];
 			if (strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[i]))
 				continue;
+			if (i == INDIGO_FILTER_CCD_INDEX)
+				update_ccd_lens_info(device, property);
 			bool found = false;
 			for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
 				if (device_cache[j] == property) {
@@ -705,6 +876,22 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 							indigo_change_property(client, configuration_property);
 							indigo_release_property(configuration_property);
 							strcpy(FILTER_CLIENT_CONTEXT->device_name[i], property->device);
+							if (i == INDIGO_FILTER_CCD_INDEX) {
+								CCD_LENS_FOV_PROPERTY->hidden = false;
+								CCD_LENS_FOV_FOV_WIDTH_ITEM->number.value =
+								CCD_LENS_FOV_FOV_HEIGHT_ITEM->number.value =
+								CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value =
+								CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value = 0;
+								CCD_LENS_FOV_PROPERTY->state = INDIGO_IDLE_STATE;
+								FILTER_CLIENT_CONTEXT->frame_width =
+								FILTER_CLIENT_CONTEXT->frame_height =
+								FILTER_CLIENT_CONTEXT->bin_horizontal =
+								FILTER_CLIENT_CONTEXT->bin_vertical = 0;
+								FILTER_CLIENT_CONTEXT->pixel_width =
+								FILTER_CLIENT_CONTEXT->pixel_height =
+								FILTER_CLIENT_CONTEXT->focal_length = 0.0;
+								indigo_define_property(device, CCD_LENS_FOV_PROPERTY, NULL);
+							}
 							device_list->state = INDIGO_OK_STATE;
 							indigo_property all_properties;
 							memset(&all_properties, 0, sizeof(all_properties));
@@ -725,6 +912,8 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 		} else {
 			if (strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[i]))
 				continue;
+			if (i == INDIGO_FILTER_CCD_INDEX)
+				update_ccd_lens_info(device, property);
 			for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 				if (device_cache[i] == property) {
 					if (agent_cache[i]) {
@@ -745,29 +934,6 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 		}
 	}
 	return INDIGO_OK;
-}
-
-static void remove_from_list(indigo_device *device, indigo_property *device_list, indigo_property *property, char *device_name) {
-	for (int i = 1; i < device_list->count; i++) {
-		if (!strcmp(property->device, device_list->items[i].name)) {
-			if (device_list->items[i].sw.value && device_name) {
-				device_list->items[0].sw.value = true;
-				if (device_name)
-					*device_name = 0;
-				device_list->state = INDIGO_ALERT_STATE;
-			}
-			int size = (device_list->count - i - 1) * sizeof(indigo_item);
-			if (size > 0) {
-				char buffer[size];
-				memcpy(buffer, device_list->items + i + 1, size);
-				memcpy(device_list->items + i, buffer, size);
-			}
-			indigo_delete_property(device, device_list, NULL);
-			device_list->count--;
-			indigo_define_property(device, device_list, NULL);
-			break;
-		}
-	}
 }
 
 indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
@@ -800,16 +966,8 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 				break;
 			}
 		}
-		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
-			for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
-				if (FILTER_CLIENT_CONTEXT->connection_property_cache[i] == property) {
-					free(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]);
-					FILTER_CLIENT_CONTEXT->connection_property_cache[i] = NULL;
-					FILTER_CLIENT_CONTEXT->connection_property_device_cache[i] = NULL;
-					break;
-				}
-			}
-		}
+		if (!strcmp(property->name, CONNECTION_PROPERTY_NAME))
+			remove_cached_connection_property(device, property);
 	} else {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] && !strcmp(device_cache[i]->device, property->device)) {
@@ -822,21 +980,14 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 				}
 			}
 		}
-		for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
-			if (FILTER_CLIENT_CONTEXT->connection_property_device_cache[i] && !strcmp(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i], property->device)) {
-				free(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]);
-				FILTER_CLIENT_CONTEXT->connection_property_cache[i] = NULL;
-				FILTER_CLIENT_CONTEXT->connection_property_device_cache[i] = NULL;
-				break;
-			}
-		}
+		remove_cached_connection_property(device, property);
 	}
 	if (*property->name == 0 || !strcmp(property->name, INFO_PROPERTY_NAME)) {
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
-			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_device_list_properties[i], property, FILTER_CLIENT_CONTEXT->device_name[i]);
-			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i], property, NULL);
-			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, property, NULL);
+			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_device_list_properties[i], 1, property->device, FILTER_CLIENT_CONTEXT->device_name[i]);
+			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i], 1, property->device, NULL);
 		}
+		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, 0, property->device, NULL);
 	}
 	return INDIGO_OK;
 }
@@ -856,11 +1007,6 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 		if (agent_cache[i])
 			indigo_release_property(agent_cache[i]);
-	}
-	for (int i = 0; i < INDIGO_FILTER_MAX_DEVICES; i++) {
-		if (FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]) {
-			free(FILTER_CLIENT_CONTEXT->connection_property_device_cache[i]);
-		}
 	}
 	return INDIGO_OK;
 }
@@ -902,3 +1048,29 @@ indigo_result indigo_filter_forward_change_property(indigo_client *client, indig
 	indigo_release_property(copy);
 	return result;
 }
+
+char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1) {
+	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	unsigned long base_name_len_1 = strlen(base_name_1);
+	for (int i = 0; i < related_agents_property->count; i++) {
+		indigo_item *item = related_agents_property->items + i;
+		if (item->sw.value && !strncmp(base_name_1, item->name, base_name_len_1)) {
+			return item->name;
+		}
+	}
+	return NULL;
+}
+
+char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2) {
+	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
+	unsigned long base_name_len_1 = strlen(base_name_1);
+	unsigned long base_name_len_2 = strlen(base_name_2);
+	for (int i = 0; i < related_agents_property->count; i++) {
+		indigo_item *item = related_agents_property->items + i;
+		if (item->sw.value && (!strncmp(base_name_1, item->name, base_name_len_1) || !strncmp(base_name_2, item->name, base_name_len_2))) {
+			return item->name;
+		}
+	}
+	return NULL;
+}
+

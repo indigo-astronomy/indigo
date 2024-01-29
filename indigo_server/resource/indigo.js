@@ -115,7 +115,7 @@ function onMessage(evt) {
 }
 
 function enumerateProperties() {
-	var message = { "getProperties": { "version": 0x200 } };
+	var message = { "getProperties": { "version": 0x200, "client": "WebGUI" } };
 	doSend(JSON.stringify(message));
 }
 

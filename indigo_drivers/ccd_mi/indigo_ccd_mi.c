@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -80,7 +80,6 @@ static void mi_report_error(indigo_device *device, indigo_property *property) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!IS_CONNECTED)
 		return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -156,6 +155,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -285,6 +285,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -429,7 +430,6 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
 	if (!IS_CONNECTED)
 		return;
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
@@ -457,6 +457,7 @@ static indigo_result guider_attach(indigo_device *device) {
 }
 
 static void guider_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -482,6 +483,7 @@ static void guider_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_guider_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -565,6 +567,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 }
 
 static void wheel_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
@@ -592,6 +595,7 @@ static void wheel_connect_callback(indigo_device *device) {
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_wheel_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 
@@ -699,7 +703,8 @@ static void process_plug_event(libusb_device *dev) {
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
 			device->master_device = master_device;
-			snprintf(device->name, INDIGO_NAME_SIZE, "%s #%d", name, new_eid);
+			snprintf(device->name, INDIGO_NAME_SIZE, "%s", name);
+			indigo_make_name_unique(device->name, "%d", new_eid);
 			device->private_data = private_data;
 			for (int j = 0; j < MAX_DEVICES; j++) {
 				if (devices[j] == NULL) {
@@ -710,7 +715,8 @@ static void process_plug_event(libusb_device *dev) {
 			if (is_guider) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider) #%d", name, new_eid);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider)", name);
+				indigo_make_name_unique(device->name, "%d", new_eid);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -722,7 +728,8 @@ static void process_plug_event(libusb_device *dev) {
 			if (has_wheel) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				device->master_device = master_device;
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel) #%d", name, new_eid);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel)", name);
+				indigo_make_name_unique(device->name, "%d", new_eid);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {

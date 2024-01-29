@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x0009
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -197,7 +197,6 @@ static bool setup_feature(indigo_device *device, indigo_item *item, dc1394featur
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 	CCD_EXPOSURE_ITEM->number.value = 0;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -312,9 +311,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (err == DC1394_SUCCESS) {
 		CCD_TEMPERATURE_ITEM->number.value = (temperature & 0xFFF)/10.0-273.15;
 		indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-		indigo_set_timer(device, 5, ccd_temperature_callback, &PRIVATE_DATA->temperture_timer);
-	} else {
-		PRIVATE_DATA->temperture_timer = NULL;
+		indigo_reschedule_timer(device, 5, &PRIVATE_DATA->temperture_timer);
 	}
 }
 
@@ -333,9 +330,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_MODE_PROPERTY->count = 0;
 		CCD_INFO_WIDTH_ITEM->number.value = 0;
 		CCD_INFO_HEIGHT_ITEM->number.value = 0;
-		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = 4;
-		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 4;
-		CCD_INFO_PIXEL_SIZE_ITEM->number.value = 4;
+		CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 0;
 		CCD_INFO_WIDTH_ITEM->number.value = 0;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 0;
 		iidc_mode_data *mode_data = PRIVATE_DATA->mode_data;
@@ -685,7 +680,8 @@ static void process_plug_event(libusb_device *dev) {
 				private_data->guid = guid;
 				private_data->unit = unit;
 				indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-				snprintf(device->name, INDIGO_NAME_SIZE, "%s #%0llx", camera->model, camera->guid);
+				snprintf(device->name, INDIGO_NAME_SIZE, "%s", camera->model);
+				indigo_make_name_unique(device->name, "%0llx", camera->guid);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {

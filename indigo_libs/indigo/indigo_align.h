@@ -110,7 +110,34 @@ extern void indigo_j2k_to_jnow(double *ra, double *dec);
  */
 extern void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
 
-/** Greenwitch mean sidereal time
+/** calculate time to the next transit
+	ra - right ascension of the object in decimal hours
+	lmst - local mean sidereal time in decimal degrees
+*/
+double indigo_time_to_transit(const double ra, const double lmst);
+
+/** Calculate raise transit and set times for the nearest transit
+	jd - julian day
+	latitude (degrees)
+	longitude (degrees)
+	ra - Right Ascension (decimal hours)
+	dec - Declination (degrees)
+	*raise_time - raise time (decimal hours)
+	*transit_time - transit time (decinal hours)
+	*set_time - set time (decinal hours)
+ */
+void indigo_raise_set(
+	const double jd,
+	const double latitude,
+	const double longitude,
+	const double ra,
+	const double dec,
+	double *raise_time,
+	double *transit_time,
+	double *set_time
+);
+
+/** Greenwitch mean sidereal time (in degrees)
  */
 extern double indigo_mean_gst(const time_t *utc);
 

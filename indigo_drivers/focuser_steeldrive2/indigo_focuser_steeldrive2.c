@@ -23,7 +23,7 @@
  \file indigo_focuser_steeldrive2.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_focuser_steeldrive2"
 
 #include <stdlib.h>
@@ -440,6 +440,7 @@ static void focuser_timer_callback(indigo_device *device) {
 }
 
 static void focuser_connection_handler(indigo_device *device) {
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[256];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -573,6 +574,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	}
 	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
 
 static void focuser_position_handler(indigo_device *device) {
@@ -900,20 +902,6 @@ static indigo_result aux_attach(indigo_device *device) {
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_POWERBOX) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->count = 6;
-		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
-		DEVICE_PORT_PROPERTY->hidden = false;
-		DEVICE_PORTS_PROPERTY->hidden = false;
-#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbserial", 17)) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-				break;
-			}
-		}
-#endif
-#ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyUSB0");
-#endif
 		// -------------------------------------------------------------------------------- HEATER OUTLETS
 		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, "Heating", "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (AUX_HEATER_OUTLET_PROPERTY == NULL)
@@ -976,11 +964,12 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_connection_handler(indigo_device *device) {
+	indigo_lock_master_device(device);
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[256];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->count++ == 0)
-			steeldrive2_connect(device);
+			steeldrive2_connect(device->master_device);
 		if (PRIVATE_DATA->handle > 0) {
 			int value;
 			X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;
@@ -1075,7 +1064,9 @@ static void aux_connection_handler(indigo_device *device) {
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	indigo_unlock_master_device(device);
 }
+
 static void aux_heater_outlet_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[64], response[256];

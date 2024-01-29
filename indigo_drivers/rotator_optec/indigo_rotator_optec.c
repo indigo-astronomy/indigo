@@ -186,7 +186,7 @@ static void rotator_connect_callback(indigo_device *device) {
 				X_RATE_PROPERTY->state = INDIGO_OK_STATE;
 			else
 				X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+			INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 			tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 			optec_sleep(device);
 			indigo_define_property(device, X_ROTATE_PROPERTY, NULL);
@@ -232,13 +232,13 @@ static void rotator_position_callback(indigo_device *device) {
 						continue;
 					}
 					if (*response == 'F') {
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %d!F", PRIVATE_DATA->handle, steps));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %d!F", PRIVATE_DATA->handle, steps));
 						ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 						break;
 					}
 					if (indigo_select(PRIVATE_DATA->handle, 10000) > 0) {
 						read(PRIVATE_DATA->handle, response + 1, 10);
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 					}
 				}
 			}
@@ -266,7 +266,7 @@ static void rotator_home_callback(indigo_device *device) {
 						continue;
 					}
 					if (*response == 'F') {
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %d!F", PRIVATE_DATA->handle, steps));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %d!F", PRIVATE_DATA->handle, steps));
 						ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = 0;
 						ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 						X_HOME_PROPERTY->state = INDIGO_OK_STATE;
@@ -274,7 +274,7 @@ static void rotator_home_callback(indigo_device *device) {
 					}
 					if (indigo_select(PRIVATE_DATA->handle, 10000) > 0) {
 						read(PRIVATE_DATA->handle, response + 1, 10);
-						INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+						INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 					}
 				}
 			}
@@ -297,7 +297,7 @@ static void rotator_rate_callback(indigo_device *device) {
 		X_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		X_RATE_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	optec_sleep(device);
 	indigo_update_property(device, X_RATE_PROPERTY, NULL);
@@ -312,7 +312,7 @@ static void rotator_rotate_callback(indigo_device *device) {
 		X_ROTATE_PROPERTY->state = INDIGO_OK_STATE;
 	else
 		X_ROTATE_PROPERTY->state = INDIGO_ALERT_STATE;
-	INDIGO_TRACE_PROTOCOL(indigo_trace("%d → %s", PRIVATE_DATA->handle, response));
+	INDIGO_TRACE_PROTOCOL(indigo_trace("%d -> %s", PRIVATE_DATA->handle, response));
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	optec_sleep(device);
 	X_ROTATE_ITEM->number.target = 0;
@@ -405,10 +405,10 @@ static indigo_result rotator_detach(indigo_device *device) {
 // --------------------------------------------------------------------------------
 
 static pyxis_private_data *private_data = NULL;
-static indigo_device *imager_focuser = NULL;
+static indigo_device *rotator = NULL;
 
 indigo_result indigo_rotator_optec(indigo_driver_action action, indigo_driver_info *info) {
-	static indigo_device imager_rotator_template = INDIGO_DEVICE_INITIALIZER(
+	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
 		"Optec Pyxis",
 		rotator_attach,
 		rotator_enumerate_properties,
@@ -428,18 +428,18 @@ indigo_result indigo_rotator_optec(indigo_driver_action action, indigo_driver_in
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			private_data = indigo_safe_malloc(sizeof(pyxis_private_data));
-			imager_focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_rotator_template);
-			imager_focuser->private_data = private_data;
-			indigo_attach_device(imager_focuser);
+			rotator = indigo_safe_malloc_copy(sizeof(indigo_device), &rotator_template);
+			rotator->private_data = private_data;
+			indigo_attach_device(rotator);
 			break;
 
 		case INDIGO_DRIVER_SHUTDOWN:
-			VERIFY_NOT_CONNECTED(imager_focuser);
+			VERIFY_NOT_CONNECTED(rotator);
 			last_action = action;
-			if (imager_focuser != NULL) {
-				indigo_detach_device(imager_focuser);
-				free(imager_focuser);
-				imager_focuser = NULL;
+			if (rotator != NULL) {
+				indigo_detach_device(rotator);
+				free(rotator);
+				rotator = NULL;
 			}
 			if (private_data != NULL) {
 				free(private_data);

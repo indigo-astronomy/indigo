@@ -30,6 +30,26 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_fits.h>
 
+typedef enum {
+	CCD_JPEG_STRETCH_SLIGHT = 0,
+	CCD_JPEG_STRETCH_MODERATE,
+	CCD_JPEG_STRETCH_NORMAL,
+	CCD_JPEG_STRETCH_HARD,
+	CCD_JPEG_STRETCH_COUNT
+} ccd_jpeg_stretch_level;
+
+typedef struct {
+	float target_background;
+	float clipping_point;
+} ccd_jpeg_stretch_params_t;
+
+static const ccd_jpeg_stretch_params_t ccd_jpeg_stretch_params_lut[] ={
+	{0.05, -2.8},
+	{0.15, -2.8},
+	{0.25, -2.8},
+	{0.40, -2.5}
+};
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -386,9 +406,37 @@ extern "C" {
  */
 #define CCD_FITS_HEADERS_PROPERTY         (CCD_CONTEXT->ccd_fits_headers)
 
+/** CCD_SET_FITS_HEADER property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_SET_FITS_HEADER_PROPERTY      (CCD_CONTEXT->ccd_set_fits_header)
+
+/** CCD_SET_FITS_HEADER.NAME property item pointer.
+ */
+#define CCD_SET_FITS_HEADER_NAME_ITEM      (CCD_SET_FITS_HEADER_PROPERTY->items+0)
+
+/** CCD_SET_FITS_HEADER.VALUE property item pointer.
+ */
+#define CCD_SET_FITS_HEADER_VALUE_ITEM      (CCD_SET_FITS_HEADER_PROPERTY->items+1)
+
+/** CCD_REMOVE_FITS_HEADER property pointer, property is mandatory, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_REMOVE_FITS_HEADER_PROPERTY   (CCD_CONTEXT->ccd_remove_fits_header)
+
+/** CCD_REMOVE_FITS_HEADER.NAME property item pointer.
+ */
+#define CCD_REMOVE_FITS_HEADER_NAME_ITEM      (CCD_REMOVE_FITS_HEADER_PROPERTY->items+0)
+
+/** FITS logical record length used for header size rounding.
+ */
+#define FITS_LOGICAL_RECORD_LENGTH	2880
+
+/** Number of logical records allocated for FITS header.
+ */
+#define MAX_FITS_LOGICAL_RECORDS	3
+
 /** FITS header size, it should be added to image buffer size, raw data should start at this offset.
  */
-#define FITS_HEADER_SIZE  2880
+#define FITS_HEADER_SIZE  (MAX_FITS_LOGICAL_RECORDS * FITS_LOGICAL_RECORD_LENGTH)
 
 /** CCD_JPEG_SETTINGS property pointer, property is mandatory, read-write property, property change request is fully handled by indigo_ccd_change_property().
  */
@@ -398,21 +446,33 @@ extern "C" {
  */
 #define CCD_JPEG_SETTINGS_QUALITY_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+0)
 
-/** CCD_JPEG_SETTINGS.BLACK property item pointer.
+/** CCD_JPEG_SETTINGS.TARGET_BACKGROUND property item pointer.
  */
-#define CCD_JPEG_SETTINGS_BLACK_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+1)
+#define CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+1)
 
-/** CCD_JPEG_SETTINGS.WHITE property item pointer.
+/** CCD_JPEG_SETTINGS.CLIPPING_POINT property item pointer.
  */
-#define CCD_JPEG_SETTINGS_WHITE_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+2)
+#define CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+2)
 
-/** CCD_JPEG_SETTINGS.BLACK_TRESHOLD property item pointer.
+/** CCD_JPEG_STRETCH_PRESETS property pointer, property is mandatory, read-write property, property change request is fully handled by indigo_ccd_change_property().
  */
-#define CCD_JPEG_SETTINGS_BLACK_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+3)
+#define CCD_JPEG_STRETCH_PRESETS_PROPERTY         (CCD_CONTEXT->ccd_jpeg_stretch_presets)
 
-/** CCD_JPEG_SETTINGS.WHITE_TRESHOLD property item pointer.
+/** CCD_JPEG_STRETCH_PRESETS.SLIGHT property item pointer.
  */
-#define CCD_JPEG_SETTINGS_WHITE_TRESHOLD_ITEM     (CCD_JPEG_SETTINGS_PROPERTY->items+4)
+#define  CCD_JPEG_STRETCH_PRESETS_SLIGHT_ITEM      (CCD_JPEG_STRETCH_PRESETS_PROPERTY->items+0)
+
+/** CCD_JPEG_STRETCH_PRESETS.MODERATE property item pointer.
+ */
+#define  CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM      (CCD_JPEG_STRETCH_PRESETS_PROPERTY->items+1)
+
+/** CCD_JPEG_STRETCH_PRESETS.NORMAL property item pointer.
+ */
+#define  CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM      (CCD_JPEG_STRETCH_PRESETS_PROPERTY->items+2)
+
+/** CCD_JPEG_STRETCH_PRESETS.HARD property item pointer.
+ */
+#define  CCD_JPEG_STRETCH_PRESETS_HARD_ITEM      (CCD_JPEG_STRETCH_PRESETS_PROPERTY->items+3)
 
 /** CCD_RBI_FLUSH property pointer.
  */
@@ -442,7 +502,9 @@ extern "C" {
  */
 typedef struct {
 	indigo_device_context device_context;         ///< device context base
-	bool countdown_enabled;												///< countdown enabled
+	bool countdown_canceled;									///< countdown canceled
+	bool countdown_enabled;									///< countdown enabled
+	double countdown_endtime;									///< countdown end time
 	indigo_timer *countdown_timer;								///< countdown timer
 	void *preview_image;													///< preview image buffer
 	unsigned long preview_image_size;							///< preview image buffer size
@@ -474,14 +536,13 @@ typedef struct {
 	indigo_property *ccd_cooler_property;         ///< CCD_COOLER property pointer
 	indigo_property *ccd_cooler_power_property;   ///< CCD_COOLER_POWER property pointer
 	indigo_property *ccd_fits_headers;						///< CCD_FITS_HEADERS property pointer
+	indigo_property *ccd_set_fits_header;					///< CCD_SET_FITS_HEADER property pointer
+	indigo_property *ccd_remove_fits_header;			///< CCD_REMOVE_FITS_HEADER property pointer
 	indigo_property *ccd_jpeg_settings;						///< CCD_JPEG_SETTINGS property pointer
+	indigo_property *ccd_jpeg_stretch_presets;				///< CCD_JPEG_STRETCH_PRESETS property pointer
 	indigo_property *ccd_rbi_flush_enable_property; ///< CCD_RBI_FLUSH_ENABLE property pointer
 	indigo_property *ccd_rbi_flush_property;			///< CCD_RBI_FLUSH property pointer
 } indigo_ccd_context;
-
-/** Calculate pixel scale in arcsec/pixel
- */
-extern double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
 
 /** Suspend countdown.
  */
@@ -511,7 +572,7 @@ extern indigo_result indigo_ccd_detach(indigo_device *device);
 
 /** Convert RAW data to JPEG
  */
-extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size);
+extern void indigo_raw_to_jpeg(indigo_device *device, void *data_in, int frame_width, int frame_height, int bpp, const char *bayerpat, void **data_out, unsigned long *size_out, void **histogram_data, unsigned long *histogram_size, double B, double C);
 
 /** Process raw image in image buffer (starting on data + FITS_HEADER_SIZE offset).
  */
@@ -529,9 +590,23 @@ extern void indigo_process_dslr_preview_image(indigo_device *device, void *data,
  */
 extern void indigo_finalize_video_stream(indigo_device *device);
 
+/** Finalize DSLR video stream.
+ */
+extern void indigo_finalize_dslr_video_stream(indigo_device *device);
+
 /** Set alert state on dependent properties.
  */
 extern indigo_result indigo_ccd_failure_cleanup(indigo_device *device);
+
+/** Set FITS header
+ */
+extern indigo_result indigo_set_fits_header(indigo_client *client, char *device, char *name, char *format, ...);
+
+/** Remove FITS header
+ */
+extern indigo_result indigo_remove_fits_header(indigo_client *client, char *device, char *name);
+
+
 
 #ifdef __cplusplus
 }

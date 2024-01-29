@@ -947,6 +947,7 @@ static indigo_result focuser_detach(indigo_device *device) {
       free(PRIVATE_DATA->dslr_properties);
 		free(PRIVATE_DATA);
 		free(device);
+		camera.userData = nil;
 	}
 }
 

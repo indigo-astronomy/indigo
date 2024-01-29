@@ -1,6 +1,6 @@
-# Five Guiding Misconceptions Explained
+# Several Guiding Misconceptions Explained
 
-Revision: 30.08.2022 (draft)
+Revision: 11.11.2022 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -22,17 +22,35 @@ Let us return to the example above: We have a seeing with a frequency of 5 Hz an
 So we ended up with RMSE &approx; 0" and FWHM &approx; 2" of the stars vs RMSE &approx; 1" and FWHM &approx; 1" of the stars. Actually this is nothing new and surprising as this is the principle used in the amateur adaptive optics. There is a small and lightweight prism inside, which can move with several tens of Hertz to make these fast corrections needed to guide out 5-10 Hz or even faster seeing errors.
 
 Here is a real life example. I took these two 300s images with my new ZWO AM5 mount from my balcony in extremely bad seeing conditions. AM5 turned out to be very responsive and I managed to prove my point. The two images are taken minutes apart and I repeated the same test several times in a row with the same result.
-The images taken with 0.2s guiding exposure had Total RMSE &approx; 1.2" and looked a bit sharper than the ones taken with 1.5s guiding exposure and Total RMSE &approx; 0.7".
+The images taken with 0.2s guiding exposure had total RMSE &approx; 1.2" and average median FWHM = 3.8px looked sharper than the ones taken with 1.5s guiding exposure which had total RMSE &approx; 0.7" and average median FWHM = 4.2px.
 
-Guiding exposure of 0.2s with Total RMSE 1.2" (looks sharper)
+Guiding exposure of 0.2s with total RMSE 1.2", median FWHM 3.81px (looks sharper)
 ![](GUIDING_MISCONCEPTIONS/1.2RMSE_0.2s_guiding.png)
 
-Guiding exposure of 1.5s with Total RMSE 0.7"
+Guiding exposure of 1.5s with total RMSE 0.7", median FWHM 4.16px
 ![](GUIDING_MISCONCEPTIONS/0.7RMSE_1.5s_guiding.png)
 
 Also RMSE does not say anything about the star shapes, and you may end up in oblong stars with an excellent RMSE. The thing is that if Right Ascension RMSE and Declination RMSE differ significantly the stars in the final image will be elongated in the direction of the axis with the larger RMSE. Actually the only conclusion one can draw from the RMSE values is the final image star roundness. If the ratio *RMSE RA / RMS Dec = 1* the stars will be perfectly round.
 
 As stated above RMSE is not a measure of how [precise and accurate](https://en.wikipedia.org/wiki/Accuracy_and_precision) the guiding is. RMSE is a measure of how smooth the guiding is in the current conditions. One can not compare the quality of the images based on the RMSE values taken with different guiding exposures or taken with different equipment or taken in different seeing conditions etc.
+
+## Lower RMSE means mechanically superior mount
+
+As mentioned in the previous section RMSE is not a good metric for the final image quality. All mentioned above is valid for the mechanical quality of the mount too. However there is another factor that plays a major role here. It is the declination at which you are guiding. See the picture:
+
+![](GUIDING_MISCONCEPTIONS/RA-errors.jpg)
+
+Here to describe both red arcs the RA axis rotated 30&deg; (2 hours). The arc at the equator has [great circle](https://en.wikipedia.org/wiki/Great_circle) length of 30&deg; as the equator is a great circle, and the one at Dec = 60&deg; is &approx;2&times; shorter because the telescope follows a shorter [circle of a sphere](https://en.wikipedia.org/wiki/Circle_of_a_sphere). The relation is:
+
+*Circle length = Equator length &times; cos(Dec)*
+
+Similarly the [great circle distances](https://en.wikipedia.org/wiki/Great-circle_distance) between the two ends of the arcs with the same RA difference at different Declinations, will be different. And for small angles the relation shown above is a very good approximation.
+
+The same apples to the RA error. Same erratic movement of the RA axis will describe arcs with different lengths at different Declinations. At the equator, RA error will describe an arc on a great circle, therefore the error will be the most prominent. On the other hand at the pole there is no circle, it collapses to a point (*cos(90&deg;) = 0*) and the RA error becomes 0, following the cos(Dec) rule. This means that with the same mount, if you guide at the equator (Dec = 0&deg;) and you get RA RMSE = 0.5", at Dec = 60&deg; with the same mount you will get RA RMSE &approx; 0.5"&times;cos(60&deg;) = 0.25" and going 10&deg; further to the pole, at Dec = 70&deg; the RA RMSE would be 0.17".
+
+What comes to the declination the said above is not valid, it always follows a great circle, therefore the declination difference is always a great circle distance.
+
+So, if you can get so different RMSE values with a single mount, how can you compare two mounts by RMSE only? It just makes no sense. You should at the very least specify the declination at which you get those numbers (not to mention the factors mentioned in the previous section).
 
 ## Better polar alignment means better guiding
 

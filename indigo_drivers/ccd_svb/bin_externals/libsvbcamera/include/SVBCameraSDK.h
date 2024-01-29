@@ -186,6 +186,9 @@ typedef enum SVB_CONTROL_TYPE{ //Control type//
 	SVB_TARGET_TEMPERATURE,  //unit is 0.1C
 	SVB_CURRENT_TEMPERATURE, //unit is 0.1C
 	SVB_COOLER_POWER,  //range: 0-100
+
+	SVB_BAD_PIXEL_CORRECTION_ENABLE,
+	SVB_BAD_PIXEL_CORRECTION_THRESHOLD,
 }SVB_CONTROL_TYPE;
 
 typedef struct _SVB_CONTROL_CAPS
@@ -476,6 +479,29 @@ SVB_ERROR_INVALID_IMGTYPE, //unsupported image format, make sure iWidth and iHei
 ***************************************************************************/
 SVBCAMERA_API  SVB_ERROR_CODE SVBSetROIFormat(int iCameraID, int iStartX, int iStartY, int iWidth, int iHeight, int iBin);
 
+/***************************************************************************
+Descriptions:
+set the ROI area before capture.
+you must stop capture before call it.
+the width and height is the value after binning.
+ie. you need to set width to 640 and height to 480 if you want to run at 640X480@BIN2
+SVB120's data size must be times of 1024 which means width*height%1024=0SVBSetStartPos
+Paras:		
+int CameraID: this is get from the camera property use the API SVBGetCameraInfo
+int iWidth,  the width of the ROI area. Make sure iWidth%8 = 0. 
+int iHeight,  the height of the ROI area. Make sure iHeight%2 = 0, 
+further, for USB2.0 camera SVB120, please make sure that iWidth*iHeight%1024=0. 
+int iBin,   binning method. bin1=1, bin2=2
+int iMode,  binning mode, binning average is 0 and binning sum is 1
+
+return:
+SVB_SUCCESS : Operation is successful
+SVB_ERROR_CAMERA_CLOSED : camera didn't open
+SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+SVB_ERROR_INVALID_SIZE, //wrong video format size
+SVB_ERROR_INVALID_IMGTYPE, //unsupported image format, make sure iWidth and iHeight and binning is set correct
+***************************************************************************/
+SVBCAMERA_API  SVB_ERROR_CODE SVBSetROIFormatEx(int iCameraID, int iStartX, int iStartY, int iWidth, int iHeight, int iBin, int iMode);
 
 /***************************************************************************
 Descriptions:
@@ -494,6 +520,25 @@ SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of b
 
 ***************************************************************************/
 SVBCAMERA_API  SVB_ERROR_CODE SVBGetROIFormat(int iCameraID, int *piStartX, int *piStartY, int *piWidth, int *piHeight,  int *piBin);
+
+/***************************************************************************
+Descriptions:
+Get the current ROI area setting .
+
+Paras:
+int CameraID: this is get from the camera property use the API SVBGetCameraInfo
+int *piWidth,  pointer to the width of the ROI area
+int *piHeight, pointer to the height of the ROI area.
+int *piBin,   pointer to binning method. bin1=1, bin2=2
+int *piMode,  pointer to binning mode, binning average is 0 and binning sum is 1
+
+return:
+SVB_SUCCESS : Operation is successful
+SVB_ERROR_CAMERA_CLOSED : camera didn't open
+SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+
+***************************************************************************/
+SVBCAMERA_API  SVB_ERROR_CODE SVBGetROIFormatEx(int iCameraID, int *piStartX, int *piStartY, int *piWidth, int *piHeight,  int *piBin, int *piMode);
 
 /***************************************************************************
 Descriptions:
@@ -578,8 +623,8 @@ SVBCAMERA_API  SVB_ERROR_CODE SVBGetVideoData(int iCameraID, unsigned char* pBuf
 /***************************************************************************
 Descriptions:
 White balance once time. If success(return SVB_SUCCESS), please get SVB_WB_R, SVB_WB_G and SVB_WB_B values to update UI display.
-Paras:
 
+Paras:
 int CameraID: this is get from the camera property use the API SVBGetCameraInfo
 
 return:
@@ -589,6 +634,22 @@ SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of b
 SVB_ERROR_GENERAL_ERROR : white balance failed
 ***************************************************************************/
 SVBCAMERA_API SVB_ERROR_CODE SVBWhiteBalanceOnce(int iCameraID);
+
+
+/***************************************************************************
+Descriptions:
+Gets the camera firmware version number
+
+Paras:
+int CameraID: this is get from the camera property use the API SVBGetCameraInfo
+char *pCameraFirmwareVersion: A Buffer to store the version number, which needs to be at least 64 bytes in size
+
+return:
+SVB_SUCCESS : Operation is successful
+SVB_ERROR_CAMERA_CLOSED : camera didn't open
+SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+***************************************************************************/
+SVBCAMERA_API SVB_ERROR_CODE SVBGetCameraFirmwareVersion(int iCameraID, char *pCameraFirmwareVersion);
 
 /***************************************************************************
 Descriptions:
@@ -764,6 +825,39 @@ SVB_SUCCESS : Operation is successful
 SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
 ***************************************************************************/
 SVBCAMERA_API SVB_ERROR_CODE SVBSetAutoSaveParam(int iCameraID, SVB_BOOL enable);
+
+/***************************************************************************
+Descriptions:
+Detect if the camera firmware needs to be upgraded
+
+Paras:
+int CameraID: this is get from the camera property use the API SVBGetCameraInfo
+SVB_BOOL *pIsNeedToUpgrade: Return to whether the camera needs to be upgraded
+char *pNeedToUpgradeMinVersion: A Buffer to store the version number, which needs to be at least 64 bytes in size
+
+return:
+SVB_SUCCESS : Operation is successful
+SVB_ERROR_CAMERA_CLOSED : camera didn't open
+SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+***************************************************************************/
+SVBCAMERA_API SVB_ERROR_CODE SVBIsCameraNeedToUpgrade(int iCameraID, SVB_BOOL *pIsNeedToUpgrade, char *pNeedToUpgradeMinVersion);
+
+/***************************************************************************
+Descriptions:
+Restore default parameters
+
+Paras:
+int CameraID: this is get from the camera property use the API SVBGetCameraInfo
+
+return:
+SVB_SUCCESS : Operation is successful
+SVB_ERROR_CAMERA_CLOSED : camera didn't open
+SVB_ERROR_INVALID_ID  :no camera of this ID is connected or ID value is out of boundary
+SVB_ERROR_GENERAL_ERROR : other error
+***************************************************************************/
+SVBCAMERA_API SVB_ERROR_CODE SVBRestoreDefaultParam(int iCameraID);
+
+
 
 #ifdef __cplusplus
 }
