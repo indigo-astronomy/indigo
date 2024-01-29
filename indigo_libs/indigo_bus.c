@@ -34,6 +34,7 @@
 #include <time.h>
 #include <math.h>
 #include <assert.h>
+#include <errno.h>
 #include <pthread.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <sys/time.h>
@@ -108,7 +109,7 @@ indigo_property INDIGO_ALL_PROPERTIES;
 static indigo_log_levels indigo_log_level = INDIGO_LOG_ERROR;
 bool indigo_use_syslog = false;
 
-void (*indigo_log_message_handler)(const char *message) = NULL;
+void (*indigo_log_message_handler)(indigo_log_levels level, const char *message) = NULL;
 
 char indigo_local_service_name[INDIGO_NAME_SIZE] = "";
 bool indigo_reshare_remote_devices = false;
@@ -140,20 +141,20 @@ static void free_log_buffers() {
 // https://stackoverflow.com/questions/10905892/equivalent-of-gettimeday-for-windows
 
 int gettimeofday(struct timeval * tp, struct timezone * tzp) {
-  static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
+	static const uint64_t EPOCH = ((uint64_t) 116444736000000000ULL);
 
-  SYSTEMTIME  system_time;
-  FILETIME    file_time;
-  uint64_t    time;
+	SYSTEMTIME  system_time;
+	FILETIME    file_time;
+	uint64_t    time;
 
-  GetSystemTime(&system_time);
-  SystemTimeToFileTime(&system_time, &file_time);
-  time = ((uint64_t) file_time.dwLowDateTime);
-  time += ((uint64_t) file_time.dwHighDateTime) << 32;
+	GetSystemTime(&system_time);
+	SystemTimeToFileTime(&system_time, &file_time);
+	time = ((uint64_t) file_time.dwLowDateTime);
+	time += ((uint64_t) file_time.dwHighDateTime) << 32;
 
-  tp->tv_sec = (long) ((time - EPOCH) / 10000000L);
-  tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
-  return 0;
+	tp->tv_sec = (long) ((time - EPOCH) / 10000000L);
+	tp->tv_usec = (long) (system_time.wMilliseconds * 1000);
+	return 0;
 }
 #endif
 
@@ -168,7 +169,8 @@ int clock_gettime(clockid_t clk_id, struct timespec *ts) {
 }
 #endif
 
-void indigo_log_message(const char *format, va_list args) {
+void indigo_log_base(indigo_log_levels level, const char *format, va_list args) {
+
 	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 	pthread_mutex_lock(&log_mutex);
 	if (indigo_last_message == NULL) {
@@ -177,84 +179,111 @@ void indigo_log_message(const char *format, va_list args) {
 	}
 	vsnprintf(indigo_last_message, LOG_MESSAGE_SIZE, format, args);
 	char *line = indigo_last_message;
-	if (indigo_log_message_handler != NULL) {
-		indigo_log_message_handler(indigo_last_message);
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-  } else if (indigo_use_syslog) {
-		static bool initialize = true;
-		if (initialize)
-			openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
-		while (line) {
-			char *eol = strchr(line, '\n');
-			if (eol)
-				*eol = 0;
-			if (eol > line)
-				syslog (LOG_NOTICE, "%s", indigo_last_message);
-			syslog (LOG_NOTICE, "%s", line);
-			if (eol)
-				line = eol + 1;
-			else
-				line = NULL;
-		}
-#endif
+	char prefix[16] = { 0 };
+	char *arrow = strstr(line, " -> ");
+	if (arrow && arrow - line < 16) {
+		strncpy(prefix, line, arrow - line + 4);
 	} else {
-		char timestamp[16];
-		struct timeval tmnow;
-		gettimeofday(&tmnow, NULL);
-#if defined(INDIGO_WINDOWS)
-		struct tm *lt;
-		time_t rawtime;
-		lt = localtime((const time_t *) &(tmnow.tv_sec));
-		if (lt == NULL) {
-			time(&rawtime);
-			lt = localtime(&rawtime);
+		arrow = strstr(line, " <- ");
+		if (arrow && arrow - line < 16) {
+			strncpy(prefix, line, arrow - line + 4);
 		}
-		strftime (timestamp, 9, "%H:%M:%S", lt);
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (indigo_use_syslog) {
+		static bool initialize = true;
+		if (initialize) {
+			openlog("INDIGO", LOG_NDELAY, LOG_USER | LOG_PERROR);
+			initialize = false;
+		}
+	}
+#endif
+	char timestamp[16];
+	struct timeval tmnow;
+	gettimeofday(&tmnow, NULL);
+#if defined(INDIGO_WINDOWS)
+	struct tm *lt;
+	time_t rawtime;
+	lt = localtime((const time_t *) &(tmnow.tv_sec));
+	if (lt == NULL) {
+		time(&rawtime);
+		lt = localtime(&rawtime);
+	}
+	strftime (timestamp, 9, "%H:%M:%S", lt);
 #else
-		strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
+	strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
 #endif
 
 #ifdef INDIGO_MACOS
-		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
+	snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
 #else
-		snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
+	snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
 #endif
-		if (indigo_log_name[0] == '\0') {
-			if (indigo_main_argc == 0) {
-				strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
-			} else {
+	if (indigo_log_name[0] == '\0') {
+		if (indigo_main_argc == 0) {
+			strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
+		} else {
 #if defined(INDIGO_WINDOWS)
-        char *name = strrchr(indigo_main_argv[0], '\\');
+			char *name = strrchr(indigo_main_argv[0], '\\');
 #else
-        char *name = strrchr(indigo_main_argv[0], '/');
+			char *name = strrchr(indigo_main_argv[0], '/');
 #endif
-        if (name != NULL) {
-					name++;
-				} else {
-					name = (char *)indigo_main_argv[0];
-				}
-				strncpy(indigo_log_name, name, sizeof(indigo_log_name));
+			if (name != NULL) {
+				name++;
+			} else {
+				name = (char *)indigo_main_argv[0];
 			}
-		}
-		while (line) {
-			char *eol = strchr(line, '\n');
-			if (eol)
-				*eol = 0;
-			if (*line)
-				fprintf(stderr, "%s %s: %s\n", timestamp, indigo_log_name, line);
-			if (eol)
-				line = eol + 1;
-			else
-				line = NULL;
+			strncpy(indigo_log_name, name, sizeof(indigo_log_name));
 		}
 	}
+	bool first_line = true;
+	static char tmp[128];
+	while (line) {
+		char *eol = strchr(line, '\n');
+		if (eol)
+			*eol = 0;
+		if (*line) {
+			if (first_line || *prefix == 0) {
+				if (indigo_log_message_handler != NULL) {
+					indigo_log_message_handler(level, line);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+				} else if (indigo_use_syslog) {
+					syslog(LOG_NOTICE, "%s", line);
+#endif
+				} else {
+					fprintf(stderr, "%s %s: %s\n", timestamp, indigo_log_name, line);
+				}
+				first_line = false;
+			} else {
+				if (indigo_log_message_handler != NULL) {
+					snprintf(tmp, sizeof(tmp), "%s%s", prefix, line);
+					indigo_log_message_handler(level, tmp);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+				} else if (indigo_use_syslog) {
+					snprintf(tmp, sizeof(tmp), "%s%s", prefix, line);
+					syslog(LOG_NOTICE, "%s", line);
+#endif
+				} else {
+					fprintf(stderr, "%s %s: %s%s\n", timestamp, indigo_log_name, prefix, line);
+				}
+			}
+		}
+		if (eol)
+			line = eol + 1;
+		else
+			line = NULL;
+	}
 	pthread_mutex_unlock(&log_mutex);
+}
+
+void indigo_log_message(const char *format, va_list args) {
+	indigo_log_base(INDIGO_LOG_PLAIN, format, args);
 }
 
 void indigo_error(const char *format, ...) {
 	va_list argList;
 	va_start(argList, format);
-	indigo_log_message(format, argList);
+	indigo_log_base(INDIGO_LOG_ERROR, format, argList);
 	va_end(argList);
 }
 
@@ -262,7 +291,7 @@ void indigo_log(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_INFO) {
 		va_list argList;
 		va_start(argList, format);
-		indigo_log_message(format, argList);
+		indigo_log_base(INDIGO_LOG_INFO, format, argList);
 		va_end(argList);
 	}
 }
@@ -271,7 +300,7 @@ void indigo_trace(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_TRACE) {
 		va_list argList;
 		va_start(argList, format);
-		indigo_log_message(format, argList);
+		indigo_log_base(INDIGO_LOG_TRACE, format, argList);
 		va_end(argList);
 	}
 }
@@ -280,7 +309,16 @@ void indigo_debug(const char *format, ...) {
 	if (indigo_log_level >= INDIGO_LOG_DEBUG) {
 		va_list argList;
 		va_start(argList, format);
-		indigo_log_message(format, argList);
+		indigo_log_base(INDIGO_LOG_DEBUG, format, argList);
+		va_end(argList);
+	}
+}
+
+void indigo_trace_bus(const char *format, ...) {
+	if (indigo_log_level >= INDIGO_LOG_TRACE_BUS) {
+		va_list argList;
+		va_start(argList, format);
+		indigo_log_base(INDIGO_LOG_TRACE_BUS, format, argList);
 		va_end(argList);
 	}
 }
@@ -293,16 +331,19 @@ indigo_log_levels indigo_get_log_level() {
 	return indigo_log_level;
 }
 
-void indigo_trace_property(const char *message, indigo_property *property, bool defs, bool items) {
-	if (indigo_log_level >= INDIGO_LOG_TRACE) {
+void indigo_trace_property(const char *message, indigo_client *client, indigo_property *property, bool defs, bool items) {
+	if (indigo_log_level >= INDIGO_LOG_TRACE_BUS) {
 		static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
 		pthread_mutex_lock(&log_mutex);
-		if (message != NULL)
-			indigo_trace(message);
-		if (defs)
-			indigo_trace("'%s'.'%s' %s %s %s %d.%d %x %s { // %s", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
-		else
-			indigo_trace("'%s'.'%s' %s %s %s %d.%d %x %s {", property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""));
+		if (defs) {
+			indigo_trace_bus("B <+ %s '%s'.'%s' %s %s %s %d.%d %x %s { // %s", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, (property->type == INDIGO_SWITCH_VECTOR ? indigo_switch_rule_text[property->rule]: ""), property->label);
+		} else {
+			if (client) {
+				indigo_trace_bus("B <+ %s '%s'.'%s' %s %s %s %d.%d %x '%s' {", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token, client->name);
+			} else {
+				indigo_trace_bus("B <+ %s '%s'.'%s' %s %s %s %d.%d %x {", message, property->device, property->name, indigo_property_type_text[property->type], indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], (property->version >> 8) & 0xFF, property->version & 0xFF, property->access_token);
+			}
+		}
 		if (items) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
@@ -310,44 +351,44 @@ void indigo_trace_property(const char *message, indigo_property *property, bool 
 				case INDIGO_TEXT_VECTOR:
 					if (defs) {
 						if (item->text.long_value)
-							indigo_trace("  '%s' = '%s' + %d extra characters // %s", item->name, item->text.value, item->text.length - 1, item->label);
+							indigo_trace_bus("B <+   '%s' = '%s' + %d extra characters // %s", item->name, item->text.value, item->text.length - 1, item->label);
 						else
-							indigo_trace("  '%s' = '%s' // %s", item->name, item->text.value, item->label);
+							indigo_trace_bus("B <+   '%s' = '%s' // %s", item->name, item->text.value, item->label);
 					} else {
 						if (item->text.long_value)
-							indigo_trace("  '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.length - 1);
+							indigo_trace_bus("B <+   '%s' = '%s' + %d extra characters",item->name, item->text.value, item->text.length - 1);
 						else
-							indigo_trace("  '%s' = '%s'",item->name, item->text.value);
+							indigo_trace_bus("B <+   '%s' = '%s'",item->name, item->text.value);
 					}
 					break;
 				case INDIGO_NUMBER_VECTOR:
 					if (defs)
-						indigo_trace("  '%s' = %g (%g, %g, %g) // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->label);
+						indigo_trace_bus("B <+   '%s' = %g (%g, %g, %g, '%s') // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->number.format, item->label);
 					else
-						indigo_trace("  '%s' = %g ",item->name, item->number.value);
+						indigo_trace_bus("B <+   '%s' = %g ",item->name, item->number.value);
 					break;
 				case INDIGO_SWITCH_VECTOR:
 					if (defs)
-						indigo_trace("  '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
+						indigo_trace_bus("B <+   '%s' = %s // %s", item->name, (item->sw.value ? "On" : "Off"), item->label);
 					else
-						indigo_trace("  '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
+						indigo_trace_bus("B <+   '%s' = %s ",item->name, (item->sw.value ? "On" : "Off"));
 					break;
 				case INDIGO_LIGHT_VECTOR:
 					if (defs)
-						indigo_trace("  '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
+						indigo_trace_bus("B <+   '%s' = %s // %s", item->name, indigo_property_state_text[item->light.value], item->label);
 					else
-						indigo_trace("  '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
+						indigo_trace_bus("B <+   '%s' = %s ",item->name, indigo_property_state_text[item->light.value]);
 					break;
 				case INDIGO_BLOB_VECTOR:
 					if (defs)
-						indigo_trace("  '%s' // %s", item->name, item->label);
+						indigo_trace_bus("B <+   '%s' // %s", item->name, item->label);
 					else
-						indigo_trace("  '%s' (%ld bytes, '%s', '%s')",item->name, item->blob.size, item->blob.format, item->blob.url);
+						indigo_trace_bus("B <+   '%s' (%ld bytes, '%s', '%s')",item->name, item->blob.size, item->blob.format, item->blob.url);
 					break;
 				}
 			}
 		}
-		indigo_trace("}");
+		indigo_trace_bus("B <- }");
 		pthread_mutex_unlock(&log_mutex);
 	}
 }
@@ -358,13 +399,14 @@ indigo_result indigo_start() {
 			indigo_log_level = INDIGO_LOG_INFO;
 		} else if (!strcmp(indigo_main_argv[i], "-vv") || !strcmp(indigo_main_argv[i], "--enable-debug")) {
 			indigo_log_level = INDIGO_LOG_DEBUG;
+		} else if (!strcmp(indigo_main_argv[i], "-vvb") || !strcmp(indigo_main_argv[i], "--enable-trace-bus")) {
+			indigo_log_level = INDIGO_LOG_TRACE_BUS;
 		} else if (!strcmp(indigo_main_argv[i], "-vvv") || !strcmp(indigo_main_argv[i], "--enable-trace")) {
 			indigo_log_level = INDIGO_LOG_TRACE;
 		}
 	}
 	pthread_mutex_lock(&device_mutex);
 	pthread_mutex_lock(&client_mutex);
-	INDIGO_TRACE(indigo_trace("INDIGO Bus: start request"));
 	if (!is_started) {
 		memset(devices, 0, MAX_DEVICES * sizeof(indigo_device *));
 		memset(clients, 0, MAX_CLIENTS * sizeof(indigo_client *));
@@ -373,9 +415,9 @@ indigo_result indigo_start() {
 		is_started = true;
 	}
 #if defined(INDIGO_WINDOWS)
-  WORD version_requested = MAKEWORD(1, 1);
-  WSADATA data;
-  WSAStartup(version_requested, &data);
+	WORD version_requested = MAKEWORD(1, 1);
+	WSADATA data;
+	WSAStartup(version_requested, &data);
 #endif
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
@@ -387,12 +429,12 @@ indigo_result indigo_attach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
-	INDIGO_TRACE(indigo_trace("INDIGO Bus: device attach request (%s)", device->name));
+	INDIGO_DEBUG(indigo_trace_bus("B <- Attach device '%s'", device->name));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == NULL) {
 			if (i > max_index) {
 				max_index = i;
-				indigo_debug("%d devices attached", max_index + 1);
+				INDIGO_TRACE(indigo_trace("%d devices attached", max_index + 1));
 			}
 			devices[i] = device;
 			pthread_mutex_unlock(&device_mutex);
@@ -425,13 +467,13 @@ indigo_result indigo_attach_client(indigo_client *client) {
 		if (clients[i] == NULL) {
 			if (i > max_index) {
 				max_index = i;
-				indigo_debug("%d clients attached", max_index + 1);
+				INDIGO_TRACE(indigo_trace("%d clients attached", max_index + 1));
 			}
 			clients[i] = client;
 			pthread_mutex_unlock(&client_mutex);
 			if (client->attach != NULL)
 				client->last_result = client->attach(client);
-			INDIGO_TRACE(indigo_trace("INDIGO Bus: client attach request (%s)", client->name));
+			INDIGO_DEBUG(indigo_trace_bus("B <- Attach client '%s'", client->name));
 			return INDIGO_OK;
 		}
 	}
@@ -444,13 +486,17 @@ indigo_result indigo_detach_device(indigo_device *device) {
 	if ((!is_started) || (device == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&device_mutex);
-	INDIGO_TRACE(indigo_trace("INDIGO Bus: device detach request (%s)", device->name));
+	INDIGO_DEBUG(indigo_trace_bus("B <- Detach device '%s'", device->name));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i] == device) {
 			devices[i] = NULL;
 			pthread_mutex_unlock(&device_mutex);
-			if (device->detach != NULL)
+			if (device->detach != NULL) {
+				indigo_property *all_properties = indigo_init_text_property(NULL, device->name, "", "", "", INDIGO_OK_STATE, INDIGO_RO_PERM, 0);
+				indigo_delete_property(device, all_properties, NULL);
+				indigo_release_property(all_properties);
 				device->last_result = device->detach(device);
+			}
 			return INDIGO_OK;
 		}
 	}
@@ -462,7 +508,7 @@ indigo_result indigo_detach_client(indigo_client *client) {
 	if ((!is_started) || (client == NULL))
 		return INDIGO_FAILED;
 	pthread_mutex_lock(&client_mutex);
-	INDIGO_TRACE(indigo_trace("INDIGO Bus: client detach request (%s)", client->name));
+	INDIGO_DEBUG(indigo_trace_bus("B <- Detach client '%s'", client->name));
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		if (clients[i] == client) {
 			clients[i] = NULL;
@@ -481,7 +527,7 @@ indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&device_mutex);
-	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property enumeration request", property, false, false));
+	INDIGO_TRACE(indigo_trace_property("Enumerate", client, property, false, false));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->enumerate_properties != NULL) {
@@ -503,7 +549,7 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&device_mutex);
-	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property change request", property, false, true));
+	INDIGO_TRACE(indigo_trace_property("Change", client, property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->change_property != NULL) {
@@ -512,7 +558,6 @@ indigo_result indigo_change_property(indigo_client *client, indigo_property *pro
 			route = route || (indigo_use_host_suffix && *device->name == '@' && strstr(property->device, device->name));
 			route = route || (!indigo_use_host_suffix && *device->name == '@');
 			if (route) {
-				INDIGO_TRACE(indigo_trace("INDIGO Bus: Change request - Device '%s' token 0x%x, Proprerty '%s' token 0x%x", device->name, device->access_token, property->name, property->access_token));
 				if (device->access_token != 0 && device->access_token != property->access_token && property->access_token != indigo_get_master_token()) {
 					indigo_send_message(device, "Device '%s' is protected or locked for exclusive access", device->name);
 					continue;
@@ -531,7 +576,7 @@ indigo_result indigo_enable_blob(indigo_client *client, indigo_property *propert
 		return INDIGO_FAILED;
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&device_mutex);
-	INDIGO_TRACE(indigo_trace_property("INDIGO Bus: enable BLOB mode change request", property, false, true));
+	INDIGO_TRACE(indigo_trace_property("Enable BLOB mode", client, property, false, true));
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device != NULL && device->enable_blob != NULL) {
@@ -554,7 +599,7 @@ indigo_result indigo_define_property(indigo_device *device, indigo_property *pro
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&client_mutex);
 	if (!property->hidden) {
-		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property definition", property, true, true));
+		INDIGO_TRACE(indigo_trace_property("Define", NULL, property, true, true));
 		property->defined = true;
 		char message[INDIGO_VALUE_SIZE];
 		if (format != NULL) {
@@ -617,7 +662,7 @@ indigo_result indigo_update_property(indigo_device *device, indigo_property *pro
 		int count = property->count;
 		if (property->perm == INDIGO_WO_PERM)
 			property->count = 0;
-		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property update", property, false, true));
+		INDIGO_TRACE(indigo_trace_property("Update", NULL, property, false, true));
 		if (format != NULL) {
 			va_list args;
 			va_start(args, format);
@@ -687,7 +732,7 @@ indigo_result indigo_delete_property(indigo_device *device, indigo_property *pro
 	if (indigo_use_strict_locking)
 		pthread_mutex_lock(&client_mutex);
 	if (!property->hidden) {
-		INDIGO_TRACE(indigo_trace_property("INDIGO Bus: property removal", property, false, false));
+		INDIGO_TRACE(indigo_trace_property("Remove", NULL, property, false, false));
 		property->defined = false;
 		char message[INDIGO_VALUE_SIZE];
 		if (format != NULL) {
@@ -719,7 +764,7 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 		vsnprintf(message, INDIGO_VALUE_SIZE, format, args);
 		va_end(args);
 	}
-	INDIGO_DEBUG(indigo_debug("INDIGO Bus: message sent '%s'", message));
+	INDIGO_DEBUG(indigo_trace_bus("B <- Sent message '%s'", message));
 	for (int i = 0; i < MAX_CLIENTS; i++) {
 		indigo_client *client = clients[i];
 		if (client != NULL && client->send_message != NULL)
@@ -731,10 +776,9 @@ indigo_result indigo_send_message(indigo_device *device, const char *format, ...
 }
 
 indigo_result indigo_stop() {
-	pthread_mutex_lock(&device_mutex);
-	pthread_mutex_lock(&client_mutex);
-	INDIGO_TRACE(indigo_trace("INDIGO Bus: stop request"));
+	INDIGO_DEBUG(indigo_trace_bus("B <- Stop bus"));
 	if (is_started) {
+		pthread_mutex_lock(&client_mutex);
 		for (int i = 0; i < MAX_CLIENTS; i++) {
 			indigo_client *client = clients[i];
 			if (client != NULL && client->detach != NULL) {
@@ -742,17 +786,19 @@ indigo_result indigo_stop() {
 				client->last_result = client->detach(client);
 			}
 		}
+		pthread_mutex_unlock(&client_mutex);
+		pthread_mutex_lock(&device_mutex);
 		for (int i = 0; i < MAX_DEVICES; i++) {
 			indigo_device *device = devices[i];
-			if (device != NULL && device->detach != NULL) {
-				devices[i] = NULL;
-				device->last_result = device->detach(device);
+			if (device != NULL) {
+				indigo_error("INDIGO Bus: can't stop, '%s' is attached", device->name);
+				pthread_mutex_unlock(&device_mutex);
+				return INDIGO_BUSY;
 			}
 		}
+		pthread_mutex_unlock(&device_mutex);
 		is_started = false;
 	}
-	pthread_mutex_unlock(&client_mutex);
-	pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
 }
 
@@ -760,11 +806,12 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 	assert(device != NULL);
 	assert(name != NULL);
 	int size = sizeof(indigo_property)+count*(sizeof(indigo_item));
+	int allocated_count = count;
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
-		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
+		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -776,6 +823,7 @@ indigo_property *indigo_init_text_property(indigo_property *property, const char
 	property->perm = perm;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
+	property->allocated_count = allocated_count;
 	return property;
 }
 
@@ -783,11 +831,12 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	assert(device != NULL);
 	assert(name != NULL);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
+	int allocated_count = count;
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
-		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
+		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -799,6 +848,7 @@ indigo_property *indigo_init_number_property(indigo_property *property, const ch
 	property->perm = perm;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
+	property->allocated_count = allocated_count;
 	return property;
 }
 
@@ -806,11 +856,12 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	assert(device != NULL);
 	assert(name != NULL);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
+	int allocated_count = count;
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
-		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
+		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -823,6 +874,7 @@ indigo_property *indigo_init_switch_property(indigo_property *property, const ch
 	property->rule = rule;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
+	property->allocated_count = allocated_count;
 	return property;
 }
 
@@ -830,11 +882,12 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	assert(device != NULL);
 	assert(name != NULL);
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
+	int allocated_count = count;
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
-		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
+		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -846,6 +899,7 @@ indigo_property *indigo_init_light_property(indigo_property *property, const cha
 	property->state = state;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
+	property->allocated_count = allocated_count;
 	return property;
 }
 
@@ -856,13 +910,16 @@ indigo_property *indigo_init_blob_property(indigo_property *property, const char
 indigo_property *indigo_init_blob_property_p(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count) {
 	assert(device != NULL);
 	assert(name != NULL);
-	assert(perm == INDIGO_RO_PERM || perm == INDIGO_WO_PERM);
+	if (perm == INDIGO_RW_PERM) {
+		perm = INDIGO_RO_PERM;
+	}
 	int size = sizeof(indigo_property) + count * sizeof(indigo_item);
+	int allocated_count = count;
 	if (property == NULL) {
 		property = indigo_safe_malloc(size);
-		property->allocated_count = count;
 	} else {
-		indigo_resize_property(property, count);
+		property = indigo_resize_property(property, count);
+		allocated_count = property->allocated_count;
 	}
 	memset(property, 0, size);
 	indigo_copy_name(property->device, device);
@@ -874,6 +931,7 @@ indigo_property *indigo_init_blob_property_p(indigo_property *property, const ch
 	property->state = state;
 	property->version = INDIGO_VERSION_CURRENT;
 	property->count = count;
+	property->allocated_count = allocated_count;
 	return property;
 }
 
@@ -1016,6 +1074,7 @@ void indigo_init_blob_item(indigo_item *item, const char *name, const char *labe
 }
 
 void *indigo_alloc_blob_buffer(long size) {
+	size += 2880;
 	int mod2880 = size % 2880;
 	if (mod2880) {
 		return indigo_safe_malloc(size + 2880 - mod2880);
@@ -1038,7 +1097,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	int res = false;
 
 	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
-		INDIGO_DEBUG(indigo_debug("%s(): url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME));
+		indigo_error("%s: url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME);
 		goto clean_return;
 	}
 
@@ -1047,28 +1106,31 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	if (socket < 0)
 		goto clean_return;
 
+	INDIGO_TRACE(indigo_trace("%d <- // open for '%s:%d'", socket, host, port));
+
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\r\nAccept-Encoding: gzip\r\n\r\n", file);
 #else
 	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\r\n\r\n", file);
 #endif
+	INDIGO_TRACE(indigo_trace("%d <- %s", socket, request));
 	res = indigo_write(socket, request, strlen(request));
 	if (res == false)
 		goto clean_return;
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
+
 	if (res < 0) {
 		res = false;
 		goto clean_return;
 	}
+	INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
 
 	int count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if ((count != 2) || (http_result != 200)) {
-		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		goto clean_return;
 	}
-	INDIGO_DEBUG(indigo_debug("%s(): http_result = %d, response = \"%s\"", __FUNCTION__, http_result, http_response));
-
+	
 	bool use_gzip = false;
 
 	/* On Raspberry Pi blob compression may take longer. Make sure we do not timeout prematurely */
@@ -1083,7 +1145,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 			res = false;
 			goto clean_return;
 		}
-		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
+		INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (!strncasecmp(http_line, "Content-Encoding: gzip", 22)) {
 			use_gzip = true;
@@ -1095,8 +1157,6 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		if (sscanf(http_line, "X-Uncompressed-Content-Length: %20ld[^\n]", &uncompressed_content_len) == 1)
 			continue;
 	} while (http_line[0] != '\0');
-
-	INDIGO_DEBUG(indigo_debug("%s(): content_len = %ld", __FUNCTION__, content_len));
 
 	if (content_len) {
 		image_type = strrchr(file, '.');
@@ -1116,11 +1176,13 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 		} else {
 			blob_item->blob.size = content_len;
 			blob_item->blob.value = indigo_safe_realloc(blob_item->blob.value, blob_item->blob.size);
+			INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, blob_item->blob.size));
 			res = (indigo_read(socket, blob_item->blob.value, blob_item->blob.size) >= 0) ? true : false;
 		}
 #else
 		blob_item->blob.size = content_len;
 		blob_item->blob.value = indigo_safe_realloc(blob_item->blob.value, blob_item->blob.size);
+		INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, blob_item->blob.size));
 		res = (indigo_read(socket, blob_item->blob.value, blob_item->blob.size) >= 0) ? true : false;
 #endif
 	} else {
@@ -1128,7 +1190,8 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	}
 
 clean_return:
-	INDIGO_DEBUG(indigo_debug("%s() -> %s", __FUNCTION__, res ? "OK" : "Failed"));
+	if (!res || socket < 0)
+		INDIGO_TRACE(indigo_trace("%d -> // %s", socket, strerror(errno)));
 	if (socket >= 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		shutdown(socket, SHUT_RDWR);
@@ -1159,7 +1222,7 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	int res = false;
 
 	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
-		INDIGO_DEBUG(indigo_debug("%s(): url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME));
+		indigo_error("%s(): url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME);
 		goto clean_return;
 	}
 
@@ -1167,6 +1230,7 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	socket = indigo_open_tcp(host, port);
 	if (socket < 0)
 		goto clean_return;
+	INDIGO_TRACE(indigo_trace("%d <- // open for '%s:%d'", socket, host, port));
 
 //#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #if false
@@ -1176,24 +1240,29 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 		goto clean_return;
 	indigo_compress("image", blob_item->blob.value, (unsigned int)blob_item->blob.size, out_buffer, &out_size);
 	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nX-Uncompressed-Content-Length: %ld\r\n\r\n", file, out_size, blob_item->blob.size);
-  res = indigo_write(socket, request, strlen(request));
-  if (res == false)
-    goto clean_return;
+	INDIGO_TRACE(indigo_trace("%d <- %s", request));
+	res = indigo_write(socket, request, strlen(request));
+	if (res == false)
+		goto clean_return;
+	INDIGO_TRACE(indigo_trace("%d <- // %d bytes", socket, blob_item->blob.size));
 	res = indigo_write(socket, (const char *)out_buffer, out_size);
 	indigo_safe_free(out_buffer);
-  if (res == false)
-    goto clean_return;
+	if (res == false)
+		goto clean_return;
 #else
 	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Length: %ld\r\n\r\n", file, blob_item->blob.size);
-  res = indigo_write(socket, request, strlen(request));
-  if (res == false)
-    goto clean_return;
+	INDIGO_TRACE(indigo_trace("%d <- %s", socket, request));
+	res = indigo_write(socket, request, strlen(request));
+	if (res == false)
+		goto clean_return;
+	INDIGO_TRACE(indigo_trace("%d <- // %d bytes", socket, blob_item->blob.size));
 	res = indigo_write(socket, blob_item->blob.value, blob_item->blob.size);
-  if (res == false)
-    goto clean_return;
+	if (res == false)
+		goto clean_return;
 #endif
 
 	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
+	INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
 	if (res < 0) {
 		res = false;
 		goto clean_return;
@@ -1201,21 +1270,20 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 
 	int count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
 	if ((count != 2) || (http_result != 200)) {
-		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 		goto clean_return;
 	}
-	INDIGO_DEBUG(indigo_debug("%s(): http_result = %d, response = \"%s\"", __FUNCTION__, http_result, http_response));
 	do {
 		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
+		INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
 		if (res < 0) {
 			res = false;
 			goto clean_return;
 		}
-		INDIGO_DEBUG(indigo_debug("%s(): http_line = \"%s\"", __FUNCTION__, http_line));
 	} while (http_line[0] != '\0');
 
 clean_return:
-	INDIGO_DEBUG(indigo_debug("%s() -> %s", __FUNCTION__, res ? "OK" : "Failed"));
+	if (!res || socket < 0)
+		INDIGO_TRACE(indigo_trace("%d -> // %s", socket, strerror(errno)));
 	if (socket >= 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		shutdown(socket, SHUT_RDWR);
@@ -1232,6 +1300,92 @@ clean_return:
 	indigo_safe_free(http_line);
 	indigo_safe_free(http_response);
 	return res;
+}
+
+static bool indigo_get_hint(char *hints, const char *key, char *value) {
+	bool is_key = true;
+	bool kv_more = true;
+	bool kv_end = false;
+	bool is_quoted = false;
+
+	int i = 0;
+	char *c = hints;
+	char ckey[INDIGO_NAME_SIZE];
+	char cval[INDIGO_VALUE_SIZE];
+
+	INDIGO_DEBUG(indigo_debug("%s(): hints = { %s\n }, looking for key '%s'", __FUNCTION__, hints, key));
+
+	while (kv_more) {
+		switch (*c) {
+		case '\0':
+			kv_more = false;
+			kv_end = true;
+			if(is_key) {
+				ckey[i] = '\0';
+			} else {
+				cval[i] = '\0';
+			}
+			break;
+		case ':':
+			is_key = false;
+			ckey[i] = '\0';
+			i = 0;
+			break;
+		case ';':
+			is_key = true;
+			kv_end = true;
+			cval[i] = '\0';
+			i = 0;
+			break;
+		case '\\':
+			if(*(c++) == '\0') {
+				continue;
+			} else {
+				if(is_key) {
+					ckey[i++] = *c;
+				} else {
+					cval[i++] = *c;
+				}
+			}
+			break;
+		case '\"':
+			is_quoted = !is_quoted;
+			break;
+		case ' ':
+			if (is_quoted && !is_key) {
+				cval[i++] = *c;
+			}
+			break;
+		default:
+			if(is_key) {
+				ckey[i++] = *c;
+			} else {
+				cval[i++] = *c;
+			}
+		}
+		c++;
+		//printf("kw_end = %d, is_key = %d, is_quoted = %d\n", kv_end, is_key, is_quoted);
+		if(kv_end) {
+			if (!strncmp(ckey, key, INDIGO_NAME_SIZE)) {
+				INDIGO_DEBUG(indigo_debug("%s(): hint found -> %s = %s\n", __FUNCTION__, ckey, cval));
+				strncpy(value, cval, INDIGO_VALUE_SIZE);
+				return true;
+			}
+			i=0;
+			kv_end = 0;
+			ckey[0] = '\0';
+			cval[0] = '\0';
+		}
+	}
+	return false;
+}
+
+bool indigo_get_property_hint(indigo_property *property, const char *key, char *value) {
+	return indigo_get_hint(property->hints, key, value);
+}
+
+bool indigo_get_item_hint(indigo_item *item, const char *key, char *value) {
+	return indigo_get_hint(item->hints, key, value);
 }
 
 bool indigo_property_match(indigo_property *property, indigo_property *other) {
@@ -1666,22 +1820,63 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
 
-	static char string_1[128], string_2[128], string_3[128], string_4[128], buf[128];
+	if (format == NULL) {
+		format = "%d:%02d:%05.2f";
+	}
+
+	char buf[127];
+	static char string_1[128], string_2[128], string_3[128], string_4[128];
 	static char *string = string_4;
-	if (string == string_1)
+	if (string == string_1) {
 		string = string_2;
-	else if (string == string_2)
+	} else if (string == string_2) {
 		string = string_3;
-	else if (string == string_3)
+	} else if (string == string_3) {
 		string = string_4;
-	else if (string == string_4)
+	} else if (string == string_4) {
 		string = string_1;
-	if (format == NULL)
-		snprintf(buf, 128, "%d:%02d:%05.2f", (int)d, (int)m, (int)(s*100.0)/100.0);
-	else if (format[strlen(format) - 1] == 'd')
-		snprintf(buf, 128, format, (int)d, (int)m, (int)s);
-	else
-		snprintf(buf, 128, format, (int)d, (int)m, s);
+	}
+
+	int format_len = strlen(format);
+	if (format[format_len - 1] == 'd') {
+		s = round(s);
+		if (s >= 60) {
+			s = 0;
+			m++;
+		}
+		if (m >= 60) {
+			m = 0;
+			d++;
+		}
+		snprintf(buf, sizeof(buf), format, (int)d, (int)m, (int)s);
+	} else if (format[format_len - 1] == 'f') {
+		if (format[format_len - 3] == '.') {
+			if (format[format_len - 2] == '0') {
+				s = round(s);
+			} else if (format[format_len - 2] == '1') {
+				s = (round(s*10.0))/10.0;
+			} else if (format[format_len - 2] == '2') {
+				s = (round(s*100.0))/100.0;
+			} else if (format[format_len - 2] == '3') {
+				s = (round(s*1000.0))/1000.0;
+			}
+		} else {
+			s = (round(s*10000.0))/10000.0;
+		}
+
+		if (s >= 60) {
+			s = 0;
+			m++;
+		}
+		if (m >= 60) {
+			m = 0;
+			d++;
+		}
+		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
+	} else {
+		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
+	}
+
 	if (value < 0) {
 		if (buf[0] == '+') {
 			buf[0] = '-';
@@ -1697,12 +1892,15 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 
 void indigo_usleep(unsigned int delay) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	unsigned int s = delay / 1000000;
-	unsigned int us = delay % 1000000;
-	if (s)
-		sleep(s);
-	if (us)
-		usleep(us);
+	struct timespec remaining;
+	struct timespec requested = {
+		(int)(delay / ONE_SECOND_DELAY),
+		(delay % ONE_SECOND_DELAY) * 1000
+	};
+	int ret = nanosleep(&requested, &remaining);
+	if (ret < 0) {
+		indigo_error("%s(): nanosleep() returned %d", __FUNCTION__, ret);
+	}
 #endif
 #if defined(INDIGO_WINDOWS)
 	unsigned int s = delay / 1000;
@@ -1790,4 +1988,76 @@ void indigo_free_large_buffer(void *large_buffer) {
 	}
 	pthread_mutex_unlock(&buffer_mutex);
 	free(large_buffer);
+}
+
+double indigo_pixel_scale(double focal_length_cm, double pixel_size_um) {
+	if (focal_length_cm > 0) {
+		return 20.6265 * pixel_size_um / focal_length_cm;
+	} else {
+		return 0;
+	}
+}
+
+bool indigo_device_name_exists(const char *name) {
+	pthread_mutex_lock(&device_mutex);
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL)
+			continue;
+		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) {
+			pthread_mutex_unlock(&device_mutex);
+			return true;
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+	return false;
+}
+
+bool indigo_make_name_unique(char *name, const char *format, ...) {
+	bool used_suffix[MAX_DEVICES - 1] = { false };
+	bool is_duplicate = false;
+	pthread_mutex_lock(&device_mutex);
+	for(int slot = 0; slot < MAX_DEVICES; slot++) {
+		indigo_device *device = devices[slot];
+		if (device == NULL)
+			continue;
+		if (!strncmp(device->name, name, INDIGO_NAME_SIZE)) {
+			is_duplicate = true;
+			continue;
+		}
+		if (format == NULL) {
+			// if no default value, reuse gap in sequence
+			char *separator = strstr(device->name, " #");
+			if (separator) {
+				if (!strncmp(device->name, name, separator - device->name)) {
+					int suffix = atoi(separator + 2);
+					if (suffix > 0 && suffix < MAX_DEVICES - 1)
+						used_suffix[suffix - 1] = true;
+					continue;
+				}
+			}
+		}
+	}
+	pthread_mutex_unlock(&device_mutex);
+	if (!is_duplicate)
+		return true;
+	char tmp[64];
+	if (format == NULL) {
+		for (int i = 1; i < MAX_DEVICES; i++) {
+			if (!used_suffix[i - 1]) {
+				snprintf(tmp, sizeof(tmp), " #%d", i);
+				strcat(name, tmp);
+				return true;
+			}
+		}
+		indigo_error("Can't make unique name for device %s", name);
+		return false;
+	}
+	va_list args;
+	va_start(args, format);
+	vsnprintf(tmp, sizeof(tmp), format, args);
+	va_end(args);
+	strcat(name, " #");
+	strcat(name, tmp);
+	return true;
 }

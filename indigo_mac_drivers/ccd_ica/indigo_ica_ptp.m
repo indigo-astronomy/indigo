@@ -851,11 +851,11 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     if (buf - buffer >= dataLength)
       return self;
     ptpReadUnsignedShortArray(&buf); // capture formats
-    
+
     if (buf - buffer >= dataLength)
       return self;
     _manufacturer = ptpReadString(&buf);
-    
+
     if (buf - buffer >= dataLength)
       return self;
     _model = ptpReadString(&buf);
@@ -865,9 +865,9 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     if (buf - buffer >= dataLength)
       return self;
     _serial = ptpReadString(&buf);
-    
+
     _properties = [NSMutableDictionary dictionary];
-    
+
     if (self.vendorExtension == PTPVendorExtensionMicrosoft) {
       if ([_manufacturer containsString:@"Nikon"]) {
         self.vendorExtension = PTPVendorExtensionNikon;
@@ -1487,6 +1487,34 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
     }
   }
 }
+
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didAddItems:(nonnull NSArray<ICCameraItem *> *)items {
+}
+
+
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didRemoveItems:(nonnull NSArray<ICCameraItem *> *)items {
+}
+
+
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didRenameItems:(nonnull NSArray<ICCameraItem *> *)items {
+}
+
+
+- (void)cameraDeviceDidChangeCapability:(nonnull ICCameraDevice *)camera {
+}
+
+
+- (void)cameraDeviceDidEnableAccessRestriction:(nonnull ICDevice *)device {
+}
+
+
+- (void)cameraDeviceDidRemoveAccessRestriction:(nonnull ICDevice *)device {
+}
+
+
+- (void)deviceDidBecomeReadyWithCompleteContentCatalog:(nonnull ICCameraDevice *)device {
+}
+
 
 
 @end

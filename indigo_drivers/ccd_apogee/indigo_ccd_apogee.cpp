@@ -24,7 +24,7 @@
  \file indigo_ccd_apogee.cpp
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME	   "indigo_ccd_apogee"
 
 #include <stdlib.h>
@@ -600,7 +600,6 @@ static void apogee_close(indigo_device *device) {
 
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
 
 	PRIVATE_DATA->can_check_temperature = false;
@@ -744,11 +743,11 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 				CCD_MODE_PROPERTY->count = 3;
 				char name[32];
-				sprintf(name, "RAW 16 %dx%d", image_width, image_height);
+				snprintf(name, sizeof(name), "RAW 16 %dx%d", image_width, image_height);
 				indigo_init_switch_item(CCD_MODE_ITEM, "BIN_1x1", name, true);
-				sprintf(name, "RAW 16 %dx%d", image_width/2, image_height/2);
+				snprintf(name, sizeof(name), "RAW 16 %dx%d", image_width/2, image_height/2);
 				indigo_init_switch_item(CCD_MODE_ITEM+1, "BIN_2x2", name, false);
-				sprintf(name, "RAW 16 %dx%d", image_width/4, image_height/4);
+				snprintf(name, sizeof(name), "RAW 16 %dx%d", image_width/4, image_height/4);
 				indigo_init_switch_item(CCD_MODE_ITEM+2, "BIN_4x4", name, false);
 
 				CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
@@ -980,7 +979,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		char name[32] = "";
-		sprintf(name, "BIN_%dx%d", horizontal_bin, vertical_bin);
+		snprintf(name, sizeof(name), "BIN_%dx%d", horizontal_bin, vertical_bin);
 		for (int i = 0; i < CCD_MODE_PROPERTY->count; i++) {
 			indigo_item *item = &CCD_MODE_PROPERTY->items[i];
 			item->sw.value = !strcmp(item->name, name);
@@ -1230,7 +1229,8 @@ static void ethernet_discover(char *network, bool cam_found) {
 		device->private_data = private_data;
 		PRIVATE_DATA->discovery_string = discovery_string;
 		std::string model = GetModelName(discovery_string);
-		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
+		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s", model.c_str());
+		indigo_make_name_unique(device->name, "%d", id);
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
 				indigo_attach_device(device);
@@ -1355,7 +1355,8 @@ static void process_plug_event(indigo_device *unused) {
 		device->private_data = private_data;
 		PRIVATE_DATA->discovery_string = discovery_string;
 		std::string model = GetItemFromFindStr(discovery_string, "model=");
-		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s #%d", model.c_str(), id);
+		snprintf(device->name, INDIGO_NAME_SIZE, "Apogee %s", model.c_str());
+		indigo_make_name_unique(device->name, "%d", id);
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] == NULL) {
 				indigo_attach_device(devices[j] = device);

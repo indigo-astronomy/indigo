@@ -6,6 +6,8 @@ http://www.touptek.com
 
 ToupTek USB 2.0 and USB 3.0 devices supported by vendor SDK
 
+Untested support for Meade DSI IV, LPI-G and Meade LPI-G Advanced
+
 This driver supports hot-plug (multiple devices).
 
 ## Supported platforms

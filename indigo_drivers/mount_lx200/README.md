@@ -10,6 +10,7 @@
 * Astro-Physics GTO mounts
 * OnStep controllers (http://www.stellarjourney.com/index.php?r=site/software_telescope)
 * ZWO AM5 mount (https://astronomy-imaging-camera.com/)
+* Pegasus NYX-101 (https://pegasusastro.com/products/nyx-101-harmonic-gear-mount/)
 
 Connection over serial port or network.
 
@@ -33,7 +34,7 @@ A non-standard switch properties "Alignment mode" and "Mount type" are provided 
 
 Astro-Physics mount can't be detected automatically, use Mount type property om nount device to select it first.
 
-Use URL in form lx200://host:port to connect to the mount over network (default port is 4030). This URL is set automatically, if EQMac mount type is selected.
+Use URL in form lx200://host:port to connect to the mount over network (default port is 4030, 9999 for NYX-101). This URL is set automatically, if EQMac mount type is selected.
 
 ## Status: Stable
 
@@ -42,4 +43,5 @@ Driver is developed and tested with:
 * LX200GPS
 * EQMac
 * ZWO AM5
+* Pegasus NYX-101
 * Simulators

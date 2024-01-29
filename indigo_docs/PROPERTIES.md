@@ -25,6 +25,7 @@ properties are first of all defined memory structures which are, if needed, mapp
 | CONFIG | switch | no | yes | LOAD | yes |  |
 |  |  |  |  | SAVE | yes |  |
 |  |  |  |  | REMOVE | yes |  |
+| PROFILE_NAME | text | no | yes | NAME_0,... | yes | Set profile name |
 | PROFILE | switch | no | yes | PROFILE_0,... | yes | Select the profile number for subsequent CONFIG operation |
 | DEVICE_PORT | text | no | no | PORT | no | Either device path like "/dev/tty0" or URL like "lx200://host:port". |
 | DEVICE_BAUDRATE | text | no | no | BAUDRATE | no | Serial port configuration in a string like this: 9600-8N1 |
@@ -91,7 +92,10 @@ Properties are implemented by driver base class in [indigo_driver.c](https://git
 | CCD_COOLER | switch | no | no | ON | yes |  |
 |  |  |  |  | OFF | yes |  |
 | CCD_COOLER_POWER | number | yes | no | POWER | yes | It depends on hardware if it is undefined, read-only or read-write. |
-| CCD_FITS_HEADERS | text | no | yes | HEADER_1, ... | yes | String in form "name = value", "name = 'value'" or "comment text" |
+| CCD_FITS_HEADERS | text | yes | yes | FITS key name, ... | yes | String in form "value" or "'value'" |
+| CCD_SET_FITS_HEADER | text | no | yes | KEYWORD | yes | FITS key name |
+|  |  |  |  | VALUE | yes | FITS key value |
+| CCD_REMOVE_FITS_HEADER | text | no | yes | KEYWORD | yes | FITS key name |
 | CCD_PREVIEW | switch | no | yes | ENABLED | yes | Send JPEG preview to client |
 |  |  |  |  | DISABLED | yes | |
 | CCD_PREVIEW_IMAGE | blob | no | yes | IMAGE | yes |  |
@@ -210,12 +214,13 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 | MOUNT_ABORT_MOTION | switch | no | yes | ABORT_MOTION | yes |  |
 | MOUNT_RAW_COORDINATES | number | yes | yes | RA | yes |  |
 |  |  |  |  | DEC | yes |  |
-| MOUNT_ALIGNMENT_MODE | switch | no | yes | CONTROLLER | yes |  |
+| MOUNT_ALIGNMENT_MODE | switch | no | no | CONTROLLER | yes |  |
 |  |  |  |  | SINGLE_POINT | yes |  |
 |  |  |  |  | NEAREST_POINT | yes |  |
 |  |  |  |  | MULTI_POINT | yes |  |
-| MOUNT_ALIGNMENT_SELECT_POINTS | switch | no | yes | point id | yes |  |
-| MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY | switch | no | yes | point id | yes |  |
+| MOUNT_ALIGNMENT_SELECT_POINTS | switch | no | no | point id | yes |  |
+| MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY | switch | no | no | point id | yes |  |
+| MOUNT_ALIGNMENT_RESET | switch | no | no | RESET | yes |  |
 | MOUNT_EPOCH | number | no | yes | EPOCH | yes |  |
 | MOUNT_SIDE_OF_PIER | switch | no | no | EAST | yes |  |
 |  |  |  |  | WEST | yes |  |
@@ -416,12 +421,20 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD |
 | FILTER_WHEEL_LIST | switch | no | yes | ... | yes | Select wheel |
 | FILTER_FOCUSER_LIST | switch | no | yes | ... | yes | Select focuser |
+| FILTER_ROTATOR_LIST | switch | no | yes | ... | yes | Select rotator |
+| FILTER_RELATED_AGENT_LIST | switch | no | yes | ... | yes | Select related agents |
+| FILTER_FORCE_SYMMETRIC_RELATIONS | switch | no | yes | ENABLED | yes | Set symmetric relation |
+|  |  |  |  | DISABLED | yes | |
 | AGENT_START_PROCESS | switch | no | yes | EXPOSURE | yes | Start exposure |
 |  |  |  |  | STREAMING | yes | Start streaming |
+| AGENT_PAUSE_PROCESS | switch | no | yes | PAUSE | yes | Pause batch immediately (abort running capture) or resume |
+|  |  |  |  | PAUSE_WAIT | yes | Pause batch after running capture or resume |
+|  |  |  |  | PAUSE_AFTER_TRANSIT | yes | Resume batch paused at configured transit time (e.g. after meridian flip) |
 | AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
 | AGENT_IMAGER_BATCH | number | no | yes | COUNT | yes | Frame count |
 |  |  |  |  | EXPOSURE | yes | Exposure duration (in seconds) |
 |  |  |  |  | DELAY | yes | Delay between exposures duration (in seconds) |
+|  |  |  |  | PAUSE_AFTER_TRANSIT | yes | Pause batch when transit time reached; e.g. before meridian flip; use 24:00:00 to turn it off  |
 | AGENT_IMAGER_DOWNLOADFILE | text | no | yes | FILE | yes | Files to load into AGENT_IMAGER_DOWNLOAD_IMAGE property and remove on the host |
 | AGENT_IMAGER_DOWNLOADFILES | switch | no | yes | REFRESH | yes | Refresh the list of available files |
 |  |  |  |  | file name | yes | Set the file to AGENT_IMAGER_DOWNLOADFILE |
@@ -437,6 +450,9 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | ----- | ----- | ----- | ----- | ----- | ----- | ----- |
 | FILTER_CCD_LIST | switch | no | yes | ... | yes | Select CCD |
 | FILTER_GUIDER_LIST | switch | no | yes | ... | yes | Select guider |
+| FILTER_RELATED_AGENT_LIST | switch | no | yes | ... | yes | Select related agents |
+| FILTER_FORCE_SYMMETRIC_RELATIONS | switch | no | yes | ENABLED | yes | Set symmetric relation |
+|  |  |  |  | DISABLED | yes | |
 | AGENT_IMAGER_BATCH | switch | no | yes | PREVIEW | yes | Start preview |
 |  |  |  |  | CALIBRATION | yes | Start calibration |
 |  |  |  |  | GUIDING | yes | Start guiding |
@@ -484,6 +500,9 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | FILTER_DOME_LIST | switch | no | yes | ... | yes | Select dome |
 | FILTER_MOUNT_LIST | switch | no | yes | ... | yes | Select mount |
 | FILTER_GPS_LIST | switch | no | yes | ... | yes | Select GPS |
+| FILTER_RELATED_AGENT_LIST | switch | no | yes | ... | yes | Select related agents |
+| FILTER_FORCE_SYMMETRIC_RELATIONS | switch | no | yes | ENABLED | yes | Set symmetric relation |
+|  |  |  |  | DISABLED | yes | |
 | GEOGRAPHIC_COORDINATES | number | no | yes | LATITUDE | yes | Observatory coordinates |
 |  |  |  |  | LONGITUDE | yes | |
 |  |  |  |  | ELEVATION | yes | |

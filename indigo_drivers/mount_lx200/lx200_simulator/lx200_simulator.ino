@@ -68,10 +68,11 @@ static char __buffer__[32];
 
 bool is_meade = false;
 bool is_10micron = false;
-bool is_gemini = true;
+bool is_gemini = false;
 bool is_avalon = false;
 bool is_onstep = false;
 bool is_zwo = false;
+bool is_nyx = true;
 
 int date_day = 1;
 int date_month = 1;
@@ -238,7 +239,9 @@ void loop() {
 				else if (is_onstep)
 					Serial.print("On-Step#");
 				else if (is_zwo)
-					Serial.print("ZWO AM5#");
+					Serial.print("AM5#");
+        else if (is_nyx)
+          Serial.print("NYX-101#");
 			} else if (!strcmp(buffer, "GV")) {
 				Serial.print("1.0.0#");
       } else if (!strcmp(buffer, "GU")) {
@@ -326,7 +329,7 @@ void loop() {
           sprintf(buffer, "%02ld:%04.1f#", target_ra / 360000L, ((target_ra / 600L) % 600) / 10.0);
         }
         Serial.print(buffer);
-      } else if (!strcmp(buffer, "GR")) {
+      } else if (!strncmp(buffer, "GR", 2)) {
         if (high_precision) {
           sprintf(buffer, "%02ld:%02ld:%02ld#", ra / 360000L, (ra / 6000L) % 60, (ra / 100L) % 60);
         } else {
@@ -355,7 +358,7 @@ void loop() {
           sprintf(buffer, "%+03ld*%0l2d#", target_dec / 360000L, (abs(target_dec) / 600L) % 60);
         }
         Serial.print(buffer);
-      } else if (!strcmp(buffer, "GD")) {
+      } else if (!strncmp(buffer, "GD", 2)) {
 				if (high_precision) {
           sprintf(buffer, "%+03ld*%02ld'%02ld#", dec / 360000L, (abs(dec) / 6000L) % 60, (abs(dec) / 100L) % 60);
         } else {

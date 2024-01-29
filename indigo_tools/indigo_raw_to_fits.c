@@ -86,7 +86,7 @@ static void print_help(const char *name) {
 	       "       -t  | --ccd-temperature degC   : add CCD-TEMP keyword with the given value to the header\n"
 	       "       -b  | --bayer-pattern pattern  : add BAYERPAT keyword (pattern = BGGR | GBRG | GRBG | RGGB)\n"
 	       "       -h  | --help                   : print this help\n"
-	       "       -q  | --quiet                  : print errors and statistics\n"
+	       "       -q  | --quiet                  : print only errors and statistics\n"
 	);
 }
 
@@ -170,11 +170,11 @@ int main(int argc, char *argv[]) {
 		while (globlist.gl_pathv[k]) {
 			char *in_data = NULL;
 			char *out_data = NULL;
-			int size = 0;
+			int out_data_size = 0, in_data_size = 0;
 			char infile_name[PATH_MAX];
 
 			strncpy(infile_name, globlist.gl_pathv[k], PATH_MAX);
-			int res = open_file(globlist.gl_pathv[k], &in_data, &size);
+			int res = open_file(globlist.gl_pathv[k], &in_data, &in_data_size);
 			if (res != 0) {
 				fprintf(stderr, "Can not open '%s' : %s\n", infile_name, strerror(errno));
 				if (in_data) free(in_data);
@@ -182,7 +182,7 @@ int main(int argc, char *argv[]) {
 				k++;
 				continue;
 			}
-			res = indigo_raw_to_fits(in_data, &out_data, &size, extra_keywords);
+			res = indigo_raw_to_fits(in_data, in_data_size, &out_data, &out_data_size, extra_keywords);
 			if (res != INDIGO_OK) {
 				fprintf(stderr, "Can not convert '%s' to FITS: %s\n", infile_name, strerror(errno));
 				if (in_data) free(in_data);
@@ -202,7 +202,7 @@ int main(int argc, char *argv[]) {
 				snprintf(outfile_name, PATH_MAX, "%s.fits", infile_name);
 			}
 
-			res = save_file(outfile_name, out_data, size);
+			res = save_file(outfile_name, out_data, out_data_size);
 			if (res != 0) {
 				fprintf(stderr, "Can not save '%s': %s\n", outfile_name, strerror(errno));
 				failed++;

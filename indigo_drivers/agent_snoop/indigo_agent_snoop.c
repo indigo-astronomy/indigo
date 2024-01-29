@@ -102,7 +102,7 @@ static indigo_result forward_property(indigo_device *device, indigo_client *clie
 	indigo_property *property = indigo_safe_malloc_copy(size, source_property);
 	indigo_copy_name(property->device, r->target_device_name);
 	indigo_copy_name(property->name, r->target_property_name);
-	indigo_trace_property("Property set by rule", property, false, true);
+	indigo_trace_property("Property set by rule", NULL, property, false, true);
 	indigo_result result = r->target_device->last_result = r->target_device->change_property(r->target_device, client, property);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Forward: '%s'.%s > '%s'.%s", r->source_device_name, r->source_property_name, r->target_device_name, r->target_property_name);
 	free(property);

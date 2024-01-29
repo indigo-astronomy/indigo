@@ -40,7 +40,7 @@ This is the list of requirements taken into the consideration:
 10. IIDC CCD driver
 11. ASI CCD driver
 12. NexStar mount driver (supports Celestron NexStar and Sky-Watcher mounts)
-13. LX200 mount driver (supports Meade mounts and EQMac)
+13. LX200 mount driver (supports Meade, Avalon, Losmandy, 10microns, AstroPhysics, ZWO and PegasusAstro mounts and EQMac)
 14. FLI filter wheel driver
 15. FLI CCD driver
 16. FLI focuser driver (testers needed)
@@ -126,6 +126,19 @@ This is the list of requirements taken into the consideration:
 96. Vixen StarBook mount driver
 97. PlayerOne camera driver
 98. PegasusAstro Prodigy Microfocuser driver
+99. PegasusAstro Indigo wheel driver
+100. PegasusAstro Falcon rotator driver
+101. OmegonPro CCD driver
+102. MallinCam CCD driver
+103. RisingCam CCD driver
+104. Orion StarShotG CCD driver
+105. OGMA CCD driver
+106. PrimaLuceLab focuser driver
+107. ZWO ASIAIR Power Ports
+108. Wanderer Astro WandererBox Plus V3
+109. Wanderer Astro WandererBox Pro V3
+110. Wanderer Astro WandererCover V4-EC
+
 
 ## This is under development
 1. a-Box Adaptive optics driver
@@ -136,7 +149,7 @@ This is the list of requirements taken into the consideration:
 ### Prerequisites
 #### Ubuntu / Debian / Raspbian
 
-`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev libcurl4-gnutls-dev libz-dev git curl bsdmainutils patchelf`
+`sudo apt-get install build-essential autoconf autotools-dev libtool cmake libudev-dev libavahi-compat-libdnssd-dev libusb-1.0-0-dev libcurl4-gnutls-dev libz-dev git curl bsdmainutils bsdextrautils patchelf`
 
 It is advised to remove libraw1394-dev
 

@@ -247,16 +247,18 @@ static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	long index = snprintf(buffer, INDIGO_BUFFER_SIZE, "{ \"Value\": [ ");
 	indigo_alpaca_device *alpaca_device = alpaca_devices;
+	bool comma_needed = false;
 	while (alpaca_device) {
 		if (alpaca_device->device_type) {
-			index += snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": \"%d\", \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
-			alpaca_device = alpaca_device->next;
-			if (alpaca_device)
+			if (comma_needed) {
 				buffer[index++] = ',';
-			buffer[index++] = ' ';
-		} else {
-			alpaca_device = alpaca_device->next;
+				buffer[index++] = ' ';
+			} else {
+				comma_needed = true;
+			}
+			index += snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "{ \"DeviceName\": \"%s\", \"DeviceType\": \"%s\", \"DeviceNumber\": %d, \"UniqueID\": \"%s\" }", alpaca_device->device_name, alpaca_device->device_type, alpaca_device->device_number, alpaca_device->device_uid);
 		}
+		alpaca_device = alpaca_device->next;
 	}
 	snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
 	send_json_response(socket, path, 200, "OK", buffer);
@@ -310,7 +312,7 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 	if (!strncmp(method, "GET", 3)) {
 		parse_url_params(params, &client_id, &client_transaction_id, &id);
 		if (!strncmp(command, "imagearray", 10)) {
-			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"));
+			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
 			return false;
 		} else {
 			buffer = indigo_alloc_large_buffer();
@@ -514,7 +516,9 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, INFO_DEVICE_INTERFACE_ITEM_NAME)) {
 				alpaca_device->indigo_interface = atoll(item->text.value);
-				if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {
+				if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_AGENT)) {
+					alpaca_device->device_type = NULL;
+				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {
 					alpaca_device->ccd.ccdtemperature = NAN;
 					alpaca_device->device_type = "Camera";
 				} else if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_DOME)) {

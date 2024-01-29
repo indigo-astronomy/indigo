@@ -131,9 +131,9 @@ int guess_mount_vendor(int dev) {
 	if (write_telescope(dev, "V", 1) < 1) return RC_FAILED;
 
 	res = read_telescope_vl(dev, reply, sizeof reply);
-	if (res < 0) return RC_FAILED;
+	if (res < 1) return RC_FAILED;
 
-	if (res == 3) { /* Celestron */
+	if (res < 4) { /* Celestron */
 		return VNDR_CELESTRON;
 	} else if (res == 7) { /* SkyWatcher */
 		return VNDR_SKYWATCHER;
@@ -179,7 +179,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 
 	if ((guessed_vendor == VNDR_CELESTRON) &&
 		((mount_model == 5) || (mount_model == 6) || (mount_model == 10) || (mount_model == 13) ||
-		(mount_model == 14) || (mount_model == 20) || (mount_model == 23) || (mount_model == 24))) {
+		(mount_model == 14) || (mount_model == 17) || (mount_model == 20) || (mount_model == 23) || (mount_model == 24))) {
 		*caps |= TRUE_EQ_MOUNT;
 	}
 	if ((guessed_vendor == VNDR_SKYWATCHER) &&
@@ -439,7 +439,7 @@ int tc_get_version(int dev, char *major, char *minor) {
 	res = read_telescope_vl(dev, reply, (sizeof reply));
 	if (res < 0) return RC_FAILED;
 
-	if (res == 3) { /* Celestron */
+	if (res == 3 || res == 2) { /* Celestron */
 		if (major) *major = reply[0];
 		if (minor) *minor = reply[1];
 		int result = ((reply[0] << 16) + (reply[1] << 8));

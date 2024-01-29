@@ -30,6 +30,8 @@ function indigo_log(message)
 function indigo_debug(message)
 function indigo_trace(message)
 function indigo_send_message(message)
+function indigo_save_blob(file_name, blob_item)
+function indigo_populate_blob(blob_item)
 function indigo_enumerate_properties(device_name, property_name)
 function indigo_enable_blob(device_name, property_name, state)
 function indigo_change_text_property(device_name, property_name, items)
@@ -53,7 +55,7 @@ where ``message`` is any string, ``device`` is device name, ``property`` is prop
 The following low level callback functions are called (if present) from the INDIGO: 
 
 ```
-function indigo_on_define_property(device_name, property_name, items, state, perm, message)
+function indigo_on_define_property(device_name, property_name, items, item_defs, state, perm, message)
 function indigo_on_update_property(device_name, property_name, items, state, message)
 function indigo_on_delete_property(device_name, property_name, message)
 function indigo_on_send_message(device_name, message)

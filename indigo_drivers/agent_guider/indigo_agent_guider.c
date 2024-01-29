@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x001A
+#define DRIVER_VERSION 0x0021
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -42,6 +42,10 @@
 
 #define PI (3.14159265358979)
 #define PI2 (PI/2)
+
+#define MIN_COS_DEC (0.017)       /* DEC = ~89 degrees */
+
+#define SAFE_RADIUS_FACTOR (0.9)   /* factor to multiply SELECTION_RADIUS in which the star will not be lost */
 
 #define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
 #define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
@@ -71,6 +75,11 @@
 #define AGENT_ABORT_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      				(AGENT_ABORT_PROCESS_PROPERTY->items+0)
 
+#define AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY       (DEVICE_PRIVATE_DATA->agent_mount_coordinates_property)
+#define AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM        (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->items+0)
+#define AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM       (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->items+1)
+#define AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM       (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->items+2)
+
 #define AGENT_GUIDER_SETTINGS_PROPERTY				(DEVICE_PRIVATE_DATA->agent_settings_property)
 #define AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+0)
 #define AGENT_GUIDER_SETTINGS_DELAY_ITEM   		(AGENT_GUIDER_SETTINGS_PROPERTY->items+1)
@@ -80,20 +89,27 @@
 #define AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+5)
 #define AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+6)
 #define AGENT_GUIDER_SETTINGS_ANGLE_ITEM      (AGENT_GUIDER_SETTINGS_PROPERTY->items+7)
-#define AGENT_GUIDER_SETTINGS_BACKLASH_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+8)
-#define AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+9)
-#define AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+10)
-#define AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+11)
-#define AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+12)
-#define AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+13)
-#define AGENT_GUIDER_SETTINGS_AGG_RA_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+14)
-#define AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+15)
-#define AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+16)
-#define AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
-#define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
-#define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
-#define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
-#define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
+#define AGENT_GUIDER_SETTINGS_SOP_ITEM        (AGENT_GUIDER_SETTINGS_PROPERTY->items+8)
+#define AGENT_GUIDER_SETTINGS_BACKLASH_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+9)
+#define AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM   (AGENT_GUIDER_SETTINGS_PROPERTY->items+10)
+#define AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+11)
+#define AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+12)
+#define AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+13)
+#define AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM  (AGENT_GUIDER_SETTINGS_PROPERTY->items+14)
+#define AGENT_GUIDER_SETTINGS_AGG_RA_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+15)
+#define AGENT_GUIDER_SETTINGS_AGG_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+16)
+#define AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM		(AGENT_GUIDER_SETTINGS_PROPERTY->items+17)
+#define AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM  	(AGENT_GUIDER_SETTINGS_PROPERTY->items+18)
+#define AGENT_GUIDER_SETTINGS_STACK_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+19)
+#define AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+20)
+#define AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM 		(AGENT_GUIDER_SETTINGS_PROPERTY->items+21)
+//#define AGENT_GUIDER_SETTINGS_DITH_X_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+22)
+//#define AGENT_GUIDER_SETTINGS_DITH_Y_ITEM  		(AGENT_GUIDER_SETTINGS_PROPERTY->items+23)
+#define AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM	(AGENT_GUIDER_SETTINGS_PROPERTY->items+22)
+
+#define AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY	(DEVICE_PRIVATE_DATA->agent_flip_reverses_dec_property)
+#define AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+0)
+#define AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+1)
 
 #define MAX_STAR_COUNT												50
 #define AGENT_GUIDER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
@@ -130,6 +146,22 @@
 #define AGENT_GUIDER_STATS_DELAY_ITEM      		(AGENT_GUIDER_STATS_PROPERTY->items+17)
 #define AGENT_GUIDER_STATS_DITHERING_ITEM			(AGENT_GUIDER_STATS_PROPERTY->items+18)
 
+#define AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY			(DEVICE_PRIVATE_DATA->agent_dithering_strategy_property)
+#define AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM	(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items+0)
+#define AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_ITEM			(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items+1)
+#define AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM			(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items+2)
+
+#define AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY		(DEVICE_PRIVATE_DATA->agent_dithering_offsets_property)
+#define AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM  		(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY->items+0)
+#define AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM  		(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY->items+1)
+
+#define AGENT_GUIDER_DITHER_PROPERTY				(DEVICE_PRIVATE_DATA->agent_dither_property)
+#define AGENT_GUIDER_DITHER_TRIGGER_ITEM					(AGENT_GUIDER_DITHER_PROPERTY->items+0)
+#define AGENT_GUIDER_DITHER_RESET_ITEM					(AGENT_GUIDER_DITHER_PROPERTY->items+1)
+
+#define IS_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0)
+#define NOT_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value == 0)
+
 #define BUSY_TIMEOUT 5
 
 #define DIGEST_CONVERGE_ITERATIONS 3
@@ -140,11 +172,16 @@ typedef struct {
 	indigo_property *agent_guider_apply_dec_backlash_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_abort_process_property;
+	indigo_property *agent_mount_coordinates_property;
 	indigo_property *agent_settings_property;
+	indigo_property *agent_flip_reverses_dec_property;
 	indigo_property *agent_stars_property;
 	indigo_property *agent_selection_property;
 	indigo_property *agent_stats_property;
 	indigo_property *saved_frame;
+	indigo_property *agent_dithering_strategy_property;
+	indigo_property *agent_dithering_offsets_property;
+	indigo_property *agent_dither_property;
 	double saved_frame_left, saved_frame_top;
 	bool properties_defined;
 	indigo_star_detection stars[MAX_STAR_COUNT];
@@ -154,13 +191,13 @@ typedef struct {
 	double rmse_ra_sum, rmse_dec_sum;
 	double rmse_ra_s_sum, rmse_dec_s_sum;
 	double rmse_ra_threshold, rmse_dec_threshold;
-	double ccd_pixel_height, ccd_pixel_width;
-	double guider_focal_length;
+	double cos_dec;
 	unsigned long rmse_count;
 	void *last_image;
-	enum { IGNORE = -2, PREVIEW, GUIDING, INIT, CLEAR_DEC, CLEAR_RA, MOVE_NORTH, MOVE_SOUTH, MOVE_WEST, MOVE_EAST, FAILED, DONE } phase;
+	int phase;
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
 	int stack_size;
+	unsigned int dither_num;
 	pthread_mutex_t mutex;
 } agent_private_data;
 
@@ -171,10 +208,12 @@ static void save_config(indigo_device *device) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_save_property(device, NULL, AGENT_GUIDER_SETTINGS_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DEC_MODE_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
 		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
 		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 4, (const char **)selection_property_items);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
@@ -190,6 +229,160 @@ static void save_config(indigo_device *device) {
 	}
 }
 
+static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
+	if (related_agent_name) {
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, AGENT_ABORT_GUIDER_ITEM_NAME, state);
+	}
+}
+
+static inline bool after_meridian_flip(indigo_device *device) {
+	return (
+		AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value != 0 &&
+		AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value != 0 &&
+		AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value != AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value
+	);
+}
+
+static inline double get_rotation_angle(indigo_device *device) {
+	double angle = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value;
+	if (after_meridian_flip(device)) {
+		angle += 180;
+		if (angle > 180) {
+			angle -= 360;
+		}
+	}
+	INDIGO_DRIVER_DEBUG(
+		DRIVER_NAME,
+		"Calibration Rotation Angle = %.3f (SOP = %d), Current SOP = %d => Effecive angle = %.3f",
+		AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value,
+		(int)AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value,
+		(int)AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value,
+		angle
+	);
+	return angle;
+}
+
+static inline double get_dec_speed(indigo_device *device) {
+	if (after_meridian_flip(device) && AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM->sw.value) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Declination speed reversed");
+		return -AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value;
+	}
+	return AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value;
+}
+
+static void random_dither_values(double amount, double *dither_x, double *dither_y) {
+	*dither_x = fabs(amount) * (drand48() - 0.5);
+	*dither_y = fabs(amount) * (drand48() - 0.5);
+}
+
+static void spiral_dither_values(unsigned int dither_number, double amount, bool randomize, double *dither_x, double *dither_y) {
+	int dx = -1;
+	int dy = -1;
+	int dither_num = dither_number / 4;
+	int corner_num = dither_number % 4;
+
+	if(corner_num == 0) {
+		dx = -1;
+		dy = 1;
+	} else if (corner_num == 1) {
+		dx = 1;
+		dy = 1;
+	} else if (corner_num == 2) {
+		dx = 1;
+		dy = -1;
+	} else {
+		dx = -1;
+		dy = -1;
+	}
+
+	*dither_x = (double)(dx * dither_num % (int)round(amount/2) + dx);
+	*dither_y = (double)(dy * dither_num % (int)round(amount/2) + dy);
+
+	if (randomize) {
+		*dither_x = *dither_x - dx * (drand48()/1.1);
+		*dither_y = *dither_y - dy * (drand48()/1.1);
+	}
+}
+
+static void do_dither(indigo_device *device) {
+	// if not guiding clear state and return
+	if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING) {
+		AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+		AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+		AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dither request igored, not guiding");
+		return;
+	}
+	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+	AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+	double x_value = 0;
+	double y_value = 0;
+	if (AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM->sw.value) {
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, true, &x_value, &y_value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOMIZED_SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
+	} else if (AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM->sw.value) {
+		spiral_dither_values(DEVICE_PRIVATE_DATA->dither_num++, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, false, &x_value, &y_value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering SPIRAL x_value = %.4f y_value = %.4f dither_num = %d", x_value, y_value, DEVICE_PRIVATE_DATA->dither_num - 1);
+	} else {
+		random_dither_values(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM->number.target * 2, &x_value, &y_value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering RANDOM x_value = %.4f y_value = %.4f", x_value, y_value);
+	}
+	static const char *item_names[] = { AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME };
+	double item_values[] = { x_value, y_value };
+	indigo_change_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, 2, item_names, item_values);
+	for (int i = 0; i < 15; i++) { // wait up to 3s to start dithering
+		if (IS_DITHERING) {
+			break;
+		}
+		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+			AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+			AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+			return;
+		}
+		indigo_usleep(200000);
+	}
+	if (IS_DITHERING) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
+		double time_limit = AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM->number.value * 5;
+		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
+			if (NOT_DITHERING) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
+				break;
+			}
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+				AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+				AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+				return;
+			}
+			indigo_usleep(200000);
+		}
+		if (IS_DITHERING) {
+			AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
+			AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+			AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+			AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
+			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering failed");
+			indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
+			indigo_usleep(200000);
+			return;
+		}
+	}
+	AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+	AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+	indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+	return;
+}
+
 static indigo_property_state capture_raw_frame(indigo_device *device) {
 	char *ccd_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX];
 	indigo_property_state state = INDIGO_ALERT_STATE;
@@ -203,6 +396,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		return INDIGO_ALERT_STATE;
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, ccd_name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true);
+	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, ccd_name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
 	FILTER_DEVICE_CONTEXT->property_removed = false;
 	for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
 		if (FILTER_DEVICE_CONTEXT->property_removed)
@@ -240,7 +434,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 			return INDIGO_ALERT_STATE;
 		}
-		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == IGNORE)
+		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_IGNORE)
 			return agent_exposure_property->state;
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
@@ -343,7 +537,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->reference
 				);
 				AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
-				if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && DEVICE_PRIVATE_DATA->reference->snr < 9) {
+				if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < 9) {
 					if (exposure_attempt == 2)
 						indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 					state = INDIGO_ALERT_STATE;
@@ -390,7 +584,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->reference->centroid_y /= used;
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
+				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && result == INDIGO_GUIDE_ERROR) {
 					indigo_send_message(device, "Warning: No stars detected, reseting selection");
 					DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
 					DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
@@ -410,12 +604,12 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			}
 			if (result == INDIGO_OK) {
 				if (DEVICE_PRIVATE_DATA->reference->algorithm == centroid) {
-					AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_x + AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-					AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_y + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+					AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_x + AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value;
+					AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_y + AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-			} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == PREVIEW) {
+			} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_PREVIEWING) {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				return INDIGO_OK_STATE;
@@ -435,7 +629,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					&digest
 				);
 				AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
-				if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && digest.snr < 9) {
+				if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < 9) {
 					if (exposure_attempt == 2)
 						indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 					state = INDIGO_ALERT_STATE;
@@ -487,7 +681,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= GUIDING && result == INDIGO_GUIDE_ERROR) {
+				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && result == INDIGO_GUIDE_ERROR) {
 					if (exposure_attempt < 2)
 						continue;
 					if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
@@ -504,14 +698,12 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			if (result == INDIGO_OK) {
 				double drift_x, drift_y;
 				result = indigo_calculate_drift(DEVICE_PRIVATE_DATA->reference, &digest, &drift_x, &drift_y);
-				DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-				DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+				DEVICE_PRIVATE_DATA->drift_x = drift_x - AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value;
+				DEVICE_PRIVATE_DATA->drift_y = drift_y - AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value;
 
 				int count = (int)fmin(AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value, DEVICE_PRIVATE_DATA->stack_size);
 				double stddev_x = indigo_stddev(DEVICE_PRIVATE_DATA->stack_x, count);
 				double stddev_y = indigo_stddev(DEVICE_PRIVATE_DATA->stack_y, count);
-
-				double tmp[MAX_STACK - 1];
 
 				/* Use Modified PID controller - Large random errors are not used in I, to prevent overshoots */
 				if (
@@ -519,8 +711,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1
 				) {
-					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
-					memcpy(DEVICE_PRIVATE_DATA->stack_x + 1, tmp, sizeof(double) * (MAX_STACK - 1));
+					memmove(DEVICE_PRIVATE_DATA->stack_x + 1, DEVICE_PRIVATE_DATA->stack_x, sizeof(double) * (MAX_STACK - 1));
 					DEVICE_PRIVATE_DATA->stack_x[0] = DEVICE_PRIVATE_DATA->drift_x;
 				} else {
 					indigo_debug(
@@ -536,8 +727,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value > DEVICE_PRIVATE_DATA->stack_size ||
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1
 				) {
-					memcpy(tmp, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
-					memcpy(DEVICE_PRIVATE_DATA->stack_y + 1, tmp, sizeof(double) * (MAX_STACK - 1));
+					memmove(DEVICE_PRIVATE_DATA->stack_y + 1, DEVICE_PRIVATE_DATA->stack_y, sizeof(double) * (MAX_STACK - 1));
 					DEVICE_PRIVATE_DATA->stack_y[0] = DEVICE_PRIVATE_DATA->drift_y;
 				} else {
 					indigo_debug(
@@ -554,7 +744,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 
 				if (
 					AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value == 1 ||
-					AGENT_GUIDER_STATS_PHASE_ITEM->number.value != GUIDING
+					AGENT_GUIDER_STATS_PHASE_ITEM->number.value != INDIGO_GUIDER_PHASE_GUIDING
 				) {
 					DEVICE_PRIVATE_DATA->avg_drift_x = 0;
 					DEVICE_PRIVATE_DATA->avg_drift_y = 0;
@@ -580,7 +770,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->drift = sqrt(DEVICE_PRIVATE_DATA->drift_x * DEVICE_PRIVATE_DATA->drift_x + DEVICE_PRIVATE_DATA->drift_y * DEVICE_PRIVATE_DATA->drift_y);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx (%.4g, %.4g)", DEVICE_PRIVATE_DATA->drift, DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
 				}
-			} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == PREVIEW) {
+			} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_PREVIEWING) {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				return INDIGO_OK_STATE;
@@ -712,7 +902,7 @@ static indigo_property_state pulse_guide(indigo_device *device, double ra, doubl
 
 static void preview_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = PREVIEW;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_PREVIEWING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
@@ -732,16 +922,17 @@ static void preview_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value =
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 
-	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value =
-	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target =
-	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value =
-	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
+	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value =
+	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target =
+	AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value =
+	AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
 
+	allow_abort_by_mount_agent(device, false);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
 	while (capture_raw_frame(device) == INDIGO_OK_STATE)
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? DONE : FAILED;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
@@ -765,18 +956,18 @@ static void change_step(indigo_device *device, double q) {
 		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
 			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value *= q);
 			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Increasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
-			DEVICE_PRIVATE_DATA->phase = INIT;
+			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 		} else {
-			DEVICE_PRIVATE_DATA->phase = FAILED;
+			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 		}
 	} else {
 		indigo_send_message(device, "Drift is too fast");
 		if (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value < AGENT_GUIDER_SETTINGS_STEP_ITEM->number.max) {
 			AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target = (AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value *= q);
 			indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, "Decreasing calibration step to %.3g", AGENT_GUIDER_SETTINGS_STEP_ITEM->number.target);
-			DEVICE_PRIVATE_DATA->phase = INIT;
+			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 		} else {
-			DEVICE_PRIVATE_DATA->phase = FAILED;
+			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 		}
 	}
 	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
@@ -797,7 +988,7 @@ static void guide_process(indigo_device *device);
 static void _calibrate_process(indigo_device *device, bool will_guide) {
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0;
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INIT;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
@@ -817,110 +1008,113 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_STATS_SNR_ITEM->number.value =
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 
-	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value =
-	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target =
-	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value =
-	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
+	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value =
+	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target =
+	AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value =
+	AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
 
+	allow_abort_by_mount_agent(device, true);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase;
 		switch (DEVICE_PRIVATE_DATA->phase) {
-			case INIT: {
+			case INDIGO_GUIDER_PHASE_INITIALIZING: {
 				AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value = AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target = 0;
+				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value = AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.value = AGENT_GUIDER_SETTINGS_BACKLASH_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = 0;
 				AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value = AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.target = 0;
-				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target = 0;
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
-				DEVICE_PRIVATE_DATA->phase = CLEAR_DEC;
+				AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target = 0;
+				AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
+				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_CLEARING_DEC;
 				indigo_send_message(device, "Calibration started");
 				indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+				indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
 				break;
 			}
-			case CLEAR_DEC: {
+			case INDIGO_GUIDER_PHASE_CLEARING_DEC: {
 				if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
-					DEVICE_PRIVATE_DATA->phase = CLEAR_RA;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_CLEARING_RA;
 					break;
 				}
 				if (AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value == 0) {
-					DEVICE_PRIVATE_DATA->phase = MOVE_NORTH;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_NORTH;
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 				AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
 				AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-					DEVICE_PRIVATE_DATA->phase = FAILED;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Clearing DEC backlash");
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
 					if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
-						DEVICE_PRIVATE_DATA->phase = FAILED;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
 					}
 					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) {
-						DEVICE_PRIVATE_DATA->phase = FAILED;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
 					}
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
-						DEVICE_PRIVATE_DATA->phase = CLEAR_RA;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_CLEARING_RA;
 						break;
 					}
 				}
-				if (DEVICE_PRIVATE_DATA->phase == CLEAR_DEC) {
+				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_CLEARING_DEC) {
 					change_step(device, 2);
 				}
 				break;
 			}
-			case CLEAR_RA: {
+			case INDIGO_GUIDER_PHASE_CLEARING_RA: {
 				if (AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value == 0) {
-					DEVICE_PRIVATE_DATA->phase = MOVE_NORTH;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_NORTH;
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 				AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value =
 				AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-					DEVICE_PRIVATE_DATA->phase = FAILED;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Clearing RA backlash");
 				/* cos(87deg) = 0.05 => so 20 is ok for 87 declination */
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value * 20; i++) {
 					if (!guide_and_capture_frame(device, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0)) {
-						DEVICE_PRIVATE_DATA->phase = FAILED;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
 					}
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (DEVICE_PRIVATE_DATA->drift > AGENT_GUIDER_SETTINGS_BL_DRIFT_ITEM->number.value) {
 						indigo_send_message(device, "Backlash cleared");
-						DEVICE_PRIVATE_DATA->phase = MOVE_NORTH;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_NORTH;
 						break;
 					}
 				}
-				if (DEVICE_PRIVATE_DATA->phase == CLEAR_RA) {
+				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_CLEARING_RA) {
 					change_step(device, 2);
 				}
 				break;
 			}
-			case MOVE_NORTH: {
+			case INDIGO_GUIDER_PHASE_MOVING_NORTH: {
 				if (AGENT_GUIDER_DEC_MODE_NONE_ITEM->sw.value) {
-					DEVICE_PRIVATE_DATA->phase = MOVE_WEST;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_WEST;
 					break;
 				}
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-					DEVICE_PRIVATE_DATA->phase = FAILED;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving north");
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value; i++) {
 					if (!guide_and_capture_frame(device, 0, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) {
-						DEVICE_PRIVATE_DATA->phase = FAILED;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
 					}
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -937,34 +1131,34 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 							last_count = i;
 							if (AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value == 0) {
 								indigo_send_message(device, "DEC speed is 0 px/\"");
-								DEVICE_PRIVATE_DATA->phase = FAILED;
+								DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 							} else {
-								DEVICE_PRIVATE_DATA->phase = MOVE_SOUTH;
+								DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_SOUTH;
 							}
 							break;
 						}
 					}
 				}
-				if (DEVICE_PRIVATE_DATA->phase == MOVE_NORTH) {
+				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_MOVING_NORTH) {
 					change_step(device, 2);
 				}
 				break;
 			}
-			case MOVE_SOUTH: {
+			case INDIGO_GUIDER_PHASE_MOVING_SOUTH: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-					DEVICE_PRIVATE_DATA->phase = FAILED;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving south");
 				for (int i = 0; i <= last_count; i++) {
 					if (!guide_and_capture_frame(device, 0, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value)) {
-						DEVICE_PRIVATE_DATA->phase = FAILED;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
 					}
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				}
-				if (DEVICE_PRIVATE_DATA->phase == MOVE_SOUTH) {
+				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_MOVING_SOUTH) {
 					/* allow for 1 step measurement error  */
 					if (DEVICE_PRIVATE_DATA->drift < last_drift + last_drift / last_count) {
 						double backlash = round(1000 * (last_drift - DEVICE_PRIVATE_DATA->drift)) / 1000;
@@ -978,21 +1172,21 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 						indigo_send_message(device, "Warning: Inconsitent backlash");
 					}
 					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-					DEVICE_PRIVATE_DATA->phase = MOVE_WEST;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_WEST;
 				}
 				break;
 			}
-			case MOVE_WEST: {
+			case INDIGO_GUIDER_PHASE_MOVING_WEST: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-					DEVICE_PRIVATE_DATA->phase = FAILED;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving west");
 				/* we need more iterations closer to the pole */
 				for (int i = 0; i < AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value * 5; i++) {
 					if (!guide_and_capture_frame(device, AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0)) {
-						DEVICE_PRIVATE_DATA->phase = FAILED;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
 					}
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -1020,30 +1214,30 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 						last_count = i;
 						if (fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value) < 0.1) {
 							indigo_send_message(device, "RA drift speed is too slow");
-							DEVICE_PRIVATE_DATA->phase = FAILED;
+							DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						} else {
-							DEVICE_PRIVATE_DATA->phase = MOVE_EAST;
+							DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_MOVING_EAST;
 						}
 						break;
 					}
 				}
 				break;
 			}
-			case MOVE_EAST: {
+			case INDIGO_GUIDER_PHASE_MOVING_EAST: {
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 				if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-					DEVICE_PRIVATE_DATA->phase = FAILED;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 					break;
 				}
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Moving east");
 				for (int i = 0; i <= last_count; i++) {
 					if (!guide_and_capture_frame(device, -AGENT_GUIDER_SETTINGS_STEP_ITEM->number.value, 0)) {
-						DEVICE_PRIVATE_DATA->phase = FAILED;
+						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
 					}
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 				}
-				if (DEVICE_PRIVATE_DATA->phase == MOVE_EAST) {
+				if (DEVICE_PRIVATE_DATA->phase == INDIGO_GUIDER_PHASE_MOVING_EAST) {
 					/* Large periodoc error like in harmonic drive mounts can result in RA speed over or under estimation.
 					   The average of West and East measured speeds should be the precise speed.
 					*/
@@ -1055,25 +1249,38 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RA speed (without PE) = %.3lf px/sec", AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value);
 					indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-					DEVICE_PRIVATE_DATA->phase = DONE;
+					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_DONE;
 				}
 				break;
 			}
-			case FAILED: {
+			case INDIGO_GUIDER_PHASE_FAILED: {
 				indigo_send_message(device, "Calibration failed");
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				break;
 			}
-			case DONE: {
-				double acos_dec = fabs(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value);
-				if (acos_dec > 1) acos_dec = 1;
-				double pole_distnce = 90 - 180 / PI * acos(acos_dec);
+			case INDIGO_GUIDER_PHASE_DONE: {
+				double pole_distance = 90 - fabs(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value);
 				/* Declination is > 85deg or < -85deg */
-				if (pole_distnce < 5) {
-					indigo_send_message(device, "Calculated pole distance %.1f°. RA calibration may be off", pole_distnce);
-				} else {
-					//indigo_send_message(device, "Calculated pole distance %.1f°", pole_distnce);
+				if (pole_distance < 5) {
+					indigo_send_message(device, "Pole distance %.1f°. RA calibration may be off", pole_distance);
 				}
+				if (DEVICE_PRIVATE_DATA->cos_dec == 0) {
+					DEVICE_PRIVATE_DATA->cos_dec = MIN_COS_DEC;
+				}
+				INDIGO_DRIVER_DEBUG(
+					DRIVER_NAME,
+					"Calculated RA speed = %.3f, RA speed at equator = %.3f (cos_dec = %.3f)",
+					AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value,
+					AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / DEVICE_PRIVATE_DATA->cos_dec,
+					DEVICE_PRIVATE_DATA->cos_dec
+				);
+				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value =
+				AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.target = AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value / DEVICE_PRIVATE_DATA->cos_dec;
+
+				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value =
+				AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target = AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value;
+
+				indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 				indigo_send_message(device, "Calibration complete");
 				save_config(device);
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1090,6 +1297,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
 	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	allow_abort_by_mount_agent(device, false);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
@@ -1115,15 +1323,26 @@ static void calibrate_and_guide_process(indigo_device *device) {
 
 static void guide_process(indigo_device *device) {
 	double prev_correction_dec = 0;
-	if (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0) {
+	if (
+		AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0 ||
+		fabs(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value) > 89
+	) {
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
+		AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
+		AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value =
+		AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
+		AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-		indigo_send_message(device, "Guiding failed (not calibrated)");
+		if (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value == 0) {
+			indigo_send_message(device, "Guiding failed (not calibrated)");
+		} else {
+			indigo_send_message(device, "Guiding failed (too close to the pole)");
+		}
 		FILTER_DEVICE_CONTEXT->running_process = false;
 		return;
 	}
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = IGNORE;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_IGNORE;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value =
@@ -1143,6 +1362,7 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	DEVICE_PRIVATE_DATA->rmse_ra_threshold =
 	DEVICE_PRIVATE_DATA->rmse_dec_threshold = 0;
+	allow_abort_by_mount_agent(device, true);
 	indigo_send_message(device, "Guiding started");
 	double saved_exposure_time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
 	AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = 0;
@@ -1150,7 +1370,8 @@ static void guide_process(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	}
 	AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = saved_exposure_time;
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = GUIDING;
+	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_GUIDING;
 	if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value = -1;
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -1158,11 +1379,11 @@ static void guide_process(indigo_device *device) {
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
 	}
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value =
-	AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target =
-	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value =
-	AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target = 0;
-	indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value =
+	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target =
+	AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value =
+	AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
+	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->rmse_ra_sum =
 	DEVICE_PRIVATE_DATA->rmse_dec_sum =
 	DEVICE_PRIVATE_DATA->rmse_ra_s_sum =
@@ -1174,11 +1395,11 @@ static void guide_process(indigo_device *device) {
 			break;
 		}
 		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
-			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.value / 180;
+			double angle = -PI * get_rotation_angle(device) / 180;
 			double sin_angle = sin(angle);
 			double cos_angle = cos(angle);
-			double pix_scale_x = indigo_pixel_scale(DEVICE_PRIVATE_DATA->guider_focal_length, DEVICE_PRIVATE_DATA->ccd_pixel_width);
-			double pix_scale_y = indigo_pixel_scale(DEVICE_PRIVATE_DATA->guider_focal_length, DEVICE_PRIVATE_DATA->ccd_pixel_height);
+			double pix_scale_x = CCD_LENS_FOV_PIXEL_SCALE_WIDTH_ITEM->number.value * 3600;
+			double pix_scale_y = CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM->number.value * 3600;
 			double min_error = AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM->number.value;
 			double min_pulse = AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM->number.value;
 			double max_pulse = AGENT_GUIDER_SETTINGS_MAX_PULSE_ITEM->number.value;
@@ -1193,6 +1414,7 @@ static void guide_process(indigo_device *device) {
 			AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = round(1000 * drift_ra_s) / 1000;
 			AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = round(1000 * drift_dec_s) / 1000;
 			double correction_ra = 0, correction_dec = 0;
+			double max_safe_correction = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value * SAFE_RADIUS_FACTOR;
 			if (fabs(drift_ra) > min_error) {
 				correction_ra = indigo_guider_reponse(
 					AGENT_GUIDER_SETTINGS_AGG_RA_ITEM->number.value / 100,
@@ -1201,7 +1423,24 @@ static void guide_process(indigo_device *device) {
 					drift_ra,
 					avg_drift_ra
 				);
-				correction_ra = correction_ra / AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value;
+
+				/* Limit correction_ra, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
+				if (
+					(AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) &&
+					(fabs(correction_ra) > max_safe_correction)
+				) {
+					INDIGO_DRIVER_DEBUG(
+						DRIVER_NAME,
+						"RA correction = %.4fpx will lose stars with radius = %.2fpx, reduced RA correction = %.4fpx",
+						correction_ra,
+						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+						copysign(1.0, correction_ra) * max_safe_correction
+					);
+					correction_ra = copysign(1.0, correction_ra) * max_safe_correction;
+				}
+
+				double cos_dec = (DEVICE_PRIVATE_DATA->cos_dec > MIN_COS_DEC) ? DEVICE_PRIVATE_DATA->cos_dec : MIN_COS_DEC;
+				correction_ra = correction_ra / (AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM->number.value * cos_dec);
 				if (correction_ra > max_pulse)
 					correction_ra = max_pulse;
 				else if (correction_ra < -max_pulse)
@@ -1217,7 +1456,23 @@ static void guide_process(indigo_device *device) {
 					drift_dec,
 					avg_drift_dec
 				);
-				correction_dec = correction_dec / AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value;
+
+				/* Limit correction_dec, so that we will not lose the stars in the slection if we apply it and let the next cycle complete complete it */
+				if (
+					(AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) &&
+					(fabs(correction_dec) > max_safe_correction)
+				) {
+					INDIGO_DRIVER_DEBUG(
+						DRIVER_NAME,
+						"Dec correction = %.4fpx will lose stars with radius = %.2fpx, reduced Dec correction = %.4fpx",
+						correction_dec,
+						AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
+						copysign(1.0, correction_dec) * max_safe_correction
+					);
+					correction_dec = copysign(1.0, correction_dec) * max_safe_correction;
+				}
+
+				correction_dec = correction_dec / get_dec_speed(device);
 				if (correction_dec > max_pulse)
 					correction_dec = max_pulse;
 				else if (correction_dec < -max_pulse)
@@ -1334,7 +1589,7 @@ static void guide_process(indigo_device *device) {
 		}
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	}
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? DONE : FAILED;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_START_PREVIEW_ITEM->sw.value =
@@ -1343,6 +1598,7 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	allow_abort_by_mount_agent(device, false);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
@@ -1356,7 +1612,7 @@ static void guide_process(indigo_device *device) {
 
 static void find_stars_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = PREVIEW;
+	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_PREVIEWING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value =
 	AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value =
@@ -1402,6 +1658,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
 		FILTER_GUIDER_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- Process properties
 		AGENT_GUIDER_DETECTION_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DETECTION_MODE_PROPERTY_NAME, "Agent", "Drift detection mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 		if (AGENT_GUIDER_DETECTION_MODE_PROPERTY == NULL)
@@ -1425,7 +1682,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_DISABLED_ITEM_NAME, "Disabled", true);
 		indigo_init_switch_item(AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM, AGENT_GUIDER_APPLY_DEC_BACKLASH_ENABLED_ITEM_NAME, "Enabled", false);
 
-		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 4);
+		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 4);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_GUIDER_START_PREVIEW_ITEM, AGENT_GUIDER_START_PREVIEW_ITEM_NAME, "Start preview", false);
@@ -1433,13 +1690,20 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM, AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM_NAME, "Start calibration and guiding", false);
 		indigo_init_switch_item(AGENT_GUIDER_START_GUIDING_ITEM, AGENT_GUIDER_START_GUIDING_ITEM_NAME, "Start guiding", false);
 
-		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		AGENT_ABORT_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_PROCESS_PROPERTY_NAME, "Agent", "Abort", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
-
+		//------------------------------------------------------------------------------- Mount orientation
+		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
+		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_sexagesimal_number_item(AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 1, 0);
+		indigo_init_sexagesimal_number_item(AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
+		DEVICE_PRIVATE_DATA->cos_dec = 1; /* default dec is 0 until set */
 		// -------------------------------------------------------------------------------- Guiding settings
-		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
+		AGENT_GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, "Agent", "Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 23);
 		if (AGENT_GUIDER_SETTINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, "Exposure time (s)", 0, 120, 0.1, 1);
@@ -1450,8 +1714,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM, AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM_NAME, "Max calibration steps", 0, 50, 1, 20);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM, AGENT_GUIDER_SETTINGS_CAL_DRIFT_ITEM_NAME, "Min calibration drift (px)", 0, 100, 5, 20);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_ANGLE_ITEM, AGENT_GUIDER_SETTINGS_ANGLE_ITEM_NAME, "Angle (°)", -180, 180, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SOP_ITEM, AGENT_GUIDER_SETTINGS_SOP_ITEM_NAME, "Side of Pier (-1=E, 1=W, 0=undef)", -1, 1, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_BACKLASH_ITEM, AGENT_GUIDER_SETTINGS_BACKLASH_ITEM_NAME, "Dec backlash (px)", 0, 100, 0, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM, AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM_NAME, "RA speed (px/s)", -500, 500, 0.1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM, AGENT_GUIDER_SETTINGS_SPEED_RA_ITEM_NAME, "RA speed at equator (px/s)", -500, 500, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM, AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM_NAME, "Dec speed (px/s)", -500, 500, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM, AGENT_GUIDER_SETTINGS_MIN_ERR_ITEM_NAME, "Min error (px)", 0, 5, 0.1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM, AGENT_GUIDER_SETTINGS_MIN_PULSE_ITEM_NAME, "Min pulse (s)", 0, 1, 0.001, 0.01);
@@ -1461,9 +1726,15 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_RA_ITEM_NAME, "RA Integral gain", 0, 10, 0.05, 0.5);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM, AGENT_GUIDER_SETTINGS_I_GAIN_DEC_ITEM_NAME, "Dec Integral gain", 0, 10, 0.05, 0.5);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_STACK_ITEM, AGENT_GUIDER_SETTINGS_STACK_ITEM_NAME, "Integral stack size (frames)", 1, MAX_STACK, 1, 1);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_X_ITEM, AGENT_GUIDER_SETTINGS_DITH_X_ITEM_NAME, "Dithering offset X (px)", -15, 15, 1, 0);
-		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM_NAME, "Dithering offset Y (px)", -15, 15, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_AMOUNT_ITEM_NAME, "Dithering max amount (px)", 0, 15, 1, 1);
+		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM_NAME, "Dithering Settle time limit (s)", 0, 300, 1, 60);
 		indigo_init_number_item(AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM, AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM_NAME, "Dithering settling limit (frames)", 1, 50, 1, 5);
+		// -------------------------------------------------------------------------------- FLIP_REVERSE_DEC
+		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM, AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM, AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM_NAME, "Disabled", false);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_GUIDER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);
 		if (AGENT_GUIDER_STARS_PROPERTY == NULL)
@@ -1477,7 +1748,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 20, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, "Edge Clipping (px)", 0, 500, 1, 8);
-		indigo_init_number_item(AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME, "Maximaum number of stars", 1, MAX_MULTISTAR_COUNT, 1, 1);
+		indigo_init_number_item(AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME, "Maximum number of stars", 1, MAX_MULTISTAR_COUNT, 1, 1);
 		for (int i = 0; i < MAX_MULTISTAR_COUNT; i++) {
 			indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 			indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
@@ -1494,7 +1765,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 19);
 		if (AGENT_GUIDER_STATS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_GUIDER_STATS_PHASE_ITEM, AGENT_GUIDER_STATS_PHASE_ITEM_NAME, "Phase #", -1, 100, 0, DONE);
+		indigo_init_number_item(AGENT_GUIDER_STATS_PHASE_ITEM, AGENT_GUIDER_STATS_PHASE_ITEM_NAME, "Phase #", -1, 100, 0, INDIGO_GUIDER_PHASE_DONE);
 		indigo_init_number_item(AGENT_GUIDER_STATS_FRAME_ITEM, AGENT_GUIDER_STATS_FRAME_ITEM_NAME, "Frame #", 0, 0xFFFFFFFF, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_REFERENCE_X_ITEM, AGENT_GUIDER_STATS_REFERENCE_X_ITEM_NAME, "Reference X (px)", 0, 100000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_REFERENCE_Y_ITEM, AGENT_GUIDER_STATS_REFERENCE_Y_ITEM_NAME, "Reference Y (px)", 0, 100000, 0, 0);
@@ -1513,6 +1784,26 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_SNR_ITEM, AGENT_GUIDER_STATS_SNR_ITEM_NAME, "SNR", 0, 1000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DELAY_ITEM, AGENT_GUIDER_STATS_DELAY_ITEM_NAME, "Remaining delay (s)", 0, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DITHERING_ITEM, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME, "Dithering RMSE (px)", 0, 100, 0, 0);
+		// -------------------------------------------------------------------------------- Dithering offsets
+		AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, "Agent", "Dithering offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM, AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM_NAME, "Offset X (px)", -15, 15, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM_NAME, "Offset Y (px)", -15, 15, 1, 0);
+		// -------------------------------------------------------------------------------- Dithering strategy
+		AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY_NAME, "Agent", "Dithering strategy", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM, AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_SPIRAL_ITEM_NAME, "Randomized spiral", true);
+		indigo_init_switch_item(AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_ITEM, AGENT_GUIDER_DITHERING_STRATEGY_RANDOM_ITEM_NAME, "Random", false);
+		indigo_init_switch_item(AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM, AGENT_GUIDER_DITHERING_STRATEGY_SPIRAL_ITEM_NAME, "Spiral", false);
+		// -------------------------------------------------------------------------------- Dither now
+		AGENT_GUIDER_DITHER_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_DITHER_PROPERTY_NAME, "Agent", "Dithering", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		if (AGENT_GUIDER_DITHER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_GUIDER_DITHER_TRIGGER_ITEM, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, "Trigger", false);
+		indigo_init_switch_item(AGENT_GUIDER_DITHER_RESET_ITEM, AGENT_GUIDER_DITHER_RESET_ITEM_NAME, "Reset", false);
+
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
@@ -1529,8 +1820,12 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		return INDIGO_OK;
 	if (indigo_property_match(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_STARS_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property))
@@ -1545,6 +1840,12 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
 		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_DITHER_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -1603,7 +1904,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			save_config(device);
 			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
 		} else {
-			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, "Warning: Can not change declination guiding method to/from 'Notrh and South' while guiding!");
+			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, "Warning: Can not change declination guiding method to/from 'North and South' while guiding!");
 		}
 	} else if (indigo_property_match(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_APPLY_DEC_BACKLASH
@@ -1611,43 +1912,76 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, NULL);
-	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
-// -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
-		double dith_x = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target;
-		double dith_y = AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target;
-		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
+	} else if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_MOUNT_COORDINATES
+		double dec = AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value;
+		indigo_property_copy_values(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property, false);
+		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		if (dec != AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.target) {
+			DEVICE_PRIVATE_DATA->cos_dec = cos(-PI * AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value / 180);
+			if (DEVICE_PRIVATE_DATA->cos_dec == 0) {
+				DEVICE_PRIVATE_DATA->cos_dec = MIN_COS_DEC;
+			}
+		}
+		/* force -1, 0, 1 */
+		if (AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target != 0) {
+			AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.value =
+			AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target = copysign(1.0, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target);
+		}
+		indigo_update_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
+	} else if (indigo_property_match(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_DITHERING_OFFSETS
+		double dith_x = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target;
+		double dith_y = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target;
+		indigo_property_copy_values(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, property, false);
 		if (!AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value) {
 			/* If Dec guiding is not "North and South" do not dither in Dec, however if cos(angle) == 0 we end up in devision by 0.
 			   In this case we set the limits -> DITH_X = 0 and DITH_Y = dith_total.
-			   Note: we preserve the requested ammount of dithering but we do it in RA only.
+			   Note: we preserve the requested amount of dithering but we do it in RA only.
 			*/
-			double angle = -PI * AGENT_GUIDER_SETTINGS_ANGLE_ITEM->number.target / 180;
-			double sign = copysign(1.0, AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target) * copysign(1.0, AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target);
-			double dith_total = sign * sqrt(AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target * AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target * AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target);
+			double angle = -PI * get_rotation_angle(device) / 180;
+			double sign = copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target) * copysign(1.0, AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target);
+			double dith_total = sign * sqrt(AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target * AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target + AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target * AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target);
 			double cos_angle = cos(angle);
 			if (cos_angle != 0) {
 				double tan_angle = tan(angle);
-				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = dith_total / (cos_angle + tan_angle);
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value * tan_angle;
+				AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = dith_total / (cos_angle + tan_angle);
+				AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value * tan_angle;
 			} else {
-				AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value = 0;
-				AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value = dith_total;
+				AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = 0;
+				AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = dith_total;
+			}
+			if (dith_x != AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target || dith_y != AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+					"Dithering request altered as Dec dithering is disabled, requested X/Y: %.3f/%.3f calculated X/Y: %.3f/%.3f",
+					AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target,
+					AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target,
+					AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value,
+					AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value
+				);
+			}
+		} else {
+			if (dith_x != AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target || dith_y != AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME,
+					"Dithering requested X/Y: %.3f/%.3f",
+					AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value,
+					AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value
+				);
 			}
 		}
-		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		bool update_stats = false;
 		if (DEVICE_PRIVATE_DATA->reference->algorithm == centroid) {
-			AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_x + AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value;
-			AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_y + AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value;
+			AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_x + AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value;
+			AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_y + AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value;
 			update_stats = true;
 		}
 		/* Important: We compare dithering X and Y targets because values will be changed in case we dither in RA only and in this case
 		   every guider settings item update (not only dithering related) will trigger dithering. Changing guider settings may happen in
 		   the middle of the exposure.
 		*/
-		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == GUIDING && (dith_x != AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.target || dith_y != AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.target)) {
-			double diff_x = fabs(AGENT_GUIDER_SETTINGS_DITH_X_ITEM->number.value - dith_x);
-			double diff_y = fabs(AGENT_GUIDER_SETTINGS_DITH_Y_ITEM->number.value - dith_y);
+		if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value == INDIGO_GUIDER_PHASE_GUIDING && (dith_x != AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target || dith_y != AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target)) {
+			double diff_x = fabs(AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value - dith_x);
+			double diff_y = fabs(AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value - dith_y);
 			DEVICE_PRIVATE_DATA->rmse_ra_sum =
 			DEVICE_PRIVATE_DATA->rmse_dec_sum =
 			DEVICE_PRIVATE_DATA->rmse_ra_s_sum =
@@ -1662,8 +1996,29 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		if (update_stats) {
 			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 		}
+		AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_SETTINGS
+		indigo_property_copy_values(AGENT_GUIDER_SETTINGS_PROPERTY, property, false);
+		AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value = AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_STACK_ITEM->number.target;
+		AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value = AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.target;
+		AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.value = AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.target = (int)AGENT_GUIDER_SETTINGS_CAL_STEPS_ITEM->number.target;
+		/* force -1, 0, 1 */
+		if (AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target != 0) {
+			AGENT_GUIDER_SETTINGS_SOP_ITEM->number.value =
+			AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target = copysign(1.0, AGENT_GUIDER_SETTINGS_SOP_ITEM->number.target);
+		}
 		save_config(device);
+		AGENT_GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
+	} else if (indigo_property_match(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, property)) {
+	// -------------------------------------------------------------------------------- AGENT_GUIDER_FLIP_REVERSES_DEC
+		indigo_property_copy_values(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, property, false);
+		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_GUIDER_STARS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_GUIDER_STARS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_GUIDER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -1698,6 +2053,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
+		AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target = (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target;
 		if (count != AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value) {
 			indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			AGENT_GUIDER_SELECTION_PROPERTY->count = (AGENT_GUIDER_SELECTION_X_ITEM - AGENT_GUIDER_SELECTION_PROPERTY->items) + 2 * AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
@@ -1760,7 +2116,38 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
-		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+	} else if (indigo_property_match(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_DITHERING_STRATEGY
+		indigo_property_copy_values(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, property, false);
+		AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->state = INDIGO_OK_STATE;
+		srand(time(NULL));
+		DEVICE_PRIVATE_DATA->dither_num = 0;
+		save_config(device);
+		indigo_update_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_GUIDER_DITHER_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_DITHER
+		if (AGENT_GUIDER_DITHER_PROPERTY->state != INDIGO_BUSY_STATE) {
+			indigo_property_copy_values(AGENT_GUIDER_DITHER_PROPERTY, property, false);
+			if (AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value) {
+				AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+				indigo_set_timer(device, 0, do_dither, NULL);
+			} else if (AGENT_GUIDER_DITHER_RESET_ITEM->sw.value) {
+				srand(time(NULL));
+				DEVICE_PRIVATE_DATA->dither_num = 0;
+				AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+				AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+				AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, "Dithering reset");
+			} else {
+				AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
+				AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
+				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+			}
+		}
+		return INDIGO_OK;
+// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
 			save_config(device);
@@ -1776,12 +2163,17 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_DETECTION_MODE_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_SETTINGS_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_STARS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_SELECTION_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_STATS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DEC_MODE_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_DITHER_PROPERTY);
 	for (int i = 0; i <= MAX_MULTISTAR_COUNT; i++)
 		indigo_delete_frame_digest(DEVICE_PRIVATE_DATA->reference + i);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
@@ -1792,30 +2184,6 @@ static indigo_result agent_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
-		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LENS_PROPERTY_NAME)) {
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(&property->items[i], CCD_LENS_FOCAL_LENGTH_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->guider_focal_length = property->items[i].number.value;
-					break;
-				}
-			}
-		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_INFO_PROPERTY_NAME)) {
-			double pixel_size = 0;
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(&property->items[i], CCD_INFO_PIXEL_SIZE_ITEM_NAME)) {
-					pixel_size = property->items[i].number.value;
-				} else if (!strcmp(&property->items[i], CCD_INFO_PIXEL_WIDTH_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->ccd_pixel_width = property->items[i].number.value;
-				} else if (!strcmp(&property->items[i], CCD_INFO_PIXEL_HEIGHT_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->ccd_pixel_height = property->items[i].number.value;
-				}
-			}
-			if (CLIENT_PRIVATE_DATA->ccd_pixel_width <= 0 || CLIENT_PRIVATE_DATA->ccd_pixel_height <= 0) {
-				CLIENT_PRIVATE_DATA->ccd_pixel_width = CLIENT_PRIVATE_DATA->ccd_pixel_height = pixel_size;
-			}
-		}
-	}
 	return indigo_filter_define_property(client, device, property, message);
 }
 
@@ -1830,27 +2198,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			} else if (CLIENT_PRIVATE_DATA->last_image) {
 				free(CLIENT_PRIVATE_DATA->last_image);
 				CLIENT_PRIVATE_DATA->last_image = NULL;
-			}
-		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_LENS_PROPERTY_NAME)) {
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(&property->items[i], CCD_LENS_FOCAL_LENGTH_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->guider_focal_length = property->items[i].number.value;
-					break;
-				}
-			}
-		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_INFO_PROPERTY_NAME)) {
-			double pixel_size = 0;
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(&property->items[i], CCD_INFO_PIXEL_SIZE_ITEM_NAME)) {
-					pixel_size = property->items[i].number.value;
-				} else if (!strcmp(&property->items[i], CCD_INFO_PIXEL_WIDTH_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->ccd_pixel_width = property->items[i].number.value;
-				} else if (!strcmp(&property->items[i], CCD_INFO_PIXEL_HEIGHT_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->ccd_pixel_height = property->items[i].number.value;
-				}
-			}
-			if (CLIENT_PRIVATE_DATA->ccd_pixel_width <= 0 || CLIENT_PRIVATE_DATA->ccd_pixel_height <= 0) {
-				CLIENT_PRIVATE_DATA->ccd_pixel_width = CLIENT_PRIVATE_DATA->ccd_pixel_height = pixel_size;
 			}
 		}
 	}

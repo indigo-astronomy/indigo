@@ -594,17 +594,17 @@ static beaver_rc_t beaver_get_shutterisup(indigo_device *device, int *status) {
 }
 
 
-static beaver_rc_t beaver_shutter_enable(indigo_device *device, bool enable) {
-	int res = -1;
-	if (enable) {
-		if (!beaver_command_get_result_i(device, "!dome setshutterenable 1#", &res)) return BD_NO_RESPONSE;
-	} else {
-		if (!beaver_command_get_result_i(device, "!dome setshutterenable 0#", &res)) return BD_NO_RESPONSE;
-	}
-	if (res != 0) return BD_COMMAND_ERROR;
-	beaver_save(device);
-	return BD_SUCCESS;
-}
+//static beaver_rc_t beaver_shutter_enable(indigo_device *device, bool enable) {
+//	int res = -1;
+//	if (enable) {
+//		if (!beaver_command_get_result_i(device, "!dome setshutterenable 1#", &res)) return BD_NO_RESPONSE;
+//	} else {
+//		if (!beaver_command_get_result_i(device, "!dome setshutterenable 0#", &res)) return BD_NO_RESPONSE;
+//	}
+//	if (res != 0) return BD_COMMAND_ERROR;
+//	beaver_save(device);
+//	return BD_SUCCESS;
+//}
 
 
 static beaver_rc_t beaver_open_shutter(indigo_device *device) {
@@ -623,9 +623,9 @@ static beaver_rc_t beaver_close_shutter(indigo_device *device) {
 }
 
 
-static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
-	return BD_SUCCESS;
-}
+//static beaver_rc_t beaver_get_emergency_status(indigo_device *device, bool *rain, bool *wind, bool *timeout, bool *powercut) {
+//	return BD_SUCCESS;
+//}
 
 // -------------------------------------------------------------------------------- INDIGO dome device implementation
 static void dome_timer_callback(indigo_device *device) {

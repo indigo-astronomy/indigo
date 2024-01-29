@@ -13,6 +13,8 @@ typedef bool BOOL;
 typedef void * HINSTANCE;
 #endif
 
+#include "AtikDefs.h"
+
 #ifdef __cplusplus
 extern "C" {
 #else
@@ -179,7 +181,8 @@ extern "C" {
 		ID_EvenIllumination = 12,
 		ID_PadData          = 13,
 		ID_ExposureSpeed    = 14,
-		ID_BitSendMode      = 15,
+		ID_BitSendMode      = 15, //ACIS specific
+		ID_16BitMode        = 18, //ChemiMOS specific
 		ID_FX3Version       = 200,
 		ID_FPGAVersion      = 201,
 	};
@@ -216,7 +219,7 @@ extern "C" {
 
 	/// @brief DLL handle set by ArtemisLoadDLL(). 
 	/// This is irrelevant if you are linking at compile time
-	static HINSTANCE hArtemisDLL = NULL;
+	extern HINSTANCE hArtemisDLL;
 
 	//////////////////////////////////////////////////////////////////////////
 	//
@@ -240,7 +243,7 @@ extern "C" {
 
 	/// @brief Gets whether the connection to the camera is local.
 	/// @return True if the connection is local (E.G. through an USB cable), false otherwise
-	artfn BOOL ArtemisIsLocalConnectivoidon();
+	artfn BOOL ArtemisIsLocalConnection(void);
 
 	/// @brief Allows debug output to be output to standard error.
 	/// @param value Whether to enable the output.
@@ -565,6 +568,17 @@ extern "C" {
 	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure
 	artfn int  ArtemisSetProcessing(					ArtemisHandle handle, int options);
 
+	/// @brief Provides an exposure length where by the passed adu value and values below will
+	/// occupy the percentile passed. This is a blocking call and will return 
+	/// with an ARTEMIS_OPERATION_FAILED after 20 iterations if the parameters can not be met.
+	/// @param handle the connected Atik device handle
+	/// @param percentile the percentage of pixels which the passed adu value and below occupy
+	/// @param adu the adu value to
+	/// @param exposureLength the exposure length that satisfies the passed percentile/adu combination
+	/// @param startingExposureLength the exposure length to start the calculation at
+	/// @return ARTEMIS_OK on success, or one of the ARTEMISERROR enumerations on failure
+	artfn int ArtemisAutoExposureLength(ArtemisHandle handle, int percentile, unsigned short adu, 
+										float* exposureLength, float startingExposureLength);
 
 	// ------------------- Exposures -----------------------------------
 
@@ -685,28 +699,14 @@ extern "C" {
 	artfn BOOL ArtemisSetFastCallback(  ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer));
 
 	/// @brief Set the callback that will be invoked when a fast mode exposure is completed. This extension provides
-	/// an array of info as the last arguments. The first char in the info array is always the length of the array 
-	/// -1
+	/// a pointer to extra info passed to the function. See AtikDefs.h for a description of the structure
+	/// passed via the info parameter. Cast the unsigned char pointer to a FastCallbackInfo pointer to
+	/// access the information.
+	/// 
 	/// @param handle the connected Atik device handle.
 	/// @param callback a pointer to a function which will be invoked when fast mode is completed.
 	/// @return TRUE on success, FALSE on failure.
 	artfn BOOL ArtemisSetFastCallbackEx(ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer, unsigned char * info));
-
-	/// @brief Returns a pointer to the formatted last exposure start time while using the fast mode callback.
-	/// The buffer is internal to the SDK and is overwritten every time this function is called.
-	/// Only works with our Horizon II and ACIS/Apx series cameras
-	/// Does not include milliseconds.
-	/// @param handle the connected Atik device handle.
-	/// @see ArtemisLastStartTimeMilliseconds()
-	/// @return pointer to a null terminated buffer containing the formatted time exposure was started at.
-	artfn char* ArtemisLastFastModeStartTime(ArtemisHandle handle);
-
-	/// @brief Returns the last fast mode callback exposure start time millisecond component.
-	/// Only works with our Horizon II and ACIS/Apx series cameras
-	/// @param handle the connected Atik device handle.
-	/// @see ArtemisLastStartTime
-	/// @return millisecond component of the last exposure time.
-	artfn int   ArtemisLastFastModeStartTimeMilliseconds(ArtemisHandle handle);
 
 	// ------------------- Amplifier -----------------------------------
 
@@ -867,7 +867,7 @@ extern "C" {
 	/// @param serialNumber a pointer to a char array of length 100, which will be set to the serial number of the filter wheel.
 	/// @see ARTEMISERROR, ARTEMISEFWTYPE, ArtemisEFWGetDetails()
 	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure
-artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char * serialNumber);
+	artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char * serialNumber);
 
 	/// @brief Connect to a filter wheel device at the specified index.
 	/// @param i The index of the filter wheel device to connect to.
@@ -1034,7 +1034,7 @@ artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char *
 	/// @param hps This determines what defines a hot pixel. HPS_HIGH will see the most hot pixels,
 	/// but may think that some normal pixels are hot.
 	artfn int ArtemisHotPixelAdvancedRemoval(ArtemisHandle handle, bool on, bool darkFrame, 
-																					 bool checkForAdjacentHotPixels, enum HotPixelSensitivity hps);
+											 bool checkForAdjacentHotPixels, enum HotPixelSensitivity hps);
 
 	/// @brief Will begin the process of calculating the internal array of hot pixels determined using
 	/// the darkFrame option of @ArtemisHotPixelAdvancedRemoval this function needs to be called after any 
@@ -1213,7 +1213,7 @@ artfn int			ArtemisEFWGetDeviceDetails(int i, enum ARTEMISEFWTYPE * type, char *
 	/// This method is only needed if the DLL is linked dynamically.
 	/// This method is part of the DLL example code.
 	/// @see ArtemisLoadDLL()
-	artfn void ArtemisUnLoadDLL(void);
+	artfn void ArtemisUnLoadDLL();
 
 	#undef artfn
 

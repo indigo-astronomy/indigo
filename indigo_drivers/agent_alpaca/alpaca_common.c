@@ -238,7 +238,7 @@ static indigo_alpaca_error alpaca_set_latitude(indigo_alpaca_device *device, int
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
-	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, value);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -255,7 +255,7 @@ static indigo_alpaca_error alpaca_set_longitude(indigo_alpaca_device *device, in
 	}
 	if (value < 0)
 		value += 360;
-	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, value);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -270,7 +270,7 @@ static indigo_alpaca_error alpaca_set_elevation(indigo_alpaca_device *device, in
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_InvalidValue;
 	}
-	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, value);
+	indigo_change_number_property_1(indigo_agent_alpaca_client, device->indigo_device, GEOGRAPHIC_COORDINATES_PROPERTY_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME, value);
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }

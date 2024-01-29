@@ -1,0 +1,8 @@
+#https://www.flir.com/support-center/iis/machine-vision/application-note/understanding-usbfs-on-linux/
+
+ACTION=="add", ATTRS{idVendor}=="a0a0", RUN+="/bin/sh -c '/bin/echo 256 >/sys/module/usbcore/parameters/usbfs_memory_mb'"
+
+SUBSYSTEM=="usb", ATTRS{idVendor}=="a0a0", MODE="0666"
+
+# filter wheel
+ACTION=="add", ATTRS{idVendor}=="a0a0", ATTRS{idProduct}=="f001", MODE="0666"

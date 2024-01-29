@@ -23,7 +23,7 @@
  \file indigo_agent_astap.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_agent_astap"
 
 #include <stdio.h>
@@ -402,7 +402,7 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 		AGENT_PLATESOLVER_WCS_ANGLE_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_INDEX_ITEM->number.value = 0;
 		AGENT_PLATESOLVER_WCS_PARITY_ITEM->number.value = 0;
-		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = SOLVER_WCS_SOLVING;
+		AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_SOLVING;
 		indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
 		if (!strncmp("SIMPLE", (const char *)image, 6)) {
 			ext = "fits";
@@ -457,6 +457,8 @@ static bool astap_solve(indigo_device *device, void *image, unsigned long image_
 		}
 		if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value > 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0) {
 			params_index += sprintf(params + params_index, " -fov %.1f", AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
+		} else if (AGENT_PLATESOLVER_HINTS_SCALE_ITEM->number.value < 0 && ASTAP_DEVICE_PRIVATE_DATA->frame_height > 0 && INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale > 0) {
+			params_index += sprintf(params + params_index, " -fov %.1f", INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale * ASTAP_DEVICE_PRIVATE_DATA->frame_height);
 		}
 		for (int k = 0; k < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; k++) {
 			indigo_item *item = AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + k;
@@ -569,9 +571,7 @@ static void sync_installed_indexes(indigo_device *device, char *dir, indigo_prop
 		if (remove) {
 			for (int j = 0; j < AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count; j++) {
 				if (!strcmp(item->name, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items[j].name)) {
-					indigo_item tmp[AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j];
-					memcpy(tmp, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + (j + 1), (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
-					memcpy(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + j, tmp, (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
+					memmove(AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + j, AGENT_PLATESOLVER_USE_INDEX_PROPERTY->items + (j + 1), (AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count - j) * sizeof(indigo_item));
 					AGENT_PLATESOLVER_USE_INDEX_PROPERTY->count--;
 					break;
 				}

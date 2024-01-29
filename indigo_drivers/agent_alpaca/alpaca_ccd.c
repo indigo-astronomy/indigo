@@ -354,7 +354,7 @@ static indigo_alpaca_error alpaca_get_sensortype(indigo_alpaca_device *device, i
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (!strncasecmp(device->ccd.readoutmodes_names[device->ccd.readoutmode], "rgb", 3))
+	if (!strcmp(device->driver_info, "indigo_ccd_ptp") || !strncasecmp(device->ccd.readoutmodes_names[device->ccd.readoutmode], "rgb", 3))
 		*value = 1;
 	else
 		*value = 0;
@@ -1313,96 +1313,183 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 
 #define PRINTF(fmt, ...) if (use_gzip) gzprintf(gzf, fmt, ##__VA_ARGS__); else indigo_printf(socket, fmt, ##__VA_ARGS__);
 
-void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip) {
+void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
 	indigo_alpaca_error result = indigo_alpaca_error_OK;
 	indigo_blob_entry *entry;
-	gzFile gzf = NULL;
-	if (use_gzip) {
-		indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
-		gzf = gzdopen(socket, "w");
-	} else {
-		indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
-	}
-	if (alpaca_device->ccd.imageready && (entry = indigo_validate_blob(alpaca_device->ccd.imageready))) {
-		pthread_mutex_lock(&entry->mutext);
-		indigo_raw_header *header = (indigo_raw_header *)(entry->content);
-		int width = header->width;
-		int height = header->height;
-		switch (header->signature) {
-			case INDIGO_RAW_MONO8: {
-				PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
-				uint8_t *data = entry->content + sizeof(indigo_raw_header);
-				for (int col = 0; col < width; col++) {
-					if (col == 0) {
-						PRINTF("[");
-					} else {
-						PRINTF(", [");
-					}
-					for (int row = 0; row < height; row++) {
-						if (row == 0) {
-							PRINTF("%d", data[row * width + col]);
-						} else {
-							PRINTF(", %d", data[row * width + col]);
-						}
-					}
-					PRINTF("]");
+	if (use_imagebytes) {
+		indigo_alpaca_metadata metadata = { 0 };
+		metadata.metadata_version = 1;
+		metadata.client_transaction_id = client_transaction_id;
+		metadata.server_transaction_id = server_transaction_id;
+		metadata.data_start = sizeof(indigo_alpaca_metadata);
+		metadata.image_element_type = metadata.transmission_element_type = indigo_alpaca_type_int32;
+		if (alpaca_device->ccd.imageready && (entry = indigo_validate_blob(alpaca_device->ccd.imageready))) {
+			pthread_mutex_lock(&entry->mutext);
+			indigo_raw_header *header = (indigo_raw_header *)(entry->content);
+			int width = header->width;
+			int height = header->height;
+			int size = width * height;
+			metadata.dimension1 = width;
+			metadata.dimension2 = height;
+			switch (header->signature) {
+				case INDIGO_RAW_MONO8: {
+					metadata.dimension3 = 0;
+					metadata.rank = 2;
+					uint8_t *data = entry->content + sizeof(indigo_raw_header);
+					uint32_t *buffer = malloc(size * 4), *pnt = buffer;
+					for (int col = 0; col < width; col++)
+						for (int row = height - 1; row >= 0; row--)
+							*pnt++ = data[row * width + col];
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
+					indigo_write(socket, (const char *)buffer, size * 4);
+					break;
 				}
-				break;
-			}
-			case INDIGO_RAW_MONO16: {
-				PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
-				uint16_t *data = entry->content + sizeof(indigo_raw_header);
-				for (int col = 0; col < width; col++) {
-					if (col == 0) {
-						PRINTF("[");
-					} else {
-						PRINTF(", [");
-					}
-					for (int row = 0; row < height; row++) {
-						if (row == 0) {
-							PRINTF("%d", data[row * width + col]);
-						} else {
-							PRINTF(", %d", data[row * width + col]);
-						}
-					}
-					PRINTF("]");
+				case INDIGO_RAW_MONO16: {
+					metadata.dimension3 = 0;
+					metadata.rank = 2;
+					uint16_t *data = entry->content + sizeof(indigo_raw_header);
+					uint32_t *buffer = malloc(size * 4), *pnt = buffer;
+					for (int col = 0; col < width; col++)
+						for (int row = height - 1; row >= 0; row--)
+							*pnt++ = data[row * width + col];
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
+					indigo_write(socket, (const char *)buffer, size * 4);
+					free(buffer);
+					break;
 				}
-				break;
-			}
-			case INDIGO_RAW_RGB24: {
-				PRINTF("{ \"Type\": 2, \"Rank\": 3, \"Value\": [");
-				uint8_t *data = entry->content + sizeof(indigo_raw_header);
-				for (int col = 0; col < width; col++) {
-					if (col == 0) {
-						PRINTF("[");
-					} else {
-						PRINTF(", [");
-					}
-					for (int row = 0; row < height; row++) {
-						int base = 3 * (row * width + col);
-						int r = data[base + 0];
-						int g = data[base + 1];
-						int b = data[base + 2];
-						if (row == 0) {
-							PRINTF("[%d,%d,%d]", r, g, b);
-						} else {
-							PRINTF(",[%d,%d,%d]", r, g, b);
+				case INDIGO_RAW_RGB24: {
+					metadata.dimension3 = 3;
+					metadata.rank = 3;
+					uint8_t *data = entry->content + sizeof(indigo_raw_header);
+					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
+					for (int col = 0; col < width; col++)
+						for (int row = height - 1; row >= 0; row--) {
+							int base = 3 * (row * width + col);
+							*pnt++ = data[base + 2];
+							*pnt++ = data[base + 0];
+							*pnt++ = data[base + 1];
 						}
-					}
-					PRINTF("]");
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
+					indigo_write(socket, (const char *)buffer, size * 12);
+					break;
 				}
-				break;
+				case INDIGO_RAW_RGB48: {
+					metadata.dimension3 = 3;
+					metadata.rank = 3;
+					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
+					uint16_t *data = entry->content + sizeof(indigo_raw_header);
+					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
+					for (int col = 0; col < width; col++)
+						for (int row = height - 1; row >= 0; row--) {
+							int base = 3 * (row * width + col);
+							*pnt++ = data[base + 0];
+							*pnt++ = data[base + 1];
+							*pnt++ = data[base + 2];
+						}
+					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
+					indigo_write(socket, (const char *)buffer, size * 12);
+					break;
+				}
 			}
-			default:
-				PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
-				break;
+			pthread_mutex_unlock(&entry->mutext);
+		} else {
+			metadata.error_number = result;
+			indigo_write(socket, (const char *)&metadata, sizeof(metadata));
+			indigo_printf(socket, "%s", indigo_alpaca_error_string(result));
 		}
-		pthread_mutex_unlock(&entry->mutext);
 	} else {
-		PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
-		result = indigo_alpaca_error_InvalidOperation;
+		gzFile gzf = NULL;
+		if (use_gzip) {
+			indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
+			gzf = gzdopen(socket, "w");
+		} else {
+			indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+		}
+		if (alpaca_device->ccd.imageready && (entry = indigo_validate_blob(alpaca_device->ccd.imageready))) {
+			pthread_mutex_lock(&entry->mutext);
+			indigo_raw_header *header = (indigo_raw_header *)(entry->content);
+			int width = header->width;
+			int height = header->height;
+			switch (header->signature) {
+				case INDIGO_RAW_MONO8: {
+					PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+					uint8_t *data = entry->content + sizeof(indigo_raw_header);
+					for (int col = 0; col < width; col++) {
+						if (col == 0) {
+							PRINTF("[");
+						} else {
+							PRINTF(", [");
+						}
+						for (int row = height - 1; row >= 0; row--) {
+							if (row == 0) {
+								PRINTF("%d", data[row * width + col]);
+							} else {
+								PRINTF(", %d", data[row * width + col]);
+							}
+						}
+						PRINTF("]");
+					}
+					break;
+				}
+				case INDIGO_RAW_MONO16: {
+					PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+					uint16_t *data = entry->content + sizeof(indigo_raw_header);
+					for (int col = 0; col < width; col++) {
+						if (col == 0) {
+							PRINTF("[");
+						} else {
+							PRINTF(", [");
+						}
+						for (int row = height - 1; row >= 0; row--) {
+							if (row == 0) {
+								PRINTF("%d", data[row * width + col]);
+							} else {
+								PRINTF(", %d", data[row * width + col]);
+							}
+						}
+						PRINTF("]");
+					}
+					break;
+				}
+				case INDIGO_RAW_RGB24: {
+					PRINTF("{ \"Type\": 2, \"Rank\": 3, \"Value\": [");
+					uint8_t *data = entry->content + sizeof(indigo_raw_header);
+					for (int col = 0; col < width; col++) {
+						if (col == 0) {
+							PRINTF("[");
+						} else {
+							PRINTF(", [");
+						}
+						for (int row = height - 1; row >= 0; row--) {
+							int base = 3 * (row * width + col);
+							int r = data[base + 0];
+							int g = data[base + 1];
+							int b = data[base + 2];
+							if (row == 0) {
+								PRINTF("[%d,%d,%d]", r, g, b);
+							} else {
+								PRINTF(",[%d,%d,%d]", r, g, b);
+							}
+						}
+						PRINTF("]");
+					}
+					break;
+				}
+				default:
+					PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+					break;
+			}
+			pthread_mutex_unlock(&entry->mutext);
+		} else {
+			PRINTF("{ \"Type\": 2, \"Rank\": 2, \"Value\": [");
+			result = indigo_alpaca_error_InvalidOperation;
+		}
+		PRINTF("], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", result, indigo_alpaca_error_string(result), client_transaction_id, server_transaction_id);
+		if (use_gzip)
+			gzclose(gzf);
 	}
-	PRINTF("], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", result, indigo_alpaca_error_string(result), client_transaction_id, server_transaction_id);
-	if (use_gzip)
-		gzclose(gzf);
 }

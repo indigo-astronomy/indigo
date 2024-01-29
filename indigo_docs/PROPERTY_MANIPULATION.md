@@ -1,5 +1,5 @@
 # INDIGO Property Manipulation in Examples
-Revision: 23.07.2020 (draft)
+Revision: 05.03.2023 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -70,14 +70,18 @@ Properties have permissions assigned to them:
 **indigo_prop_tool** is a console based tool that allows users to configure the indigo_server and to set/get item values and get property states and even taking exposures and saving the images.
 Here is the indigo_prop_tool help:
 ```
-$ indigo_prop_tool -h
-INDIGO property manipulation tool v.2.0-123 built on Jul 11 2020 18:46:16.
+indigo@indigosky:~ $ indigo_prop_tool -h
+INDIGO property manipulation tool v.2.0-226 built on Mar  5 2023 23:30:32.
 usage: indigo_prop_tool [options] device.property.item=value[;item=value;..]
        indigo_prop_tool set [options] device.property.item=value[;item=value;..]
+       indigo_prop_tool set_script [options] agent.property.SCRIPT=filename[;NAME=filename]
        indigo_prop_tool get [options] device.property.item[;item;..]
        indigo_prop_tool get_state [options] device.property
        indigo_prop_tool list [options] [device[.property]]
        indigo_prop_tool list_state [options] [device[.property]]
+       indigo_prop_tool discover [options]
+set write-only BLOBs:
+       indigo_prop_tool set [options] device.property.item=filename[;NAME=filename]
 options:
        -h  | --help
        -b  | --save-blobs
@@ -97,6 +101,7 @@ The commands are self-explanatory:
 - **get** - get listed item values
 - **get_state** - get the property state
 - **list_state** - list the state of the properties
+- **discover** - auto discover and list INDIGO services visible on the network
 
 ### Listing and Getting Item Values and Property States
 
@@ -175,17 +180,9 @@ CCD Imager Simulator.CONNECTION.DISCONNECTED = OFF
 
 - Setting **TEXT_VECTOR** (please note quotes have to be escaped with '\' as shown):
 ```
-indigo@indigosky:~ $ indigo_prop_tool set "CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_1=\"MYKEY = 5\""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_1 = "MYKEY   = 5"
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_2 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_3 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_4 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_5 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_6 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_7 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_8 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_9 = ""
-CCD Imager Simulator.CCD_FITS_HEADERS.HEADER_10 = ""
+indigo@indigosky:~ $ indigo_prop_tool set "CCD Imager Simulator.CCD_SET_FITS_HEADER.NAME=\"MYKEY\";VALUE=\"5\""
+CCD Imager Simulator.CCD_SET_FITS_HEADER.NAME = "MYKEY"
+CCD Imager Simulator.CCD_SET_FITS_HEADER.VALUE = "5"
 ```
 
 - Setting **NUMBER_VECTOR**:
@@ -202,13 +199,23 @@ If you specify more than one item, like in the example above, you should separat
 
 ### Working with remote servers
 
-By default **indigo_prop_tool** works with localhost and INDIGO's default port 7624. In case you need to set properties on remote servers or on servers running on a different port, **-r** and **-p** switches should be used.
+By default **indigo_prop_tool** works with localhost and INDIGO's default port 7624. In case you need to set properties on remote servers or on servers running on a different port, **-r** and **-p** switches should be used. A list of INDIGO services available on the network can be obtained using the **discover** command:
 ```
-ndigo@indigosky:~ $ indigo_prop_tool list -r sirius.local:7624 "Server"
+indigo@indigosky:~ $ indigo_prop_tool discover
+sirius -> sirius.local:7624
+vega -> vega.local:7624
+indigosky -> indigosky.local:7624
+Rumens-Mini-2 -> Rumens-Mac-mini-2.local:7624
+```
+
+Service 'sirius' can be accessed at host 'sirius.local' and port 7624 as shown:
+```
+indigo@indigosky:~ $ indigo_prop_tool list -r sirius.local:7624 "Server"
 Server.INFO.VERSION = "2.0-123"
 Server.INFO.SERVICE = "sirius"
 ...
 ```
+If **-e** switch is specified to the **discover** command each service will be listed with the network interface through which the service can be reached.
 
 ## A Working Example 1 - Loading and Unloading a Driver in indigo_server
 

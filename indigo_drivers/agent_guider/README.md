@@ -18,10 +18,10 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_agent_guider indigo_ccd_... indigo_guider_...
 
-## Status: Under development
+## Status: Stable
 
-## Notes on Guiding Setup
-
+# Notes
+## Guiding Setup
 ### Drift Detection Algorithms
 There are 3 algorithms to detect the tracking drift:
 1. **Donuts** - This mode uses the entire image and all the stars on the image to detect the drift.
@@ -78,7 +78,9 @@ drift would become an issue. A good exposure time to start is 1 or 2 seconds.
 
 * **Dec backlash** - Declination axis backlash in pixels. Auto set during calibration.
 
-* **RA speed** and **Dec speed** - Guiding speed of the Right Ascension or Declination axis in pixels/second. Auto set during calibration.
+* **RA speed** and **Dec speed** - Guiding speed of the Right Ascension or Declination axis in pixels/second. Auto set during calibration. **RA speed** is the speed at the equator and it will be auto adjusted when declination changes. Declination is read from *AGENT_GUIDER_MOUNT_COORDINATES* property, which is updated by the Mount agent if the Guider gent is selected as related.
+
+* **Side of Pier** - Telescope side of pier at calibration time (-1 = East , 1 = West, 0 = undefined). This is used to adjust guider settings after meridian flip, which is detected by comparing this value with *AGENT_GUIDER_MOUNT_COORDINATES.SIDE_OF_PIER* (is the current side of pier). *AGENT_GUIDER_MOUNT_COORDINATES* is updated by the Mount agent if the Guider gent is selected as related. If one of the two, calibration *SIDE_OF_PIER* or mount *SIDE_OF_PIER* is undefined (0) the guider parameters will not be adjusted if the other one changes, because either the current orientation or the orientation during calibration was not known. Some mounts do not report their side of pier and is set to 0. In this case meridian flip can not be detected and recalibration or manual guider settings adjustment are required after meridian flip.
 
 * **Min error** - Smallest error to attempt to correct in pixels. If the error is less than that, no correction will be attempted. This value is equipment specific but in general 0 is OK.
 
@@ -114,3 +116,13 @@ Here are several tips and guide lines, how to fine tune the *PI controller*:
 * If there are oscillations or over corrections then the **Proportional aggressivity** for the corresponding axis is most likely too high and should be decreased.
 
 Fine tuning a *PI controller* is a tricky business and the defaults should produce good results in most cases, so our advise is to change the settings with care.
+
+## Meridian flip
+Please, see **Side of Pier** parameter of the **Settings** for details how meridian flip is detected.
+
+If the Declination guiding runs away after meridian flip **Reverse Dec speed after meridian flip** should be enabled. Some mounts track their "side of pier" state and automatically reverse the direction of the declination motor after a meridian flip. Other mounts do not do this. There is no way for INDIGO to know this in advance. This is why INDIGO needs this to be specified.
+
+## Guiding after slew
+Please see **RA speed** and **Dec speed** parameters of the **Settings** for details.
+
+As of INDIGO version 2.0-237 recalibration after GOTO or meridian flip is not required. In order for this to work the *Mount agent* needs to push the mount coordinates and orientation to *AGENT_GUIDER_MOUNT_COORDINATES* property. This is achieved by setting the *Guider agent* as related from the *Mount agent*.

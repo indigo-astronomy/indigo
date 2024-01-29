@@ -24,7 +24,7 @@
  \file indigo_ccd_fli.c
  */
 
-#define DRIVER_VERSION 0x0010
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME		"indigo_ccd_fli"
 
 #include <stdlib.h>
@@ -322,16 +322,16 @@ static bool fli_read_pixels(indigo_device *device) {
 	unsigned char *image = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
 
 	bool success = true;
+	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	for (int i = 0; i < height; i++) {
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = FLIGrabRow(id, image + (i * row_size), width);
-		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			/* print this error once but read to the end to flush the array */
 			if (success) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGrabRow(%d) = %d at row %d.", id, res, i);
 			success = false;
 		}
 	}
+	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
 	return success;
 }
@@ -339,13 +339,11 @@ static bool fli_read_pixels(indigo_device *device) {
 
 static bool fli_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-
 	long err = FLICancelExposure(PRIVATE_DATA->dev_id);
 	FLICancelExposure(PRIVATE_DATA->dev_id);
 	FLICancelExposure(PRIVATE_DATA->dev_id);
 	PRIVATE_DATA->can_check_temperature = true;
 	PRIVATE_DATA->abort_flag = true;
-
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if(err) return false;
 	else return true;
@@ -401,8 +399,8 @@ static void fli_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!device->is_connected) return;
+	PRIVATE_DATA->can_check_temperature = false;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -420,22 +418,10 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 
-// callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
-static void clear_reg_timer_callback(indigo_device *device) {
-	if (!device->is_connected) return;
-	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		PRIVATE_DATA->can_check_temperature = false;
-		indigo_set_timer(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else {
-		PRIVATE_DATA->exposure_timer = NULL;
-	}
-}
-
-
 static void rbi_exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!device->is_connected) return;
 	if(PRIVATE_DATA->abort_flag) return;
+	PRIVATE_DATA->can_check_temperature = false;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (fli_read_pixels(device)) { /* read the NIR flooded frame and discard it */
 			for( int i = 0; i < (int)(CCD_RBI_FLUSH_COUNT_ITEM->number.value); i++) { /* Take bias exposures to flush the RBI and discard them */
@@ -443,13 +429,13 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 				                       CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
 				                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
 				{
-					if(PRIVATE_DATA->abort_flag) return;
 					fli_read_pixels(device);
+					if(PRIVATE_DATA->abort_flag) return;
 				}
 			}
 
-			if(PRIVATE_DATA->abort_flag) return;
 			PRIVATE_DATA->can_check_temperature = true;
+			if(PRIVATE_DATA->abort_flag) return;
 			indigo_ccd_resume_countdown(device);
 			/* The sensor is flushed -> start real exposure */
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Taking exposure...");
@@ -458,12 +444,7 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 			                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
 			{
 				if(PRIVATE_DATA->abort_flag) return;
-				if (CCD_EXPOSURE_ITEM->number.target > 4) {
-					indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
-				} else {
-					PRIVATE_DATA->can_check_temperature = false;
-					indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-				}
+				indigo_reschedule_timer_with_callback(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			} else {
 				indigo_ccd_failure_cleanup(device);
 				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -619,12 +600,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 			indigo_set_timer(device, CCD_RBI_FLUSH_EXPOSURE_ITEM->number.value, rbi_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else {
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			if (CCD_EXPOSURE_ITEM->number.target > 4) {
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 4, clear_reg_timer_callback, &PRIVATE_DATA->exposure_timer);
-			} else {
-				PRIVATE_DATA->can_check_temperature = false;
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-			}
+			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		}
 	} else {
 		indigo_ccd_failure_cleanup(device);
@@ -635,6 +611,7 @@ static bool handle_exposure_property(indigo_device *device, indigo_property *pro
 }
 
 static void ccd_connect_callback(indigo_device *device) {
+	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			if (fli_open(device)) {
@@ -764,6 +741,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				fli_abort_exposure(device);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 			}
 			indigo_delete_property(device, FLI_NFLUSHES_PROPERTY, NULL);
 			indigo_delete_property(device, FLI_CAMERA_MODE_PROPERTY, NULL);
@@ -773,6 +751,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 	}
 	indigo_ccd_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
 }
 
 
@@ -788,7 +767,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, ccd_connect_callback, NULL);
-		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CCD_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -799,6 +777,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			fli_abort_exposure(device);
 		}
 		PRIVATE_DATA->can_check_temperature = true;
@@ -1017,7 +996,8 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-	sprintf(device->name, "%s #%d", fli_dev_names[idx], slot);
+	snprintf(device->name, INDIGO_NAME_SIZE, "%s", fli_dev_names[idx]);
+	indigo_make_name_unique(device->name, "%d", slot);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "'%s' @ %s attached", device->name , fli_file_names[idx]);
 	fli_private_data *private_data = indigo_safe_malloc(sizeof(fli_private_data));
 	private_data->dev_id = 0;
@@ -1025,6 +1005,7 @@ static void process_plug_event(indigo_device *unused) {
 	strncpy(private_data->dev_file_name, fli_file_names[idx], MAX_PATH);
 	strncpy(private_data->dev_name, fli_dev_names[idx], MAX_PATH);
 	device->private_data = private_data;
+	device->master_device = device;
 	indigo_attach_device(device);
 	devices[slot]=device;
 	pthread_mutex_unlock(&device_mutex);
@@ -1097,10 +1078,10 @@ static libusb_hotplug_callback_handle callback_handle;
 extern void (*debug_ext)(int level, char *format, va_list arg);
 
 static void _debug_ext(int level, char *format, va_list arg) {
-	char _format[1024];
-	snprintf(_format, sizeof(_format), "FLISDK: %s", format);
 	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-		INDIGO_DEBUG_DRIVER(indigo_log_message(_format, arg));
+		char _format[1024];
+		snprintf(_format, sizeof(_format), "FLISDK: %s", format);
+		INDIGO_DEBUG_DRIVER(indigo_debug(_format, arg));
 	}
 }
 

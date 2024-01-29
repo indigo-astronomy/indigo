@@ -17,6 +17,7 @@
 #include <arpa/inet.h>
 #include <nex_open.h>
 
+extern void (*tc_debug)(const char *format, ...);
 
 int parse_devname(char *device, char *host, int *port) {
 	char *strp;
@@ -46,12 +47,20 @@ int open_telescope_rs(char *dev_file) {
 	struct termios options;
 
 	if ((dev_fd = open(dev_file, O_RDWR | O_NOCTTY | O_SYNC))==-1) {
+		if(tc_debug) {
+			tc_debug("Open Failed");
+		}
 		return -1;
 	}
 
 	memset(&options, 0, sizeof options);
 	if (tcgetattr(dev_fd, &options) != 0) {
+		int temp = errno;
 		close(dev_fd);
+		errno = temp;
+		if(tc_debug) {
+			tc_debug("tcgetattr Failed");
+		}
 		return -1;
 	}
 
@@ -69,7 +78,12 @@ int open_telescope_rs(char *dev_file) {
 	options.c_cc[VTIME] = 50;	// 5 seconds read timeout
 
 	if (tcsetattr(dev_fd,TCSANOW, &options) != 0) {
+		int temp = errno;
 		close(dev_fd);
+		errno = temp;
+		if(tc_debug) {
+			tc_debug("tcsetattr Failed");
+		}
 		return -1;
 	}
 
@@ -103,12 +117,16 @@ int open_telescope_tcp(char *host, int port) {
 	}
 
 	if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+		int temp = errno;
 		close(sock);
+		errno = temp;
 		return -1;
 	}
 
 	if (setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+		int temp = errno;
 		close(sock);
+		errno = temp;
 		return -1;
 	}
 	return sock;

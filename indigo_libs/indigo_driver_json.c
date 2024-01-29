@@ -64,6 +64,18 @@ static bool ws_write(int handle, const char *buffer, long length) {
 	return result;
 }
 
+#define SPRINTF(...) { \
+	size = sprintf(__VA_ARGS__); \
+	pnt += size; \
+	size = pnt - output_buffer; \
+	if (size + 1024 > buffer_size) { \
+		buffer_size *= 2; \
+printf("realloc to %ld\n", buffer_size); \
+		output_buffer = indigo_safe_realloc(output_buffer, buffer_size); \
+		pnt = output_buffer + size; \
+	} \
+}
+
 static indigo_result json_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	assert(device != NULL);
 	assert(client != NULL);
@@ -76,134 +88,112 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
 	int handle = client_context->output;
-	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
+	long buffer_size = JSON_BUFFER_SIZE;
+	char *output_buffer = indigo_safe_malloc(buffer_size);
 	char *pnt = output_buffer;
-	int size;
+	long size;
 	char b1[32], b2[32], b3[32], b4[32], b5[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
-			size = sprintf(pnt, "{ \"defTextVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"defTextVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
 			if (*property->hints) {
-				size = sprintf(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
-				pnt += size;
+				SPRINTF(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
 			}
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_json_escape(indigo_get_text_item_value(item)));
-				pnt += size;
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_json_escape(indigo_get_text_item_value(item)));
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_NUMBER_VECTOR:
-			size = sprintf(pnt, "{ \"defNumberVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"defNumberVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state]);
 			if (*property->hints) {
-				size = sprintf(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
-				pnt += size;
+				SPRINTF(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
 			}
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (property->perm != INDIGO_RO_PERM)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %s, \"max\": %s, \"step\": %s, \"format\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), item->number.format, indigo_dtoa(item->number.target, b4), indigo_dtoa(item->number.value, b5));
-				else
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %s, \"max\": %s, \"step\": %s, \"format\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), item->number.format, indigo_dtoa(item->number.value, b4));
-				pnt += size;
+				if (property->perm != INDIGO_RO_PERM) {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %s, \"max\": %s, \"step\": %s, \"format\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), item->number.format, indigo_dtoa(item->number.target, b4), indigo_dtoa(item->number.value, b5));
+				} else {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"min\": %s, \"max\": %s, \"step\": %s, \"format\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_dtoa(item->number.min, b1), indigo_dtoa(item->number.max, b2), indigo_dtoa(item->number.step, b3), item->number.format, indigo_dtoa(item->number.value, b4));
+				}
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_SWITCH_VECTOR:
-			size = sprintf(pnt, "{ \"defSwitchVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\", \"rule\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"defSwitchVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"perm\": \"%s\", \"state\": \"%s\", \"rule\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_perm_text[property->perm], indigo_property_state_text[property->state], indigo_switch_rule_text[property->rule]);
 			if (*property->hints) {
-				size = sprintf(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
-				pnt += size;
+				SPRINTF(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
 			}
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item->sw.value ? "true" : "false");
-				pnt += size;
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item->sw.value ? "true" : "false");
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_LIGHT_VECTOR:
-			size = sprintf(pnt, "{ \"defLightVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"defLightVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_state_text[property->state]);
 			if (*property->hints) {
-				size = sprintf(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
-				pnt += size;
+				SPRINTF(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
 			}
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_property_state_text[item->light.value]);
-				pnt += size;
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(item->label), indigo_property_state_text[item->light.value]);
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_BLOB_VECTOR:
-			size = sprintf(pnt, "{ \"defBLOBVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"defBLOBVector\": { \"version\": %d, \"device\": \"%s\", \"name\": \"%s\", \"group\": \"%s\", \"label\": \"%s\", \"state\": \"%s\"", property->version, property->device, property->name, property->group, indigo_json_escape(property->label), indigo_property_state_text[property->state]);
 			if (*property->hints) {
-				size = sprintf(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
-				pnt += size;
+				SPRINTF(pnt, ", \"hints\": \"%s\"", indigo_json_escape(property->hints));
 			}
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", indigo_json_escape(message));
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if ((property->state == INDIGO_OK_STATE && item->blob.value) || indigo_proxy_blob)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item, item->blob.format);
-				else if (property->state == INDIGO_OK_STATE && *item->blob.url)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item->blob.url);
-				else
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\"  }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label));
-				pnt += size;
+				if ((property->state == INDIGO_OK_STATE && item->blob.value) || indigo_proxy_blob) {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item, item->blob.format);
+				} else if (property->state == INDIGO_OK_STATE && *item->blob.url) {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\", \"value\": \"%s\" }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label), item->blob.url);
+				} else {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"label\": \"%s\"  }", i > 0 ? "," : "", item->name, indigo_json_escape(item->label));
+				}
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 	}
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {
@@ -231,114 +221,97 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
 	assert(client_context != NULL);
-	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
+	long buffer_size = JSON_BUFFER_SIZE;
+	char *output_buffer = indigo_safe_malloc(buffer_size);
 	char *pnt = output_buffer;
-	int size;
+	long size;
 	char b1[32], b2[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
-			size = sprintf(pnt, "{ \"setTextVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"setTextVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(indigo_get_text_item_value(item)));
-				pnt += size;
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_json_escape(indigo_get_text_item_value(item)));
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_NUMBER_VECTOR:
-			size = sprintf(pnt, "{ \"setNumberVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"setNumberVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if (property->perm != INDIGO_RO_PERM)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
-				else
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_dtoa(item->number.value, b1));
-				pnt += size;
+				if (property->perm != INDIGO_RO_PERM) {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"target\": %s, \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_dtoa(item->number.target, b1), indigo_dtoa(item->number.value, b2));
+				} else {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, indigo_dtoa(item->number.value, b1));
+				}
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_SWITCH_VECTOR:
-			size = sprintf(pnt, "{ \"setSwitchVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"setSwitchVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, item->sw.value ? "true" : "false");
-				pnt += size;
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": %s }",  i > 0 ? "," : "", item->name, item->sw.value ? "true" : "false");
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_LIGHT_VECTOR:
-			size = sprintf(pnt, "{ \"setLightVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"setLightVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_property_state_text[item->light.value]);
-				pnt += size;
+				SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }",  i > 0 ? "," : "", item->name, indigo_property_state_text[item->light.value]);
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 		case INDIGO_BLOB_VECTOR:
-			size = sprintf(pnt, "{ \"setBLOBVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
-			pnt += size;
+			SPRINTF(pnt, "{ \"setBLOBVector\": { \"device\": \"%s\", \"name\": \"%s\", \"state\": \"%s\"", property->device, property->name, indigo_property_state_text[property->state]);
 			if (message) {
-				size = sprintf(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
-				pnt += size;
+				SPRINTF(pnt, ", \"message\": \"%s\", \"items\": [ ", message);
 			} else {
-				size = sprintf(pnt, ", \"items\": [ ");
-				pnt += size;
+				SPRINTF(pnt, ", \"items\": [ ");
 			}
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = &property->items[i];
-				if ((property->state == INDIGO_OK_STATE && item->blob.value) || indigo_proxy_blob)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, item, item->blob.format);
-				else if (property->state == INDIGO_OK_STATE && *item->blob.url)
-					size = sprintf(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }", i > 0 ? "," : "", item->name, item->blob.url);
-				else
-					size = sprintf(pnt, "%s { \"name\": \"%s\" }", i > 0 ? "," : "", item->name);
-				pnt += size;
+				if ((property->state == INDIGO_OK_STATE && item->blob.value) || indigo_proxy_blob) {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"/blob/%p%s\" }", i > 0 ? "," : "", item->name, item, item->blob.format);
+				} else if (property->state == INDIGO_OK_STATE && *item->blob.url) {
+					SPRINTF(pnt, "%s { \"name\": \"%s\", \"value\": \"%s\" }", i > 0 ? "," : "", item->name, item->blob.url);
+				} else {
+					SPRINTF(pnt, "%s { \"name\": \"%s\" }", i > 0 ? "," : "", item->name);
+				}
 			}
 			size = sprintf(pnt, " ] } }");
 			size += pnt - output_buffer;
 			break;
 	}
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {
@@ -366,7 +339,7 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	int handle = client_context->output;
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
-	int size;
+	long size;
 	if (*property->name == 0)
 		size = sprintf(pnt, "{ \"deleteProperty\": { \"device\": \"%s\"", device->name);
 	else
@@ -383,9 +356,9 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	else
 		indigo_write(handle, output_buffer, size);
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {
@@ -410,11 +383,11 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	int handle = client_context->output;
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
-	int size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
+	long size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
 	if (client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_write(handle, output_buffer, size)) {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← %s\n", handle, output_buffer));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- %s\n", handle, output_buffer));
 	} else {
-		INDIGO_TRACE_PROTOCOL(indigo_trace("%d ← FAILED\n", handle));
+		INDIGO_TRACE_PROTOCOL(indigo_trace("%d <- FAILED\n", handle));
 		if (client_context->output == client_context->input) {
 			close(client_context->input);
 		} else {
@@ -449,6 +422,7 @@ indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket)
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
+	snprintf(client->name, sizeof(client->name), "JSON Driver Adapter #%d", input);
 	client_context->input = input;
 	client_context->output = ouput;
 	client_context->web_socket = web_socket;

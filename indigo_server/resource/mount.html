@@ -85,21 +85,40 @@
 													<path d="M25,8V24a1,1,0,0,1-1,1H8a1,1,0,0,1-1-1V8A1,1,0,0,1,8,7H24A1,1,0,0,1,25,8Z"/>
 												</svg>
 											</button>
-											<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg ok-state" onclick="park()" data-toggle="tooltip" title="Park">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
-												</svg>
-											</button>
-											<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg busy-state" onclick="park()" data-toggle="tooltip" title="Park">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
-												</svg>
-											</button>
-											<button v-else class="btn btn-svg idle-state" onclick="park()" data-toggle="tooltip" title="Park">
-												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-													<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
-												</svg>
-											</button>
+											<template v-if="findProperty('Mount Agent', 'MOUNT_PARK') != null">
+												<button v-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Ok' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg ok-state" onclick="park()" data-toggle="tooltip" title="Park">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
+													</svg>
+												</button>
+												<button v-else-if="findProperty('Mount Agent', 'MOUNT_PARK').state == 'Busy' && findProperty('Mount Agent', 'MOUNT_PARK').item('PARKED').value" class="btn btn-svg busy-state ml-2" onclick="park()" data-toggle="tooltip" title="Park">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
+													</svg>
+												</button>
+												<button v-else class="btn btn-svg idle-state" onclick="park()" data-toggle="tooltip" title="Park">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M18.77643,15.56836A2.43555,2.43555,0,0,1,16.51794,17H14V12h2.5A2.51651,2.51651,0,0,1,18.77643,15.56836ZM27,7V25a2.00006,2.00006,0,0,1-2,2H7a2.00006,2.00006,0,0,1-2-2V7A2,2,0,0,1,7,5H25A2,2,0,0,1,27,7ZM16.5,9h-5a.5.5,0,0,0-.5.5v13a.5.5,0,0,0,.5.5h2a.5.5,0,0,0,.5-.5V20h2.5A5.24605,5.24605,0,0,0,22,14.5,5.24605,5.24605,0,0,0,16.5,9Z"/>
+													</svg>
+												</button>
+											</template>
+											<template v-if="findProperty('Mount Agent', 'MOUNT_HOME') != null">
+												<button v-if="findProperty('Mount Agent', 'MOUNT_HOME').state == 'Ok'" class="btn btn-svg ok-state ml-2" onclick="home()" data-toggle="tooltip" title="Home">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
+													</svg>
+												</button>
+												<button v-else-if="findProperty('Mount Agent', 'MOUNT_HOME').state == 'Busy'" class="btn btn-svg busy-state" onclick="home()" data-toggle="tooltip" title="Home">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
+													</svg>
+												</button>
+												<button v-else class="btn btn-svg idle-state ml-2" onclick="home()" data-toggle="tooltip" title="Home">
+													<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+														<path d="M27.10482,17H24V27.5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5v-5a.5.5,0,0,0-.5-.5h-5a.5.5,0,0,0-.5.5v5a.5.5,0,0,1-.5.5h-4a.5.5,0,0,1-.5-.5V17H4.89518a.785.785,0,0,1-.55508-1.34008L15.46967,4.53023a.75.75,0,0,1,1.06066,0L27.6599,15.65992A.785.785,0,0,1,27.10482,17Z"/>
+													</svg>
+												</button>
+											</template>
 											<button v-if="findProperty('Mount Agent', 'AGENT_LX200_SERVER').state == 'Busy' && findProperty('Mount Agent', 'AGENT_LX200_SERVER').item('STARTED').value" class="btn btn-svg busy-state ml-2" onclick="stopLX200Server()" data-toggle="tooltip" title="LX200 Server">
 												<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
 													<path d="M13.39844,9.21A15.27,15.27,0,0,1,15,16a15.27,15.27,0,0,1-1.60156,6.79A1.49977,1.49977,0,1,1,10.707,21.46582,12.30309,12.30309,0,0,0,12,16a12.30309,12.30309,0,0,0-1.293-5.46582A1.49977,1.49977,0,1,1,13.39844,9.21ZM24.48926,5.33789a1.49977,1.49977,0,0,0-2.69141,1.32422,20.899,20.899,0,0,1,0,18.67578,1.49977,1.49977,0,1,0,2.69141,1.32422,23.89423,23.89423,0,0,0,0-21.32422ZM5.84766,10.46143a1.49937,1.49937,0,0,0-.6836,2.00781A7.94053,7.94053,0,0,1,6,16a7.94053,7.94053,0,0,1-.83594,3.53076A1.49977,1.49977,0,1,0,7.85547,20.855,10.90609,10.90609,0,0,0,9,16a10.90609,10.90609,0,0,0-1.14453-4.855A1.49881,1.49881,0,0,0,5.84766,10.46143ZM16.93748,6.58936a1.49938,1.49938,0,0,0-.68357,2.00781,16.56579,16.56579,0,0,1,0,14.80566,1.49977,1.49977,0,1,0,2.6914,1.32422,19.5609,19.5609,0,0,0,0-17.4541A1.49911,1.49911,0,0,0,16.93748,6.58936Z"/>
@@ -625,6 +644,10 @@
 
 		function stop() {
 			changeProperty("Mount Agent", "MOUNT_ABORT_MOTION", { "ABORT_MOTION": true });
+		}
+
+		function home() {
+			changeProperty("Mount Agent", "MOUNT_HOME", { "HOME": true });
 		}
 
 		function park() {

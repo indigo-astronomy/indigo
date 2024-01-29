@@ -210,7 +210,7 @@ char *ptp_property_canon_code_name(uint16_t code) {
 		case ptp_property_canon_SerialNumber: return "ADV_SerialNumber";
 		case ptp_property_canon_AutoPowerOff: return "ADV_AutoPowerOff";
 	}
-	return ptp_property_canon_code_label(code);
+	return ptp_property_code_name(code);
 }
 
 char *ptp_property_canon_code_label(uint16_t code) {
@@ -819,7 +819,7 @@ static void ptp_canon_get_event(indigo_device *device) {
 		uint8_t *record = buffer;
 		ptp_property *updated[PTP_MAX_ELEMENTS] = { NULL }, **next_updated = updated;
 		while (true) {
-			if (record - (uint8_t *)buffer >= max_size)
+			if (record == NULL || record - (uint8_t *)buffer >= max_size)
 				break;
 			uint8_t *source = record;
 			uint32_t size, event;
@@ -1265,7 +1265,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 
 static void ptp_canon_check_event(indigo_device *device) {
 	ptp_canon_get_event(device);
-	indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	if (IS_CONNECTED) {
+		indigo_reschedule_timer(device, 1, &PRIVATE_DATA->event_checker);
+	}
 }
 
 bool ptp_canon_initialise(indigo_device *device) {
@@ -1482,10 +1484,14 @@ bool ptp_canon_liveview(indigo_device *device) {
 		ptp_canon_get_event(device);
 		while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer, NULL)) {
+			uint32_t buffer_size;
+			if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetViewFinderData, 0x00100000, &buffer, &buffer_size)) {
 				uint8_t *source = buffer;
 				uint32_t length, type;
 				while (!PRIVATE_DATA->abort_capture) {
+          if (source == NULL || source >= (uint8_t *)buffer + buffer_size) {
+            break;
+          }
 					source = ptp_decode_uint32(source, &length);
 					source = ptp_decode_uint32(source, &type);
 					if (type == 1) {
@@ -1515,7 +1521,7 @@ bool ptp_canon_liveview(indigo_device *device) {
 				free(buffer);
 			indigo_usleep(100000);
 		}
-		indigo_finalize_video_stream(device);
+		indigo_finalize_dslr_video_stream(device);
 		set_number_property(device, ptp_property_canon_EVFOutputDevice, 0);
 		//set_property(device, ptp_property_canon_EVFMode, 0);
 		return !PRIVATE_DATA->abort_capture;
@@ -1571,24 +1577,24 @@ bool ptp_canon_focus(indigo_device *device, int steps) {
 		CANON_PRIVATE_DATA->steps = steps;
 		pthread_mutex_unlock(&mutex);
 		while (true) {
+			uint32_t value = 0;
+			pthread_mutex_lock(&mutex);
 			if (CANON_PRIVATE_DATA->steps == 0) {
 				result = true;
+				pthread_mutex_unlock(&mutex);
 				break;
 			}
 			if (CANON_PRIVATE_DATA->steps < 0) {
-				pthread_mutex_lock(&mutex);
 				CANON_PRIVATE_DATA->steps++;
-				pthread_mutex_unlock(&mutex);
-				if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x0001))
-					break;
+				value = 0x0001;
 			}
 			if (CANON_PRIVATE_DATA->steps > 0) {
-				pthread_mutex_lock(&mutex);
 				CANON_PRIVATE_DATA->steps--;
-				pthread_mutex_unlock(&mutex);
-				if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, 0x8001))
-					break;
+				value = 0x8001;
 			}
+			pthread_mutex_unlock(&mutex);
+			if (!ptp_transaction_1_0(device, ptp_operation_canon_DriveLens, value))
+				break;
 			indigo_usleep(50000);
 		}
 		if (temporary_lv) {

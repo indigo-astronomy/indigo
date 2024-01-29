@@ -1,5 +1,5 @@
 # Guide to indigo_server and INDIGO Drivers
-Revision: 12.01.2021 (draft)
+Revision: 22.12.2023 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -152,6 +152,33 @@ These are the INDI style drivers, They are run in a separate sub process of **in
 
 These drivers are standard ELF executables and do not have file extension.
 
+#### INDIGO Device Classes
+INDIGO defines several devise classes that can be exported by the INDIGO drivers
+
+- Main device classes
+	* **Mount** - Telescope mounts. Driver name prefix is *indigo_mount_* (like *indigo_mount_lx200*)
+	* **Camera** - CCD or CMOS camera class. It can be either imaging or guider camera. Driver name prefix is *indigo_ccd_* (like *indigo_ccd_atik*)
+	* **Guider** - This can be a stand alone device or a virtual device exported by the mount driver or the guiding camera driver. It is used to execute the guiding corrections. In case of a standalone or virtual guiding camera device, the ST4 port is used. The ST4 output port of the guider device should be connected to the ST4 input of the mount via cable. In case of a mount virtual device the guiding corrections are executed via mount commands and no additional wiring is needed.
+	Driver name prefix for standalone guiders is *indigo_guider_* (like *indigo_guider_gpusb*)
+	* **Focuser** - Focuser for manual and automatic focusing. Driver name prefix is *indigo_focuser_* (like *indigo_focuser_dsd*)
+	* **Filter Wheel** - Filter wheel for broadband, narrow band, photometric, light pollution etc. filters. Driver name prefix is *indigo_wheel_* (like *indigo_wheel_sx*)
+	* **Dome** - Observatory dome - classic, roll-off, clamshell etc.  Driver name prefix is *indigo_dome_* (like *indigo_dome_baader*)
+	* **GPS** - Global positioning system or GLONASS device. Driver name prefix is *indigo_gps_* (like *indigo_gps_nmea*)
+	* **Adaptive Optics** - Adaptive optics device. Driver name prefix is *indigo_ao_* (like *indigo_ao_sx*)
+	* **Field Rotator** - Field Rotator device to be used to rotate the camera for better framing or for field derotation with Alt-Az Mounts. Driver name prefix is *indigo_rotator_* (like *indigo_rotator_optec*)
+
+- Auxiliary device classes (Driver name prefix is *indigo_aux_*, like *indigo_aux_ppb*)
+	* **AUX Joystick** - Game pad that can be used to control the mount
+	* **AUX Shutter** - External shutter for the camera
+	* **AUX Power Box** - Power box with controllable power outlets, dew heater control, USB ports etc.
+	* **AUX SQM** - Sky quality monitor.
+	* **AUX Dust Cap** - Motorized dust cap for the telescope
+	* **AUX Light Box** - Controllable flat panel, for making flat frames
+	* **AUX Weather Station** - Temperature sensors, humidity sensors, wind speed and direction sensors, rain sensors etc.
+	* **AUX GPIO** - General purpose input output pins that can be used as analog or digital inputs and outputs for various applications.
+
+Drivers can export more than one device. Typical example for this are mount drivers which export mount device and guider device for each mount. Some camera drivers will export filter wheel device for the cameras with embedded filter wheel or guider device if the camera has ST4 port.
+
 ### Several Notes on Drivers
 
 #### Optimizing Performance
@@ -172,12 +199,12 @@ It is a good practice to report any instability or crash to the developers provi
 Some devices support hotplug. If so, the chances are that the INDIGO driver will also support hotplug for this device.
 
 Usually USB devices are hotplug devices, but not all of them.
-Sometimes only the physical wiring is USB, but the device itself is basically a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to these serial ports. In this case most likely the device can not be automatically identified by the driver, therefore a proper serial port name should be provided by the user in order to connect the driver to the device. Sometimes if the serial port manifests itself as a particular device, based on USB vendor ID and product ID, the driver can make a good guess.
+Sometimes only the physical wiring is USB, but the device itself is basically a serial device. They manifest themselves as USB serial ports and there is no way to know what exactly is connected to these serial ports. In this case, most likely, the device can not be automatically identified by the driver, therefore a proper serial port name should be provided in the DEVICE_PORT property (or selected from the SERIAL_PORTS property list) in order to connect the driver to the device. If the serial port manifests itself as a particular device, based on USB vendor ID and product ID, the driver can make a good guess and automatically set DEVICE_PORT property.
 
-The README of each driver can provide information if hotplug is supported or not.
+The README of each driver provides information if hotplug is supported or not.
 
 #### USB to Serial Port Enumeration
 On Linux most of the USB to serial devices will be named '/dev/ttyUSB0', '/dev/ttyUSB1' etc. or  '/dev/ttyACM0', '/dev/ttyACM1' etc. Each device will always be ttyUSB or ttyACM but there is no way to know the number. Therefore it is advised to connect and power up (if external power is required) all USB serial devices before booting up the Linux system (for example the Raspberry Pi). Then identify devices by connecting the INDIGO drivers to them one by one. Once identified, save each driver configuration to "Profile 0".
 Next time you have to make sure that all USB serial devices are connected to the same USB ports and powered up before booting the Linux machine.
 
-The same applies for MacOSX. The only difference is the device name on MacOSX of the USB to serial devices are usually called /dev/cu.usbserial.
+The same applies to MacOS. The only difference is the device name. On MacOS the USB to serial devices are usually called /dev/cu.usbserial.

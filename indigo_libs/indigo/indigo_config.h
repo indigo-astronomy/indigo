@@ -28,8 +28,25 @@
 
 /** INDIGO Build number
  */
-#define INDIGO_BUILD "197"
+#define INDIGO_BUILD "271"
 
+/** INDIGO Build commit
+ */
+#if defined(INDIGO_WINDOWS)
+#define INDIGO_BUILD_COMMIT ""
+#else
+#define INDIGO_BUILD_COMMIT indigo_build_commit
+extern char *indigo_build_commit;
+#endif
+
+/** INDIGO Build time
+ */
+#if defined(INDIGO_WINDOWS)
+#define INDIGO_BUILD_TIME __DATE__
+#else
+#define INDIGO_BUILD_TIME indigo_build_time
+extern char *indigo_build_time;
+#endif
 /** Conditional compilation wrapper for TRACE log level
  */
 #define INDIGO_TRACE(c) c

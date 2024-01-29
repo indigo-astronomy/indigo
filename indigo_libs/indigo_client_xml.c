@@ -33,6 +33,7 @@
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <unistd.h>
+#include <libgen.h>
 #endif
 
 #if defined(INDIGO_WINDOWS)
@@ -50,6 +51,8 @@
 #include <indigo/indigo_client_xml.h>
 
 #define INDIGO_PRINTF(...) if (!indigo_printf(__VA_ARGS__)) goto failure
+
+extern char *indigo_client_name;
 
 static pthread_mutex_t xml_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -85,6 +88,12 @@ static indigo_result xml_client_parser_enumerate_properties(indigo_device *devic
 		} else {
 			INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 		}
+	} else if (indigo_client_name) {
+		INDIGO_PRINTF(handle, "<getProperties version='1.7' client='%s' switch='%d.%d'/>\n", indigo_client_name, (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	} else if (indigo_main_argv) {
+		INDIGO_PRINTF(handle, "<getProperties version='1.7' client='%s' switch='%d.%d'/>\n", basename((char *)indigo_main_argv[0]), (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
+#endif
 	} else {
 		INDIGO_PRINTF(handle, "<getProperties version='1.7' switch='%d.%d'/>\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF);
 	}

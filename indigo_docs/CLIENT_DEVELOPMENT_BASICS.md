@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 10.08.2020 (draft)
+Revision: 05.03.2023 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -210,10 +210,10 @@ Properties can be in one of the four states:
 
 Each property has predefined type which is one of the following:
 - *INDIGO_TEXT_VECTOR* - strings of limited width
--	*INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
--	*INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
--	*INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
--	*INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
+- *INDIGO_NUMBER_VECTOR* - floating point numbers with defined min and max values and increment
+- *INDIGO_SWITCH_VECTOR* - logical values representing “on” and “off” state, there are several behavior rules for this type: *INDIGO_ONE_OF_MANY_RULE* (only one switch can be "on" at a time), *INDIGO_AT_MOST_ONE_RULE* (none or one switch can be "on" at a time) and *INDIGO_ANY_OF_MANY_RULE* (independent checkbox group)
+- *INDIGO_LIGHT_VECTOR* - status values with four possible values *INDIGO_IDLE_STATE*, *INDIGO_OK_STATE*, *INDIGO_BUSY_STATE* and *INDIGO_ALERT_STATE*
+- *INDIGO_BLOB_VECTOR* - binary data of any type and any length usually image data
 
 Properties have permissions assigned to them:
 - *INDIGO_RO_PERM* - Read only permission, which means that the client can not modify their item values
@@ -352,9 +352,96 @@ INDIGO framework can operate in an environment without a server. In this case th
 
 The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, only the the remote server example shown below can work on all supported operating systems. The two examples above can work only on Linux and MacOSX. The reason for this is that INDIGO drivers can run only on Linux and MacOSX but not on Windows.
 
-## Notes About the Automatic Service Discovery
+## INDIGO service Discovery
+INDIGO server provides automatic service discovery using mDNS/DNS-SD (known as Bonjour in Apple ecosystem, and Avahi on Linux). This makes it easy for the client to identify INDIGO services. The INDIGO services can by identified by **_indigo._tcp**.
 
-INDIGO server provides automatic service discovery using mDNS/DNS-SD (known as Bonjour in Apple ecosystem, and Avahi on Linux). This makes it easy for the client to identify INDIGO services. The INDIGO services can by identified by **_indigo._tcp**. There are several libraries that will allow the client to browse for INDIGO services available on the local network:
+As of INDIGO 2.0-226 several functions for automatic service discovery are provided:
+- *indigo_resolve_service()* - this function resolves a service by name and network interface, and if the service is resolved it will call a user defined callback.
+- *indigo_start_service_browser()* - this function starts the service browser synchronously and returns. Each time a service is discovered or removed the user defined callback will be called. It will also be called when all available services are listed. In the call back the service name, the network interface where the service is available and the event on which it is called.
+- *indigo_stop_service_browser()* - stops the service browser
+
+### Discovery callback
+This function is user defined and will be called by the framework when a service is discovered, removed and when all the services available at the moment are listed.
+```C
+void discover_callback(indigo_service_discovery_event event, const char *service_name, uint32_t interface_index);
+```
+*event* can be:
+- *INDIGO_SERVICE_ADDED* - service is added and may be reported several times if available on several network interfaces
+- *INDIGO_SERVICE_ADDED_GROUPED* - added service is reported once, interface is set to INDIGO_INTERFACE_ANY
+- *INDIGO_SERVICE_REMOVED* - service is removed and may be reported several times, if available on several network interfaces
+- *INDIGO_SERVICE_REMOVED_GROUPED* - removed service is reported once, interface is set to INDIGO_INTERFACE_ANY
+- *INDIGO_SERVICE_END_OF_RECORD* - end of record, no more visible services at this time
+
+*service_name* is the name of the discovered or removed service and *interface_index* is the number of the network interface where the service is available.
+
+### Resolver callback
+This function is user defined and will be called by the framework when a service is resolved by *indigo_resolve_service()*
+```C
+void resolve_callback(const char *service_name, uint32_t interface_index, const char *host, int port);
+```
+*service_name* is the name of the service being resolved, *interface_index* is the number of the network interface where the service is available, *host* is the host name and *port* is the TCP port where indigo service is accessible. Use *host* and *port* to connect to this service. In case of resolutuin error the callbck will have *host = NULL* and *port = 0*.
+
+### Service discovery example
+Working example can be found in [indigo_examples/service_ddiscovery.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/service_discovery.c):
+```C
+#include <stdio.h>
+#include <indigo/indigo_service_discovery.h>
+
+/* This function will be called every time a service is resolved by indigo_resolve_service() */
+void resolve_callback(const char *service_name, uint32_t interface_index, const char *host, int port) {
+	if (host != NULL) {
+		printf("= %s -> %s:%u (interface %d)\n", service_name, host, port, interface_index);
+	} else {
+		fprintf(stderr, "! %s -> service can not be resolved\n", service_name);
+	}
+}
+
+/* This function will be called every time a service is discovered, removed or at the end of the record */
+void discover_callback(indigo_service_discovery_event event, const char *service_name, uint32_t interface_index) {
+	switch (event) {
+		case INDIGO_SERVICE_ADDED:
+			printf("+ %s (interface %d)\n", service_name, interface_index);
+			/* we have a new indigo service discovered, we need to resolve it
+			   to get the hostname and the port of the service
+			*/
+			indigo_resolve_service(service_name, interface_index, resolve_callback);
+			break;
+		case INDIGO_SERVICE_REMOVED:
+			/* service is gone indigo_server providing it is stopped */
+			printf("- %s (interface %d)\n", service_name, interface_index);
+			break;
+		case INDIGO_SERVICE_END_OF_RECORD:
+			/* these are all the sevises available at the moment,
+			   but we will continue listening for updates
+			*/
+			printf("___end___\n");
+			break;
+		default:
+			break;
+	}
+}
+
+int main() {
+	/* start service browser, the discover_callback() will be called
+	   everytime a service is discoveres, removed or end of the record occured
+	*/
+	indigo_start_service_browser(discover_callback);
+
+	/* give it 10 seconds to work, in a real life
+	   it may work while the application is working
+	   to get imediate updates on the available services.
+	*/
+	indigo_usleep(10 * ONE_SECOND_DELAY);
+
+	/* stop the service browser and cleanuo the memory it used,
+	   as we do not need it any more
+	*/
+	indigo_stop_service_browser();
+	return 0;
+}
+```
+
+### Third party libraries that can be used for INDIGO service discovery
 
 - MacOS, Linux & Windows - **[QtZeroConf](https://github.com/jbagg/QtZeroConf)**, uses Qt framework ([INDIGO Control Panel](https://github.com/indigo-astronomy/control-panel) can be used as an example)
 - Linux - **[Avahi](https://www.avahi.org/doxygen/html/index.html)**

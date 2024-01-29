@@ -355,6 +355,9 @@ static uvc_error_t uvc_open_internal(
   if (ret != UVC_SUCCESS)
     goto fail;
 
+  ret = libusb_set_auto_detach_kernel_driver(usb_devh, 1);
+  
+
   UVC_DEBUG("claiming control interface %d", internal_devh->info->ctrl_if.bInterfaceNumber);
   ret = uvc_claim_if(internal_devh, internal_devh->info->ctrl_if.bInterfaceNumber);
   if (ret != UVC_SUCCESS)
