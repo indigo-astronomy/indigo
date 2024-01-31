@@ -1443,7 +1443,6 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 			case ptp_property_sony_ISO:
 			case ptp_property_sony_ShutterSpeed:
 			case ptp_property_FNumber: {
-				indigo_set_switch(property->property, property->property->items + 1, true);
 				int16_t value = 0;
 				if (property->property->items[0].sw.value) {
 					value = -1;
@@ -1452,6 +1451,7 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 				}
 				if (property->code == ptp_property_sony_ShutterSpeed)
 					value = -value;
+				indigo_set_switch(property->property, property->property->items + 1, true);
 				return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, property->code, &value, sizeof(uint16_t));
 			}
 		}
