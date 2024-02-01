@@ -2625,6 +2625,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_PROCESS_FEATURES
 		indigo_property_copy_values(AGENT_PROCESS_FEATURES_PROPERTY, property, false);
 		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
 		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_DOWNLOAD_FILE
