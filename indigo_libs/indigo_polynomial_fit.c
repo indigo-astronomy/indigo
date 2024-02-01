@@ -107,7 +107,7 @@ static void augmented_matrix(int count, double data[count][2], int order, double
 /**
  Perofrm polynomial fit of the given data with polynomial of a given order
 */
-void indigo_polynomial_fit(int count, double data[count][2], int order, double polynomial[order + 1]) {
+void indigo_polynomial_fit(const int count, double data[count][2], int order, double polynomial[order + 1]) {
 	double am[order + 1][order + 2];
 	augmented_matrix(count, data, order, am);
 	gauss_elimination(order + 1, order + 2, am, polynomial);
