@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME	"indigo_ccd_simulator"
 //#define ENABLE_BACKLASH_PROPERTY
 
@@ -49,8 +49,6 @@
 #define IMAGER_HEIGHT       		1200
 #define DSLR_WIDTH        			1600
 #define DSLR_HEIGHT       			1200
-#define GUIDER_WIDTH        		1600
-#define GUIDER_HEIGHT       		1200
 
 // can be changed
 #define GUIDER_MAX_MAG					8
@@ -138,8 +136,8 @@ typedef struct {
 	double ew_error, ns_error;
 	double lst;
 	int star_count, star_x[GUIDER_MAX_STARS], star_y[GUIDER_MAX_STARS], star_a[GUIDER_MAX_STARS], hotpixel_x[GUIDER_MAX_HOTPIXELS + 1], hotpixel_y[GUIDER_MAX_HOTPIXELS + 1];
-	char imager_image[FITS_HEADER_SIZE + 3 * IMAGER_WIDTH * IMAGER_HEIGHT + 2880];
-	char guider_image[FITS_HEADER_SIZE + 3 * GUIDER_WIDTH * GUIDER_HEIGHT + 2880];
+	char imager_image[FITS_HEADER_SIZE + 2 * IMAGER_WIDTH * IMAGER_HEIGHT + 2880];
+	char *guider_image;
 	char dslr_image[FITS_HEADER_SIZE + 3 * DSLR_WIDTH * DSLR_HEIGHT + 2880];
 	char *file_image, *raw_file_image;
 	indigo_raw_header file_image_header;
@@ -715,6 +713,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = GUIDER_IMAGE_WIDTH_ITEM->number.target;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 				PRIVATE_DATA->ra = PRIVATE_DATA->dec = -1000;
+				PRIVATE_DATA->guider_image = indigo_safe_malloc(FITS_HEADER_SIZE + 2 * GUIDER_IMAGE_WIDTH_ITEM->number.value * GUIDER_IMAGE_HEIGHT_ITEM->number.value + 2880);
 			} else {
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = IMAGER_WIDTH;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = IMAGER_HEIGHT;
@@ -1072,6 +1071,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
 		}
 		PRIVATE_DATA->lst = 0;
+		PRIVATE_DATA->guider_image = indigo_safe_realloc(PRIVATE_DATA->guider_image, FITS_HEADER_SIZE + 2 * GUIDER_IMAGE_WIDTH_ITEM->number.value * GUIDER_IMAGE_HEIGHT_ITEM->number.value + 2880);
 		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1132,6 +1132,7 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(FILE_NAME_PROPERTY);
 		indigo_release_property(BAYERPAT_PROPERTY);
 	} else if (device == PRIVATE_DATA->guider) {
+		indigo_safe_free(PRIVATE_DATA->guider_image);
 		indigo_release_property(GUIDER_MODE_PROPERTY);
 		indigo_release_property(GUIDER_SETTINGS_PROPERTY);
 	}
