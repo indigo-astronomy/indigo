@@ -336,7 +336,7 @@ static void do_dither(indigo_device *device) {
 			break;
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+			AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
 			AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
 			AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
 			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
@@ -353,7 +353,7 @@ static void do_dither(indigo_device *device) {
 				break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_OK_STATE;
+				AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
 				AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
 				AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
 				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
