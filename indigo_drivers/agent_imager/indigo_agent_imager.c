@@ -2253,7 +2253,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM, AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM_NAME, "Enable dithering", true);
-		indigo_init_switch_item(AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM, AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM_NAME, "Dither after last frame", false);
+		indigo_init_switch_item(AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM, AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM_NAME, "Dither after last frame", false);
 		indigo_init_switch_item(AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM, AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM_NAME, "Pause after transit", false);
 		// -------------------------------------------------------------------------------- Download properties
 		AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY_NAME, "Agent", "Download image", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
@@ -2880,11 +2880,15 @@ static void snoop_guider_dithering_state(indigo_client *client, indigo_property 
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
 				if (!strcmp(item->name, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME)) {
-					if (item->sw.value && property->state == INDIGO_BUSY_STATE) {
-						DEVICE_PRIVATE_DATA->dithering_started = true;
-					} else {
-						DEVICE_PRIVATE_DATA->dithering_started = true;
-						DEVICE_PRIVATE_DATA->dithering_finished = true;
+					if (!DEVICE_PRIVATE_DATA->dithering_finished) {
+						if (item->sw.value && property->state == INDIGO_BUSY_STATE && !DEVICE_PRIVATE_DATA->dithering_started) {
+							DEVICE_PRIVATE_DATA->dithering_started = true;
+						} else if (property->state == INDIGO_OK_STATE && DEVICE_PRIVATE_DATA->dithering_started) {
+							DEVICE_PRIVATE_DATA->dithering_finished = true;
+						} else if (property->state == INDIGO_ALERT_STATE) {
+							DEVICE_PRIVATE_DATA->dithering_started = true;
+							DEVICE_PRIVATE_DATA->dithering_finished = true;
+						}
 					}
 					break;
 				}
