@@ -176,7 +176,6 @@ typedef struct {
 	indigo_property *agent_imager_focus_property;
 	indigo_property *agent_imager_focus_failure_property;
 	indigo_property *agent_imager_focus_estimator_property;
-	indigo_property *agent_imager_dithering_property;
 	indigo_property *agent_imager_download_file_property;
 	indigo_property *agent_imager_download_files_property;
 	indigo_property *agent_imager_download_image_property;
