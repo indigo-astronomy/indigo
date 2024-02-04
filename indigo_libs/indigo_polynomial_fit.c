@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Rumen G.Bogdanovski
+// Copyright (c) 2024 Rumen G.Bogdanvski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -18,108 +18,197 @@
 
 // version history
 // 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
+// Based on polyfit() by Henry M. Forson
 
-/** Chi-square Polynomial Fitting
+/** Least Squares Polynomial Fitting
  \file indigo_polynomial_fit.c
  */
 
-#include<stdio.h>
-#include<math.h>
+#include <math.h>
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-/**
-Function that prints the elements of a matrix row-wise
-Parameters: rows(m),columns(n),matrix[m][n]
-*/
-static void print_matrix(int m, int n, double matrix[m][n]){
-	int i,j;
-	for(i=0;i<m;i++){
-		for(j=0;j<n;j++){
-			printf("%lf\t",matrix[i][j]);
-		}
-		printf("\n");
-	}
+#include <indigo/indigo_polynomial_fit.h>
+
+typedef struct matrix_s {
+	int	rows;
+	int	cols;
+	double *data;
+} matrix_t;
+
+#define MATRIX_VALUE_PTR( pA, row, col )  (&(((pA)->data)[ (row * (pA)->cols) + col]))
+
+static matrix_t * transpose_matrix( matrix_t *pMat ) {
+    matrix_t *rVal = (matrix_t *) calloc(1, sizeof(matrix_t));
+    rVal->data = (double *) calloc( pMat->rows * pMat->cols, sizeof( double ));
+    rVal->cols = pMat->rows;
+    rVal->rows = pMat->cols;
+    for( int r = 0; r < rVal->rows; r++ ) {
+        for( int c = 0; c < rVal->cols; c++ ) {
+            *MATRIX_VALUE_PTR(rVal, r, c) = *MATRIX_VALUE_PTR(pMat, c, r);
+        }
+    }
+    return rVal;
 }
 
+static matrix_t * product_matrix( matrix_t *pLeft, matrix_t *pRight ) {
+    matrix_t *rVal = NULL;
+    if (NULL == pLeft || NULL == pRight || pLeft->cols != pRight->rows) {
+        return NULL;
+    } else {
+        // Allocate the product matrix.
+        rVal = (matrix_t *) calloc(1, sizeof(matrix_t));
+        rVal->rows = pLeft->rows;
+        rVal->cols = pRight->cols;
+        rVal->data = (double *) calloc( rVal->rows * rVal->cols, sizeof( double ));
 
-/**
- Performs Gauss-Elimination and returns the upper triangular matrix and solution of equations
- Pass the augmented matrix (a) as the parameter, and calculate and store the upperTriangular(Gauss-Eliminated Matrix) in it.
-*/
-static void gauss_elimination(int m, int n, double a[m][n], double x[n-1]) {
-	int i, j, k;
-	for(i = 0; i < m - 1; i++) {
-		for(k = i + 1; k < m; k++) {
-			if(fabs(a[i][i]) < fabs(a[k][i])) {
-				for(j = 0; j < n; j++) {
-					double temp;
-					temp = a[i][j];
-					a[i][j] = a[k][j];
-					a[k][j] = temp;
-				}
-			}
-		}
-		for(k = i + 1; k < m; k++) {
-			double  term = a[k][i]/ a[i][i];
-			for(j = 0; j < n; j++) {
-				a[k][j] = a[k][j] - term * a[i][j];
-			}
-		}
-	}
-	for (i = m - 1; i >= 0; i--){
-		x[i] = a[i][n - 1];
-		for(j = i + 1; j < n - 1; j++) {
-			x[i] = x[i] - a[i][j] * x[j];
-		}
-		x[i] = x[i] / a[i][i];
-	}
+        // Initialize the product matrix contents:
+        // product[i,j] = sum{k = 0 .. (pLeft->cols - 1)} (pLeft[i,k] * pRight[ k, j])
+        for (int i = 0; i < rVal->rows; i++) {
+            for (int j = 0; j < rVal->cols; j++) {
+                for (int k = 0; k < pLeft->cols; k++) {
+                    *MATRIX_VALUE_PTR(rVal, i, j) += (*MATRIX_VALUE_PTR(pLeft, i, k)) * (*MATRIX_VALUE_PTR(pRight, k, j));
+                }
+            }
+        }
+    }
+
+    return rVal;
 }
 
-/**
- calculate augmented matrix (am) for the data for a given order
-*/
-static void augmented_matrix(int count, double data[count][2], int order, double am[order+1][order+2]) {
-	int i,j;
-	double x[ 2 * order + 1];
+static void destroy_matrix(matrix_t *pMat) {
+    if (NULL != pMat) {
+        if (NULL != pMat->data) {
+            free(pMat->data);
+        }
+        free(pMat);
+    }
+}
 
-	for(i = 0; i <= 2 * order; i++) {
-		x[i] = 0;
-		for(j = 0; j < count; j++) {
-			x[i] = x[i] + pow(data[j][0], i);
-		}
-	}
-	double y[order+1];
-	for(i = 0; i <= order; i++) {
-		y[i] = 0;
-		for(j = 0; j < count; j++) {
-			y[i] = y[i] + pow(data[j][0], i) * data[j][1];
-		}
-	}
-	for(i = 0; i <= order; i++) {
-		for(j = 0; j <= order; j++) {
-			am[i][j] = x[i+j];
-		}
-	}
-	for(i = 0; i <= order; i++) {
-		am[i][order + 1] = y[i];
-	}
+static matrix_t *create_matrix(int rows, int cols) {
+    matrix_t *rVal = (matrix_t *)calloc(1, sizeof(matrix_t));
+    if (NULL != rVal) {
+        rVal->rows = rows;
+        rVal->cols = cols;
+        rVal->data = (double *)calloc(rows * cols, sizeof(double ));
+        if (NULL == rVal->data) {
+            free(rVal);
+            rVal = NULL;
+        }
+    }
+
+    return rVal;
 }
 
 /**
- Perofrm polynomial fit of the given data with polynomial of a given order
+ Computes polynomial coefficients that best fit a set of input points using Least Squares.
+
+ The degree of the fitted polynomial is coefficient_count-1.
+
+ Returns   0 if success,
+          -1 if passed a NULL pointer,
+          -2 if (point_count <= degree),
+          -3 if unable to allocate memory,
+          -4 if unable to solve equations.
 */
-void indigo_polynomial_fit(const int count, double data[count][2], int order, double polynomial[order + 1]) {
-	double am[order + 1][order + 2];
-	augmented_matrix(count, data, order, am);
-	gauss_elimination(order + 1, order + 2, am, polynomial);
+int indigo_polynomial_fit(int point_count, double *x_values, double *y_values, int coefficient_count, double *polynomial_coefficients) {
+    int result = 0;
+    int degree = coefficient_count - 1;
+
+    if (NULL == x_values || NULL == y_values || NULL == polynomial_coefficients) {
+        return -1;
+    }
+
+    if (point_count < coefficient_count) {
+        return -2;
+    }
+
+    matrix_t *pMatA = create_matrix(point_count, coefficient_count);
+    if (NULL == pMatA) {
+        return -3;
+    }
+
+    for (int r = 0; r < point_count; r++) {
+        for (int c = 0; c < coefficient_count; c++) {
+            *(MATRIX_VALUE_PTR(pMatA, r, c)) = pow((x_values[r]), (double)(degree - c));
+        }
+    }
+
+    matrix_t *pMatB = create_matrix(point_count, 1);
+    if (NULL == pMatB) {
+        return -3;
+    }
+
+    for (int r = 0; r < point_count; r++) {
+        *(MATRIX_VALUE_PTR(pMatB, r, 0)) = y_values[r];
+    }
+
+    matrix_t * pMatAT = transpose_matrix(pMatA);
+    if (NULL == pMatAT) {
+        return -3;
+    }
+
+    matrix_t *pMatATA = product_matrix(pMatAT, pMatA);
+    if(NULL == pMatATA) {
+        return -3;
+    }
+
+    matrix_t *pMatATB = product_matrix(pMatAT, pMatB);
+    if(NULL == pMatATB) {
+        return -3;
+    }
+
+    // Now we need to solve the system of linear equations,
+    // (AT)Ax = (AT)b for "x", the coefficients of the polynomial.
+
+    for (int c = 0; c < pMatATA->cols; c++) {
+        int pr = c;     // pr is the pivot row.
+        double prVal = *MATRIX_VALUE_PTR(pMatATA, pr, c);
+        // If it's zero, we can't solve the equations.
+        if (0.0 == prVal) {
+            result = -4;
+            break;
+        }
+        for (int r = 0; r < pMatATA->rows; r++) {
+            if (r != pr) {
+                double targetRowVal = *MATRIX_VALUE_PTR(pMatATA, r, c);
+                double factor = targetRowVal / prVal;
+                for (int c2 = 0; c2 < pMatATA->cols; c2++) {
+                    *MATRIX_VALUE_PTR(pMatATA, r, c2) -=  *MATRIX_VALUE_PTR(pMatATA, pr, c2) * factor;
+                }
+                *MATRIX_VALUE_PTR(pMatATB, r, 0) -=  *MATRIX_VALUE_PTR(pMatATB, pr, 0) * factor;
+            }
+        }
+    }
+    for (int c = 0; c < pMatATA->cols; c++) {
+        int pr = c;
+        // now, pr is the pivot row.
+        double prVal = *MATRIX_VALUE_PTR(pMatATA, pr, c);
+        *MATRIX_VALUE_PTR(pMatATA, pr, c) /= prVal;
+        *MATRIX_VALUE_PTR(pMatATB, pr, 0) /= prVal;
+    }
+
+    for(int i = 0; i < coefficient_count; i++) {
+        polynomial_coefficients[i] = *MATRIX_VALUE_PTR(pMatATB, i, 0);
+	}
+
+    destroy_matrix(pMatATB);
+    destroy_matrix(pMatATA);
+    destroy_matrix(pMatAT);
+    destroy_matrix(pMatA);
+    destroy_matrix(pMatB);
+    return result;
 }
 
 /**
  Calculate polynomial value for a given x
 */
-double indigo_polynomial_value(double x, int order, double polynomial[order + 1]) {
+double indigo_polynomial_value(double x, int coefficient_count, double *polynomial_coefficients) {
 	double value = 0;
-	for(int i = 0; i <= order; i++) {
-		value += pow(x,i) * polynomial[i];
+	for(int i = 0; i < coefficient_count; i++) {
+		value += pow(x,i) * polynomial_coefficients[i];
 	}
 	return value;
 }
@@ -127,28 +216,28 @@ double indigo_polynomial_value(double x, int order, double polynomial[order + 1]
 /**
  Calculate polynomial derivative (returns a polynomial of order - 1)
 */
-void indigo_polynomial_derivative(int order, double polynomial[order + 1], double derivative[order]) {
-	for (int i = 1; i < order; i++) {
-		derivative[i] = (i + 1) * polynomial[i + 1];
+void indigo_polynomial_derivative(int coefficient_count, double *polynomial_coefficients, double *derivative_coefficients) {
+	for (int i = 1; i < coefficient_count-1; i++) {
+		derivative_coefficients[i] = (i + 1) * polynomial_coefficients[i + 1];
 	}
-	derivative[0] = polynomial[1];
+	derivative_coefficients[0] = polynomial_coefficients[1];
 }
 
 /**
  Calculate polynomial extremums (minimums and maximums)
  NOTE: Works for polynomials of order 2 and 3 only
 */
-int indigo_polynomial_extremums(int order, double polynomial[order + 1], double extremum[order-1]) {
-	double derivative[order];
-	indigo_polynomial_derivative(order, polynomial, derivative);
-	if (order == 2) {
-		extremum[0] = -derivative[0]/derivative[1];
+int indigo_polynomial_extremums(int coefficient_count, double *polynomial_coefficients, double *extremums) {
+	double derivative[coefficient_count - 1];
+	indigo_polynomial_derivative(coefficient_count, polynomial_coefficients, derivative);
+	if (coefficient_count == 3) {  // order = 2
+		extremums[0] = -derivative[0]/derivative[1];
 		return 0;
 	}
-	if (order == 3) {
+	if (coefficient_count == 4) {  // order = 3
 		double det = sqrt(derivative[1] * derivative[1] - 4 * derivative[2] * derivative[0]);
-		extremum[0] = (-derivative[1] + det)/(2*derivative[2]);
-		extremum[1] = (-derivative[1] - det)/(2*derivative[2]);
+		extremums[0] = (-derivative[1] + det)/(2*derivative[2]);
+		extremums[1] = (-derivative[1] - det)/(2*derivative[2]);
 		return 0;
 	}
 	return 1;

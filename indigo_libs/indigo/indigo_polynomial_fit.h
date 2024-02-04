@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Rumen G.Bogdanvski
+// Copyright (c) 2024 Rumen G.Bogdanvski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Rumen G.Bogdanovski <rumenastro@gmail.com>
 
-/** Chi-square Polynomial Fitting
+/** Least Squares Polynomial Fitting
  \file indigo_polynomial_fit.h
  */
 
@@ -31,25 +31,28 @@ extern "C" {
 #endif
 
 /**
- Perofrm polynomial fit of the given data with polynomial of a given order
+ Computes polynomial coefficients that best fit a set
+ of input points using Least Squares.
+
+ Returns 0 if success.
 */
-void indigo_polynomial_fit(const int count, double data[count][2], int order, double polynomial[order + 1]);
+int indigo_polynomial_fit(int point_count, double *x_values, double *y_values, int coefficient_count, double *polynomial_coefficients);
 
 /**
  Calculate polynomial value for a given x
 */
-double indigo_polynomial_value(double x, int order, double polynomial[order + 1]);
+double indigo_polynomial_value(double x, int coefficient_count, double *polynomial_coefficients);
 
 /**
- Calculate polynomial derivative (returns a polinomial of order - 1)
+ Calculate polynomial derivative (returns a polinomial of degree - 1)
 */
-void indigo_polynomial_derivative(int order, double polynomial[order + 1], double derivative[order]);
+void indigo_polynomial_derivative(int coefficient_count, double *polynomial_coefficients, double *derivative_coefficients);
 
 /**
  Calculate polynomial extremums (minimums and maximums)
  NOTE: Works for polynomials of order 2 and 3 only
 */
-int indigo_polynomial_extremums(int order, double polynomial[order + 1], double extremum[order-1]);
+int indigo_polynomial_extremums(int coefficient_count, double *polynomial_coefficients, double *extremums);
 
 #ifdef __cplusplus
 }
