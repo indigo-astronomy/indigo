@@ -698,7 +698,7 @@ static bool do_dither(indigo_device *device) {
 	if (!related_agent_name) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed, no guider agent selected");
 		indigo_send_message(device, "Dithering failed, no guider agent selected");
-		return false;
+		return true; // do not fail batch if dithering fails - let us keep it for a while
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_DITHER_PROPERTY_NAME, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, true);
 	DEVICE_PRIVATE_DATA->dithering_started = false;
