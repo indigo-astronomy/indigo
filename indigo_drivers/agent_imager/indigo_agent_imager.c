@@ -44,6 +44,7 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_raw_utils.h>
 #include <indigo/indigo_align.h>
+#include <indigo/indigo_polynomial_fit.h>
 
 #include "indigo_agent_imager.h"
 
@@ -1402,7 +1403,8 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 	FILTER_DEVICE_CONTEXT->property_removed = false;
 	bool repeat = true;
 	#define U_SAMPLES 6
-	double data[U_SAMPLES][2] = {0};
+	double hfds[U_SAMPLES] = {0};
+	double focus_pos[U_SAMPLES] = {0};
 	while (repeat) {
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -1478,8 +1480,8 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 		if (sample == 0) {
 			if (!move_focuser(device, focuser_name, moving_out, steps)) break;
 		} else if (sample == 1) {
-			data[sample-1][0] = CLIENT_PRIVATE_DATA->focuser_position;
-			data[sample-1][1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
+			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
+			hfds[sample-1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
 			if (last_quality >= quality) {
 				moving_out = false;
 				if (!move_focuser(device, focuser_name, moving_out, steps)) break;
@@ -1491,22 +1493,22 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 			int midpoint = rint(U_SAMPLES / 2.0);
 			if (sample > midpoint && last_quality <= quality) {
 				for (int i = 0; i < sample-1; i++) {
-					data[i][0] = data[i+1][0];
-					data[i][1] = data[i+1][1];
+					focus_pos[i] = focus_pos[i+1];
+					hfds[i] = hfds[i+1];
 				}
 				sample = midpoint;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "did not reach peak");
 			}
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "sample = %d", sample);
-			data[sample-1][0] = CLIENT_PRIVATE_DATA->focuser_position;
-			data[sample-1][1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "pos[%d] = (%d, %f)", sample-1, (int)data[sample-1][0], data[sample-1][1]);
+			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
+			hfds[sample-1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "pos[%d] = (%d, %f)", sample-1, (int)focus_pos[sample-1], hfds[sample-1]);
 			if (sample == U_SAMPLES) {
-				double best_sample = data[0][1];
+				double best_sample = hfds[0];
 				int best_index = 0;
 				for(int i = 0; i < U_SAMPLES; i++) {
-					if (data[i][1] < best_sample) {
-						best_sample = data[i][1];
+					if (hfds[i] < best_sample) {
+						best_sample = hfds[i];
 						best_index = i;
 					}
 				}
@@ -1532,14 +1534,16 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 		last_quality = quality;
 	}
 
-	double polynomial[15];
+	double polynomial[3];
 	double extremum[2] = {0};
 	int order = 2;
 
-	indigo_polynomial_fit(U_SAMPLES, data, order, polynomial);
-	indigo_polynomial_extremums(order, polynomial, extremum);
+	indigo_polynomial_fit(U_SAMPLES, focus_pos, hfds, order+1, polynomial);
+
+	indigo_polynomial_extremums(order+1, polynomial, extremum);
 
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "best_focus = %g %g", extremum[0], extremum[1]);
+	indigo_send_message(device, "U-Curve found best focus at position %.3f", extremum[0]);
 
 	capture_raw_frame(device, saturation_mask);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
