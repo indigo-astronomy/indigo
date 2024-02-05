@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Omegonprocam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 55.24390.$WCDATE=%Y%m%d$</li></ul>
+<hr/><ul><li>Version: 55.24621.$WCDATE=%Y%m%d$</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -1221,7 +1221,8 @@ typedef struct {
       <tr>
       	<td>OMEGONPROCAM_OPTION_FAN</td>
       	<td>Some cameras support the cooling fan.<br/>
-      	  0 = turn off the cooling fan<br/>[1, max] = fan speed</td>
+      	  0 = turn off the cooling fan<br/>[1, max] = fan speed<br/>
+		  set to "-1" means to use default fan speed</td>
       	<td>Model Specific</td>
       	<td>Yes</td>
       </tr>
@@ -1234,7 +1235,8 @@ typedef struct {
       </tr>
       <tr>
       	<td>OMEGONPROCAM_OPTION_TECTARGET</td>
-      	<td>get or set the target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃</td>
+      	<td>get or set the target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃.<br/>
+		Set the target temperature to "-2730" or below means using the default for that model.</td>
       	<td>Model Specific</td>
       	<td>Yes</td>
       </tr>
@@ -1716,16 +1718,26 @@ OMEGONPROCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low
 		<td>NA</td>
       </tr>
       <tr>
-        <td>OMEGONPROCAM_OPTION_AUTOEXP_EXPOTIME_STEP</td>
-        <td>Auto exposure: time step (thousandths)</td>
-		<td>1000</td>
-		<td>NA</td>
+        <td>OMEGONPROCAM_OPTION_AUTOEXP_EXPOTIME_DAMP</td>
+        <td>Auto exposure damp: time (thousandths)</td>
+		<td>0</td>
+		<td>Yes</td>
       </tr>
       <tr>
         <td>OMEGONPROCAM_OPTION_AUTOEXP_GAIN_STEP</td>
-        <td>Auto exposure: gain step (thousandths)</td>
-		<td>1000</td>
-		<td>NA</td>
+        <td>Auto exposure damp: gain (thousandths)</td>
+		<td>0</td>
+		<td>Yes</td>
+      </tr>
+      <tr>
+        <td>OMEGONPROCAM_OPTION_OVEREXP_POLICY</td>
+        <td>Auto exposure over exposure policy: when overexposed,<br/>
+			<blockquote>0 =&gt; directly reduce the exposure time/gain to the minimum value; or<br/>
+			1 =&gt; reduce exposure time/gain in proportion to current and target brightness.</blockquote><br/>
+		The advantage of policy 0 is that the convergence speed is faster, but there is black screen.<br/>
+		Policy 1 avoids the black screen, but the convergence speed is slower.</td>
+		<td>0</td>
+		<td>Yes</td>
       </tr>
       <tr>
         <td>OMEGONPROCAM_OPTION_AUTOEXPO_TRIGGER</td>
@@ -2022,7 +2034,7 @@ Omegonprocam_put_Brightness<br/>Omegonprocam_get_Brightness<br/>Omegonprocam_get
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>HOmegonprocam h: camera handle</p>
-      <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃).</p>
+      <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃). Set "-2730" or below means using the default value of this model.</p>
     </blockquote>
     <p><strong>Remarks:</strong> get the temperature of the sensor. see OMEGONPROCAM_FLAG_GETTEMPERATURE.</p>
 	<blockquote><p>set the target temperature of the sensor, equivalent to Omegonprocam_put_Option(, OMEGONPROCAM_OPTION_TECTARGET, ).</p></blockquote>
