@@ -1,7 +1,7 @@
 #ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 55.24390.20240108 */
+/* Version: 55.24621.20240204 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -220,9 +220,9 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define MALLINCAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define MALLINCAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define MALLINCAM_AUTOEXPO_STEP_DEF        1000    /* auto exposure step: thousandths */
-#define MALLINCAM_AUTOEXPO_STEP_MIN        1       /* auto exposure step: thousandths */
-#define MALLINCAM_AUTOEXPO_STEP_MAX        1000    /* auto exposure step: thousandths */
+#define MALLINCAM_AUTOEXPO_DAMP_DEF        0      /* auto exposure damp: thousandths */
+#define MALLINCAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
+#define MALLINCAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
 #define MALLINCAM_BANDWIDTH_DEF            100     /* bandwidth */
 #define MALLINCAM_BANDWIDTH_MIN            1       /* bandwidth */
 #define MALLINCAM_BANDWIDTH_MAX            100     /* bandwidth */
@@ -289,7 +289,7 @@ typedef struct {
 } MallincamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.24390.20240108
+    get the version of this dll/so/dylib, which is: 55.24621.20240204
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -481,7 +481,7 @@ MALLINCAM_API(HRESULT)  Mallincam_SnapR(HMallincam h, unsigned nResolutionIndex,
 */
 MALLINCAM_API(HRESULT)  Mallincam_Trigger(HMallincam h, unsigned short nNumber);
 
-/* 
+/*
     trigger synchronously
     nTimeout:   0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
@@ -564,6 +564,7 @@ typedef void (__stdcall* PIMALLINCAM_HISTOGRAM_CALLBACK)(const float aHistY[256]
 typedef void (__stdcall* PIMALLINCAM_CHROME_CALLBACK)(void* ctxChrome);
 typedef void (__stdcall* PIMALLINCAM_PROGRESS)(int percent, void* ctxProgress);
 #endif
+
 /*
 * nFlag & 0x00008000: mono or color
 * nFlag & 0x0f: bitdepth
@@ -586,7 +587,7 @@ MALLINCAM_API(HRESULT)  Mallincam_put_AutoExpoEnable(HMallincam h, int bAutoExpo
 MALLINCAM_API(HRESULT)  Mallincam_get_AutoExpoTarget(HMallincam h, unsigned short* Target);
 MALLINCAM_API(HRESULT)  Mallincam_put_AutoExpoTarget(HMallincam h, unsigned short Target);
 
-/*set the maximum/minimal auto exposure time and agin. The default maximum auto exposure time is 350ms */
+/* set the maximum/minimal auto exposure time and agin. The default maximum auto exposure time is 350ms */
 MALLINCAM_API(HRESULT)  Mallincam_put_AutoExpoRange(HMallincam h, unsigned maxTime, unsigned minTime, unsigned short maxGain, unsigned short minGain);
 MALLINCAM_API(HRESULT)  Mallincam_get_AutoExpoRange(HMallincam h, unsigned* maxTime, unsigned* minTime, unsigned short* maxGain, unsigned short* minGain);
 MALLINCAM_API(HRESULT)  Mallincam_put_MaxAutoExpoTimeAGain(HMallincam h, unsigned maxTime, unsigned short maxGain);
@@ -748,6 +749,7 @@ MALLINCAM_API(HRESULT)  Mallincam_Flush(HMallincam h);
 MALLINCAM_API(HRESULT)  Mallincam_get_Temperature(HMallincam h, short* pTemperature);
 
 /* set the target temperature of the sensor or TEC, in 0.1 degrees Celsius (32 means 3.2 degrees Celsius, -35 means -3.5 degree Celsius)
+    set "-2730" or below means using the default value of this model
     return E_NOTIMPL if not supported
 */
 MALLINCAM_API(HRESULT)  Mallincam_put_Temperature(HMallincam h, short nTemperature);
@@ -829,7 +831,7 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 #define MALLINCAM_OPTION_RAW                    0x04       /* raw data mode, read the sensor "raw" data. This can be set only while camea is NOT running. 0 = rgb, 1 = raw, default value: 0 */
 #define MALLINCAM_OPTION_HISTOGRAM              0x05       /* 0 = only one, 1 = continue mode */
 #define MALLINCAM_OPTION_BITDEPTH               0x06       /* 0 = 8 bits mode, 1 = 16 bits mode, subset of MALLINCAM_OPTION_PIXEL_FORMAT */
-#define MALLINCAM_OPTION_FAN                    0x07       /* 0 = turn off the cooling fan, [1, max] = fan speed */
+#define MALLINCAM_OPTION_FAN                    0x07       /* 0 = turn off the cooling fan, [1, max] = fan speed, , set to "-1" means to use default fan speed */
 #define MALLINCAM_OPTION_TEC                    0x08       /* 0 = turn off the thermoelectric cooler, 1 = turn on the thermoelectric cooler */
 #define MALLINCAM_OPTION_LINEAR                 0x09       /* 0 = turn off the builtin linear tone mapping, 1 = turn on the builtin linear tone mapping, default value: 1 */
 #define MALLINCAM_OPTION_CURVE                  0x0a       /* 0 = turn off the builtin curve tone mapping, 1 = turn on the builtin polynomial curve tone mapping, 2 = logarithmic curve tone mapping, default value: 2 */
@@ -837,7 +839,7 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 #define MALLINCAM_OPTION_RGB                    0x0c       /* 0 => RGB24; 1 => enable RGB48 format when bitdepth > 8; 2 => RGB32; 3 => 8 Bits Grey (only for mono camera); 4 => 16 Bits Grey (only for mono camera when bitdepth > 8); 5 => 64(RGB64) */
 #define MALLINCAM_OPTION_COLORMATIX             0x0d       /* enable or disable the builtin color matrix, default value: 1 */
 #define MALLINCAM_OPTION_WBGAIN                 0x0e       /* enable or disable the builtin white balance gain, default value: 1 */
-#define MALLINCAM_OPTION_TECTARGET              0x0f       /* get or set the target temperature of the thermoelectric cooler, in 0.1 degree Celsius. For example, 125 means 12.5 degree Celsius, -35 means -3.5 degree Celsius */
+#define MALLINCAM_OPTION_TECTARGET              0x0f       /* get or set the target temperature of the thermoelectric cooler, in 0.1 degree Celsius. For example, 125 means 12.5 degree Celsius, -35 means -3.5 degree Celsius. Set "-2730" or below means using the default for that model */
 #define MALLINCAM_OPTION_AUTOEXP_POLICY         0x10       /* auto exposure policy:
                                                              0: Exposure Only
                                                              1: Exposure Preferred
@@ -1030,8 +1032,8 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 #define MALLINCAM_OPTION_OVERCLOCK              0x5d       /* overclock, default: 0 */
 #define MALLINCAM_OPTION_RESET_SENSOR           0x5e       /* reset sensor */
 #define MALLINCAM_OPTION_ISP                    0x5f       /* Enable hardware ISP: 0 => auto (disable in RAW mode, otherwise enable), 1 => enable, -1 => disable; default: 0 */
-#define MALLINCAM_OPTION_AUTOEXP_EXPOTIME_STEP  0x60       /* Auto exposure: time step (thousandths) */
-#define MALLINCAM_OPTION_AUTOEXP_GAIN_STEP      0x61       /* Auto exposure: gain step (thousandths) */
+#define MALLINCAM_OPTION_AUTOEXP_EXPOTIME_DAMP  0x60       /* Auto exposure damp: time (thousandths) */
+#define MALLINCAM_OPTION_AUTOEXP_GAIN_DAMP      0x61       /* Auto exposure damp: gain (thousandths) */
 #define MALLINCAM_OPTION_MOTOR_NUMBER           0x62       /* range: [1, 20] */
 #define MALLINCAM_OPTION_MOTOR_POS              0x10000000 /* range: [1, 702] */
 #define MALLINCAM_OPTION_PSEUDO_COLOR_START     0x63       /* Pseudo: start color, BGR format */
@@ -1074,6 +1076,14 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
                                                                  ((val & 0xff00) >> 8): sequence
                                                                  ((val & 0xff0000) >> 16): average number
                                                          */
+#define MALLINCAM_OPTION_OVEREXP_POLICY         0x68       /* Auto exposure over exposure policy: when overexposed,
+                                                                0 => directly reduce the exposure time/gain to the minimum value; or
+                                                                1 => reduce exposure time/gain in proportion to current and target brightness.
+                                                            The advantage of policy 0 is that the convergence speed is faster, but there is black screen.
+                                                            Policy 1 avoids the black screen, but the convergence speed is slower.
+                                                            Default: 0
+                                                         */
+#define MALLINCAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
 
 /* pixel format */
 #define MALLINCAM_PIXELFORMAT_RAW8              0x00
@@ -1278,8 +1288,8 @@ typedef struct
     unsigned short minFocusDistance;
 
     char           curAM;
-    unsigned char  maxAM;           /* maximum Aperture£¬mimimum F# */
-    unsigned char  minAM;           /* mimimum Aperture£¬maximum F# */
+    unsigned char  maxAM;           /* maximum Aperture, mimimum F# */
+    unsigned char  minAM;           /* mimimum Aperture, maximum F# */
     unsigned char  posAM;           /* used for set aperture motor to posAM, it is an index */
     int            posFM;           /* used for set focus motor to posFM */
 
@@ -1295,9 +1305,9 @@ typedef enum
     MallincamAFMode_MANUAL    = 0x1,/* manual focus mode */
     MallincamAFMode_ONCE      = 0x2,/* onepush focus mode */
     MallincamAFMode_AUTO      = 0x3,/* autofocus mode */
-    MallincamAFMode_NONE      = 0x4,
+    MallincamAFMode_NONE      = 0x4,/* no active selection of focus mode */
     MallincamAFMode_IDLE      = 0x5,
-    MallincamAFMode_UNUSED    = 0xffffffff /* no active selection of focus mode */
+    MallincamAFMode_UNUSED    = 0xffffffff
 } MallincamAFMode;
 
 typedef enum
@@ -1309,8 +1319,8 @@ typedef enum
     MallincamAFStatus_ROICHANGED   = 0x5,/* Focusing ends, roi changes */
     MallincamAFStatus_SCENECHANGED = 0x6,/* Focusing ends, scene changes */
     MallincamAFStatus_MODECHANGED  = 0x7,/* The end of focusing and the change in focusing mode is usually determined by the user moderator */
-    MallincamAFStatus_UNFINISH     = 0x8,
-    MallincamAfStatus_UNUSED       = 0xffffffff/* The focus is not complete. At the beginning of focusing, it will be set as incomplete */
+    MallincamAFStatus_UNFINISH     = 0x8,/* The focus is not complete. At the beginning of focusing, it will be set as incomplete */
+    MallincamAfStatus_UNUSED       = 0xffffffff
 } MallincamAFStatus;/* Focus Status */
 
 typedef struct {
