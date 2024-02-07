@@ -269,8 +269,14 @@ static void mount_slew_timer_callback(indigo_device* device) {
 	double haPos[2], decPos[2];
 	coords_eq_to_encoder2(device, ha, dec, haPos, decPos);
 
-	//  Select best encoder point based on limits
-	int idx = synscan_select_best_encoder_point(device, haPos, decPos);
+	//  Select best encoder point based on limits and the real/translated coordinates.
+	double translated_ra, translated_dec;
+	translated_ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * M_PI / 12.0;
+	translated_dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target * M_PI / 180.0;
+	double translated_ha = lst - translated_ra;
+	double translated_haPos[2], translated_decPos[2];
+	coords_eq_to_encoder2(device, translated_ha, translated_dec, translated_haPos, translated_decPos);
+	int idx = synscan_select_best_encoder_point(device, translated_haPos, translated_decPos);
 
 	//  Abort slew if requested
 	if (PRIVATE_DATA->abort_motion)
