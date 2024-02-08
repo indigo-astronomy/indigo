@@ -185,6 +185,7 @@ typedef struct {
 	SDK_TYPE(DeviceV2) cam;
 	SDK_HANDLE handle;
 	bool present;
+	/* Camera related */
 	indigo_device *camera;
 	char bayer_pattern[5];
 	indigo_device *guider;
@@ -202,11 +203,12 @@ typedef struct {
 	indigo_property *heater_property;
 	indigo_property *conversion_gain_property;
 	indigo_property *bin_mode_property;
-
+	/* wheel related */
 	int current_slot, target_slot;
 	int count;
 	indigo_timer *wheel_timer;
 	indigo_property *calibrate_property;
+	indigo_property *wheel_model_property;
 } DRIVER_PRIVATE_DATA;
 
 #define ADVANCED_GROUP                 "Advanced"
@@ -215,6 +217,15 @@ typedef struct {
 #define X_CALIBRATE_START_ITEM         (X_CALIBRATE_PROPERTY->items+0)
 #define X_CALIBRATE_PROPERTY_NAME      "X_CALIBRATE"
 #define X_CALIBRATE_START_ITEM_NAME    "START"
+
+#define X_WHEEL_MODEL_PROPERTY           (PRIVATE_DATA->wheel_model_property)
+#define X_WHEEL_MODEL_5_POSITION_ITEM    (X_WHEEL_MODEL_PROPERTY->items+0)
+#define X_WHEEL_MODEL_7_POSITION_ITEM    (X_WHEEL_MODEL_PROPERTY->items+1)
+#define X_WHEEL_MODEL_8_POSITION_ITEM    (X_WHEEL_MODEL_PROPERTY->items+2)
+#define X_WHEEL_MODEL_PROPERTY_NAME      "X_WHEEL_MODEL"
+#define X_WHEEL_MODEL_5_POSITION_ITEM_NAME "5_POSITIONS"
+#define X_WHEEL_MODEL_7_POSITION_ITEM_NAME "7_POSITIONS"
+#define X_WHEEL_MODEL_8_POSITION_ITEM_NAME "8_POSITIONS"
 
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -1423,6 +1434,26 @@ static indigo_result guider_detach(indigo_device *device) {
 }
 
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
+static void set_wheel_positions(indigo_device *device) {
+	int positions = 7;
+	if (X_WHEEL_MODEL_5_POSITION_ITEM->sw.value) {
+		positions = 5;
+	} else if (X_WHEEL_MODEL_7_POSITION_ITEM->sw.value) {
+		positions = 7;
+	} else if (X_WHEEL_MODEL_8_POSITION_ITEM->sw.value) {
+		positions = 8;
+	}
+	HRESULT result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_SLOT), positions);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FILTERWHEEL_SLOT) -> %08x", result);
+	positions = 7;
+	result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_SLOT), &positions);
+	WHEEL_SLOT_ITEM->number.max =
+	WHEEL_SLOT_NAME_PROPERTY->count =
+	WHEEL_SLOT_OFFSET_PROPERTY->count =
+	PRIVATE_DATA->count = positions;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_FILTERWHEEL_SLOT) -> %08x, %d", result, positions);
+}
+
 static void wheel_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	HRESULT result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_POSITION), &PRIVATE_DATA->current_slot);
@@ -1480,10 +1511,17 @@ static indigo_result wheel_attach(indigo_device *device) {
 	if (indigo_wheel_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 7;
 		// --------------------------------------------------------------------------------- X_CALIBRATE
-		X_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_PROPERTY_NAME, ADVANCED_GROUP, "Calibrate filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		X_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, X_CALIBRATE_PROPERTY_NAME, ADVANCED_GROUP, "Calibrate filter wheel", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_CALIBRATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_CALIBRATE_START_ITEM, X_CALIBRATE_START_ITEM_NAME, "Start", false);
+		// --------------------------------------------------------------------------------- X_WHEEL_MODEL
+		X_WHEEL_MODEL_PROPERTY = indigo_init_switch_property(NULL, device->name, X_WHEEL_MODEL_PROPERTY_NAME, MAIN_GROUP, "Device Model", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_WHEEL_MODEL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_WHEEL_MODEL_5_POSITION_ITEM, X_WHEEL_MODEL_5_POSITION_ITEM_NAME, "5 positions Filter wheel", false);
+		indigo_init_switch_item(X_WHEEL_MODEL_7_POSITION_ITEM, X_WHEEL_MODEL_7_POSITION_ITEM_NAME, "7 positions Filter wheel", true);
+		indigo_init_switch_item(X_WHEEL_MODEL_8_POSITION_ITEM, X_WHEEL_MODEL_8_POSITION_ITEM_NAME, "8 positions Filter wheel", false);
 		// --------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1494,6 +1532,8 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
+	if (indigo_property_match(X_WHEEL_MODEL_PROPERTY, property))
+		indigo_define_property(device, X_WHEEL_MODEL_PROPERTY, NULL);
 	if (IS_CONNECTED) {
 		if (indigo_property_match(X_CALIBRATE_PROPERTY, property))
 			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
@@ -1524,15 +1564,8 @@ static void wheel_connect_callback(indigo_device *device) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
 
-			int value;
-			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_SLOT), 8);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FILTERWHEEL_SLOT) -> %08x", result);
-			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_SLOT), &value);
-			WHEEL_SLOT_ITEM->number.max =
-			WHEEL_SLOT_NAME_PROPERTY->count =
-			WHEEL_SLOT_OFFSET_PROPERTY->count =
-			PRIVATE_DATA->count = value;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_FILTERWHEEL_SLOT) -> %08x, %d", result, value);
+			set_wheel_positions(device);
+
 			/* This is a hack! We need to reset to some position because sometimes after reconnect
 			   the the state remains "moving" forever although it is not moving. However it tries
 			   to set slot 1 at every connect, so this hack does not change anything.
@@ -1541,7 +1574,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_POSITION), slot);
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-			value = 0;
+			int value = 0;
 			do {
 				indigo_usleep(ONE_SECOND_DELAY);
 				result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_POSITION), &value);
@@ -1626,8 +1659,27 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			indigo_set_timer(device, 0.5, calibrate_callback, &PRIVATE_DATA->wheel_timer);
 		}
 		return INDIGO_OK;
-		// --------------------------------------------------------------------------------
+	} else if (indigo_property_match_changeable(X_WHEEL_MODEL_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_WHEEL_MODEL
+		indigo_property_copy_values(X_WHEEL_MODEL_PROPERTY, property, false);
+
+		set_wheel_positions(device);
+
+		indigo_delete_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		indigo_delete_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+		indigo_delete_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
+		indigo_define_property(device, WHEEL_SLOT_PROPERTY, NULL);
+		indigo_define_property(device, WHEEL_SLOT_NAME_PROPERTY, NULL);
+		indigo_define_property(device, WHEEL_SLOT_OFFSET_PROPERTY, NULL);
+
+		indigo_update_property(device, X_WHEEL_MODEL_PROPERTY, NULL);
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG_PROPERTY
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			indigo_save_property(device, NULL, X_WHEEL_MODEL_PROPERTY);
+		}
 	}
+	// --------------------------------------------------------------------------------
 	return indigo_wheel_change_property(device, client, property);
 }
 
@@ -1638,6 +1690,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 		wheel_connect_callback(device);
 	}
 	indigo_release_property(X_CALIBRATE_PROPERTY);
+	indigo_release_property(X_WHEEL_MODEL_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
