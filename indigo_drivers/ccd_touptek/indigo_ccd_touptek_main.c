@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO ToupTek CCD driver main
+/** INDIGO ToupTek CCD & filter wheel driver main
  \file indigo_ccd_touptek_main.c
  */
 
