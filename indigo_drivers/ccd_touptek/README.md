@@ -1,4 +1,4 @@
-# ToupTek CCD driver
+# ToupTek CCD & filetr wheel driver
 
 http://www.touptek.com
 
@@ -24,8 +24,12 @@ indigo_server indigo_ccd_touptek
 
 ## Status: Stable
 
-Tested with GP-1200KMB
+Tested with:
+* GP-1200KMB
+* GPCMOS02000KMA
+* Touptek FILTERWHEEL
 
 ## Comments
 
-There is a known issue with SDK and reopening the camera - exposure is not possible until the camera is reconnected.
+* There is a known issue with SDK and reopening the camera - exposure is not possible until the camera is reconnected.
+* Filter wheel does not report the number of slots, so it shuld be selected by the user.
