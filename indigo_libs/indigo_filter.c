@@ -599,6 +599,7 @@ indigo_result indigo_filter_device_detach(indigo_device *device) {
 		}
 	}
 	indigo_release_property(CCD_LENS_FOV_PROPERTY);
+	indigo_release_property(FILTER_FORCE_SYMMETRIC_RELATIONS_PROPERTY);
 	return indigo_device_detach(device);
 }
 
