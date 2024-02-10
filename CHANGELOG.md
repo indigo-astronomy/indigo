@@ -2,6 +2,54 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-272] - 10 Feb Sat 2024
+## Overall:
+- Sequencer.js:
+	- readme added
+	- narrowed condition for meridian flip
+	- device list is copied to flipper before meridian flip is executed
+
+- indigo_filter: memory leak fixed
+
+- indigosky tools:
+	- better error hadling in rpi_ctrl_v2.sh
+
+### Driver fixes:
+- indigo_agent_imager:
+	- features settings are saved now
+	- obsolete AGENT_IMAGER_DITHERING proeprty removed
+	- AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE added
+	- state transitions fixed
+	- do not fail batch if no guider_agent is enabled
+
+- indigo_agent_guider:
+	- dithering behaviour fixed
+	- state transitions fixed
+
+- indigo_ccd_touptek & family:
+	- updated SDK v.55.24621.20240204
+	- filter wheel support added
+
+- indigo_ccd_simulator:
+	- guider camera can generate very large images
+
+- indigo_ccd_playerone:
+	- updated SDK v.3.6.1
+
+- indigo_mount_starbook:
+	- fix crash on warning place
+
+- indigo_ccd_ptp:
+	- SONY iterate control (Old API) is not working
+
+- indigo_focuser_primaluce:
+	- calibration fixed
+
+- indigo_mount_synscan:
+	- fix meridian flip time
+	- hyde MOUNT_TARGET_INFO property
+
+
 # [2.0-270] - 22 Jan Mon 2024
 ### Driver fixes:
 - indigo_agent_guider:
