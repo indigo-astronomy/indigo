@@ -102,6 +102,7 @@ ATTRS{idVendor}=="1618", ATTRS{idProduct}=="1620", RUN+="/sbin/fxload -t fx2lp -
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0174", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III174.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0178", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III178.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0185", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III185.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0200", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III200.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0224", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III224.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0290", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III290.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0462", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III462.img -D $env{DEVNAME}"
@@ -109,7 +110,13 @@ ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0485", RUN+="/sbin/fxload -t fx3 -I 
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0482", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III482.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0334", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III334.img -D $env{DEVNAME}"
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0415", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III415.img -D $env{DEVNAME}"
-ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0200", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III200.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0462", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III462.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0468", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III482.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0485", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III485.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0568", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III568.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0585", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III585.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0678", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III678.img -D $env{DEVNAME}"
+ATTRS{idVendor}=="1618", ATTRS{idProduct}=="0715", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY5III715.img -D $env{DEVNAME}"
 
 #QHYCCD Scientific Camera (7:QHY42,QHY42PRO,QHY2020,QHY4040,QHY4040PRO,QHY6060,QHY411,QHY461)
 ATTRS{idVendor}=="1618", ATTRS{idProduct}=="4200", RUN+="/sbin/fxload -t fx3 -I /lib/firmware/qhy/QHY42.img -D $env{DEVNAME}"
