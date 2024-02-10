@@ -239,6 +239,7 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
+		5964F6F72B77ED2100E28F4C /* libqhyccd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5964F6F62B77ED2100E28F4C /* libqhyccd.dylib */; };
 		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
 		5973456F256704D6001741D4 /* indigo_focuser_mypro2.c in Sources */ = {isa = PBXBuildFile; fileRef = 5973456B256704CB001741D4 /* indigo_focuser_mypro2.c */; };
@@ -766,7 +767,6 @@
 		59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D707681DC527B800DEF566 /* indigo_mount_driver.h */; };
 		59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D7076D1DC52C3E00DEF566 /* indigo_mount_simulator.c */; };
 		59D707711DC52C3E00DEF566 /* indigo_mount_simulator.h in Headers */ = {isa = PBXBuildFile; fileRef = 59D7076E1DC52C3E00DEF566 /* indigo_mount_simulator.h */; };
-		59D762A424B8802100745F97 /* libqhyccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 597E4FCD23EEE637007E0BF8 /* libqhyccd.a */; };
 		59D8BBC5260E624600B904EE /* alpaca_dome.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBC4260E624600B904EE /* alpaca_dome.c */; };
 		59D8BBC6260E624600B904EE /* alpaca_dome.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBC4260E624600B904EE /* alpaca_dome.c */; };
 		59D8BBD6260E628B00B904EE /* alpaca_ccd.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBD5260E628B00B904EE /* alpaca_ccd.c */; };
@@ -1410,6 +1410,10 @@
 		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
 		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
 		5964D75721F78FE70059AEA8 /* Gemini-5-2.1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Gemini-5-2.1.pdf"; sourceTree = "<group>"; };
+		5964F6F62B77ED2100E28F4C /* libqhyccd.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libqhyccd.dylib; sourceTree = "<group>"; };
+		5964F6F82B77FDE800E28F4C /* libqhyccd.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libqhyccd.so; sourceTree = "<group>"; };
+		5964F6F92B77FDF000E28F4C /* libqhyccd.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libqhyccd.so; sourceTree = "<group>"; };
+		5964F6FA2B77FE1000E28F4C /* libqhyccd.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libqhyccd.so; sourceTree = "<group>"; };
 		59689A9F245DE3E100F950CE /* indigo_wheel_manual.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_manual.h; sourceTree = "<group>"; };
 		59689AA0245DE3E100F950CE /* indigo_wheel_manual_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_manual_main.c; sourceTree = "<group>"; };
 		59689AA1245DE3E100F950CE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -1526,11 +1530,7 @@
 		597E4FC823EEE637007E0BF8 /* qhyccd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = qhyccd.h; sourceTree = "<group>"; };
 		597E4FC923EEE637007E0BF8 /* RELEASE */ = {isa = PBXFileReference; lastKnownFileType = text; path = RELEASE; sourceTree = "<group>"; };
 		597E4FCA23EEE637007E0BF8 /* 85-qhyccd.rules */ = {isa = PBXFileReference; lastKnownFileType = text; name = "85-qhyccd.rules"; path = "../../../ccd_qhy/bin_externals/qhyccd/85-qhyccd.rules"; sourceTree = "<group>"; };
-		597E4FCD23EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
-		597E4FD023EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
 		597E4FD223EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
-		597E4FD423EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
-		597E4FD623EEE637007E0BF8 /* libqhyccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libqhyccd.a; sourceTree = "<group>"; };
 		597E4FD723EEE637007E0BF8 /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		597E79DC25A5DB6E009B0817 /* indigo_agent_astrometry.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_agent_astrometry.h; sourceTree = "<group>"; };
 		597E79DD25A5DB6E009B0817 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4915,6 +4915,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5964F6F72B77ED2100E28F4C /* libqhyccd.dylib in Frameworks */,
 				597C7223293CFBD80016D45A /* libjpeg.a in Frameworks */,
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
@@ -4925,7 +4926,6 @@
 				591CD0F629805E31003243AE /* libnncam.dylib in Frameworks */,
 				597C7224293CFC2B0016D45A /* libASICamera2.a in Frameworks */,
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
-				59D762A424B8802100745F97 /* libqhyccd.a in Frameworks */,
 				59A5302121A35159000B6F27 /* libatik.a in Frameworks */,
 				598786482540C6C500CE8B48 /* libtiffxx.a in Frameworks */,
 				59D9684321A2FFD10069A64C /* libdsusb.a in Frameworks */,
@@ -6535,7 +6535,7 @@
 		597E4FCC23EEE637007E0BF8 /* macOS */ = {
 			isa = PBXGroup;
 			children = (
-				597E4FCD23EEE637007E0BF8 /* libqhyccd.a */,
+				5964F6F62B77ED2100E28F4C /* libqhyccd.dylib */,
 			);
 			path = macOS;
 			sourceTree = "<group>";
@@ -6554,7 +6554,7 @@
 		597E4FCF23EEE637007E0BF8 /* x64 */ = {
 			isa = PBXGroup;
 			children = (
-				597E4FD023EEE637007E0BF8 /* libqhyccd.a */,
+				5964F6F82B77FDE800E28F4C /* libqhyccd.so */,
 			);
 			path = x64;
 			sourceTree = "<group>";
@@ -6570,7 +6570,7 @@
 		597E4FD323EEE637007E0BF8 /* arm */ = {
 			isa = PBXGroup;
 			children = (
-				597E4FD423EEE637007E0BF8 /* libqhyccd.a */,
+				5964F6F92B77FDF000E28F4C /* libqhyccd.so */,
 			);
 			path = arm;
 			sourceTree = "<group>";
@@ -6578,7 +6578,7 @@
 		597E4FD523EEE637007E0BF8 /* arm64 */ = {
 			isa = PBXGroup;
 			children = (
-				597E4FD623EEE637007E0BF8 /* libqhyccd.a */,
+				5964F6FA2B77FE1000E28F4C /* libqhyccd.so */,
 			);
 			path = arm64;
 			sourceTree = "<group>";
