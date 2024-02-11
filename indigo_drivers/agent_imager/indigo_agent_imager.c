@@ -574,8 +574,9 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 				indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
 				DEVICE_PRIVATE_DATA->find_stars = false;
 				if (star_count == 0) {
-					indigo_send_message(device, "No stars detected");
-					return INDIGO_ALERT_STATE;
+//					indigo_send_message(device, "No stars detected");
+//					return INDIGO_ALERT_STATE;
+					return INDIGO_OK_STATE;
 				}
 			}
 			if (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count > 1) {
