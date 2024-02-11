@@ -44,7 +44,7 @@ extern "C" {
 #define INDIGO_CCD_QHY indigo_ccd_qhy
 #define DRIVER_NAME "indigo_ccd_qhy"
 #define CONFLICTING_DRIVER "indigo_ccd_qhy2"
-#define DRIVER_DESCRIPTION "QHY Camera"
+#define DRIVER_DESCRIPTION "QHY Legacy CCD Camera"
 #define USE_LOG4Z
 
 extern indigo_result INDIGO_CCD_QHY(indigo_driver_action action, indigo_driver_info *info);
