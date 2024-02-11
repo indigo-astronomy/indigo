@@ -2,14 +2,19 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-272] - 10 Feb Sat 2024
+# [2.0-272] - 11 Feb Sun 2024
 ## Overall:
 - Sequencer.js:
 	- readme added
 	- narrowed condition for meridian flip
 	- device list is copied to flipper before meridian flip is executed
 
-- indigo_filter: memory leak fixed
+- indigo_find_stars_precise():
+	- fix datatype to avoid overflow
+	- more robust hotpixel rejection added
+
+- indigo_filter:
+	- memory leak fixed
 
 - indigosky tools:
 	- better error hadling in rpi_ctrl_v2.sh
@@ -21,6 +26,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE added
 	- state transitions fixed
 	- do not fail batch if no guider_agent is enabled
+	- AF and preview processes related fixes
 
 - indigo_agent_guider:
 	- dithering behaviour fixed
@@ -48,6 +54,16 @@ All notable changes to INDIGO framework will be documented in this file.
 - indigo_mount_synscan:
 	- fix meridian flip time
 	- hyde MOUNT_TARGET_INFO property
+
+- indigo_ccd_qhy2:
+	- SDK updated to V2024.01.04 (all arch except x86)
+	- updated firmware
+	- makefile fixed
+	- rules file fixed
+	- change driver label
+
+- indigo_ccd_qhy:
+	- change driver label
 
 
 # [2.0-270] - 22 Jan Mon 2024
