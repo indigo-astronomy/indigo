@@ -1154,11 +1154,16 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
 			if (capture_raw_frame(device, saturation_mask) != INDIGO_OK_STATE) {
-				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
+					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
+						return false;
+					} else {
+						continue;
+					}
+				} else {
 					SET_BACKLASH(DEVICE_PRIVATE_DATA->saved_backlash);
 					return false;
-				} else {
-					continue;
 				}
 			}
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -1394,10 +1399,14 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
 			if (capture_raw_frame(device, saturation_mask) != INDIGO_OK_STATE) {
-				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-					return false;
+				if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
+					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+						return false;
+					} else {
+						continue;
+					}
 				} else {
-					continue;
+					return false;
 				}
 			}
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
