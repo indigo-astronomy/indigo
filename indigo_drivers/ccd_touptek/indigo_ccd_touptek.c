@@ -18,12 +18,13 @@
 
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 2.0 by Rumen Bogdanovski <rumenastro@gmail.com>
 
 /** INDIGO ToupTek CCD & filter wheel driver
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0021
+#define DRIVER_VERSION 0x0022
 
 #include <stdlib.h>
 #include <string.h>
@@ -334,6 +335,23 @@ static void exposure_watchdog_callback(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time");
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed, pull callback was not called");
+}
+
+/* dummy exposure callback - needed for a workaround */
+static void pull_callback_dummy(unsigned event, void* callbackCtx) {
+	SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
+	HRESULT result;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s(%04x) called", __FUNCTION__, event);
+
+	indigo_device *device = (indigo_device *)callbackCtx;
+
+	switch (event) {
+		case SDK_DEF(EVENT_IMAGE): {
+			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FLUSH), 3);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_FLUSH) -> %08x", result);
+			break;
+		}
+	}
 }
 
 static void pull_callback(unsigned event, void* callbackCtx) {
@@ -866,6 +884,19 @@ static void ccd_connect_callback(indigo_device *device) {
 			}
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
+
+			/*
+			This is a workaround for a problem with some cameras that fail to get exposure if
+			after being plugged StartPullModeWithCallback() and Stop() are called without Trigger()
+			in between. For the next calls this does not seem to cause a problem.
+			*/
+			result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback_dummy, device);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
+			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
+			result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+
 			result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
