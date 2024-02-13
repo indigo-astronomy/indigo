@@ -478,6 +478,7 @@ static void setup_exposure(indigo_device *device) {
 			if (PRIVATE_DATA->mode != i) {
 				result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+				//indigo_usleep(100000);
 				if (strncmp(item->name, "RAW08", 5) == 0 || strncmp(item->name, "MON08", 5) == 0) {
 					result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_RAW), 1);
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_RAW, 1) -> %08x", result);
@@ -501,6 +502,7 @@ static void setup_exposure(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_BINNING, %x) -> %08x", PRIVATE_DATA->bin_mode | binning, result);
 				result = SDK_CALL(put_Speed)(PRIVATE_DATA->handle, 0);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Speed(0) -> %08x", result);
+				indigo_usleep(100000);
 				result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 				PRIVATE_DATA->mode = i;
@@ -527,6 +529,7 @@ static void setup_exposure(indigo_device *device) {
 		if (PRIVATE_DATA->left != left || PRIVATE_DATA->top != top || PRIVATE_DATA->width != width || PRIVATE_DATA->height != height) {
 			result = SDK_CALL(put_Roi)(PRIVATE_DATA->handle, left, top, width, height);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Roi(%d, %d, %d, %d) -> %08x", left, top, width, height, result);
+			indigo_usleep(100000);
 			PRIVATE_DATA->left = left;
 			PRIVATE_DATA->top = top;
 			PRIVATE_DATA->width = width;
@@ -890,13 +893,15 @@ static void ccd_connect_callback(indigo_device *device) {
 			after being plugged StartPullModeWithCallback() and Stop() are called without Trigger()
 			in between. For the next calls this does not seem to cause a problem.
 			*/
-			result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback_dummy, device);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
-			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
-			result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
-
+			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_USB30)) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB 3.0 Camera - exposure cludge executed");
+				result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback_dummy, device);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
+				result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(1) -> %08x", result);
+				result = SDK_CALL(Stop)(PRIVATE_DATA->handle);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop() -> %08x", result);
+			}
 			result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback, device);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
