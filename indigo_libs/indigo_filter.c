@@ -916,7 +916,7 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 			if (i == INDIGO_FILTER_CCD_INDEX)
 				update_ccd_lens_info(device, property);
 			for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
-				if (device_cache[i] == property) {
+				if (indigo_property_match(device_cache[i], property)) {
 					if (agent_cache[i]) {
 						indigo_property *copy = agent_cache[i];
 						if (copy->type == INDIGO_TEXT_VECTOR) {
@@ -945,7 +945,7 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	if (*property->name) {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
-			if (device_cache[i] == property) {
+			if (indigo_property_match(device_cache[i], property)) {
 				// this is the list of "fragile" properties used by various filter agents
 				// if any of them is removed, any background process should abort asap
 				FILTER_CLIENT_CONTEXT->property_removed =
