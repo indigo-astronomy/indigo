@@ -157,14 +157,15 @@
 #define PRIVATE_DATA        							((DRIVER_PRIVATE_DATA *)device->private_data)
 
 #define X_CCD_ADVANCED_PROPERTY						(PRIVATE_DATA->advanced_property)
-#define X_CCD_CONTRAST_ITEM								(X_CCD_ADVANCED_PROPERTY->items + 0)
-#define X_CCD_HUE_ITEM										(X_CCD_ADVANCED_PROPERTY->items + 1)
-#define X_CCD_SATURATION_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 2)
-#define X_CCD_BRIGHTNESS_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 3)
-#define X_CCD_GAMMA_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 4)
-#define X_CCD_R_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 5)
-#define X_CCD_G_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 6)
-#define X_CCD_B_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 7)
+#define X_CCD_SPEED_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 0)
+#define X_CCD_CONTRAST_ITEM								(X_CCD_ADVANCED_PROPERTY->items + 1)
+#define X_CCD_HUE_ITEM										(X_CCD_ADVANCED_PROPERTY->items + 2)
+#define X_CCD_SATURATION_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 3)
+#define X_CCD_BRIGHTNESS_ITEM							(X_CCD_ADVANCED_PROPERTY->items + 4)
+#define X_CCD_GAMMA_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 5)
+#define X_CCD_R_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 6)
+#define X_CCD_G_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 7)
+#define X_CCD_B_GAIN_ITEM									(X_CCD_ADVANCED_PROPERTY->items + 8)
 
 #define X_CCD_FAN_PROPERTY								(PRIVATE_DATA->fan_property)
 #define X_CCD_FAN_SPEED_ITEM							(X_CCD_FAN_PROPERTY->items + 0)
@@ -683,19 +684,23 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_STREAMING_PROPERTY->hidden = ((flags & SDK_DEF(FLAG_TRIGGER_SINGLE)) != 0);
 		CCD_IMAGE_FORMAT_PROPERTY->count = CCD_STREAMING_PROPERTY->hidden ? 5 : 6;
 		CCD_GAIN_PROPERTY->hidden = false;
-		if ((flags & SDK_DEF(FLAG_MONO)) == 0) {
-			X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 8);
-			if (X_CCD_ADVANCED_PROPERTY == NULL)
-				return INDIGO_FAILED;
-			indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", SDK_DEF(CONTRAST_MIN), SDK_DEF(CONTRAST_MAX), 1, SDK_DEF(CONTRAST_DEF));
-			indigo_init_number_item(X_CCD_HUE_ITEM, "HUE", "Hue", SDK_DEF(HUE_MIN), SDK_DEF(HUE_MAX), 1, SDK_DEF(HUE_DEF));
-			indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", SDK_DEF(SATURATION_MIN), SDK_DEF(SATURATION_MAX), 1, SDK_DEF(SATURATION_DEF));
-			indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", SDK_DEF(BRIGHTNESS_MIN), SDK_DEF(BRIGHTNESS_MAX), 1, SDK_DEF(BRIGHTNESS_DEF));
-			indigo_init_number_item(X_CCD_GAMMA_ITEM, "GAMMA", "Gamma", SDK_DEF(GAMMA_MIN), SDK_DEF(GAMMA_MAX), 1, SDK_DEF(GAMMA_DEF));
-			indigo_init_number_item(X_CCD_R_GAIN_ITEM, "R_GAIN", "Red gain", SDK_DEF(WBGAIN_MIN), SDK_DEF(WBGAIN_MAX), 1, SDK_DEF(WBGAIN_DEF));
-			indigo_init_number_item(X_CCD_G_GAIN_ITEM, "G_GAIN", "Green gain", SDK_DEF(WBGAIN_MIN), SDK_DEF(WBGAIN_MAX), 1, SDK_DEF(WBGAIN_DEF));
-			indigo_init_number_item(X_CCD_B_GAIN_ITEM, "B_GAIN", "Blue gain", SDK_DEF(WBGAIN_MIN), SDK_DEF(WBGAIN_MAX), 1, SDK_DEF(WBGAIN_DEF));
+
+		X_CCD_ADVANCED_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_ADVANCED", CCD_ADVANCED_GROUP, "Advanced Settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 9);
+		if (X_CCD_ADVANCED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(X_CCD_SPEED_ITEM, "SPEED", "Speed level", 0, PRIVATE_DATA->cam.model->maxspeed, 1, 0);
+		indigo_init_number_item(X_CCD_CONTRAST_ITEM, "CONTRAST", "Contrast", SDK_DEF(CONTRAST_MIN), SDK_DEF(CONTRAST_MAX), 1, SDK_DEF(CONTRAST_DEF));
+		indigo_init_number_item(X_CCD_HUE_ITEM, "HUE", "Hue", SDK_DEF(HUE_MIN), SDK_DEF(HUE_MAX), 1, SDK_DEF(HUE_DEF));
+		indigo_init_number_item(X_CCD_SATURATION_ITEM, "SATURATION", "Saturation", SDK_DEF(SATURATION_MIN), SDK_DEF(SATURATION_MAX), 1, SDK_DEF(SATURATION_DEF));
+		indigo_init_number_item(X_CCD_BRIGHTNESS_ITEM, "BRIGHTNESS", "Brightness", SDK_DEF(BRIGHTNESS_MIN), SDK_DEF(BRIGHTNESS_MAX), 1, SDK_DEF(BRIGHTNESS_DEF));
+		indigo_init_number_item(X_CCD_GAMMA_ITEM, "GAMMA", "Gamma", SDK_DEF(GAMMA_MIN), SDK_DEF(GAMMA_MAX), 1, SDK_DEF(GAMMA_DEF));
+		indigo_init_number_item(X_CCD_R_GAIN_ITEM, "R_GAIN", "Red gain", SDK_DEF(WBGAIN_MIN), SDK_DEF(WBGAIN_MAX), 1, SDK_DEF(WBGAIN_DEF));
+		indigo_init_number_item(X_CCD_G_GAIN_ITEM, "G_GAIN", "Green gain", SDK_DEF(WBGAIN_MIN), SDK_DEF(WBGAIN_MAX), 1, SDK_DEF(WBGAIN_DEF));
+		indigo_init_number_item(X_CCD_B_GAIN_ITEM, "B_GAIN", "Blue gain", SDK_DEF(WBGAIN_MIN), SDK_DEF(WBGAIN_MAX), 1, SDK_DEF(WBGAIN_DEF));
+		if ((flags & SDK_DEF(FLAG_MONO))) {
+			X_CCD_ADVANCED_PROPERTY->count = 1;  /* only SPEED is valid for mono cams */
 		}
+
 		if (flags & SDK_DEF(FLAG_FAN)) {
 			X_CCD_FAN_PROPERTY = indigo_init_number_property(NULL, device->name, "X_CCD_FAN", CCD_ADVANCED_GROUP, "Fan control", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (X_CCD_FAN_PROPERTY == NULL)
@@ -853,6 +858,10 @@ static void ccd_connect_callback(indigo_device *device) {
 			}
 
 			if (X_CCD_ADVANCED_PROPERTY) {
+				unsigned short current_speed = 1;
+				result = SDK_CALL(get_Speed)(PRIVATE_DATA->handle, &current_speed);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Speed(-> %d) -> %08x", current_speed, result);
+				X_CCD_SPEED_ITEM->number.value = X_CCD_SPEED_ITEM->number.target = current_speed;
 				indigo_define_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 			}
 			if (X_CCD_FAN_PROPERTY) {
@@ -1181,48 +1190,57 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- X_CCD_ADVANCED
 		indigo_property_copy_values(X_CCD_ADVANCED_PROPERTY, property, false);
 		X_CCD_ADVANCED_PROPERTY->state = INDIGO_OK_STATE;
-		result = SDK_CALL(put_Contrast)(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+		if (X_CCD_ADVANCED_PROPERTY->count != 1) {
+			result = SDK_CALL(put_Contrast)(PRIVATE_DATA->handle, (int)X_CCD_CONTRAST_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Contrast(%d) -> %08x", (int)X_CCD_CONTRAST_ITEM->number.value, result);
+			}
+			result = SDK_CALL(put_Hue)(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+			}
+			result = SDK_CALL(put_Saturation)(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
+			}
+			result = SDK_CALL(put_Brightness)(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
+			}
+			result = SDK_CALL(put_Gamma)(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
+			}
+			int gain[3] = { (int)X_CCD_R_GAIN_ITEM->number.value, (int)X_CCD_G_GAIN_ITEM->number.value, (int)X_CCD_B_GAIN_ITEM->number.value };
+			result = SDK_CALL(put_WhiteBalanceGain)(PRIVATE_DATA->handle, gain);
+			if (result < 0) {
+				X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+			}
 		}
-		result = SDK_CALL(put_Hue)(PRIVATE_DATA->handle, (int)X_CCD_HUE_ITEM->number.value);
+		result = SDK_CALL(put_Speed)(PRIVATE_DATA->handle, (int)X_CCD_SPEED_ITEM->number.value);
 		if (result < 0) {
 			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Speed(%d) -> %08x", (int)X_CCD_SPEED_ITEM->number.value, result);
 		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Hue(%d) -> %08x", (int)X_CCD_HUE_ITEM->number.value, result);
-		}
-		result = SDK_CALL(put_Saturation)(PRIVATE_DATA->handle, (int)X_CCD_SATURATION_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Saturation(%d) -> %08x", (int)X_CCD_SATURATION_ITEM->number.value, result);
-		}
-		result = SDK_CALL(put_Brightness)(PRIVATE_DATA->handle, (int)X_CCD_BRIGHTNESS_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Brightness(%d) -> %08x", (int)X_CCD_BRIGHTNESS_ITEM->number.value, result);
-		}
-		result = SDK_CALL(put_Gamma)(PRIVATE_DATA->handle, (int)X_CCD_GAMMA_ITEM->number.value);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Gamma(%d) -> %08x", (int)X_CCD_GAMMA_ITEM->number.value, result);
-		}
-		int gain[3] = { (int)X_CCD_R_GAIN_ITEM->number.value, (int)X_CCD_G_GAIN_ITEM->number.value, (int)X_CCD_B_GAIN_ITEM->number.value };
-		result = SDK_CALL(put_WhiteBalanceGain)(PRIVATE_DATA->handle, gain);
-		if (result < 0) {
-			X_CCD_ADVANCED_PROPERTY->state = INDIGO_ALERT_STATE;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
-		} else {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_WhiteBalanceGain(%d, %d, %d) -> %08x", gain[0], gain[1], gain[2], result);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Speed(%d) -> %08x", (int)X_CCD_SPEED_ITEM->number.value, result);
 		}
 		indigo_update_property(device, X_CCD_ADVANCED_PROPERTY, NULL);
 		return INDIGO_OK;
