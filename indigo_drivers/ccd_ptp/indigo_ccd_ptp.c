@@ -450,6 +450,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 	indigo_release_property(DSLR_LOCK_PROPERTY);
 	indigo_release_property(DSLR_AF_PROPERTY);
 	indigo_release_property(DSLR_SET_HOST_TIME_PROPERTY);
+	pthread_mutex_destroy(&PRIVATE_DATA->usb_mutex);
+	pthread_mutex_destroy(&PRIVATE_DATA->message_mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }

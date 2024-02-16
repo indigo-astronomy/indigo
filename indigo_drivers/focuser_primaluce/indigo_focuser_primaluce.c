@@ -23,7 +23,7 @@
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>
@@ -569,6 +569,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+		FOCUSER_POSITION_ITEM->number.min = 0;
+		FOCUSER_POSITION_ITEM->number.max = 1000000;
+		strcpy(FOCUSER_POSITION_ITEM->number.format, "%.0f");
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
@@ -918,8 +921,6 @@ static void focuser_steps_handler(indigo_device *device) {
 	FOCUSER_POSITION_ITEM->number.target = FOCUSER_POSITION_ITEM->number.value + steps;
 	if (FOCUSER_POSITION_ITEM->number.target < 0)
 		FOCUSER_POSITION_ITEM->number.target = 0;
-	else if (FOCUSER_POSITION_ITEM->number.target > 65535)
-		FOCUSER_POSITION_ITEM->number.target = 65535;
 	focuser_position_handler(device);
 }
 
@@ -1195,6 +1196,13 @@ static void focuser_calibrate_ss_handler(indigo_device *device) {
 	} else if (X_CALIBRATE_SS_END_ITEM->sw.value) {
 		X_CALIBRATE_SS_START_ITEM->sw.value = X_CALIBRATE_SS_START_INVERTED_ITEM->sw.value = X_CALIBRATE_SS_END_ITEM->sw.value = false;
 		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMaxPos\"}}}}", response, sizeof(response), tokens, 128);
+		if (result) {
+			char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
+			if (primaluce_command(device, get_pos_command, response, sizeof(response), tokens, 128)) {
+				FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			}
+		}
 	}
 	X_CALIBRATE_SS_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);

@@ -1173,9 +1173,10 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 						source += sizeof(uint64_t) * count;
 						break;
 					case ptp_str_type: {
-						for (int i = 0; i < target->count; i++) {
+						char tmp[PTP_MAX_CHARS];
+						for (int i = 0; i < count; i++) {
 							if (i < 16)
-								source = ptp_decode_string(source, target->value.sw_str.values[i]);
+								source = ptp_decode_string(source, tmp);
 							}
 						}
 						break;
@@ -1298,7 +1299,7 @@ static void ptp_check_event(indigo_device *device) {
 	if (rc >= 0) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer() -> %s, %d", rc < 0 ? libusb_error_name(rc) : "OK", length);
 		PTP_DUMP_CONTAINER(&event);
-		PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
+		ptp_sony_handle_event(device, event.code, event.payload.params);
 	}
 #endif
 	if (IS_CONNECTED) {
@@ -1381,6 +1382,9 @@ bool ptp_sony_initialise(indigo_device *device) {
 			free(buffer);
 	}
 	indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
+	struct timespec now;
+	clock_gettime(CLOCK_REALTIME, &now);
+	SONY_PRIVATE_DATA->connection_time = now.tv_sec;
 	return true;
 }
 
@@ -1403,7 +1407,7 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 		}
 		case ptp_event_sony_ObjectAdded: {
 			void *buffer = NULL;
-			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL)) {
+			if (ptp_transaction_1_0_i(device, ptp_operation_GetObjectInfo, params[0], &buffer, NULL) && buffer) {
 				uint32_t size;
 				char filename[PTP_MAX_CHARS];
 				memset(&filename, 0, PTP_MAX_CHARS);
@@ -1443,7 +1447,6 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 			case ptp_property_sony_ISO:
 			case ptp_property_sony_ShutterSpeed:
 			case ptp_property_FNumber: {
-				indigo_set_switch(property->property, property->property->items + 1, true);
 				int16_t value = 0;
 				if (property->property->items[0].sw.value) {
 					value = -1;
@@ -1452,6 +1455,7 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 				}
 				if (property->code == ptp_property_sony_ShutterSpeed)
 					value = -value;
+				indigo_set_switch(property->property, property->property->items + 1, true);
 				return ptp_transaction_0_1_o(device, ptp_operation_sony_SetControlDeviceB, property->code, &value, sizeof(uint16_t));
 			}
 		}
@@ -1494,16 +1498,21 @@ bool ptp_sony_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_sony_exposure(indigo_device *device) {
-	if (SONY_PRIVATE_DATA->needs_pre_capture_delay && !SONY_PRIVATE_DATA->did_capture) {
+	if (SONY_PRIVATE_DATA->needs_pre_capture_delay) {
 		// A7R4/A7R4A needs 3s delay before first capture
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
-		for (int i = 0; i < 30; i++) {
-			if (PRIVATE_DATA->abort_capture)
-				return false;
-			indigo_usleep(100000);
+		struct timespec now;
+		clock_gettime(CLOCK_REALTIME, &now);
+		if (now.tv_sec - SONY_PRIVATE_DATA->connection_time < 3) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "enforce 3s delay...");
+			while (true) {
+				indigo_usleep(100000);
+				clock_gettime(CLOCK_REALTIME, &now);
+				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3)
+					break;
+				if (PRIVATE_DATA->abort_capture)
+					return false;
+			}
 		}
-		SONY_PRIVATE_DATA->did_capture = true;
-		SONY_PRIVATE_DATA->did_liveview = false;
 	}
 	int16_t value = 2;
 	SONY_PRIVATE_DATA->focus_state = 1;
@@ -1545,15 +1554,15 @@ bool ptp_sony_exposure(indigo_device *device) {
 				// NOTE: DO NOT ABORT HERE
 				// The image remains in the memory buffer as long as the object is not read out.
 				ptp_property *property = ptp_property_supported(device, ptp_property_sony_ObjectInMemory);
-				if (property && property->value.number.value > 0x8000) {
-					// CaptureCompleted
-					uint32_t dummy[1] = { 0xffffc001 };
-					ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_ObjectAdded, dummy);
-				} else {
-					// Object has been deleted
-					break;
+				if (property) {
+					if (property->value.number.value > 0x8000) {
+						// CaptureCompleted
+						uint32_t dummy[1] = { 0xffffc001 };
+						ptp_sony_handle_event(device, (ptp_event_code)ptp_event_sony_ObjectAdded, dummy);
+						break;
+					}
+					indigo_usleep(100000);
 				}
-				indigo_usleep(100000);
 			}
 		} else {
 			bool complete_detected = false;
@@ -1595,16 +1604,21 @@ bool ptp_sony_liveview(indigo_device *device) {
 	void *buffer = NULL;
 	uint32_t size;
 	int retry_count = 0;
-	if (SONY_PRIVATE_DATA->needs_pre_capture_delay && !SONY_PRIVATE_DATA->did_liveview) {
+	if (SONY_PRIVATE_DATA->needs_pre_capture_delay) {
 		// A7R4/A7R4A needs 3s delay before first capture
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "3s delay...");
-		for (int i = 0; i < 30; i++) {
-			if (PRIVATE_DATA->abort_capture)
-				return false;
-			indigo_usleep(100000);
+		struct timespec now;
+		clock_gettime(CLOCK_REALTIME, &now);
+		if (now.tv_sec - SONY_PRIVATE_DATA->connection_time < 3) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "enforce 3s delay...");
+			while (true) {
+				indigo_usleep(100000);
+				clock_gettime(CLOCK_REALTIME, &now);
+				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3)
+					break;
+				if (PRIVATE_DATA->abort_capture)
+					return false;
+			}
 		}
-		SONY_PRIVATE_DATA->did_liveview = true;
-		SONY_PRIVATE_DATA->did_capture = false;
 	}
 	while (!PRIVATE_DATA->abort_capture && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 		if (ptp_transaction_1_0_i(device, ptp_operation_GetObject, 0xffffc002, &buffer, &size)) {

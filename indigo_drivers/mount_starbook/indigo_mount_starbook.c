@@ -312,13 +312,13 @@ static bool starbook_get(indigo_device *device, const char *path, char *buffer, 
 		return false;
 	}
 	// find comment part
-	char *beg = strcasestr(temp, "<!--");
-	char *end = strcasestr(temp, "-->");
+	char *beg = strstr(temp, "<!--");
+	char *end = strstr(temp, "-->");
 	int beg_tag_len = 4;
 	if (beg == NULL || end == NULL) {
 		// new API?
-		beg = strcasestr(temp, "</HEAD>");
-		end = strcasestr(temp, "</html>");
+		beg = strstr(temp, "</HEAD>");
+		end = strstr(temp, "</html>");
 		beg_tag_len = 7;
 		if (beg == NULL || end == NULL) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: Unknown response: %s", temp);
@@ -413,7 +413,7 @@ static bool starbook_set(indigo_device *device, const char *path, int *error) {
 
 static bool starbook_parse_query_value(const char *query, const char *key, char *value, int size) {
 	// search query key
-	const char *beg = strcasestr(query, key);
+	const char *beg = strstr(query, key);
 	if (beg == NULL) {
 		// not found
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: key \"%s\" was not found: %s", key, query);

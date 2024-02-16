@@ -1,34 +1,29 @@
 #!/bin/bash
 
-# Copyright (c) 2023 Rumen G.Bogdanovski <rumenastro@gmail.com>
+# Copyright (c) 2023-2024 Rumen G.Bogdanovski <rumenastro@gmail.com>
 # All rights reserved.
 #
 # This scrpt is based on the original version by
 # Thomas Stibor <thomas@stibor.net> & Rumen G.Bogdanovski <rumenastro@gmail.com>
 #
-# You can use this software under the terms of 'INDIGO Astronomy
-# open-source license'
+# You can use this software under the terms of 'INDIGO Astronomy open-source license'
 # (see https://github.com/indigo-astronomy/indigo/blob/master/LICENSE.md).
 #
-# THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
-# OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-# WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
-# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-# DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-# GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-# NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-# SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+# THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS OR IMPLIED WARRANTIES,
+# INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+# FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+# DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+# BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA,
+# OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+# ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-# This script is called in indigo_server and modifies config files
-# within the Raspbian GNU/Linux distribution to:
+# This script is called by indigo_server and modifies config files of the Raspbian GNU/Linux distribution to:
 # 1. Setup and WiFi server access point, or
 # 2. Setup WiFi client to connect to an access point.
+# 3. Upgrade indigo sidtribution.
 #
-# This version of the script uses network manager to setup WiFi
-# AP and client.
+# This version of the script uses network manager to setup WiFi AP and client.
 
 VERSION=2.00
 
@@ -291,7 +286,7 @@ __read-wifi-channel() {
 ###############################################
 # Set SSID and PW
 ###############################################
-__set-wifi-server() {
+__set-wifi-server-silent() {
 
     [[ -z ${WIFI_AP_SSID} ]] && __ALERT "WIFI_AP_SSID not set"
     [[ -z ${WIFI_AP_PW} ]] && __ALERT "WIFI_AP_PW not set"
@@ -324,6 +319,11 @@ __set-wifi-server() {
     ${NM_CLI} con modify ${CON_NAME} ipv4.addr 192.168.235.1/24 >/dev/null 2>&1 && \
     ${NM_CLI} con modify ${CON_NAME} connection.autoconnect yes >/dev/null 2>&1 && \
     ${NM_CLI} con up ${CON_NAME} >/dev/null 2>&1
+    [[ $? -ne 0 ]] && __ALERT "cannot create AP with ssid '${WIFI_AP_SSID}'"
+}
+
+__set-wifi-server() {
+    __set-wifi-server-silent
     [[ $? -ne 0 ]] && __ALERT "cannot create AP with ssid '${WIFI_AP_SSID}'"
 
     __OK
@@ -424,7 +424,12 @@ __set-wifi-client() {
     ${NM_CLI} con modify ${WIFI_CN_SSID} con-name ${CON_NAME} connection.autoconnect yes >/dev/null 2>&1
     ${NM_CLI} con up ${CON_NAME} >/dev/null 2>&1
 
-    [[ ${res} -ne 0 ]] && __ALERT "failed to connect to WiFi network '${WIFI_CN_SSID}'"
+    if [[ ${res} -ne 0 ]]; then
+	WIFI_AP_SSID=${DEFAULT_WIFI_AP_SSID}
+        WIFI_AP_PW=${DEFAULT_WIFI_AP_PW}
+        __set-wifi-server-silent
+        __ALERT "failed to connect to WiFi network '${WIFI_CN_SSID}', WiFi set to default AP"
+    fi
 
     __OK
 }
@@ -483,7 +488,7 @@ __list-available-versions() {
 
     # Make sure we have latest package indices (when Internet connectivity).
     ${APT_GET_EXE} update >/dev/null 2>&1
-
+    sleep 1;
     # List current installed version and candidate version or older versions. In total 3 versions are listed.
     echo $(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -oPm1 "(?<=Installed:\s).*") \
 	 $(${APT_CACHE_EXE} policy indigo | ${GREP_EXE} -E -oe '\s\s[0-9]+.[0-9]+\-[0-9]+(\-[0-9]+)?' | tr -d '[:blank:]' | head -n 2)
@@ -496,7 +501,9 @@ __install-version() {
 
     [[ "$#" -ne 1 ]] && { __ALERT "wrong number of arguments"; }
     ${APT_GET_EXE} install -y --allow-downgrades indigo=${1} >/dev/null 2>&1
-    [[ $? -ne 0 ]] && { __ALERT "cannot install indigo version ${1}"; }
+    local res=$?
+    [[ ${res} -eq 100 ]] && { __ALERT "the software updater is busy, please try again later"; }
+    [[ ${res} -ne 0 ]] && { __ALERT "cannot install indigo version ${1}, please try again later" ; }
 
     { echo "OK"; sleep 2; ${REBOOT_EXE}; }
 }
