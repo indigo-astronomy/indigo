@@ -346,6 +346,7 @@ var indigo_sequencer = {
 	
 	on_update: function(property) {
 		if (property.device == this.devices[2] && property.name == "AGENT_PAUSE_PROCESS" && property.state == "Busy" && property.items.PAUSE_AFTER_TRANSIT) {
+			indigo_flipper.devices = this.devices;
 			indigo_flipper.start(this.use_solver);
 		} else if (property.device == this.wait_for_device && property.name == this.wait_for_name) {
 			if (this.wait_for_item != null && this.wait_for_value != null) {

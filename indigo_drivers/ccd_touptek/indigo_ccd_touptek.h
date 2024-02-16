@@ -19,7 +19,7 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO ToupTek CCD driver
+/** INDIGO ToupTek CCD & filter wheel driver
  \file indigo_ccd_touptek.h
  */
 
@@ -29,6 +29,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_guider_driver.h>
+#include <indigo/indigo_wheel_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

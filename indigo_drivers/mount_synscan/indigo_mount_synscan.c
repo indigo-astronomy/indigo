@@ -82,6 +82,8 @@ static indigo_result mount_attach(indigo_device *device) {
 		strncpy(MOUNT_GUIDE_RATE_PROPERTY->label,"ST4 guide rate", INDIGO_VALUE_SIZE);
 		// -------------------------------------------------------------------------------- MOUNT_RAW_COORDINATES
 		MOUNT_RAW_COORDINATES_PROPERTY->hidden = false;
+		// -------------------------------------------------------------------------------- MOUNT_MOUNT_TARGET_INFO
+		MOUNT_TARGET_INFO_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- DEVICE_PORT

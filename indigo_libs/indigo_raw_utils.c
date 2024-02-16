@@ -2046,7 +2046,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
-	uint32_t sum = 0;
+	double sum = 0;
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
@@ -2128,9 +2128,11 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 				int off = j * width + i;
 				if (
 				    buf[off] > lmax &&
-					/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+				    /* also check median of the neighbouring pixels to avoid hot pixels and lines */
 				    median(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
-				    median(buf[off - width], buf[off], buf[off + width]) > threshold
+				    median(buf[off - width], buf[off], buf[off + width]) > threshold &&
+				    median(buf[off - width - 1], buf[off], buf[off + width + 1]) > threshold &&
+				    median(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold
 				) {
 					lmax = buf[off];
 					star.x = i;

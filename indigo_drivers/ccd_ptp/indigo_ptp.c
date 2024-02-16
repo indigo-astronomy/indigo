@@ -951,7 +951,9 @@ uint32_t ptp_type_size(ptp_type type) {
 	if (_events == nil) {
 		_events = [[NSMutableArray alloc] init];
 	}
-	[_events insertObject:eventData atIndex:0];
+	@synchronized (_events) {
+		[_events insertObject:eventData atIndex:0];
+	}
 }
 
 - (void)cameraDevice:(nonnull ICCameraDevice *)camera didRemoveItems:(nonnull NSArray<ICCameraItem *> *)items {
@@ -1067,9 +1069,14 @@ bool ptp_get_event(indigo_device *device) {
 		return false;
 	}
 	ptp_container event;
-	NSData *eventData;
-	while ((eventData = delegate.events.lastObject)) {
-		[delegate.events removeLastObject];
+	NSData *eventData;	
+	while (true) {
+		@synchronized (delegate.events) {
+			if ((eventData = delegate.events.lastObject))
+				[delegate.events removeLastObject];
+		}
+		if (eventData == nil)
+			break;
 		[eventData getBytes:&event length:sizeof(event)];
 		PTP_DUMP_CONTAINER(&event);
 		PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
