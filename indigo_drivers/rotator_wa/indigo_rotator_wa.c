@@ -48,6 +48,62 @@ typedef struct {
 	double current_position;      
 } wa_private_data;
 
+typedef struct {
+	char model_id[50];
+	char firmware[20];
+	double position;
+	double last_move;
+} wr_status_t;
+
+int wr_parse_status(char *response, wr_status_t *status) {
+	char *buf;
+	if (!strncmp(response, "WandererRotator", strlen("WandererRotator"))) {
+		status->last_move = 0;
+
+		char* token = strtok_r(response, "A", &buf);
+		if (token == NULL) {
+			return false;
+		}
+		strncpy(status->model_id, token, sizeof(status->model_id));
+
+		token = strtok_r(NULL, "A", &buf);
+		if (token == NULL) {
+			return false;
+		}
+		strncpy(status->firmware, token, sizeof(status->firmware));
+
+		token = strtok_r(NULL, "A", &buf);
+		if (token == NULL) {
+			return false;
+		}
+		status->position = atof(token)/1000.0;
+	} else {
+		status->model_id[0] = '\0';
+
+		status->firmware[0] = '\0';
+
+		char *token = strtok_r(response, "A", &buf);
+		if (token == NULL) {
+			return false;
+		}
+		status->last_move = atof(token);
+
+		token = strtok_r(NULL, "A", &buf);
+		if (token == NULL) {
+			return false;
+		}
+		status->position = atof(token)/1000.0;
+	}
+
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nposition = %.3f\nlast_move = %.2f\n",
+		status->model_id,
+		status->firmware,
+		status->position,
+		status->last_move
+	);
+	return true;
+}
+
 static bool wa_command(indigo_device *device, char *command, char *response, int max) {
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
@@ -69,10 +125,21 @@ static void rotator_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
 			if (wa_command(device, "1500001", response, sizeof(response))) {
-				if (!strncmp(response,"WandererRotatorMini", strlen("WandererRotatorMini"))) {
-					PRIVATE_DATA->steps_degree = 1142;
-				} else if (!strncmp(response,"WandererRotatorLite", strlen("WandererRotatorLite"))) {
-					PRIVATE_DATA->steps_degree = 1199;
+				wr_status_t status;
+				if (wr_parse_status(response, &status)) {
+					if (!strncmp(response,"WandererRotatorMini", strlen("WandererRotatorMini"))) {
+						PRIVATE_DATA->steps_degree = 1142;
+					} else if (!strncmp(response,"WandererRotatorLite", strlen("WandererRotatorLite"))) {
+						PRIVATE_DATA->steps_degree = 1199;
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
+						close(PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = 0;
+					}
+					ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.value = status.position;
+					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, status.model_id);
+					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, status.firmware);
+					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
 					close(PRIVATE_DATA->handle);
