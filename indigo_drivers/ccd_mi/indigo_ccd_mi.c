@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -376,7 +376,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (IS_CONNECTED && !CCD_COOLER_PROPERTY->hidden) {
 			if (CCD_COOLER_ON_ITEM->sw.value) {
-				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+				PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.target;
 				CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10) / 10;
 				gxccd_set_temperature(PRIVATE_DATA->camera, PRIVATE_DATA->target_temperature);
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -392,12 +392,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_TEMPERATURE
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		if (IS_CONNECTED && !CCD_COOLER_PROPERTY->hidden) {
-			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.value;
+			PRIVATE_DATA->target_temperature = CCD_TEMPERATURE_ITEM->number.target;
 			CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10) / 10;
 			gxccd_set_temperature(PRIVATE_DATA->camera, PRIVATE_DATA->target_temperature);
 			if (CCD_COOLER_OFF_ITEM->sw.value) {
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
-				CCD_COOLER_PROPERTY->state = INDIGO_BUSY_STATE;
+				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 			}
 			CCD_TEMPERATURE_PROPERTY->state = INDIGO_BUSY_STATE;
