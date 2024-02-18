@@ -23,7 +23,7 @@
  \file indigo_ccd_qhy.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_wheel_qhy"
 
 #include <stdlib.h>
@@ -166,7 +166,7 @@ static void wheel_goto_handler(indigo_device *device) {
 		if (X_MODEL_1_ITEM->sw.value) {
 			int slots_to_go = (int)(WHEEL_SLOT_ITEM->number.target - PRIVATE_DATA->current_slot);
 			if (slots_to_go < 0) slots_to_go = slots_to_go + WHEEL_SLOT_ITEM->number.max;
-			int timeout = (int)(ONE_SECOND_DELAY * (3 + 3.5 * (slots_to_go - 1)));
+			int timeout = (int)(ONE_SECOND_DELAY * (3 + 2 * (slots_to_go - 1)));
 			indigo_usleep(timeout);
 			/*
 			INDIGO_DRIVER_ERROR(
