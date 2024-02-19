@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0027
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -89,6 +89,7 @@ typedef struct {
 	bool hc8406;
 	bool hc8407;
 	bool no_park;
+	bool has_sp;
 	indigo_property *protocol_property;
 } ioptron_private_data;
 
@@ -241,6 +242,21 @@ static void ieq_get_coords(indigo_device *device) {
 				else if (side_of_pier == '1')
 					MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = true;
 				MOUNT_SIDE_OF_PIER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		}
+	}
+	if (PRIVATE_DATA->has_sp) {
+		if (ieq_command(device, ":pS#", response, sizeof(response))) {
+			bool update = false;
+			if ((response[0] == '0' || response[0] == 'E') && !MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+				update = true;
+			} else if ((response[0] == '1' || response[0] == 'W') && !MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value){
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+				update = true;
+			}
+			if (update) {
 				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
 			}
 		}
@@ -1302,6 +1318,13 @@ static void mount_connect_callback(indigo_device *device) {
 					MOUNT_GUIDE_RATE_DEC_ITEM->number.value = atoi(response + 2);
 					response[2] = 0;
 					MOUNT_GUIDE_RATE_RA_ITEM->number.value = atoi(response);
+				}
+			}
+			PRIVATE_DATA->has_sp = false;
+			if (ieq_command(device, ":pS#", response, sizeof(response))) {
+				if (response[0] == '0' || response[0] == 'E' || response[0] == '1' || response[0] == 'W') {
+					MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+					PRIVATE_DATA->has_sp = true;
 				}
 			}
 			ieq_get_coords(device);
