@@ -1020,8 +1020,11 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 			}
 		}
 	}
+	indigo_property **device_cache = FILTER_CLIENT_CONTEXT->device_property_cache;
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
+		if (device_cache[i])
+			indigo_safe_free(device_cache[i]);
 		if (agent_cache[i])
 			indigo_release_property(agent_cache[i]);
 	}
