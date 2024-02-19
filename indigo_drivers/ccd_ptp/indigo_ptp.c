@@ -1051,13 +1051,17 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	if (in_5)
 		*in_5 = container.payload.params[4];
 	delegate.ptpResponse = nil;
-	if (delegate.ptpInput && data_in) {
-		*data_in = malloc(delegate.ptpInput.length);
-		if (data_in_size) {
-			*data_in_size = (int)delegate.ptpInput.length;
+	if (data_in) {
+		if (delegate.ptpInput) {
+			*data_in = malloc(delegate.ptpInput.length);
+			if (data_in_size) {
+				*data_in_size = (int)delegate.ptpInput.length;
+			}
+			[delegate.ptpInput getBytes:*data_in length:delegate.ptpInput.length];
+			delegate.ptpInput = nil;
+		} else {
+			return false;
 		}
-		[delegate.ptpInput getBytes:*data_in length:delegate.ptpInput.length];
-		delegate.ptpInput = nil;
 	}
 	PRIVATE_DATA->last_error = container.code;
 	return container.code == ptp_response_OK;
@@ -1555,7 +1559,10 @@ bool ptp_initialise(indigo_device *device) {
 		
 #ifndef UNKNOWN_GROUP
 		for (int i = 0; properties[i]; i++) {
-			char *name = PRIVATE_DATA->property_code_name(properties[i]);
+			uint16_t code = properties[i];
+			if (code == ptp_property_DateTime)
+				continue;
+			char *name = PRIVATE_DATA->property_code_name(code);
 			if (!strncmp(name, "CCD_", 4))
 				continue;
 			if (!strncmp(name, "DSLR_", 5))
