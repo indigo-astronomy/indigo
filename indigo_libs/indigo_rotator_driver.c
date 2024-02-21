@@ -36,6 +36,41 @@
 
 #include <indigo/indigo_rotator_driver.h>
 
+static double indigo_range360(double angle) {
+	return fmod(angle + (360000), 360);
+}
+
+void indigo_rotator_load_calibration(indigo_device *device) {
+	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
+		return;
+	}
+	int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".calibration");
+	if (handle > 0) {
+		double offset = 0;
+		char buffer[128];
+		indigo_read_line(handle, buffer, sizeof(buffer));
+		sscanf(buffer, "%f", &offset);
+		close(handle);
+		ROTATOR_POSITION_OFFSET_ITEM->number.value = ROTATOR_POSITION_OFFSET_ITEM->number.target = offset;
+		indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
+	}
+}
+
+void indigo_rotator_save_calibration(indigo_device *device) {
+	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
+		return;
+	}
+	int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".calibration");
+	if (handle > 0) {
+		indigo_printf(handle, "%f\n", ROTATOR_POSITION_OFFSET_ITEM->number.value);
+		close(handle);
+	}
+}
+
+double rotator_calculate_offset(indigo_device *device) {
+	return indigo_range360(ROTATOR_POSITION_ITEM->number.value) - indigo_range360(ROTATOR_RAW_POSITION_ITEM->number.value);
+}
+
 indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
@@ -67,13 +102,19 @@ indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_na
 			ROTATOR_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Absolute position", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (ROTATOR_POSITION_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(ROTATOR_POSITION_ITEM, ROTATOR_POSITION_ITEM_NAME, "Absolute position (°)", -90, 360, 1, 0);
+			indigo_init_number_item(ROTATOR_POSITION_ITEM, ROTATOR_POSITION_ITEM_NAME, "Absolute position [°]", -90, 360, 1, 0);
+			// -------------------------------------------------------------------------------- ROTATOR_RELATIVE_MOVE
+			ROTATOR_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Relative move", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+			if (ROTATOR_RELATIVE_MOVE_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(ROTATOR_RELATIVE_MOVE_ITEM, ROTATOR_RELATIVE_MOVE_ITEM_NAME, "Relative move [°]", -90, 360, 1, 0);
+			ROTATOR_RELATIVE_MOVE_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
 			ROTATOR_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Abort motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
 			if (ROTATOR_ABORT_MOTION_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_switch_item(ROTATOR_ABORT_MOTION_ITEM, ROTATOR_ABORT_MOTION_ITEM_NAME, "Abort motion", false);
-				// -------------------------------------------------------------------------------- ROTATOR_BACKLASH
+			// -------------------------------------------------------------------------------- ROTATOR_BACKLASH
 			ROTATOR_BACKLASH_PROPERTY = indigo_init_number_property(NULL, device->name, ROTATOR_BACKLASH_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Backlash compensation", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (ROTATOR_BACKLASH_PROPERTY == NULL)
 				return INDIGO_FAILED;
@@ -86,6 +127,18 @@ indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_na
 			ROTATOR_LIMITS_PROPERTY->hidden = true;
 			indigo_init_number_item(ROTATOR_LIMITS_MIN_POSITION_ITEM, ROTATOR_LIMITS_MIN_POSITION_ITEM_NAME, "Minimum position (°)", -90, 360, 1, -90);
 			indigo_init_number_item(ROTATOR_LIMITS_MAX_POSITION_ITEM, ROTATOR_LIMITS_MAX_POSITION_ITEM_NAME, "Maximum position (°)", -90, 360, 1, 360);
+			// -------------------------------------------------------------------------------- ROTATOR_RAW_POSITION
+			ROTATOR_RAW_POSITION_PROPERTY = indigo_init_number_property(NULL, device->name, ROTATOR_RAW_POSITION_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Raw position", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+			if (ROTATOR_RAW_POSITION_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(ROTATOR_RAW_POSITION_ITEM, ROTATOR_RAW_POSITION_ITEM_NAME, "Raw position [°]", -90, 360, 1, 0);
+			ROTATOR_RAW_POSITION_PROPERTY->hidden = true;
+			// -------------------------------------------------------------------------------- ROTATOR_POSITION_OFFSET
+			ROTATOR_POSITION_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, ROTATOR_POSITION_OFFSET_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Offset from raw position", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+			if (ROTATOR_POSITION_OFFSET_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			indigo_init_number_item(ROTATOR_POSITION_OFFSET_ITEM, ROTATOR_POSITION_OFFSET_ITEM_NAME, "Offset [°]", -90, 360, 1, 0);
+			ROTATOR_POSITION_OFFSET_PROPERTY->hidden = true;
 			// --------------------------------------------------------------------------------
 			return INDIGO_OK;
 		}
@@ -107,10 +160,16 @@ indigo_result indigo_rotator_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 		if (indigo_property_match(ROTATOR_POSITION_PROPERTY, property))
 			indigo_define_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		if (indigo_property_match(ROTATOR_RELATIVE_MOVE_PROPERTY, property))
+			indigo_define_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
 		if (indigo_property_match(ROTATOR_LIMITS_PROPERTY, property))
 			indigo_define_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
 		if (indigo_property_match(ROTATOR_ON_POSITION_SET_PROPERTY, property))
 			indigo_define_property(device, ROTATOR_ON_POSITION_SET_PROPERTY, NULL);
+		if (indigo_property_match(ROTATOR_RAW_POSITION_PROPERTY, property))
+			indigo_define_property(device, ROTATOR_RAW_POSITION_PROPERTY, NULL);
+		if (indigo_property_match(ROTATOR_POSITION_OFFSET_PROPERTY, property))
+			indigo_define_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }
@@ -122,6 +181,7 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
+			indigo_rotator_load_calibration(device);
 			indigo_define_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
 			indigo_define_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 			indigo_define_property(device, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, NULL);
@@ -129,6 +189,9 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 			indigo_define_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 			indigo_define_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 			indigo_define_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_define_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+			indigo_define_property(device, ROTATOR_RAW_POSITION_PROPERTY, NULL);
+			indigo_define_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
 		} else {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_delete_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
@@ -138,6 +201,9 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 			indigo_delete_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 			indigo_delete_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 			indigo_delete_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_delete_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+			indigo_delete_property(device, ROTATOR_RAW_POSITION_PROPERTY, NULL);
+			indigo_delete_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
 		}
 	// -------------------------------------------------------------------------------- ROTATOR_ON_POSITION_SET
 	} else if (indigo_property_match_changeable(ROTATOR_ON_POSITION_SET_PROPERTY, property)) {
@@ -150,6 +216,14 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- ROTATOR_DIRECTION
+	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
+		if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value && !ROTATOR_RAW_POSITION_PROPERTY->hidden){
+			ROTATOR_POSITION_OFFSET_ITEM->number.value = ROTATOR_POSITION_OFFSET_ITEM->number.target = rotator_calculate_offset(device);
+			indigo_rotator_save_calibration(device);
+			indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
+		}
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_STEPS_PER_REVOLUTION
 	} else if (indigo_property_match_changeable(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY, property)) {
@@ -170,11 +244,14 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- CONFIG
+	// -------------------------------------------------------------------------------- CONFIG
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			indigo_save_property(device, NULL, ROTATOR_STEPS_PER_REVOLUTION_PROPERTY);
 			indigo_save_property(device, NULL, ROTATOR_BACKLASH_PROPERTY);
 			indigo_save_property(device, NULL, ROTATOR_LIMITS_PROPERTY);
+			indigo_rotator_save_calibration(device);
+		} else if (indigo_switch_match(CONFIG_LOAD_ITEM, property)) {
+			indigo_rotator_load_calibration(device);
 		}
 	}
 	return indigo_device_change_property(device, client, property);
@@ -189,5 +266,8 @@ indigo_result indigo_rotator_detach(indigo_device *device) {
 	indigo_release_property(ROTATOR_STEPS_PER_REVOLUTION_PROPERTY);
 	indigo_release_property(ROTATOR_ON_POSITION_SET_PROPERTY);
 	indigo_release_property(ROTATOR_POSITION_PROPERTY);
+	indigo_release_property(ROTATOR_RELATIVE_MOVE_PROPERTY);
+	indigo_release_property(ROTATOR_RAW_POSITION_PROPERTY);
+	indigo_release_property(ROTATOR_POSITION_OFFSET_PROPERTY);
 	return indigo_device_detach(device);
 }
