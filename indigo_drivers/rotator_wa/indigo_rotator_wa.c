@@ -38,14 +38,14 @@
 
 #include "indigo_rotator_wa.h"
 
-#define PRIVATE_DATA								((wa_private_data *)device->private_data)
+#define PRIVATE_DATA				((wa_private_data *)device->private_data)
 
 typedef struct {
 	int handle;
 	pthread_mutex_t mutex;
 	indigo_timer *position_timer;
 	int steps_degree;       /* steps per degree */
-	double current_position;      
+	double current_position;
 } wa_private_data;
 
 typedef struct {
@@ -160,7 +160,9 @@ static void rotator_connection_handler(indigo_device *device) {
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "undefined");
+		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
+		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
+		indigo_update_property(device, INFO_PROPERTY, NULL);
 		if (PRIVATE_DATA->handle > 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);
@@ -209,6 +211,9 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_ON_POSITION_SET_PROPERTY->hidden = false;
 		ROTATOR_ABORT_MOTION_PROPERTY->hidden = false;
 		ROTATOR_DIRECTION_PROPERTY->hidden = false;
+		ROTATOR_RELATIVE_MOVE_PROPERTY->hidden = false;
+		ROTATOR_RAW_POSITION_PROPERTY->hidden = false;
+		ROTATOR_POSITION_OFFSET_PROPERTY->hidden = false;
 		ROTATOR_POSITION_ITEM->number.min = 0;
 		ROTATOR_POSITION_ITEM->number.max = 359.999;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -276,6 +281,7 @@ static indigo_result rotator_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		rotator_connection_handler(device);
 	}
+	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_rotator_detach(device);
 }

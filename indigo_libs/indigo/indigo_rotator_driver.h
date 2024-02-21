@@ -82,6 +82,14 @@ extern "C" {
 */
 #define ROTATOR_POSITION_ITEM									(ROTATOR_POSITION_PROPERTY->items+0)
 
+/** ROTATOR_RELATIVE_MOVE property pointer, property is mandatory, property change request should be fully handled by rotator driver
+*/
+#define ROTATOR_RELATIVE_MOVE_PROPERTY							(ROTATOR_CONTEXT->rotator_relative_move_property)
+
+/** ROTATOR_RELATIVE_MOVE.RELATIVE_MOVE property item pointer.
+*/
+#define ROTATOR_RELATIVE_MOVE_ITEM									(ROTATOR_RELATIVE_MOVE_PROPERTY->items+0)
+
 /** ROTATOR_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by rotator driver
 */
 #define ROTATOR_ABORT_MOTION_PROPERTY					(ROTATOR_CONTEXT->rotator_abort_motion_property)
@@ -110,6 +118,22 @@ extern "C" {
  */
 #define ROTATOR_LIMITS_MAX_POSITION_ITEM							(ROTATOR_LIMITS_PROPERTY->items+1)
 
+/** ROTATOR_RAW_POSITION property pointer, property is optional and read only
+ */
+#define ROTATOR_RAW_POSITION_PROPERTY		(ROTATOR_CONTEXT->rotator_raw_position_property)
+
+/** ROTATOR_RAW_POSITION.POSITION proeprty item pointer.
+ */
+#define ROTATOR_RAW_POSITION_ITEM 			(ROTATOR_RAW_POSITION_PROPERTY->items + 0)
+
+/** ROTATOR_POSITION_OFFSET property pointer, property is optional and read only
+ */
+#define ROTATOR_POSITION_OFFSET_PROPERTY		(ROTATOR_CONTEXT->rotator_position_offset_property)
+
+/** ROTATOR_POSITION_OFFSET.OFFSET proeprty item pointer.
+ */
+#define ROTATOR_POSITION_OFFSET_ITEM 			(ROTATOR_POSITION_OFFSET_PROPERTY->items + 0)
+
 
 /** Focuser device context structure.
  */
@@ -119,9 +143,12 @@ typedef struct {
 	indigo_property *rotator_direction_property;            ///< ROTATOR_DIRECTION property pointer
 	indigo_property *rotator_on_position_set_property;      ///< ROTATOR_ON_POSITION_SET property pointer
 	indigo_property *rotator_position_property;             ///< ROTATOR_POSITION property pointer
+	indigo_property *rotator_relative_move_property;        ///< ROTATOR_RELATIVE_MOVE property pointer
 	indigo_property *rotator_abort_motion_property;         ///< ROTATOR_ABORT_MOTION property pointer
 	indigo_property *rotator_backlash_property;             ///< ROTATOR_BACKLASH property pointer
 	indigo_property *rotator_limits_property;               ///< ROTATOR_LIMITS property pointer
+	indigo_property *rotator_raw_position_property;         ///< ROTATOR_RAW_POSITION property pointer
+	indigo_property *rotator_position_offset_property;      ///< ROTATOR_POSITION_OFFSET property pointer
 } indigo_rotator_context;
 
 /** Attach callback function.
