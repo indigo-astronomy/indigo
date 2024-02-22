@@ -1641,10 +1641,10 @@ static list_t *currentdevice = NULL;
 LIBFLIAPI FLICreateList(flidomain_t domain)
 {
   char **list;
-  flidomain_t domord[5];
+  flidomain_t domord[6];
   int i, j, k;
 
-  for (i = 0; i < 5; i++)
+  for (i = 0; i < 6; i++)
   {
     domord[i] = 0;
   }

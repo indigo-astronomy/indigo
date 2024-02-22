@@ -453,10 +453,13 @@ To be used by auxiliary devices like powerboxes, weather stations, etc.
 | FILTER_RELATED_AGENT_LIST | switch | no | yes | ... | yes | Select related agents |
 | FILTER_FORCE_SYMMETRIC_RELATIONS | switch | no | yes | ENABLED | yes | Set symmetric relation |
 |  |  |  |  | DISABLED | yes | |
-| AGENT_IMAGER_BATCH | switch | no | yes | PREVIEW | yes | Start preview |
+| AGENT_START_PROCESS | switch | no | yes | PREVIEW | yes | Start preview |
 |  |  |  |  | CALIBRATION | yes | Start calibration |
 |  |  |  |  | GUIDING | yes | Start guiding |
 | AGENT_ABORT_PROCESS | switch | no | yes | ABORT | yes | Abort running process |
+| AGENT_PROCESS_FEATURES | switch | no | yes | ENABLE_LOGGING | yes | Make guiding log |
+| AGENT_GUIDER_LOG | text | no | yes | DIR | yes | Guiding log folder |
+|  |  |  |  | TEMPLATE | yes | File name template, strftime() format specifiers accepted |
 | AGENT_GUIDER_DETECTION_MODE | switch | no | yes | DONUTS | yes | Use DONUTS algorithm |
 |  |  |  |  | CENTROID | yes | Use full frame centroid algorithm |
 |  |  |  |  | SELECTION | yes | Use selected star centroid algorithm |
