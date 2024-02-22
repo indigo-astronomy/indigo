@@ -215,8 +215,8 @@ long libusb_bulktransfer(flidev_t dev, int ep, void *buf, long *len)
 #define _DEBUG
 
 #ifdef _DEBUG
-  debug(FLIDEBUG_INFO, "%s: attempting %ld bytes %s",
-	__PRETTY_FUNCTION__, *len, (ep & LIBUSB_ENDPOINT_IN) ? "in" : "out");
+//  debug(FLIDEBUG_INFO, "%s: attempting %ld bytes %s",
+//	__PRETTY_FUNCTION__, *len, (ep & LIBUSB_ENDPOINT_IN) ? "in" : "out");
 #endif
 
   io = DEVICE->io_data;
