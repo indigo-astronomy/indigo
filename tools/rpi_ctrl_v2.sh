@@ -119,10 +119,12 @@ WIFI_CH_SELECT_EXE=$(which wifi_channel_selector.pl)
 __usage() {
 
     echo -e "usage: ${0}\n" \
+	 "\t--get-wifi-country-code\n" \
+	 "\t--set-wifi-country-code <code> (two letter country code like US, BG etc. NOTE: This will reset the WiFi to defaults)\n" \
 	 "\t--get-wifi-server\n" \
 	 "\t--set-wifi-server <ssid> <password>\n" \
 	 "\t--get-wifi-channel\n" \
-	 "\t--set-wifi-channel <channel> (${WIFI_CHANNELS[*]}, 0 = auto)\n" \
+	 "\t--set-wifi-channel <channel> (0 = automatically select in 2.4GHz band, available channels dpend on country regulations)\n" \
 	 "\t--get-wifi-client\n" \
 	 "\t--set-wifi-client <ssid> <password>\n" \
 	 "\t--reset-wifi-server\n" \
