@@ -168,13 +168,13 @@ The following properties and values can be used separated by semi-colons. The de
 order: value;
 ```
 
-order in which properties or items should be presented on client side, value is integer number
+Order in which properties or items should be presented on client side, value is integer number
 
 ```
 target: value;
 ```
 
-show or hide target value on client side, value is show or hide; makes a sense only for numeric items
+Show or hide target value on client side, value is show or hide; makes a sense only for numeric items
 
 ```
 widget: list;
@@ -187,19 +187,26 @@ GUI widget(s) to use for the items on client side, the list can consist of value
 warn_on_change: "Warning text";
 ```
 
-show yes/no warning when the client is going to send property chanage request
+Show yes/no warning with the hint text when the client is going to send property chanage request. The change request should be sent only if the answer is "yes". This hint is applicable to all changeable proeprties.
 
 ```
 warn_on_set: "Warning text";
 ```
 
-show yes/no warning when the client is going to send switch item set request
+Show yes/no warning with the hint text when the client is going to send switch item set request. The change request should be sent only if the answer is "yes". This hint is applicable only to swith items.
 
 ```
 warn_on_clear: "Warning text";
 ```
 
-show yes/no warning when the client is going to send switch item unset (clear) request
+Show yes/no warning with the hint text when the client is going to send switch item unset (clear) request. The change request should be sent only if the answer is "yes". This hint is applicable only to swith items.
+
+```
+tip: "Information text"
+```
+The hint text can be used as a tool tip for the property or the item witget in the UI. It should contain a short description of the proeprty or the item.
+
+
 
 ## References
 
