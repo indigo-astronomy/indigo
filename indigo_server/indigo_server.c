@@ -1345,11 +1345,21 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_SHUTDOWN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SHUTDOWN
 		indigo_property_copy_values(SERVER_SHUTDOWN_PROPERTY, property, false);
-		return execute_command(device, SERVER_SHUTDOWN_PROPERTY, "s_rpi_ctrl.sh --poweroff");
+		if (SERVER_SHUTDOWN_ITEM->sw.value) {
+			return execute_command(device, SERVER_SHUTDOWN_PROPERTY, "s_rpi_ctrl.sh --poweroff");
+		}
+		SERVER_SHUTDOWN_ITEM->sw.value = false;
+		indigo_update_property(device, SERVER_SHUTDOWN_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- REBOOT
 		indigo_property_copy_values(SERVER_REBOOT_PROPERTY, property, false);
-		return execute_command(device, SERVER_REBOOT_PROPERTY, "s_rpi_ctrl.sh --reboot");
+		if (SERVER_REBOOT_ITEM->sw.value) {
+			return execute_command(device, SERVER_REBOOT_PROPERTY, "s_rpi_ctrl.sh --reboot");
+		}
+		SERVER_REBOOT_ITEM->sw.value = false;
+		indigo_update_property(device, SERVER_REBOOT_PROPERTY, NULL);
+		return INDIGO_OK;
 #endif /* RPI_MANAGEMENT */
 	// --------------------------------------------------------------------------------
 	}
