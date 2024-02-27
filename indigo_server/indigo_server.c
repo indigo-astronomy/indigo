@@ -994,7 +994,7 @@ static indigo_result attach(indigo_device *device) {
 
 		SERVER_WIFI_COUNTRY_CODE_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_COUNTRY_CODE_PROPERTY_NAME, MAIN_GROUP, "Configure WiFi country code", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		indigo_init_text_item(SERVER_WIFI_COUNTRY_CODE_ITEM, SERVER_WIFI_COUNTRY_CODE_ITEM_NAME, "Two letter country code", "");
-		strcpy(SERVER_WIFI_COUNTRY_CODE_PROPERTY->hints,"warn_on_change:\"Country code affects the available WiFi channels.\nChanging the country code will reset WiFi settings to defualts. Continue?\";");
+		strcpy(SERVER_WIFI_COUNTRY_CODE_PROPERTY->hints, "warn_on_change:\"Country code affects the available WiFi channels.\nChanging the country code will reset WiFi settings to defaults. Continue?\";");
 
 		update_wifi_setings(device);
 
