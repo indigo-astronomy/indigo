@@ -1219,6 +1219,9 @@
 		592007822A5B2D050063C472 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		592007832A5B2D050063C472 /* indigo_aux_uch_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_uch_main.c; sourceTree = "<group>"; };
 		592007842A5B2D050063C472 /* indigo_aux_uch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_uch.h; sourceTree = "<group>"; };
+		5920EDAF2B8E57AA00BF85F7 /* wifi_channel_selector.pl */ = {isa = PBXFileReference; lastKnownFileType = text.script.perl; path = wifi_channel_selector.pl; sourceTree = "<group>"; };
+		5920EDB02B8E57AA00BF85F7 /* rpi_ctrl_v2.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl_v2.sh; sourceTree = "<group>"; };
+		5920EDB12B8E57DC00BF85F7 /* rpi_ctrl_fake.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = rpi_ctrl_fake.sh; sourceTree = "<group>"; };
 		59292E5620D4224F0042E939 /* libcurl.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libcurl.tbd; path = usr/lib/libcurl.tbd; sourceTree = SDKROOT; };
 		592E79122168DD7A00E856F3 /* indigo_focuser_mjkzz.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_mjkzz.h; sourceTree = "<group>"; };
 		592E79142168DD7A00E856F3 /* mjkzz_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = mjkzz_simulator.ino; sourceTree = "<group>"; };
@@ -7448,6 +7451,9 @@
 		599A240C1DBEC5820020BF8F /* tools */ = {
 			isa = PBXGroup;
 			children = (
+				5920EDB02B8E57AA00BF85F7 /* rpi_ctrl_v2.sh */,
+				5920EDB12B8E57DC00BF85F7 /* rpi_ctrl_fake.sh */,
+				5920EDAF2B8E57AA00BF85F7 /* wifi_channel_selector.pl */,
 				5989C387246C48A90005282C /* make_source_tarball.sh */,
 				595E9FBE233E65F7006E01D3 /* make_dslr_table.py */,
 				595E9FBF233E6607006E01D3 /* dslr.csv */,
