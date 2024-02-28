@@ -248,8 +248,15 @@ static void ccd_connect_callback(indigo_device *device) {
 				float float_value;
 				int state = gxccd_get_value(PRIVATE_DATA->camera, GV_POWER_UTILIZATION, &float_value);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_POWER_UTILIZATION, -> %g) -> %d", float_value, state);
-				indigo_set_switch(CCD_COOLER_PROPERTY, float_value == 0 ? CCD_COOLER_OFF_ITEM : CCD_COOLER_ON_ITEM, true);
-				PRIVATE_DATA->target_temperature = 0;
+				if (float_value == 0) { // initial cooler state is guessed from the cooler power
+					PRIVATE_DATA->target_temperature = TEMP_COOLER_OFF;
+					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+				} else {
+					int state = gxccd_get_value(PRIVATE_DATA->camera, GV_CHIP_TEMPERATURE, &float_value);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_CHIP_TEMPERATURE, -> %g) -> %d", float_value, state);
+					PRIVATE_DATA->target_temperature = float_value;  // initial target is set to the current temperature
+					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+				}
 			} else {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 			}
