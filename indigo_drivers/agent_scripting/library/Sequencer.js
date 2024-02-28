@@ -90,6 +90,10 @@ Sequence.prototype.select_frame_type = function(name) {
 	this.sequence.push({ execute: 'select_frame_type("' + name + '")', step: this.step++ });
 };
 
+Sequence.prototype.select_image_format = function(name) {
+	this.sequence.push({ execute: 'select_image_format("' + name + '")', step: this.step++ });
+};
+
 Sequence.prototype.select_camera_mode = function(name) {
 	this.sequence.push({ execute: 'select_camera_mode("' + name + '")', step: this.step++ });
 };
@@ -761,6 +765,20 @@ var indigo_sequencer = {
 			}
 		} else {
 			this.failure("Can't select frame type");
+		}
+	},
+
+	select_image_format: function(name) {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].CCD_IMAGE_FORMAT;
+		if (property != null && property.items[name] != undefined) {
+			if (property.items[name]) {
+				this.warning("Image format " + name + " is already selected");
+			} else {
+				this.select_switch(agent, "CCD_IMAGE_FORMAT", name);
+			}
+		} else {
+			this.failure("Can't select image format");
 		}
 	},
 
