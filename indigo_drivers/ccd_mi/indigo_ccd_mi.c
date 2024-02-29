@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -53,8 +53,8 @@
 #define CCD_READ_MODE_ITEM	(CCD_READ_MODE_PROPERTY->items+0)
 
 #define TEMP_PERIOD					5
-#define TEMP_COOLER_OFF			100
-#define POWER_UTIL_PERIOD		10
+#define TEMP_COOLER_OFF			50
+#define POWER_UTIL_PERIOD		5
 
 typedef struct {
 	int eid;
@@ -120,10 +120,11 @@ static void ccd_temperature_callback(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_CHIP_TEMPERATURE, -> %g) -> %d", PRIVATE_DATA->current_temperature, state);
 		if (state != -1) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if (CCD_COOLER_ON_ITEM->sw.value)
+			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > 1 ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
-			else
+			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+			}
 			CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10) / 10;
 			indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 		} else {
@@ -142,6 +143,13 @@ static void ccd_power_util_callback(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_POWER_UTILIZATION, -> %g) -> %d", float_value, state);
 		if (state != -1) {
 			CCD_COOLER_POWER_ITEM->number.value = round(float_value * 1000) / 10;
+			if (CCD_COOLER_POWER_ITEM->number.value < 0.01 && CCD_COOLER_ON_ITEM->sw.value) {
+				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
+				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+			} else if (CCD_COOLER_POWER_ITEM->number.value > 0.01 && CCD_COOLER_OFF_ITEM->sw.value) {
+				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+			}
 			indigo_update_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
 		} else {
 			mi_report_error(device, CCD_COOLER_POWER_PROPERTY);
@@ -250,6 +258,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_POWER_UTILIZATION, -> %g) -> %d", float_value, state);
 				if (float_value == 0) { // initial cooler state is guessed from the cooler power
 					PRIVATE_DATA->target_temperature = TEMP_COOLER_OFF;
+					CCD_TEMPERATURE_ITEM->number.value = TEMP_COOLER_OFF;
 					indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 				} else {
 					int state = gxccd_get_value(PRIVATE_DATA->camera, GV_CHIP_TEMPERATURE, &float_value);
@@ -298,6 +307,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 			assert(PRIVATE_DATA->buffer != NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+			PRIVATE_DATA->downloading = false;
 		} else {
 			PRIVATE_DATA->device_count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -433,6 +443,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			} else {
 				gxccd_set_temperature(PRIVATE_DATA->camera, TEMP_COOLER_OFF);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_set_temperature(..., %g)", (float)TEMP_COOLER_OFF);
+				CCD_TEMPERATURE_ITEM->number.value = TEMP_COOLER_OFF;
+				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 			}
 			CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
@@ -446,8 +459,12 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_TEMPERATURE_ITEM->number.value = round(PRIVATE_DATA->current_temperature * 10) / 10;
 			gxccd_set_temperature(PRIVATE_DATA->camera, PRIVATE_DATA->target_temperature);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_set_temperature(..., %g)", PRIVATE_DATA->target_temperature);
-			if (CCD_COOLER_OFF_ITEM->sw.value) {
+			if (CCD_COOLER_OFF_ITEM->sw.value && CCD_TEMPERATURE_ITEM->number.target < TEMP_COOLER_OFF) {
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
+				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
+			} else if(CCD_COOLER_ON_ITEM->sw.value && CCD_TEMPERATURE_ITEM->number.target >= TEMP_COOLER_OFF) {
+				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 			}
