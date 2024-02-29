@@ -143,10 +143,14 @@ static void ccd_power_util_callback(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_POWER_UTILIZATION, -> %g) -> %d", float_value, state);
 		if (state != -1) {
 			CCD_COOLER_POWER_ITEM->number.value = round(float_value * 1000) / 10;
-			if (CCD_COOLER_POWER_ITEM->number.value < 0.01 && CCD_COOLER_ON_ITEM->sw.value) {
+			/* try to guess the cooler state:
+			 * 1. if the cooler is OFF, the power utilization is not zero and target_temperature is not TEMP_COOLER_OFF, show it ON
+			 * 2. if the cooler is ON and target_temperature is TEMP_COOLER_OFF, show it OFF
+			 */
+			if (PRIVATE_DATA->target_temperature == TEMP_COOLER_OFF && CCD_COOLER_ON_ITEM->sw.value) {
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
-			} else if (CCD_COOLER_POWER_ITEM->number.value > 0.01 && CCD_COOLER_OFF_ITEM->sw.value) {
+			} else if (CCD_COOLER_POWER_ITEM->number.value > 0.01 && PRIVATE_DATA->target_temperature != TEMP_COOLER_OFF && CCD_COOLER_OFF_ITEM->sw.value) {
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
 			}
