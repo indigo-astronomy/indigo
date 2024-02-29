@@ -448,7 +448,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			} else {
 				gxccd_set_temperature(PRIVATE_DATA->camera, TEMP_COOLER_OFF);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_set_temperature(..., %g)", (float)TEMP_COOLER_OFF);
-				CCD_TEMPERATURE_ITEM->number.value = TEMP_COOLER_OFF;
+				CCD_TEMPERATURE_ITEM->number.target = TEMP_COOLER_OFF;
+				PRIVATE_DATA->target_temperature = TEMP_COOLER_OFF;
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
 			}
