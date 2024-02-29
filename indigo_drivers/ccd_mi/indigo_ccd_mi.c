@@ -272,15 +272,6 @@ static void ccd_connect_callback(indigo_device *device) {
 			} else {
 				CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
 			}
-			CCD_TEMPERATURE_PROPERTY->hidden = false;
-			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
-
-			gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_POWER_UTILIZATION, &bool_value);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_boolean_parameter(..., GBP_POWER_UTILIZATION, -> %d)", bool_value);
-			if (bool_value) {
-				CCD_COOLER_POWER_PROPERTY->hidden = false;
-				indigo_set_timer(device, 0, ccd_power_util_callback, &PRIVATE_DATA->power_util_timer);
-			}
 
 			gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_GAIN, &bool_value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_boolean_parameter(..., GBP_GAIN, -> %d)", bool_value);
@@ -308,6 +299,16 @@ static void ccd_connect_callback(indigo_device *device) {
 			assert(PRIVATE_DATA->buffer != NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			PRIVATE_DATA->downloading = false;
+
+			CCD_TEMPERATURE_PROPERTY->hidden = false;
+			indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
+
+			gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_POWER_UTILIZATION, &bool_value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_boolean_parameter(..., GBP_POWER_UTILIZATION, -> %d)", bool_value);
+			if (bool_value) {
+				CCD_COOLER_POWER_PROPERTY->hidden = false;
+				indigo_set_timer(device, 0, ccd_power_util_callback, &PRIVATE_DATA->power_util_timer);
+			}
 		} else {
 			PRIVATE_DATA->device_count--;
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
