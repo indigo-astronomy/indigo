@@ -228,7 +228,11 @@ static void ccd_connect_callback(indigo_device *device) {
 				sprintf(description, "RAW 16 %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / int_value, (int)CCD_INFO_HEIGHT_ITEM->number.value / int_value);
 				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, int_value == 1);
 				CCD_MODE_PROPERTY->count++;
-				int_value *= 2;
+				if(int_value < 4) {
+					int_value++;
+				} else {
+					int_value *= 2;
+				}
 			}
 			CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
 
@@ -427,7 +431,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		gxccd_get_boolean_parameter(PRIVATE_DATA->camera, GBP_ASYMMETRIC_BINNING, &bool_value);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_boolean_parameter(..., GBP_ASYMMETRIC_BINNING, -> %d)", bool_value);
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
-		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4 || CCD_BIN_HORIZONTAL_ITEM->number.value == 8) || (CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value && !bool_value)) {
+		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 3 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4 || CCD_BIN_HORIZONTAL_ITEM->number.value == 8) || (CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value && !bool_value)) {
 			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
 			CCD_BIN_VERTICAL_ITEM->number.value = v;
 			CCD_BIN_PROPERTY->state = INDIGO_ALERT_STATE;
