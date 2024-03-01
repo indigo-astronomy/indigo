@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x0028
+#define DRIVER_VERSION 0x0029
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -937,10 +937,10 @@ static bool meade_set_slew_rate(indigo_device *device) {
 			return meade_command(device, ":R1#", NULL, 0, 0);
 		} else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'c') {
 			PRIVATE_DATA->lastSlewRate = 'c';
-			return meade_command(device, ":R3#", NULL, 0, 0);
+			return meade_command(device, ":R4#", NULL, 0, 0);
 		} else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 'm') {
 			PRIVATE_DATA->lastSlewRate = 'm';
-			return meade_command(device, ":R6#", NULL, 0, 0);
+			return meade_command(device, ":R7#", NULL, 0, 0);
 		} else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value && PRIVATE_DATA->lastSlewRate != 's') {
 			PRIVATE_DATA->lastSlewRate = 's';
 			return meade_command(device, ":R9#", NULL, 0, 0);
