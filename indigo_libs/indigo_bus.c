@@ -950,6 +950,25 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 	return property;
 }
 
+indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *property) {
+	if (copy == NULL) {
+		copy = indigo_safe_malloc(sizeof(indigo_property) + property->allocated_count * sizeof(indigo_item));
+	} else {
+		copy = indigo_resize_property(copy, property->count);
+	}
+	memcpy(copy, property, sizeof(indigo_property) + property->count * sizeof(indigo_item));
+	if (copy->type == INDIGO_TEXT_VECTOR) {
+		for (int k = 0; k < copy->count; k++) {
+			indigo_item *item = copy->items + k;
+			if (item->text.long_value) {
+				item->text.long_value = NULL;
+				indigo_set_text_item_value(item, property->items[k].text.long_value);
+			}
+		}
+	}
+	return copy;
+}
+
 indigo_property *indigo_clear_property(indigo_property *property) {
 	int allocated_count = property->allocated_count;
 	memset(property, 0, sizeof(indigo_property) + allocated_count * sizeof(indigo_item));
