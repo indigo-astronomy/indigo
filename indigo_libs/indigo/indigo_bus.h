@@ -510,6 +510,9 @@ extern indigo_property *indigo_init_blob_property(indigo_property *property, con
 /** Resize property.
  */
 extern indigo_property *indigo_resize_property(indigo_property *property, int count);
+/** Copy "property" to "copy". Allocate, if copy is NULL.
+ */
+extern indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *property);
 /** Clear property.
  */
 extern indigo_property *indigo_clear_property(indigo_property *property);
