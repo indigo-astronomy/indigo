@@ -35,6 +35,8 @@
 @property dispatch_semaphore_t openSemafor;
 @property dispatch_semaphore_t closeSemafor;
 @property dispatch_semaphore_t ptpSemafor;
+@property NSString *error;
+@property bool removed;
 @property NSData *ptpResponse;
 @property NSData *ptpInput;
 @property NSMutableArray *events;
