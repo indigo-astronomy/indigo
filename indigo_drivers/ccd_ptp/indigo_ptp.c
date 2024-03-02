@@ -1433,7 +1433,11 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						}
 					}
 				}
+			} else {
+				return true;
 			}
+		} else {
+			return true;
 		}
 	} else {
 		delete = true;
@@ -1455,8 +1459,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				property->property->items->number.value = property->value.number.value;
 				define = true;
 			}
-		} else {
-			if (property->count > 0) {
+		} else if (property->count > 0) {
 				if (property->property->count != property->count) {
 					if (property->count > property->property->count)
 						property->property = indigo_resize_property(property->property, property->count);
@@ -1487,13 +1490,12 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						property->property->items[i].sw.value = (property->value.sw.value == property->value.sw.values[i]);
 					}
 				}
-			} else {
-				if (IS_CONNECTED) {
-					indigo_delete_property(device, property->property, NULL);
-					indigo_release_property(property->property);
-					property->property = NULL;
-					return true;
-				}
+		} else {
+			if (IS_CONNECTED) {
+				indigo_delete_property(device, property->property, NULL);
+				indigo_release_property(property->property);
+				property->property = NULL;
+				return true;
 			}
 		}
 		if (!property->writable == (property->property->perm == INDIGO_RW_PERM)) {
