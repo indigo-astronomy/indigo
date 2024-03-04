@@ -137,6 +137,10 @@ void indigo_raise_set(
 	double *set_time
 );
 
+/** Calculate the airmass for a given altitude
+ */
+double indigo_airmass(double altitude);
+
 /** Greenwitch mean sidereal time (in degrees)
  */
 extern double indigo_mean_gst(const time_t *utc);
