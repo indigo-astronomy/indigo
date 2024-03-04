@@ -814,6 +814,7 @@ static void check_versions(indigo_device *device) {
 					}
 				}
 				indigo_init_switch_item(SERVER_INSTALL_PROPERTY->items + i, versions[ii], versions[ii], versions[ii] == line);
+				sprintf(SERVER_INSTALL_PROPERTY->items[i].hints,"warn_on_set:\"Install INDIGO %s and reboot host computer?\";", versions[ii]);
 				SERVER_INSTALL_PROPERTY->count++;
 				versions[ii] = NULL;
 			}
