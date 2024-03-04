@@ -363,9 +363,9 @@ void indigo_trace_property(const char *message, indigo_client *client, indigo_pr
 					break;
 				case INDIGO_NUMBER_VECTOR:
 					if (defs)
-						indigo_trace_bus("B <+   '%s' = %g (%g, %g, %g, '%s') // %s", item->name, item->number.value, item->number.min, item->number.max, item->number.step, item->number.format, item->label);
+						indigo_trace_bus("B <+   '%s' = %g, target = %g (%g, %g, %g, '%s') // %s", item->name, item->number.value, item->number.target, item->number.min, item->number.max, item->number.step, item->number.format, item->label);
 					else
-						indigo_trace_bus("B <+   '%s' = %g ",item->name, item->number.value);
+						indigo_trace_bus("B <+   '%s' = %g, target = %g ",item->name, item->number.value, item->number.target);
 					break;
 				case INDIGO_SWITCH_VECTOR:
 					if (defs)
@@ -948,6 +948,25 @@ indigo_property *indigo_resize_property(indigo_property *property, int count) {
 		memset(property->items+property->count, 0, (count - property->count) * sizeof(indigo_item));
 	property->count = count;
 	return property;
+}
+
+indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *property) {
+	if (copy == NULL) {
+		copy = indigo_safe_malloc(sizeof(indigo_property) + property->allocated_count * sizeof(indigo_item));
+	} else {
+		copy = indigo_resize_property(copy, property->count);
+	}
+	memcpy(copy, property, sizeof(indigo_property) + property->count * sizeof(indigo_item));
+	if (copy->type == INDIGO_TEXT_VECTOR) {
+		for (int k = 0; k < copy->count; k++) {
+			indigo_item *item = copy->items + k;
+			if (item->text.long_value) {
+				item->text.long_value = NULL;
+				indigo_set_text_item_value(item, property->items[k].text.long_value);
+			}
+		}
+	}
+	return copy;
 }
 
 indigo_property *indigo_clear_property(indigo_property *property) {
