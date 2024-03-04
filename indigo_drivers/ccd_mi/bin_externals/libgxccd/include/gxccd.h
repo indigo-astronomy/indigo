@@ -1,7 +1,7 @@
 /*
  * The Moravian Instruments (MI) camera library.
  *
- * Copyright (c) 2016-2023, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
+ * Copyright (c) 2016-2024, Moravian Instruments <http://www.gxccd.com, linux@gxccd.com>
  * All rights reserved.
  *
  * Redistribution.  Redistribution and use in binary form, without
@@ -59,10 +59,13 @@ extern "C" {
  */
 
 /* Typedef for prototype of enumeration function. */
-typedef void (*enum_callback_t)(int /*camera_id*/);
+typedef void (*enum_callback_t)(int /*device_id*/);
 
 /* Typedef for prototype of anonymous camera structure. */
 typedef struct camera camera_t;
+
+/* Typedef for prototype of anonymous filter wheel structure. */
+typedef struct fwheel fwheel_t;
 
 /* =============================================================================
  * Structure of .ini configuration file.
@@ -153,6 +156,8 @@ typedef struct camera camera_t;
  * "camera_id" is 1111) in .config directory located in current user's home
  * directory (e.g. /home/username/.config/gxccd.ini) or in directory with
  * application executable binary.
+ * In the case of the filter wheel, the filename is "gxfw.ini" or
+ * "gxfw.wheel_id.ini".
  * If none of these files is found, default values (mentioned above) are used.
  */
 
@@ -433,9 +438,19 @@ int gxccd_read_image(camera_t *camera, void *buf, size_t size);
  * Functionality and parameters are the same as for gxccd_read_image.
  * The only difference is that the camera starts another exposure before returning
  * the image. The time between continous exposures is therefore reduced by the time
- * of downloading the image to the PC.s
+ * of downloading the image to the PC.
  */
 int gxccd_read_image_exposure(camera_t *camera, void *buf, size_t size);
+
+/*
+ * Open camera shutter.
+ */
+int gxccd_open_shutter(camera_t *camera);
+
+/*
+ * Close camera shutter.
+ */
+int gxccd_close_shutter(camera_t *camera);
 
 /*
  * Enumerates all read modes provided by the camera.
@@ -493,7 +508,7 @@ int gxccd_set_filter(camera_t *camera, int index);
 
 /*
  * Reinitializes camera filter wheel.
- * If parameter "num_filter" is not NULL, it will contain the number of detected
+ * If parameter "num_filters" is not NULL, it will contain the number of detected
  * filters or 0 in case of error (or camera without filter wheel).
  */
 int gxccd_reinit_filter_wheel(camera_t *camera, int *num_filters);
@@ -563,6 +578,129 @@ int gxccd_get_gps_data(camera_t *camera, double *lat, double *lon, double *msl,
  * The caller must specify the size of the buffer in parameter "size".
  */
 void gxccd_get_last_error(camera_t *camera, char *buf, size_t size);
+
+/*==============================================================================
+ * External Filter Wheels
+ *============================================================================*/
+
+/*
+ * Enumerates all filter wheels currently connected to your computer (_usb) or
+ * the ethernet adapter (_eth).
+ * You have to provide callback function, which is called for each connected
+ * wheel and the filter wheel identifier (filter wheel ID) is passed as
+ * an argument to this callback function.
+ * If your application is designed to work with one wheel only or the filter
+ * wheel identifier is known, gxfw_enumerate_*() needs not to be called at all.
+ */
+/* USB variant */
+void gxfw_enumerate_usb(enum_callback_t callback);
+/* Ethernet variant */
+void gxfw_enumerate_eth(enum_callback_t callback);
+
+/*
+ * Driver is designed to handle multiple filter wheels at once. It distinguishes
+ * individual wheels using pointer to individual instances.
+ * This function returns pointer to initialized structure or NULL in case of
+ * error.
+ * "wheel_id" is camera indentifier (e.g. obtained by gxfw_enumerate_*()
+ * function) and is required. If you have one filter wheel connected, you can
+ * pass -1 as "wheel_id".
+ */
+/* USB variant */
+fwheel_t *gxfw_initialize_usb(int wheel_id);
+/* Ethernet variant */
+fwheel_t *gxfw_initialize_eth(int wheel_id);
+
+/*
+ * Disconnects from filter wheel and releases other resources. The memory
+ * pointed by "wheel" becomes invalid and you must not pass it to any of the
+ * following functions!
+ */
+void gxfw_release(fwheel_t *wheel);
+
+/*==============================================================================
+ * RULES FOR THE FOLLOWING FUNCTIONS:
+ * 1. Each function works with initialized fwheel_t structure.
+ * 2. Every parameter is required.
+ * 3. On success returns 0, on error the value -1 is returned and application
+ *    can obtain error explanation by calling gxfw_get_last_error().
+ *============================================================================*/
+
+/* Standard gxfw_get_boolean_parameter() indexes */
+enum
+{
+    FW_GBP_CONNECTED = 0,             /* true if wheel is connected */
+    FW_GBP_INITIALIZED,               /* true if wheel is initialized */
+    FW_GBP_MICROMETER_FILTER_OFFSETS, /* true if filter focusing offsets are
+                                       expressed in micrometers */
+    FW_GBP_CONFIGURED = 127,          /* true if wheel is configured */
+};
+
+/* Returns true or false in "value" depending on the "index". */
+int gxfw_get_boolean_parameter(fwheel_t *wheel, int index, bool *value);
+
+/* Standard gxfw_get_integer_parameter() indexes */
+enum
+{
+    FW_GIP_VERSION_1 = 0, /* Wheel firmware version (optional) */
+    FW_GIP_VERSION_2,     /* -//- */
+    FW_GIP_VERSION_3,     /* -//- */
+    FW_GIP_VERSION_4,     /* -//- */
+    FW_GIP_WHEEL_ID,      /* Identifier of the current filter wheel */
+    FW_GIP_FILTERS,       /* Number of filters offered by the filter wheel */
+};
+
+/* Returns integer in "value" depending on the "index". */
+int gxfw_get_integer_parameter(fwheel_t *wheel, int index, int *value);
+
+/* Standard gxfw_get_string_parameter() indexes */
+enum
+{
+    FW_GSP_DESCRIPTION = 0, /* Filter wheel description */
+    FW_GSP_MANUFACTURER,    /* Manufacturer name */
+    FW_GSP_SERIAL_NUMBER,   /* Filter wheel serial number */
+};
+
+/*
+ * Returns string in "buf" depending on the "index".
+ * The caller must specify the size of the buffer in "size".
+ */
+int gxfw_get_string_parameter(fwheel_t *wheel, int index, char *buf, size_t size);
+
+/*
+ * Enumerates all filters provided by the filter wheel.
+ * This enumeration does not use any callback, by the caller passes index
+ * beginning with 0 and repeats the call with incremented index until the call
+ * returns -1.
+ * Returns filter name in "buf". The caller must specify the size of the buffer
+ * in parameter size.
+ * "color" parameter hints the RGB color (e.g. cyan color is 0x00ffff), which
+ * can be used to draw the filter name in the application.
+ * "offset" indicates the focuser shift when the particular filter is selected.
+ * Units of the "offset" can be micrometers or arbitrary focuser specific units
+ * (steps). If the units used are micrometers, driver returns true from
+ * gxfw_get_boolean_parameter() with FW_GBP_MICROMETER_FILTER_OFFSETS "index".
+ */
+int gxfw_enumerate_filters(fwheel_t *wheel, int index, char *buf, size_t size, uint32_t *color, int *offset);
+
+/*
+ * Sets the required filter.
+ */
+int gxfw_set_filter(fwheel_t *wheel, int index);
+
+/*
+ * Reinitializes the filter wheel.
+ * If parameter "num_filters" is not NULL, it will contain the number of detected
+ * filters or 0 in case of error.
+ */
+int gxfw_reinit_filter_wheel(fwheel_t *wheel, int *num_filters);
+
+/*
+ * If any call fails (returns -1), this function returns failure description
+ * in parameter buf.
+ * The caller must specify the size of the buffer in parameter "size".
+ */
+void gxfw_get_last_error(fwheel_t *wheel, char *buf, size_t size);
 
 #ifdef __cplusplus
 }
