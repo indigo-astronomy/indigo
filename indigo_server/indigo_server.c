@@ -359,6 +359,7 @@ static indigo_property *blob_proxy_property;
 static indigo_property *server_features_property;
 
 #ifdef RPI_MANAGEMENT
+static indigo_property *wifi_country_code_property;
 static indigo_property *wifi_ap_property;
 static indigo_property *wifi_infrastructure_property;
 static indigo_property *wifi_channel_property;
@@ -426,6 +427,9 @@ static bool runLoop = true;
 
 #define SERVER_WIFI_CHANNEL_PROPERTY							wifi_channel_property
 #define SERVER_WIFI_CHANNEL_ITEM									(SERVER_WIFI_CHANNEL_PROPERTY->items + 0)
+
+#define SERVER_WIFI_COUNTRY_CODE_PROPERTY				wifi_country_code_property
+#define SERVER_WIFI_COUNTRY_CODE_ITEM					(SERVER_WIFI_COUNTRY_CODE_PROPERTY->items + 0)
 
 #define SERVER_INTERNET_SHARING_PROPERTY					internet_sharing_property
 #define SERVER_INTERNET_SHARING_DISABLED_ITEM			(SERVER_INTERNET_SHARING_PROPERTY->items + 0)
@@ -810,6 +814,7 @@ static void check_versions(indigo_device *device) {
 					}
 				}
 				indigo_init_switch_item(SERVER_INSTALL_PROPERTY->items + i, versions[ii], versions[ii], versions[ii] == line);
+				sprintf(SERVER_INSTALL_PROPERTY->items[i].hints,"warn_on_set:\"Install INDIGO %s and reboot host computer?\";", versions[ii]);
 				SERVER_INSTALL_PROPERTY->count++;
 				versions[ii] = NULL;
 			}
@@ -887,6 +892,22 @@ static void update_wifi_setings(indigo_device *device) {
 		SERVER_WIFI_CHANNEL_ITEM->number.target = SERVER_WIFI_CHANNEL_ITEM->number.value = 0;
 	}
 
+	line = execute_query("s_rpi_ctrl.sh --get-wifi-country-code");
+	SERVER_WIFI_COUNTRY_CODE_PROPERTY->state=INDIGO_OK_STATE;
+	if (line) {
+		if (!strncmp(line, "ALERT:", 6)) {
+			SERVER_WIFI_COUNTRY_CODE_ITEM->text.value[0] = '\0';
+			INDIGO_ERROR(indigo_error("%s", line));
+			SERVER_WIFI_COUNTRY_CODE_PROPERTY->state=INDIGO_ALERT_STATE;
+		} else {
+			indigo_copy_value(SERVER_WIFI_COUNTRY_CODE_ITEM->text.value, line);
+		}
+		free(line);
+	} else {
+		SERVER_WIFI_COUNTRY_CODE_ITEM->text.value[0] = '\0';
+	}
+
+	indigo_update_property(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, NULL);
 	indigo_update_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
 	indigo_update_property(device, SERVER_WIFI_CHANNEL_PROPERTY, NULL);
 	indigo_update_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
@@ -961,13 +982,20 @@ static indigo_result attach(indigo_device *device) {
 		SERVER_WIFI_AP_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_AP_PROPERTY_NAME, MAIN_GROUP, "Configure access point WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(SERVER_WIFI_AP_SSID_ITEM, SERVER_WIFI_AP_SSID_ITEM_NAME, "Network name", "");
 		indigo_init_text_item(SERVER_WIFI_AP_PASSWORD_ITEM, SERVER_WIFI_AP_PASSWORD_ITEM_NAME, "Password", "");
+		strcpy(SERVER_WIFI_AP_PROPERTY->hints,"warn_on_change:\"Changing WiFi settings will disconnect all devices connected over WiFi. Continue?\";");
 
 		SERVER_WIFI_INFRASTRUCTURE_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_INFRASTRUCTURE_PROPERTY_NAME, MAIN_GROUP, "Configure infrastructure WiFi mode", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		indigo_init_text_item(SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM, SERVER_WIFI_INFRASTRUCTURE_SSID_ITEM_NAME, "SSID", "");
 		indigo_init_text_item(SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM, SERVER_WIFI_INFRASTRUCTURE_PASSWORD_ITEM_NAME, "Password", "");
+		strcpy(SERVER_WIFI_INFRASTRUCTURE_PROPERTY->hints,"warn_on_change:\"Changing WiFi settings will disconnect all devices connected over WiFi. Continue?\";");
 
 		SERVER_WIFI_CHANNEL_PROPERTY = indigo_init_number_property(NULL, server_device.name, SERVER_WIFI_CHANNEL_PROPERTY_NAME, MAIN_GROUP, "WiFi server channel", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		indigo_init_number_item(SERVER_WIFI_CHANNEL_ITEM, SERVER_WIFI_CHANNEL_ITEM_NAME, "Channel (0 = auto, [0-13] = 2.4G, [36-116] = 5G)", 0, 116, 1, 0);
+		indigo_init_number_item(SERVER_WIFI_CHANNEL_ITEM, SERVER_WIFI_CHANNEL_ITEM_NAME, "Channel (0 = auto 2.4GHz, [0-14] = 2.4G, [>36] = 5G)", 0, 160, 1, 0);
+		strcpy(SERVER_WIFI_CHANNEL_PROPERTY->hints,"warn_on_change:\"Available WiFi channels depend on country regulations!\nChanging WiFi channel will disconnect all devices connected over WiFi. Continue?\";");
+
+		SERVER_WIFI_COUNTRY_CODE_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_WIFI_COUNTRY_CODE_PROPERTY_NAME, MAIN_GROUP, "Configure WiFi country code", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		indigo_init_text_item(SERVER_WIFI_COUNTRY_CODE_ITEM, SERVER_WIFI_COUNTRY_CODE_ITEM_NAME, "Two letter country code", "");
+		strcpy(SERVER_WIFI_COUNTRY_CODE_PROPERTY->hints, "warn_on_change:\"Country code affects the available WiFi channels.\nChanging the country code will reset WiFi settings to defaults. Continue?\";");
 
 		update_wifi_setings(device);
 
@@ -991,7 +1019,7 @@ static indigo_result attach(indigo_device *device) {
 		strcpy(SERVER_SHUTDOWN_ITEM->hints,"warn_on_set:\"Shutdown host computer?\";");
 		SERVER_REBOOT_PROPERTY = indigo_init_switch_property(NULL, server_device.name, SERVER_REBOOT_PROPERTY_NAME, MAIN_GROUP, "Reboot host computer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
 		indigo_init_switch_item(SERVER_REBOOT_ITEM, SERVER_REBOOT_ITEM_NAME, "Reboot", false);
-		strcpy(SERVER_SHUTDOWN_ITEM->hints,"warn_on_set:\"Reboot host computer?\";");
+		strcpy(SERVER_REBOOT_ITEM->hints,"warn_on_set:\"Reboot host computer?\";");
 		indigo_async((void *(*)(void *))check_versions, device);
 	}
 #endif /* RPI_MANAGEMENT */
@@ -1036,6 +1064,7 @@ static indigo_result enumerate_properties(indigo_device *device, indigo_client *
 	indigo_define_property(device, SERVER_FEATURES_PROPERTY, NULL);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
+		indigo_define_property(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, NULL);
 		indigo_define_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
 		indigo_define_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
 		indigo_define_property(device, SERVER_WIFI_CHANNEL_PROPERTY, NULL);
@@ -1265,6 +1294,12 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		indigo_update_property(device, SERVER_BLOB_PROXY_PROPERTY, NULL);
 		return INDIGO_OK;
 #ifdef RPI_MANAGEMENT
+	} else if (indigo_property_match(SERVER_WIFI_COUNTRY_CODE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- WIFI_COUNTRY_CODE
+		indigo_property_copy_values(SERVER_WIFI_COUNTRY_CODE_PROPERTY, property, false);
+		execute_command(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, "s_rpi_ctrl.sh --set-wifi-country-code \"%s\"", SERVER_WIFI_COUNTRY_CODE_ITEM->text.value);
+		update_wifi_setings(device);
+		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_WIFI_AP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- WIFI_AP
 		indigo_property_copy_values(SERVER_WIFI_AP_PROPERTY, property, false);
@@ -1311,11 +1346,21 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 	} else if (indigo_property_match(SERVER_SHUTDOWN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- SHUTDOWN
 		indigo_property_copy_values(SERVER_SHUTDOWN_PROPERTY, property, false);
-		return execute_command(device, SERVER_SHUTDOWN_PROPERTY, "s_rpi_ctrl.sh --poweroff");
+		if (SERVER_SHUTDOWN_ITEM->sw.value) {
+			return execute_command(device, SERVER_SHUTDOWN_PROPERTY, "s_rpi_ctrl.sh --poweroff");
+		}
+		SERVER_SHUTDOWN_ITEM->sw.value = false;
+		indigo_update_property(device, SERVER_SHUTDOWN_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_REBOOT_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- REBOOT
 		indigo_property_copy_values(SERVER_REBOOT_PROPERTY, property, false);
-		return execute_command(device, SERVER_REBOOT_PROPERTY, "s_rpi_ctrl.sh --reboot");
+		if (SERVER_REBOOT_ITEM->sw.value) {
+			return execute_command(device, SERVER_REBOOT_PROPERTY, "s_rpi_ctrl.sh --reboot");
+		}
+		SERVER_REBOOT_ITEM->sw.value = false;
+		indigo_update_property(device, SERVER_REBOOT_PROPERTY, NULL);
+		return INDIGO_OK;
 #endif /* RPI_MANAGEMENT */
 	// --------------------------------------------------------------------------------
 	}
@@ -1338,6 +1383,7 @@ static indigo_result detach(indigo_device *device) {
 	indigo_delete_property(device, SERVER_FEATURES_PROPERTY, NULL);
 #ifdef RPI_MANAGEMENT
 	if (use_rpi_management) {
+		indigo_delete_property(device, SERVER_WIFI_COUNTRY_CODE_PROPERTY, NULL);
 		indigo_delete_property(device, SERVER_WIFI_AP_PROPERTY, NULL);
 		indigo_delete_property(device, SERVER_WIFI_INFRASTRUCTURE_PROPERTY, NULL);
 		indigo_delete_property(device, SERVER_WIFI_CHANNEL_PROPERTY, NULL);
@@ -1359,6 +1405,7 @@ static indigo_result detach(indigo_device *device) {
 	indigo_release_property(SERVER_BLOB_PROXY_PROPERTY);
 	indigo_release_property(SERVER_FEATURES_PROPERTY);
 #ifdef RPI_MANAGEMENT
+	indigo_release_property(SERVER_WIFI_COUNTRY_CODE_PROPERTY);
 	indigo_release_property(SERVER_WIFI_AP_PROPERTY);
 	indigo_release_property(SERVER_WIFI_INFRASTRUCTURE_PROPERTY);
 	indigo_release_property(SERVER_WIFI_CHANNEL_PROPERTY);

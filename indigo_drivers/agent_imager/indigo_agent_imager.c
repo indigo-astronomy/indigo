@@ -2048,7 +2048,7 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 			indigo_usleep(200000);
 		}
 		if (device_property->state != INDIGO_OK_STATE) {
-			indigo_send_message(device, "Failed to set '%'", device_property->name);
+			indigo_send_message(device, "Failed to set '%s'", device_property->name);
 			return false;
 		}
 		return true;
