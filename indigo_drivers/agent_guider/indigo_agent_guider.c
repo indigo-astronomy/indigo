@@ -32,11 +32,17 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
+#include <errno.h>
+#include <limits.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_raw_utils.h>
+#include <indigo/indigo_io.h>
 
 #include "indigo_agent_guider.h"
 
@@ -157,6 +163,13 @@
 #define AGENT_GUIDER_DITHER_TRIGGER_ITEM					(AGENT_GUIDER_DITHER_PROPERTY->items+0)
 #define AGENT_GUIDER_DITHER_RESET_ITEM					(AGENT_GUIDER_DITHER_PROPERTY->items+1)
 
+#define AGENT_GUIDER_LOG_PROPERTY           (DEVICE_PRIVATE_DATA->agent_log_property)
+#define AGENT_GUIDER_LOG_DIR_ITEM           (AGENT_GUIDER_LOG_PROPERTY->items+0)
+#define AGENT_GUIDER_LOG_TEMPLATE_ITEM        (AGENT_GUIDER_LOG_PROPERTY->items+1)
+
+#define AGENT_PROCESS_FEATURES_PROPERTY				(DEVICE_PRIVATE_DATA->agent_process_features_property)
+#define AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM	(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
+
 #define IS_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0)
 #define NOT_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value == 0)
 
@@ -180,6 +193,8 @@ typedef struct {
 	indigo_property *agent_dithering_strategy_property;
 	indigo_property *agent_dithering_offsets_property;
 	indigo_property *agent_dither_property;
+	indigo_property *agent_log_property;
+	indigo_property *agent_process_features_property;
 	double saved_frame_left, saved_frame_top;
 	bool properties_defined;
 	indigo_star_detection stars[MAX_STAR_COUNT];
@@ -197,6 +212,7 @@ typedef struct {
 	int stack_size;
 	unsigned int dither_num;
 	pthread_mutex_t mutex;
+	int log_file;
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -212,6 +228,8 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
 		indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_GUIDER_LOG_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_PROCESS_FEATURES_PROPERTY);
 		char *selection_property_items[] = { AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_GUIDER_SELECTION_PROPERTY, 4, (const char **)selection_property_items);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
@@ -225,6 +243,85 @@ static void save_config(indigo_device *device) {
 		indigo_update_property(device, CONFIG_PROPERTY, NULL);
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
+}
+
+static void open_log(indigo_device *device) {
+	char path[PATH_MAX];
+	time_t now = time(NULL);
+	struct tm *local = localtime(&now);
+	strncpy(path, AGENT_GUIDER_LOG_DIR_ITEM->text.value, PATH_MAX);
+	int len = (int)strlen(path);
+	strftime(path + len, PATH_MAX - len, AGENT_GUIDER_LOG_TEMPLATE_ITEM->text.value, local);
+	if (DEVICE_PRIVATE_DATA->log_file > 0)
+		close(DEVICE_PRIVATE_DATA->log_file);
+	DEVICE_PRIVATE_DATA->log_file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (DEVICE_PRIVATE_DATA->log_file == -1) {
+		indigo_send_message(device, "Failed to create guiding log file (%s)", strerror(errno));
+	}
+}
+
+static void write_log_header(indigo_device *device, const char *log_type) {
+	if (DEVICE_PRIVATE_DATA->log_file > 0) {
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"Type:\",\"%s\"\r\n", log_type);
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"Camera:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]);
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"Guider:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
+		for (int i = 0; i <AGENT_GUIDER_SETTINGS_PROPERTY->count; i++) {
+			indigo_item *item = AGENT_GUIDER_SETTINGS_PROPERTY->items + i;
+			indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
+		}
+		for (int i = 0; i <AGENT_GUIDER_DETECTION_MODE_PROPERTY->count; i++) {
+			indigo_item *item = AGENT_GUIDER_DETECTION_MODE_PROPERTY->items + i;
+			if (item->sw.value) {
+				indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DETECTION_MODE_PROPERTY->label, item->label);
+			}
+		}
+		for (int i = 0; i <AGENT_GUIDER_DEC_MODE_PROPERTY->count; i++) {
+			indigo_item *item = AGENT_GUIDER_DEC_MODE_PROPERTY->items + i;
+			if (item->sw.value) {
+				indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DEC_MODE_PROPERTY->label, item->label);
+			}
+		}
+		for (int i = 0; i <AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->count; i++) {
+			indigo_item *item = AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items + i;
+			if (item->sw.value) {
+				indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->label, item->label);
+			}
+		}
+		for (int i = 0; i <AGENT_GUIDER_SELECTION_PROPERTY->count; i++) {
+			indigo_item *item = AGENT_GUIDER_SELECTION_PROPERTY->items + i;
+			indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
+		}
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"phase\",\"frame\",\"ref x\",\"ref y\",\"drift x\",\"drift y\",\"drift ra\",\"drift dec\",\"corr ra\",\"corr dec\",\"rmse ra\",\"rmse dec\",\"rmse dith\",\"snr\"\r\n");
+	}
+}
+
+static void write_log_record(indigo_device *device) {
+	if (DEVICE_PRIVATE_DATA->log_file > 0) {
+		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "%d,%d,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g\r\n",
+									(int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value,
+									(int)AGENT_GUIDER_STATS_FRAME_ITEM->number.value,
+									AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value,
+									AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value,
+									AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value,
+									AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value,
+									AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value,
+									AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value,
+									AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value,
+									AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value,
+									AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value,
+									AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value,
+									AGENT_GUIDER_STATS_DITHERING_ITEM->number.value,
+									AGENT_GUIDER_STATS_SNR_ITEM->number.value);
+	}
+}
+
+static void close_log(indigo_device *device) {
+	if (DEVICE_PRIVATE_DATA->log_file > 0)
+		close(DEVICE_PRIVATE_DATA->log_file);
+	DEVICE_PRIVATE_DATA->log_file = -1;
 }
 
 static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
@@ -972,6 +1069,7 @@ static void change_step(indigo_device *device, double q) {
 }
 
 static bool guide_and_capture_frame(indigo_device *device, double ra, double dec) {
+	write_log_record(device);
 	if (pulse_guide(device, ra, dec) != INDIGO_OK_STATE) {
 		return false;
 	}
@@ -1014,6 +1112,11 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	allow_abort_by_mount_agent(device, true);
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
+	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
+		open_log(device);
+		write_log_header(device, "calibration");
+		write_log_record(device);
+	}
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase;
 		switch (DEVICE_PRIVATE_DATA->phase) {
@@ -1295,6 +1398,7 @@ static void _calibrate_process(indigo_device *device, bool will_guide) {
 	AGENT_GUIDER_START_CALIBRATION_AND_GUIDING_ITEM->sw.value =
 	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	close_log(device);
 	allow_abort_by_mount_agent(device, false);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1387,6 +1491,11 @@ static void guide_process(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->rmse_ra_s_sum =
 	DEVICE_PRIVATE_DATA->rmse_dec_s_sum =
 	DEVICE_PRIVATE_DATA->rmse_count = 0;
+	if (AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM->sw.value) {
+		open_log(device);
+		write_log_header(device, "guiding");
+		write_log_record(device);
+	}
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (capture_raw_frame(device) != INDIGO_OK_STATE) {
 			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
@@ -1586,6 +1695,7 @@ static void guide_process(indigo_device *device) {
 			AGENT_GUIDER_STATS_DELAY_ITEM->number.value = 0;
 		}
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+		write_log_record(device);
 	}
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_GUIDER_PHASE_DONE : INDIGO_GUIDER_PHASE_FAILED;
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
@@ -1596,6 +1706,7 @@ static void guide_process(indigo_device *device) {
 	AGENT_GUIDER_START_GUIDING_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
+	close_log(device);
 	allow_abort_by_mount_agent(device, false);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1649,9 +1760,16 @@ static void abort_process(indigo_device *device) {
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 
+static char default_log_path[PATH_MAX] = { 0 };
+
 static indigo_result agent_device_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(DEVICE_PRIVATE_DATA != NULL);
+	if (indigo_is_sandboxed) {
+		snprintf(default_log_path, PATH_MAX, "%s/", getenv("HOME"));
+	} else {
+		snprintf(default_log_path, PATH_MAX, "%s/indigo_image_cache/", getenv("HOME"));
+	}
 	if (indigo_filter_device_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_CCD | INDIGO_INTERFACE_GUIDER) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- Device properties
 		FILTER_CCD_LIST_PROPERTY->hidden = false;
@@ -1692,6 +1810,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
+		
+		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM, AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM_NAME, "Enable logging", false);
+
 		//------------------------------------------------------------------------------- Mount orientation
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL)
@@ -1782,6 +1906,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_GUIDER_STATS_SNR_ITEM, AGENT_GUIDER_STATS_SNR_ITEM_NAME, "SNR", 0, 1000, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DELAY_ITEM, AGENT_GUIDER_STATS_DELAY_ITEM_NAME, "Remaining delay (s)", 0, 100, 0, 0);
 		indigo_init_number_item(AGENT_GUIDER_STATS_DITHERING_ITEM, AGENT_GUIDER_STATS_DITHERING_ITEM_NAME, "Dithering RMSE (px)", 0, 100, 0, 0);
+		// -------------------------------------------------------------------------------- Logging
+		AGENT_GUIDER_LOG_PROPERTY = indigo_init_text_property(NULL, device->name, AGENT_GUIDER_LOG_PROPERTY_NAME, "Agent", "Logging", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		if (AGENT_GUIDER_LOG_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(AGENT_GUIDER_LOG_DIR_ITEM, AGENT_GUIDER_LOG_DIR_ITEM_NAME, "Directory", default_log_path);
+		indigo_init_text_item(AGENT_GUIDER_LOG_TEMPLATE_ITEM, AGENT_GUIDER_LOG_TEMPLATE_ITEM_NAME, "Name template", "GUIDING_%%y%%m%%d_%%H%%M%%S.csv"); // strftime format specifiers accepted
 		// -------------------------------------------------------------------------------- Dithering offsets
 		AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY_NAME, "Agent", "Dithering offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY == NULL)
@@ -1844,6 +1974,10 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_GUIDER_DITHER_PROPERTY, property))
 		indigo_define_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_GUIDER_LOG_PROPERTY, property))
+		indigo_define_property(device, AGENT_GUIDER_LOG_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property))
+		indigo_define_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -2145,8 +2279,31 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 		}
 		return INDIGO_OK;
-// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
+	} else if (indigo_property_match(AGENT_GUIDER_LOG_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_GUIDER_LOG
+		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			AGENT_GUIDER_LOG_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, AGENT_GUIDER_LOG_PROPERTY, "Guider log settings can't be changed while any process is in progress");
+		} else {
+			indigo_property_copy_values(AGENT_GUIDER_LOG_PROPERTY, property, false);
+			char *path = AGENT_GUIDER_LOG_DIR_ITEM->text.value;
+			int len = (int)strlen(path);
+			if (path[len - 1] != '/') {
+				path[len++] = '/';
+				path[len] = 0;
+			}
+			AGENT_GUIDER_LOG_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_GUIDER_LOG_PROPERTY, NULL);
+			save_config(device);
+		}
+	} else if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- AGENT_PROCESS_FEATURES
+		indigo_property_copy_values(AGENT_PROCESS_FEATURES_PROPERTY, property, false);
+		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
+		save_config(device);
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
+// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {
 			save_config(device);
 		}
@@ -2172,6 +2329,8 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_DITHER_PROPERTY);
+	indigo_release_property(AGENT_GUIDER_LOG_PROPERTY);
+	indigo_release_property(AGENT_PROCESS_FEATURES_PROPERTY);
 	for (int i = 0; i <= MAX_MULTISTAR_COUNT; i++)
 		indigo_delete_frame_digest(DEVICE_PRIVATE_DATA->reference + i);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);

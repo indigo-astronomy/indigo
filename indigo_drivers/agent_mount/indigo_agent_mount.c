@@ -96,11 +96,12 @@
 #define AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM	(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+1)
 #define AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+2)
 #define AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM				(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+3)
-#define AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM				(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+4)
-#define AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+5)
-#define AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM	(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+6)
-#define AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+7)
-#define AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+8)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM				(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+4)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM				(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+5)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+6)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM	(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+7)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+8)
+#define AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM			(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->items+9)
 
 #define AGENT_ABORT_PROCESS_PROPERTY									(DEVICE_PRIVATE_DATA->agent_abort_process_property)
 #define AGENT_ABORT_PROCESS_ITEM      								(AGENT_ABORT_PROCESS_PROPERTY->items+0)
@@ -185,6 +186,17 @@ static void set_site_coordinates3(indigo_device *device) {
 	if (related_agent_name) {
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "SITELAT", "'%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value) * 3600)) % 60);
 		indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "SITELONG", "'%d %02d %02d'", (int)(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 60)) % 60, ((int)(fabs(AGENT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) * 3600)) % 60);
+	}
+}
+
+static void set_airmass(indigo_device *device) {
+	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
+	if (related_agent_name) {
+		if (AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM->number.value >= 1.0) {
+			indigo_set_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "AIRMASS", "%20.6f / air mass at DATE-OBS", AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM->number.value);
+		} else {
+			indigo_remove_fits_header(FILTER_DEVICE_CONTEXT->client, related_agent_name, "AIRMASS");
+		}
 	}
 }
 
@@ -332,13 +344,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM, AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM_NAME, "Right ascension (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM_NAME, "Declination (-90° to +90°)", -90, 90, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_DISPLAY_COORDINATES
-		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME, "Agent", "Display coordinates", INDIGO_OK_STATE, INDIGO_RO_PERM, 9);
+		AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY_NAME, "Agent", "Display coordinates", INDIGO_OK_STATE, INDIGO_RO_PERM, 10);
 		if (AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM_NAME, "Right ascension JNow (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM_NAME, "Declination JNow (-90° to +90°)", -90, 90, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM_NAME, "Altitude (0 to 180°)", 0, 180, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM_NAME, "Azimuth (0° to 360°)", -90, 360, 0, 0);
+		indigo_init_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM_NAME, "Airmass (1 to ∞)", 1, 10, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM_NAME, "Hour angle (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM_NAME, "Raise time (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM_NAME, "Transit time (0 to 24 hrs)", 0, 24, 0, 0);
@@ -892,6 +905,8 @@ static void update_display_coordinates(indigo_device *device) {
 	indigo_radec_to_altaz(ra, dec, &utc, DEVICE_PRIVATE_DATA->mount_latitude, DEVICE_PRIVATE_DATA->mount_longitude, DEVICE_PRIVATE_DATA->mount_elevation, &AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value);
 	AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value = fmod((lst - ra + 24), 24);
 	indigo_raise_set(UT2JD(utc), DEVICE_PRIVATE_DATA->mount_latitude, DEVICE_PRIVATE_DATA->mount_longitude, ra, dec, &AGENT_MOUNT_DISPLAY_COORDINATES_RISE_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_TRANSIT_ITEM->number.value, &AGENT_MOUNT_DISPLAY_COORDINATES_SET_ITEM->number.value);
+	AGENT_MOUNT_DISPLAY_COORDINATES_AIRMASS_ITEM->number.value = indigo_airmass(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value);
+	set_airmass(device);
 	AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst);
 	AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
 	indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);

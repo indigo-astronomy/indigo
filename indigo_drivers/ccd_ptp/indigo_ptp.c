@@ -925,7 +925,10 @@ uint32_t ptp_type_size(ptp_type type) {
 
 - (void)device:(nonnull ICDevice *)device didOpenSessionWithError:(NSError * _Nullable)error {
 	if (error != nil) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [error.description cStringUsingEncoding:NSUTF8StringEncoding]);
+		_error = error.description;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [_error cStringUsingEncoding:NSUTF8StringEncoding]);
+	} else {
+		_error = nil;
 	}
 	if (_openSemafor) {
 		dispatch_semaphore_signal(_openSemafor);
@@ -934,7 +937,10 @@ uint32_t ptp_type_size(ptp_type type) {
 
 - (void)device:(nonnull ICDevice *)device didCloseSessionWithError:(NSError * _Nullable)error {
 	if (error != nil) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [error.description cStringUsingEncoding:NSUTF8StringEncoding]);
+		_error = error.description;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [_error cStringUsingEncoding:NSUTF8StringEncoding]);
+	} else {
+		_error = nil;
 	}
 	if (_closeSemafor) {
 		dispatch_semaphore_signal(_closeSemafor);
@@ -942,6 +948,8 @@ uint32_t ptp_type_size(ptp_type type) {
 }
 
 - (void)didRemoveDevice:(nonnull ICDevice *)device {
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Device removed");
+	_removed = true;
 }
 
 - (void)cameraDevice:(nonnull ICCameraDevice *)camera didAddItems:(nonnull NSArray<ICCameraItem *> *)items {
@@ -979,9 +987,11 @@ uint32_t ptp_type_size(ptp_type type) {
 		if (_ptpSemafor) {
 			_ptpResponse = response;
 			_ptpInput = inData;
+			_error = nil;
 		}
 	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [error.description cStringUsingEncoding:NSUTF8StringEncoding]);
+		_error = error.description;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "error %s", [_error cStringUsingEncoding:NSUTF8StringEncoding]);
 	}
 	if (_ptpSemafor) {
 		dispatch_semaphore_signal(_ptpSemafor);
@@ -1002,9 +1012,18 @@ bool ptp_open(indigo_device *device) {
 	[camera requestOpenSession];
 	if (dispatch_semaphore_wait(delegate.openSemafor, dispatch_time(DISPATCH_TIME_NOW, 10000000000ull))) {
 		delegate.openSemafor = nil;
+		PRIVATE_DATA->delegate = nil;
+		camera.delegate = nil;
 		return false;
 	}
 	delegate.openSemafor = nil;
+	if (delegate.error) {
+		indigo_send_message(device, [delegate.error cStringUsingEncoding:NSUTF8StringEncoding]);
+		PRIVATE_DATA->delegate = nil;
+		camera.delegate = nil;
+		return false;
+	}
+	delegate.removed = false;
 	return true;
 }
 
@@ -1012,6 +1031,9 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	ICCameraDevice *camera = PRIVATE_DATA->dev;
 	ICACameraDelegate *delegate = PRIVATE_DATA->delegate;
 	if (camera == NULL || delegate == NULL) {
+		return false;
+	}
+	if (delegate.removed) {
 		return false;
 	}
 	ptp_container container;
@@ -1038,7 +1060,11 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "timeout");
 		return false;
 	}
-	[delegate.ptpResponse getBytes:&container length:sizeof(container)];
+	if (delegate.error) {
+		indigo_send_message(device, [delegate.error cStringUsingEncoding:NSUTF8StringEncoding]);
+		return false;
+	}
+ 	[delegate.ptpResponse getBytes:&container length:sizeof(container)];
 	PTP_DUMP_CONTAINER(&container);
 	if (in_1)
 		*in_1 = container.payload.params[0];
@@ -1051,13 +1077,17 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 	if (in_5)
 		*in_5 = container.payload.params[4];
 	delegate.ptpResponse = nil;
-	if (delegate.ptpInput && data_in) {
-		*data_in = malloc(delegate.ptpInput.length);
-		if (data_in_size) {
-			*data_in_size = (int)delegate.ptpInput.length;
+	if (data_in) {
+		if (delegate.ptpInput) {
+			*data_in = malloc(delegate.ptpInput.length);
+			if (data_in_size) {
+				*data_in_size = (int)delegate.ptpInput.length;
+			}
+			[delegate.ptpInput getBytes:*data_in length:delegate.ptpInput.length];
+			delegate.ptpInput = nil;
+		} else {
+			return false;
 		}
-		[delegate.ptpInput getBytes:*data_in length:delegate.ptpInput.length];
-		delegate.ptpInput = nil;
 	}
 	PRIVATE_DATA->last_error = container.code;
 	return container.code == ptp_response_OK;
@@ -1066,6 +1096,9 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 bool ptp_get_event(indigo_device *device) {
 	ICACameraDelegate *delegate = PRIVATE_DATA->delegate;
 	if (delegate == NULL) {
+		return false;
+	}
+	if (delegate.removed) {
 		return false;
 	}
 	ptp_container event;
@@ -1400,7 +1433,11 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						}
 					}
 				}
+			} else {
+				return true;
 			}
+		} else {
+			return true;
 		}
 	} else {
 		delete = true;
@@ -1422,8 +1459,7 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 				property->property->items->number.value = property->value.number.value;
 				define = true;
 			}
-		} else {
-			if (property->count > 0) {
+		} else if (property->count > 0) {
 				if (property->property->count != property->count) {
 					if (property->count > property->property->count)
 						property->property = indigo_resize_property(property->property, property->count);
@@ -1454,13 +1490,12 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 						property->property->items[i].sw.value = (property->value.sw.value == property->value.sw.values[i]);
 					}
 				}
-			} else {
-				if (IS_CONNECTED) {
-					indigo_delete_property(device, property->property, NULL);
-					indigo_release_property(property->property);
-					property->property = NULL;
-					return true;
-				}
+		} else {
+			if (IS_CONNECTED) {
+				indigo_delete_property(device, property->property, NULL);
+				indigo_release_property(property->property);
+				property->property = NULL;
+				return true;
 			}
 		}
 		if (!property->writable == (property->property->perm == INDIGO_RW_PERM)) {
@@ -1555,7 +1590,10 @@ bool ptp_initialise(indigo_device *device) {
 		
 #ifndef UNKNOWN_GROUP
 		for (int i = 0; properties[i]; i++) {
-			char *name = PRIVATE_DATA->property_code_name(properties[i]);
+			uint16_t code = properties[i];
+			if (code == ptp_property_DateTime)
+				continue;
+			char *name = PRIVATE_DATA->property_code_name(code);
 			if (!strncmp(name, "CCD_", 4))
 				continue;
 			if (!strncmp(name, "DSLR_", 5))
@@ -1694,7 +1732,8 @@ bool ptp_set_property(indigo_device *device, ptp_property *property) {
 }
 
 bool ptp_exposure(indigo_device *device) {
-	assert(0);
+	indigo_send_message(device, "Exposure is not supported");
+	return false;
 }
 
 bool ptp_set_host_time(indigo_device *device) {
