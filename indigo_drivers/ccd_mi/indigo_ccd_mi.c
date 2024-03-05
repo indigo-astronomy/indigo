@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -67,7 +67,8 @@ typedef struct {
 	int image_width;
 	int image_height;
 	bool downloading;
-	bool enumerated;
+	uint8_t bus;
+	uint8_t addr;
 } mi_private_data;
 
 static void mi_report_error(indigo_device *device, indigo_property *property) {
@@ -729,7 +730,6 @@ static void callback(int eid) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
 		if (device && PRIVATE_DATA->eid == eid) {
-			PRIVATE_DATA->enumerated = true;
 			return;
 		}
 	}
@@ -779,6 +779,8 @@ static void process_plug_event(libusb_device *dev) {
 			end[1] = '\0';
 			mi_private_data *private_data = indigo_safe_malloc(sizeof(mi_private_data));
 			private_data->eid = new_eid;
+			private_data->bus = libusb_get_bus_number(dev);
+			private_data->addr = libusb_get_device_address(dev);
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
 			device->master_device = master_device;
@@ -824,15 +826,11 @@ static void process_plug_event(libusb_device *dev) {
 
 static void process_unplug_event(libusb_device *dev) {
 	pthread_mutex_lock(&device_mutex);
-	for (int i = 0; i < MAX_DEVICES; i++) {
-		indigo_device *device = devices[i];
-		if (device)
-			PRIVATE_DATA->enumerated = false;
-	}
-	gxccd_enumerate_usb(callback);
+	uint8_t bus = libusb_get_bus_number(dev);
+	uint8_t addr = libusb_get_device_address(dev);
 	for (int i = MAX_DEVICES - 1; i >=0; i--) {
 		indigo_device *device = devices[i];
-		if (device && !PRIVATE_DATA->enumerated) {
+		if (device && PRIVATE_DATA->bus == bus && PRIVATE_DATA->addr == addr) {
 			indigo_detach_device(device);
 			if (device->master_device == device) {
 				mi_private_data *private_data = PRIVATE_DATA;
