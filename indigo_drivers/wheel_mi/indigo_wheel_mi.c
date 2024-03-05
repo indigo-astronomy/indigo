@@ -37,6 +37,7 @@
 
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_wheel_driver.h>
 
 #include "indigo_wheel_mi.h"
 
