@@ -2,6 +2,40 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-276] - 6 Mar Wed 2024
+## Overall:
+- filter agents:
+	- property caching fixed
+	- property size validated on update
+
+- Sequencer.js:
+	- bugfixes
+
+- add indigo_copy_property()
+- target added to indigo_trace_property() output for number properties
+
+### Driver Fixes
+- indigio_ccd_mi:
+	- Fix hotplug handling
+	- Update MI library to 0.10.0/0.9.0
+
+- indigo_agent_mount:
+	- add airmass to dissplay coordinates and image FITS header
+
+- ccd_ptp:
+	- 2683d4a fixed: propert DSLR_SHUTTER_PROPERTY_NAME and DSLR_ISO_PROPERTY_NAME handling on non-EXPEED7 cameras
+	- better handling of ignored properties
+
+- indigo_mount_lx200:
+	- remap SLEW_RATE_FIND and SLEW_RATE_CENTERING speeds for ASI, OnStep and NYX mounts
+
+- indigo_mount_asi:
+	- remap SLEW_RATE_FIND and SLEW_RATE_CENTERING speeds
+
+### New Drivers:
+- indigo_wheel_mi: Moravian Instruments filetr wheel driver
+
+
 # [2.0-274] - 1 Mar Fri 2024
 ## Overall:
 - filter agents:
