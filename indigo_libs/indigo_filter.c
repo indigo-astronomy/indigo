@@ -796,7 +796,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 				update_ccd_lens_info(device, property);
 			bool found = false;
 			for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-				if (device_cache[j] == property) {
+				if (indigo_property_match(device_cache[j], property)) {
 					found = true;
 					break;
 				}
