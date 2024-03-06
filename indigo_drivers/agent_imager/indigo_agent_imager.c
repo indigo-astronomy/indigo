@@ -75,7 +75,8 @@
 
 #define AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY		(DEVICE_PRIVATE_DATA->agent_imager_focus_estimator_property)
 #define AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM  (AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->items+0)
-#define AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM  (AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->items+1)
+#define AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM  (AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->items+1)
+#define AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM  (AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->items+2)
 
 #define AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY		(DEVICE_PRIVATE_DATA->agent_imager_download_file_property)
 #define AGENT_IMAGER_DOWNLOAD_FILE_ITEM    		(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY->items+0)
@@ -217,6 +218,7 @@ typedef struct {
 	bool focuser_has_backlash;
 	bool restore_initial_position;
 	bool use_hfd_estimator;
+	bool use_ucurve_estimator;
 	bool use_rms_estimator;
 	bool use_aux_1;
 	bool barrier_resume;
@@ -557,7 +559,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 				DEVICE_PRIVATE_DATA->frame_saturated = false;
 			}
 		}
-	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator || DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 		if ((AGENT_IMAGER_SELECTION_X_ITEM->number.value > 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value > 0) || DEVICE_PRIVATE_DATA->allow_subframing || DEVICE_PRIVATE_DATA->find_stars) {
 			if (DEVICE_PRIVATE_DATA->find_stars || (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count == 1)) {
 				int star_count;
@@ -637,6 +639,7 @@ static void preview_process(indigo_device *device) {
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
+	DEVICE_PRIVATE_DATA->use_ucurve_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value;
 	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value =
 	AGENT_IMAGER_STATS_DELAY_ITEM->number.value =
@@ -1126,6 +1129,7 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 	int current_offset = 0;
 	DEVICE_PRIVATE_DATA->saved_backlash = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 	DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
+	DEVICE_PRIVATE_DATA->use_ucurve_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value;
 	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator ? AF_MOVE_LIMIT_HFD * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : AF_MOVE_LIMIT_RMS * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
@@ -1150,6 +1154,7 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 			return false;
 		}
 		DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
+		DEVICE_PRIVATE_DATA->use_ucurve_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value;
 		DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 		double quality = 0;
 		int frame_count = 0;
@@ -1353,7 +1358,7 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 	}
 }
 
-static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask) {
+static bool autofocus_ucurve_backlash(indigo_device *device) {
 	indigo_client *client = FILTER_DEVICE_CONTEXT->client;
 	char *ccd_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX];
 	char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
@@ -1369,7 +1374,7 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 	AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	double last_quality = 0, min_est = 1e10, max_est = 0;
+	double last_quality = 0, min_est = 1e10;
 	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	double steps_todo;
 	int current_offset = 0;
@@ -1400,11 +1405,12 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 			return false;
 		}
 		DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
+		DEVICE_PRIVATE_DATA->use_ucurve_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value;
 		DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 		double quality = 0;
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
-			if (capture_raw_frame(device, saturation_mask) != INDIGO_OK_STATE) {
+			if (capture_raw_frame(device, NULL) != INDIGO_OK_STATE) {
 				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 					return false;
 				} else {
@@ -1412,13 +1418,7 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 				}
 			}
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-			if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "RMS contrast = %f", AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value);
-				if (AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value == 0) {
-					continue;
-				}
-				quality = (quality > AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value) ? quality : AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
-			} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+			if (DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
 					INDIGO_DRIVER_DEBUG(
 						DRIVER_NAME,
@@ -1440,6 +1440,9 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 					current_quality,
 					quality
 				);
+			} else {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "BUG: This should not happen - Only U-CURVE estimator is supported for this function");
+				return false;
 			}
 			frame_count++;
 		}
@@ -1448,17 +1451,11 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 			continue;
 		}
 
-		if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
-			min_est = (min_est > quality) ? quality : min_est;
-			if (DEVICE_PRIVATE_DATA->frame_saturated) {
-				max_est = quality;
-			} else {
-				max_est = (max_est < quality) ? quality : max_est;
-			}
-		}
-		if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+		if (DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 			min_est = (min_est > AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : min_est;
-			max_est = (max_est < AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : max_est;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "BUG: This should not happen - Only U-CURVE estimator is supported for this function");
+			return false;
 		}
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Focus Quality = %g (%g)", quality, last_quality);
 		
@@ -1529,25 +1526,26 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "best_focus = %g %g", extremum[0], extremum[1]);
 	indigo_send_message(device, "U-Curve found best focus at position %.3f", extremum[0]);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "U-Curve found best focus at position %.3f - %d %d", extremum[0], CLIENT_PRIVATE_DATA->focuser_position, (int)fabs(round(CLIENT_PRIVATE_DATA->focuser_position-extremum[0])));
 
-	capture_raw_frame(device, saturation_mask);
+	if (!move_focuser(device, focuser_name, !moving_out, fabs(round(CLIENT_PRIVATE_DATA->focuser_position - extremum[0])))) {
+		return false;
+	}
+
+	capture_raw_frame(device, NULL);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		return false;
 	}
 	// Calculate focus deviation from best
-	if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
-		if (max_est > min_est) {
-			AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100 * (max_est - AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value) / (max_est - min_est);
-		} else {
-			AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
-		}
-	}
-	if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+	if (DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 		if (min_est > 0) {
 			AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100 * (min_est - AGENT_IMAGER_STATS_HFD_ITEM->number.value) / min_est;
 		} else {
 			AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
 		}
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "BUG: This should not happen - Only U-CURVE estimator is supported for this function");
+		return false;
 	}
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 
@@ -1559,8 +1557,7 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 		indigo_send_message(device, "No focus reached, did not converge");
 		focus_failed = true;
 	} else if (
-		(DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 15) || /* for HFD 15% deviation is ok - tested on realsky */
-		(DEVICE_PRIVATE_DATA->use_rms_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 25)    /* for RMS 25% deviation is ok - tested on realsky */
+		(DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 15) /* for HFD 15% deviation is ok - tested on realsky */
 	) {
 		indigo_send_message(device, "Focus does not meet the quality criteria");
 		focus_failed = true;
@@ -1590,7 +1587,7 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 	}
 }
 
-static bool autofocus_backlash1(indigo_device *device, uint8_t **saturation_mask) {
+static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask) {
 	char *ccd_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX];
 	char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value =
@@ -1632,6 +1629,7 @@ static bool autofocus_backlash1(indigo_device *device, uint8_t **saturation_mask
 			return false;
 		}
 		DEVICE_PRIVATE_DATA->use_hfd_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value;
+		DEVICE_PRIVATE_DATA->use_ucurve_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value;
 		DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 		double quality = 0;
 		int frame_count = 0;
@@ -1820,9 +1818,17 @@ static bool autofocus(indigo_device *device) {
 	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
 	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	if (AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM->number.value > 1) {
-		result = autofocus_overshoot(device, &saturation_mask);
+		if(DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
+			result = autofocus_ucurve_backlash(device);
+		} else {
+			result = autofocus_overshoot(device, &saturation_mask);
+		}
 	} else {
-		result = autofocus_backlash(device, &saturation_mask);
+		if(DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
+			result = autofocus_ucurve_baclkash(device);
+		} else {
+			result = autofocus_backlash(device, &saturation_mask);
+		}
 	}
 	restore_switch_state(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_MODE_PROPERTY_NAME, focuser_mode);
 	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
@@ -2476,10 +2482,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_FAILURE_STOP_ITEM, AGENT_IMAGER_FOCUS_FAILURE_STOP_ITEM_NAME, "Stop on failure", false);
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM, AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM_NAME, "Goto starting position", true);
 		// -------------------------------------------------------------------------------- Focus Quality Estimator
-		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY_NAME, "Agent", "Autofocus estimator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY_NAME, "Agent", "Autofocus estimator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM_NAME, "Peak / HFD", true);
+		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM_NAME, "U-Curve", false);
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM_NAME, "RMS contrast", false);
 		// -------------------------------------------------------------------------------- Process properties
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 5);
