@@ -439,7 +439,7 @@
                                                           error: &error];
         if (device == nil)
         {
-            NSXRaiseError(error);
+					return;
         }
 
         if (([device locationId] == 0) && skipZeroLocations)
