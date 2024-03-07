@@ -569,7 +569,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 				private_data->property_value_code_label = ptp_property_nikon_value_code_label;
 				private_data->initialise = ptp_nikon_initialise;
 				private_data->handle_event = ptp_nikon_handle_event;
-				private_data->inject_property = NULL;
+				private_data->inject_property = ptp_nikon_inject_property;
 				private_data->fix_property = ptp_nikon_fix_property;
 				private_data->set_property = ptp_nikon_set_property;
 				private_data->exposure = ptp_nikon_exposure;
