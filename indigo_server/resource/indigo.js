@@ -120,6 +120,20 @@ function enumerateProperties() {
 }
 
 function changeProperty(deviceName, propertyName, values) {
+	var hints = INDIGO.devices[deviceName][propertyName].hints;
+	if (hints != null) {
+		hints = hints.split(";")
+		for (var i in hints) {
+			var hint = hints[i];
+			if (hint.startsWith("warn_on_change:")) {
+				if (confirm(hint.substring(16, hint.length - 1))) {
+					break;
+				} else {
+					return;
+				}
+			}
+		}
+	}
 	var items = []
 	for (var name in values)
 		items.push({ "name": name, "value": value = values[name] });

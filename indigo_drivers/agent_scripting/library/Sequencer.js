@@ -90,6 +90,10 @@ Sequence.prototype.select_frame_type = function(name) {
 	this.sequence.push({ execute: 'select_frame_type("' + name + '")', step: this.step++ });
 };
 
+Sequence.prototype.select_image_format = function(name) {
+	this.sequence.push({ execute: 'select_image_format("' + name + '")', step: this.step++ });
+};
+
 Sequence.prototype.select_camera_mode = function(name) {
 	this.sequence.push({ execute: 'select_camera_mode("' + name + '")', step: this.step++ });
 };
@@ -174,7 +178,7 @@ Sequence.prototype.capture_stream = function(name_template, count, exposure) {
 };
 
 Sequence.prototype.focus = function(exposure) {
-	this.sequence.push({ execute: 'save_batch()', step: this.step++ });
+	this.sequence.push({ execute: 'save_batch()', step: this.step });
 	this.sequence.push({ execute: 'set_batch(1,' + exposure + ', 0)', step: this.step });
 	this.sequence.push({ execute: 'focus()', step: this.step });
 	this.sequence.push({ execute: 'restore_batch()', step: this.step++ });
@@ -764,6 +768,20 @@ var indigo_sequencer = {
 		}
 	},
 
+	select_image_format: function(name) {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].CCD_IMAGE_FORMAT;
+		if (property != null && property.items[name] != undefined) {
+			if (property.items[name]) {
+				this.warning("Image format " + name + " is already selected");
+			} else {
+				this.select_switch(agent, "CCD_IMAGE_FORMAT", name);
+			}
+		} else {
+			this.failure("Can't select image format");
+		}
+	},
+
 	select_camera_mode: function(name) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].CCD_MODE;
@@ -907,9 +925,9 @@ var indigo_sequencer = {
 	
 	set_imager_dithering: function(skip_frames) {
 		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_IMAGER_DITHERING;
+		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
 		if (property != null) {
-			this.change_numbers(agent, "AGENT_IMAGER_DITHERING", { SKIP_FRAMES: skip_frames });
+			this.change_numbers(agent, "AGENT_IMAGER_BATCH", { FRAMES_TO_SKIP_BEFORE_DITHER: skip_frames });
 		} else {
 			this.failure("Can't set dithering on imager side");
 		}
@@ -1035,7 +1053,7 @@ var indigo_sequencer = {
 		}
 	},
 
-	focus: function(exposure) {
+	focus: function() {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {

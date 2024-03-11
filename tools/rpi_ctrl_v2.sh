@@ -25,7 +25,7 @@
 #
 # This version of the script uses network manager to setup WiFi AP and client.
 
-VERSION=2.00
+VERSION=2.01
 
 # Setup RPi as access point server.
 DEFAULT_WIFI_AP_SSID="indigosky"
@@ -35,6 +35,10 @@ WIFI_AP_SSID=""
 WIFI_AP_PW=""
 OPT_WIFI_AP_SET=0
 OPT_WIFI_AP_GET=0
+
+WIFI_COUNTRY_CODE=""
+OPT_WIFI_COUTNRY_CODE_GET=0
+OPT_WIFI_COUTNRY_CODE_SET=0
 
 WIFI_AP_CH=6
 WIFI_HW_MODE="bg"
@@ -106,6 +110,7 @@ APT_CACHE_EXE=$(which apt-cache)
 APT_GET_EXE=$(which apt-get)
 DATE_EXE=$(which date)
 IW_EXE=$(which iw)
+RPI_CFG_EXE=$(which raspi-config)
 WIFI_CH_SELECT_EXE=$(which wifi_channel_selector.pl)
 
 ###############################################
@@ -114,10 +119,12 @@ WIFI_CH_SELECT_EXE=$(which wifi_channel_selector.pl)
 __usage() {
 
     echo -e "usage: ${0}\n" \
+	 "\t--get-wifi-country-code\n" \
+	 "\t--set-wifi-country-code <code> (two letter country code like US, BG etc. NOTE: This will reset the WiFi to defaults)\n" \
 	 "\t--get-wifi-server\n" \
 	 "\t--set-wifi-server <ssid> <password>\n" \
 	 "\t--get-wifi-channel\n" \
-	 "\t--set-wifi-channel <channel> (${WIFI_CHANNELS[*]}, 0 = auto)\n" \
+	 "\t--set-wifi-channel <channel> (0 = automatically select in 2.4GHz band, available channels dpend on country regulations)\n" \
 	 "\t--get-wifi-client\n" \
 	 "\t--set-wifi-client <ssid> <password>\n" \
 	 "\t--reset-wifi-server\n" \
@@ -251,6 +258,33 @@ __disable-forwarding() {
     __OK
 }
 
+
+###############################################
+# get WiFi country code
+###############################################
+__get_wifi_country_code() {
+
+    local country_code=`${RPI_CFG_EXE} nonint get_wifi_country`
+    echo $country_code
+}
+
+
+###############################################
+# set WiFi conutry code
+###############################################
+__set_wifi_country_code() {
+
+    ${RPI_CFG_EXE} nonint do_wifi_country ${WIFI_COUNTRY_CODE} >/dev/null 2>&1
+    [[ $? -ne 0 ]] && { __ALERT "cannot set WiFi country code ${WIFI_COUNTRY_CODE}"; }
+
+    WIFI_AP_SSID=${DEFAULT_WIFI_AP_SSID}
+    WIFI_AP_PW=${DEFAULT_WIFI_AP_PW}
+    __set-wifi-server
+    __OK
+
+}
+
+
 ###############################################
 # Get active wifi-mode, returns "wifi-server"
 # or "wifi-client".
@@ -299,7 +333,7 @@ __set-wifi-server-silent() {
     [[ ${channel_valid} -eq 0 ]] && __ALERT "WIFI_AP_CH not in list (${WIFI_CHANNELS[*]})"
 
     if [[ ${WIFI_AP_CH} -eq 0 ]]; then
-        WIFI_AP_CH=$($WIFI_CH_SELECT_EXE);
+        WIFI_AP_CH=$($WIFI_CH_SELECT_EXE 2>/dev/null);
         [[ $? -ne 0 ]] && { __ALERT "cannot auto select WiFi channel"; }
     fi
 
@@ -310,11 +344,11 @@ __set-wifi-server-silent() {
     [[ ${WIFI_AP_CH} -eq 0 ]] && __ALERT "Auto Channel Selection is not available"
 
     ${NM_CLI} con delete ${CON_NAME} >/dev/null 2>&1
-    ${NM_CLI} con add type wifi ifname wlan0 mode ap con-name ${CON_NAME} ssid ${WIFI_AP_SSID} >/dev/null 2>&1 && \
+    ${NM_CLI} con add type wifi ifname wlan0 mode ap con-name ${CON_NAME} ssid "${WIFI_AP_SSID}" >/dev/null 2>&1 && \
     ${NM_CLI} con modify ${CON_NAME} 802-11-wireless.band ${WIFI_HW_MODE} >/dev/null 2>&1 && \
     ${NM_CLI} con modify ${CON_NAME} 802-11-wireless.channel ${WIFI_AP_CH} >/dev/null 2>&1 && \
     ${NM_CLI} con modify ${CON_NAME} 802-11-wireless-security.key-mgmt wpa-psk >/dev/null 2>&1 && \
-    ${NM_CLI} con modify ${CON_NAME} 802-11-wireless-security.psk ${WIFI_AP_PW} >/dev/null 2>&1 && \
+    ${NM_CLI} con modify ${CON_NAME} 802-11-wireless-security.psk "${WIFI_AP_PW}" >/dev/null 2>&1 && \
     ${NM_CLI} con modify ${CON_NAME} ipv4.method shared >/dev/null 2>&1 && \
     ${NM_CLI} con modify ${CON_NAME} ipv4.addr 192.168.235.1/24 >/dev/null 2>&1 && \
     ${NM_CLI} con modify ${CON_NAME} connection.autoconnect yes >/dev/null 2>&1 && \
@@ -324,8 +358,6 @@ __set-wifi-server-silent() {
 
 __set-wifi-server() {
     __set-wifi-server-silent
-    [[ $? -ne 0 ]] && __ALERT "cannot create AP with ssid '${WIFI_AP_SSID}'"
-
     __OK
 }
 
@@ -380,26 +412,29 @@ __set-wifi-channel() {
 
     local mode=$(__get-wifi-mode)
 
-    __validate_channel ${WIFI_AP_CH}
-    local channel_valid=$?
-    [[ ${channel_valid} -eq 0 ]] && __ALERT "WiFi channel ${WIFI_AP_CH} is not in list (${WIFI_CHANNELS[*]})"
+    #__validate_channel ${WIFI_AP_CH}
+    #local channel_valid=$?
+    #[[ ${channel_valid} -eq 0 ]] && __ALERT "WiFi channel ${WIFI_AP_CH} is not in list (${WIFI_CHANNELS[*]})"
 
     if [[ ${WIFI_AP_CH} -gt 30 ]]; then
         WIFI_HW_MODE="a"
     fi
 
     if [[ ${WIFI_AP_CH} -eq 0 ]]; then
-        WIFI_AP_CH=$($WIFI_CH_SELECT_EXE);
+        WIFI_AP_CH=$($WIFI_CH_SELECT_EXE 2>/dev/null);
         [[ $? -ne 0 ]] && { __ALERT "cannot auto select WiFi channel"; }
     fi
 
     if [[ "${mode}" == "wifi-server" ]]; then
-        ${NM_CLI} con modify ${CON_NAME} 802-11-wireless.band ${WIFI_HW_MODE} 802-11-wireless.channel ${WIFI_AP_CH} && \
-        ${NM_CLI} con up ${CON_NAME}
-	[[ $? -ne 0 ]] && { __ALERT "cannot set WiFi channel ${WIFI_AP_CH}"; }
+        ${NM_CLI} con modify ${CON_NAME} 802-11-wireless.band ${WIFI_HW_MODE} 802-11-wireless.channel ${WIFI_AP_CH} >/dev/null 2>&1 && \
+        ${NM_CLI} con up ${CON_NAME} >/dev/null 2>&1
+        if [[ $? -ne 0 ]]; then
+            ${NM_CLI} con modify ${CON_NAME} 802-11-wireless.band ${WIFI_HW_MODE} 802-11-wireless.channel 6 >/dev/null 2>&1 && \
+            ${NM_CLI} con up ${CON_NAME} >/dev/null 2>&1
+            __ALERT "cannot set WiFi channel ${WIFI_AP_CH}, channel reset to default"
+        fi
         sleep 1
         __OK
-
     fi
 
     __ALERT "not in AP mode";
@@ -418,10 +453,10 @@ __set-wifi-client() {
     ${NM_CLI} con down ${CON_NAME} >/dev/null 2>&1
     ${NM_CLI} con delete ${CON_NAME} >/dev/null 2>&1
     sleep 3
-    ${NM_CLI} dev wifi connect ${WIFI_CN_SSID} password ${WIFI_CN_PW} >/dev/null 2>&1
+    ${NM_CLI} dev wifi connect "${WIFI_CN_SSID}" password "${WIFI_CN_PW}" >/dev/null 2>&1
     local res=$?
 
-    ${NM_CLI} con modify ${WIFI_CN_SSID} con-name ${CON_NAME} connection.autoconnect yes >/dev/null 2>&1
+    ${NM_CLI} con modify "${WIFI_CN_SSID}" con-name ${CON_NAME} connection.autoconnect yes >/dev/null 2>&1
     ${NM_CLI} con up ${CON_NAME} >/dev/null 2>&1
 
     if [[ ${res} -ne 0 ]]; then
@@ -537,6 +572,14 @@ while [[ $# -gt 0 ]]
 do
     arg="$1"
     case $arg in
+        --get-wifi-country-code)
+            OPT_WIFI_COUTNRY_CODE_GET=1
+            ;;
+        --set-wifi-country-code)
+            WIFI_COUNTRY_CODE="${2}"
+            shift
+            OPT_WIFI_COUTNRY_CODE_SET=1
+            ;;
 	--get-wifi-server)
 	    OPT_WIFI_AP_GET=1
 	    ;;
@@ -622,7 +665,10 @@ __check_file_exists ${APT_CACHE_EXE}
 __check_file_exists ${APT_GET_EXE}
 __check_file_exists ${DATE_EXE}
 __check_file_exists ${IW_EXE}
+__check_file_exists ${RPI_CFG_EXE}
 
+[[ ${OPT_WIFI_COUTNRY_CODE_GET} -eq 1 ]] && { __get_wifi_country_code; }
+[[ ${OPT_WIFI_COUTNRY_CODE_SET} -eq 1 ]] && { __set_wifi_country_code; }
 [[ ${OPT_GET_FORWARDING} -eq 1 ]] && { __get-forwarding; }
 [[ ${OPT_ENABLE_FORWARDING} -eq 1 ]] && { __enable-forwarding; }
 [[ ${OPT_DISABLE_FORWARDING} -eq 1 ]] && { __disable-forwarding; }
