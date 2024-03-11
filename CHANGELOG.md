@@ -2,6 +2,98 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-276] - 6 Mar Wed 2024
+## Overall:
+- filter agents:
+	- property caching fixed
+	- property size validated on update
+
+- Sequencer.js:
+	- bugfixes
+
+- add indigo_copy_property()
+- target added to indigo_trace_property() output for number properties
+
+### Driver Fixes
+- indigio_ccd_mi:
+	- Fix hotplug handling
+	- Update MI library to 0.10.0/0.9.0
+
+- indigo_agent_mount:
+	- add airmass to dissplay coordinates and image FITS header
+
+- ccd_ptp:
+	- 2683d4a fixed: propert DSLR_SHUTTER_PROPERTY_NAME and DSLR_ISO_PROPERTY_NAME handling on non-EXPEED7 cameras
+	- better handling of ignored properties
+
+- indigo_mount_lx200:
+	- remap SLEW_RATE_FIND and SLEW_RATE_CENTERING speeds for ASI, OnStep and NYX mounts
+
+- indigo_mount_asi:
+	- remap SLEW_RATE_FIND and SLEW_RATE_CENTERING speeds
+
+### New Drivers:
+- indigo_wheel_mi: Moravian Instruments filetr wheel driver
+
+
+# [2.0-274] - 1 Mar Fri 2024
+## Overall:
+- filter agents:
+	- now buffer all driver side properties
+	- memory leak fixed
+	- remove/update device property fixed
+
+- rpi_ctrl_v2.sh:
+	- fixes and support for wifi country code added
+
+- indigo_server:
+	- support for WiFi country code added
+	- webgui: warn_on_change hint support added
+	- properly handle SHUTDOWN and REBOOT properties
+	- typo fixed
+
+- indigo_docs:
+	- PROTOCOLS.md - fixes
+	- PROTOCOLS.md - add "tip" hint and explain better some other hints
+
+### Driver fixes:
+- indigo_agent_scripting:
+	- select_image_format() added
+
+- indigo_agent_imager:
+	- message fix
+
+- indigo_agent_guider:
+	- guiding log can be saved on server side
+
+- indigo_ccd_mi:
+	- fix cooling support
+	- fix bin 3x3 support
+	- fix IS_CONNECTED race with temerature and cooler callbacks
+
+- indigo_ccd_touptek & OEM:
+	- add workaround for some cameras like G3M678 that can not get exposure
+	- add SPEED to X_CCD_ADVANCED property
+
+- indigo_ccd_ogma:
+	- sdk updated 55.24647.20240218
+
+- indigo_ccd_ptp:
+	- mutexes destroyed on detach
+	- first sony capture fixed
+	- set host time fixed
+	- output data for ptp transaction verified
+
+- indigo_mount_ioptron:
+	- fix missing MOUNT_SIDE_OF_PIER proeprty for maouts that support it
+
+- indigo_wheel_qhy:
+	- fix premature WHEEL_SLOT proprty ok state
+
+- indigo_wheel_fli:
+	- libfli-1.999.1-180223: crash fixes
+
+
 # [2.0-272] - 11 Feb Sun 2024
 ## Overall:
 - Sequencer.js:

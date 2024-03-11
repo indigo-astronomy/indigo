@@ -181,6 +181,20 @@ void indigo_raise_set(
 	}
 }
 
+double indigo_airmass(double altitude) {
+    altitude *= DEG2RAD;
+
+    double zenith_angle = M_PI / 2 - altitude;
+
+    double sin_z = sin(zenith_angle);
+    double sin_squared_z = sin_z * sin_z;
+
+    // Calculate the airmass using the Kasten and Young formula
+    double airmass = pow(1 - 0.96 * sin_squared_z, -0.5);
+
+    return airmass;
+}
+
 double indigo_lst(const time_t *utc, const double longitude) {
 	double gst = indigo_mean_gst(utc);
 	return fmod(gst + longitude/15.0 + 24.0, 24.0);
