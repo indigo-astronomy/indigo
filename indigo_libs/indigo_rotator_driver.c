@@ -107,7 +107,7 @@ indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_na
 			ROTATOR_RELATIVE_MOVE_PROPERTY = indigo_init_number_property(NULL, device->name, ROTATOR_RELATIVE_MOVE_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Relative move", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (ROTATOR_RELATIVE_MOVE_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(ROTATOR_RELATIVE_MOVE_ITEM, ROTATOR_RELATIVE_MOVE_ITEM_NAME, "Relative move [°]", -90, 360, 1, 0);
+			indigo_init_number_item(ROTATOR_RELATIVE_MOVE_ITEM, ROTATOR_RELATIVE_MOVE_ITEM_NAME, "Relative move [°]", -180, 180, 1, 0);
 			ROTATOR_RELATIVE_MOVE_PROPERTY->hidden = true;
 			// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
 			ROTATOR_ABORT_MOTION_PROPERTY = indigo_init_switch_property(NULL, device->name, ROTATOR_ABORT_MOTION_PROPERTY_NAME, ROTATOR_MAIN_GROUP, "Abort motion", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 1);
@@ -217,7 +217,7 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 		return INDIGO_OK;
-	// -------------------------------------------------------------------------------- ROTATOR_DIRECTION
+	// -------------------------------------------------------------------------------- ROTATOR_POISITON_OFFSET
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		if (ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value && !ROTATOR_RAW_POSITION_PROPERTY->hidden){
 			ROTATOR_POSITION_OFFSET_ITEM->number.value = ROTATOR_POSITION_OFFSET_ITEM->number.target = rotator_calculate_offset(device);
