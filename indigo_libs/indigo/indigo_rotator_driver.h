@@ -164,6 +164,18 @@ extern indigo_result indigo_rotator_change_property(indigo_device *device, indig
  */
 extern indigo_result indigo_rotator_detach(indigo_device *device);
 
+
+/**
+ * @brief Normalize an angle to the range [0, 360).
+ *
+ * This function takes an angle as input and normalizes it to the range [0, 360) degrees. 
+ * That is, it adds or subtracts multiples of 360 until the angle is within the range [0, 360).
+ *
+ * @param angle The angle to be normalized, in degrees.
+ * @return The angle normalized to the range [0, 360) degrees.
+ */
+double indigo_range360(double angle);
+
 #ifdef __cplusplus
 }
 #endif
