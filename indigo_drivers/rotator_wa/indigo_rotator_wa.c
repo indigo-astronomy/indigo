@@ -132,35 +132,82 @@ static bool wa_command(indigo_device *device, char *command, char *response, int
 	return true;
 }
 
-static void rotator_position_handler(indigo_device *device) {
+static void rotator_update_status(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	if (wa_command(device, "1500001", response, sizeof(response))) {
 		wr_status_t status;
 		if (wr_parse_status(response, &status)) {
 			if (PRIVATE_DATA->current_position != status.position) {
-				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position);
 				PRIVATE_DATA->current_position == status.position;
 				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 			}
-			if (ROTATOR_BACKLASH_ITEM->number.value != status.backlash) {
-				ROTATOR_BACKLASH_ITEM->number.value = status.backlash;
-				indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
-			}
-			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value && status.reverse) {
-				ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = false;
-				ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = true;
-				indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
-			} else if (ROTATOR_DIRECTION_REVERSED_ITEM->sw.value && !status.reverse) {
-				ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = true;
-				ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = false;
-				indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
+			if (status.model_id[0] != '\0') {
+				if (ROTATOR_BACKLASH_ITEM->number.value != status.backlash) {
+					ROTATOR_BACKLASH_ITEM->number.value = status.backlash;
+					indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
+				}
+				if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value && status.reverse) {
+					ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = false;
+					ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = true;
+					indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
+				} else if (ROTATOR_DIRECTION_REVERSED_ITEM->sw.value && !status.reverse) {
+					ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = true;
+					ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = false;
+					indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
+				}
 			}
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	indigo_reschedule_timer(device, 5, &PRIVATE_DATA->position_timer);
+}
+
+static bool rotator_handle_position(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char response[64];
+	int result;
+	while (result = indigo_select(PRIVATE_DATA->handle, 100000) <= 0) {
+		if (ROTATOR_ABORT_MOTION_ITEM->sw.value) {
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+			return false;
+		}
+	}
+	result = indigo_read_line(PRIVATE_DATA->handle, response, sizeof(response));
+	if (result < 0)	{
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ -> no response");
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+		return false;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "READ -> %s", response);
+
+	wr_status_t status = {0};
+	if (wr_parse_status(response, &status)) {
+		if (PRIVATE_DATA->current_position != status.position) {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position);
+			PRIVATE_DATA->current_position == status.position;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			ROTATOR_RELATIVE_MOVE_ITEM->number.value = 0;
+			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+		}
+	} else {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+	}
+	return true;
 }
 
 static void rotator_connection_handler(indigo_device *device) {
@@ -169,6 +216,7 @@ static void rotator_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
+			indigo_usleep(2 * ONE_SECOND_DELAY); // wait for the rotator to initialize after opening the serial port
 			if (wa_command(device, "1500001", response, sizeof(response))) {
 				wr_status_t status;
 				if (wr_parse_status(response, &status)) {
@@ -181,9 +229,15 @@ static void rotator_connection_handler(indigo_device *device) {
 						close(PRIVATE_DATA->handle);
 						PRIVATE_DATA->handle = 0;
 					}
-					ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.value = status.position;
+					ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position);
+					PRIVATE_DATA->current_position = status.position;
+					ROTATOR_BACKLASH_ITEM->number.value = status.backlash;
+					ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = !status.reverse;
+					ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = status.reverse;
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, status.model_id);
 					strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, status.firmware);
+					indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
+					indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
@@ -199,14 +253,12 @@ static void rotator_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_set_timer(device, 1, rotator_position_handler, &PRIVATE_DATA->position_timer);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		}
 	} else {
-		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Unknown");
 		strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, "Unknown");
 		indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -226,8 +278,10 @@ static void rotator_abort_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 	ROTATOR_ABORT_MOTION_ITEM->sw.value = false;
+	wa_command(device, "stop", NULL, 0);
 	indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	rotator_update_status(device);
 }
 
 static void rotator_direction_handler(indigo_device *device) {
@@ -258,6 +312,51 @@ static void rotator_relative_move_handler(indigo_device *device) {
 		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	rotator_handle_position(device);
+}
+
+static void rotator_absolute_move_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16];
+	char response[64];
+	if (wa_command(device, "1500001", response, sizeof(response))) {
+		wr_status_t status = {0};
+		if (wr_parse_status(response, &status)) {
+			double move = ROTATOR_POSITION_ITEM->number.target - indigo_range360(status.position);
+			if (move > 180) {
+				move -= 360;
+			} else if (move < -180) {
+				move += 360;
+			}
+			snprintf(command, sizeof(command), "%d", (int)(move * PRIVATE_DATA->steps_degree));
+			if(wa_command(device, command, NULL, 0)) {
+				ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+			} else {
+				ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			}
+		} else {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	} else {
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	rotator_handle_position(device);
+}
+
+static void rotator_backlash_handler(indigo_device *device) {
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	char command[16];
+	snprintf(command, sizeof(command), "1600%03d", (int)(ROTATOR_BACKLASH_ITEM->number.target * 10));
+	if(wa_command(device, command, NULL, 0)) {
+		ROTATOR_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		ROTATOR_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -313,7 +412,14 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, rotator_connection_handler, NULL);
-		return INDIGO_OK;		
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
+		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
+		ROTATOR_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, rotator_abort_handler, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_DIRECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_DIRECTION
 		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
@@ -328,7 +434,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(ROTATOR_RELATIVE_MOVE_PROPERTY, property, false);
 		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
-		indigo_set_timer(device, 0, rotator_relative_move_handler, NULL);
+		indigo_set_timer(device, 0, rotator_relative_move_handler, &PRIVATE_DATA->position_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_POSITION
@@ -337,8 +443,21 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
-		indigo_set_timer(device, 0, rotator_position_handler, &PRIVATE_DATA->position_timer);
+		indigo_set_timer(device, 0, rotator_absolute_move_handler, &PRIVATE_DATA->position_timer);
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ROTATOR_BACKLASH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_BACKLASH
+		indigo_property_copy_values(ROTATOR_BACKLASH_PROPERTY, property, false);
+		ROTATOR_BACKLASH_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
+		indigo_set_timer(device, 0, rotator_backlash_handler, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(ROTATOR_POSITION_OFFSET_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- ROTATOR_POSITION_OFFSET
+		indigo_property_copy_values(ROTATOR_POSITION_OFFSET_PROPERTY, property, false);
+		ROTATOR_POSITION_OFFSET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
+		//indigo_set_timer(device, 0, rotator_update_status, NULL);
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
 		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
