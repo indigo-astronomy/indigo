@@ -36,7 +36,7 @@
 
 #include <indigo/indigo_rotator_driver.h>
 
-static double indigo_range360(double angle) {
+double indigo_range360(double angle) {
 	return fmod(angle + (360000), 360);
 }
 
