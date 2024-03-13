@@ -74,7 +74,7 @@ extern "C" {
 */
 #define ROTATOR_ON_POSITION_SET_SYNC_ITEM			(ROTATOR_ON_POSITION_SET_PROPERTY->items+1)
 
-/** ROTATOR_POSITION property pointer, property is mandatory, property change request should be fully handled by rotator driver
+/** ROTATOR_POSITION property pointer, property is mandatory, property change request should be handled by rotator driver, sync can be handleled by the base class
 */
 #define ROTATOR_POSITION_PROPERTY							(ROTATOR_CONTEXT->rotator_position_property)
 
@@ -126,7 +126,7 @@ extern "C" {
  */
 #define ROTATOR_RAW_POSITION_ITEM 			(ROTATOR_RAW_POSITION_PROPERTY->items + 0)
 
-/** ROTATOR_POSITION_OFFSET property pointer, property is optional and read only
+/** ROTATOR_POSITION_OFFSET property pointer, property is optional, handled by the base class
  */
 #define ROTATOR_POSITION_OFFSET_PROPERTY		(ROTATOR_CONTEXT->rotator_position_offset_property)
 

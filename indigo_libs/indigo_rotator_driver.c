@@ -71,6 +71,10 @@ double rotator_calculate_position(indigo_device *device) {
 	return indigo_range360(ROTATOR_RAW_POSITION_ITEM->number.value + ROTATOR_POSITION_OFFSET_ITEM->number.value);
 }
 
+double rotator_calculate_offset(indigo_device *device) {
+	return indigo_range360(ROTATOR_POSITION_ITEM->number.value - ROTATOR_RAW_POSITION_ITEM->number.value);
+}
+
 indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_name, unsigned version) {
 	assert(device != NULL);
 	assert(device != NULL);
@@ -216,6 +220,17 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(ROTATOR_DIRECTION_PROPERTY, property, false);
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
+		return INDIGO_OK;
+	// -------------------------------------------------------------------------------- ROTATOR_POSITION
+	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
+		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
+		if((ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value && !ROTATOR_POSITION_OFFSET_PROPERTY->hidden)) {
+			ROTATOR_POSITION_OFFSET_ITEM->number.value = ROTATOR_POSITION_OFFSET_ITEM->number.target = rotator_calculate_offset(device);
+			indigo_rotator_save_calibration(device);
+			indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
+		}
+		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- ROTATOR_POISITON_OFFSET
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_OFFSET_PROPERTY, property)) {
