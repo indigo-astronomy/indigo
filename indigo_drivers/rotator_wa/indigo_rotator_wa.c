@@ -139,9 +139,11 @@ static void rotator_update_status(indigo_device *device) {
 		wr_status_t status;
 		if (wr_parse_status(response, &status)) {
 			if (PRIVATE_DATA->current_position != status.position) {
-				ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position);
-				PRIVATE_DATA->current_position == status.position;
+				ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value);
+				ROTATOR_RAW_POSITION_ITEM->number.value = status.position;
+				PRIVATE_DATA->current_position = status.position;
 				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+				indigo_update_property(device, ROTATOR_RAW_POSITION_PROPERTY, NULL);
 			}
 			if (status.model_id[0] != '\0') {
 				if (ROTATOR_BACKLASH_ITEM->number.value != status.backlash) {
@@ -192,11 +194,17 @@ static bool rotator_handle_position(indigo_device *device) {
 
 	wr_status_t status = {0};
 	if (wr_parse_status(response, &status)) {
+		indigo_error("position = %.3f\ncurrent_position = %.2f\n",
+			status.position,
+			PRIVATE_DATA->current_position
+		);
 		if (PRIVATE_DATA->current_position != status.position) {
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-			ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position);
-			PRIVATE_DATA->current_position == status.position;
+			ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value);
+			ROTATOR_RAW_POSITION_ITEM->number.value = status.position;
+			PRIVATE_DATA->current_position = status.position;
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			indigo_update_property(device, ROTATOR_RAW_POSITION_PROPERTY, NULL);
 			ROTATOR_RELATIVE_MOVE_ITEM->number.value = 0;
 			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
@@ -229,8 +237,9 @@ static void rotator_connection_handler(indigo_device *device) {
 						close(PRIVATE_DATA->handle);
 						PRIVATE_DATA->handle = 0;
 					}
-					ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position);
+					ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value);
 					PRIVATE_DATA->current_position = status.position;
+					ROTATOR_RAW_POSITION_ITEM->number.value = status.position;
 					ROTATOR_BACKLASH_ITEM->number.value = status.backlash;
 					ROTATOR_DIRECTION_NORMAL_ITEM->sw.value = !status.reverse;
 					ROTATOR_DIRECTION_REVERSED_ITEM->sw.value = status.reverse;
@@ -239,6 +248,7 @@ static void rotator_connection_handler(indigo_device *device) {
 					indigo_update_property(device, ROTATOR_DIRECTION_PROPERTY, NULL);
 					indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 					indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+					indigo_update_property(device, ROTATOR_RAW_POSITION_PROPERTY, NULL);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
 					close(PRIVATE_DATA->handle);
@@ -304,6 +314,13 @@ static void rotator_direction_handler(indigo_device *device) {
 static void rotator_relative_move_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16];
+	int move = (int)(ROTATOR_RELATIVE_MOVE_ITEM->number.target * PRIVATE_DATA->steps_degree);
+	if (move == 0) {
+		ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		return;
+	}
 	snprintf(command, sizeof(command), "%d", (int)(ROTATOR_RELATIVE_MOVE_ITEM->number.target * PRIVATE_DATA->steps_degree));
 	if(wa_command(device, command, NULL, 0)) {
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -323,8 +340,13 @@ static void rotator_absolute_move_handler(indigo_device *device) {
 	if (wa_command(device, "1500001", response, sizeof(response))) {
 		wr_status_t status = {0};
 		if (wr_parse_status(response, &status)) {
-			double move = ROTATOR_POSITION_ITEM->number.target - indigo_range360(status.position);
-			if (move > 180) {
+			double move = ROTATOR_POSITION_ITEM->number.target - indigo_range360(status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value);
+			if (move == 0) {
+				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				return;
+			} else if (move > 180) {
 				move -= 360;
 			} else if (move < -180) {
 				move += 360;
@@ -381,7 +403,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_BACKLASH_PROPERTY->hidden = false;
 		ROTATOR_BACKLASH_ITEM->number.min = 0;
 		ROTATOR_BACKLASH_ITEM->number.max = 5;
-		strncpy(ROTATOR_BACKLASH_ITEM->label, "Backlash (°)", INDIGO_VALUE_SIZE);
+		strncpy(ROTATOR_BACKLASH_ITEM->label, "Backlash [°]", INDIGO_VALUE_SIZE);
 		strncpy(ROTATOR_BACKLASH_ITEM->number.format, "%g", INDIGO_VALUE_SIZE);
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		DEVICE_PORT_PROPERTY->hidden = false;
@@ -452,12 +474,6 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_BACKLASH_PROPERTY, NULL);
 		indigo_set_timer(device, 0, rotator_backlash_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(ROTATOR_POSITION_OFFSET_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- ROTATOR_POSITION_OFFSET
-		indigo_property_copy_values(ROTATOR_POSITION_OFFSET_PROPERTY, property, false);
-		ROTATOR_POSITION_OFFSET_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
-		//indigo_set_timer(device, 0, rotator_update_status, NULL);
 	} else if (indigo_property_match_changeable(ROTATOR_ABORT_MOTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ROTATOR_ABORT_MOTION
 		indigo_property_copy_values(ROTATOR_ABORT_MOTION_PROPERTY, property, false);
