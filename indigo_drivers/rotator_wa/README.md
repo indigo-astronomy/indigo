@@ -26,4 +26,4 @@ indigo_server -s
 
 ## Status: Under development
 
-WandererAstro Rotator MiniV2
+* WandererAstro Rotator MiniV2
