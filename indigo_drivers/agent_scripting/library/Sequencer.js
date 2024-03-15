@@ -178,7 +178,7 @@ Sequence.prototype.capture_stream = function(name_template, count, exposure) {
 };
 
 Sequence.prototype.focus = function(exposure) {
-	this.sequence.push({ execute: 'save_batch()', step: this.step++ });
+	this.sequence.push({ execute: 'save_batch()', step: this.step });
 	this.sequence.push({ execute: 'set_batch(1,' + exposure + ', 0)', step: this.step });
 	this.sequence.push({ execute: 'focus()', step: this.step });
 	this.sequence.push({ execute: 'restore_batch()', step: this.step++ });
@@ -925,9 +925,9 @@ var indigo_sequencer = {
 	
 	set_imager_dithering: function(skip_frames) {
 		var agent = this.devices[2];
-		var property = indigo_devices[agent].AGENT_IMAGER_DITHERING;
+		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
 		if (property != null) {
-			this.change_numbers(agent, "AGENT_IMAGER_DITHERING", { SKIP_FRAMES: skip_frames });
+			this.change_numbers(agent, "AGENT_IMAGER_BATCH", { FRAMES_TO_SKIP_BEFORE_DITHER: skip_frames });
 		} else {
 			this.failure("Can't set dithering on imager side");
 		}
@@ -1053,7 +1053,7 @@ var indigo_sequencer = {
 		}
 	},
 
-	focus: function(exposure) {
+	focus: function() {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {

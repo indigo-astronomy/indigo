@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x0029
+#define DRIVER_VERSION 0x002A
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1814,9 +1814,6 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 static bool autofocus(indigo_device *device) {
 	bool result;
 	uint8_t *saturation_mask = NULL;
-	int focuser_mode = save_switch_state(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
-	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
-	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	if (AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM->number.value > 1) {
 		if(DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 			result = autofocus_ucurve_backlash(device);
@@ -1830,9 +1827,6 @@ static bool autofocus(indigo_device *device) {
 			result = autofocus_backlash(device, &saturation_mask);
 		}
 	}
-	restore_switch_state(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_MODE_PROPERTY_NAME, focuser_mode);
-	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
-	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_safe_free(saturation_mask);
 	return result;
 }
@@ -1863,6 +1857,9 @@ static void autofocus_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	DEVICE_PRIVATE_DATA->allow_subframing = true;
 	DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
+	int focuser_mode = save_switch_state(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
+	int upload_mode = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
+	int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	allow_abort_by_mount_agent(device, true);
 	disable_solver(device);
 	indigo_send_message(device, "Focusing started");
@@ -1883,6 +1880,9 @@ static void autofocus_process(indigo_device *device) {
 	}
 	allow_abort_by_mount_agent(device, false);
 	restore_subframe(device);
+	restore_switch_state(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_MODE_PROPERTY_NAME, focuser_mode);
+	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+	restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);

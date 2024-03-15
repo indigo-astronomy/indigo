@@ -535,7 +535,7 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 				indigo_update_property(device, device_list, "You can't change selection now!");
 				return INDIGO_OK;
 			}
-			return update_device_list(device, client, device_list, property, FILTER_DEVICE_CONTEXT->device_name[i]);
+			return update_device_list(device, FILTER_DEVICE_CONTEXT->client, device_list, property, FILTER_DEVICE_CONTEXT->device_name[i]);
 		}
 		device_list = FILTER_DEVICE_CONTEXT->filter_related_device_list_properties[i];
 		if (indigo_property_match(device_list, property))
@@ -796,7 +796,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 				update_ccd_lens_info(device, property);
 			bool found = false;
 			for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-				if (device_cache[j] == property) {
+				if (indigo_property_match(device_cache[j], property)) {
 					found = true;
 					break;
 				}
