@@ -176,6 +176,12 @@ extern indigo_result indigo_rotator_detach(indigo_device *device);
  */
 extern double indigo_range360(double angle);
 
+/**
+ * @brief save load rotator calibration
+ */
+extern void indigo_rotator_save_calibration(indigo_device *device);
+extern void indigo_rotator_load_calibration(indigo_device *device);
+
 #ifdef __cplusplus
 }
 #endif
