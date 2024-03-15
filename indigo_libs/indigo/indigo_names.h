@@ -1369,7 +1369,16 @@
  */
 #define ROTATOR_POSITION_ITEM_NAME						"POSITION"
 
+//----------------------------------------------------------------------
+/** ROTATOR_RELATIVE_MOVE property name.
+ */
+#define ROTATOR_RELATIVE_MOVE_PROPERTY_NAME				"ROTATOR_RELATIVE_MOVE"
 
+/** ROTATOR_RELATIVE_MOVE.RELATIVE_MOVE property item name.
+ */
+#define ROTATOR_RELATIVE_MOVE_ITEM_NAME						"RELATIVE_MOVE"
+
+//----------------------------------------------------------------------
 /** ROTATOR_DIRECTION property name.
  */
 #define ROTATOR_DIRECTION_PROPERTY_NAME					"ROTATOR_DIRECTION"
@@ -1381,8 +1390,6 @@
 /** ROTATOR_DIRECTION.REVERSED property item name.
  */
 #define ROTATOR_DIRECTION_REVERSED_ITEM_NAME       "REVERSED"
-
-
 
 //----------------------------------------------------------------------
 /** ROTATOR_ABORT_MOTION property name.
@@ -1424,6 +1431,24 @@
  */
 #define ROTATOR_STEPS_PER_REVOLUTION_ITEM_NAME		"STEPS_PER_REVOLUTION"
 
+
+//----------------------------------------------------------------------
+/** ROTATOR_RAW_POSITION property name.
+ */
+#define ROTATOR_RAW_POSITION_PROPERTY_NAME				"ROTATOR_RAW_POSITION"
+
+/** ROTATOR_RAW_POSITION.RAW_POSITION property item name.
+ */
+#define ROTATOR_RAW_POSITION_ITEM_NAME						"RAW_POSITION"
+
+//----------------------------------------------------------------------
+/** ROTATOR_POSITION_OFFSET property name.
+ */
+#define ROTATOR_POSITION_OFFSET_PROPERTY_NAME				"ROTATOR_POSITION_OFFSET"
+
+/** ROTATOR_POSITION_OFFSET.POSITION_OFFSET property item name.
+ */
+#define ROTATOR_POSITION_OFFSET_ITEM_NAME						"POSITION_OFFSET"
 
 //----------------------------------------------------------------------
 

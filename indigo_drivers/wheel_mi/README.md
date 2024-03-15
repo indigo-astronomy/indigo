@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license (3rd party library is closed source, Copyri
 
 indigo_server indigo_wheel_mi
 
-## Status: Under Development
+## Status: Stable
 
 Driver is developed and tested with:
 * MI SFW

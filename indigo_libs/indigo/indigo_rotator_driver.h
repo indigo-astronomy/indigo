@@ -74,13 +74,21 @@ extern "C" {
 */
 #define ROTATOR_ON_POSITION_SET_SYNC_ITEM			(ROTATOR_ON_POSITION_SET_PROPERTY->items+1)
 
-/** ROTATOR_POSITION property pointer, property is mandatory, property change request should be fully handled by rotator driver
+/** ROTATOR_POSITION property pointer, property is mandatory, property change request should be handled by rotator driver, sync can be handleled by the base class
 */
 #define ROTATOR_POSITION_PROPERTY							(ROTATOR_CONTEXT->rotator_position_property)
 
 /** ROTATOR_POSITION.POSITION property item pointer.
 */
 #define ROTATOR_POSITION_ITEM									(ROTATOR_POSITION_PROPERTY->items+0)
+
+/** ROTATOR_RELATIVE_MOVE property pointer, property is mandatory, property change request should be fully handled by rotator driver
+*/
+#define ROTATOR_RELATIVE_MOVE_PROPERTY							(ROTATOR_CONTEXT->rotator_relative_move_property)
+
+/** ROTATOR_RELATIVE_MOVE.RELATIVE_MOVE property item pointer.
+*/
+#define ROTATOR_RELATIVE_MOVE_ITEM									(ROTATOR_RELATIVE_MOVE_PROPERTY->items+0)
 
 /** ROTATOR_ABORT_MOTION property pointer, property is mandatory, property change request should be fully handled by rotator driver
 */
@@ -110,6 +118,22 @@ extern "C" {
  */
 #define ROTATOR_LIMITS_MAX_POSITION_ITEM							(ROTATOR_LIMITS_PROPERTY->items+1)
 
+/** ROTATOR_RAW_POSITION property pointer, property is optional and read only
+ */
+#define ROTATOR_RAW_POSITION_PROPERTY		(ROTATOR_CONTEXT->rotator_raw_position_property)
+
+/** ROTATOR_RAW_POSITION.POSITION proeprty item pointer.
+ */
+#define ROTATOR_RAW_POSITION_ITEM 			(ROTATOR_RAW_POSITION_PROPERTY->items + 0)
+
+/** ROTATOR_POSITION_OFFSET property pointer, property is optional, handled by the base class
+ */
+#define ROTATOR_POSITION_OFFSET_PROPERTY		(ROTATOR_CONTEXT->rotator_position_offset_property)
+
+/** ROTATOR_POSITION_OFFSET.OFFSET proeprty item pointer.
+ */
+#define ROTATOR_POSITION_OFFSET_ITEM 			(ROTATOR_POSITION_OFFSET_PROPERTY->items + 0)
+
 
 /** Focuser device context structure.
  */
@@ -119,9 +143,12 @@ typedef struct {
 	indigo_property *rotator_direction_property;            ///< ROTATOR_DIRECTION property pointer
 	indigo_property *rotator_on_position_set_property;      ///< ROTATOR_ON_POSITION_SET property pointer
 	indigo_property *rotator_position_property;             ///< ROTATOR_POSITION property pointer
+	indigo_property *rotator_relative_move_property;        ///< ROTATOR_RELATIVE_MOVE property pointer
 	indigo_property *rotator_abort_motion_property;         ///< ROTATOR_ABORT_MOTION property pointer
 	indigo_property *rotator_backlash_property;             ///< ROTATOR_BACKLASH property pointer
 	indigo_property *rotator_limits_property;               ///< ROTATOR_LIMITS property pointer
+	indigo_property *rotator_raw_position_property;         ///< ROTATOR_RAW_POSITION property pointer
+	indigo_property *rotator_position_offset_property;      ///< ROTATOR_POSITION_OFFSET property pointer
 } indigo_rotator_context;
 
 /** Attach callback function.
@@ -136,6 +163,24 @@ extern indigo_result indigo_rotator_change_property(indigo_device *device, indig
 /** Detach callback function.
  */
 extern indigo_result indigo_rotator_detach(indigo_device *device);
+
+
+/**
+ * @brief Normalize an angle to the range [0, 360).
+ *
+ * This function takes an angle as input and normalizes it to the range [0, 360) degrees. 
+ * That is, it adds or subtracts multiples of 360 until the angle is within the range [0, 360).
+ *
+ * @param angle The angle to be normalized, in degrees.
+ * @return The angle normalized to the range [0, 360) degrees.
+ */
+extern double indigo_range360(double angle);
+
+/**
+ * @brief save load rotator calibration
+ */
+extern void indigo_rotator_save_calibration(indigo_device *device);
+extern void indigo_rotator_load_calibration(indigo_device *device);
 
 #ifdef __cplusplus
 }

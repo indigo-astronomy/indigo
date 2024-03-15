@@ -801,6 +801,20 @@ bool ptp_nikon_handle_event(indigo_device *device, ptp_event_code code, uint32_t
 	return ptp_handle_event(device, code, params);
 }
 
+bool ptp_nikon_inject_property(indigo_device *device) {
+	for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; ++i) {
+	  const uint16_t code = PRIVATE_DATA->info_properties_supported[i];
+		if (code == ptp_property_ExposureTime && IS_NIKON_EXPEED7_SERIES()) {
+			// support 1/32000 (for Z 8, Z 9)
+			PRIVATE_DATA->info_properties_supported[i] = ptp_property_nikon_ExposureTime;
+		} else if (code == ptp_property_ExposureIndex && IS_NIKON_EXPEED7_SERIES()) {
+			// support Hi-2.0 = ISO102400 (for Z 8, Z 9)
+			PRIVATE_DATA->info_properties_supported[i] = ptp_property_nikon_ExposureIndexHi;
+		}
+	}
+	return true;
+}
+
 bool ptp_nikon_fix_property(indigo_device *device, ptp_property *property) {
 	switch (property->code) {
 		case ptp_property_ExposureTime: {
