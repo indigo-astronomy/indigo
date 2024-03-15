@@ -230,7 +230,6 @@ static bool rotator_handle_position(indigo_device *device) {
 			indigo_send_message(device, "Error: The rotator is not powered on");
 			return false;
 		}
-		indigo_error("The rotator IS powered on");
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value);
 		ROTATOR_RAW_POSITION_ITEM->number.value = status.position;
