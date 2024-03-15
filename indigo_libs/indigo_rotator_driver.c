@@ -40,7 +40,7 @@ double indigo_range360(double angle) {
 	return fmod(angle + (360000), 360);
 }
 
-static void indigo_rotator_load_calibration(indigo_device *device) {
+void indigo_rotator_load_calibration(indigo_device *device) {
 	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
 		return;
 	}
@@ -56,7 +56,7 @@ static void indigo_rotator_load_calibration(indigo_device *device) {
 	}
 }
 
-static void indigo_rotator_save_calibration(indigo_device *device) {
+void indigo_rotator_save_calibration(indigo_device *device) {
 	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
 		return;
 	}
