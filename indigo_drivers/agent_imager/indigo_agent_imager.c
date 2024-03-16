@@ -1496,7 +1496,7 @@ static bool autofocus_ucurve_backlash(indigo_device *device) {
 				}
 				// best focus is not close to center
 				if (abs(best_index - midpoint) > 1) {
-					sample == 0;
+					sample = 0;
 					moving_out = !moving_out;
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "peak %d is far from the midpoint %d - rerunning", best_index, midpoint);
 				} else {
@@ -1822,7 +1822,7 @@ static bool autofocus(indigo_device *device) {
 		}
 	} else {
 		if(DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
-			result = autofocus_ucurve_baclkash(device);
+			result = autofocus_ucurve_backlash(device);
 		} else {
 			result = autofocus_backlash(device, &saturation_mask);
 		}
