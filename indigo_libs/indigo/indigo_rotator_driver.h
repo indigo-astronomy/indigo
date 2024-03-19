@@ -176,6 +176,22 @@ extern indigo_result indigo_rotator_detach(indigo_device *device);
  */
 extern double indigo_range360(double angle);
 
+
+/**
+ * @brief Calculate the difference between two angles.
+ *
+ * This function calculates the difference between two angles. The difference is normalized
+ * to the range [-180, 180) degrees. This function assumes that the input angles are in degrees
+ * and that the angles are measured in the standard mathematical sense (i.e., counterclockwise
+ * from the positive x-axis).
+ *
+ * @param angle1 The first angle, in degrees.
+ * @param angle2 The second angle, in degrees.
+ * @return The difference between angle1 and angle2, normalized to the range [-180, 180) degrees.
+ */
+extern double indigo_angle_difference(double angle1, double angle2);
+
+
 /**
  * @brief save load rotator calibration
  */
