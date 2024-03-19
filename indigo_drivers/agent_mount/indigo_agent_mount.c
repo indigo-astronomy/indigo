@@ -43,6 +43,7 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_rotator_driver.h>
 #include <indigo/indigo_align.h>
 
 #include "indigo_agent_mount.h"
@@ -142,7 +143,7 @@ typedef struct {
 	double rotator_position;
 	indigo_property_state rotator_position_state;
 	bool derotation_enabled;
-	double derotation_offset_angle;
+	double initial_frame_rotation;
 	indigo_property_state mount_eq_coordinates_state;
 	int mount_side_of_pier;
 	double mount_target_ra, mount_target_dec;
@@ -942,38 +943,34 @@ static void update_display_coordinates(indigo_device *device) {
 	indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
 	AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
 
-	//static double parallactic_angle_prev = 0;
-	//double parallactic_angle;
-
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value = indigo_derotation_rate(
 		AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value,
 		AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value,
 		DEVICE_PRIVATE_DATA->mount_latitude
 	);
-	//parallactic_angle_prev  = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
-
-	//parallactic_angle =
 	AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value = indigo_parallactic_angle(
 		AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value * 15,
 		dec,
 		DEVICE_PRIVATE_DATA->mount_latitude
 	);
 	indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
-
-	//indigo_error("update_display_coordinates2: derot_rate = %g, parallactic_angle = %g", AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value, parallactic_angle);
-	//indigo_error("update_display_coordinates2: parallactic_angle - parallactic_angle_prev = %g", 3600*(parallactic_angle - parallactic_angle_prev));
 }
 
 static void handle_derotation(indigo_device *device) {
 	if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
-		indigo_error("handle_derotation: enabled");
 		DEVICE_PRIVATE_DATA->derotation_enabled = true;
-		DEVICE_PRIVATE_DATA->derotation_offset_angle = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
-		indigo_error("handle_derotation: derotation_offset_angle = %g", DEVICE_PRIVATE_DATA->derotation_offset_angle);
+		DEVICE_PRIVATE_DATA->initial_frame_rotation = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
+		INDIGO_DRIVER_DEBUG(
+			MOUNT_AGENT_NAME,
+			"Derotation started: initial_frame_rotation = %g, rotator_position = %g, parallactic_angle = %f",
+			DEVICE_PRIVATE_DATA->initial_frame_rotation,
+			DEVICE_PRIVATE_DATA->rotator_position,
+			AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value
+		);
 	} else {
-		indigo_error("handle_derotation: disabled");
-		DEVICE_PRIVATE_DATA->derotation_offset_angle = 0;
+		DEVICE_PRIVATE_DATA->initial_frame_rotation = 0;
 		DEVICE_PRIVATE_DATA->derotation_enabled = false;
+		INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME,"Derotation stopped");
 	}
 	AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, NULL);
@@ -981,33 +978,46 @@ static void handle_derotation(indigo_device *device) {
 
 static void derotate_field(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->derotation_enabled) {
-		double new_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->derotation_offset_angle;
-		indigo_error("derotate_field: parallactic_anbgle = %g", AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value);
-		indigo_error("derotate_field: rotator_position = %g", DEVICE_PRIVATE_DATA->rotator_position);
-		indigo_error("derotate_field: diff = %g", fabs(new_rotator_position - DEVICE_PRIVATE_DATA->rotator_position));
-		if(new_rotator_position < 0)
-			new_rotator_position += 360;
-		else if(new_rotator_position >= 360)
-			new_rotator_position -= 360;
+		double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
+
+		if (target_rotator_position < 0) {
+			target_rotator_position += 360;
+		} else if(target_rotator_position >= 360) {
+			target_rotator_position -= 360;
+		}
+
+		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
+
+		INDIGO_DRIVER_DEBUG(
+			MOUNT_AGENT_NAME,
+			"Derotation: target_rotator_position = %g, rotator_position = %g, parallactic_angle = %g, rotation_diff = %g",
+			target_rotator_position,
+			DEVICE_PRIVATE_DATA->rotator_position,
+			AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value,
+			rotation_diff
+		);
 
 		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX]) {
-			indigo_error("derotate_field: new_rotator_position = %g", new_rotator_position);
-			if (fabs(new_rotator_position - DEVICE_PRIVATE_DATA->rotator_position) >= 0.005 && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE) {
-				indigo_error("derotate_field: new_rotator_position = %g, rotator_position = %g", new_rotator_position, DEVICE_PRIVATE_DATA->rotator_position);
+			if (
+				rotation_diff >= 0.005 &&
+				DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE &&
+				DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE
+			) {
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation: going to position %g", target_rotator_position);
 				indigo_change_number_property_1(
 					FILTER_DEVICE_CONTEXT->client,
 					FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX],
 					ROTATOR_POSITION_PROPERTY_NAME,
 					ROTATOR_POSITION_ITEM_NAME,
-					new_rotator_position
+					target_rotator_position
 				);
 			}
 		} else {
-			indigo_error("derotate_field: no rotator");
 			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
 			DEVICE_PRIVATE_DATA->derotation_enabled = false;
 			indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
-			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "No rotator found");
+			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "No rotator selected");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No rotator selected");
 		}
 	}
 }
