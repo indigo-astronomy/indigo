@@ -116,6 +116,9 @@
 #define AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+0)
 #define AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+1)
 
+#define AGENT_FIELD_DEROTATION_PROPERTY				(DEVICE_PRIVATE_DATA->agent_field_derotation_proeprety)
+#define AGENT_FIELD_DEROTATION_ENABLED_ITEM			(AGENT_FIELD_DEROTATION_PROPERTY->items+0)
+#define AGENT_FIELD_DEROTATION_DISABLED_ITEM		(AGENT_FIELD_DEROTATION_PROPERTY->items+1)
 
 typedef struct {
 	indigo_property *agent_geographic_property;
@@ -131,10 +134,14 @@ typedef struct {
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_start_process_property;
 	indigo_property *agent_process_features_property;
+	indigo_property *agent_field_derotation_proeprety;
 	double mount_latitude, mount_longitude, mount_elevation;
 	double dome_latitude, dome_longitude, dome_elevation;
 	double gps_latitude, gps_longitude, gps_elevation;
 	double mount_ra, mount_dec;
+	double rotator_position;
+	bool derotation_enabled;
+	double derotation_offset_angle;
 	indigo_property_state mount_eq_coordinates_state;
 	int mount_side_of_pier;
 	double mount_target_ra, mount_target_dec;
@@ -143,6 +150,8 @@ typedef struct {
 	bool dome_unparked;
 	pthread_mutex_t mutex;
 } agent_private_data;
+
+static void handle_derotation(indigo_device *device);
 
 static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
@@ -361,6 +370,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM_NAME, "Time to transit (0 to 24 hrs)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM_NAME, "Parallactic angle (-180 to 180°)", -180, 180, 0, 0);
 		indigo_init_number_item(AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM, AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM_NAME, "Derotation rate (\"/s)", -1000, 1000, 0, 0);
+		// -------------------------------------------------------------------------------- AGENT_FIELD_DEROTATION
+		AGENT_FIELD_DEROTATION_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_FIELD_DEROTATION_PROPERTY_NAME, "Agent", "Derotate field for Alt/Az mounts", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (AGENT_FIELD_DEROTATION_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_FIELD_DEROTATION_ENABLED_ITEM, AGENT_FIELD_DEROTATION_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(AGENT_FIELD_DEROTATION_DISABLED_ITEM, AGENT_FIELD_DEROTATION_DISABLED_ITEM_NAME, "Disabled", true);
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		AGENT_START_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_START_PROCESS_PROPERTY_NAME, "Agent", "Start process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
 		if (AGENT_START_PROCESS_PROPERTY == NULL)
@@ -410,6 +425,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device,AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, property))
 		indigo_define_property(device,AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_FIELD_DEROTATION_PROPERTY, property))
+		indigo_define_property(device,AGENT_FIELD_DEROTATION_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
 		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
@@ -808,6 +825,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		indigo_update_property(device, AGENT_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_FIELD_DEROTATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- AGENT_FIELD_DEROTATION
+		indigo_property_copy_values(AGENT_FIELD_DEROTATION_PROPERTY, property, false);
+		AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, handle_derotation, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_MOUNT_FOV_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_MOUNT_FOV
 		indigo_property_copy_values(AGENT_MOUNT_FOV_PROPERTY, property, false);
@@ -887,6 +911,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_MOUNT_FOV_PROPERTY);
 	indigo_release_property(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY);
 	indigo_release_property(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY);
+	indigo_release_property(AGENT_FIELD_DEROTATION_PROPERTY);
 	indigo_release_property(AGENT_START_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_ABORT_PROCESS_PROPERTY);
 	indigo_release_property(AGENT_PROCESS_FEATURES_PROPERTY);
@@ -936,6 +961,51 @@ static void update_display_coordinates(indigo_device *device) {
 
 	//indigo_error("update_display_coordinates2: derot_rate = %g, parallactic_angle = %g", AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value, parallactic_angle);
 	//indigo_error("update_display_coordinates2: parallactic_angle - parallactic_angle_prev = %g", 3600*(parallactic_angle - parallactic_angle_prev));
+}
+
+static void handle_derotation(indigo_device *device) {
+	if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
+		indigo_error("handle_derotation: enabled");
+		DEVICE_PRIVATE_DATA->derotation_enabled = true;
+		DEVICE_PRIVATE_DATA->derotation_offset_angle = DEVICE_PRIVATE_DATA->rotator_position - AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value;
+		indigo_error("handle_derotation: derotation_offset_angle = %g", DEVICE_PRIVATE_DATA->derotation_offset_angle);
+	} else {
+		indigo_error("handle_derotation: disabled");
+		DEVICE_PRIVATE_DATA->derotation_offset_angle = 0;
+		DEVICE_PRIVATE_DATA->derotation_enabled = false;
+	}
+	AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, NULL);
+}
+
+static void derotate_field(indigo_device *device) {
+	if (DEVICE_PRIVATE_DATA->derotation_enabled) {
+		double new_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->derotation_offset_angle;
+		indigo_error("derotate_field: parallactic_anbgle = %g", AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value);
+		indigo_error("derotate_field: rotator_position = %g", DEVICE_PRIVATE_DATA->rotator_position);
+		indigo_error("derotate_field: diff = %g", fabs(new_rotator_position - DEVICE_PRIVATE_DATA->rotator_position));
+		if(new_rotator_position < 0)
+			new_rotator_position += 360;
+		else if(new_rotator_position >= 360)
+			new_rotator_position -= 360;
+
+		indigo_error("derotate_field: new_rotator_position = %g", new_rotator_position);
+		if (fabs(new_rotator_position - DEVICE_PRIVATE_DATA->rotator_position) >= 0.005) {
+			indigo_error("derotate_field: new_rotator_position = %g, rotator_position = %g", new_rotator_position, DEVICE_PRIVATE_DATA->rotator_position);
+			indigo_change_number_property_1(
+				FILTER_DEVICE_CONTEXT->client,
+				FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX],
+				ROTATOR_POSITION_PROPERTY_NAME,
+				ROTATOR_POSITION_ITEM_NAME,
+				new_rotator_position
+			);
+		}
+	}
+}
+
+static void update_display_coordinates_and_derotate_if_set(indigo_device *device) {
+	update_display_coordinates(device);
+	derotate_field(device);
 }
 
 static void process_snooping(indigo_client *client, indigo_device *device, indigo_property *property) {
@@ -989,7 +1059,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					indigo_change_number_property(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 				}
 			}
-			indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 0, update_display_coordinates, NULL);
+			indigo_set_timer(FILTER_CLIENT_CONTEXT->device, 0, update_display_coordinates_and_derotate_if_set, NULL);
 			if (property->state == INDIGO_OK_STATE) {
 				set_eq_coordinates(FILTER_CLIENT_CONTEXT->device);
 			} else {
@@ -1136,6 +1206,17 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 				for (int i = 0; i < property->count; i++) {
 					if (property->items[i].sw.value) {
 						indigo_filter_forward_change_property(client, property, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX]);
+						break;
+					}
+				}
+			}
+		}
+	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX])) {
+		if (!strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					if (!strcmp(property->items[i].name, ROTATOR_POSITION_ITEM_NAME)) {
+						CLIENT_PRIVATE_DATA->rotator_position = property->items[i].number.value;
 						break;
 					}
 				}
