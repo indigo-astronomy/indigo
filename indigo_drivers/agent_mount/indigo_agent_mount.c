@@ -140,6 +140,7 @@ typedef struct {
 	double gps_latitude, gps_longitude, gps_elevation;
 	double mount_ra, mount_dec;
 	double rotator_position;
+	indigo_property_state rotator_position_state;
 	bool derotation_enabled;
 	double derotation_offset_angle;
 	indigo_property_state mount_eq_coordinates_state;
@@ -989,16 +990,24 @@ static void derotate_field(indigo_device *device) {
 		else if(new_rotator_position >= 360)
 			new_rotator_position -= 360;
 
-		indigo_error("derotate_field: new_rotator_position = %g", new_rotator_position);
-		if (fabs(new_rotator_position - DEVICE_PRIVATE_DATA->rotator_position) >= 0.005) {
-			indigo_error("derotate_field: new_rotator_position = %g, rotator_position = %g", new_rotator_position, DEVICE_PRIVATE_DATA->rotator_position);
-			indigo_change_number_property_1(
-				FILTER_DEVICE_CONTEXT->client,
-				FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX],
-				ROTATOR_POSITION_PROPERTY_NAME,
-				ROTATOR_POSITION_ITEM_NAME,
-				new_rotator_position
-			);
+		if (*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX]) {
+			indigo_error("derotate_field: new_rotator_position = %g", new_rotator_position);
+			if (fabs(new_rotator_position - DEVICE_PRIVATE_DATA->rotator_position) >= 0.005 && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE) {
+				indigo_error("derotate_field: new_rotator_position = %g, rotator_position = %g", new_rotator_position, DEVICE_PRIVATE_DATA->rotator_position);
+				indigo_change_number_property_1(
+					FILTER_DEVICE_CONTEXT->client,
+					FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX],
+					ROTATOR_POSITION_PROPERTY_NAME,
+					ROTATOR_POSITION_ITEM_NAME,
+					new_rotator_position
+				);
+			}
+		} else {
+			indigo_error("derotate_field: no rotator");
+			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
+			DEVICE_PRIVATE_DATA->derotation_enabled = false;
+			indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
+			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "No rotator found");
 		}
 	}
 }
@@ -1213,6 +1222,7 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX])) {
 		if (!strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
+			CLIENT_PRIVATE_DATA->rotator_position_state = property->state;
 			if (property->state == INDIGO_OK_STATE) {
 				for (int i = 0; i < property->count; i++) {
 					if (!strcmp(property->items[i].name, ROTATOR_POSITION_ITEM_NAME)) {
