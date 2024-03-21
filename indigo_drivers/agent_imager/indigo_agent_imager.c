@@ -1815,13 +1815,13 @@ static bool autofocus(indigo_device *device) {
 	bool result;
 	uint8_t *saturation_mask = NULL;
 	if (AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM->number.value > 1) {
-		if(DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
+		if (AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
 			result = autofocus_ucurve_backlash(device);
 		} else {
 			result = autofocus_overshoot(device, &saturation_mask);
 		}
 	} else {
-		if(DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
+		if (AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
 			result = autofocus_ucurve_backlash(device);
 		} else {
 			result = autofocus_backlash(device, &saturation_mask);
