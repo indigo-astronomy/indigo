@@ -195,6 +195,20 @@ double indigo_airmass(double altitude) {
     return airmass;
 }
 
+double indigo_derotation_rate(double alt, double az, double latitude) {
+	double derotation_rate = 15.04106858 * cos(latitude * DEG2RAD) * cos(az * DEG2RAD) / cos(alt * DEG2RAD);
+	return derotation_rate;
+}
+
+double indigo_parallactic_angle(double ha, double dec, double latitude) {
+	ha *= DEG2RAD;
+	dec *= DEG2RAD;
+	latitude *= DEG2RAD;
+
+	double q = atan2(sin(ha), tan(latitude) * cos(dec) - sin(dec) * cos(ha));
+	return q * RAD2DEG;
+}
+
 double indigo_lst(const time_t *utc, const double longitude) {
 	double gst = indigo_mean_gst(utc);
 	return fmod(gst + longitude/15.0 + 24.0, 24.0);

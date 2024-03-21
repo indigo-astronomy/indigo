@@ -38,7 +38,20 @@
 #include <indigo/indigo_io.h>
 
 double indigo_range360(double angle) {
-	return fmod(angle + (360000), 360);
+	return fmod(angle + (3600000), 360);
+}
+
+double indigo_angle_difference(double angle1, double angle2) {
+	double diff = angle2 - angle1;
+
+	// Normalize to the range [-180, 180)
+	diff = fmod(diff + 180, 360);
+	if (diff < 0) {
+		diff += 360;
+	}
+	diff -= 180;
+
+	return diff;
 }
 
 void indigo_rotator_load_calibration(indigo_device *device) {

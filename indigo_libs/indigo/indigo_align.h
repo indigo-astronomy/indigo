@@ -139,7 +139,36 @@ void indigo_raise_set(
 
 /** Calculate the airmass for a given altitude
  */
-double indigo_airmass(double altitude);
+extern double indigo_airmass(double altitude);
+
+/**
+ * @brief Calculate the derotation rate for an alt-azimuth mounted telescope.
+ *
+ * This function calculates the derotation rate (also known as field rotation rate)
+ * for an alt-azimuth mounted telescope based on the altitude and azimuth of the object
+ * and the latitude of the observer. The derotation rate is returned in arcseconds per second.
+ *
+ * @param alt The altitude of the object, in degrees.
+ * @param az The azimuth of the object, in degrees.
+ * @param latitude The latitude of the observer, in degrees.
+ * @return The derotation rate in arcseconds per second.
+ */
+extern double indigo_derotation_rate(double alt, double az, double latitude);
+
+/**
+ * @brief Calculate the parallactic angle for a celestial object.
+ *
+ * This function calculates the parallactic angle, which is the angle between the
+ * celestial pole and the zenith at the position of a celestial object. The parallactic
+ * angle is calculated based on the latitude of the observer, the declination of the object,
+ * and the hour angle of the object.
+ *
+ * @param ha The hour angle of the object, in degrees.
+ * @param dec The declination of the object, in degrees.
+ * @param latitude The latitude of the observer, in degrees.
+ * @return The parallactic angle in degrees.
+ */
+extern double indigo_parallactic_angle(double ha, double dec, double latitude);
 
 /** Greenwitch mean sidereal time (in degrees)
  */
