@@ -62,11 +62,21 @@ typedef struct {
 	double backlash;
 	bool reverse;
 	double last_move;
+	bool has_power;
 } wr_status_t;
 
-int wr_parse_status(char *response, wr_status_t *status) {
+bool wr_parse_status(char *response, wr_status_t *status) {
 	char *buf;
-	if (!strncmp(response, "WandererRotator", strlen("WandererRotator"))) {
+	if (response == NULL || status == NULL) {
+		return false;
+	}
+	status->has_power = true;
+	if (!strncmp(response, "NP", strlen("NP"))) {
+		memset(status, 0, sizeof(wr_status_t));
+		status->has_power = false;
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "has_power = 0");
+		return true;
+	} else if (!strncmp(response, "WandererRotator", strlen("WandererRotator"))) {
 		status->last_move = 0;
 
 		char* token = strtok_r(response, "A", &buf);
@@ -116,13 +126,14 @@ int wr_parse_status(char *response, wr_status_t *status) {
 		status->position = atof(token)/1000.0;
 	}
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nposition = %.3f\nbacklash = %3f\nreverse = %.3f\nlast_move = %.2f\n",
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nposition = %.3f\nbacklash = %3f\nreverse = %d\nlast_move = %.2f\nhas_power = %d",
 		status->model_id,
 		status->firmware,
 		status->position,
 		status->backlash,
 		status->reverse,
-		status->last_move
+		status->last_move,
+		status->has_power
 	);
 
 	return true;
@@ -209,6 +220,16 @@ static bool rotator_handle_position(indigo_device *device) {
 
 	wr_status_t status = {0};
 	if (wr_parse_status(response, &status)) {
+		if(!status.has_power) {
+			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
+			ROTATOR_RELATIVE_MOVE_ITEM->number.value = 0;
+			ROTATOR_RELATIVE_MOVE_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, ROTATOR_RELATIVE_MOVE_PROPERTY, NULL);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "The rotator is not powered on");
+			indigo_send_message(device, "Error: The rotator is not powered on");
+			return false;
+		}
 		ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		ROTATOR_POSITION_ITEM->number.value = indigo_range360(status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value);
 		ROTATOR_RAW_POSITION_ITEM->number.value = status.position;
@@ -367,6 +388,7 @@ static void rotator_absolute_move_handler(indigo_device *device) {
 		wr_status_t status = {0};
 		if (wr_parse_status(response, &status)) {
 			double base_angle = status.position + ROTATOR_POSITION_OFFSET_ITEM->number.value;
+			ROTATOR_POSITION_ITEM->number.value = indigo_range360(base_angle);
 			double move_deg = ROTATOR_POSITION_ITEM->number.target - indigo_range360(base_angle);
 			move_deg = adjust_move(base_angle, PRIVATE_DATA->pivot_position, move_deg);
 			int move_steps = (int)round(move_deg * PRIVATE_DATA->steps_degree);
