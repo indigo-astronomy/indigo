@@ -201,8 +201,8 @@ typedef struct {
 	char current_folder[INDIGO_VALUE_SIZE];
 	void *image_buffer;
 	size_t image_buffer_size;
-	int focuser_position;
-	int saved_backlash;
+	double focuser_position;
+	double saved_backlash;
 	indigo_star_detection stars[MAX_STAR_COUNT];
 	indigo_frame_digest reference;
 	double drift_x, drift_y;
@@ -1071,7 +1071,7 @@ static void streaming_batch_process(indigo_device *device) {
 	} \
 }
 
-static bool move_focuser(indigo_device *device, char *focuser_name, bool moving_out, int steps) {
+static bool move_focuser(indigo_device *device, char *focuser_name, bool moving_out, double steps) {
 	indigo_property_state state = INDIGO_ALERT_STATE;
 	indigo_property *agent_steps_property;
 	if (!indigo_filter_cached_property(device, INDIGO_FILTER_FOCUSER_INDEX, FOCUSER_STEPS_PROPERTY_NAME, NULL, &agent_steps_property)) {
@@ -1484,7 +1484,7 @@ static bool autofocus_ucurve_backlash(indigo_device *device) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "sample = %d", sample);
 			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
 			hfds[sample-1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "pos[%d] = (%d, %f)", sample-1, (int)focus_pos[sample-1], hfds[sample-1]);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "pos[%d] = (%g, %f)", sample-1, focus_pos[sample-1], hfds[sample-1]);
 			if (sample == U_SAMPLES) {
 				double best_sample = hfds[0];
 				int best_index = 0;
@@ -1528,7 +1528,15 @@ static bool autofocus_ucurve_backlash(indigo_device *device) {
 	indigo_send_message(device, "U-Curve found best focus at position %.3f", extremum[0]);
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "U-Curve found best focus at position %.3f - %d %d", extremum[0], CLIENT_PRIVATE_DATA->focuser_position, (int)fabs(round(CLIENT_PRIVATE_DATA->focuser_position-extremum[0])));
 
-	if (!move_focuser(device, focuser_name, !moving_out, fabs(round(CLIENT_PRIVATE_DATA->focuser_position - extremum[0])))) {
+	steps_todo = fabs((CLIENT_PRIVATE_DATA->focuser_position - extremum[0]));
+
+	if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) { /* the focuser driver has no backlash, so we take care of it */
+		steps_todo += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Applying backlash: steps_todo = %f of which backlash = %f", steps_todo, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value);
+	}
+
+	if (!move_focuser(device, focuser_name, !moving_out, steps_todo)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move to best focus position");
 		return false;
 	}
 
@@ -3248,7 +3256,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX])) {
 		if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
 			CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME,"focus_pos = %d", (int)property->items[0].number.value); 
+			INDIGO_DRIVER_ERROR(DRIVER_NAME,"focus_pos = %f", property->items[0].number.value);
 		} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
 			indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 			DEVICE_PRIVATE_DATA->focuser_has_backlash = true;
