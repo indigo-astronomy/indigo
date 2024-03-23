@@ -1545,9 +1545,9 @@ static bool autofocus_ucurve(indigo_device *device) {
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "U-Curve found best focus at position %.3f, steps_to_focus = %g", extremum[0], CLIENT_PRIVATE_DATA->focuser_position, steps_to_focus);
 
 	// Apply backlash or obershoot if needed
-	if (backlash_overshoot > 1 && AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value > 0) {
+	if (backlash_overshoot > 1 && DEVICE_PRIVATE_DATA->saved_backlash > 0) {
 		steps_to_focus += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value * backlash_overshoot;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Applying overshoot: steps_to_focus = %f including overshoot = %f", steps_to_focus, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value * backlash_overshoot);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Applying overshoot: steps_to_focus = %f including overshoot = %f", steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot);
 	} else if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) { /* the focuser driver has no backlash, so we take care of it */
 		steps_to_focus += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Applying backlash: steps_to_focus = %f including backlash = %f", steps_to_focus, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value);
