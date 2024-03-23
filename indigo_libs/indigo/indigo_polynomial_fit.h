@@ -54,6 +54,8 @@ void indigo_polynomial_derivative(int coefficient_count, double *polynomial_coef
 */
 int indigo_polynomial_extremums(int coefficient_count, double *polynomial_coefficients, double *extremums);
 
+double indigo_polynomial_min_at(int coefficient_count, double *polynomial_coefficients, double min_x, double max_x, double *min_x_out);
+
 #ifdef __cplusplus
 }
 #endif

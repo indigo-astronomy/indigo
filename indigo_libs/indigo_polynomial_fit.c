@@ -30,7 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <indigo/indigo_polynomial_fit.h>
+//#include <indigo/indigo_polynomial_fit.h>
 
 typedef struct matrix_s {
 	int	rows;
@@ -205,12 +205,33 @@ int indigo_polynomial_fit(int point_count, double *x_values, double *y_values, i
 /**
  Calculate polynomial value for a given x
 */
-double indigo_polynomial_value(double x, int coefficient_count, double *polynomial_coefficients) {
+double indigo_polynomial_value2(double x, int coefficient_count, double *polynomial_coefficients) {
 	double value = 0;
 	for(int i = 0; i < coefficient_count; i++) {
 		value += pow(x,i) * polynomial_coefficients[i];
 	}
 	return value;
+}
+
+double indigo_polynomial_value(double x, int coefficient_count, double *polynomial_coefficients) {
+  double t = 1;
+  double value = 0;
+  for (int i = coefficient_count-1; i >=0 ; i--) {
+    value += polynomial_coefficients[i] * t;
+    t *= x;
+  }
+  return value;
+}
+
+double indigo_polynomial_min_at(int coefficient_count, double *polynomial_coefficients, double min_x, double max_x, double *min_x_out) {
+	double min = indigo_polynomial_value(min_x, coefficient_count, polynomial_coefficients);
+	for (double i = min_x; i < max_x; i+=.001) {
+		double v = indigo_polynomial_value(i, coefficient_count, polynomial_coefficients);
+		if (v < min) {
+			min = v;
+			*min_x_out = i;
+		}
+	}
 }
 
 /**
@@ -242,3 +263,47 @@ int indigo_polynomial_extremums(int coefficient_count, double *polynomial_coeffi
 	}
 	return 1;
 }
+
+/*
+double regress(double x) {
+  double terms[] = {
+     3.9172952110050202e+004,
+    -5.6042486439263905e+000,
+     2.0046695195353507e-004
+};
+  
+  size_t csz = sizeof terms / sizeof *terms;
+  
+  double t = 1;
+  double r = 0;
+  for (int i = 0; i < csz;i++) {
+    r += terms[i] * t;
+    t *= x;
+  }
+  return r;
+}
+
+int main() {
+
+(13825, 9.701900)
+(13900, 5.995183)
+(13975, 4.809935)
+(14050, 5.789945)
+(14125, 9.701667)
+(14200, 14.546792)
+
+	double x[] = {13825,    13900,     13975,   14050,   14125, 14200};
+	double y[] = {9.701900, 5.995183, 4.809935, 5.789945, 9.701667, 14.546792};
+	double c[3];
+	indigo_polynomial_fit(6, x, y, 3, c);
+	for (int i = 0; i < 3; i++) {
+		printf("%f\n", c[i]);
+	}
+
+	
+
+	printf("min_x = %f min = %f\n", min_x, min);
+	
+	return 0;
+}
+*/
