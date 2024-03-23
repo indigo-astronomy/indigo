@@ -1528,7 +1528,15 @@ static bool autofocus_ucurve(indigo_device *device) {
 
 	indigo_polynomial_fit(U_SAMPLES, focus_pos, hfds, order+1, polynomial);
 
-	indigo_polynomial_extremums(order+1, polynomial, extremum);
+	//fouble derivative[order];
+
+	if (focus_pos[0] < focus_pos[U_SAMPLES-1]) {
+		indigo_polynomial_min_at(order+1, polynomial, focus_pos[0], focus_pos[U_SAMPLES-1], &extremum[0]);
+	} else {
+		indigo_polynomial_min_at(order+1, polynomial, focus_pos[U_SAMPLES-1], focus_pos[0], &extremum[0]);
+	}
+
+	// indigo_polynomial_extremums(order+1, polynomial, extremum);
 
 	// Calculate the steps to best focus
 	double steps_to_focus = fabs((CLIENT_PRIVATE_DATA->focuser_position - extremum[0]));
