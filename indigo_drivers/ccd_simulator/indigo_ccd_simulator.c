@@ -1442,7 +1442,7 @@ static void focuser_timer_callback(indigo_device *device) {
 			if (PRIVATE_DATA->target_position - PRIVATE_DATA->current_position < steps) {
 				steps = PRIVATE_DATA->target_position - PRIVATE_DATA->current_position;
 			}
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->current_position + steps;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = round(PRIVATE_DATA->current_position + steps);
 			if (PRIVATE_DATA->backlash_out > steps) {
 				PRIVATE_DATA->backlash_out -= steps;
 			} else {
@@ -1461,7 +1461,7 @@ static void focuser_timer_callback(indigo_device *device) {
 			if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position < steps) {
 				steps = PRIVATE_DATA->current_position - PRIVATE_DATA->target_position;
 			}
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = PRIVATE_DATA->current_position - steps;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = round(PRIVATE_DATA->current_position - steps);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			if (PRIVATE_DATA->backlash_in > steps) {
@@ -1543,7 +1543,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
+		PRIVATE_DATA->target_position = round(FOCUSER_POSITION_ITEM->number.target);
 		if (PRIVATE_DATA->target_position < PRIVATE_DATA->current_position) {
 			if (!FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 				PRIVATE_DATA->backlash_in = FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out ? (FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out) : 0;
@@ -1573,9 +1573,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+			PRIVATE_DATA->target_position = round(PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value);
 		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+			PRIVATE_DATA->target_position = round(PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value);
 		}
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
