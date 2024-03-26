@@ -4,13 +4,16 @@ function Sequence() {
 }
 
 Sequence.prototype.repeat = function(count, block) {
-	var step = this.step++;
+	var loop = this.step++;
 	var i = 0;
+	this.sequence.push({ execute: 'enter_loop()', step: loop });
 	while (i < count) {
-		this.step = step + 1;
+		this.step = loop + 1;
 		block();
 		i++;
+		this.sequence.push({ execute: 'increment_loop(' + i + ')', step: loop });
 	}
+	this.sequence.push({ execute: 'exit_loop()', step: loop });
 	this.step++;
 };
 
@@ -344,6 +347,7 @@ var indigo_sequencer = {
 	state: "Ok",
 	step: -1,
 	index: -1,
+	loop_level: -1,
 	sequence: null,
 	wait_for_device: null,
 	wait_for_name: null,
@@ -403,6 +407,9 @@ var indigo_sequencer = {
 				if (property.items.RESET) {
 					this.step = -1;
 					indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step }, this.state);
+					while (this.loop_level >= 0) {
+						indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
+					}
 					indigo_update_switch_property(this.devices[0], "SEQUENCE_RESET", { RESET: false }, "Ok");
 				}
 			}
@@ -428,6 +435,9 @@ var indigo_sequencer = {
 			indigo_send_message("Other sequence is executed");
 		} else {
 			this.index = -1;
+			while (this.loop_level >= 0) {
+				indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
+			}
 			this.sequence = sequence;
 			indigo_send_message("Sequence started");
 			indigo_set_timer(indigo_sequencer_next_handler, 0);
@@ -448,6 +458,22 @@ var indigo_sequencer = {
 			indigo_send_message("Sequence finished");
 		}
 		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step }, this.state);
+	},
+	
+	enter_loop: function() {
+		this.loop_level++;
+		indigo_define_number_property(this.devices[0], "LOOP_" + this.loop_level, "Sequencer", "Loop " + this.loop_level, { STEP: this.step, COUNT: 0 }, { STEP: { label: "Loop at", format: "%g", min: 0, max: 10000, step: 1 }, COUNT: { label: "Count passed", format: "%g", min: 0, max: 10000, step: 1 }}, "Ok", "RO");
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
+	},
+	
+	increment_loop: function(i) {
+		indigo_update_number_property(this.devices[0], "LOOP_" + this.loop_level, { COUNT: i }, "Ok");
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
+	},
+		
+	exit_loop: function() {
+		indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
+		indigo_set_timer(indigo_sequencer_next_handler, 0);
 	},
 	
 	select_switch: function(device, property, item) {
@@ -1196,6 +1222,16 @@ function indigo_sequencer_abort_handler() {
 
 indigo_delete_property("Scripting Agent", "SEQUENCE_STATE");
 indigo_delete_property("Scripting Agent", "AGENT_ABORT_PROCESS");
+indigo_delete_property("Scripting Agent", "LOOP_0");
+indigo_delete_property("Scripting Agent", "LOOP_1");
+indigo_delete_property("Scripting Agent", "LOOP_2");
+indigo_delete_property("Scripting Agent", "LOOP_3");
+indigo_delete_property("Scripting Agent", "LOOP_4");
+indigo_delete_property("Scripting Agent", "LOOP_5");
+indigo_delete_property("Scripting Agent", "LOOP_6");
+indigo_delete_property("Scripting Agent", "LOOP_7");
+indigo_delete_property("Scripting Agent", "LOOP_8");
+indigo_delete_property("Scripting Agent", "LOOP_9");
 indigo_event_handlers.indigo_sequencer = indigo_sequencer;
 indigo_enumerate_properties();
 indigo_send_message("Sequencer installed");
