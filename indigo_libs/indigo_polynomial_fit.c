@@ -135,13 +135,13 @@ int indigo_polynomial_fit(int point_count, double *x_values, double *y_values, i
  Calculate polynomial value for a given x
 */
 double indigo_polynomial_value(double x, int coefficient_count, double *polynomial_coefficients) {
-  double t = 1;
-  double value = 0;
-  for (int i = 0; i < coefficient_count; i++) {
-    value += polynomial_coefficients[i] * t;
-    t *= x;
-  }
-  return value;
+	double t = 1;
+	double value = 0;
+	for (int i = 0; i < coefficient_count; i++) {
+		value += polynomial_coefficients[i] * t;
+		t *= x;
+	}
+	return value;
 }
 
 /**
