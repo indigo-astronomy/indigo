@@ -1522,29 +1522,34 @@ static bool autofocus_ucurve(indigo_device *device) {
 		last_quality = quality;
 	}
 
-	double polynomial[3];
-	double extremum[2] = {0};
-	int order = 2;
+	double polynomial[5];
+	double best_focus = 0;
+	int order = 4;
 
-	indigo_polynomial_fit(U_SAMPLES, focus_pos, hfds, order+1, polynomial);
-
-	//fouble derivative[order];
-
-	if (focus_pos[0] < focus_pos[U_SAMPLES-1]) {
-		indigo_polynomial_min_at(order+1, polynomial, focus_pos[0], focus_pos[U_SAMPLES-1], &extremum[0]);
-	} else {
-		indigo_polynomial_min_at(order+1, polynomial, focus_pos[U_SAMPLES-1], focus_pos[0], &extremum[0]);
+	int res = indigo_polynomial_fit(U_SAMPLES, focus_pos, hfds, order+1, polynomial);
+	if (res < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to fit polynomial");
+		SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
+		return false;
 	}
 
-	// indigo_polynomial_extremums(order+1, polynomial, extremum);
+	char polynomial_str[1204];
+	indigo_polinomial_string(order+1, polynomial, polynomial_str);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Polynomial: %s", polynomial_str);
+
+	if (focus_pos[0] < focus_pos[U_SAMPLES-1]) {
+		best_focus = indigo_polynomial_min_x(order+1, polynomial, focus_pos[0], focus_pos[U_SAMPLES-1], 0.00001);
+	} else {
+		best_focus = indigo_polynomial_min_x(order+1, polynomial, focus_pos[U_SAMPLES-1], focus_pos[0], 0.00001);
+	}
 
 	// Calculate the steps to best focus
-	double steps_to_focus = fabs((CLIENT_PRIVATE_DATA->focuser_position - extremum[0]));
+	double steps_to_focus = fabs(CLIENT_PRIVATE_DATA->focuser_position - best_focus);
 
-	indigo_send_message(device, "U-Curve found best focus at position %.3f", extremum[0]);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "U-Curve found best focus at position %.3f, steps_to_focus = %g", extremum[0], CLIENT_PRIVATE_DATA->focuser_position, steps_to_focus);
+	indigo_send_message(device, "U-Curve found best focus at position %.3f", best_focus);
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
 
-	// Apply backlash or obershoot if needed
+	// Apply backlash or overshoot if needed
 	if (backlash_overshoot > 1 && DEVICE_PRIVATE_DATA->saved_backlash > 0) {
 		steps_to_focus += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value * backlash_overshoot;
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Applying overshoot: steps_to_focus = %f including overshoot = %f", steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot);
