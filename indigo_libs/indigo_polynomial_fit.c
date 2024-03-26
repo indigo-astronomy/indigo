@@ -223,7 +223,7 @@ double indigo_polynomial_value(double x, int coefficient_count, double *polynomi
   return value;
 }
 
-double indigo_polynomial_min_at(int coefficient_count, double *polynomial_coefficients, double min_x, double max_x, double *min_x_out) {
+void indigo_polynomial_min_at(int coefficient_count, double *polynomial_coefficients, double min_x, double max_x, double *min_x_out) {
 	double min = indigo_polynomial_value(min_x, coefficient_count, polynomial_coefficients);
 	for (double i = min_x; i < max_x; i+=.001) {
 		double v = indigo_polynomial_value(i, coefficient_count, polynomial_coefficients);
