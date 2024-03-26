@@ -188,6 +188,10 @@ Sequence.prototype.park = function() {
 	this.sequence.push({ execute: 'park()', step: this.step++ });
 };
 
+Sequence.prototype.home = function() {
+	this.sequence.push({ execute: 'home()', step: this.step++ });
+};
+
 Sequence.prototype.unpark = function() {
 	this.sequence.push({ execute: 'unpark()', step: this.step++ });
 };
@@ -1103,6 +1107,16 @@ var indigo_sequencer = {
 		}
 	},
 	
+	home: function() {
+		var agent = this.devices[3];
+		var property = indigo_devices[agent].MOUNT_PARK;
+		if (property != null) {
+			this.select_switch(agent, "MOUNT_HOME", "HOME");
+		} else {
+			this.failure("Can't home the mount");
+		}
+	},
+
 	wait_for_gps: function() {
 		var agent = this.devices[3];
 		var property = indigo_devices[agent].GPS_GEOGRAPHIC_COORDINATES;
