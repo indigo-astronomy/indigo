@@ -31,30 +31,68 @@ extern "C" {
 #endif
 
 /**
- Computes polynomial coefficients that best fit a set
- of input points using Least Squares.
-
- Returns 0 if success.
-*/
+ * Computes polynomial coefficients that best fit a set of input points using Least Squares.
+ *
+ * \param point_count - number of points
+ * \param x_values - array of x values
+ * \param y_values - array of y values
+ * \param coefficient_count - number of coefficients (order + 1)
+ * \param polynomial_coefficients - array of coefficients (order + 1)
+ *
+ * polynomial_coefficients[0..order] - indexed by term (the (coef*x^3) is polynomial_coefficients[3])
+ *
+ * Returns 0 if success.
+ */
 int indigo_polynomial_fit(int point_count, double *x_values, double *y_values, int coefficient_count, double *polynomial_coefficients);
 
 /**
- Calculate polynomial value for a given x
-*/
+ * Calculate polynomial value for a given x
+ *
+ * \param x - x value
+ * \param coefficient_count - number of coefficients (order + 1)
+ * \param polynomial_coefficients - array of coefficients (order + 1)
+ */
 double indigo_polynomial_value(double x, int coefficient_count, double *polynomial_coefficients);
 
 /**
- Calculate polynomial derivative (returns a polinomial of degree - 1)
-*/
+ * Calculate polynomial derivative (returns a polinomial of degree - 1)
+ *
+ * \param coefficient_count - number of coefficients (order + 1)
+ * \param polynomial_coefficients - array of coefficients (order + 1)
+ * \param derivative_coefficients - array of the coefficients of the first derivative (order)
+ */
 void indigo_polynomial_derivative(int coefficient_count, double *polynomial_coefficients, double *derivative_coefficients);
 
 /**
- Calculate polynomial extremums (minimums and maximums)
- NOTE: Works for polynomials of order 2 and 3 only
-*/
+ * Calculate polynomial extremums (minimums and maximums)
+ * NOTE: Works for polynomials of order 2 and 3 only
+
+ * \param coefficient_count - number of coefficients (order + 1)
+ * \param polynomial_coefficients - array of coefficients (order + 1)
+ * \param extremums - array of the extremums
+ */
 int indigo_polynomial_extremums(int coefficient_count, double *polynomial_coefficients, double *extremums);
 
-double indigo_polynomial_min_at(int coefficient_count, double *polynomial_coefficients, double min_x, double max_x, double *min_x_out);
+/**
+ * Return x at polinomial minimum in the range [low, high] with a given tolerance
+ *
+ * \param coefficient_count - number of coefficients (order + 1)
+ * \param polynomial_coefficients - array of coefficients (order + 1)
+ * \param low - low limit
+ * \param high - high limit
+ * \param tolerance - tolerance
+ */
+double indigo_polynomial_min_x(int coefficient_count, double* polynomial_coefficients, double low, double high, double tolerance);
+
+
+/**
+ * Converts the polynomial coefficients into a string representation.
+ *
+ * \param coefficient_count The number of coefficients in the polynomial.
+ * \param polynomial_coefficients An array of polynomial coefficients.
+ * \param polynomial_string The buffer to store the string representation of the polynomial.
+ */
+void indigo_polinomial_string(int coefficient_count, double *polynomial_coefficients, char *polynomial_string);
 
 #ifdef __cplusplus
 }
