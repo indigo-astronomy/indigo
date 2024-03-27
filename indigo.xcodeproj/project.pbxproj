@@ -643,6 +643,10 @@
 		599EB1742B52ECE300B333E4 /* indigo_aux_wbprov3.h in Headers */ = {isa = PBXBuildFile; fileRef = 599EB1642B52ECE300B333E4 /* indigo_aux_wbprov3.h */; };
 		599EB1772B52ECE300B333E4 /* indigo_aux_wbprov3.c in Sources */ = {isa = PBXBuildFile; fileRef = 599EB1682B52ECE300B333E4 /* indigo_aux_wbprov3.c */; };
 		599EB1782B52ECE300B333E4 /* indigo_aux_wbprov3.c in Sources */ = {isa = PBXBuildFile; fileRef = 599EB1682B52ECE300B333E4 /* indigo_aux_wbprov3.c */; };
+		599F61912BB494EA009065BC /* indigo_dslr_raw.h in Headers */ = {isa = PBXBuildFile; fileRef = 599F618F2BB494E9009065BC /* indigo_dslr_raw.h */; };
+		599F61922BB494EA009065BC /* indigo_dslr_raw.h in Headers */ = {isa = PBXBuildFile; fileRef = 599F618F2BB494E9009065BC /* indigo_dslr_raw.h */; };
+		599F61932BB494EA009065BC /* indigo_polynomial_fit.h in Headers */ = {isa = PBXBuildFile; fileRef = 599F61902BB494EA009065BC /* indigo_polynomial_fit.h */; };
+		599F61942BB494EA009065BC /* indigo_polynomial_fit.h in Headers */ = {isa = PBXBuildFile; fileRef = 599F61902BB494EA009065BC /* indigo_polynomial_fit.h */; };
 		599FC6862A0437F60030ED16 /* indigo_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1C22FB400900A15D19 /* indigo_ptp.h */; };
 		599FC68D2A0437F80030ED16 /* indigo_ptp.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FA0B1C22FB400900A15D19 /* indigo_ptp.h */; };
 		59A21E7D25BD849F00005965 /* libnovas.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC1D21EE39B300657C8F /* libnovas.a */; };
@@ -2209,6 +2213,8 @@
 		599EB1672B52ECE300B333E4 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		599EB1682B52ECE300B333E4 /* indigo_aux_wbprov3.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_wbprov3.c; sourceTree = "<group>"; };
 		599EB1792B54178100B333E4 /* ptp_camera_model.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ptp_camera_model.h; sourceTree = "<group>"; };
+		599F618F2BB494E9009065BC /* indigo_dslr_raw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_dslr_raw.h; sourceTree = "<group>"; };
+		599F61902BB494EA009065BC /* indigo_polynomial_fit.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_polynomial_fit.h; sourceTree = "<group>"; };
 		59A0772A21FE1C2F00244521 /* indigocat_star.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigocat_star.c; sourceTree = "<group>"; wrapsLines = 0; };
 		59A242E922A5B45E001C38F8 /* indigo_focuser_steeldrive2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_steeldrive2.h; sourceTree = "<group>"; };
 		59A242F222A5B45E001C38F8 /* indigo_focuser_steeldrive2_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_steeldrive2_main.c; sourceTree = "<group>"; };
@@ -9650,7 +9656,6 @@
 		59D381A61D9590EA00E87393 /* indigo_libs */ = {
 			isa = PBXGroup;
 			children = (
-				59F8AE702BA605D100EEDCCF /* indigo_polynomial_fit.c */,
 				59111CCD285F4DCE00E57194 /* indigocat */,
 				9DCB034622E9B9DE00A7A2E5 /* indigo */,
 				59E2DA0D263837BB00D3D4B5 /* libjpeg */,
@@ -9693,6 +9698,7 @@
 				594EF3182770FD15002D0EC8 /* indigo_fits.c */,
 				59D138A4283E6BAA00FCC514 /* indigo_dslr_raw.c */,
 				5913653628CFB42000ABB99B /* indigo_md5.c */,
+				59F8AE702BA605D100EEDCCF /* indigo_polynomial_fit.c */,
 				59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */,
 				59946C852AE9AFB400AA558D /* indigo_stretch.cpp */,
 			);
@@ -13661,6 +13667,8 @@
 				59B8A8C627ADAD8400A27609 /* indigo_align.h */,
 				5995A8CE25A9ABEC003987F1 /* indigo_platesolver.h */,
 				5913653528CFB42000ABB99B /* indigo_md5.h */,
+				599F618F2BB494E9009065BC /* indigo_dslr_raw.h */,
+				599F61902BB494EA009065BC /* indigo_polynomial_fit.h */,
 				59790B2C29B2796300F73B1D /* indigo_service_discovery.h */,
 				59946C882AE9AFCC00AA558D /* indigo_stretch.h */,
 			);
@@ -13946,6 +13954,7 @@
 				598A1C59259BA94A00C0B34C /* DDHidUsage.h in Headers */,
 				598A1C5A259BA94A00C0B34C /* indigo_ccd_qsi.h in Headers */,
 				598A1C5B259BA94A00C0B34C /* libgpusb.h in Headers */,
+				599F61922BB494EA009065BC /* indigo_dslr_raw.h in Headers */,
 				598A1C5C259BA94A00C0B34C /* DDHidLib.h in Headers */,
 				591CD11529806D47003243AE /* mallincam.h in Headers */,
 				598A1C5D259BA94A00C0B34C /* config.h in Headers */,
@@ -14012,6 +14021,7 @@
 				598A1C8F259BA94A00C0B34C /* deg2str.h in Headers */,
 				598A1C90259BA94A00C0B34C /* utlist.h in Headers */,
 				598A1C91259BA94A00C0B34C /* libuvc.h in Headers */,
+				599F61942BB494EA009065BC /* indigo_polynomial_fit.h in Headers */,
 				598A1C92259BA94A00C0B34C /* indigo_mount_synscan_guider.h in Headers */,
 				598A1C93259BA94A00C0B34C /* indigo_timer.h in Headers */,
 				598A1C94259BA94A00C0B34C /* indigo_dome_nexdome.h in Headers */,
@@ -14081,6 +14091,7 @@
 				595F291C211E211100380EF4 /* DDHidElement.h in Headers */,
 				595F2924211E211200380EF4 /* DDHidDevice.h in Headers */,
 				9DAD522421246C18002FCC79 /* indigo_mount_synscan_driver.h in Headers */,
+				599F61932BB494EA009065BC /* indigo_polynomial_fit.h in Headers */,
 				9DA451CF21908CBC00818B58 /* indigo_agent_imager.h in Headers */,
 				59A52DF121A33E4C000B6F27 /* libfli.h in Headers */,
 				59B8A8C727ADAD8400A27609 /* indigo_align.h in Headers */,
@@ -14106,6 +14117,7 @@
 				595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */,
 				59B51352297066040075C8A1 /* indigo_wheel_indigo.h in Headers */,
 				59C76F14237872570091B966 /* nexstar_pec.h in Headers */,
+				599F61912BB494EA009065BC /* indigo_dslr_raw.h in Headers */,
 				59D29A172841469D00D5E7F7 /* indigo_mount_starbook.h in Headers */,
 				9D7244F521F1CFEC0028FDF4 /* indigo_agent_mount.h in Headers */,
 				9DAD52502126E88B002FCC79 /* indigo_wheel_trutek.h in Headers */,
