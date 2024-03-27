@@ -23,7 +23,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
@@ -614,6 +614,8 @@ static void update_drivers(indigo_device *device, indigo_property *property) {
 	memcpy(AGENT_CONFIG_DRIVERS_PROPERTY->items, property->items, property->count * sizeof(indigo_item));
 	strcpy(DEVICE_PRIVATE_DATA->server, property->device);
 	indigo_define_property(device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
+	AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_IDLE_STATE;
+	indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 }
 
@@ -641,6 +643,8 @@ static void add_profile(indigo_device *device, indigo_property *property) {
 		}
 	}
 	indigo_define_property(device, AGENT_CONFIG_PROFILES_PROPERTY, NULL);
+	AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_IDLE_STATE;
+	indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 }
 
@@ -703,6 +707,8 @@ static void add_device(indigo_device *device, indigo_property *property) {
 	}
 	agent->state = property->state;
 	indigo_define_property(device, agent, NULL);
+	AGENT_CONFIG_LAST_CONFIG_PROPERTY->state = INDIGO_IDLE_STATE;
+	indigo_update_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
 	pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 }
 
