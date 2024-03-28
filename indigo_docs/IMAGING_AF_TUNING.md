@@ -1,6 +1,6 @@
 # INDIGO Imager Agent - Autofocus Tunning Guide
 
-Revision: 11.22.2021 (draft)
+Revision: 03.28.2024 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -10,6 +10,7 @@ e-mail: *rumenastro@gmail.com*
 INDIGO Imager Agent can use two focus quality metrics called Focus Quality Estimators. Each of them has its positives and drawbacks.
 
 - **Peak/HFD** - This estimator uses the peak value of the selected star and its Half Flux Diameter (HFD) to determine the best focus. This is the default estimator. It uses a selection with a given radius (see **Selection Radius**) for the estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail.
+- **U-Curve** - This estimator uses the HFD of the selected star (see **Selection Radius**) as a focus quality estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail. This estimator looks for the best focus by moving the focuser in one direction and looks for HFD minimum with a step specified in **Initial / U-Curve step**. It collects several data points on each side of the focus and using a Polynomial fit it estimates the best focus and moved the focuser to this position.
 - **RMS contrast** - This estimator uses Root Mean Square (RMS) contrast of the whole image to determine the best focus. This method works fine with highly defocused images. It can find a perfect focus form virtually any focuser position as long as the image has some features on it. As a downside of this method should be mentioned that saturated stars will fool it and it will not find the perfect focus. To fight this, INDIGO 2.0-166 introduces masking of the saturated areas. If saturation is detected, the saturated area is excluded from the RMS contrast estimation and focusing statistics are reset. Then the autofocus process is resumed. This can be avoided with shorter exposure time, lower gain, or just by avoiding bright stars in the focusing frame (see **Selection Subframe**).
 
 Focus quality estimators will not work correctly if used with Bachtinov mask. If the mask is on during the AF process, the end focus will either fail or will be reported ok while in fact it is not. Bachtinov mask can be used to verify the final focus but not during the AF process.
@@ -17,9 +18,11 @@ Focus quality estimators will not work correctly if used with Bachtinov mask. If
 ## Autofocus Tuning Parameters
 In INDIGO Imager Agent auto-focus starts with a large step to approximate the focus and progressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy.
 
-- **Initial step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the final step but it can be as large as 10 - 15 times the final step. **Initial step** is also used as a safety limit. The focusing will fail if the focus is not reached within *40 * Initial step* steps from the initial focuser position for **RMS contrast** estimator and *20 * Initial step* steps for **Peak/HFD** estimator.
+- **Initial / U-Curve step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the critical focus zone (CFZ) but it can be as large as 10 - 15 times the CFZ. **Initial / U-Curve step** is also used as a safety limit. The focusing will fail if the focus is not reached within *40 * Initial / U-Curve step* steps from the initial focuser position for **RMS contrast** estimator and *20 * Initial / U-Curve step* steps for **Peak/HFD** and **U-Curve** estimators. If this value is large, the defcusing may be too high and the HFD may not be measurable, which in turn, may fail the **Peak/HFD** and **U-Curve** focusing procedures.
 
-- **Final Step** - The size of this step is critical for the focusing accuracy. It should be smaller than CFZ a good value would be around CFZ/2 in focuser steps. Much smaller values than CFZ/3 may lead to hunting and failure to settle.
+- **Final Step** - The size of this step is critical for the focusing accuracy. It should be smaller than CFZ a good value would be around CFZ/2 in focuser steps. Much smaller values than CFZ/3 may lead to hunting and failure to settle. This parameter is used by **RMS contrast** and **Peak/HFD** estimators.
+
+- **U-Curve fitting samples** - This parameter specifies how many sample points will be used for the Polynomial fitting for estimating the best focus position by the **U-Curve** estimator. Usually more points manage better the bad seeing and lead to better focus estimation. However the worst the seeing the larger **Initial / U-Curve step** should be, which limits the number of sample points with a measurable HFD.
 
 - **Backlash (total)** - this value is the backlash of the focuser. It assumes symmetrical IN and OUT backlash. Most of the system have symmetrical backlash.
 
@@ -29,7 +32,7 @@ In INDIGO Imager Agent auto-focus starts with a large step to approximate the fo
 
 - **Stacking** - this value is in frames. It means how many exposures to take and evaluate before making the next focuser move. This value could be 1-3 for steady atmosphere but > 3 for a visible scintillation.
 
-- **Selection Radius** - this is the box size (in pixels) in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial (unfocused) stellar image should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate. A good value for most of the cases is 8 - 10 pixels. This Value is irrelevant for **RMS contrast** focus quality estimator.
+- **Selection Radius** - this is the box size (in pixels) in which the HFD and FWHM of the selected star will be evaluated. It is important to mention that the initial (unfocused) stellar image should fit in this selection. If the star is larger focusing will most likely fail. On the other hand if the selection radius is too large HFD and FWHM estimations will be less accurate. A good value for most of the cases is 8 - 10 pixels for **Peak/HFD** and about 10-20 for **U-Curve**. This Value is irrelevant for **RMS contrast** focus quality estimator.
 
 - **Selection Subframe** - This defines a region of interest (ROI) around the selected star to be used for focusing. It is specified as times the **Selection Radius**. The default value for **Selection Subframe** is 0 which means that the whole image is used. Value of 5 means that the ROI will be a square around the selected star with size *5 * Selection Subframe*. Please note that the ROI may not be centered around the selection as many cameras do not allow ROIs starting at any pixel position. This can be used to make the focusing faster with CCDs with slow read frame out or to avoid over-saturated stars with the **RMS contrast** focus quality estimator.
 
