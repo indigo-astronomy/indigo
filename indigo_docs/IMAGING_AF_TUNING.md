@@ -10,13 +10,20 @@ e-mail: *rumenastro@gmail.com*
 INDIGO Imager Agent can use two focus quality metrics called Focus Quality Estimators. Each of them has its positives and drawbacks.
 
 - **Peak/HFD** - This estimator uses the peak value of the selected star and its Half Flux Diameter (HFD) to determine the best focus. This is the default estimator. It uses a selection with a given radius (see **Selection Radius**) for the estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail.
-- **U-Curve** - This estimator uses the HFD of the selected star (see **Selection Radius**) as a focus quality estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail. This estimator looks for the best focus by moving the focuser in one direction and looks for HFD minimum with a step specified in **Initial / U-Curve step**. It collects several data points on each side of the focus and using a Polynomial fit it estimates the best focus and moved the focuser to this position.
+
+- **U-Curve** - This estimator uses the HFD of the selected star (see **Selection Radius**) as a focus quality estimation. If the star is highly defocused the HFD may not be measurable and the focusing procedure will fail. This estimator looks for the best focus by moving the focuser in one direction and looks for HFD minimum with a step specified in **Initial / U-Curve step**.
+
 - **RMS contrast** - This estimator uses Root Mean Square (RMS) contrast of the whole image to determine the best focus. This method works fine with highly defocused images. It can find a perfect focus form virtually any focuser position as long as the image has some features on it. As a downside of this method should be mentioned that saturated stars will fool it and it will not find the perfect focus. To fight this, INDIGO 2.0-166 introduces masking of the saturated areas. If saturation is detected, the saturated area is excluded from the RMS contrast estimation and focusing statistics are reset. Then the autofocus process is resumed. This can be avoided with shorter exposure time, lower gain, or just by avoiding bright stars in the focusing frame (see **Selection Subframe**).
+
+**Peak/HFD** and **RMS contrast** auto-focus estimators start with a large step to approximate the focus and progressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy of these estimators.
+
+**U-Curve** auto-focus estimator collects several data points (while moving in one direction) on each side of the focus, and uses a polynomial fit to estimate the best focus position. Then it moves the focuser to this position. As shown bellow: red dots are the measured data points, the blue line is the polynomial fit, **x** is the focuser position and **y** is the measured HFD. The best focus is at position 3815.
+
+![Polynomial fit. Red dots are data points, x - focuser position, y - HFD](IMAGING_AF_TUNING/u-curve.png)
 
 Focus quality estimators will not work correctly if used with Bachtinov mask. If the mask is on during the AF process, the end focus will either fail or will be reported ok while in fact it is not. Bachtinov mask can be used to verify the final focus but not during the AF process.
 
 ## Autofocus Tuning Parameters
-In INDIGO Imager Agent auto-focus starts with a large step to approximate the focus and progressively decreasing it until it finishes making adjustments with its final step. This is why the final step is important for the focusing accuracy.
 
 - **Initial / U-Curve step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the critical focus zone (CFZ) but it can be as large as 10 - 15 times the CFZ. **Initial / U-Curve step** is also used as a safety limit. The focusing will fail if the focus is not reached within *40 * Initial / U-Curve step* steps from the initial focuser position for **RMS contrast** estimator and *20 * Initial / U-Curve step* steps for **Peak/HFD** and **U-Curve** estimators. If this value is large, the defcusing may be too high and the HFD may not be measurable, which in turn, may fail the **Peak/HFD** and **U-Curve** focusing procedures.
 
