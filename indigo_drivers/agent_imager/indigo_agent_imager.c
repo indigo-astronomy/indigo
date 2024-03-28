@@ -1236,8 +1236,7 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving in %d + %d = %d steps", (int)steps, (int)(steps_todo - steps), (int)steps_todo);
 				current_offset -= steps;
 			}
-			if (!move_focuser(device, focuser_name, moving_out, steps_todo))
-				break;
+			if (!move_focuser(device, focuser_name, moving_out, steps_todo)) break;
 		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) >= limit) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Current_offset %d steps", (int)current_offset);
 			if (
@@ -1516,7 +1515,6 @@ static bool autofocus_ucurve(indigo_device *device) {
 				// best focus is not close to center
 				if (abs(best_index - midpoint) > 1) {
 					sample = 0;
-					//last_quality = 0;
 					moving_out = true;
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak at pos %d is far from the midpoint at %d - rerunning", best_index, midpoint);
 					AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
@@ -1543,6 +1541,11 @@ static bool autofocus_ucurve(indigo_device *device) {
 			focus_failed = true;
 			goto ucurve_finish;
 		}
+	}
+
+	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+		SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
+		return false;
 	}
 
 	double polynomial[UCURVE_ORDER + 1];
