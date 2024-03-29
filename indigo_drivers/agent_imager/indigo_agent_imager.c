@@ -171,8 +171,9 @@
 #define BUSY_TIMEOUT 5
 #define AF_MOVE_LIMIT_HFD 20
 #define AF_MOVE_LIMIT_RMS 40
+#define AF_MOVE_LIMIT_UCURVE 10
 
-#define MAX_UCURVE_SAMPLES 20
+#define MAX_UCURVE_SAMPLES 24
 #define UCURVE_ORDER 4
 
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
@@ -1390,7 +1391,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->use_ucurve_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value;
 	DEVICE_PRIVATE_DATA->use_rms_estimator = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value;
 
-	int limit = (DEVICE_PRIVATE_DATA->use_hfd_estimator || DEVICE_PRIVATE_DATA->use_ucurve_estimator) ? AF_MOVE_LIMIT_HFD * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : AF_MOVE_LIMIT_RMS * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
+	int limit = AF_MOVE_LIMIT_UCURVE * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value * MAX_UCURVE_SAMPLES;
 	bool moving_out = true, first_move = true;
 	int sample = 0;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, ccd_name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
