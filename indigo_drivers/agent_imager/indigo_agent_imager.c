@@ -1619,7 +1619,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 
 	// Compensate for the overshoot if applied
 	if (backlash_overshoot > 1 && DEVICE_PRIVATE_DATA->saved_backlash > 0) {
-		steps_to_focus = DEVICE_PRIVATE_DATA->saved_backlash* backlash_overshoot;
+		steps_to_focus = DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating overshoot: overshoot = %f", steps_to_focus);
 		if (!move_focuser(device, focuser_name, moving_out, steps_to_focus)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to apply overshoot");
