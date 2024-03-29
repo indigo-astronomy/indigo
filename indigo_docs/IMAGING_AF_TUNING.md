@@ -1,6 +1,6 @@
 # INDIGO Imager Agent - Autofocus Tunning Guide
 
-Revision: 03.28.2024 (draft)
+Revision: 03.30.2024 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -25,11 +25,11 @@ Focus quality estimators will not work correctly if used with Bachtinov mask. If
 
 ## Autofocus Tuning Parameters
 
-- **Initial / U-Curve step** - This is a big step. With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 5 - 7 times the critical focus zone (CFZ) but it can be as large as 10 - 15 times the CFZ. **Initial / U-Curve step** is also used as a safety limit. The focusing will fail if the focus is not reached within *40 * Initial / U-Curve step* steps from the initial focuser position for **RMS contrast** estimator and *20 * Initial / U-Curve step* steps for **Peak/HFD** and **U-Curve** estimators. If this value is large, the defcusing may be too high and the HFD may not be measurable, which in turn, may fail the **Peak/HFD** and **U-Curve** focusing procedures.
+- **Initial / U-Curve step** - With this step the focusing difference should be clearly visible. The value is in focuser steps. A reasonable value to start with is 3 - 5 times the critical focus zone (CFZ) for **U-Curve**, and 5 - 7 times the CFZ for **Peak/HFD**. **Initial / U-Curve step** is also used as a safety limit. The focusing will fail if the focus is not reached within *40 * Initial / U-Curve step* steps from the initial focuser position for **RMS contrast** estimator, *20 * Initial / U-Curve step* steps for **Peak/HFD** and *10 * Initial / U-Curve step * U-Curve fitting samples* steps for **U-Curve**. If this value is too large, the defcusing may become too high and the HFD may not be measurable, which in turn, may fail the **Peak/HFD** and **U-Curve** focusing procedures.
 
 - **Final Step** - The size of this step is critical for the focusing accuracy. It should be smaller than CFZ a good value would be around CFZ/2 in focuser steps. Much smaller values than CFZ/3 may lead to hunting and failure to settle. This parameter is used by **RMS contrast** and **Peak/HFD** estimators.
 
-- **U-Curve fitting samples** - This parameter specifies how many sample points will be used for the Polynomial fitting for estimating the best focus position by the **U-Curve** estimator. Usually more points manage better the bad seeing and lead to better focus estimation. However the worst the seeing the larger **Initial / U-Curve step** should be, which limits the number of sample points with a measurable HFD.
+- **U-Curve fitting samples** - This parameter specifies how many sample points will be used for the Polynomial fitting for estimating the best focus position by the **U-Curve** estimator. Usually more points and smaller **Initial / U-Curve step** lead to better focusing. Also more points manage better the bad seeing and lead to better focus estimation. However the worst the seeing the larger **Initial / U-Curve step** should be, which limits the number of sample points with a measurable HFD.
 
 - **Backlash (total)** - this value is the backlash of the focuser. It assumes symmetrical IN and OUT backlash. Most of the system have symmetrical backlash.
 
@@ -146,5 +146,21 @@ The procedure is as follows.
  **68um / 5.3 = 12.8steps**
 
 Now we can set our **Final step** value to CFZ / 2 **12 / 2 = 6steps** and then fine tune it, if the results are not good.
+
+##  The Lazy Way of Tuning the Auto Focus
+Forget everything you have read about the CFZ and the backlash in the previous sections.
+
+1. Select **U-Curve** focus estimator.
+2. Determine a rough estimate for the focsuer backlash or simply try to guess it. Set this as a focuser **Backlash (total)**.
+3. Set the **Backlash overshoot factor** to 1.5 or 2.
+4. Focus the telescope by eye and try to determine some relatively small move after which the defocusing will be noticeable. Enter this value as **Initial / U-Curve step**.
+5. Try to auto focus and check the result with Bachtinov mask. If the reached focus is not good increase the  **Backlash overshoot factor** with 0.5 or multiply **Backlash (total)** by 1.5 and rerun the AF.
+6. Repeat step 5 until the achieved focus is good.
+
+Notes:
+* Please set the **Selection Radius** large enough so that the star is always in the selection during the AF Run, but not too large.
+* Backlash overshoot method will not work with asymmetric focuser backlash.
+* If this procedure does not work - sorry you should read the previous sections and try again.
+
 
 Clear skies!  
