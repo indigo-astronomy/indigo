@@ -1469,7 +1469,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			return false;
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus Quality = %g (Previous %g)", quality, last_quality);
-		
+
 		if (sample == 0) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "First sample");
 			if (!move_focuser(device, focuser_name, moving_out, steps)) break;
@@ -1598,7 +1598,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 
 	// Apply backlash or overshoot if needed
 	if (backlash_overshoot > 1 && DEVICE_PRIVATE_DATA->saved_backlash > 0) {
-		steps_to_focus += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value * backlash_overshoot;
+		steps_to_focus += DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Applying overshoot: steps_to_focus = %f including overshoot = %f", steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot);
 	} else if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) { /* the focuser driver has no backlash, so we take care of it */
 		steps_to_focus += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value;
@@ -1618,8 +1618,8 @@ static bool autofocus_ucurve(indigo_device *device) {
 	}
 
 	// Compensate for the overshoot if applied
-	if (backlash_overshoot > 1 && AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value > 0) {
-		steps_to_focus = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value * backlash_overshoot;
+	if (backlash_overshoot > 1 && DEVICE_PRIVATE_DATA->saved_backlash > 0) {
+		steps_to_focus = DEVICE_PRIVATE_DATA->saved_backlash* backlash_overshoot;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating overshoot: overshoot = %f", steps_to_focus);
 		if (!move_focuser(device, focuser_name, moving_out, steps_to_focus)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to apply overshoot");
