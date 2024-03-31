@@ -2,6 +2,54 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-278] - 31 Mar Sun 2024
+## Overall:
+- build system fixes
+
+- indigo_rotator_driver:
+	- add relative move property
+	- added callibration proeprty
+
+- indigo_polynomial_fit:
+	- added polynomial fit functions
+
+- Sequencer.js:
+	- home() operation added
+	- added dynamic properties for active loops
+
+- indigo_docs:
+	- IMAGING_AF_TUNING.md - updated to describe U-Curve
+
+### Driver Fixes:
+- indigo_agent_imager:
+	- fix FOCUSER_MODE_PROPERTY, CCD_UPLOAD_MODE_PROPERTY and CCD_IMAGE_FORMAT_PROPERTY restoration in focus process
+	- Add U-Curve focus estimator
+
+- indigo_agent_mount:
+	- add parallactic angle and derotation rate to AGENT_MOUNT_DISPLAY_COORDINATES
+	- add field detotation suppoer for Alt/Az mounts
+
+- ondigo_agent_config:
+	- AGENT_CONFIG_LAST_CONFIG_PROPERTY becomes IDLE if saved or loaded configuration changes
+
+- indigo_aux_joystick:
+	- BlueTooth connection fixed
+
+- indigo_ccd_asi:
+	- SDK updated to v.1.34
+
+- indigo_ccd_ptp:
+
+- indigo_focuser_efa:
+	- celestron focuser USB rules added
+
+- indigo_mount_starbook:
+	- fix hangup issue of starbook driver
+
+### New Drivers:
+- indigo_rotator_wa:
+	- driver for Wanderer Astro field rotators
+
 # [2.0-276] - 6 Mar Wed 2024
 ## Overall:
 - filter agents:
@@ -14,7 +62,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - add indigo_copy_property()
 - target added to indigo_trace_property() output for number properties
 
-### Driver Fixes
+### Driver Fixes:
 - indigio_ccd_mi:
 	- Fix hotplug handling
 	- Update MI library to 0.10.0/0.9.0
