@@ -138,6 +138,7 @@ This is the list of requirements taken into the consideration:
 108. Wanderer Astro WandererBox Plus V3
 109. Wanderer Astro WandererBox Pro V3
 110. Wanderer Astro WandererCover V4-EC
+111. iOptron iEAF focuser driver
 
 
 ## This is under development
