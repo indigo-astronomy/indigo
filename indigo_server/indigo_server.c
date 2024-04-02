@@ -170,6 +170,7 @@
 #include "aux_wbplusv3/indigo_aux_wbplusv3.h"
 #include "aux_wbprov3/indigo_aux_wbprov3.h"
 #include "aux_wcv4ec/indigo_aux_wcv4ec.h"
+#include "focuser_ioptron/indigo_focuser_ioptron.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -269,12 +270,13 @@ driver_entry_point static_drivers[] = {
 	indigo_dome_talon6ror,
 	indigo_focuser_asi,
 	indigo_focuser_astromechanics,
-	indigo_focuser_efa,
 	indigo_focuser_dmfc,
 	indigo_focuser_dsd,
+	indigo_focuser_efa,
 	indigo_focuser_fcusb,
 	indigo_focuser_focusdreampro,
 	indigo_focuser_fli,
+	indigo_focuser_ioptron,
 	indigo_focuser_lakeside,
 	indigo_focuser_lunatico,
 	indigo_focuser_mjkzz,
