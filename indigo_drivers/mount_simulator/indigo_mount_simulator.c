@@ -179,6 +179,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_HOME_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- MOUNT_ON_COORDINATES_SET
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
