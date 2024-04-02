@@ -380,9 +380,11 @@ static void mount_handle_connect(indigo_device *device) {
 					} else {
 						if (side_of_pier == 'W') {
 							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+							MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 						} else if (side_of_pier == 'E') {
 							MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
+							MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;
 							indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
 						}
 					}
