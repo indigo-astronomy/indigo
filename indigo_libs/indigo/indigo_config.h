@@ -28,7 +28,7 @@
 
 /** INDIGO Build number
  */
-#define INDIGO_BUILD "278"
+#define INDIGO_BUILD "279"
 
 /** INDIGO Build commit
  */
