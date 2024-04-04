@@ -51,11 +51,15 @@ cd libtool-$libtool_ver
 make
 sudo make install
 
+##
+# pkg-config
+# https://pkgconfig.freedesktop.org/releases
+
 cd $build
 curl -OL https://pkgconfig.freedesktop.org/releases/pkg-config-$pkgconfig_ver.tar.gz
 tar xzf pkg-config-$pkgconfig_ver.tar.gz
 cd pkg-config-$pkgconfig_ver
-LDFLAGS="-framework CoreFoundation -framework Carbon" ./configure --prefix=/usr/local --with-internal-glib
+LDFLAGS="-framework CoreFoundation -framework Carbon" CFLAGS="-Wno-int-conversion" ./configure --prefix=/usr/local --with-internal-glib
 make
 sudo make install
 
