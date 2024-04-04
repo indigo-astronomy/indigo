@@ -23,7 +23,7 @@
  \file indigo_focuser_asi.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME "indigo_focuser_asi"
 
 #include <stdlib.h>
@@ -177,11 +177,23 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 
 	/* temperature difference if more than 1 degree so compensation needed */
-	if ((fabs(temp_difference) >= 1.0) && (fabs(temp_difference) < 100)) {
+	if ((fabs(temp_difference) >= FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) && (fabs(temp_difference) < 100)) {
 		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.1f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.0f, threshold = %.2f",
+			temp_difference,
+			compensation,
+			FOCUSER_COMPENSATION_ITEM->number.value,
+			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
+		);
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating (not needed): temp_difference = %f", temp_difference);
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"Not compensating (not needed): temp_difference = %.2f, threshold = %.2f",
+			temp_difference,
+			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
+		);
 		return;
 	}
 
@@ -274,6 +286,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
 		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
 		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+		FOCUSER_COMPENSATION_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------- FOCUSER_MODE
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------- BEEP_PROPERTY
