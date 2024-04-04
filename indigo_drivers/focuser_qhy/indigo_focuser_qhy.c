@@ -291,7 +291,7 @@ static bool qhy_command(indigo_device *device, const char *command, char *respon
 		response[index] = 0;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -306,7 +306,7 @@ static int qhy_simple_command(indigo_device *device, int cmd_id, qhy_response *p
 		return result;
 	}
 	result = qhy_parse_response(response, parsed_response);
-	if (result < 0 || parsed_response->idx != cmd_id) {
+	if (result < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Parsing response '%s' failed with %d", response, result);
 	}
 	return result;
@@ -324,7 +324,6 @@ static int qhy_get_version(indigo_device *device, char *version, char *board_ver
 	}
 	strncpy(version, parsed_response.version, 50);
 	strncpy(board_version, parsed_response.version_board, 50);
-	qhy_print_response(parsed_response);
 	return 0;
 }
 
@@ -371,7 +370,6 @@ int qhy_get_temperature_voltage(indigo_device *device, double *chip_temp, double
 	if (chip_temp) *chip_temp = parsed_response.chip_temp;
 	if (out_temp) *out_temp = parsed_response.out_temp;
 	if (voltage) *voltage = parsed_response.voltage;
-	qhy_print_response(parsed_response);
 	return 0;
 }
 
@@ -386,7 +384,6 @@ static int qhy_get_position(indigo_device *device, int *position) {
 		return -1;
 	}
 	*position = parsed_response.position;
-	qhy_print_response(parsed_response);
 	return 0;
 }
 
@@ -502,7 +499,7 @@ static void focuser_timer_callback(indigo_device *device) {
 
 static void temperature_timer_callback(indigo_device *device) {
 	double temp, chip_temp, voltage;
-	static bool has_sensor = true;
+	static bool has_valid_temperature = true;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 
@@ -520,20 +517,20 @@ static void temperature_timer_callback(indigo_device *device) {
 		);
 		if (temp <= NO_TEMP_READING) {
 			temp = chip_temp;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No outside temperature reading, using chip temperature: %f", chip_temp);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No outside temperature reading, using chip temperature: %f", chip_temp);
 		}
 		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 	}
 
-	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* -127 is returned when the sensor is not connected */
+	if (FOCUSER_TEMPERATURE_ITEM->number.value <= NO_TEMP_READING) { /* < -50 is returned when the sensor is not connected */
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-		if (has_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
-			has_sensor = false;
+		if (has_valid_temperature) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "No valid temperature reading.");
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "No valid temperature reading.");
+			has_valid_temperature = false;
 		}
 	} else {
-		has_sensor = true;
+		has_valid_temperature = true;
 		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
 	}
 	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
