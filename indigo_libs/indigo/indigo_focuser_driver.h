@@ -135,13 +135,13 @@ extern "C" {
 */
 #define FOCUSER_COMPENSATION_ITEM							(FOCUSER_COMPENSATION_PROPERTY->items+0)
 
-/** FOCUSER_TEMPERATURE.PERIOD property item pointer.
- */
-#define FOCUSER_COMPENSATION_PERIOD_ITEM			(FOCUSER_COMPENSATION_PROPERTY->items+1)
-	
 /** FOCUSER_TEMPERATURE.THRESHOLD property item pointer.
  */
-#define FOCUSER_COMPENSATION_THRESHOLD_ITEM		(FOCUSER_COMPENSATION_PROPERTY->items+2)
+#define FOCUSER_COMPENSATION_THRESHOLD_ITEM		(FOCUSER_COMPENSATION_PROPERTY->items+1)
+
+/** FOCUSER_TEMPERATURE.PERIOD property item pointer.
+ */
+#define FOCUSER_COMPENSATION_PERIOD_ITEM		(FOCUSER_COMPENSATION_PROPERTY->items+2)
 	
 /** FOCUSER_MODE property pointer, property is optional, property change request should be fully handled by indigo_focuser_change_property.
 */

@@ -102,8 +102,8 @@ indigo_result indigo_focuser_attach(indigo_device *device, const char* driver_na
 				return INDIGO_FAILED;
 			FOCUSER_COMPENSATION_PROPERTY->hidden = true;
 			indigo_init_number_item(FOCUSER_COMPENSATION_ITEM, FOCUSER_COMPENSATION_ITEM_NAME, "Compensation (steps/°C)", -50, 50, 1, 0);
+			indigo_init_number_item(FOCUSER_COMPENSATION_THRESHOLD_ITEM, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, "Compensation threshold (°C)", 0, 10, 0.5, 1);
 			indigo_init_number_item(FOCUSER_COMPENSATION_PERIOD_ITEM, FOCUSER_COMPENSATION_PERIOD_ITEM_NAME, "Compensation period (s)", 0, 60, 1, 1);
-			indigo_init_number_item(FOCUSER_COMPENSATION_THRESHOLD_ITEM, FOCUSER_COMPENSATION_THRESHOLD_ITEM_NAME, "Compensation threshold (°C)", 0, 10, 1, 0.5);
 			FOCUSER_COMPENSATION_PROPERTY->count = 1;
 			// -------------------------------------------------------------------------------- FOCUSER_MODE
 			FOCUSER_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Compensation mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
