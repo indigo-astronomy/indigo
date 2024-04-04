@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define FOCUSER_QHY_NAME              "Q-Focuser"
+#define FOCUSER_QHY_NAME "Q-Focuser"
 
 extern indigo_result indigo_focuser_qhy(indigo_driver_action action, indigo_driver_info *info);
 
