@@ -558,7 +558,7 @@ static void temperature_timer_callback(indigo_device *device) {
 			chip_temp,
 			voltage
 		);
-		if (temp <= NO_TEMP_READING) {
+		if (temp_sample <= NO_TEMP_READING) {
 			temp_sample = chip_temp;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No outside temperature reading, using chip temperature: %f", chip_temp);
 		}
