@@ -1872,7 +1872,7 @@ int main(int argc, const char * argv[]) {
 				return EXIT_SUCCESS;
 			} else {
 				if (waitpid(server_pid, NULL, 0) == -1 ) {
-					INDIGO_ERROR(indigo_error("waitpid() failed."));
+					INDIGO_ERROR(indigo_error("waitpid() failed with error: %s", strerror(errno)));
 					return EXIT_FAILURE;
 				}
 				use_sigkill = false;
