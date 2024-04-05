@@ -50,24 +50,67 @@
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
 
+#define NO_TEMP_READING                (-50)
+
+#define CB_SIZE 5
+typedef struct {
+	double buffer[CB_SIZE];
+	int head;
+	int tail;
+} circular_buffer;
+
 typedef struct {
 	int handle;
 	uint32_t current_position, target_position;
 	double prev_temp;
+	circular_buffer temperature_buffer;
 	indigo_timer *focuser_timer, *temperature_timer;
 	pthread_mutex_t port_mutex;
 } qhy_private_data;
 
 static void compensate_focus(indigo_device *device, double new_temp);
 
-/* simple JSON parser */
+/* Circular buffer functions ================================================================= */
+
+static void cb_clear(circular_buffer* cb) {
+	cb->head = 0;
+	cb->tail = 0;
+}
+
+static void cb_write(circular_buffer* cb, double data) {
+	if ((cb->head + 1) % CB_SIZE == cb->tail) {
+		// Overwrite the oldest data when the buffer is full
+		cb->tail = (cb->tail + 1) % CB_SIZE;
+	}
+	cb->buffer[cb->head] = data;
+	cb->head = (cb->head + 1) % CB_SIZE;
+}
+
+static double cb_average(circular_buffer* cb) {
+	if (cb->head == cb->tail) {
+		return NO_TEMP_READING;  // Return NO_TEMP_READING when the buffer is empty
+	}
+
+	double sum = 0.0;
+	int count = 0;
+	int index = cb->tail;
+
+	while (index != cb->head) {
+		sum += cb->buffer[index];
+		count++;
+		index = (index + 1) % CB_SIZE;
+	}
+
+	return sum / count;
+}
+
+/* simple JSON parser ==================================================================== */
 
 #define MAX_KV 50
 #define MAX_KEY_LEN 50
 #define MAX_VALUE_LEN 50
 
 #define MAX_CMD_LEN 150
-#define NO_TEMP_READING                (-50)
 
 typedef struct kv {
 	char key[MAX_KEY_LEN];
@@ -498,12 +541,12 @@ static void focuser_timer_callback(indigo_device *device) {
 
 
 static void temperature_timer_callback(indigo_device *device) {
-	double temp, chip_temp, voltage;
+	double temp, temp_sample, chip_temp, voltage;
 	static bool has_valid_temperature = true;
 
 	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
 
-	if (qhy_get_temperature_voltage(device, &chip_temp, &temp, &voltage) < 0) {
+	if (qhy_get_temperature_voltage(device, &chip_temp, &temp_sample, &voltage) < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_temperature_voltage(%d) failed", PRIVATE_DATA->handle);
 		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else {
@@ -511,14 +554,27 @@ static void temperature_timer_callback(indigo_device *device) {
 			DRIVER_NAME,
 			"qhy_get_temperature_voltage(%d, -> %f, %f, %f) succeeded",
 			PRIVATE_DATA->handle,
-			temp,
+			temp_sample,
 			chip_temp,
 			voltage
 		);
 		if (temp <= NO_TEMP_READING) {
-			temp = chip_temp;
+			temp_sample = chip_temp;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No outside temperature reading, using chip temperature: %f", chip_temp);
 		}
+
+		// write to circular buffer and calculate average temperature to reduce noise
+		cb_write(&PRIVATE_DATA->temperature_buffer, temp_sample);
+		temp = cb_average(&PRIVATE_DATA->temperature_buffer);
+
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"Temperature: temp_sample = %f, chip_temp = %f, average_temp = %f",
+			temp_sample,
+			chip_temp,
+			temp
+		);
+
 		FOCUSER_TEMPERATURE_ITEM->number.value = temp;
 	}
 
@@ -759,6 +815,7 @@ static void focuser_connect_callback(indigo_device *device) {
 						qhy_set_hold(device);
 					}
 
+					cb_clear(&PRIVATE_DATA->temperature_buffer);
 					indigo_set_timer(device, 0, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 				}
 			}
