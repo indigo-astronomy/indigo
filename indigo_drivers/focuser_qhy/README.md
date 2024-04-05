@@ -20,7 +20,7 @@ INDIGO Astronomy open-source license.
 
 indigo_server indigo_focuser_qhy
 
-## Status: In Development
+## Status: Stable
 
 Driver is developed and tested with:
 * QHY Q-Focuser standard
