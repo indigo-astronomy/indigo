@@ -23,7 +23,7 @@
 	\file indigo_focuser_qhy.c
 */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_qhy"
 
 #include <stdlib.h>
@@ -217,7 +217,7 @@ static int json_parse(kv_t* kvs, const char* json) {
 }
 
 static int qhy_parse_response(char *response, qhy_response *qresponse) {
-	kv_t kvs[10];
+	kv_t kvs[10] = {0};
 
     int res = json_parse(kvs, response);
 	if (res < 0) return res;
@@ -874,6 +874,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_ITEM->number.target > FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value
 		) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
