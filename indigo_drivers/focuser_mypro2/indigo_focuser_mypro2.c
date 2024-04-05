@@ -23,7 +23,7 @@
  \file indigo_focuser_mypro2.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_focuser_mypro2"
 
 #include <stdlib.h>
@@ -457,11 +457,23 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	}
 
 	/* temperature difference if more than 1 degree so compensation needed */
-	if ((fabs(temp_difference) >= 1.0) && (fabs(temp_difference) < 100)) {
+	if ((fabs(temp_difference) >= FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) && (fabs(temp_difference) < 100)) {
 		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.1f", temp_difference, compensation, FOCUSER_COMPENSATION_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.0f, threshold = %.2f",
+			temp_difference,
+			compensation,
+			FOCUSER_COMPENSATION_ITEM->number.value,
+			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
+		);
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating (not needed): temp_difference = %f", temp_difference);
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"Not compensating (not needed): temp_difference = %.2f, threshold = %.2f",
+			temp_difference,
+			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
+		);
 		return;
 	}
 
@@ -551,6 +563,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
 		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+
+		FOCUSER_MODE_PROPERTY->hidden = false;
+		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+		FOCUSER_COMPENSATION_PROPERTY->count = 2;
 
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 
@@ -737,14 +756,8 @@ static void focuser_connect_callback(indigo_device *device) {
 
 					indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 
-
-					FOCUSER_MODE_PROPERTY->hidden = false;
-					FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
 					mfp_get_temperature(device, &FOCUSER_TEMPERATURE_ITEM->number.value);
 					PRIVATE_DATA->prev_temp = FOCUSER_TEMPERATURE_ITEM->number.value;
-					FOCUSER_COMPENSATION_PROPERTY->hidden = false;
-					FOCUSER_COMPENSATION_ITEM->number.min = -10000;
-					FOCUSER_COMPENSATION_ITEM->number.max = 10000;
 					indigo_set_timer(device, 1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
 				}
 			}
