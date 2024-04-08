@@ -54,7 +54,7 @@ extern bool indigo_use_blob_urls;
 extern char *indigo_client_name;
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#define INDIGO_MAX_DRIVERS    128
+#define INDIGO_MAX_DRIVERS    256
 
 /** Driver entry type.
  */
