@@ -123,7 +123,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_text_item(POA_CUSTOM_SUFFIX_ITEM, POA_CUSTOM_SUFFIX_NAME, "Suffix", "");
 		// --------------------------------------------------------------------------------
-		return indigo_wheel_enumerate_properties(device, NULL, NULL);
+		return wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

@@ -809,7 +809,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		if (ASI_ADVANCED_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		// --------------------------------------------------------------------------------
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return asi_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

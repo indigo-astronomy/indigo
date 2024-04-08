@@ -253,34 +253,31 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	indigo_result result = INDIGO_OK;
-	if ((result = indigo_aux_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (IS_CONNECTED) {
-			if (indigo_property_match(JOYSTICK_BUTTONS_PROPERTY, property))
-				indigo_define_property(device, JOYSTICK_BUTTONS_PROPERTY, NULL);
-			if (indigo_property_match(JOYSTICK_AXES_PROPERTY, property))
-				indigo_define_property(device, JOYSTICK_AXES_PROPERTY, NULL);
-			if (indigo_property_match(JOYSTICK_MAPPING_PROPERTY, property))
-				indigo_define_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
-			if (indigo_property_match(JOYSTICK_OPTIONS_PROPERTY, property))
-				indigo_define_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_PARK_PROPERTY, property))
-				indigo_define_property(device, MOUNT_PARK_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_HOME_PROPERTY, property))
-				indigo_define_property(device, MOUNT_HOME_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property))
-				indigo_define_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property))
-				indigo_define_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property))
-				indigo_define_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property))
-				indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-			if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property))
-				indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
-		}
+	if (IS_CONNECTED) {
+		if (indigo_property_match(JOYSTICK_BUTTONS_PROPERTY, property))
+			indigo_define_property(device, JOYSTICK_BUTTONS_PROPERTY, NULL);
+		if (indigo_property_match(JOYSTICK_AXES_PROPERTY, property))
+			indigo_define_property(device, JOYSTICK_AXES_PROPERTY, NULL);
+		if (indigo_property_match(JOYSTICK_MAPPING_PROPERTY, property))
+			indigo_define_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
+		if (indigo_property_match(JOYSTICK_OPTIONS_PROPERTY, property))
+			indigo_define_property(device, JOYSTICK_OPTIONS_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_PARK_PROPERTY, property))
+			indigo_define_property(device, MOUNT_PARK_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_HOME_PROPERTY, property))
+			indigo_define_property(device, MOUNT_HOME_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_SLEW_RATE_PROPERTY, property))
+			indigo_define_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_MOTION_DEC_PROPERTY, property))
+			indigo_define_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_MOTION_RA_PROPERTY, property))
+			indigo_define_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_TRACKING_PROPERTY, property))
+			indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property))
+			indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
 	}
-	return result;
+	return indigo_aux_enumerate_properties(device, client, property);
 }
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {

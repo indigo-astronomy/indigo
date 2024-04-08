@@ -1148,7 +1148,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		indigo_init_switch_item(GUIDE_50_ITEM, GUIDE_50_ITEM_NAME, "50% sidereal", true);
 		indigo_init_switch_item(GUIDE_100_ITEM, GUIDE_100_ITEM_NAME, "100% sidereal", false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_guider_enumerate_properties(device, NULL, NULL);
+		return nexstar_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

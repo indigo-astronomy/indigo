@@ -221,9 +221,6 @@ static void rotator_direction_handler(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
 
-static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
-
 static indigo_result rotator_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -242,13 +239,9 @@ static indigo_result rotator_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return rotator_enumerate_properties(device, NULL, NULL);
+		return indigo_rotator_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
-}
-
-static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -312,7 +305,7 @@ indigo_result indigo_rotator_falcon(indigo_driver_action action, indigo_driver_i
 	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
 		"Pegasus Falcon rotator",
 		rotator_attach,
-		rotator_enumerate_properties,
+		indigo_rotator_enumerate_properties,
 		rotator_change_property,
 		NULL,
 		rotator_detach

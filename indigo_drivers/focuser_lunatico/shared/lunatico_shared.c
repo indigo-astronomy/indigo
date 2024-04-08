@@ -1203,7 +1203,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_aux_enumerate_properties(device, NULL, NULL);
+		return aux_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -1416,7 +1416,7 @@ static indigo_result rotator_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_rotator_enumerate_properties(device, NULL, NULL);
+		return rotator_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -1904,7 +1904,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		if (lunatico_init_properties(device) != INDIGO_OK) return INDIGO_FAILED;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
+		return focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

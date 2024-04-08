@@ -745,7 +745,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_dome_enumerate_properties(device, NULL, NULL);
+		return nexdome_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
