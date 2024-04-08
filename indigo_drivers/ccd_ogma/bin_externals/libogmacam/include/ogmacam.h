@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 55.24647.20240218 */
+/* Version: 55.25159.20240404 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -175,10 +175,10 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define OGMACAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
 #define OGMACAM_TEMP_DEF                 6503    /* color temperature, default value */
-#define OGMACAM_TEMP_MIN                 2000    /* color temperature, minimum value */
-#define OGMACAM_TEMP_MAX                 15000   /* color temperature, maximum value */
+#define OGMACAM_TEMP_MIN                 1000    /* color temperature, minimum value */
+#define OGMACAM_TEMP_MAX                 25000   /* color temperature, maximum value */
 #define OGMACAM_TINT_DEF                 1000    /* tint */
-#define OGMACAM_TINT_MIN                 200     /* tint */
+#define OGMACAM_TINT_MIN                 100     /* tint */
 #define OGMACAM_TINT_MAX                 2500    /* tint */
 #define OGMACAM_HUE_DEF                  0       /* hue */
 #define OGMACAM_HUE_MIN                  (-180)  /* hue */
@@ -187,11 +187,11 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_SATURATION_MIN           0       /* saturation */
 #define OGMACAM_SATURATION_MAX           255     /* saturation */
 #define OGMACAM_BRIGHTNESS_DEF           0       /* brightness */
-#define OGMACAM_BRIGHTNESS_MIN           (-64)   /* brightness */
-#define OGMACAM_BRIGHTNESS_MAX           64      /* brightness */
+#define OGMACAM_BRIGHTNESS_MIN           (-128)  /* brightness */
+#define OGMACAM_BRIGHTNESS_MAX           128     /* brightness */
 #define OGMACAM_CONTRAST_DEF             0       /* contrast */
-#define OGMACAM_CONTRAST_MIN             (-100)  /* contrast */
-#define OGMACAM_CONTRAST_MAX             100     /* contrast */
+#define OGMACAM_CONTRAST_MIN             (-150)  /* contrast */
+#define OGMACAM_CONTRAST_MAX             150     /* contrast */
 #define OGMACAM_GAMMA_DEF                100     /* gamma */
 #define OGMACAM_GAMMA_MIN                20      /* gamma */
 #define OGMACAM_GAMMA_MAX                180     /* gamma */
@@ -220,7 +220,7 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define OGMACAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define OGMACAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define OGMACAM_AUTOEXPO_DAMP_DEF        0      /* auto exposure damp: thousandths */
+#define OGMACAM_AUTOEXPO_DAMP_DEF        0       /* auto exposure damp: thousandths */
 #define OGMACAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
 #define OGMACAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
 #define OGMACAM_BANDWIDTH_DEF            100     /* bandwidth */
@@ -289,7 +289,7 @@ typedef struct {
 } OgmacamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.24647.20240218
+    get the version of this dll/so/dylib, which is: 55.25159.20240404
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -483,11 +483,11 @@ OGMACAM_API(HRESULT)  Ogmacam_Trigger(HOgmacam h, unsigned short nNumber);
 
 /*
     trigger synchronously
-    nTimeout:   0:              by default, exposure * 102% + 4000 milliseconds
+    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-OGMACAM_API(HRESULT)  Ogmacam_TriggerSync(HOgmacam h, unsigned nTimeout, void* pImageData, int bits, int rowPitch, OgmacamFrameInfoV3* pInfo);
+OGMACAM_API(HRESULT)  Ogmacam_TriggerSync(HOgmacam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, OgmacamFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Ogmacam_StartXXXX.
@@ -542,10 +542,10 @@ OGMACAM_API(HRESULT)  Ogmacam_get_RawFormat(HOgmacam h, unsigned* pFourCC, unsig
     |-----------------------------------------------------------------|
     | Auto Exposure Target    |   10~220      |   120                 |
     | Exposure Gain           |   100~        |   100                 |
-    | Temp                    |   2000~15000  |   6503                |
-    | Tint                    |   200~2500    |   1000                |
+    | Temp                    |   1000~25000  |   6503                |
+    | Tint                    |   100~2500    |   1000                |
     | LevelRange              |   0~255       |   Low = 0, High = 255 |
-    | Contrast                |   -100~100    |   0                   |
+    | Contrast                |   -150~150    |   0                   |
     | Hue                     |   -180~180    |   0                   |
     | Saturation              |   0~255       |   128                 |
     | Brightness              |   -64~64      |   0                   |
@@ -626,33 +626,33 @@ OGMACAM_API(HRESULT)  Ogmacam_get_BlackBalance(HOgmacam h, unsigned short aSub[3
 /* Flat Field Correction */
 OGMACAM_API(HRESULT)  Ogmacam_FfcOnce(HOgmacam h);
 #if defined(_WIN32)
-OGMACAM_API(HRESULT)  Ogmacam_FfcExport(HOgmacam h, const wchar_t* filepath);
-OGMACAM_API(HRESULT)  Ogmacam_FfcImport(HOgmacam h, const wchar_t* filepath);
+OGMACAM_API(HRESULT)  Ogmacam_FfcExport(HOgmacam h, const wchar_t* filePath);
+OGMACAM_API(HRESULT)  Ogmacam_FfcImport(HOgmacam h, const wchar_t* filePath);
 #else
-OGMACAM_API(HRESULT)  Ogmacam_FfcExport(HOgmacam h, const char* filepath);
-OGMACAM_API(HRESULT)  Ogmacam_FfcImport(HOgmacam h, const char* filepath);
+OGMACAM_API(HRESULT)  Ogmacam_FfcExport(HOgmacam h, const char* filePath);
+OGMACAM_API(HRESULT)  Ogmacam_FfcImport(HOgmacam h, const char* filePath);
 #endif
 
 /* Dark Field Correction */
 OGMACAM_API(HRESULT)  Ogmacam_DfcOnce(HOgmacam h);
 
 #if defined(_WIN32)
-OGMACAM_API(HRESULT)  Ogmacam_DfcExport(HOgmacam h, const wchar_t* filepath);
-OGMACAM_API(HRESULT)  Ogmacam_DfcImport(HOgmacam h, const wchar_t* filepath);
+OGMACAM_API(HRESULT)  Ogmacam_DfcExport(HOgmacam h, const wchar_t* filePath);
+OGMACAM_API(HRESULT)  Ogmacam_DfcImport(HOgmacam h, const wchar_t* filePath);
 #else
-OGMACAM_API(HRESULT)  Ogmacam_DfcExport(HOgmacam h, const char* filepath);
-OGMACAM_API(HRESULT)  Ogmacam_DfcImport(HOgmacam h, const char* filepath);
+OGMACAM_API(HRESULT)  Ogmacam_DfcExport(HOgmacam h, const char* filePath);
+OGMACAM_API(HRESULT)  Ogmacam_DfcImport(HOgmacam h, const char* filePath);
 #endif
 
 /* Fix Pattern Noise Correction */
 OGMACAM_API(HRESULT)  Ogmacam_FpncOnce(HOgmacam h);
 
 #if defined(_WIN32)
-OGMACAM_API(HRESULT)  Ogmacam_FpncExport(HOgmacam h, const wchar_t* filepath);
-OGMACAM_API(HRESULT)  Ogmacam_FpncImport(HOgmacam h, const wchar_t* filepath);
+OGMACAM_API(HRESULT)  Ogmacam_FpncExport(HOgmacam h, const wchar_t* filePath);
+OGMACAM_API(HRESULT)  Ogmacam_FpncImport(HOgmacam h, const wchar_t* filePath);
 #else
-OGMACAM_API(HRESULT)  Ogmacam_FpncExport(HOgmacam h, const char* filepath);
-OGMACAM_API(HRESULT)  Ogmacam_FpncImport(HOgmacam h, const char* filepath);
+OGMACAM_API(HRESULT)  Ogmacam_FpncExport(HOgmacam h, const char* filePath);
+OGMACAM_API(HRESULT)  Ogmacam_FpncImport(HOgmacam h, const char* filePath);
 #endif
 
 OGMACAM_API(HRESULT)  Ogmacam_put_Hue(HOgmacam h, int Hue);
@@ -1084,6 +1084,7 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
                                                             Default: 0
                                                          */
 #define OGMACAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
+#define OGMACAM_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
 
 /* pixel format */
 #define OGMACAM_PIXELFORMAT_RAW8              0x00
@@ -1123,6 +1124,9 @@ OGMACAM_API(HRESULT)  Ogmacam_get_Option(HOgmacam h, unsigned iOption, int* piVa
 */
 OGMACAM_API(HRESULT)  Ogmacam_put_Roi(HOgmacam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
 OGMACAM_API(HRESULT)  Ogmacam_get_Roi(HOgmacam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
+
+/* multiple Roi */
+OGMACAM_API(HRESULT)  Ogmacam_put_RoiN(HOgmacam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 OGMACAM_API(HRESULT)  Ogmacam_put_XY(HOgmacam h, int x, int y);
 
@@ -1208,6 +1212,7 @@ OGMACAM_API(HRESULT)  Ogmacam_put_XY(HOgmacam h, int x, int y);
 #define OGMACAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE      0x37 /* Output Counter Value, range: [0 ~ 65535] */
 #define OGMACAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 #define OGMACAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
+#define OGMACAM_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
 
 #define OGMACAM_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1256,7 +1261,15 @@ typedef void (__stdcall* POGMACAM_HOTPLUG)(void* ctxHotPlug);
 OGMACAM_API(HRESULT)  Ogmacam_GigeEnable(POGMACAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 
 /*
-USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
+ filePath:
+    "*": export to EEPROM
+    "0x????" or "0X????": export to EEPROM specified address
+    file path: export to file in ini format
+*/
+OGMACAM_API(HRESULT)  Ogmacam_export_Cfg(HOgmacam h, const char* filePath);
+
+/*
+This function is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
        (a) Device Management, https://docs.microsoft.com/en-us/windows/win32/devio/device-management
        (b) Detecting Media Insertion or Removal, https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal
@@ -1270,8 +1283,7 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 OGMACAM_API(void)   Ogmacam_HotPlug(POGMACAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
-typedef struct
-{
+typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
     unsigned char  statusAfmf;      /* LENS_AF = 0x00,  LENS_MF = 0x80 */
@@ -1295,6 +1307,7 @@ typedef struct
 
     unsigned       sizeFN;
     const char**   arrayFN;
+    const char*    lensName;        /* lens Name */
 } OgmacamLensInfo;
 
 OGMACAM_API(HRESULT)  Ogmacam_get_LensInfo(HOgmacam h, OgmacamLensInfo* pInfo);
@@ -1327,14 +1340,14 @@ typedef struct {
     OgmacamAFMode    AF_Mode;
     OgmacamAFStatus  AF_Status;
     unsigned char    AF_LensAP_Update_Flag;  /* mark for whether the lens aperture is calibrated */
-    unsigned char    AF_LensManual_Flag;     /* if true, allows manual operation */
-    unsigned char    Reserved[2];
+    unsigned char    Reserved[3];
 } OgmacamAFState;
 
 OGMACAM_API(HRESULT)  Ogmacam_get_AFState(HOgmacam h, OgmacamAFState* pState);
 
-OGMACAM_API(HRESULT)  Ogmacam_put_AFMode(HOgmacam h, OgmacamAFMode mode);
+OGMACAM_API(HRESULT)  Ogmacam_put_AFMode(HOgmacam h, OgmacamAFMode mode, int bFixedWD, unsigned uiNear, unsigned uiFar);
 OGMACAM_API(HRESULT)  Ogmacam_put_AFRoi(HOgmacam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
+OGMACAM_API(HRESULT)  Ogmacam_get_AFRoi(HOgmacam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
 OGMACAM_API(HRESULT)  Ogmacam_put_AFAperture(HOgmacam h, int iAperture);
 OGMACAM_API(HRESULT)  Ogmacam_put_AFFMPos(HOgmacam h, int iFMPos);
 
@@ -1381,7 +1394,6 @@ OGMACAM_API(HRESULT)  Ogmacam_get_FrameRate(HOgmacam h, unsigned* nFrame, unsign
 #define OGMACAM_AAF_SETPOSITION     0x01
 #define OGMACAM_AAF_GETPOSITION     0x02
 #define OGMACAM_AAF_SETZERO         0x03
-#define OGMACAM_AAF_GETZERO         0x04
 #define OGMACAM_AAF_SETDIRECTION    0x05
 #define OGMACAM_AAF_GETDIRECTION    0x06
 #define OGMACAM_AAF_SETMAXINCREMENT 0x07
@@ -1596,20 +1608,17 @@ OGMACAM_API(HRESULT)  Ogmacam_get_VignetMidPointInt(HOgmacam h, int* nMidPoint);
 #define OGMACAM_FLAG_BITDEPTH14    OGMACAM_FLAG_RAW14  /* pixel format, RAW 14bits */
 #define OGMACAM_FLAG_BITDEPTH16    OGMACAM_FLAG_RAW16  /* pixel format, RAW 16bits */
 
-#if defined(_WIN32)
+
 OGMACAM_API(HRESULT)  Ogmacam_set_Name(HOgmacam h, const char* name);
 OGMACAM_API(HRESULT)  Ogmacam_query_Name(HOgmacam h, char name[64]);
+#if defined(_WIN32)
 OGMACAM_API(HRESULT)  Ogmacam_put_Name(const wchar_t* camId, const char* name);
 OGMACAM_API(HRESULT)  Ogmacam_get_Name(const wchar_t* camId, char name[64]);
 #else
-OGMACAM_API(HRESULT)  Ogmacam_set_Name(HOgmacam h, const char* name);
-OGMACAM_API(HRESULT)  Ogmacam_query_Name(HOgmacam h, char name[64]);
 OGMACAM_API(HRESULT)  Ogmacam_put_Name(const char* camId, const char* name);
 OGMACAM_API(HRESULT)  Ogmacam_get_Name(const char* camId, char name[64]);
 #endif
 OGMACAM_API(unsigned) Ogmacam_EnumWithName(OgmacamDeviceV2 pti[OGMACAM_MAX]);
-
-OGMACAM_API(HRESULT)  Ogmacam_put_RoiN(HOgmacam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 OGMACAM_API(HRESULT)  Ogmacam_log_File(const
 #if defined(_WIN32)
@@ -1617,7 +1626,7 @@ OGMACAM_API(HRESULT)  Ogmacam_log_File(const
 #else
                                        char*
 #endif
-                                       filepath);
+                                       filePath);
 OGMACAM_API(HRESULT)  Ogmacam_log_Level(unsigned level); /* 0 => none; 1 => error; 2 => debug; 3 => verbose */
 
 #if defined(_WIN32)
