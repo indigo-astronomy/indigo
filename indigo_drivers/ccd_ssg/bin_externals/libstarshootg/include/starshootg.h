@@ -1,7 +1,7 @@
 #ifndef __starshootg_h__
 #define __starshootg_h__
 
-/* Version: 55.24621.20240204 */
+/* Version: 55.25159.20240404 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -175,10 +175,10 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define STARSHOOTG_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
 #define STARSHOOTG_TEMP_DEF                 6503    /* color temperature, default value */
-#define STARSHOOTG_TEMP_MIN                 2000    /* color temperature, minimum value */
-#define STARSHOOTG_TEMP_MAX                 15000   /* color temperature, maximum value */
+#define STARSHOOTG_TEMP_MIN                 1000    /* color temperature, minimum value */
+#define STARSHOOTG_TEMP_MAX                 25000   /* color temperature, maximum value */
 #define STARSHOOTG_TINT_DEF                 1000    /* tint */
-#define STARSHOOTG_TINT_MIN                 200     /* tint */
+#define STARSHOOTG_TINT_MIN                 100     /* tint */
 #define STARSHOOTG_TINT_MAX                 2500    /* tint */
 #define STARSHOOTG_HUE_DEF                  0       /* hue */
 #define STARSHOOTG_HUE_MIN                  (-180)  /* hue */
@@ -187,11 +187,11 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_SATURATION_MIN           0       /* saturation */
 #define STARSHOOTG_SATURATION_MAX           255     /* saturation */
 #define STARSHOOTG_BRIGHTNESS_DEF           0       /* brightness */
-#define STARSHOOTG_BRIGHTNESS_MIN           (-64)   /* brightness */
-#define STARSHOOTG_BRIGHTNESS_MAX           64      /* brightness */
+#define STARSHOOTG_BRIGHTNESS_MIN           (-128)  /* brightness */
+#define STARSHOOTG_BRIGHTNESS_MAX           128     /* brightness */
 #define STARSHOOTG_CONTRAST_DEF             0       /* contrast */
-#define STARSHOOTG_CONTRAST_MIN             (-100)  /* contrast */
-#define STARSHOOTG_CONTRAST_MAX             100     /* contrast */
+#define STARSHOOTG_CONTRAST_MIN             (-150)  /* contrast */
+#define STARSHOOTG_CONTRAST_MAX             150     /* contrast */
 #define STARSHOOTG_GAMMA_DEF                100     /* gamma */
 #define STARSHOOTG_GAMMA_MIN                20      /* gamma */
 #define STARSHOOTG_GAMMA_MAX                180     /* gamma */
@@ -220,7 +220,7 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define STARSHOOTG_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define STARSHOOTG_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define STARSHOOTG_AUTOEXPO_DAMP_DEF        0      /* auto exposure damp: thousandths */
+#define STARSHOOTG_AUTOEXPO_DAMP_DEF        0       /* auto exposure damp: thousandths */
 #define STARSHOOTG_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
 #define STARSHOOTG_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
 #define STARSHOOTG_BANDWIDTH_DEF            100     /* bandwidth */
@@ -289,7 +289,7 @@ typedef struct {
 } StarshootgDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.24621.20240204
+    get the version of this dll/so/dylib, which is: 55.25159.20240404
 */
 #if defined(_WIN32)
 STARSHOOTG_API(const wchar_t*)   Starshootg_Version();
@@ -483,11 +483,11 @@ STARSHOOTG_API(HRESULT)  Starshootg_Trigger(HStarshootg h, unsigned short nNumbe
 
 /*
     trigger synchronously
-    nTimeout:   0:              by default, exposure * 102% + 4000 milliseconds
+    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-STARSHOOTG_API(HRESULT)  Starshootg_TriggerSync(HStarshootg h, unsigned nTimeout, void* pImageData, int bits, int rowPitch, StarshootgFrameInfoV3* pInfo);
+STARSHOOTG_API(HRESULT)  Starshootg_TriggerSync(HStarshootg h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, StarshootgFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Starshootg_StartXXXX.
@@ -542,10 +542,10 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_RawFormat(HStarshootg h, unsigned* pFour
     |-----------------------------------------------------------------|
     | Auto Exposure Target    |   10~220      |   120                 |
     | Exposure Gain           |   100~        |   100                 |
-    | Temp                    |   2000~15000  |   6503                |
-    | Tint                    |   200~2500    |   1000                |
+    | Temp                    |   1000~25000  |   6503                |
+    | Tint                    |   100~2500    |   1000                |
     | LevelRange              |   0~255       |   Low = 0, High = 255 |
-    | Contrast                |   -100~100    |   0                   |
+    | Contrast                |   -150~150    |   0                   |
     | Hue                     |   -180~180    |   0                   |
     | Saturation              |   0~255       |   128                 |
     | Brightness              |   -64~64      |   0                   |
@@ -626,33 +626,33 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_BlackBalance(HStarshootg h, unsigned sho
 /* Flat Field Correction */
 STARSHOOTG_API(HRESULT)  Starshootg_FfcOnce(HStarshootg h);
 #if defined(_WIN32)
-STARSHOOTG_API(HRESULT)  Starshootg_FfcExport(HStarshootg h, const wchar_t* filepath);
-STARSHOOTG_API(HRESULT)  Starshootg_FfcImport(HStarshootg h, const wchar_t* filepath);
+STARSHOOTG_API(HRESULT)  Starshootg_FfcExport(HStarshootg h, const wchar_t* filePath);
+STARSHOOTG_API(HRESULT)  Starshootg_FfcImport(HStarshootg h, const wchar_t* filePath);
 #else
-STARSHOOTG_API(HRESULT)  Starshootg_FfcExport(HStarshootg h, const char* filepath);
-STARSHOOTG_API(HRESULT)  Starshootg_FfcImport(HStarshootg h, const char* filepath);
+STARSHOOTG_API(HRESULT)  Starshootg_FfcExport(HStarshootg h, const char* filePath);
+STARSHOOTG_API(HRESULT)  Starshootg_FfcImport(HStarshootg h, const char* filePath);
 #endif
 
 /* Dark Field Correction */
 STARSHOOTG_API(HRESULT)  Starshootg_DfcOnce(HStarshootg h);
 
 #if defined(_WIN32)
-STARSHOOTG_API(HRESULT)  Starshootg_DfcExport(HStarshootg h, const wchar_t* filepath);
-STARSHOOTG_API(HRESULT)  Starshootg_DfcImport(HStarshootg h, const wchar_t* filepath);
+STARSHOOTG_API(HRESULT)  Starshootg_DfcExport(HStarshootg h, const wchar_t* filePath);
+STARSHOOTG_API(HRESULT)  Starshootg_DfcImport(HStarshootg h, const wchar_t* filePath);
 #else
-STARSHOOTG_API(HRESULT)  Starshootg_DfcExport(HStarshootg h, const char* filepath);
-STARSHOOTG_API(HRESULT)  Starshootg_DfcImport(HStarshootg h, const char* filepath);
+STARSHOOTG_API(HRESULT)  Starshootg_DfcExport(HStarshootg h, const char* filePath);
+STARSHOOTG_API(HRESULT)  Starshootg_DfcImport(HStarshootg h, const char* filePath);
 #endif
 
 /* Fix Pattern Noise Correction */
 STARSHOOTG_API(HRESULT)  Starshootg_FpncOnce(HStarshootg h);
 
 #if defined(_WIN32)
-STARSHOOTG_API(HRESULT)  Starshootg_FpncExport(HStarshootg h, const wchar_t* filepath);
-STARSHOOTG_API(HRESULT)  Starshootg_FpncImport(HStarshootg h, const wchar_t* filepath);
+STARSHOOTG_API(HRESULT)  Starshootg_FpncExport(HStarshootg h, const wchar_t* filePath);
+STARSHOOTG_API(HRESULT)  Starshootg_FpncImport(HStarshootg h, const wchar_t* filePath);
 #else
-STARSHOOTG_API(HRESULT)  Starshootg_FpncExport(HStarshootg h, const char* filepath);
-STARSHOOTG_API(HRESULT)  Starshootg_FpncImport(HStarshootg h, const char* filepath);
+STARSHOOTG_API(HRESULT)  Starshootg_FpncExport(HStarshootg h, const char* filePath);
+STARSHOOTG_API(HRESULT)  Starshootg_FpncImport(HStarshootg h, const char* filePath);
 #endif
 
 STARSHOOTG_API(HRESULT)  Starshootg_put_Hue(HStarshootg h, int Hue);
@@ -1084,6 +1084,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_feed_Pipe(HStarshootg h, unsigned pipeId);
                                                             Default: 0
                                                          */
 #define STARSHOOTG_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
+#define STARSHOOTG_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
 
 /* pixel format */
 #define STARSHOOTG_PIXELFORMAT_RAW8              0x00
@@ -1123,6 +1124,9 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Option(HStarshootg h, unsigned iOption, 
 */
 STARSHOOTG_API(HRESULT)  Starshootg_put_Roi(HStarshootg h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
 STARSHOOTG_API(HRESULT)  Starshootg_get_Roi(HStarshootg h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
+
+/* multiple Roi */
+STARSHOOTG_API(HRESULT)  Starshootg_put_RoiN(HStarshootg h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 STARSHOOTG_API(HRESULT)  Starshootg_put_XY(HStarshootg h, int x, int y);
 
@@ -1208,6 +1212,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_put_XY(HStarshootg h, int x, int y);
 #define STARSHOOTG_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE      0x37 /* Output Counter Value, range: [0 ~ 65535] */
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
+#define STARSHOOTG_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
 
 #define STARSHOOTG_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1256,7 +1261,15 @@ typedef void (__stdcall* PSTARSHOOTG_HOTPLUG)(void* ctxHotPlug);
 STARSHOOTG_API(HRESULT)  Starshootg_GigeEnable(PSTARSHOOTG_HOTPLUG funHotPlug, void* ctxHotPlug);
 
 /*
-USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
+ filePath:
+    "*": export to EEPROM
+    "0x????" or "0X????": export to EEPROM specified address
+    file path: export to file in ini format
+*/
+STARSHOOTG_API(HRESULT)  Starshootg_export_Cfg(HStarshootg h, const char* filePath);
+
+/*
+This function is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
        (a) Device Management, https://docs.microsoft.com/en-us/windows/win32/devio/device-management
        (b) Detecting Media Insertion or Removal, https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal
@@ -1270,8 +1283,7 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 STARSHOOTG_API(void)   Starshootg_HotPlug(PSTARSHOOTG_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
-typedef struct
-{
+typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
     unsigned char  statusAfmf;      /* LENS_AF = 0x00,  LENS_MF = 0x80 */
@@ -1295,6 +1307,7 @@ typedef struct
 
     unsigned       sizeFN;
     const char**   arrayFN;
+    const char*    lensName;        /* lens Name */
 } StarshootgLensInfo;
 
 STARSHOOTG_API(HRESULT)  Starshootg_get_LensInfo(HStarshootg h, StarshootgLensInfo* pInfo);
@@ -1327,14 +1340,14 @@ typedef struct {
     StarshootgAFMode    AF_Mode;
     StarshootgAFStatus  AF_Status;
     unsigned char    AF_LensAP_Update_Flag;  /* mark for whether the lens aperture is calibrated */
-    unsigned char    AF_LensManual_Flag;     /* if true, allows manual operation */
-    unsigned char    Reserved[2];
+    unsigned char    Reserved[3];
 } StarshootgAFState;
 
 STARSHOOTG_API(HRESULT)  Starshootg_get_AFState(HStarshootg h, StarshootgAFState* pState);
 
-STARSHOOTG_API(HRESULT)  Starshootg_put_AFMode(HStarshootg h, StarshootgAFMode mode);
+STARSHOOTG_API(HRESULT)  Starshootg_put_AFMode(HStarshootg h, StarshootgAFMode mode, int bFixedWD, unsigned uiNear, unsigned uiFar);
 STARSHOOTG_API(HRESULT)  Starshootg_put_AFRoi(HStarshootg h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
+STARSHOOTG_API(HRESULT)  Starshootg_get_AFRoi(HStarshootg h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
 STARSHOOTG_API(HRESULT)  Starshootg_put_AFAperture(HStarshootg h, int iAperture);
 STARSHOOTG_API(HRESULT)  Starshootg_put_AFFMPos(HStarshootg h, int iFMPos);
 
@@ -1381,7 +1394,6 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_FrameRate(HStarshootg h, unsigned* nFram
 #define STARSHOOTG_AAF_SETPOSITION     0x01
 #define STARSHOOTG_AAF_GETPOSITION     0x02
 #define STARSHOOTG_AAF_SETZERO         0x03
-#define STARSHOOTG_AAF_GETZERO         0x04
 #define STARSHOOTG_AAF_SETDIRECTION    0x05
 #define STARSHOOTG_AAF_GETDIRECTION    0x06
 #define STARSHOOTG_AAF_SETMAXINCREMENT 0x07
@@ -1596,20 +1608,17 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_VignetMidPointInt(HStarshootg h, int* nM
 #define STARSHOOTG_FLAG_BITDEPTH14    STARSHOOTG_FLAG_RAW14  /* pixel format, RAW 14bits */
 #define STARSHOOTG_FLAG_BITDEPTH16    STARSHOOTG_FLAG_RAW16  /* pixel format, RAW 16bits */
 
-#if defined(_WIN32)
+
 STARSHOOTG_API(HRESULT)  Starshootg_set_Name(HStarshootg h, const char* name);
 STARSHOOTG_API(HRESULT)  Starshootg_query_Name(HStarshootg h, char name[64]);
+#if defined(_WIN32)
 STARSHOOTG_API(HRESULT)  Starshootg_put_Name(const wchar_t* camId, const char* name);
 STARSHOOTG_API(HRESULT)  Starshootg_get_Name(const wchar_t* camId, char name[64]);
 #else
-STARSHOOTG_API(HRESULT)  Starshootg_set_Name(HStarshootg h, const char* name);
-STARSHOOTG_API(HRESULT)  Starshootg_query_Name(HStarshootg h, char name[64]);
 STARSHOOTG_API(HRESULT)  Starshootg_put_Name(const char* camId, const char* name);
 STARSHOOTG_API(HRESULT)  Starshootg_get_Name(const char* camId, char name[64]);
 #endif
 STARSHOOTG_API(unsigned) Starshootg_EnumWithName(StarshootgDeviceV2 pti[STARSHOOTG_MAX]);
-
-STARSHOOTG_API(HRESULT)  Starshootg_put_RoiN(HStarshootg h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 STARSHOOTG_API(HRESULT)  Starshootg_log_File(const
 #if defined(_WIN32)
@@ -1617,7 +1626,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_log_File(const
 #else
                                        char*
 #endif
-                                       filepath);
+                                       filePath);
 STARSHOOTG_API(HRESULT)  Starshootg_log_Level(unsigned level); /* 0 => none; 1 => error; 2 => debug; 3 => verbose */
 
 #if defined(_WIN32)
