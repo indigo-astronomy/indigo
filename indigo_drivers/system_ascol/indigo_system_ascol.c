@@ -1683,7 +1683,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_mount_enumerate_properties(device, NULL, NULL);
+		return ascol_mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -2044,7 +2044,7 @@ static indigo_result guider_attach(indigo_device *device) {
 		// ---------------------------------------------------------------------------
 		PRIVATE_DATA->guide_rate = GUIDER_RATE_ITEM->number.value * 0.15; /* 15("/s) * guiderate(%) / 100.0 */
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_guider_enumerate_properties(device, NULL, NULL);
+		return ascol_guider_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -2542,7 +2542,7 @@ static indigo_result dome_attach(indigo_device *device) {
 		indigo_init_text_item(DOME_SHUTTER_STATE_ITEM, DOME_SHUTTER_STATE_ITEM_NAME, "State", "");
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_dome_enumerate_properties(device, NULL, NULL);
+		return ascol_dome_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -3070,6 +3070,8 @@ static void panel_timer_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, REFRESH_SECONDS, &PRIVATE_DATA->panel_timer);
 }
 
+static indigo_result panel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result panel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -3116,7 +3118,7 @@ static indigo_result panel_attach(indigo_device *device) {
 		}
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_aux_enumerate_properties(device, NULL, NULL);
+		return panel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

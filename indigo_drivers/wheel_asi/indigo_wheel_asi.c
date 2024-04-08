@@ -131,6 +131,8 @@ static void calibrate_callback(indigo_device *device) {
 	}
 }
 
+static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result wheel_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -155,7 +157,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------
 
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
-		return indigo_wheel_enumerate_properties(device, NULL, NULL);
+		return wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

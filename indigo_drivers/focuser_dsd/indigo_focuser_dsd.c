@@ -688,7 +688,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
+		return dsd_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

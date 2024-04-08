@@ -289,7 +289,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_text_item(EAF_CUSTOM_SUFFIX_ITEM, EAF_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 		// --------------------------------------------------------------------------
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
+		return eaf_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

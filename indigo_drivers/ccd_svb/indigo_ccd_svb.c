@@ -846,7 +846,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				PRIVATE_DATA->bayer_pattern = NULL;
 				break;
 		}
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return svb_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

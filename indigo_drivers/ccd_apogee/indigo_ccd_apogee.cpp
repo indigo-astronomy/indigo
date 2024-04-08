@@ -677,7 +677,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			/* will be populated on connect */
 		// ----------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return apg_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
