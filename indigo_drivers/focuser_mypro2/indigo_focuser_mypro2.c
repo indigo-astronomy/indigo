@@ -601,7 +601,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_number_item(X_SETTLE_TIME_ITEM, X_SETTLE_TIME_ITEM_NAME, "Settle time (ms)", 0, 999, 10, 0);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
+		return mfp_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

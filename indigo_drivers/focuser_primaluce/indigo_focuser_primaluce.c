@@ -1373,13 +1373,9 @@ static indigo_result rotator_attach(indigo_device *device) {
 		ROTATOR_ON_POSITION_SET_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return rotator_enumerate_properties(device, NULL, NULL);
+		return indigo_rotator_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
-}
-
-static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }
 
 static void rotator_connection_handler(indigo_device *device) {
@@ -1589,7 +1585,7 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
 																																		"PrimaluceLab Rotator",
 																																		rotator_attach,
-																																		rotator_enumerate_properties,
+																																		indigo_rotator_enumerate_properties,
 																																		rotator_change_property,
 																																		NULL,
 																																		rotator_detach

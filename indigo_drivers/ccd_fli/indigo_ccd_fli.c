@@ -515,7 +515,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				/* will be populated on connect */
 		//---------------------------------------------------------------------------------
 
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return fli_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

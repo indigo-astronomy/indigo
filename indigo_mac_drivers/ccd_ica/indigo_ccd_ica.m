@@ -207,29 +207,26 @@ static indigo_result ccd_attach(indigo_device *device) {
 }
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	indigo_result result = INDIGO_OK;
-	if ((result = indigo_ccd_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (IS_CONNECTED) {
-			for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
-				if (indigo_property_match(PRIVATE_DATA->dslr_properties[i], property))
-					indigo_define_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
-      if (indigo_property_match(DSLR_LOCK_PROPERTY, property))
-        indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
-      if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property))
-        indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
-      if (indigo_property_match(DSLR_AF_PROPERTY, property))
-        indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
-      if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property))
-        indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
-      if (indigo_property_match(DSLR_STREAMING_MODE_PROPERTY, property))
-        indigo_define_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
-      if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
-        indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
-      if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
-        indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
-		}
-	}
-	return result;
+	if (IS_CONNECTED) {
+		for (int i = 0; i < PRIVATE_DATA->dslr_properties_count; i++)
+			if (indigo_property_match(PRIVATE_DATA->dslr_properties[i], property))
+				indigo_define_property(device, PRIVATE_DATA->dslr_properties[i], NULL);
+		if (indigo_property_match(DSLR_LOCK_PROPERTY, property))
+			indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property))
+			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_AF_PROPERTY, property))
+			indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_AVOID_AF_PROPERTY, property))
+			indigo_define_property(device, DSLR_AVOID_AF_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_STREAMING_MODE_PROPERTY, property))
+			indigo_define_property(device, DSLR_STREAMING_MODE_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
+			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
+		if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
+			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
+	}	
+	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
 static void exposure_timer_callback(indigo_device *device) {
