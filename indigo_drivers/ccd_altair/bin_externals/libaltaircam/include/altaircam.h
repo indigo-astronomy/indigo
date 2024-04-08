@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 55.24621.20240204 */
+/* Version: 55.25159.20240404 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -175,10 +175,10 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define ALTAIRCAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
 #define ALTAIRCAM_TEMP_DEF                 6503    /* color temperature, default value */
-#define ALTAIRCAM_TEMP_MIN                 2000    /* color temperature, minimum value */
-#define ALTAIRCAM_TEMP_MAX                 15000   /* color temperature, maximum value */
+#define ALTAIRCAM_TEMP_MIN                 1000    /* color temperature, minimum value */
+#define ALTAIRCAM_TEMP_MAX                 25000   /* color temperature, maximum value */
 #define ALTAIRCAM_TINT_DEF                 1000    /* tint */
-#define ALTAIRCAM_TINT_MIN                 200     /* tint */
+#define ALTAIRCAM_TINT_MIN                 100     /* tint */
 #define ALTAIRCAM_TINT_MAX                 2500    /* tint */
 #define ALTAIRCAM_HUE_DEF                  0       /* hue */
 #define ALTAIRCAM_HUE_MIN                  (-180)  /* hue */
@@ -187,11 +187,11 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_SATURATION_MIN           0       /* saturation */
 #define ALTAIRCAM_SATURATION_MAX           255     /* saturation */
 #define ALTAIRCAM_BRIGHTNESS_DEF           0       /* brightness */
-#define ALTAIRCAM_BRIGHTNESS_MIN           (-64)   /* brightness */
-#define ALTAIRCAM_BRIGHTNESS_MAX           64      /* brightness */
+#define ALTAIRCAM_BRIGHTNESS_MIN           (-128)  /* brightness */
+#define ALTAIRCAM_BRIGHTNESS_MAX           128     /* brightness */
 #define ALTAIRCAM_CONTRAST_DEF             0       /* contrast */
-#define ALTAIRCAM_CONTRAST_MIN             (-100)  /* contrast */
-#define ALTAIRCAM_CONTRAST_MAX             100     /* contrast */
+#define ALTAIRCAM_CONTRAST_MIN             (-150)  /* contrast */
+#define ALTAIRCAM_CONTRAST_MAX             150     /* contrast */
 #define ALTAIRCAM_GAMMA_DEF                100     /* gamma */
 #define ALTAIRCAM_GAMMA_MIN                20      /* gamma */
 #define ALTAIRCAM_GAMMA_MAX                180     /* gamma */
@@ -220,7 +220,7 @@ typedef struct Altaircam_t { int unused; } *HAltaircam;
 #define ALTAIRCAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define ALTAIRCAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define ALTAIRCAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define ALTAIRCAM_AUTOEXPO_DAMP_DEF        0      /* auto exposure damp: thousandths */
+#define ALTAIRCAM_AUTOEXPO_DAMP_DEF        0       /* auto exposure damp: thousandths */
 #define ALTAIRCAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
 #define ALTAIRCAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
 #define ALTAIRCAM_BANDWIDTH_DEF            100     /* bandwidth */
@@ -289,7 +289,7 @@ typedef struct {
 } AltaircamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.24621.20240204
+    get the version of this dll/so/dylib, which is: 55.25159.20240404
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -483,11 +483,11 @@ ALTAIRCAM_API(HRESULT)  Altaircam_Trigger(HAltaircam h, unsigned short nNumber);
 
 /*
     trigger synchronously
-    nTimeout:   0:              by default, exposure * 102% + 4000 milliseconds
+    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-ALTAIRCAM_API(HRESULT)  Altaircam_TriggerSync(HAltaircam h, unsigned nTimeout, void* pImageData, int bits, int rowPitch, AltaircamFrameInfoV3* pInfo);
+ALTAIRCAM_API(HRESULT)  Altaircam_TriggerSync(HAltaircam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, AltaircamFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Altaircam_StartXXXX.
@@ -542,10 +542,10 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_RawFormat(HAltaircam h, unsigned* pFourCC,
     |-----------------------------------------------------------------|
     | Auto Exposure Target    |   10~220      |   120                 |
     | Exposure Gain           |   100~        |   100                 |
-    | Temp                    |   2000~15000  |   6503                |
-    | Tint                    |   200~2500    |   1000                |
+    | Temp                    |   1000~25000  |   6503                |
+    | Tint                    |   100~2500    |   1000                |
     | LevelRange              |   0~255       |   Low = 0, High = 255 |
-    | Contrast                |   -100~100    |   0                   |
+    | Contrast                |   -150~150    |   0                   |
     | Hue                     |   -180~180    |   0                   |
     | Saturation              |   0~255       |   128                 |
     | Brightness              |   -64~64      |   0                   |
@@ -626,33 +626,33 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_BlackBalance(HAltaircam h, unsigned short 
 /* Flat Field Correction */
 ALTAIRCAM_API(HRESULT)  Altaircam_FfcOnce(HAltaircam h);
 #if defined(_WIN32)
-ALTAIRCAM_API(HRESULT)  Altaircam_FfcExport(HAltaircam h, const wchar_t* filepath);
-ALTAIRCAM_API(HRESULT)  Altaircam_FfcImport(HAltaircam h, const wchar_t* filepath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FfcExport(HAltaircam h, const wchar_t* filePath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FfcImport(HAltaircam h, const wchar_t* filePath);
 #else
-ALTAIRCAM_API(HRESULT)  Altaircam_FfcExport(HAltaircam h, const char* filepath);
-ALTAIRCAM_API(HRESULT)  Altaircam_FfcImport(HAltaircam h, const char* filepath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FfcExport(HAltaircam h, const char* filePath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FfcImport(HAltaircam h, const char* filePath);
 #endif
 
 /* Dark Field Correction */
 ALTAIRCAM_API(HRESULT)  Altaircam_DfcOnce(HAltaircam h);
 
 #if defined(_WIN32)
-ALTAIRCAM_API(HRESULT)  Altaircam_DfcExport(HAltaircam h, const wchar_t* filepath);
-ALTAIRCAM_API(HRESULT)  Altaircam_DfcImport(HAltaircam h, const wchar_t* filepath);
+ALTAIRCAM_API(HRESULT)  Altaircam_DfcExport(HAltaircam h, const wchar_t* filePath);
+ALTAIRCAM_API(HRESULT)  Altaircam_DfcImport(HAltaircam h, const wchar_t* filePath);
 #else
-ALTAIRCAM_API(HRESULT)  Altaircam_DfcExport(HAltaircam h, const char* filepath);
-ALTAIRCAM_API(HRESULT)  Altaircam_DfcImport(HAltaircam h, const char* filepath);
+ALTAIRCAM_API(HRESULT)  Altaircam_DfcExport(HAltaircam h, const char* filePath);
+ALTAIRCAM_API(HRESULT)  Altaircam_DfcImport(HAltaircam h, const char* filePath);
 #endif
 
 /* Fix Pattern Noise Correction */
 ALTAIRCAM_API(HRESULT)  Altaircam_FpncOnce(HAltaircam h);
 
 #if defined(_WIN32)
-ALTAIRCAM_API(HRESULT)  Altaircam_FpncExport(HAltaircam h, const wchar_t* filepath);
-ALTAIRCAM_API(HRESULT)  Altaircam_FpncImport(HAltaircam h, const wchar_t* filepath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FpncExport(HAltaircam h, const wchar_t* filePath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FpncImport(HAltaircam h, const wchar_t* filePath);
 #else
-ALTAIRCAM_API(HRESULT)  Altaircam_FpncExport(HAltaircam h, const char* filepath);
-ALTAIRCAM_API(HRESULT)  Altaircam_FpncImport(HAltaircam h, const char* filepath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FpncExport(HAltaircam h, const char* filePath);
+ALTAIRCAM_API(HRESULT)  Altaircam_FpncImport(HAltaircam h, const char* filePath);
 #endif
 
 ALTAIRCAM_API(HRESULT)  Altaircam_put_Hue(HAltaircam h, int Hue);
@@ -1084,6 +1084,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
                                                             Default: 0
                                                          */
 #define ALTAIRCAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
+#define ALTAIRCAM_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8              0x00
@@ -1123,6 +1124,9 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_Option(HAltaircam h, unsigned iOption, int
 */
 ALTAIRCAM_API(HRESULT)  Altaircam_put_Roi(HAltaircam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_Roi(HAltaircam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
+
+/* multiple Roi */
+ALTAIRCAM_API(HRESULT)  Altaircam_put_RoiN(HAltaircam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 ALTAIRCAM_API(HRESULT)  Altaircam_put_XY(HAltaircam h, int x, int y);
 
@@ -1208,6 +1212,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_put_XY(HAltaircam h, int x, int y);
 #define ALTAIRCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE      0x37 /* Output Counter Value, range: [0 ~ 65535] */
 #define ALTAIRCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 #define ALTAIRCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
+#define ALTAIRCAM_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
 
 #define ALTAIRCAM_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1256,7 +1261,15 @@ typedef void (__stdcall* PALTAIRCAM_HOTPLUG)(void* ctxHotPlug);
 ALTAIRCAM_API(HRESULT)  Altaircam_GigeEnable(PALTAIRCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 
 /*
-USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
+ filePath:
+    "*": export to EEPROM
+    "0x????" or "0X????": export to EEPROM specified address
+    file path: export to file in ini format
+*/
+ALTAIRCAM_API(HRESULT)  Altaircam_export_Cfg(HAltaircam h, const char* filePath);
+
+/*
+This function is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
        (a) Device Management, https://docs.microsoft.com/en-us/windows/win32/devio/device-management
        (b) Detecting Media Insertion or Removal, https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal
@@ -1270,8 +1283,7 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 ALTAIRCAM_API(void)   Altaircam_HotPlug(PALTAIRCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
-typedef struct
-{
+typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
     unsigned char  statusAfmf;      /* LENS_AF = 0x00,  LENS_MF = 0x80 */
@@ -1295,6 +1307,7 @@ typedef struct
 
     unsigned       sizeFN;
     const char**   arrayFN;
+    const char*    lensName;        /* lens Name */
 } AltaircamLensInfo;
 
 ALTAIRCAM_API(HRESULT)  Altaircam_get_LensInfo(HAltaircam h, AltaircamLensInfo* pInfo);
@@ -1327,14 +1340,14 @@ typedef struct {
     AltaircamAFMode    AF_Mode;
     AltaircamAFStatus  AF_Status;
     unsigned char    AF_LensAP_Update_Flag;  /* mark for whether the lens aperture is calibrated */
-    unsigned char    AF_LensManual_Flag;     /* if true, allows manual operation */
-    unsigned char    Reserved[2];
+    unsigned char    Reserved[3];
 } AltaircamAFState;
 
 ALTAIRCAM_API(HRESULT)  Altaircam_get_AFState(HAltaircam h, AltaircamAFState* pState);
 
-ALTAIRCAM_API(HRESULT)  Altaircam_put_AFMode(HAltaircam h, AltaircamAFMode mode);
+ALTAIRCAM_API(HRESULT)  Altaircam_put_AFMode(HAltaircam h, AltaircamAFMode mode, int bFixedWD, unsigned uiNear, unsigned uiFar);
 ALTAIRCAM_API(HRESULT)  Altaircam_put_AFRoi(HAltaircam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
+ALTAIRCAM_API(HRESULT)  Altaircam_get_AFRoi(HAltaircam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
 ALTAIRCAM_API(HRESULT)  Altaircam_put_AFAperture(HAltaircam h, int iAperture);
 ALTAIRCAM_API(HRESULT)  Altaircam_put_AFFMPos(HAltaircam h, int iFMPos);
 
@@ -1381,7 +1394,6 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_FrameRate(HAltaircam h, unsigned* nFrame, 
 #define ALTAIRCAM_AAF_SETPOSITION     0x01
 #define ALTAIRCAM_AAF_GETPOSITION     0x02
 #define ALTAIRCAM_AAF_SETZERO         0x03
-#define ALTAIRCAM_AAF_GETZERO         0x04
 #define ALTAIRCAM_AAF_SETDIRECTION    0x05
 #define ALTAIRCAM_AAF_GETDIRECTION    0x06
 #define ALTAIRCAM_AAF_SETMAXINCREMENT 0x07
@@ -1596,20 +1608,17 @@ ALTAIRCAM_API(HRESULT)  Altaircam_get_VignetMidPointInt(HAltaircam h, int* nMidP
 #define ALTAIRCAM_FLAG_BITDEPTH14    ALTAIRCAM_FLAG_RAW14  /* pixel format, RAW 14bits */
 #define ALTAIRCAM_FLAG_BITDEPTH16    ALTAIRCAM_FLAG_RAW16  /* pixel format, RAW 16bits */
 
-#if defined(_WIN32)
+
 ALTAIRCAM_API(HRESULT)  Altaircam_set_Name(HAltaircam h, const char* name);
 ALTAIRCAM_API(HRESULT)  Altaircam_query_Name(HAltaircam h, char name[64]);
+#if defined(_WIN32)
 ALTAIRCAM_API(HRESULT)  Altaircam_put_Name(const wchar_t* camId, const char* name);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_Name(const wchar_t* camId, char name[64]);
 #else
-ALTAIRCAM_API(HRESULT)  Altaircam_set_Name(HAltaircam h, const char* name);
-ALTAIRCAM_API(HRESULT)  Altaircam_query_Name(HAltaircam h, char name[64]);
 ALTAIRCAM_API(HRESULT)  Altaircam_put_Name(const char* camId, const char* name);
 ALTAIRCAM_API(HRESULT)  Altaircam_get_Name(const char* camId, char name[64]);
 #endif
 ALTAIRCAM_API(unsigned) Altaircam_EnumWithName(AltaircamDeviceV2 pti[ALTAIRCAM_MAX]);
-
-ALTAIRCAM_API(HRESULT)  Altaircam_put_RoiN(HAltaircam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 ALTAIRCAM_API(HRESULT)  Altaircam_log_File(const
 #if defined(_WIN32)
@@ -1617,7 +1626,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_log_File(const
 #else
                                        char*
 #endif
-                                       filepath);
+                                       filePath);
 ALTAIRCAM_API(HRESULT)  Altaircam_log_Level(unsigned level); /* 0 => none; 1 => error; 2 => debug; 3 => verbose */
 
 #if defined(_WIN32)
