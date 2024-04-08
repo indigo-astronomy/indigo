@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Toupcam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 55.24621.$WCDATE=%Y%m%d$</li></ul>
+<hr/><ul><li>Version: 55.25159.$WCDATE=%Y%m%d$</li></ul>
 <ul>
   <li>Platform
     <ul>
@@ -781,8 +781,18 @@ for (unsigned i = 0; i &lt; cnt; ++i)
   		<p>camId: Toupcam camera instance, enumerated by Toupcam_EnumV2. <strong>If camId is NULL, Toupcam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Toupcam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
   	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
-  <p>(1) Supports attaching some additional parameters after camId parameter, see table below: (Use ; to split, such as: Toupcam_Open(L"0-1010;registry=;wb=rgb"))</p>
-  <div align="center">
+  <p>(1) Supports attaching some additional parameters after camId parameter (<strong>Use semicolon (;) to split, case sensitive</strong>), such as:</p>
+    <blockquote>
+    <table width="100%" border="0" bgcolor="#B0D0B0">
+      <tr>
+        <td><div align="center">
+  Toupcam_Open(L"\\?\usb#vid_0547&amp;pid_1134#d&amp;397c94f3&amp;0&amp;3<strong>;registry=;wb=rgb</strong>")
+		</div></td>
+      </tr>
+    </table>
+  </blockquote>
+  <p>see table below:</p>
+    <div align="center">
     <table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
       <tr>
         <td width="15%" rowspan="5"><a id="cfg">Camera Configuration</a></td>
@@ -881,7 +891,8 @@ for (UsbDevice usbDevice : deviceList.values()) {
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">TOUPCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
     <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
     <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
-	<p>ToupcamFrameInfoV3/V2* pInfo: out parameter, frame info:</p><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
+	<p>ToupcamFrameInfoV3/V2* pInfo: out parameter, frame info:</p>
+	<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
 #define TOUPCAM_FRAMEINFO_FLAG_SEQ          0x0001 /* frame sequence number */
 #define TOUPCAM_FRAMEINFO_FLAG_TIMESTAMP    0x0002 /* timestamp */
 #define TOUPCAM_FRAMEINFO_FLAG_EXPOTIME     0x0004 /* exposure time */
@@ -1061,6 +1072,19 @@ typedef struct {
   <p>a) If we use Pull Mode, it will be notified by TOUPCAM_EVENT_IMAGE.</p>
   <p>b) If we use Push Mode, the image will be returned by callback function PTOUPCAM_DATA_CALLBACK_V4/V3 with the parameter int bSnap is FALSE.</p>
   </blockquote>
+</li></ul>
+<ul><li><h2><font color="#0000FF">Toupcam_TriggerSync</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HToupcam h: camera handle</p>
+	<p>unsigned nWaitMS: The timeout interval, in milliseconds. If nWaitMS is zero, it means using the default value (exposure time * 102% + 4000 milliseconds), 0xffffffff means waiting forever, and other values represent the specific number of milliseconds.</p>
+<p>void* pImageData：Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
+    <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">TOUPCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
+    <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
+	<p>ToupcamFrameInfoV3* pInfo: out parameter, frame info</p>	  
+    </blockquote>
+  <p><strong>Remarks: </strong>In trigger mode, call this function for a <strong>single</strong> software trigger and wait for the image to arrive.</p>
 </li></ul>
 <ul><li><h2><font color="#0000FF">Toupcam_put_Size<br/>Toupcam_get_Size<br/>Toupcam_put_eSize<br/>Toupcam_get_eSize</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -1824,15 +1848,31 @@ TOUPCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
       	<td>NA</td>
       </tr>
       <tr>
+      	<td>TOUPCAM_OPTION_READOUT_MODE</td>
+      	<td>Readout mode:<br/>
+		0 = IWR (Integrate While Read)<br/>
+		1 = ITR (Integrate Then Read)</td>
+      	<td>NA</td>
+      	<td>YES</td>
+      </tr>
+      <tr>
+      	<td>TOUPCAM_OPTION_TAILLIGHT</td>
+      	<td>Turn on/off tail Led light:<br/>
+		0 =&gt; off<br/>
+		1 =&gt; on</td>
+      	<td>1</td>
+      	<td>YES</td>
+      </tr>
+      <tr>
       	<td>TOUPCAM_OPTION_PSEUDO_COLOR_START</td>
       	<td>Pseudo: start color, BGR format</td>
-      	<td></td>
+      	<td>NA</td>
       	<td>Yes</td>
       </tr>
       <tr>
       	<td>TOUPCAM_OPTION_PSEUDO_COLOR_END</td>
       	<td>Pseudo: end color, BGR format</td>
-      	<td></td>
+      	<td>NA</td>
       	<td>Yes</td>
       </tr>
       <tr>
@@ -2397,6 +2437,10 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
    <td>TOUPCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE</td>
    <td>Output pause: 1 =&gt; puase, 0 =&gt; unpause</td>
  </tr>
+  <tr>
+   <td>TOUPCAM_IOCONTROLTYPE_GET_INPUT_STATE</td>
+   <td>Input state: 0 (low level) or 1 (high level)</td>
+ </tr>
     </table>
   </div>
   </blockquote>
@@ -2546,7 +2590,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
     <td width="14%" rowspan="5">White Balance</td>
     <td width="9%" rowspan="2">Temp/Tint Mode</td>
     <td width="10%">Color Temperature</td>
-    <td>2000~15000</td>
+    <td>1000~25000</td>
     <td>6503</td>
     <td rowspan="2">Toupcam_get_TempTint</td>
     <td rowspan="2">Toupcam_put_TempTint</td>
@@ -2554,7 +2598,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
   </tr>
   <tr>
     <td>Tint</td>
-    <td>200~2500</td>
+    <td>100~2500</td>
     <td>1000</td>
     </tr>
   <tr>
@@ -2600,7 +2644,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
   </tr>
   <tr>
     <td colspan="3">Contrast</td>
-    <td>-100~100</td>
+    <td>-150~150</td>
     <td>0</td>
     <td>Toupcam_get_Contrast</td>
     <td>Toupcam_put_Contrast</td>
@@ -2624,7 +2668,7 @@ Toupcam_put_Brightness<br/>Toupcam_get_Brightness<br/>Toupcam_get_Contrast<br/>T
   </tr>
   <tr>
     <td colspan="3">Brightness</td>
-    <td>-64~64</td>
+    <td>-128~128</td>
     <td>0</td>
     <td>Toupcam_get_Brightness</td>
     <td>Toupcam_put_Brightness</td>
