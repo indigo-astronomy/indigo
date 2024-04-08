@@ -1,7 +1,7 @@
 #ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 55.24621.20240204 */
+/* Version: 55.25159.20240404 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -175,10 +175,10 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define MALLINCAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
 #define MALLINCAM_TEMP_DEF                 6503    /* color temperature, default value */
-#define MALLINCAM_TEMP_MIN                 2000    /* color temperature, minimum value */
-#define MALLINCAM_TEMP_MAX                 15000   /* color temperature, maximum value */
+#define MALLINCAM_TEMP_MIN                 1000    /* color temperature, minimum value */
+#define MALLINCAM_TEMP_MAX                 25000   /* color temperature, maximum value */
 #define MALLINCAM_TINT_DEF                 1000    /* tint */
-#define MALLINCAM_TINT_MIN                 200     /* tint */
+#define MALLINCAM_TINT_MIN                 100     /* tint */
 #define MALLINCAM_TINT_MAX                 2500    /* tint */
 #define MALLINCAM_HUE_DEF                  0       /* hue */
 #define MALLINCAM_HUE_MIN                  (-180)  /* hue */
@@ -187,11 +187,11 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_SATURATION_MIN           0       /* saturation */
 #define MALLINCAM_SATURATION_MAX           255     /* saturation */
 #define MALLINCAM_BRIGHTNESS_DEF           0       /* brightness */
-#define MALLINCAM_BRIGHTNESS_MIN           (-64)   /* brightness */
-#define MALLINCAM_BRIGHTNESS_MAX           64      /* brightness */
+#define MALLINCAM_BRIGHTNESS_MIN           (-128)  /* brightness */
+#define MALLINCAM_BRIGHTNESS_MAX           128     /* brightness */
 #define MALLINCAM_CONTRAST_DEF             0       /* contrast */
-#define MALLINCAM_CONTRAST_MIN             (-100)  /* contrast */
-#define MALLINCAM_CONTRAST_MAX             100     /* contrast */
+#define MALLINCAM_CONTRAST_MIN             (-150)  /* contrast */
+#define MALLINCAM_CONTRAST_MAX             150     /* contrast */
 #define MALLINCAM_GAMMA_DEF                100     /* gamma */
 #define MALLINCAM_GAMMA_MIN                20      /* gamma */
 #define MALLINCAM_GAMMA_MAX                180     /* gamma */
@@ -220,7 +220,7 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define MALLINCAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define MALLINCAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define MALLINCAM_AUTOEXPO_DAMP_DEF        0      /* auto exposure damp: thousandths */
+#define MALLINCAM_AUTOEXPO_DAMP_DEF        0       /* auto exposure damp: thousandths */
 #define MALLINCAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
 #define MALLINCAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
 #define MALLINCAM_BANDWIDTH_DEF            100     /* bandwidth */
@@ -289,7 +289,7 @@ typedef struct {
 } MallincamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.24621.20240204
+    get the version of this dll/so/dylib, which is: 55.25159.20240404
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -483,11 +483,11 @@ MALLINCAM_API(HRESULT)  Mallincam_Trigger(HMallincam h, unsigned short nNumber);
 
 /*
     trigger synchronously
-    nTimeout:   0:              by default, exposure * 102% + 4000 milliseconds
+    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-MALLINCAM_API(HRESULT)  Mallincam_TriggerSync(HMallincam h, unsigned nTimeout, void* pImageData, int bits, int rowPitch, MallincamFrameInfoV3* pInfo);
+MALLINCAM_API(HRESULT)  Mallincam_TriggerSync(HMallincam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, MallincamFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Mallincam_StartXXXX.
@@ -542,10 +542,10 @@ MALLINCAM_API(HRESULT)  Mallincam_get_RawFormat(HMallincam h, unsigned* pFourCC,
     |-----------------------------------------------------------------|
     | Auto Exposure Target    |   10~220      |   120                 |
     | Exposure Gain           |   100~        |   100                 |
-    | Temp                    |   2000~15000  |   6503                |
-    | Tint                    |   200~2500    |   1000                |
+    | Temp                    |   1000~25000  |   6503                |
+    | Tint                    |   100~2500    |   1000                |
     | LevelRange              |   0~255       |   Low = 0, High = 255 |
-    | Contrast                |   -100~100    |   0                   |
+    | Contrast                |   -150~150    |   0                   |
     | Hue                     |   -180~180    |   0                   |
     | Saturation              |   0~255       |   128                 |
     | Brightness              |   -64~64      |   0                   |
@@ -626,33 +626,33 @@ MALLINCAM_API(HRESULT)  Mallincam_get_BlackBalance(HMallincam h, unsigned short 
 /* Flat Field Correction */
 MALLINCAM_API(HRESULT)  Mallincam_FfcOnce(HMallincam h);
 #if defined(_WIN32)
-MALLINCAM_API(HRESULT)  Mallincam_FfcExport(HMallincam h, const wchar_t* filepath);
-MALLINCAM_API(HRESULT)  Mallincam_FfcImport(HMallincam h, const wchar_t* filepath);
+MALLINCAM_API(HRESULT)  Mallincam_FfcExport(HMallincam h, const wchar_t* filePath);
+MALLINCAM_API(HRESULT)  Mallincam_FfcImport(HMallincam h, const wchar_t* filePath);
 #else
-MALLINCAM_API(HRESULT)  Mallincam_FfcExport(HMallincam h, const char* filepath);
-MALLINCAM_API(HRESULT)  Mallincam_FfcImport(HMallincam h, const char* filepath);
+MALLINCAM_API(HRESULT)  Mallincam_FfcExport(HMallincam h, const char* filePath);
+MALLINCAM_API(HRESULT)  Mallincam_FfcImport(HMallincam h, const char* filePath);
 #endif
 
 /* Dark Field Correction */
 MALLINCAM_API(HRESULT)  Mallincam_DfcOnce(HMallincam h);
 
 #if defined(_WIN32)
-MALLINCAM_API(HRESULT)  Mallincam_DfcExport(HMallincam h, const wchar_t* filepath);
-MALLINCAM_API(HRESULT)  Mallincam_DfcImport(HMallincam h, const wchar_t* filepath);
+MALLINCAM_API(HRESULT)  Mallincam_DfcExport(HMallincam h, const wchar_t* filePath);
+MALLINCAM_API(HRESULT)  Mallincam_DfcImport(HMallincam h, const wchar_t* filePath);
 #else
-MALLINCAM_API(HRESULT)  Mallincam_DfcExport(HMallincam h, const char* filepath);
-MALLINCAM_API(HRESULT)  Mallincam_DfcImport(HMallincam h, const char* filepath);
+MALLINCAM_API(HRESULT)  Mallincam_DfcExport(HMallincam h, const char* filePath);
+MALLINCAM_API(HRESULT)  Mallincam_DfcImport(HMallincam h, const char* filePath);
 #endif
 
 /* Fix Pattern Noise Correction */
 MALLINCAM_API(HRESULT)  Mallincam_FpncOnce(HMallincam h);
 
 #if defined(_WIN32)
-MALLINCAM_API(HRESULT)  Mallincam_FpncExport(HMallincam h, const wchar_t* filepath);
-MALLINCAM_API(HRESULT)  Mallincam_FpncImport(HMallincam h, const wchar_t* filepath);
+MALLINCAM_API(HRESULT)  Mallincam_FpncExport(HMallincam h, const wchar_t* filePath);
+MALLINCAM_API(HRESULT)  Mallincam_FpncImport(HMallincam h, const wchar_t* filePath);
 #else
-MALLINCAM_API(HRESULT)  Mallincam_FpncExport(HMallincam h, const char* filepath);
-MALLINCAM_API(HRESULT)  Mallincam_FpncImport(HMallincam h, const char* filepath);
+MALLINCAM_API(HRESULT)  Mallincam_FpncExport(HMallincam h, const char* filePath);
+MALLINCAM_API(HRESULT)  Mallincam_FpncImport(HMallincam h, const char* filePath);
 #endif
 
 MALLINCAM_API(HRESULT)  Mallincam_put_Hue(HMallincam h, int Hue);
@@ -1084,6 +1084,7 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
                                                             Default: 0
                                                          */
 #define MALLINCAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
+#define MALLINCAM_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
 
 /* pixel format */
 #define MALLINCAM_PIXELFORMAT_RAW8              0x00
@@ -1123,6 +1124,9 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Option(HMallincam h, unsigned iOption, int
 */
 MALLINCAM_API(HRESULT)  Mallincam_put_Roi(HMallincam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
 MALLINCAM_API(HRESULT)  Mallincam_get_Roi(HMallincam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
+
+/* multiple Roi */
+MALLINCAM_API(HRESULT)  Mallincam_put_RoiN(HMallincam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 MALLINCAM_API(HRESULT)  Mallincam_put_XY(HMallincam h, int x, int y);
 
@@ -1208,6 +1212,7 @@ MALLINCAM_API(HRESULT)  Mallincam_put_XY(HMallincam h, int x, int y);
 #define MALLINCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE      0x37 /* Output Counter Value, range: [0 ~ 65535] */
 #define MALLINCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 #define MALLINCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
+#define MALLINCAM_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
 
 #define MALLINCAM_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1256,7 +1261,15 @@ typedef void (__stdcall* PMALLINCAM_HOTPLUG)(void* ctxHotPlug);
 MALLINCAM_API(HRESULT)  Mallincam_GigeEnable(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 
 /*
-USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
+ filePath:
+    "*": export to EEPROM
+    "0x????" or "0X????": export to EEPROM specified address
+    file path: export to file in ini format
+*/
+MALLINCAM_API(HRESULT)  Mallincam_export_Cfg(HMallincam h, const char* filePath);
+
+/*
+This function is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
        (a) Device Management, https://docs.microsoft.com/en-us/windows/win32/devio/device-management
        (b) Detecting Media Insertion or Removal, https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal
@@ -1270,8 +1283,7 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 MALLINCAM_API(void)   Mallincam_HotPlug(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
-typedef struct
-{
+typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
     unsigned char  statusAfmf;      /* LENS_AF = 0x00,  LENS_MF = 0x80 */
@@ -1295,6 +1307,7 @@ typedef struct
 
     unsigned       sizeFN;
     const char**   arrayFN;
+    const char*    lensName;        /* lens Name */
 } MallincamLensInfo;
 
 MALLINCAM_API(HRESULT)  Mallincam_get_LensInfo(HMallincam h, MallincamLensInfo* pInfo);
@@ -1327,14 +1340,14 @@ typedef struct {
     MallincamAFMode    AF_Mode;
     MallincamAFStatus  AF_Status;
     unsigned char    AF_LensAP_Update_Flag;  /* mark for whether the lens aperture is calibrated */
-    unsigned char    AF_LensManual_Flag;     /* if true, allows manual operation */
-    unsigned char    Reserved[2];
+    unsigned char    Reserved[3];
 } MallincamAFState;
 
 MALLINCAM_API(HRESULT)  Mallincam_get_AFState(HMallincam h, MallincamAFState* pState);
 
-MALLINCAM_API(HRESULT)  Mallincam_put_AFMode(HMallincam h, MallincamAFMode mode);
+MALLINCAM_API(HRESULT)  Mallincam_put_AFMode(HMallincam h, MallincamAFMode mode, int bFixedWD, unsigned uiNear, unsigned uiFar);
 MALLINCAM_API(HRESULT)  Mallincam_put_AFRoi(HMallincam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
+MALLINCAM_API(HRESULT)  Mallincam_get_AFRoi(HMallincam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
 MALLINCAM_API(HRESULT)  Mallincam_put_AFAperture(HMallincam h, int iAperture);
 MALLINCAM_API(HRESULT)  Mallincam_put_AFFMPos(HMallincam h, int iFMPos);
 
@@ -1381,7 +1394,6 @@ MALLINCAM_API(HRESULT)  Mallincam_get_FrameRate(HMallincam h, unsigned* nFrame, 
 #define MALLINCAM_AAF_SETPOSITION     0x01
 #define MALLINCAM_AAF_GETPOSITION     0x02
 #define MALLINCAM_AAF_SETZERO         0x03
-#define MALLINCAM_AAF_GETZERO         0x04
 #define MALLINCAM_AAF_SETDIRECTION    0x05
 #define MALLINCAM_AAF_GETDIRECTION    0x06
 #define MALLINCAM_AAF_SETMAXINCREMENT 0x07
@@ -1596,20 +1608,17 @@ MALLINCAM_API(HRESULT)  Mallincam_get_VignetMidPointInt(HMallincam h, int* nMidP
 #define MALLINCAM_FLAG_BITDEPTH14    MALLINCAM_FLAG_RAW14  /* pixel format, RAW 14bits */
 #define MALLINCAM_FLAG_BITDEPTH16    MALLINCAM_FLAG_RAW16  /* pixel format, RAW 16bits */
 
-#if defined(_WIN32)
+
 MALLINCAM_API(HRESULT)  Mallincam_set_Name(HMallincam h, const char* name);
 MALLINCAM_API(HRESULT)  Mallincam_query_Name(HMallincam h, char name[64]);
+#if defined(_WIN32)
 MALLINCAM_API(HRESULT)  Mallincam_put_Name(const wchar_t* camId, const char* name);
 MALLINCAM_API(HRESULT)  Mallincam_get_Name(const wchar_t* camId, char name[64]);
 #else
-MALLINCAM_API(HRESULT)  Mallincam_set_Name(HMallincam h, const char* name);
-MALLINCAM_API(HRESULT)  Mallincam_query_Name(HMallincam h, char name[64]);
 MALLINCAM_API(HRESULT)  Mallincam_put_Name(const char* camId, const char* name);
 MALLINCAM_API(HRESULT)  Mallincam_get_Name(const char* camId, char name[64]);
 #endif
 MALLINCAM_API(unsigned) Mallincam_EnumWithName(MallincamDeviceV2 pti[MALLINCAM_MAX]);
-
-MALLINCAM_API(HRESULT)  Mallincam_put_RoiN(HMallincam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 MALLINCAM_API(HRESULT)  Mallincam_log_File(const
 #if defined(_WIN32)
@@ -1617,7 +1626,7 @@ MALLINCAM_API(HRESULT)  Mallincam_log_File(const
 #else
                                        char*
 #endif
-                                       filepath);
+                                       filePath);
 MALLINCAM_API(HRESULT)  Mallincam_log_Level(unsigned level); /* 0 => none; 1 => error; 2 => debug; 3 => verbose */
 
 #if defined(_WIN32)
