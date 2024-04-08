@@ -141,10 +141,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_focuser_enumerate_properties(device, NULL, NULL);
-}
-
 static void focuser_connect_callback(indigo_device *device) {
 	mjkzz_message message = { 0x01 };
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
@@ -301,7 +297,7 @@ indigo_result indigo_focuser_mjkzz(indigo_driver_action action, indigo_driver_in
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 		FOCUSER_MJKZZ_NAME,
 		focuser_attach,
-		focuser_enumerate_properties,
+		indigo_focuser_enumerate_properties,
 		focuser_change_property,
 		NULL,
 		focuser_detach

@@ -978,9 +978,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(SBIG_ABG_CLK_MED_ITEM, "SBIG_ABG_CLK_MED", "Clock Medium, ABG", false);
 		indigo_init_switch_item(SBIG_ABG_CLK_HI_ITEM, "SBIG_ABG_CLK_LOW_HI", "Clock High, ABG", false);
 
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return sbig_enumerate_properties(device, NULL, NULL);
 	} else if ((!PRIMARY_CCD) && (indigo_ccd_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK)) {
-		return indigo_ccd_enumerate_properties(device, NULL, NULL);
+		return sbig_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }

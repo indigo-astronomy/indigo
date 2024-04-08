@@ -58,6 +58,8 @@
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 
+static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -144,7 +146,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		
-		return indigo_mount_enumerate_properties(device, NULL, NULL);
+		return mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
@@ -406,12 +408,6 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (IS_CONNECTED) {
-	}
-	return indigo_guider_enumerate_properties(device, NULL, NULL);
-}
-
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -548,7 +544,7 @@ indigo_result indigo_mount_synscan(indigo_driver_action action, indigo_driver_in
 	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
 		MOUNT_SYNSCAN_GUIDER_NAME,
 		guider_attach,
-		guider_enumerate_properties,
+		indigo_guider_enumerate_properties,
 		guider_change_property,
 		NULL,
 		guider_detach

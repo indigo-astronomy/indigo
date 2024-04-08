@@ -88,10 +88,6 @@ static indigo_result guider_attach(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static indigo_result guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	return indigo_guider_enumerate_properties(device, NULL, NULL);
-}
-
 static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (libgpusb_open(PRIVATE_DATA->dev, &PRIVATE_DATA->device_context)) {
@@ -190,7 +186,7 @@ static void process_plug_event(libusb_device *dev) {
 	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
 		"GPUSB Guider",
 		guider_attach,
-		guider_enumerate_properties,
+		indigo_guider_enumerate_properties,
 		guider_change_property,
 		NULL,
 		guider_detach

@@ -293,6 +293,8 @@ static WeMacroBTDelegate *delegate;
 
 // -------------------------------------------------------------------------------- INDIGO focuser device implementation
 
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+
 static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
@@ -325,7 +327,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_number_item(X_RAIL_EXECUTE_COUNT_ITEM, "COUNT", "Step count", 0, 0xFFFFFF, 1, 1);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		return indigo_focuser_enumerate_properties(device, NULL, NULL);
+		return focuser_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
 }
