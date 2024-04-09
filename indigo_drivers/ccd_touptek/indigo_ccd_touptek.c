@@ -913,7 +913,7 @@ static void ccd_connect_callback(indigo_device *device) {
 
 			int led_state = 0;
 			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TAILLIGHT), &led_state);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Option(OPTION_TAILLIGHT, ->%d) -> %08x", led_state, result);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_TAILLIGHT, ->%d) -> %08x", led_state, result);
 			if (FAILED(result)) {
 				X_CCD_LED_PROPERTY->hidden = true;
 			} else {
