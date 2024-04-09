@@ -1505,6 +1505,27 @@ static bool autofocus_ucurve(indigo_device *device) {
 			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
 			hfds[sample-1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pos[%d] = (%g, %f)", sample-1, focus_pos[sample-1], hfds[sample-1]);
+
+			if (sample > midpoint + 1) {
+				double best_sample = hfds[0];
+				int best_index = 0;
+				for(int i = 0; i < sample; i++) {
+					if (hfds[i] < best_sample) {
+						best_sample = hfds[i];
+						best_index = i;
+					}
+				}
+				// best focus is not close to center
+				if (best_index == 0) {
+					sample = 0;
+					moving_out = true;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "### Peak is at pos %d - rerunning", best_index);
+					AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
+					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+					continue;
+				}
+			}
+
 			if (sample == DEVICE_PRIVATE_DATA->ucurve_samples_number) {
 				double best_sample = hfds[0];
 				int best_index = 0;
