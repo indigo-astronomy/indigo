@@ -1395,11 +1395,14 @@ static bool autofocus_ucurve(indigo_device *device) {
 	int limit = AF_MOVE_LIMIT_UCURVE * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value * DEVICE_PRIVATE_DATA->ucurve_samples_number;
 	bool moving_out = true, first_move = true;
 	int sample = 0;
+	double best_value = 0;
+	int best_index = 0;
+	bool focus_far_enough = false;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, ccd_name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 	SET_BACKLASH_IF_OVERSHOOT(0);
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
 
 	FILTER_DEVICE_CONTEXT->property_removed = false;
 	bool repeat = true;
@@ -1432,7 +1435,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
 					INDIGO_DRIVER_DEBUG(
 						DRIVER_NAME,
-						"Peak = %g, HFD = %g, FWHM = %g",
+						"UC: Peak = %g, HFD = %g, FWHM = %g",
 						AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
 						AGENT_IMAGER_STATS_HFD_ITEM->number.value,
 						AGENT_IMAGER_STATS_FWHM_ITEM->number.value
@@ -1443,7 +1446,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 				quality = (quality > current_quality) ? quality : current_quality;
 				INDIGO_DRIVER_DEBUG(
 					DRIVER_NAME,
-					"Peak = %g, HFD = %g, FWHM = %g, current_quality = %g, best_quality = %g",
+					"UC: Peak = %g, HFD = %g, FWHM = %g, current_quality = %g, best_quality = %g",
 					AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
 					AGENT_IMAGER_STATS_HFD_ITEM->number.value,
 					AGENT_IMAGER_STATS_FWHM_ITEM->number.value,
@@ -1469,10 +1472,10 @@ static bool autofocus_ucurve(indigo_device *device) {
 			SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus Quality = %g (Previous %g)", quality, last_quality);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Focus Quality = %g (Previous %g)", quality, last_quality);
 
 		if (sample == 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "First sample");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: First sample");
 			if (!move_focuser(device, focuser_name, moving_out, steps)) break;
 			if(moving_out) {
 				current_offset += steps;
@@ -1482,7 +1485,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		} else if (sample == 1) {
 			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
 			hfds[sample-1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pos[%d] = (%g, %f)", sample-1, focus_pos[sample-1], hfds[sample-1]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d] = (%g, %f)", sample-1, focus_pos[sample-1], hfds[sample-1]);
 			if (last_quality >= quality) {
 				moving_out = false;
 				if (!move_focuser(device, focuser_name, moving_out, steps)) break;
@@ -1495,31 +1498,63 @@ static bool autofocus_ucurve(indigo_device *device) {
 		} else {
 			int midpoint = rint(DEVICE_PRIVATE_DATA->ucurve_samples_number / 2.0);
 			if (sample > midpoint && last_quality <= quality) {
+				/* We've traversed through half of the samples without encountering the optimal one - it's necessary
+				   to move all samples to the left and continue the search. This is a common situation when the best
+				   focus is outside the initial window.
+				 */
 				for (int i = 0; i < sample-1; i++) {
 					focus_pos[i] = focus_pos[i+1];
 					hfds[i] = hfds[i+1];
 				}
 				sample = midpoint;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Did not reach peak");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Did not reach best focus - shifting samples to the left");
 			}
 			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
 			hfds[sample-1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "pos[%d] = (%g, %f)", sample-1, focus_pos[sample-1], hfds[sample-1]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d] = (%g, %f)", sample-1, focus_pos[sample-1], hfds[sample-1]);
 
-			if (sample > midpoint + 1) {
-				double best_sample = hfds[0];
-				int best_index = 0;
-				for(int i = 0; i < sample; i++) {
-					if (hfds[i] < best_sample) {
-						best_sample = hfds[i];
+			/* If we've crossed the halfway point, we identify the optimal value index up to this point.
+			   If it's sufficiently distant, we can begin moving towards the best focus and the result
+			   will be a well-balanced U-Curve.
+			 */
+			if (sample > midpoint + 2 && !focus_far_enough) {
+				int window_offset = sample - midpoint - 2;
+				int window_lenght = midpoint + 2;
+				double *window_base = hfds + window_offset;
+				best_value = window_base[0];
+				best_index = 0;
+				for(int i = 0; i < window_lenght; i++) {
+					if (window_base[i] < best_value) {
+						best_value = window_base[i];
 						best_index = i;
 					}
 				}
-				// best focus is not close to center
+				/* If we are at a sufficient distance from the optimal focus, we can begin to move towards it,
+				   resulting in a symmetric U-Curve.
+				 */
 				if (best_index == 0) {
+					if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+						INDIGO_DRIVER_DEBUG(
+							DRIVER_NAME,
+							"UC: The best focus is outside the window hfds[%d, %d] - starting approach",
+							window_offset, window_lenght-1
+						);
+
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Currently collected %d samples:", sample);
+						for (int i = 0; i < sample; i++) {
+							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: point[%d] = (%g, %f)", i, focus_pos[i], hfds[i]);
+						}
+
+						INDIGO_DRIVER_DEBUG(
+							DRIVER_NAME,
+							"UC: sample = %d, midpoint = %d, best_index = %d, best_value = %f",
+							sample, midpoint, best_index, best_value
+						);
+					}
+
 					sample = 0;
 					moving_out = true;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "### Peak is at pos %d - rerunning", best_index);
+					focus_far_enough = true;
 					AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 					continue;
@@ -1527,19 +1562,21 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 
 			if (sample == DEVICE_PRIVATE_DATA->ucurve_samples_number) {
-				double best_sample = hfds[0];
-				int best_index = 0;
+				best_value = hfds[0];
+				best_index = 0;
 				for(int i = 0; i < DEVICE_PRIVATE_DATA->ucurve_samples_number; i++) {
-					if (hfds[i] < best_sample) {
-						best_sample = hfds[i];
+					if (hfds[i] < best_value) {
+						best_value = hfds[i];
 						best_index = i;
 					}
 				}
-				// best focus is not close to center
+				/* If the optimal focus is not close enough to center,
+				   we need restart the process to get a symmetric U-Curve.
+				 */
 				if (abs(best_index - midpoint) > 1) {
 					sample = 0;
 					moving_out = true;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak at pos %d is far from the midpoint at %d - rerunning", best_index, midpoint);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: The best_index = %d is far from the midpoint = %d - rerunning", best_index, midpoint);
 					AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 					continue;
@@ -1584,13 +1621,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 	}
 
 	if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "U-Curve collected %d samples:", DEVICE_PRIVATE_DATA->ucurve_samples_number);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve collected %d samples (final set):", DEVICE_PRIVATE_DATA->ucurve_samples_number);
 		for (int i = 0; i < DEVICE_PRIVATE_DATA->ucurve_samples_number; i++) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "point[%d] = (%g, %f)", i, focus_pos[i], hfds[i]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: point[%d] = (%g, %f)", i, focus_pos[i], hfds[i]);
 		}
 		char polynomial_str[1204];
 		indigo_polinomial_string(UCURVE_ORDER + 1, polynomial, polynomial_str);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Polynomial fit: %s", polynomial_str);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Polynomial fit: %s", polynomial_str);
 	}
 
 	if (focus_pos[0] < focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 1]) {
@@ -1612,22 +1649,22 @@ static bool autofocus_ucurve(indigo_device *device) {
 		goto ucurve_finish;
 	}
 
-	// Calculate the steps to best focus
+	/* Calculate the steps to best focus */
 	double steps_to_focus = fabs(CLIENT_PRIVATE_DATA->focuser_position - best_focus);
 
 	indigo_send_message(device, "U-Curve found best focus at position %.3f", best_focus);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
 
-	// Apply backlash or overshoot if needed
+	/* Apply backlash or overshoot if needed */
 	if (backlash_overshoot > 1 && DEVICE_PRIVATE_DATA->saved_backlash > 0) {
 		steps_to_focus += DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Applying overshoot: steps_to_focus = %f including overshoot = %f", steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Applying overshoot: steps_to_focus = %f including overshoot = %f", steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot);
 	} else if (!DEVICE_PRIVATE_DATA->focuser_has_backlash) { /* the focuser driver has no backlash, so we take care of it */
 		steps_to_focus += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Applying backlash: steps_to_focus = %f including backlash = %f", steps_to_focus, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Applying backlash: steps_to_focus = %f including backlash = %f", steps_to_focus, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value);
 	}
 
-	// Move to best focus position
+	/* Move to best focus position */
 	if (!move_focuser(device, focuser_name, !moving_out, steps_to_focus)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move to best focus position");
 		SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
@@ -1639,10 +1676,10 @@ static bool autofocus_ucurve(indigo_device *device) {
 		current_offset -= steps_to_focus;
 	}
 
-	// Compensate for the overshoot if applied
+	/* Compensate for the overshoot if applied */
 	if (backlash_overshoot > 1 && DEVICE_PRIVATE_DATA->saved_backlash > 0) {
 		steps_to_focus = DEVICE_PRIVATE_DATA->saved_backlash * backlash_overshoot;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating overshoot: overshoot = %f", steps_to_focus);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Compensating overshoot: overshoot = %f", steps_to_focus);
 		if (!move_focuser(device, focuser_name, moving_out, steps_to_focus)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to apply overshoot");
 			SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
@@ -1661,7 +1698,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
 	}
-	// Calculate focus deviation from best
+	/* Calculate focus deviation from the optimal one */
 	if (DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 		if (min_est > 0) {
 			AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100 * (min_est - AGENT_IMAGER_STATS_HFD_ITEM->number.value) / min_est;
