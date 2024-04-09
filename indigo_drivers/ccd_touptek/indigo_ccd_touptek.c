@@ -24,7 +24,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0022
+#define DRIVER_VERSION 0x0023
 
 #include <stdlib.h>
 #include <string.h>
@@ -796,24 +796,24 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_update_property(device, INFO_PROPERTY, NULL);
 			get_bayer_pattern(device, PRIVATE_DATA->bayer_pattern);
 			int bitDepth = 0;
-			unsigned resolutionIndex = 0;
+			int binning = 1;
 			char name[16];
 			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BITDEPTH), &bitDepth);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_BITDEPTH, ->%d) -> %08x", bitDepth, result);
-			result = SDK_CALL(get_eSize)(PRIVATE_DATA->handle, &resolutionIndex);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_eSize(->%d) -> %08x", resolutionIndex, result);
+			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), &binning);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_BINNING, ->%d) -> %08x", binning, result);
 			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_MONO)) {
-				sprintf(name, "MON%02d_%d", bitDepth ? 16 : 8, resolutionIndex);
+				sprintf(name, "MON%02d_%d", bitDepth ? 16 : 8, binning);
 				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = bitDepth;
 			} else {
 				int rawMode = 0;
 				result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_RAW), &rawMode);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_RAW, ->%d) -> %08x", rawMode, result);
 				if (rawMode) {
-					sprintf(name, "RAW%02d_%d", bitDepth ? 16 : 8, resolutionIndex);
+					sprintf(name, "RAW%02d_%d", bitDepth ? 16 : 8, binning);
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = bitDepth;
 				} else {
-					sprintf(name, "RGB08_%d", resolutionIndex);
+					sprintf(name, "RGB08_%d", binning);
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = 8;
 				}
 			}
@@ -823,7 +823,6 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 			}
 			PRIVATE_DATA->mode = PRIVATE_DATA->left = PRIVATE_DATA->top = PRIVATE_DATA->width = PRIVATE_DATA->height = -1;
-			int binning = 1;
 			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BINNING), &binning);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_BINNING, ->%d) -> %08x", binning, result);
 			CCD_BIN_HORIZONTAL_ITEM->number.value =
