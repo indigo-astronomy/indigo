@@ -173,6 +173,10 @@
 #define X_CCD_HEATER_PROPERTY								(PRIVATE_DATA->heater_property)
 #define X_CCD_HEATER_POWER_ITEM								(X_CCD_HEATER_PROPERTY->items + 0)
 
+#define X_CCD_LED_PROPERTY									(PRIVATE_DATA->led_property)
+#define X_CCD_LED_ON_ITEM								(X_CCD_LED_PROPERTY->items + 0)
+#define X_CCD_LED_OFF_ITEM								(X_CCD_LED_PROPERTY->items + 1)
+
 #define X_CCD_CONVERSION_GAIN_PROPERTY						(PRIVATE_DATA->conversion_gain_property)
 #define X_CCD_CONVERSION_GAIN_LCG_ITEM							(X_CCD_CONVERSION_GAIN_PROPERTY->items + 0)
 #define X_CCD_CONVERSION_GAIN_HCG_ITEM							(X_CCD_CONVERSION_GAIN_PROPERTY->items + 1)
@@ -205,6 +209,7 @@ typedef struct {
 	indigo_property *heater_property;
 	indigo_property *conversion_gain_property;
 	indigo_property *bin_mode_property;
+	indigo_property *led_property;
 	/* wheel related */
 	int current_slot, target_slot;
 	int count;
@@ -732,6 +737,13 @@ static indigo_result ccd_attach(indigo_device *device) {
 		indigo_init_switch_item(X_CCD_BIN_MODE_EXPAND_ITEM, "EXPAND", "Sum and expand to 16-bits (10, 12 and 14-bit data)", false);
 		indigo_init_switch_item(X_CCD_BIN_MODE_AVERAGE_ITEM, "AVERAGE", "Average", false);
 
+		X_CCD_LED_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CCD_LED", CCD_ADVANCED_GROUP, "Camera LED control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_CCD_LED_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_CCD_LED_ON_ITEM, "ON", "On", true);
+		indigo_init_switch_item(X_CCD_LED_OFF_ITEM, "OFF", "Off", false);
+		X_CCD_LED_PROPERTY->hidden = true;
+
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		// --------------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -752,6 +764,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 		if (X_CCD_BIN_MODE_PROPERTY && indigo_property_match(X_CCD_BIN_MODE_PROPERTY, property))
 			indigo_define_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
+		if (X_CCD_LED_PROPERTY && indigo_property_match(X_CCD_LED_PROPERTY, property))
+			indigo_define_property(device, X_CCD_LED_PROPERTY, NULL);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }
@@ -896,6 +910,18 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 				indigo_define_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 			}
+
+			int led_state = 0;
+			result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TAILLIGHT), &led_state);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Option(OPTION_TAILLIGHT, ->%d) -> %08x", led_state, result);
+			if (FAILED(result)) {
+				X_CCD_LED_PROPERTY->hidden = true;
+			} else {
+				X_CCD_LED_PROPERTY->hidden = false;
+				indigo_set_switch(X_CCD_LED_PROPERTY, led_state ? X_CCD_LED_ON_ITEM : X_CCD_LED_OFF_ITEM, true);
+				indigo_define_property(device, X_CCD_LED_PROPERTY, NULL);
+			}
+
 			result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TRIGGER), 1);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TRIGGER, 1) -> %08x", result);
 
@@ -941,6 +967,8 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 		if (X_CCD_BIN_MODE_PROPERTY)
 			indigo_delete_property(device, X_CCD_BIN_MODE_PROPERTY, NULL);
+		if (X_CCD_LED_PROPERTY)
+			indigo_delete_property(device, X_CCD_LED_PROPERTY, NULL);
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -1293,6 +1321,20 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, X_CCD_CONVERSION_GAIN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
+	} else if (indigo_property_match_defined(X_CCD_LED_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CCD_LED
+		indigo_property_copy_values(X_CCD_LED_PROPERTY, property, false);
+		X_CCD_LED_PROPERTY->state = INDIGO_OK_STATE;
+		result = SDK_CALL(put_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_TAILLIGHT), X_CCD_LED_ON_ITEM->sw.value);
+		if (result < 0) {
+			X_CCD_LED_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "put_Option(OPTION_TAILLIGHT, %d) -> %08x", X_CCD_LED_ON_ITEM->sw.value, result);
+			indigo_update_property(device, X_CCD_LED_PROPERTY, "LED light setting failed");
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "put_Option(OPTION_TAILLIGHT, %d) -> %08x", X_CCD_LED_ON_ITEM->sw.value, result);
+			indigo_update_property(device, X_CCD_LED_PROPERTY, NULL);
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match_defined(X_CCD_BIN_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CCD_BIN_MODE
 		indigo_property_copy_values(X_CCD_BIN_MODE_PROPERTY, property, false);
@@ -1313,6 +1355,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_save_property(device, NULL, X_CCD_ADVANCED_PROPERTY);
 			indigo_save_property(device, NULL, X_CCD_CONVERSION_GAIN_PROPERTY);
 			indigo_save_property(device, NULL, X_CCD_BIN_MODE_PROPERTY);
+			indigo_save_property(device, NULL, X_CCD_LED_PROPERTY);
 		}
 		// --------------------------------------------------------------------------------
 	}
@@ -1335,6 +1378,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(X_CCD_CONVERSION_GAIN_PROPERTY);
 	if (X_CCD_BIN_MODE_PROPERTY)
 		indigo_release_property(X_CCD_BIN_MODE_PROPERTY);
+	if (X_CCD_LED_PROPERTY)
+		indigo_release_property(X_CCD_LED_PROPERTY);
 	if (device == device->master_device)
 		indigo_global_unlock(device);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
