@@ -1,7 +1,7 @@
 #ifndef __omegonprocam_h__
 #define __omegonprocam_h__
 
-/* Version: 55.24621.20240204 */
+/* Version: 55.25159.20240404 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -175,10 +175,10 @@ typedef struct Omegonprocam_t { int unused; } *HOmegonprocam;
 #define OMEGONPROCAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define OMEGONPROCAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
 #define OMEGONPROCAM_TEMP_DEF                 6503    /* color temperature, default value */
-#define OMEGONPROCAM_TEMP_MIN                 2000    /* color temperature, minimum value */
-#define OMEGONPROCAM_TEMP_MAX                 15000   /* color temperature, maximum value */
+#define OMEGONPROCAM_TEMP_MIN                 1000    /* color temperature, minimum value */
+#define OMEGONPROCAM_TEMP_MAX                 25000   /* color temperature, maximum value */
 #define OMEGONPROCAM_TINT_DEF                 1000    /* tint */
-#define OMEGONPROCAM_TINT_MIN                 200     /* tint */
+#define OMEGONPROCAM_TINT_MIN                 100     /* tint */
 #define OMEGONPROCAM_TINT_MAX                 2500    /* tint */
 #define OMEGONPROCAM_HUE_DEF                  0       /* hue */
 #define OMEGONPROCAM_HUE_MIN                  (-180)  /* hue */
@@ -187,11 +187,11 @@ typedef struct Omegonprocam_t { int unused; } *HOmegonprocam;
 #define OMEGONPROCAM_SATURATION_MIN           0       /* saturation */
 #define OMEGONPROCAM_SATURATION_MAX           255     /* saturation */
 #define OMEGONPROCAM_BRIGHTNESS_DEF           0       /* brightness */
-#define OMEGONPROCAM_BRIGHTNESS_MIN           (-64)   /* brightness */
-#define OMEGONPROCAM_BRIGHTNESS_MAX           64      /* brightness */
+#define OMEGONPROCAM_BRIGHTNESS_MIN           (-128)  /* brightness */
+#define OMEGONPROCAM_BRIGHTNESS_MAX           128     /* brightness */
 #define OMEGONPROCAM_CONTRAST_DEF             0       /* contrast */
-#define OMEGONPROCAM_CONTRAST_MIN             (-100)  /* contrast */
-#define OMEGONPROCAM_CONTRAST_MAX             100     /* contrast */
+#define OMEGONPROCAM_CONTRAST_MIN             (-150)  /* contrast */
+#define OMEGONPROCAM_CONTRAST_MAX             150     /* contrast */
 #define OMEGONPROCAM_GAMMA_DEF                100     /* gamma */
 #define OMEGONPROCAM_GAMMA_MIN                20      /* gamma */
 #define OMEGONPROCAM_GAMMA_MAX                180     /* gamma */
@@ -220,7 +220,7 @@ typedef struct Omegonprocam_t { int unused; } *HOmegonprocam;
 #define OMEGONPROCAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define OMEGONPROCAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define OMEGONPROCAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define OMEGONPROCAM_AUTOEXPO_DAMP_DEF        0      /* auto exposure damp: thousandths */
+#define OMEGONPROCAM_AUTOEXPO_DAMP_DEF        0       /* auto exposure damp: thousandths */
 #define OMEGONPROCAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
 #define OMEGONPROCAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
 #define OMEGONPROCAM_BANDWIDTH_DEF            100     /* bandwidth */
@@ -289,7 +289,7 @@ typedef struct {
 } OmegonprocamDeviceV2; /* camera instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.24621.20240204
+    get the version of this dll/so/dylib, which is: 55.25159.20240404
 */
 #if defined(_WIN32)
 OMEGONPROCAM_API(const wchar_t*)   Omegonprocam_Version();
@@ -483,11 +483,11 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_Trigger(HOmegonprocam h, unsigned short 
 
 /*
     trigger synchronously
-    nTimeout:   0:              by default, exposure * 102% + 4000 milliseconds
+    nWaitMS:    0:              by default, exposure * 102% + 4000 milliseconds
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_TriggerSync(HOmegonprocam h, unsigned nTimeout, void* pImageData, int bits, int rowPitch, OmegonprocamFrameInfoV3* pInfo);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_TriggerSync(HOmegonprocam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, OmegonprocamFrameInfoV3* pInfo);
 
 /*
     put_Size, put_eSize, can be used to set the video output resolution BEFORE Omegonprocam_StartXXXX.
@@ -542,10 +542,10 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_RawFormat(HOmegonprocam h, unsigned*
     |-----------------------------------------------------------------|
     | Auto Exposure Target    |   10~220      |   120                 |
     | Exposure Gain           |   100~        |   100                 |
-    | Temp                    |   2000~15000  |   6503                |
-    | Tint                    |   200~2500    |   1000                |
+    | Temp                    |   1000~25000  |   6503                |
+    | Tint                    |   100~2500    |   1000                |
     | LevelRange              |   0~255       |   Low = 0, High = 255 |
-    | Contrast                |   -100~100    |   0                   |
+    | Contrast                |   -150~150    |   0                   |
     | Hue                     |   -180~180    |   0                   |
     | Saturation              |   0~255       |   128                 |
     | Brightness              |   -64~64      |   0                   |
@@ -626,33 +626,33 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_BlackBalance(HOmegonprocam h, unsign
 /* Flat Field Correction */
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcOnce(HOmegonprocam h);
 #if defined(_WIN32)
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcExport(HOmegonprocam h, const wchar_t* filepath);
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcImport(HOmegonprocam h, const wchar_t* filepath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcExport(HOmegonprocam h, const wchar_t* filePath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcImport(HOmegonprocam h, const wchar_t* filePath);
 #else
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcExport(HOmegonprocam h, const char* filepath);
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcImport(HOmegonprocam h, const char* filepath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcExport(HOmegonprocam h, const char* filePath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FfcImport(HOmegonprocam h, const char* filePath);
 #endif
 
 /* Dark Field Correction */
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcOnce(HOmegonprocam h);
 
 #if defined(_WIN32)
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcExport(HOmegonprocam h, const wchar_t* filepath);
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcImport(HOmegonprocam h, const wchar_t* filepath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcExport(HOmegonprocam h, const wchar_t* filePath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcImport(HOmegonprocam h, const wchar_t* filePath);
 #else
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcExport(HOmegonprocam h, const char* filepath);
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcImport(HOmegonprocam h, const char* filepath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcExport(HOmegonprocam h, const char* filePath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_DfcImport(HOmegonprocam h, const char* filePath);
 #endif
 
 /* Fix Pattern Noise Correction */
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncOnce(HOmegonprocam h);
 
 #if defined(_WIN32)
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncExport(HOmegonprocam h, const wchar_t* filepath);
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncImport(HOmegonprocam h, const wchar_t* filepath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncExport(HOmegonprocam h, const wchar_t* filePath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncImport(HOmegonprocam h, const wchar_t* filePath);
 #else
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncExport(HOmegonprocam h, const char* filepath);
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncImport(HOmegonprocam h, const char* filepath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncExport(HOmegonprocam h, const char* filePath);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_FpncImport(HOmegonprocam h, const char* filePath);
 #endif
 
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_Hue(HOmegonprocam h, int Hue);
@@ -1084,6 +1084,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_feed_Pipe(HOmegonprocam h, unsigned pipe
                                                             Default: 0
                                                          */
 #define OMEGONPROCAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
+#define OMEGONPROCAM_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
 
 /* pixel format */
 #define OMEGONPROCAM_PIXELFORMAT_RAW8              0x00
@@ -1123,6 +1124,9 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_Option(HOmegonprocam h, unsigned iOp
 */
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_Roi(HOmegonprocam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_Roi(HOmegonprocam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
+
+/* multiple Roi */
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_RoiN(HOmegonprocam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_XY(HOmegonprocam h, int x, int y);
 
@@ -1208,6 +1212,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_XY(HOmegonprocam h, int x, int y);
 #define OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE      0x37 /* Output Counter Value, range: [0 ~ 65535] */
 #define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 #define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
 
 #define OMEGONPROCAM_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1256,7 +1261,15 @@ typedef void (__stdcall* POMEGONPROCAM_HOTPLUG)(void* ctxHotPlug);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_GigeEnable(POMEGONPROCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 
 /*
-USB hotplug is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
+ filePath:
+    "*": export to EEPROM
+    "0x????" or "0X????": export to EEPROM specified address
+    file path: export to file in ini format
+*/
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_export_Cfg(HOmegonprocam h, const char* filePath);
+
+/*
+This function is only available on macOS and Linux, it's unnecessary on Windows & Android. To process the device plug in / pull out:
   (1) On Windows, please refer to the MSDN
        (a) Device Management, https://docs.microsoft.com/en-us/windows/win32/devio/device-management
        (b) Detecting Media Insertion or Removal, https://docs.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal
@@ -1270,8 +1283,7 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 OMEGONPROCAM_API(void)   Omegonprocam_HotPlug(POMEGONPROCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
-typedef struct
-{
+typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
     unsigned char  statusAfmf;      /* LENS_AF = 0x00,  LENS_MF = 0x80 */
@@ -1295,6 +1307,7 @@ typedef struct
 
     unsigned       sizeFN;
     const char**   arrayFN;
+    const char*    lensName;        /* lens Name */
 } OmegonprocamLensInfo;
 
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_LensInfo(HOmegonprocam h, OmegonprocamLensInfo* pInfo);
@@ -1327,14 +1340,14 @@ typedef struct {
     OmegonprocamAFMode    AF_Mode;
     OmegonprocamAFStatus  AF_Status;
     unsigned char    AF_LensAP_Update_Flag;  /* mark for whether the lens aperture is calibrated */
-    unsigned char    AF_LensManual_Flag;     /* if true, allows manual operation */
-    unsigned char    Reserved[2];
+    unsigned char    Reserved[3];
 } OmegonprocamAFState;
 
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_AFState(HOmegonprocam h, OmegonprocamAFState* pState);
 
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_AFMode(HOmegonprocam h, OmegonprocamAFMode mode);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_AFMode(HOmegonprocam h, OmegonprocamAFMode mode, int bFixedWD, unsigned uiNear, unsigned uiFar);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_AFRoi(HOmegonprocam h, unsigned xOffset, unsigned yOffset, unsigned xWidth, unsigned yHeight);
+OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_AFRoi(HOmegonprocam h, unsigned* pxOffset, unsigned* pyOffset, unsigned* pxWidth, unsigned* pyHeight);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_AFAperture(HOmegonprocam h, int iAperture);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_AFFMPos(HOmegonprocam h, int iFMPos);
 
@@ -1381,7 +1394,6 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_FrameRate(HOmegonprocam h, unsigned*
 #define OMEGONPROCAM_AAF_SETPOSITION     0x01
 #define OMEGONPROCAM_AAF_GETPOSITION     0x02
 #define OMEGONPROCAM_AAF_SETZERO         0x03
-#define OMEGONPROCAM_AAF_GETZERO         0x04
 #define OMEGONPROCAM_AAF_SETDIRECTION    0x05
 #define OMEGONPROCAM_AAF_GETDIRECTION    0x06
 #define OMEGONPROCAM_AAF_SETMAXINCREMENT 0x07
@@ -1596,20 +1608,17 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_VignetMidPointInt(HOmegonprocam h, i
 #define OMEGONPROCAM_FLAG_BITDEPTH14    OMEGONPROCAM_FLAG_RAW14  /* pixel format, RAW 14bits */
 #define OMEGONPROCAM_FLAG_BITDEPTH16    OMEGONPROCAM_FLAG_RAW16  /* pixel format, RAW 16bits */
 
-#if defined(_WIN32)
+
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_set_Name(HOmegonprocam h, const char* name);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_query_Name(HOmegonprocam h, char name[64]);
+#if defined(_WIN32)
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_Name(const wchar_t* camId, const char* name);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_Name(const wchar_t* camId, char name[64]);
 #else
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_set_Name(HOmegonprocam h, const char* name);
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_query_Name(HOmegonprocam h, char name[64]);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_Name(const char* camId, const char* name);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_get_Name(const char* camId, char name[64]);
 #endif
 OMEGONPROCAM_API(unsigned) Omegonprocam_EnumWithName(OmegonprocamDeviceV2 pti[OMEGONPROCAM_MAX]);
-
-OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_RoiN(HOmegonprocam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_log_File(const
 #if defined(_WIN32)
@@ -1617,7 +1626,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_log_File(const
 #else
                                        char*
 #endif
-                                       filepath);
+                                       filePath);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_log_Level(unsigned level); /* 0 => none; 1 => error; 2 => debug; 3 => verbose */
 
 #if defined(_WIN32)
