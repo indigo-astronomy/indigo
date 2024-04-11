@@ -269,7 +269,8 @@ static int qhy_parse_response(char *response, qhy_response *qresponse) {
 		  	i++;
 		}
 	} else if (cmd_id == -1) {
-		// isreboot ???
+		// I have no idea why it is responding with -1, Cable reconnect usually fixes it!!!
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Q-Focuser responded with command ID = %d - ubnormal situation. Try reconnecting the focuser!\n", cmd_id);
 		return -1;
 	}
 	return 0;
@@ -286,7 +287,7 @@ static void qhy_print_response(qhy_response resp) {
 	} else if (cmd_id == 5) {
 		indigo_error("command %d returned: position = %d\n", cmd_id, resp.position);
 	} else if (cmd_id == -1) {
-
+		indigo_error("command %d - ubnormal situation\n", cmd_id);
 	} else {
 		indigo_error("command %d - unknown\n", cmd_id);
 	}
@@ -708,6 +709,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_SPEED_ITEM->number.max = 8;
 		FOCUSER_SPEED_ITEM->number.step = 1;
 		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
+		strncpy(FOCUSER_SPEED_ITEM->label, "Speed (1 = fastest, 8 = slowest)", INDIGO_NAME_SIZE);
 
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 10;
