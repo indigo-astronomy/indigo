@@ -24,3 +24,5 @@ indigo_server indigo_focuser_qhy
 
 Driver is developed and tested with:
 * QHY Q-Focuser standard
+
+Known issues: In very rare occasions, because of a firmware issue, the focuser may not halt at the desired position. This is not a driver bug and is not something we can fix from our end.
