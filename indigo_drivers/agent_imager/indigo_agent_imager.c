@@ -2622,8 +2622,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
 		if (AGENT_IMAGER_FOCUS_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AGENT_IMAGER_FOCUS_INITIAL_ITEM, AGENT_IMAGER_FOCUS_INITIAL_ITEM_NAME, "Initial / U-Curve step", 0, 0xFFFF, 1, 20);
-		indigo_init_number_item(AGENT_IMAGER_FOCUS_FINAL_ITEM, AGENT_IMAGER_FOCUS_FINAL_ITEM_NAME, "Final step", 0, 0xFFFF, 1, 5);
+		indigo_init_number_item(AGENT_IMAGER_FOCUS_INITIAL_ITEM, AGENT_IMAGER_FOCUS_INITIAL_ITEM_NAME, "Initial / U-Curve step", 1, 0xFFFF, 1, 20);
+		indigo_init_number_item(AGENT_IMAGER_FOCUS_FINAL_ITEM, AGENT_IMAGER_FOCUS_FINAL_ITEM_NAME, "Final step", 1, 0xFFFF, 1, 5);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM, AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM_NAME, "U-Curve fitting samples", 6, MAX_UCURVE_SAMPLES, 1, 10);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_ITEM_NAME, "Backlash (both)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_IN_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_IN_ITEM_NAME, "Backlash (in)", 0, 0xFFFF, 1, 0);
