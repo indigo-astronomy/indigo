@@ -2,6 +2,48 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-280] - 12 Apr Fri 2024
+## Overall:
+- mount_drivers: MOUNT_SIDE_OF_PIER permission fixed
+- cltools.sh: build fixed for recent macOS
+- initial property enumeration fixed for several drivers
+- indigo_client: INDIGO_MAX_DRIVERS increased to 256
+
+### New Drivers:
+- indigo_focuser_ioptron:
+	- driver for iOptron focuser (untested)
+
+- indigo_focuser_qhy:
+	- driver for QHY Q-Focuser added
+
+### Driver Fixes:
+- indigo_agent_imager:
+	- batch is paused on meridian ONLY if it was started BEFORE reaching meridian
+	- more optimal U-Curve AF approach
+	- U-Curve focusing is default now
+	- better AF logging
+	- fixed initial and final steps - can not be 0
+
+- indigo_ccd_simulator:
+	- fix crash in gausian blur
+
+- indigo_mount_simulator:
+	- SIDE_OF_PIER simulation implemented
+
+- indigo_focuser_asi:
+	- temperature focus compensation uses FOCUSER_COMPENSATION.THRESHOLD
+
+- indigo_focuser_dsd:
+	- temperature focus compensation uses FOCUSER_COMPENSATION.THRESHOLD
+
+- indigo_focuser_mypro2:
+	- temperature focus compensation uses FOCUSER_COMPENSATION.THRESHOLD
+
+- indigo_ccd_touptek & OEMs:
+	- sdk updated to 55.25159.20240404
+	- fix CCD_MODE_PROPERTY initialization at connect
+	- camera LEDs can be turrned on and off (if supported by the hardware) useful for telescopes like RASA
+
 # [2.0-278] - 31 Mar Sun 2024
 ## Overall:
 - build system fixes
