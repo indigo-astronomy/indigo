@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME	"indigo_ccd_simulator"
 //#define ENABLE_BACKLASH_PROPERTY
 
@@ -220,6 +220,12 @@ static void search_stars(indigo_device *device) {
 // gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
 
 static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
+	if (r >= w / 2) {
+		r = w / 2 - 1;
+	}
+	if (r >= h / 2) {
+		r = h / 2 - 1;
+	}
 	double iarr = 1 / (r + r + 1);
 	for (int i = 0; i < h; i++) {
 		int ti = i * w, li = ti, ri = ti + r;
@@ -242,6 +248,12 @@ static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 }
 
 static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
+	if (r >= w / 2) {
+		r = w / 2 - 1;
+	}
+	if (r >= h / 2) {
+		r = h / 2 - 1;
+	}
 	double iarr = 1 / ( r + r + 1);
 	for (int i = 0; i < w; i++) {
 		int ti = i, li = ti, ri = ti + r * w;
