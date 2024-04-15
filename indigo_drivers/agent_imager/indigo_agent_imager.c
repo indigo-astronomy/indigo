@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x002A
+#define DRIVER_VERSION 0x002B
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -570,7 +570,16 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 			if (DEVICE_PRIVATE_DATA->find_stars || (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count == 1)) {
 				int star_count;
 				indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-				indigo_find_stars(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, MAX_STAR_COUNT, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
+				indigo_find_stars_precise(
+					header->signature,
+					(void*)header + sizeof(indigo_raw_header),
+					AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value,
+					header->width,
+					header->height,
+					MAX_STAR_COUNT,
+					(indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars,
+					&star_count
+				);
 				AGENT_IMAGER_STARS_PROPERTY->count = star_count + 1;
 				for (int i = 0; i < star_count; i++) {
 					char name[8];
@@ -2712,7 +2721,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_X_ITEM, AGENT_IMAGER_SELECTION_X_ITEM_NAME, "Selection X (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_Y_ITEM, AGENT_IMAGER_SELECTION_Y_ITEM_NAME, "Selection Y (px)", 0, 0xFFFF, 1, 0);
-		indigo_init_number_item(AGENT_IMAGER_SELECTION_RADIUS_ITEM, AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_RADIUS_ITEM, AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 75, 1, 12);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_SUBFRAME_ITEM, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 10, 1, 0);
 		// -------------------------------------------------------------------------------- Focusing stats
 		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 18);
