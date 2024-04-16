@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0021
+#define DRIVER_VERSION 0x0022
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -207,6 +207,7 @@ typedef struct {
 	double cos_dec;
 	unsigned long rmse_count;
 	void *last_image;
+	size_t last_image_size;
 	int phase;
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
 	int stack_size;
@@ -536,6 +537,22 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			indigo_send_message(device, "Error: No RAW image received");
 			return INDIGO_ALERT_STATE;
 		}
+
+		/* This is potentially bayered image, if so we need to equalize the channels */
+		if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16) {
+			size_t data_size = sizeof(indigo_raw_header) + header->width * header->height * ((header->signature == INDIGO_RAW_MONO8) ? 1 : 2);
+			int extension_length = DEVICE_PRIVATE_DATA->last_image_size - data_size;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "extension_length = %d data_size = %d", extension_length, data_size);
+			if (extension_length > 0) {
+				char *extension = (char *)header + data_size;
+				extension[extension_length - 1] = '\0'; /* Make sure it is null terminated */
+				if (strstr(extension, "BAYERPAT")) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Bayered image detected, equalizing channels");
+					indigo_equalize_bayer_channels(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height);
+				}
+			}
+		}
+
 		bool missing_selection = false;
 		if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) {
 			for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
@@ -2335,6 +2352,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 		indigo_delete_frame_digest(DEVICE_PRIVATE_DATA->reference + i);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
+	DEVICE_PRIVATE_DATA->last_image_size = 0;
 	return indigo_filter_device_detach(device);
 }
 
@@ -2352,9 +2370,11 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			if (property->items->blob.value) {
 				CLIENT_PRIVATE_DATA->last_image = indigo_safe_realloc(CLIENT_PRIVATE_DATA->last_image, property->items->blob.size);
 				memcpy(CLIENT_PRIVATE_DATA->last_image, property->items->blob.value, property->items->blob.size);
+				CLIENT_PRIVATE_DATA->last_image_size = property->items->blob.size;
 			} else if (CLIENT_PRIVATE_DATA->last_image) {
 				free(CLIENT_PRIVATE_DATA->last_image);
 				CLIENT_PRIVATE_DATA->last_image = NULL;
+				CLIENT_PRIVATE_DATA->last_image_size = 0;
 			}
 		}
 	}
