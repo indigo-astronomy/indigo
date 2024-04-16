@@ -39,6 +39,114 @@ static int median(int a, int b, int c) {
 	}
 }
 
+#define SAMPLES 50000
+
+indigo_result indigo_equalize_bayer_channels(indigo_raw_type raw_type, void *data, const int width, const int height) {
+	long long ch1_sum = 0, ch2_sum = 0, ch3_sum = 0, ch4_sum = 0;
+	int ch1_count = 0, ch2_count = 0, ch3_count = 0, ch4_count = 0;
+
+	if (raw_type != INDIGO_RAW_MONO8 && raw_type != INDIGO_RAW_MONO16) {
+		return INDIGO_FAILED;
+	}
+
+	int x_step = (int)(width / sqrt(SAMPLES)) & ~1;  // Ensure it's even
+	int y_step = (int)(height / sqrt(SAMPLES)) & ~1; // Ensure it's even
+
+	if (raw_type == INDIGO_RAW_MONO16) {
+		uint16_t* data16 = (uint16_t*)data;
+		for (int y = 0; y < height - 1; y += y_step) {
+			for (int x = 0; x < width - 1; x += x_step) {
+				// Calculate averages using pixels at (x, y), (x+1, y), (x, y+1), and (x+1, y+1)
+				int index = y * width + x;
+				int index_right = index + 1;
+				int index_down = (y + 1) * width + x;
+				int index_diag = index_down + 1;
+
+				ch1_sum += data16[index];
+				ch1_count++;
+
+				ch3_sum += data16[index_right];
+				ch3_count++;
+
+				ch2_sum += data16[index_down];
+				ch2_count++;
+
+				ch4_sum += data16[index_diag];
+				ch4_count++;
+			}
+		}
+	} else if (raw_type == INDIGO_RAW_MONO8) {
+		uint8_t* data8 = (uint8_t*)data;
+		for (int y = 0; y < height - 1; y += y_step) {
+			for (int x = 0; x < width - 1; x += x_step) {
+				// Calculate averages using pixels at (x, y), (x+1, y), (x, y+1), and (x+1, y+1)
+				int index = y * width + x;
+				int index_right = index + 1;
+				int index_down = (y + 1) * width + x;
+				int index_diag = index_down + 1;
+
+				ch1_sum += data8[index];
+				ch1_count++;
+
+				ch3_sum += data8[index_right];
+				ch3_count++;
+
+				ch2_sum += data8[index_down];
+				ch2_count++;
+
+				ch4_sum += data8[index_diag];
+				ch4_count++;
+			}
+		}
+	}
+
+	indigo_error("Average ch1: %lld\n", ch1_sum / ch1_count);
+	indigo_error("Average ch2: %lld\n", ch2_sum / ch2_count);
+	indigo_error("Average ch3: %lld\n", ch3_sum / ch3_count);
+	indigo_error("Average ch4: %lld\n", ch4_sum / ch4_count);
+
+	double overall_average = (ch1_sum + ch2_sum + ch3_sum + ch4_sum) / (double)(ch1_count + ch2_count + ch3_count + ch4_count);
+	double ch1_scale_factor = overall_average / (ch1_sum / (double)ch1_count);
+	double ch2_scale_factor = overall_average / (ch2_sum / (double)ch2_count);
+	double ch3_scale_factor = overall_average /(ch3_sum / (double)ch3_count);
+	double ch4_scale_factor = overall_average / (ch4_sum / (double)ch4_count);
+
+	if (raw_type == INDIGO_RAW_MONO16) {
+		uint16_t* data16 = (uint16_t*)data;
+		for (int y = 0; y < height - 1; y += 2) {
+			for (int x = 0; x < width - 1; x += 2) {
+				// Scale pixels at (x, y), (x+1, y), (x, y+1), and (x+1, y+1)
+				int index = y * width + x;
+				int index_right = index + 1;
+				int index_down = (y + 1) * width + x;
+				int index_diag = index_down + 1;
+
+				data16[index] = (uint16_t)(data16[index] * ch1_scale_factor);
+				data16[index_right] = (uint16_t)(data16[index_right] * ch3_scale_factor);
+				data16[index_down] = (uint16_t)(data16[index_down] * ch2_scale_factor);
+				data16[index_diag] = (uint16_t)(data16[index_diag] * ch4_scale_factor);
+			}
+		}
+	} else if (raw_type == INDIGO_RAW_MONO8) {
+		uint8_t* data8 = (uint8_t*)data;
+		for (int y = 0; y < height - 1; y += 2) {
+			for (int x = 0; x < width - 1; x += 2) {
+				// Scale pixels at (x, y), (x+1, y), (x, y+1), and (x+1, y+1)
+				int index = y * width + x;
+				int index_right = index + 1;
+				int index_down = (y + 1) * width + x;
+				int index_diag = index_down + 1;
+
+				data8[index] = (data8[index] * ch1_scale_factor);
+				data8[index_right] = (data8[index_right] * ch3_scale_factor);
+				data8[index_down] = (data8[index_down] * ch2_scale_factor);
+				data8[index_diag] = (data8[index_diag] * ch4_scale_factor);
+			}
+		}
+	}
+	return INDIGO_OK;
+}
+
 double indigo_rmse(double set[], const int count) {
 	double sum = 0;
 

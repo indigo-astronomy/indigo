@@ -214,6 +214,7 @@ typedef struct {
 	double drift_x, drift_y;
 	int bin_x, bin_y;
 	void *last_image;
+	size_t last_image_size;
 	int stack_size;
 	pthread_mutex_t mutex;
 	double focus_exposure;
@@ -453,6 +454,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 	if (DEVICE_PRIVATE_DATA->last_image) {
 		free (DEVICE_PRIVATE_DATA->last_image);
 		DEVICE_PRIVATE_DATA->last_image = NULL;
+		DEVICE_PRIVATE_DATA->last_image_size = 0;
 	}
 	if (indigo_filter_cached_property(device, INDIGO_FILTER_AUX_1_INDEX, CCD_EXPOSURE_PROPERTY_NAME, &device_aux_1_exposure_property, &agent_aux_1_exposure_property)) {
 		DEVICE_PRIVATE_DATA->use_aux_1 = true;
@@ -539,6 +541,21 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 	if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 		indigo_send_message(device, "No RAW image received");
 		return INDIGO_ALERT_STATE;
+	}
+
+	/* This is potentially bayered image, if so we need to equalize the channels */
+	if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16) {
+		size_t data_size = sizeof(indigo_raw_header) + header->width * header->height * ((header->signature == INDIGO_RAW_MONO8) ? 1 : 2);
+		int extension_length = DEVICE_PRIVATE_DATA->last_image_size - data_size;
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "extension_length = %d data_size = %d", extension_length, data_size);
+		if (extension_length > 0) {
+			char *extension = (char *)header + data_size;
+			extension[extension_length - 1] = '\0'; /* Make sure it is null terminated */
+			if (strstr(extension, "BAYERPAT")) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Bayered image detected, equalizing channels");
+				indigo_equalize_bayer_channels(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height);
+			}
+		}
 	}
 
 	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
@@ -3268,6 +3285,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
 	DEVICE_PRIVATE_DATA->image_buffer_size = 0;
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
+	DEVICE_PRIVATE_DATA->last_image_size = 0;
 	return indigo_filter_device_detach(device);
 }
 
@@ -3470,8 +3488,10 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			if (property->items->blob.value) {
 				CLIENT_PRIVATE_DATA->last_image = indigo_safe_realloc(CLIENT_PRIVATE_DATA->last_image, property->items->blob.size);
 				memcpy(CLIENT_PRIVATE_DATA->last_image, property->items->blob.value, property->items->blob.size);
+				CLIENT_PRIVATE_DATA->last_image_size = property->items->blob.size;
 			} else if (CLIENT_PRIVATE_DATA->last_image) {
 				free(CLIENT_PRIVATE_DATA->last_image);
+				CLIENT_PRIVATE_DATA->last_image_size = 0;
 				CLIENT_PRIVATE_DATA->last_image = NULL;
 			}
 		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
