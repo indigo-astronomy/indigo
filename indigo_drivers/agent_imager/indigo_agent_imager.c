@@ -544,18 +544,9 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 	}
 
 	/* This is potentially bayered image, if so we need to equalize the channels */
-	if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16) {
-		size_t data_size = sizeof(indigo_raw_header) + header->width * header->height * ((header->signature == INDIGO_RAW_MONO8) ? 1 : 2);
-		int extension_length = DEVICE_PRIVATE_DATA->last_image_size - data_size;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "extension_length = %d data_size = %d", extension_length, data_size);
-		if (extension_length > 0) {
-			char *extension = (char *)header + data_size;
-			extension[extension_length - 1] = '\0'; /* Make sure it is null terminated */
-			if (strstr(extension, "BAYERPAT")) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Bayered image detected, equalizing channels");
-				indigo_equalize_bayer_channels(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height);
-			}
-		}
+	if (indigo_is_bayered_image(header, DEVICE_PRIVATE_DATA->last_image_size)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels");
+		indigo_equalize_bayer_channels(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height);
 	}
 
 	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
