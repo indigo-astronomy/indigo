@@ -378,3 +378,26 @@ Date:2023-10-23
 Version: v1.12.1
 Date:2023-11-30
 1. The cooling camera will no longer turn off cooling and fan when certain parameters are set
+
+
+##########################################################
+版本:v1.12.2
+日期:2023-12-28
+1. 优化SC432M相机的长曝光设置
+
+Version: v1.12.2
+Date:2023-12-28
+1. Optimizing the Long Exposure Setting of SC432M Camera
+
+
+##########################################################
+版本:v1.12.4
+日期:2023-02-24
+1. 优化SC432M相机软件
+2. 解决相机从长曝光切换为短曝光后制冷短暂停止的问题
+
+Version:v1.12.4
+Date:2023-02-24
+1. Optimize SC432M camera software
+2. Solve the problem of cooling stopping briefly after the camera switches from long exposure to short exposure.
+
