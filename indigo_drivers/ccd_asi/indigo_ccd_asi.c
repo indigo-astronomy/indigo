@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0028
+#define DRIVER_VERSION 0x0029
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -1162,6 +1162,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			asi_abort_exposure(device);
 		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			CCD_STREAMING_COUNT_ITEM->number.value = 0;
+			return INDIGO_OK;
 		}
 		PRIVATE_DATA->can_check_temperature = true;
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
