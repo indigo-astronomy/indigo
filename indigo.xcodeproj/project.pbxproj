@@ -242,6 +242,26 @@
 		5964F6F72B77ED2100E28F4C /* libqhyccd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5964F6F62B77ED2100E28F4C /* libqhyccd.dylib */; };
 		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
+		596FCA8F2BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
+		596FCA902BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
+		596FCA912BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA792BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA922BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA792BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA932BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA7B2BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA942BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA7B2BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA952BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA7D2BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA962BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA7D2BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA972BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA7F2BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA982BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA7F2BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA992BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA822BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA9A2BD0320E00F5BACB /* libgxccd.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 596FCA822BD0320E00F5BACB /* libgxccd.a */; };
+		596FCA9F2BD0320E00F5BACB /* indigo_wheel_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 596FCA8A2BD0320E00F5BACB /* indigo_wheel_mi.c */; };
+		596FCAA02BD0320E00F5BACB /* indigo_wheel_mi.c in Sources */ = {isa = PBXBuildFile; fileRef = 596FCA8A2BD0320E00F5BACB /* indigo_wheel_mi.c */; };
+		596FCAA12BD0320E00F5BACB /* indigo_wheel_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA8B2BD0320E00F5BACB /* indigo_wheel_mi.h */; };
+		596FCAA22BD0320E00F5BACB /* indigo_wheel_mi.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA8B2BD0320E00F5BACB /* indigo_wheel_mi.h */; };
+		596FCAB22BD0328000F5BACB /* indigo_rotator_wa.c in Sources */ = {isa = PBXBuildFile; fileRef = 596FCAA72BD0328000F5BACB /* indigo_rotator_wa.c */; };
+		596FCAB32BD0328000F5BACB /* indigo_rotator_wa.c in Sources */ = {isa = PBXBuildFile; fileRef = 596FCAA72BD0328000F5BACB /* indigo_rotator_wa.c */; };
+		596FCAB42BD0328000F5BACB /* indigo_rotator_wa.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCAA82BD0328000F5BACB /* indigo_rotator_wa.h */; };
+		596FCAB52BD0328000F5BACB /* indigo_rotator_wa.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCAA82BD0328000F5BACB /* indigo_rotator_wa.h */; };
 		5973456F256704D6001741D4 /* indigo_focuser_mypro2.c in Sources */ = {isa = PBXBuildFile; fileRef = 5973456B256704CB001741D4 /* indigo_focuser_mypro2.c */; };
 		59790B2D29B2796300F73B1D /* indigo_service_discovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 59790B2C29B2796300F73B1D /* indigo_service_discovery.h */; };
 		59790B2E29B2796300F73B1D /* indigo_service_discovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 59790B2C29B2796300F73B1D /* indigo_service_discovery.h */; };
@@ -1431,6 +1451,23 @@
 		59689AA0245DE3E100F950CE /* indigo_wheel_manual_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_manual_main.c; sourceTree = "<group>"; };
 		59689AA1245DE3E100F950CE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_manual.c; sourceTree = "<group>"; };
+		596FCA772BD0320E00F5BACB /* gxccd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = gxccd.h; sourceTree = "<group>"; };
+		596FCA792BD0320E00F5BACB /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		596FCA7B2BD0320E00F5BACB /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		596FCA7D2BD0320E00F5BACB /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		596FCA7F2BD0320E00F5BACB /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		596FCA822BD0320E00F5BACB /* libgxccd.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libgxccd.a; sourceTree = "<group>"; };
+		596FCA852BD0320E00F5BACB /* README */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README; sourceTree = "<group>"; };
+		596FCA882BD0320E00F5BACB /* indigo_wheel_mi_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_mi_main.c; sourceTree = "<group>"; };
+		596FCA8A2BD0320E00F5BACB /* indigo_wheel_mi.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_mi.c; sourceTree = "<group>"; };
+		596FCA8B2BD0320E00F5BACB /* indigo_wheel_mi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_wheel_mi.h; sourceTree = "<group>"; };
+		596FCA8D2BD0320E00F5BACB /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		596FCAA52BD0328000F5BACB /* indigo_rotator_wa_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_wa_main.c; sourceTree = "<group>"; };
+		596FCAA72BD0328000F5BACB /* indigo_rotator_wa.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_wa.c; sourceTree = "<group>"; };
+		596FCAA82BD0328000F5BACB /* indigo_rotator_wa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_wa.h; sourceTree = "<group>"; };
+		596FCAAA2BD0328000F5BACB /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		596FCAAB2BD0328000F5BACB /* Serial protocol for WandererRotator Lite V2-20240226-1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Serial protocol for WandererRotator Lite V2-20240226-1.pdf"; sourceTree = "<group>"; };
+		596FCAAC2BD0328000F5BACB /* Serial protocol for WandererRotator Mini and Mini V2-20240226-1.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Serial protocol for WandererRotator Mini and Mini V2-20240226-1.pdf"; sourceTree = "<group>"; };
 		5973456B256704CB001741D4 /* indigo_focuser_mypro2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mypro2.c; sourceTree = "<group>"; };
 		5973456C256704CB001741D4 /* indigo_focuser_mypro2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_mypro2_main.c; sourceTree = "<group>"; };
 		5973456D256704CB001741D4 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -4900,12 +4937,15 @@
 				598A1D02259BAE0800C0B34C /* libatik.a in Frameworks */,
 				599150D329EF2AC900E63C3B /* libstarshootg.dylib in Frameworks */,
 				598A1CFB259BADCE00C0B34C /* libgps.a in Frameworks */,
+				596FCA982BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				598A1CF3259BAD9A00C0B34C /* libfli.a in Frameworks */,
 				59118C432996EDA30004BEC8 /* libogmacam.dylib in Frameworks */,
 				598A1C05259BA94A00C0B34C /* libtiff.a in Frameworks */,
+				596FCA962BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */,
 				59B348A729E85F8A0062C2EA /* libaltaircam.dylib in Frameworks */,
 				598A1C07259BA94A00C0B34C /* libfcusb.a in Frameworks */,
+				596FCA942BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				598A1C08259BA94A00C0B34C /* libgpusb.a in Frameworks */,
 				59B348AC29E85F8A0062C2EA /* libomegonprocam.dylib in Frameworks */,
 				598A1C0B259BA94A00C0B34C /* libjpeg.a in Frameworks */,
@@ -4914,9 +4954,11 @@
 				598A1C0D259BA94A00C0B34C /* libdsusb.a in Frameworks */,
 				598A1C0F259BA94A00C0B34C /* libhidapi.a in Frameworks */,
 				598A1C11259BA94A00C0B34C /* libapogee.a in Frameworks */,
+				596FCA9A2BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				598A1C13259BA94A00C0B34C /* libdc1394.dylib in Frameworks */,
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
 				598A1C18259BA94A00C0B34C /* libc++.tbd in Frameworks */,
+				596FCA922BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				598A1C19259BA94A00C0B34C /* libusb-1.0.0.dylib in Frameworks */,
 				59B348B329E85FA80062C2EA /* libtoupcam.dylib in Frameworks */,
 			);
@@ -4937,6 +4979,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				5964F6F72B77ED2100E28F4C /* libqhyccd.dylib in Frameworks */,
+				596FCA992BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				597C7223293CFBD80016D45A /* libjpeg.a in Frameworks */,
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
 				59A321A421D6292900EC0F4A /* libEAFFocuser.a in Frameworks */,
@@ -4958,13 +5001,17 @@
 				598005FE22E5001500021D67 /* libqsiapi.a in Frameworks */,
 				5942229F22E34AA9009DAD5C /* libdc1394.dylib in Frameworks */,
 				9DDEFBFE21EE352F00657C8F /* libtoupcam.dylib in Frameworks */,
+				596FCA932BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				591CD0F429805E31003243AE /* libomegonprocam.dylib in Frameworks */,
 				59118C402996ED950004BEC8 /* libogmacam.dylib in Frameworks */,
 				5903560E25A8CA37001DC5DB /* libfli.a in Frameworks */,
+				596FCA972BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				9DDEFBFC21EE352600657C8F /* libatikcameras.dylib in Frameworks */,
 				9DDEFBFB21EE351C00657C8F /* libaltaircam.dylib in Frameworks */,
 				591CD0F229805E31003243AE /* libstarshootg.dylib in Frameworks */,
 				9DDEFC0321EE35B300657C8F /* libcurl.tbd in Frameworks */,
+				596FCA912BD0320E00F5BACB /* libgxccd.a in Frameworks */,
+				596FCA952BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
 				9D495737245601B400674101 /* libusb-1.0.0.dylib in Frameworks */,
@@ -6322,6 +6369,117 @@
 				59689AA0245DE3E100F950CE /* indigo_wheel_manual_main.c */,
 			);
 			path = wheel_manual;
+			sourceTree = "<group>";
+		};
+		596FCA782BD0320E00F5BACB /* include */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA772BD0320E00F5BACB /* gxccd.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		596FCA7A2BD0320E00F5BACB /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA792BD0320E00F5BACB /* libgxccd.a */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		596FCA7C2BD0320E00F5BACB /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA7B2BD0320E00F5BACB /* libgxccd.a */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		596FCA7E2BD0320E00F5BACB /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA7D2BD0320E00F5BACB /* libgxccd.a */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		596FCA802BD0320E00F5BACB /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA7F2BD0320E00F5BACB /* libgxccd.a */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		596FCA812BD0320E00F5BACB /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA7A2BD0320E00F5BACB /* arm */,
+				596FCA7C2BD0320E00F5BACB /* arm64 */,
+				596FCA7E2BD0320E00F5BACB /* x64 */,
+				596FCA802BD0320E00F5BACB /* x86 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		596FCA832BD0320E00F5BACB /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA822BD0320E00F5BACB /* libgxccd.a */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		596FCA842BD0320E00F5BACB /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA812BD0320E00F5BACB /* Linux */,
+				596FCA832BD0320E00F5BACB /* macOS */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		596FCA862BD0320E00F5BACB /* libgxccd */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA852BD0320E00F5BACB /* README */,
+				596FCA782BD0320E00F5BACB /* include */,
+				596FCA842BD0320E00F5BACB /* lib */,
+			);
+			path = libgxccd;
+			sourceTree = "<group>";
+		};
+		596FCA872BD0320E00F5BACB /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA862BD0320E00F5BACB /* libgxccd */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		596FCA8E2BD0320E00F5BACB /* wheel_mi */ = {
+			isa = PBXGroup;
+			children = (
+				596FCA8D2BD0320E00F5BACB /* README.md */,
+				596FCA8B2BD0320E00F5BACB /* indigo_wheel_mi.h */,
+				596FCA8A2BD0320E00F5BACB /* indigo_wheel_mi.c */,
+				596FCA882BD0320E00F5BACB /* indigo_wheel_mi_main.c */,
+				596FCA872BD0320E00F5BACB /* bin_externals */,
+			);
+			path = wheel_mi;
+			sourceTree = "<group>";
+		};
+		596FCAAD2BD0328000F5BACB /* rotator_wa */ = {
+			isa = PBXGroup;
+			children = (
+				596FCAAA2BD0328000F5BACB /* README.md */,
+				596FCAA82BD0328000F5BACB /* indigo_rotator_wa.h */,
+				596FCAA72BD0328000F5BACB /* indigo_rotator_wa.c */,
+				596FCAA52BD0328000F5BACB /* indigo_rotator_wa_main.c */,
+				596FCAAB2BD0328000F5BACB /* Serial protocol for WandererRotator Lite V2-20240226-1.pdf */,
+				596FCAAC2BD0328000F5BACB /* Serial protocol for WandererRotator Mini and Mini V2-20240226-1.pdf */,
+			);
+			path = rotator_wa;
 			sourceTree = "<group>";
 		};
 		5973456A256704CB001741D4 /* focuser_mypro2 */ = {
@@ -9842,12 +10000,14 @@
 				59B51354297077920075C8A1 /* rotator_falcon */,
 				597DFE1A2804A87F009E37CB /* rotator_optec */,
 				9D743A5423FD56EF0093319F /* rotator_simulator */,
+				596FCAAD2BD0328000F5BACB /* rotator_wa */,
 				9DC782F521A6FCC7009859FD /* system_ascol */,
 				593CFE3F1DFC89F5003B63D4 /* wheel_atik */,
 				9DBC34611DCB265A00588DB9 /* wheel_asi */,
 				5992F7B91E1EC9270035242E /* wheel_fli */,
 				59B51346297066040075C8A1 /* wheel_indigo */,
 				59689A9E245DE3E100F950CE /* wheel_manual */,
+				596FCA8E2BD0320E00F5BACB /* wheel_mi */,
 				590DD8752127590600F2B978 /* wheel_optec */,
 				59A413162971E54C00F0A80B /* wheel_playerone */,
 				5979C87F254A9EED005395BE /* wheel_qhy */,
@@ -13949,6 +14109,7 @@
 				598A1C46259BA94A00C0B34C /* indigo_guider_driver.h in Headers */,
 				59A68E33277DE627000439CC /* indigo_ccd_asi.h in Headers */,
 				598A1C47259BA94A00C0B34C /* indigo_aux_dsusb.h in Headers */,
+				596FCAB52BD0328000F5BACB /* indigo_rotator_wa.h in Headers */,
 				598A1C48259BA94A00C0B34C /* DDHidKeyboardBarcodeScanner.h in Headers */,
 				59111D06285F50A800E57194 /* indigocat_dso.h in Headers */,
 				59BBED26278493E400BA9CD6 /* indigo_agent_astap.h in Headers */,
@@ -13991,6 +14152,7 @@
 				598A1C66259BA94A00C0B34C /* qhyccdstruct.h in Headers */,
 				598A1C67259BA94A00C0B34C /* indigo_wheel_atik.h in Headers */,
 				598A1C68259BA94A00C0B34C /* USB2ST4_Conv.h in Headers */,
+				596FCAA22BD0320E00F5BACB /* indigo_wheel_mi.h in Headers */,
 				5913653828CFB42000ABB99B /* indigo_md5.h in Headers */,
 				598A1C6A259BA94A00C0B34C /* indigo_ptp_nikon.h in Headers */,
 				598A1C6B259BA94A00C0B34C /* indigo_mount_synscan.h in Headers */,
@@ -14001,6 +14163,7 @@
 				598A1C70259BA94A00C0B34C /* indigo_focuser_wemacro.h in Headers */,
 				598A1C71259BA94A00C0B34C /* indigo_mount_nexstaraux.h in Headers */,
 				598A1C72259BA94A00C0B34C /* indigo_ccd_qhy.h in Headers */,
+				596FCA902BD0320E00F5BACB /* gxccd.h in Headers */,
 				591CD0EB29805CBF003243AE /* nncam.h in Headers */,
 				598A1C73259BA94A00C0B34C /* indigo_mount_synscan_protocol.h in Headers */,
 				598A1C74259BA94A00C0B34C /* indigo_focuser_dsd.h in Headers */,
@@ -14119,11 +14282,13 @@
 				9DB918091DFEA42E00678721 /* indigo_io.h in Headers */,
 				9DCBF26627E9CC6C00746580 /* indigo_fits.h in Headers */,
 				59DD69D61FC1DC4900AEF0DF /* indigo_dome_simulator.h in Headers */,
+				596FCAA12BD0320E00F5BACB /* indigo_wheel_mi.h in Headers */,
 				59C76F13237872570091B966 /* nex_open.h in Headers */,
 				9DAD523E21258801002FCC79 /* indigo_guider_cgusbst4.h in Headers */,
 				9D9EA6B51DBFA30600E11841 /* indigo_guider_driver.h in Headers */,
 				59FE34662187B2F8004FB5D4 /* indigo_aux_dsusb.h in Headers */,
 				595F2922211E211200380EF4 /* DDHidKeyboardBarcodeScanner.h in Headers */,
+				596FCA8F2BD0320E00F5BACB /* gxccd.h in Headers */,
 				59A52F2B21A341AA000B6F27 /* libfcusb.h in Headers */,
 				5979C861254710B0005395BE /* indigo_tiff.h in Headers */,
 				599A63A81DE8BD1700ABC827 /* indigo_json.h in Headers */,
@@ -14222,6 +14387,7 @@
 				59A52F2D21A341E0000B6F27 /* altaircam.h in Headers */,
 				9D9EA6B31DBFA30600E11841 /* indigo_ccd_driver.h in Headers */,
 				59B5135F297077920075C8A1 /* indigo_rotator_falcon.h in Headers */,
+				596FCAB42BD0328000F5BACB /* indigo_rotator_wa.h in Headers */,
 				59C76F12237872570091B966 /* deg2str.h in Headers */,
 				9D73E62121FF3996003CEC15 /* utlist.h in Headers */,
 				9D73E60A21FF37DB003CEC15 /* libuvc.h in Headers */,
@@ -14550,9 +14716,11 @@
 				9DA71D142A029BE600CFA533 /* indigo_ica_ptp_sony.m in Sources */,
 				598C01FE2AFC129500DF705B /* indigo_ptp_fuji.c in Sources */,
 				598A1B68259BA94A00C0B34C /* indigo_mount_ioptron.c in Sources */,
+				596FCAA02BD0320E00F5BACB /* indigo_wheel_mi.c in Sources */,
 				598A1B69259BA94A00C0B34C /* indigo_gps_nmea.c in Sources */,
 				593A8F11285F616F00F6CF1C /* indigocat_precession.c in Sources */,
 				598A1B6A259BA94A00C0B34C /* indigo_mount_temma.c in Sources */,
+				596FCAB32BD0328000F5BACB /* indigo_rotator_wa.c in Sources */,
 				598A1B6C259BA94A00C0B34C /* DDHidElement.m in Sources */,
 				598A1B6D259BA94A00C0B34C /* indigo_focuser_moonlite.c in Sources */,
 				59111CF4285F504200E57194 /* indigocat_uranus.c in Sources */,
@@ -14890,6 +15058,7 @@
 				59B5135B297077920075C8A1 /* indigo_rotator_falcon.c in Sources */,
 				9D743A5B23FD57F80093319F /* indigo_rotator_driver.c in Sources */,
 				9D73E61621FF37F9003CEC15 /* libuvc_ctrl.c in Sources */,
+				596FCA9F2BD0320E00F5BACB /* indigo_wheel_mi.c in Sources */,
 				59790B3029B2798A00F73B1D /* indigo_service_discovery.c in Sources */,
 				5955CB6A2684BC9C00685071 /* indigo_dome_beaver.c in Sources */,
 				9D69408F2180BAF700AB112C /* indigo_aux_upb.c in Sources */,
@@ -14994,6 +15163,7 @@
 				595F291A211E211100380EF4 /* DDHidEvent.m in Sources */,
 				9D4D64B320A9D947008ECE4B /* indigo_guider_eqmac.c in Sources */,
 				5911F7B31F02E1390053F3CA /* indigo_ccd_dsi.c in Sources */,
+				596FCAB22BD0328000F5BACB /* indigo_rotator_wa.c in Sources */,
 				9DAC59D31DC0A8AD00AE410D /* indigo_focuser_driver.c in Sources */,
 				9DB918081DFEA42E00678721 /* indigo_io.c in Sources */,
 				9DAD522621246C18002FCC79 /* indigo_mount_synscan_driver.c in Sources */,
@@ -15338,6 +15508,11 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_ogma/bin_externals/libogmacam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -15414,6 +15589,11 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x64",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_omegonpro/bin_externals/libomegonprocam/extra/imagepro/x86",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_ogma/bin_externals/libogmacam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -15547,6 +15727,11 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_ssg/bin_externals/libstarshootg/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_rising/bin_externals/libnncam/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_ogma/bin_externals/libogmacam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -15615,6 +15800,11 @@
 					"$(PROJECT_DIR)/indigo_drivers/ccd_ssg/bin_externals/libstarshootg/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_rising/bin_externals/libnncam/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_ogma/bin_externals/libogmacam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/arm64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
+					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
