@@ -599,8 +599,9 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
 			CCD_STREAMING_COUNT_ITEM->number.value = 0;
+			CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {

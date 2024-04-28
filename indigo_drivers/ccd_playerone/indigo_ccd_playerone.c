@@ -569,6 +569,9 @@ static void streaming_timer_callback(indigo_device *device) {
 					PRIVATE_DATA->can_check_temperature = true;
 					indigo_usleep(ONE_SECOND_DELAY);
 					CCD_STREAMING_EXPOSURE_ITEM->number.value--;
+					if (CCD_STREAMING_EXPOSURE_ITEM->number.value < 0) {
+						CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
+					}
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 					PRIVATE_DATA->can_check_temperature = false;
 				}
@@ -1283,9 +1286,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-				CCD_STREAMING_COUNT_ITEM->number.value = 0;
-			}
 			PRIVATE_DATA->can_check_temperature = true;
 		}
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
