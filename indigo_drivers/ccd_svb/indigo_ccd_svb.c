@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0012
+#define DRIVER_VERSION 0x0013
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -1041,6 +1041,14 @@ static indigo_result init_camera_property(indigo_device *device, SVB_CONTROL_CAP
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	unused = false;
 	res = SVBGetControlValue(id, ctrl_caps.ControlType, &value, &unused);
+	/* if colour camera set WB to a resonable value defaults are horible !!! */
+	if (ctrl_caps.ControlType == SVB_WB_R || ctrl_caps.ControlType == SVB_WB_G || ctrl_caps.ControlType == SVB_WB_B) {
+		if (SVBSetControlValue(id, ctrl_caps.ControlType, 128, SVB_FALSE) == SVB_SUCCESS) {
+			value = 128;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBSetControlValue(%d, %s, 128) failed", id, ctrl_caps.Name);
+		}
+	}
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	if (res)
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SVBGetControlValue(%d, %s) > %d", id, ctrl_caps.Name, res);
