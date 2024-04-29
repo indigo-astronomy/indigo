@@ -115,6 +115,7 @@ typedef struct {
 	long int buffer_size;
 	pthread_mutex_t usb_mutex;
 	bool can_check_temperature, has_temperature_sensor;
+	bool abort_exposure;
 	POACameraProperties property;
 	int gain_highest_dr;
 	int offset_highest_dr;
@@ -441,9 +442,13 @@ static void exposure_timer_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStartExposure(%d, true)", id);
 			CCD_EXPOSURE_ITEM->number.value = CCD_EXPOSURE_ITEM->number.target;
 			while (CCD_EXPOSURE_ITEM->number.value >= 1) {
-				if (POAGetCameraState(id, &state) == POA_OK && state != STATE_EXPOSING) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "State != EXPOSING");
+				if ((POAGetCameraState(id, &state) == POA_OK && state != STATE_EXPOSING) || PRIVATE_DATA->abort_exposure) {
+					if (state != STATE_EXPOSING) {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "State != EXPOSING");
+					}
 					CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+					PRIVATE_DATA->abort_exposure = false;
+					CCD_EXPOSURE_ITEM->number.value = 0;
 					exposure_failed = true;
 					break;
 				}
@@ -516,6 +521,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		res = POA_ERROR_EXPOSURE_FAILED;
 		exposure_failed = true;
 	}
+
+	/* PRIVATE_DATA->abort_exposure should be cleared here. If it is set while reading the exposure it will return expoure, but set CCD_EXPOSURE to ALERT */
+	PRIVATE_DATA->abort_exposure = false;
 	PRIVATE_DATA->can_check_temperature = true;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
@@ -532,7 +540,6 @@ static void exposure_timer_callback(indigo_device *device) {
 	} else {
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	}
-	PRIVATE_DATA->can_check_temperature = true;
 }
 
 static void streaming_timer_callback(indigo_device *device) {
@@ -561,8 +568,11 @@ static void streaming_timer_callback(indigo_device *device) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = POAGetCameraState(id, &state);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-					if (res == POA_OK && state != STATE_EXPOSING) {
+					if ((res == POA_OK && state != STATE_EXPOSING) || PRIVATE_DATA->abort_exposure) {
 						CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+						PRIVATE_DATA->abort_exposure = false;
+						CCD_STREAMING_COUNT_ITEM->number.value = 0;
+						CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 						exposure_failed = true;
 						break;
 					}
@@ -634,7 +644,11 @@ static void streaming_timer_callback(indigo_device *device) {
 		res = POA_ERROR_EXPOSURE_FAILED;
 		exposure_failed = true;
 	}
+
+	/* PRIVATE_DATA->abort_exposure should be cleared here. If it is set while reading the exposure it will return expoure, but set CCD_SREAMING to ALERT */
+	PRIVATE_DATA->abort_exposure = false;
 	PRIVATE_DATA->can_check_temperature = true;
+	CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 	indigo_finalize_video_stream(device);
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (res) {
@@ -1199,6 +1213,8 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				indigo_define_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
 
 				device->is_connected = true;
+				PRIVATE_DATA->can_check_temperature = true;
+				PRIVATE_DATA->abort_exposure = false;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->has_temperature_sensor) {
 					indigo_set_timer(device, 0, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
@@ -1211,9 +1227,9 @@ static void handle_ccd_connect_property(indigo_device *device) {
 	} else {
 		if (device->is_connected) {
 			PRIVATE_DATA->can_check_temperature = false;
+			PRIVATE_DATA->abort_exposure = true;
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-				CCD_ABORT_EXPOSURE_ITEM->sw.value = true;
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 			} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				CCD_STREAMING_COUNT_ITEM->number.value = 0;
@@ -1262,6 +1278,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
+		PRIVATE_DATA->abort_exposure = false;
 		indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_STREAMING_PROPERTY, property)) {
@@ -1280,16 +1297,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
+		PRIVATE_DATA->abort_exposure = false;
 		indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, CCD_ABORT_EXPOSURE_ITEM, NULL);
+			PRIVATE_DATA->abort_exposure = true;
 			PRIVATE_DATA->can_check_temperature = true;
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
+		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CCD_COOLER
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
