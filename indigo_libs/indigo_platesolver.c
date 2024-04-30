@@ -168,6 +168,7 @@ static bool start_exposure(indigo_device *device, double exposure) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
 		if (item->sw.value && (!strncmp(item->name, "Imager Agent", 12) || !strncmp(item->name, "Guider Agent", 12))) {
 			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->can_start_exposure) {
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, true);
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure);
 				return true;
 			} else {
