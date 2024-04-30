@@ -435,9 +435,9 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 				goto cleanup;
 			}
 			int pixel_count = ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width * ASTROMETRY_DEVICE_PRIVATE_DATA->frame_height;
-			image_size = pixel_count * byte_per_pixel + FITS_HEADER_SIZE;
-			if (image_size % FITS_HEADER_SIZE) {
-				image_size = (image_size / FITS_HEADER_SIZE + 1) * FITS_HEADER_SIZE;
+			image_size = pixel_count * byte_per_pixel + FITS_LOGICAL_RECORD_LENGTH;
+			if (image_size % FITS_LOGICAL_RECORD_LENGTH) {
+				image_size = (image_size / FITS_LOGICAL_RECORD_LENGTH + 1) * FITS_LOGICAL_RECORD_LENGTH;
 			}
 			char *buffer = indigo_safe_malloc(image_size), *p = buffer;
 			memset(buffer, ' ', image_size);
@@ -452,7 +452,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 				t = sprintf(p += 80, "BSCALE  = %20d", 1); p[t] = ' ';
 			}
 			t = sprintf(p += 80, "END"); p[t] = ' ';
-			p = buffer + FITS_HEADER_SIZE;
+			p = buffer + FITS_LOGICAL_RECORD_LENGTH;
 			if (components == 1) {
 				// mono
 				if (byte_per_pixel == 2) {
