@@ -26,10 +26,6 @@
 extern "C" {
 #endif
 
-#ifndef FITS_HEADER_SIZE
-#define FITS_HEADER_SIZE 2880
-#endif
-
 #define MAX_MULTISTAR_COUNT 24
 
 typedef struct {
