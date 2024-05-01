@@ -148,6 +148,12 @@ static void streaming_callback(indigo_device *device) {
 		}
 		if (CCD_STREAMING_COUNT_ITEM->number.value != -1)
 			CCD_STREAMING_COUNT_ITEM->number.value--;
+		if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_finalize_video_stream(device);
+			uvc_stream_close(PRIVATE_DATA->strmhp);
+			indigo_ccd_change_property(device, NULL, CCD_ABORT_EXPOSURE_PROPERTY);
+			return;
+		}
 	}
 	indigo_finalize_video_stream(device);
 	uvc_stream_close(PRIVATE_DATA->strmhp);
@@ -447,19 +453,24 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		return INDIGO_OK;
-//	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
-//		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-//		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-//		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
-//			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-//				CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-//			}
-//			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-//				CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-//			}
-//			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-//		}
-//		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
+		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
+		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_send_message(device, "Streaming will be finished within %gs", CCD_STREAMING_EXPOSURE_ITEM->number.target);
+				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+			} else {
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_send_message(device, "Exposure can't be aborted");
+				}
+				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+			}
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
