@@ -23,7 +23,7 @@
  \file indigo_ccd_iidc.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_iidc"
 
 #include <stdlib.h>
@@ -277,8 +277,14 @@ static void streaming_timer_callback(indigo_device *device) {
           err = dc1394_capture_enqueue(PRIVATE_DATA->camera, frame);
           INDIGO_DRIVER_DEBUG(DRIVER_NAME, "dc1394_capture_enqueue() -> %s", dc1394_error_get_string(err));
         }
-				CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
-				break;
+				if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_ccd_change_property(device, NULL, CCD_ABORT_EXPOSURE_PROPERTY);
+					indigo_finalize_video_stream(device);
+					return;
+				} else {
+					CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+					break;
+				}
 			}
 			if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
 				CCD_STREAMING_COUNT_ITEM->number.value -= 1;
@@ -579,13 +585,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
 			if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_send_message(device, "Streaming will be finished within %gs", CCD_STREAMING_EXPOSURE_ITEM->number.target);
+				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 				stop_camera(device);
-			} else if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-				indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
-				stop_camera(device);
+			} else {
+				if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_send_message(device, "Exposure can't be aborted");
+				}
+				CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			}
 		}
+		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
 	return indigo_ccd_change_property(device, client, property);
