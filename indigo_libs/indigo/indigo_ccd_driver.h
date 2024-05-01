@@ -598,6 +598,10 @@ extern void indigo_finalize_dslr_video_stream(indigo_device *device);
  */
 extern indigo_result indigo_ccd_failure_cleanup(indigo_device *device);
 
+/** Set corect states to related proeprties upon aborting exposure.
+ */
+indigo_result indigo_ccd_abort_exposure_cleanup(indigo_device *device);
+
 /** Set FITS header
  */
 extern indigo_result indigo_set_fits_header(indigo_client *client, char *device, char *name, char *format, ...);
