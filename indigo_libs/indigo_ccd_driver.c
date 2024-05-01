@@ -449,6 +449,31 @@ indigo_result indigo_ccd_failure_cleanup(indigo_device *device) {
 	return INDIGO_OK;
 }
 
+indigo_result indigo_ccd_abort_exposure_cleanup(indigo_device *device) {
+	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+		CCD_CONTEXT->countdown_endtime = 0;
+		CCD_EXPOSURE_ITEM->number.value = 0;
+		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
+		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (CCD_STREAMING_COUNT_ITEM->number.target < 0) {
+			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		CCD_STREAMING_COUNT_ITEM->number.value = 0;
+		CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
+		indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
+		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+	indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+	return INDIGO_OK;
+}
+
 indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -592,23 +617,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_ccd_failure_cleanup(device);
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-			CCD_CONTEXT->countdown_endtime = 0;
-			CCD_EXPOSURE_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
-			CCD_STREAMING_PROPERTY->state = INDIGO_OK_STATE;
-			CCD_STREAMING_COUNT_ITEM->number.value = 0;
-			CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
-			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-		} else {
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
-		CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-		indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
+		indigo_ccd_abort_exposure_cleanup(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_FRAME
