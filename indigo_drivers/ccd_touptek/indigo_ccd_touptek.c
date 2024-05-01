@@ -24,7 +24,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0023
+#define DRIVER_VERSION 0x0024
 
 #include <stdlib.h>
 #include <string.h>
@@ -1151,12 +1151,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
 		if (CCD_ABORT_EXPOSURE_ITEM->sw.value) {
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_watchdog_timer);
+			PRIVATE_DATA->aborting = true;
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 0);
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Trigger(0) -> %08x", result);
-			PRIVATE_DATA->aborting = true;
 		}
 	} else if (indigo_property_match_changeable(CCD_COOLER_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_COOLER
