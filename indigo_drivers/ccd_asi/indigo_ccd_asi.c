@@ -607,9 +607,12 @@ static void streaming_timer_callback(indigo_device *device) {
 				} else {
 					indigo_process_image(device, PRIVATE_DATA->buffer, (int)(PRIVATE_DATA->exp_frame_width / PRIVATE_DATA->exp_bin_x), (int)(PRIVATE_DATA->exp_frame_height / PRIVATE_DATA->exp_bin_y), PRIVATE_DATA->exp_bpp, true, false, NULL, true);
 				}
-				if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+				if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 					CCD_STREAMING_COUNT_ITEM->number.value -= 1;
-				CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
+				}
+				if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					break;
+				}
 				indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 			}
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -624,9 +627,13 @@ static void streaming_timer_callback(indigo_device *device) {
 	} else {
 		res = ASI_ERROR_GENERAL_ERROR;
 	}
+
 	PRIVATE_DATA->can_check_temperature = true;
 	indigo_finalize_video_stream(device);
-	if (res) {
+
+	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		indigo_ccd_abort_exposure_cleanup(device);
+	} else if (res) {
 		indigo_ccd_failure_cleanup(device);
 		CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_STREAMING_PROPERTY, "Streaming failed");
@@ -1098,8 +1105,8 @@ static void handle_ccd_connect_property(indigo_device *device) {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 				asi_abort_exposure(device);
+				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
 			} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				CCD_STREAMING_COUNT_ITEM->number.value = 0;
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->exposure_timer);
@@ -1184,11 +1191,6 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			} else {
 				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			}
-			CCD_STREAMING_COUNT_ITEM->number.value = 0;
-			CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
-			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
-			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
-			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			return INDIGO_OK;
 		}
 		PRIVATE_DATA->can_check_temperature = true;
