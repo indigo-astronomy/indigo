@@ -450,6 +450,7 @@ indigo_result indigo_ccd_failure_cleanup(indigo_device *device) {
 }
 
 indigo_result indigo_ccd_abort_exposure_cleanup(indigo_device *device) {
+	indigo_ccd_failure_cleanup(device);
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 		CCD_CONTEXT->countdown_endtime = 0;
@@ -481,6 +482,8 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
 		if (IS_CONNECTED) {
+			CCD_ABORT_EXPOSURE_ITEM->sw.value = false;
+			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
 			indigo_define_property(device, CCD_LENS_PROPERTY, NULL);
 			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
@@ -616,7 +619,6 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
-		indigo_ccd_failure_cleanup(device);
 		indigo_ccd_abort_exposure_cleanup(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_FRAME_PROPERTY, property)) {
