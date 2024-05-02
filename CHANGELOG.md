@@ -2,6 +2,47 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-282] - 02 May Thu 2024
+## Overall:
+- indigo_raw_utils:
+	- add indigo_is_bayered_image() and use it in agents
+
+- indigo_ccd_driver:
+	- move abort exposure code to indigo_ccd_abort_exposure_cleanup()
+	- proeprly initialize CCD_ABORT_EXPOSURE
+
+### Driver Fixes:
+- indigo_agent_astrometry:
+	- FITS conversion bug fixed
+
+- indigo_agent_imager:
+	- find precise star positions
+	- change AGENT_IMAGER_SELECTION_RADIUS max and default values
+	- equalize RGB channels for bayered images - fixes isse with finding stars on the image and measuring HFD and FWHM
+
+- indigo_ccd_touptek & OEM:
+	- ABORT_EXPOSURE behaviour fixed
+
+- indigo_ccd_svb:
+	- update SDK to v.1.12.6
+	- set WB to reasonable values for color cameras as the defaults are not ok
+	- ABORT_EXPOSURE behaviour fixed
+
+- indigo_ccd_iidc:
+	- ABORT_EXPOSURE behaviour fixed
+
+- indigo_ccd_uvc:
+	- ABORT_EXPOSURE behaviour fixed
+
+- indigo_ccd_asi:
+	- ABORT_EXPOSURE behaviour fixed
+
+- indigo_ccd_playerone:
+	- ABORT_EXPOSURE behaviour fixed
+
+- indigo_ccd_simulator:
+	- DSLR simulator now produces FITS and XISF
+
 # [2.0-280] - 12 Apr Fri 2024
 ## Overall:
 - mount_drivers: MOUNT_SIDE_OF_PIER permission fixed
