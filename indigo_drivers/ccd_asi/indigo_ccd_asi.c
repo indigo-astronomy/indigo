@@ -1178,14 +1178,16 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_ABORT_EXPOSURE
 	} else if (indigo_property_match_changeable(CCD_ABORT_EXPOSURE_PROPERTY, property)) {
 		indigo_property_copy_values(CCD_ABORT_EXPOSURE_PROPERTY, property, false);
-		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)) {
+		bool streaming = (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
+		bool exposing = (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE);
+		if (CCD_ABORT_EXPOSURE_ITEM->sw.value && (streaming || exposing)) {
 			CCD_ABORT_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		}
-		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+		if (exposing) {
 			indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
 			indigo_cancel_timer(device, &PRIVATE_DATA->exposure_timer);
 			asi_abort_exposure(device);
-		} else if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
+		} else if (exposing && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			if (CCD_STREAMING_EXPOSURE_ITEM->number.value >= 1) {
 				indigo_update_property(device, CCD_ABORT_EXPOSURE_PROPERTY, "Streaming will stop in %.0f sec", CCD_STREAMING_EXPOSURE_ITEM->number.value);
 			} else {
