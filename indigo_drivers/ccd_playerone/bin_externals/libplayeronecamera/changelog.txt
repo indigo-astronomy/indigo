@@ -1,5 +1,10 @@
+2024.04.23(3.6.2)
+- Add python wrapper
+- Optimized camera data transmission
+
 2023.12.29(3.6.1)
-- Support Ceres 462M camera
+- Support Ceres 462M camera.
+- Enable automatic exposure and gain.
 - Optimized camera data transmission under Linux and Mac, especially expo in Snap Mode.
 
 2023.09.16(3.6.0)
