@@ -62,7 +62,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		CCD_MODE_PROPERTY->hidden = true;
 		CCD_STREAMING_PROPERTY->hidden = PRIVATE_DATA->liveview == NULL;
-		CCD_FRAME_PROPERTY->hidden = true;
+		CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
+		CCD_FRAME_WIDTH_ITEM->number.value = PRIVATE_DATA->model.width;
+		CCD_FRAME_HEIGHT_ITEM->number.value = PRIVATE_DATA->model.height;
+		CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 16;
 		CCD_INFO_WIDTH_ITEM->number.value = PRIVATE_DATA->model.width;
 		CCD_INFO_HEIGHT_ITEM->number.value = PRIVATE_DATA->model.height;
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value =  CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->model.pixel_size;
