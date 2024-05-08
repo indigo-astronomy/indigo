@@ -547,7 +547,7 @@ extern "C" void indigo_compute_stretch_params_16_gbrg(const uint16_t *buffer, in
 extern "C" void indigo_compute_stretch_params_16_grbg(const uint16_t *buffer, int width, int height, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, unsigned long *totals, float B, float C) {
 	indigo_compute_stretch_params(buffer + 1, width, height, sample_by * 2, 2, &shadows[0], &midtones[0], &highlights[0], histogram[0] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), &totals[0], B, C);
 	indigo_compute_stretch_params(buffer, width, height, sample_by * 2, 2, &shadows[1], &midtones[1], &highlights[1], histogram[1] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), &totals[1], B, C);
-	indigo_compute_stretch_params(buffer + width, width, height * 2, sample_by, 2, &shadows[2], &midtones[2], &highlights[2], histogram[2] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), &totals[2], B, C);
+	indigo_compute_stretch_params(buffer + width, width, height, sample_by * 2, 2, &shadows[2], &midtones[2], &highlights[2], histogram[2] = (unsigned long *)indigo_safe_malloc(sizeof(unsigned long) * 256), &totals[2], B, C);
 }
 
 extern "C" void indigo_compute_stretch_params_16_bggr(const uint16_t *buffer, int width, int height, int sample_by, double *shadows, double *midtones, double *highlights, unsigned long **histogram, unsigned long *totals, float B, float C) {
