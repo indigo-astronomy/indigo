@@ -25,7 +25,7 @@
  \file indigo_ccd_svb.c
  */
 
-#define DRIVER_VERSION 0x0013
+#define DRIVER_VERSION 0x0014
 #define DRIVER_NAME "indigo_ccd_svb"
 
 #include <stdlib.h>
@@ -555,7 +555,7 @@ static void streaming_timer_callback(indigo_device *device) {
 			PRIVATE_DATA->can_check_temperature = false;
 			if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				svb_clear_video_buffer(device, true);
-				break;
+				goto streaming_end;
 			}
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			res = SVBGetVideoData(id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE, 100);
@@ -594,6 +594,8 @@ static void streaming_timer_callback(indigo_device *device) {
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
 	}
+
+	streaming_end:
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	SVBStopVideoCapture(id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
