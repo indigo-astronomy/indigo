@@ -1220,8 +1220,9 @@ function indigo_sequencer_abort_handler() {
 	indigo_sequencer.abort();
 }
 
-indigo_delete_property("Scripting Agent", "SEQUENCE_STATE");
-indigo_delete_property("Scripting Agent", "AGENT_ABORT_PROCESS");
+if (indigo_event_handlers.indigo_sequencer == null) {
+	indigo_send_message("Sequencer installed");
+}
 indigo_delete_property("Scripting Agent", "LOOP_0");
 indigo_delete_property("Scripting Agent", "LOOP_1");
 indigo_delete_property("Scripting Agent", "LOOP_2");
@@ -1234,4 +1235,3 @@ indigo_delete_property("Scripting Agent", "LOOP_8");
 indigo_delete_property("Scripting Agent", "LOOP_9");
 indigo_event_handlers.indigo_sequencer = indigo_sequencer;
 indigo_enumerate_properties();
-indigo_send_message("Sequencer installed");
