@@ -1464,43 +1464,34 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 	return true;
 }
 
-int mkpath(const char *dir) {
-	struct stat sb;
+int mkpath(const char *path) {
+	struct stat st = {0};
 	const mode_t mode=0774;
 
-	if (dir[0] == '\0') {
-		return -1;
-	}
+	if (stat(path, &st) == -1) {
+		char *dir_path = strdup(path);
+		char *p = strchr(dir_path + 1, '/');
 
-    if (stat(dir, &sb) == 0) {
-		if (S_ISDIR(sb.st_mode)) {
-			return 0; /* path exists and is dir */
-		} else {
-			return -1; /* path exists but is not dir */
-		}
-	} else {
-		char tmp[PATH_MAX];
-		size_t len = strnlen(dir, PATH_MAX);
-		memcpy(tmp, dir, len);
-		if (tmp[len-1]=='/') {
-			tmp[len-1]='\0';
+		while (p != NULL) {
+			*p = '\0';
+			if (mkdir(dir_path, mode) == -1 && errno != EEXIST) {
+				free(dir_path);
+				return -1;
+			}
+			*p = '/';
+			p = strchr(p + 1, '/');
 		}
 
-		char *p = strrchr(tmp, '/');
-		if (p) {
-			*p='\0';
-		} else {
+		if (mkdir(dir_path, mode) == -1 && errno != EEXIST) {
+			free(dir_path);
 			return -1;
 		}
-
-		int ret = mkpath(tmp);
-		if (ret == 0) {
-			return mkdir(dir, mode);
-		} else {
-			return ret;
-		}
+		free(dir_path);
+	} else if (!S_ISDIR(st.st_mode)) {
+		return -1; /* path exists but is not dir */
 	}
-	return -1;
+
+	return 0;
 }
 
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
