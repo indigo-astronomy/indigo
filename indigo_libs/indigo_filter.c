@@ -944,9 +944,9 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 					!strcmp(property->name, CCD_GAMMA_PROPERTY_NAME) ||
 					!strcmp(property->name, CCD_FRAME_TYPE_PROPERTY_NAME) ||
 					!strcmp(property->name, CCD_FRAME_PROPERTY_NAME) ||
-					!strcmp(property->name, DSLR_APERTURE_PROPERTY_NAME) ||
-					!strcmp(property->name, DSLR_SHUTTER_PROPERTY_NAME) ||
-					!strcmp(property->name, DSLR_ISO_PROPERTY_NAME) ||
+//					!strcmp(property->name, DSLR_APERTURE_PROPERTY_NAME) ||
+//					!strcmp(property->name, DSLR_SHUTTER_PROPERTY_NAME) ||
+//					!strcmp(property->name, DSLR_ISO_PROPERTY_NAME) ||
 					!strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ||
 					!strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ||
 					!strcmp(property->name, FOCUSER_DIRECTION_PROPERTY_NAME) ||
