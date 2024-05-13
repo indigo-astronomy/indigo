@@ -1468,6 +1468,10 @@ int mkpath(const char *dir) {
 	struct stat sb;
 	const mode_t mode=0774;
 
+	if (dir[0] == '\0') {
+		return -1;
+	}
+
     if (stat(dir, &sb) == 0) {
 		if (S_ISDIR(sb.st_mode)) {
 			return 0; /* path exists and is dir */
@@ -1481,14 +1485,22 @@ int mkpath(const char *dir) {
 		if (tmp[len-1]=='/') {
 			tmp[len-1]='\0';
 		}
+
 		char *p = strrchr(tmp, '/');
-		*p='\0';
+		if (p) {
+			*p='\0';
+		} else {
+			return -1;
+		}
+
 		int ret = mkpath(tmp);
 		if (ret == 0) {
 			return mkdir(dir, mode);
+		} else {
+			return ret;
 		}
 	}
-	return 0;
+	return -1;
 }
 
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
