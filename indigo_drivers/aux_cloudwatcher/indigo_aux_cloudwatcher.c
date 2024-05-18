@@ -505,31 +505,19 @@ static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambie
 	int rain_sensor_temp;
 	int raw_sq = NO_READING;
 
-	if (PRIVATE_DATA->firmware >= 3.0) {
-		printf("1 Firmware version: %f\n", PRIVATE_DATA->firmware);
-		char buffer[BLOCK_SIZE * 6];
-		bool r = aag_command(device, "C!", buffer, 6, 0);
-		if (!r) return false;
+	char buffer[BLOCK_SIZE * 6];
+	bool r = aag_command(device, "C!", buffer, 6, 0);
+	if (!r) return false;
 
-		int res = sscanf(buffer, "!6 %d!4 %d!5 %d", &zener_v, &ldr_r, &rain_sensor_temp);
-		if (res != 3) {
-			int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp);
-			if (res != 4) {
-				int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d!8 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp, &raw_sq);
-				if (res != 5) {
-					return false;
-				}
+	int res = sscanf(buffer, "!6 %d!4 %d!5 %d", &zener_v, &ldr_r, &rain_sensor_temp);
+	if (res != 3) {
+		int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp);
+		if (res != 4) {
+			int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d!8 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp, &raw_sq);
+			if (res != 5) {
+				return false;
 			}
 		}
-	} else {
-		printf("2 Firmware version: %f\n", PRIVATE_DATA->firmware);
-		char buffer[BLOCK_SIZE * 5];
-		bool r = aag_command(device, "C!", buffer, 5, 0);
-		if (!r) return false;
-
-		int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp);
-
-		if (res != 4) return false;
 	}
 
 	*power_voltage           = zener_v;
@@ -1037,7 +1025,7 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.value = AUX_WEATHER_TEMPERATURE_ITEM->number.value = ambient_temperature;
 	if (data.rh != NO_READING) {
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = data.rh;
-		AUX_WEATHER_DEWPOINT_ITEM->number.value = ambient_temperature - (100.0 - data.rh) / 5.0;
+		AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_aux_dewpoint(ambient_temperature, data.rh);
 	} else {
 		AUX_WEATHER_DEWPOINT_ITEM->number.value = -ABS_ZERO;
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = 0;
