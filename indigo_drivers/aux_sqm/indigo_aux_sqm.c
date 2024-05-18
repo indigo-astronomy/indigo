@@ -23,7 +23,7 @@
  \file indigo_aux_sqm.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME "indigo_aux_sqm"
 
 #include <stdlib.h>
@@ -47,9 +47,10 @@
 #define AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
 #define AUX_INFO_SKY_BRIGHTNESS_ITEM				(AUX_INFO_PROPERTY->items + 0)
 #define AUX_INFO_SKY_TEMPERATURE_ITEM				(AUX_INFO_PROPERTY->items + 1)
-#define X_AUX_SENSOR_FREQUENCY_ITEM					(AUX_INFO_PROPERTY->items + 2)
-#define X_AUX_SENSOR_COUNTS_ITEM						(AUX_INFO_PROPERTY->items + 3)
-#define X_AUX_SENSOR_PERIOD_ITEM						(AUX_INFO_PROPERTY->items + 4)
+#define AUX_INFO_SKY_BORTLE_CLASS_ITEM				(AUX_INFO_PROPERTY->items + 2)
+#define X_AUX_SENSOR_FREQUENCY_ITEM					(AUX_INFO_PROPERTY->items + 3)
+#define X_AUX_SENSOR_COUNTS_ITEM						(AUX_INFO_PROPERTY->items + 4)
+#define X_AUX_SENSOR_PERIOD_ITEM						(AUX_INFO_PROPERTY->items + 5)
 
 #define RESPONSE_LENGTH											120
 
@@ -106,6 +107,7 @@ static void aux_timer_callback(indigo_device *device) {
 			AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (*tok == 'r') {
 			AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+			AUX_INFO_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value);
 			X_AUX_SENSOR_FREQUENCY_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 			X_AUX_SENSOR_COUNTS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 			X_AUX_SENSOR_PERIOD_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
@@ -164,11 +166,12 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- INFO
-		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 6);
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_INFO_SKY_BRIGHTNESS_ITEM, AUX_INFO_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
 		indigo_init_number_item(AUX_INFO_SKY_TEMPERATURE_ITEM, AUX_INFO_SKY_TEMPERATURE_ITEM_NAME, "Sky temperature [\u00B0C]", -100, 100, 0, 0);
+		indigo_init_number_item(AUX_INFO_SKY_BORTLE_CLASS_ITEM, AUX_INFO_SKY_BORTLE_CLASS_ITEM_NAME, "Sky Bortle class", 1, 9, 0, 0);
 		indigo_init_number_item(X_AUX_SENSOR_FREQUENCY_ITEM, "X_AUX_SENSOR_FREQUENCY", "SQM sensor frequency [Hz]", 0, 1000000000, 0, 0);
 		strcpy(X_AUX_SENSOR_FREQUENCY_ITEM->number.format, "%.0f");
 		indigo_init_number_item(X_AUX_SENSOR_COUNTS_ITEM, "X_AUX_SENSOR_COUNTS", "SQM sensor period [counts]", 0, 1000000000, 0, 0);
