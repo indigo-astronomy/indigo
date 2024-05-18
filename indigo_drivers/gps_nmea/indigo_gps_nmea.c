@@ -40,12 +40,18 @@
 
 #include "indigo_gps_nmea.h"
 
+#define MAX_NB_OF_SYSTEMS 26 // Overkill, but not memory expensive, and it is future proof
+
 #define PRIVATE_DATA        ((nmea_private_data *)device->private_data)
 
 typedef struct {
 	int handle;
 	pthread_mutex_t serial_mutex;
 	indigo_timer *timer_callback;
+	int satellitesInView[MAX_NB_OF_SYSTEMS];
+	bool timeFix[MAX_NB_OF_SYSTEMS];
+	bool positionFix[MAX_NB_OF_SYSTEMS];
+	char fixStatus[MAX_NB_OF_SYSTEMS];
 } nmea_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO GPS device implementation
@@ -80,9 +86,16 @@ static void gps_close(indigo_device *device) {
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 }
 
+static bool hasFix(bool *table) {
+	for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++)
+		if (table[i] )
+			return true;
+	return false;
+}
+
 static char **parse(char *buffer) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
-	if (strncmp("$GP", buffer, 3) && strncmp("$GN", buffer, 3))
+	if (strncmp("$G", buffer, 2)) // Disregard "non positioning" sentences
 		return NULL;
 	char *index = strchr(buffer, '*');
 	if (index) {
@@ -117,58 +130,80 @@ static void gps_refresh_callback(indigo_device *device) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader started");
 	while (IS_CONNECTED && PRIVATE_DATA->handle >= 0) {
 		//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		if ((length = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer))) > 0 && (tokens = parse(buffer))) {
+		if ((length = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer))) > 0 && (tokens = parse(buffer))
+		    && buffer[2] >= 'A' && buffer[2] <= 'Z') {
+			int system = buffer[2] - 'A';
 			if (!strcmp(tokens[0], "RMC")) { // Recommended Minimum sentence C
-				int time = atoi(tokens[1]);
-				int date = atoi(tokens[9]);
-				sprintf(GPS_UTC_ITEM->text.value, "20%02d-%02d-%02dT%02d:%02d:%02d", date % 100, (date / 100) % 100, date / 10000, time / 10000, (time / 100) % 100, time % 100);
-				GPS_UTC_TIME_PROPERTY->state = *tokens[2] == 'A' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+				PRIVATE_DATA->timeFix[system] = (*tokens[2] == 'A');
+				bool globalTimeFix = hasFix(PRIVATE_DATA->timeFix);
+				if (PRIVATE_DATA->timeFix[system] || !globalTimeFix) { // Forbid degradation if at least one system has a fix
+					int time = atoi(tokens[1]);
+					int date = atoi(tokens[9]);
+					sprintf(GPS_UTC_ITEM->text.value, "20%02d-%02d-%02dT%02d:%02d:%02d", date % 100, (date / 100) % 100, date / 10000, time / 10000, (time / 100) % 100, time % 100);
+				}
+				GPS_UTC_TIME_PROPERTY->state = globalTimeFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-				double lat = indigo_atod(tokens[3]);
-				lat = floor(lat / 100) + fmod(lat, 100) / 60;
-				if (!strcmp(tokens[4], "S"))
-					lat = -lat;
-				lat = round(lat * 10000) / 10000;
-				double lon = indigo_atod(tokens[5]);
-				lon = floor(lon / 100) + fmod(lon, 100) / 60;
-				if (!strcmp(tokens[6], "W"))
-					lon = -lon;
-				lon = round(lon * 10000) / 10000;
-				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
-					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = *tokens[2] == 'A' ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-					indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+				if (PRIVATE_DATA->timeFix[system] || !(globalTimeFix || hasFix(PRIVATE_DATA->positionFix))) { // Forbid degradation if at least one system has a fix
+					double lat = indigo_atod(tokens[3]);
+					lat = floor(lat / 100) + fmod(lat, 100) / 60;
+					if (!strcmp(tokens[4], "S"))
+						lat = -lat;
+					lat = round(lat * 10000) / 10000;
+					double lon = indigo_atod(tokens[5]);
+					lon = floor(lon / 100) + fmod(lon, 100) / 60;
+					if (!strcmp(tokens[6], "W"))
+						lon = -lon;
+					lon = round(lon * 10000) / 10000;
+					if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
+					    GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+					    GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+					    GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = PRIVATE_DATA->timeFix[system] ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+					}
 				}
 			} else if (!strcmp(tokens[0], "GGA")) { // Global Positioning System Fix Data
-				double lat = indigo_atod(tokens[2]);
-				lat = floor(lat / 100) + fmod(lat, 100) / 60;
-				if (!strcmp(tokens[3], "S"))
-					lat = -lat;
-				lat = round(lat * 10000) / 10000;
-				double lon = indigo_atod(tokens[4]);
-				lon = floor(lon / 100) + fmod(lon, 100) / 60;
-				if (!strcmp(tokens[5], "W"))
-					lon = -lon;
-				lon = round(lon * 10000) / 10000;
-				double elv = round(indigo_atod(tokens[9]));
-				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat || GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value != elv) {
-					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-					GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elv;
-					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+				PRIVATE_DATA->positionFix[system] = (*tokens[6] != 0 && *tokens[6] != '0');
+				bool globalPositionFix = hasFix(PRIVATE_DATA->positionFix);
+				bool global2DFix = globalPositionFix || hasFix(PRIVATE_DATA->timeFix);
+				if (PRIVATE_DATA->positionFix[system] || !global2DFix)  { // Forbid location degradation if at least one system has a fix
+					double lat = indigo_atod(tokens[2]);
+					lat = floor(lat / 100) + fmod(lat, 100) / 60;
+					if (!strcmp(tokens[3], "S"))
+						lat = -lat;
+					lat = round(lat * 10000) / 10000;
+					double lon = indigo_atod(tokens[4]);
+					lon = floor(lon / 100) + fmod(lon, 100) / 60;
+					if (!strcmp(tokens[5], "W"))
+						lon = -lon;
+					lon = round(lon * 10000) / 10000;
+					if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat ) {
+						GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+						GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+					}
+				}
+				if (PRIVATE_DATA->positionFix[system] || !globalPositionFix)  { // Forbid altitude degradation if at least one system has a 3D fix
+					double elv = round(indigo_atod(tokens[9]));
+					if (GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value != elv) {
+						GPS_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value = elv;
+					}
+				}
+				if (PRIVATE_DATA->positionFix[system] || !global2DFix) { // Raise alert only when no fix is available at all, not only altitude
+					GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = PRIVATE_DATA->positionFix[system] || global2DFix ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 					indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
 				}
-				int in_use = atoi(tokens[7]);
+				int in_use = atoi(tokens[7]);  // TODO: Handle the case of multiple systems reporting SV in use
 				if (GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value != in_use) {
-					GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = in_use;
-					GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+					 GPS_ADVANCED_STATUS_SVS_IN_USE_ITEM->number.value = in_use;
+					 GPS_ADVANCED_STATUS_PROPERTY->state = PRIVATE_DATA->positionFix[system] ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 					if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
 						indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 					}
 				}
 			} else if (!strcmp(tokens[0], "GSV")) { // Satellites in view
-				int in_view = atoi(tokens[3]);
+				int in_view = 0;
+				PRIVATE_DATA->satellitesInView[system] = atoi(tokens[3]);
+				for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++)
+					in_view += PRIVATE_DATA->satellitesInView[i];
 				if (GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value != in_view) {
 					GPS_ADVANCED_STATUS_SVS_IN_VIEW_ITEM->number.value = in_view;
 					GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
@@ -177,60 +212,67 @@ static void gps_refresh_callback(indigo_device *device) {
 					}
 				}
 			} else if (!strcmp(tokens[0], "GSA")) { // Satellite status
-				char fix = *tokens[2] - '0';
-				if (fix == 1 && GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
-					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-					}
-					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
-						GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-					}
-					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
-				} else if (fix == 2 && GPS_STATUS_2D_FIX_ITEM->light.value != INDIGO_BUSY_STATE) {
-					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
-					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
-					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
-						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-					}
-					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
-						GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
-						indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-					}
-				} else if (fix == 3 && GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
-					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
-					GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-					if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_OK_STATE) {
-						GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-					}
-					if (GPS_UTC_TIME_PROPERTY->state != INDIGO_OK_STATE) {
-						GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-					}
-					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+				char maxFix = 0;
+				for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++) {
+					if (PRIVATE_DATA->fixStatus[i] > maxFix)
+						maxFix = PRIVATE_DATA->fixStatus[i];
 				}
-				double pdop = indigo_atod(tokens[15]);
-				double hdop = indigo_atod(tokens[16]);
-				double vdop = indigo_atod(tokens[17]);
-				if (GPS_ADVANCED_STATUS_PDOP_ITEM->number.value != pdop || GPS_ADVANCED_STATUS_HDOP_ITEM->number.value != hdop || GPS_ADVANCED_STATUS_VDOP_ITEM->number.value != vdop) {
-					GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = pdop;
-					GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = hdop;
-					GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = vdop;
-					GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
-					if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
-						indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+				PRIVATE_DATA->fixStatus[system] = *tokens[2] - '0';
+				if (PRIVATE_DATA->fixStatus[system] >= maxFix) { // Do not degrade fix if another system does better
+					if (PRIVATE_DATA->fixStatus[system] == 1 && GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
+						GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+						GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+						if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+						}
+						indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+					} else if (PRIVATE_DATA->fixStatus[system] == 2 && GPS_STATUS_2D_FIX_ITEM->light.value != INDIGO_BUSY_STATE) {
+						GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_BUSY_STATE;
+						GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+						if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+						if (GPS_UTC_TIME_PROPERTY->state != INDIGO_BUSY_STATE) {
+							GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
+							indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+						}
+					} else if (PRIVATE_DATA->fixStatus[system] == 3 && GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
+						GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+						GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+						GPS_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						if (GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state != INDIGO_OK_STATE) {
+							GPS_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+						}
+						if (GPS_UTC_TIME_PROPERTY->state != INDIGO_OK_STATE) {
+							GPS_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
+							indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+						}
+						indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+					}
+					double pdop = indigo_atod(tokens[15]);
+					double hdop = indigo_atod(tokens[16]);
+					double vdop = indigo_atod(tokens[17]);
+					if (GPS_ADVANCED_STATUS_PDOP_ITEM->number.value != pdop || GPS_ADVANCED_STATUS_HDOP_ITEM->number.value != hdop || GPS_ADVANCED_STATUS_VDOP_ITEM->number.value != vdop) {
+						GPS_ADVANCED_STATUS_PDOP_ITEM->number.value = pdop;
+						GPS_ADVANCED_STATUS_HDOP_ITEM->number.value = hdop;
+						GPS_ADVANCED_STATUS_VDOP_ITEM->number.value = vdop;
+						GPS_ADVANCED_STATUS_PROPERTY->state = INDIGO_OK_STATE;
+						if (GPS_ADVANCED_ENABLED_ITEM->sw.value) {
+							indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
+						}
 					}
 				}
 			}
@@ -243,6 +285,9 @@ static void gps_refresh_callback(indigo_device *device) {
 				break;
 			} else if (tokens == NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown sentence from device");
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Invalid system from device");
+				indigo_safe_free(tokens);
 			}
 		}
 		//pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
@@ -293,6 +338,10 @@ static void gps_connect_callback(indigo_device *device) {
 				GPS_STATUS_PROPERTY->state = INDIGO_BUSY_STATE;
 				GPS_UTC_TIME_PROPERTY->state = INDIGO_BUSY_STATE;
 				sprintf(GPS_UTC_ITEM->text.value, "0000-00-00T00:00:00.00");
+				memset(PRIVATE_DATA->satellitesInView, 0, sizeof(int)*MAX_NB_OF_SYSTEMS);
+				memset(PRIVATE_DATA->timeFix, 0, sizeof(bool)*MAX_NB_OF_SYSTEMS);
+				memset(PRIVATE_DATA->positionFix, 0, sizeof(bool)*MAX_NB_OF_SYSTEMS);
+				memset(PRIVATE_DATA->fixStatus, 0, sizeof(char)*MAX_NB_OF_SYSTEMS);
 				indigo_set_timer(device, 0, gps_refresh_callback, &PRIVATE_DATA->timer_callback);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
