@@ -36,9 +36,9 @@ void loop() {
   if (command.equals("i")) {
     Serial.println("i,00000002,00000003,00000001,00000413");
   } else if (command.equals("r")) {
-    Serial.println("r, 06.70m,0000022921Hz,0000000020c,0000000.000s, 039.4C");
+    Serial.println("r, 20.70m,0000022921Hz,0000000020c,0000000.000s, 039.4C");
   } else if (command.equals("u")) {
-    Serial.println("u, 06.70m,0000022921Hz,0000000020c,0000000.000s, 039.4C");
+    Serial.println("u, 20.70m,0000022921Hz,0000000020c,0000000.000s, 039.4C");
   } else if (command.equals("L5")) {
     Serial.println("L5,238");
   } else if (command.equals("L5")) {
