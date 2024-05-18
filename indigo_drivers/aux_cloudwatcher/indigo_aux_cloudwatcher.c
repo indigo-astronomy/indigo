@@ -25,7 +25,7 @@
 
 #include "indigo_aux_cloudwatcher.h"
 
-#define DRIVER_VERSION         0x0007
+#define DRIVER_VERSION         0x0008
 #define AUX_CLOUDWATCHER_NAME  "AAG CloudWatcher"
 
 #define DRIVER_NAME              "indigo_aux_skywatcher"
@@ -124,8 +124,10 @@
 #define X_SENSOR_RAIN_CYCLES_ITEM_NAME               "RAIN_CYCLES"
 #define X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM_NAME   "RAIN_SENSOR_TEMPERATURE"
 #define X_SENSOR_RAIN_HEATER_POWER_ITEM_NAME         "RAIN_SENSOR_HEATER_POWER"
-#define X_SENSOR_SKY_BRIGHTNESS_ITEM_NAME            "SKY_BRIGHTNES"
+#define X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM_NAME       "SKY_BRIGHTNES_KOHM"
 #define X_SENSOR_AMBIENT_TEMPERATURE_ITEM_NAME       "AMBIENT_TEMPERATURE"
+#define X_SENSOR_SKY_BRIGHTNESS_ITEM_NAME            AUX_INFO_SKY_BRIGHTNESS_ITEM_NAME
+#define X_SENSOR_SKY_BORTLE_CLASS_ITEM_NAME          AUX_INFO_SKY_BORTLE_CLASS_ITEM_NAME
 
 #define X_SENSOR_READINGS_PROPERTY               (PRIVATE_DATA->sensor_readings_property)
 #define X_SENSOR_RAW_SKY_TEMPERATURE_ITEM        (X_SENSOR_READINGS_PROPERTY->items + 0)
@@ -134,8 +136,10 @@
 #define X_SENSOR_RAIN_CYCLES_ITEM                (X_SENSOR_READINGS_PROPERTY->items + 3)
 #define X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM    (X_SENSOR_READINGS_PROPERTY->items + 4)
 #define X_SENSOR_RAIN_HEATER_POWER_ITEM          (X_SENSOR_READINGS_PROPERTY->items + 5)
-#define X_SENSOR_SKY_BRIGHTNESS_ITEM             (X_SENSOR_READINGS_PROPERTY->items + 6)
+#define X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM        (X_SENSOR_READINGS_PROPERTY->items + 6)
 #define X_SENSOR_AMBIENT_TEMPERATURE_ITEM        (X_SENSOR_READINGS_PROPERTY->items + 7)
+#define X_SENSOR_SKY_BRIGHTNESS_ITEM             (X_SENSOR_READINGS_PROPERTY->items + 8)
+#define X_SENSOR_SKY_BORTLE_CLASS_ITEM           (X_SENSOR_READINGS_PROPERTY->items + 9)
 
 #define AUX_WEATHER_PROPERTY                     (PRIVATE_DATA->weather_property)
 #define AUX_WEATHER_TEMPERATURE_ITEM             (AUX_WEATHER_PROPERTY->items + 0)
@@ -263,7 +267,8 @@ typedef struct {
 	float rh_temperature;
 	int rain_frequency;
 	int rain_heater;
-	int rain_sensor_temperature; // used as ambient temperature in models where there is no ambient temperature sensor)
+	int rain_sensor_temperature; // used as ambient temperature in models where there is no ambient temperature sensor
+	int raw_sky_quality;         // Raw sky brightness (-10000 if sensor not installed)
 	int ldr;                     // Ambient light sensor
 	int switch_status;
 	float wind_speed;            // The wind speed (m/s)
@@ -493,20 +498,31 @@ static bool aag_get_serial_number(indigo_device *device, char *serial_number) {
 }
 
 
-static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temperature, int *ldr_value, int *rain_sensor_temperature) {
+static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temperature, int *ldr_value, int *rain_sensor_temperature, int *raw_sky_quality) {
 	int zener_v;
 	int ambient_temp = NO_READING;
 	int ldr_r;
 	int rain_sensor_temp;
+	int raw_sq = NO_READING;
 
 	if (PRIVATE_DATA->firmware >= 3.0) {
-		char buffer[BLOCK_SIZE * 4];
-		bool r = aag_command(device, "C!", buffer, 4, 0);
+		printf("1 Firmware version: %f\n", PRIVATE_DATA->firmware);
+		char buffer[BLOCK_SIZE * 6];
+		bool r = aag_command(device, "C!", buffer, 6, 0);
 		if (!r) return false;
 
 		int res = sscanf(buffer, "!6 %d!4 %d!5 %d", &zener_v, &ldr_r, &rain_sensor_temp);
-		if (res != 3) return false;
+		if (res != 3) {
+			int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp);
+			if (res != 4) {
+				int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d!8 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp, &raw_sq);
+				if (res != 5) {
+					return false;
+				}
+			}
+		}
 	} else {
+		printf("2 Firmware version: %f\n", PRIVATE_DATA->firmware);
 		char buffer[BLOCK_SIZE * 5];
 		bool r = aag_command(device, "C!", buffer, 5, 0);
 		if (!r) return false;
@@ -520,15 +536,17 @@ static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambie
 	*ambient_temperature     = ambient_temp;
 	*ldr_value               = ldr_r;
 	*rain_sensor_temperature = rain_sensor_temp;
+	*raw_sky_quality         = raw_sq;
 
 	INDIGO_DRIVER_DEBUG(
 		DRIVER_NAME,
-		"Values: version = %f, power_voltage = %d, ambient_temperature = %d, ldr_value = %d, rain_sensor_temperature = %d",
+		"Values: version = %f, power_voltage = %d, ambient_temperature = %d, ldr_value = %d, rain_sensor_temperature = %d, raw_sky_quaity = %d",
 		PRIVATE_DATA->firmware,
 		*power_voltage,
 		*ambient_temperature,
 		*ldr_value,
-		*rain_sensor_temperature
+		*rain_sensor_temperature,
+		*raw_sky_quality
 	);
 
 	return true;
@@ -852,6 +870,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	int ambient_temperature[NUMBER_OF_READS];
 	int ldr_value[NUMBER_OF_READS];
 	int rain_sensor_temperature[NUMBER_OF_READS];
+	int raw_sky_quality[NUMBER_OF_READS];
 	float wind_speed[NUMBER_OF_READS];
 
 	int check = 0;
@@ -870,7 +889,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 		check = aag_get_rain_frequency(device, &rain_frequesncy[i]);
 		if (!check) return false;
 
-		check = aag_get_values(device, &internal_supply_voltage[i], &ambient_temperature[i], &ldr_value[i], &rain_sensor_temperature[i]);
+		check = aag_get_values(device, &internal_supply_voltage[i], &ambient_temperature[i], &ldr_value[i], &rain_sensor_temperature[i], &raw_sky_quality[i]);
 		if (!check) return false;
 
 		check = aag_get_wind_speed(device, &wind_speed[i]);
@@ -896,6 +915,7 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 	cwd->ambient_temperature     = aggregate_integers(ambient_temperature, NUMBER_OF_READS);
 	cwd->ldr                     = aggregate_integers(ldr_value, NUMBER_OF_READS);
 	cwd->rain_sensor_temperature = aggregate_integers(rain_sensor_temperature, NUMBER_OF_READS);
+	cwd->raw_sky_quality         = aggregate_integers(raw_sky_quality, NUMBER_OF_READS);
 	cwd->wind_speed              = aggregate_floats(wind_speed, NUMBER_OF_READS);
 
 	check = aag_get_pwm_duty_cycle(device, &cwd->rain_heater);
@@ -981,12 +1001,12 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	} else if (ambient_light < 1) {
 		ambient_light = 1.0;
 	}
-	X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value = X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value / ((1023.0 / ambient_light) - 1.0);
+	X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM->number.value = X_CONSTANTS_LDR_PULLUP_R_ITEM->number.value / ((1023.0 / ambient_light) - 1.0);
 
-	if (X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value >= AUX_SKY_DARK_THRESHOLD_ITEM->number.value) {
+	if (X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM->number.value >= AUX_SKY_DARK_THRESHOLD_ITEM->number.value) {
 		AUX_SKY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(AUX_SKY_PROPERTY, AUX_SKY_DARK_ITEM, true);
-	} else if (X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value >= AUX_SKY_LIGHT_THRESHOLD_ITEM->number.value) {
+	} else if (X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM->number.value >= AUX_SKY_LIGHT_THRESHOLD_ITEM->number.value) {
 		AUX_SKY_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_set_switch(AUX_SKY_PROPERTY, AUX_SKY_LIGHT_ITEM, true);
 	} else {
@@ -1021,6 +1041,23 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	} else {
 		AUX_WEATHER_DEWPOINT_ITEM->number.value = -ABS_ZERO;
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = 0;
+	}
+
+	// Sky quality
+	if(data.raw_sky_quality == NO_READING || data.raw_sky_quality == 0) {
+		X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value = -100;
+		X_SENSOR_SKY_BORTLE_CLASS_ITEM->number.value = -100;
+	} else {
+		double mpsas = 19.6 - 2.5 * log10(250000/data.raw_sky_quality);
+		X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value = (mpsas - 0.042) + (0.00212 * ambient_temperature);
+		X_SENSOR_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"raw_sky_quality = %d, sky_brightness = %.2f mpsas (uncorrected %.2f bortle class %f)",
+			data.raw_sky_quality,
+			X_SENSOR_SKY_BRIGHTNESS_ITEM->number.value, mpsas,
+			X_SENSOR_SKY_BORTLE_CLASS_ITEM->number.value
+		);
 	}
 
 	// Dew point warning
@@ -1225,7 +1262,7 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_number_item(X_CONSTANTS_AMBIENT_PULLUP_R_ITEM, X_CONSTANTS_AMBIENT_PULLUP_R_ITEM_NAME, "Ambient Pullup R (kΩ)", 0, 100000, 0, 9.9);
 	indigo_init_number_item(X_CONSTANTS_ANEMOMETER_STATE_ITEM, X_CONSTANTS_ANEMOMETER_STATE_ITEM_NAME, "Anemometer Status", 0, 10, 0, 0);
 	// -------------------------------------------------------------------------------- X_SENSOR_READINGS_PROPERTY
-	X_SENSOR_READINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_SENSOR_READINGS_PROPERTY_NAME, WEATHER_GROUP, "Sensor Readings", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 8);
+	X_SENSOR_READINGS_PROPERTY = indigo_init_number_property(NULL, device->name, X_SENSOR_READINGS_PROPERTY_NAME, WEATHER_GROUP, "Sensor Readings", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 10);
 	if (X_SENSOR_READINGS_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(X_SENSOR_RAW_SKY_TEMPERATURE_ITEM, X_SENSOR_RAW_SKY_TEMPERATURE_ITEM_NAME, "Raw infrared sky temperature (°C)", -200, 80, 0, 0);
@@ -1240,10 +1277,13 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_copy_value(X_SENSOR_RAIN_SENSOR_TEMPERATURE_ITEM->number.format, "%.1f");
 	indigo_init_number_item(X_SENSOR_RAIN_HEATER_POWER_ITEM, X_SENSOR_RAIN_HEATER_POWER_ITEM_NAME, "Rain sensor heater power (%)", 0, 100, 1, 0);
 	indigo_copy_value(X_SENSOR_RAIN_HEATER_POWER_ITEM->number.format, "%.0f");
-	indigo_init_number_item(X_SENSOR_SKY_BRIGHTNESS_ITEM, X_SENSOR_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness (kΩ)", 0, 100000, 1, 0);
-	indigo_copy_value(X_SENSOR_SKY_BRIGHTNESS_ITEM->number.format, "%.0f");
+	indigo_init_number_item(X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM, X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM_NAME, "Sky brightness (kΩ)", 0, 100000, 1, 0);
+	indigo_copy_value(X_SENSOR_SKY_BRIGHTNESS_KOHM_ITEM->number.format, "%.0f");
 	indigo_init_number_item(X_SENSOR_AMBIENT_TEMPERATURE_ITEM, X_SENSOR_AMBIENT_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
 	indigo_copy_value(X_SENSOR_AMBIENT_TEMPERATURE_ITEM->number.format, "%.1f");
+	indigo_init_number_item(X_SENSOR_SKY_BRIGHTNESS_ITEM, X_SENSOR_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
+	indigo_copy_value(X_SENSOR_SKY_BRIGHTNESS_ITEM->number.format, "%.2f");
+	indigo_init_number_item(X_SENSOR_SKY_BORTLE_CLASS_ITEM, X_SENSOR_SKY_BORTLE_CLASS_ITEM_NAME, "Sky Bortle class", 1, 9, 0, 0);
 	// -------------------------------------------------------------------------------- DEW_THRESHOLD
 	AUX_DEW_THRESHOLD_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_DEW_THRESHOLD_PROPERTY_NAME, THRESHOLDS_GROUP, "Dew warning threshold", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	if (AUX_DEW_THRESHOLD_PROPERTY == NULL)
