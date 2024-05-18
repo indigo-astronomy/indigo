@@ -236,13 +236,13 @@ static void gps_refresh_callback(indigo_device *device) {
 			}
 			indigo_safe_free(tokens);
 		} else {
-			if (tokens == NULL) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid response from device");
-			} else if (length == -1) {
+			if (length == -1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Lost connection");
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 				indigo_set_timer(device, 0, gps_connect_callback, NULL);
 				break;
+			} else if (tokens == NULL) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown sentence from device");
 			}
 		}
 		//pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
