@@ -65,3 +65,16 @@ double indigo_aux_dewpoint(double temperature, double rh) {
 	double a = (17.625 * temperature) / (243.04 + temperature);
 	return (243.04 * (ln_rh + a)) / (17.625 - ln_rh - a);
 }
+
+float indigo_aux_sky_bortle(double sky_brightness) {
+	if (sky_brightness > 21.76) return 1;
+	else if (sky_brightness > 21.6) return 2;
+	else if (sky_brightness > 21.3) return 3;
+	else if (sky_brightness > 20.8) return 4;
+	else if (sky_brightness > 20.3) return 4.5;
+	else if (sky_brightness > 19.25) return 5;
+	else if (sky_brightness > 18.5) return 6;
+	else if (sky_brightness > 18.0) return 7;
+	else if (sky_brightness > 17.0) return 8;
+	else return 9;
+}

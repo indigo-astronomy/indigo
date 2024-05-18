@@ -54,6 +54,12 @@ extern indigo_result indigo_aux_detach(indigo_device *device);
 */
 extern double indigo_aux_dewpoint(double temperature, double rh);
 
+/** Calculate approximate Bortle dark sky scale from sky brigthness in mag/arcsec^2
+ * @param sky_brightness sky brigthness in mag/arcsec^2
+ * @return Bortle dark sky scale (1, 2, 3, 4, 4.5, 5, 6, 7, 8 or 9)
+ */
+extern float indigo_aux_sky_bortle(double sky_brightness);
+
 #ifdef __cplusplus
 }
 #endif
