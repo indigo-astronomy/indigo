@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_astromechanics"
 
 #include <stdlib.h>
@@ -43,15 +43,16 @@
 
 #include "indigo_aux_astromechanics.h"
 
-#define PRIVATE_DATA													((astromechanics_private_data *)device->private_data)
+#define PRIVATE_DATA                                ((astromechanics_private_data *)device->private_data)
 
-#define AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
-#define AUX_INFO_SKY_BRIGHTNESS_ITEM				(AUX_INFO_PROPERTY->items + 0)
+#define AUX_WEATHER_PROPERTY                        (PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_SKY_BRIGHTNESS_ITEM             (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM           (AUX_WEATHER_PROPERTY->items + 1)
 
 typedef struct {
 	int handle;
 	indigo_timer *timer;
-	indigo_property *info_property;
+	indigo_property *weather_property;
 	indigo_timer *timer_callback;
 	pthread_mutex_t mutex;
 } astromechanics_private_data;
@@ -101,10 +102,11 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM) == INDIGO_OK) {
-		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
-		if (AUX_INFO_PROPERTY == NULL)
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
+		if (AUX_WEATHER_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_INFO_SKY_BRIGHTNESS_ITEM, AUX_INFO_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME, "Sky Bortle class", 1, 9, 0, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -129,8 +131,8 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(AUX_INFO_PROPERTY, property))
-			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -140,12 +142,13 @@ static void aux_timer_callback(indigo_device *device) {
 		return;
 	char response[16];
 	if (astromechanics_command(device, "V#", response)) {
-		AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
-		AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
+		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
+		AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
-		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+		AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
-	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->timer_callback);
 }
 
@@ -157,7 +160,7 @@ static void aux_connection_handler(indigo_device *device) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400);
 		if (PRIVATE_DATA->handle > 0) {
 			if (astromechanics_command(device, "V#", response)) {
-				AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
+				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "ASTROMECHANICS Light Pollution Meter detected");
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASTROMECHANICS Light Pollution Meter not detected");
@@ -166,7 +169,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->timer_callback);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -178,7 +181,7 @@ static void aux_connection_handler(indigo_device *device) {
 	} else {
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
-			indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			close(PRIVATE_DATA->handle);
 			PRIVATE_DATA->handle = 0;
@@ -212,7 +215,7 @@ static indigo_result aux_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		aux_connection_handler(device);
 	}
-	indigo_release_property(AUX_INFO_PROPERTY);
+	indigo_release_property(AUX_WEATHER_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
