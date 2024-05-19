@@ -498,7 +498,6 @@ static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambie
 		if (*ptr == '!') {
 			ptr++;
 			if (sscanf(ptr, "%d %d", &record_type, &value) == 2) {
-				indigo_error("Record type: %d, Value: %d\n", record_type, value);
 				switch (record_type) {
 				case 3:
 					ambient_temp = value;
@@ -1777,6 +1776,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 					indigo_define_property(device, AUX_CLOUD_PROPERTY, NULL);
 					indigo_define_property(device, AUX_SKY_PROPERTY, NULL);
 					aag_populate_constants(device);
+					indigo_send_message(device, "[Warning] %s connected, it may take up to 30s to get the first readings", device->name);
 					indigo_set_timer(device, 0, sensors_timer_callback, &PRIVATE_DATA->sensors_timer);
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				} else {
