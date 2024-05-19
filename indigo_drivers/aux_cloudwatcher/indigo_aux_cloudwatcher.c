@@ -142,9 +142,10 @@
 #define AUX_WEATHER_SKY_TEMPERATURE_ITEM         (AUX_WEATHER_PROPERTY->items + 1)
 #define AUX_WEATHER_DEWPOINT_ITEM                (AUX_WEATHER_PROPERTY->items + 2)
 #define AUX_WEATHER_HUMIDITY_ITEM                (AUX_WEATHER_PROPERTY->items + 3)
-#define AUX_WEATHER_WIND_SPEED_ITEM              (AUX_WEATHER_PROPERTY->items + 4)
-#define AUX_WEATHER_SKY_BRIGHTNESS_ITEM          (AUX_WEATHER_PROPERTY->items + 5)
-#define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM        (AUX_WEATHER_PROPERTY->items + 6)
+#define AUX_WEATHER_PRESSURE_ITEM                (AUX_WEATHER_PROPERTY->items + 4)
+#define AUX_WEATHER_WIND_SPEED_ITEM              (AUX_WEATHER_PROPERTY->items + 5)
+#define AUX_WEATHER_SKY_BRIGHTNESS_ITEM          (AUX_WEATHER_PROPERTY->items + 6)
+#define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM        (AUX_WEATHER_PROPERTY->items + 7)
 
 // DEW
 #define AUX_DEW_THRESHOLD_PROPERTY				(PRIVATE_DATA->dew_threshold_property)
@@ -262,6 +263,8 @@ typedef struct {
 	int ambient_temperature;     // In newer models there is no ambient temperature sensor so -10000 is returned.
 	float rh;
 	float rh_temperature;
+	float atm_pressure;
+	float atm_temperature;
 	int rain_frequency;
 	int rain_heater;
 	int rain_sensor_temperature; // used as ambient temperature in models where there is no ambient temperature sensor
@@ -502,19 +505,38 @@ static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambie
 	int rain_sensor_temp;
 	int raw_sq = NO_READING;
 
-	char buffer[BLOCK_SIZE * 6];
+	char buffer[BLOCK_SIZE * 6] = "";
 	bool r = aag_command(device, "C!", buffer, 6, 0);
 	if (!r) return false;
 
-	int res = sscanf(buffer, "!6 %d!4 %d!5 %d", &zener_v, &ldr_r, &rain_sensor_temp);
-	if (res != 3) {
-		int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp);
-		if (res != 4) {
-			int res = sscanf(buffer, "!6 %d!3 %d!4 %d!5 %d!8 %d", &zener_v, &ambient_temp, &ldr_r, &rain_sensor_temp, &raw_sq);
-			if (res != 5) {
-				return false;
+	int record_type, value;
+	char *ptr = buffer;
+
+	while (*ptr) {
+		if (*ptr == '!') {
+			ptr++;
+			if (sscanf(ptr, "%d %d", &record_type, &value) == 2) {
+				indigo_error("Record type: %d, Value: %d\n", record_type, value);
+				switch (record_type) {
+				case 3:
+					ambient_temp = value;
+					break;
+				case 4:
+					ldr_r = value;
+					break;
+				case 5:
+					rain_sensor_temp = value;
+					break;
+				case 6:
+					zener_v = value;
+					break;
+				case 8:
+					raw_sq = value;
+					break;
+				}
 			}
 		}
+		ptr++;
 	}
 
 	*power_voltage           = zener_v;
@@ -624,6 +646,31 @@ static bool aag_get_pwm_duty_cycle(indigo_device *device, int *pwm_duty_cycle) {
 	return true;
 }
 
+static bool aag_get_atm_pressure_temperature(indigo_device *device, float *atm_pressure, float *atm_temperature) {
+	int pressure, temperature;
+	char buffer[BLOCK_SIZE * 2];
+
+	bool r = aag_command(device, "p!", buffer, 2, 0);
+	if (!r) return false;
+
+	int res = sscanf(buffer, "!p %d", &pressure);
+	if (res != 1) return false;
+
+	if (pressure == 65535) return false; // No sensor
+
+	*atm_pressure = pressure / 16.0;
+
+	r = aag_command(device, "q!", buffer, 2, 0);
+	if (!r) return false;
+
+	res = sscanf(buffer, "!q %d", &temperature);
+	if (res != 1) return false;
+	*atm_temperature = temperature / 100.0;
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Atmospheric pressure = %f Pa, Temp = %f C", *atm_pressure, *atm_temperature);
+	return true;
+}
+
 
 static bool aag_open_swith(indigo_device *device) {
 	char buffer[BLOCK_SIZE * 2];
@@ -684,6 +731,9 @@ static bool aag_get_rh_temperature(indigo_device *device, float *rh, float *temp
 		if (res != 1) return false;
 		precise = false;
 	}
+
+	if (tempi == 65535) return false; // No sensor
+
 	if (precise) {
 		*temperature = ((tempi * 175.72) / 65536) - 46.85;
 	} else {
@@ -888,6 +938,11 @@ static bool aag_get_cloudwatcher_data(indigo_device *device, cloudwatcher_data *
 		cwd->rh = NO_READING;
 	}
 
+	if (!aag_get_atm_pressure_temperature(device, &cwd->atm_pressure, &cwd->atm_temperature)) {
+		cwd->atm_pressure = NO_READING;
+		cwd->atm_temperature = NO_READING;
+	}
+
 	struct timeval end;
 	gettimeofday(&end, NULL);
 
@@ -1003,10 +1058,12 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	// Ambient temperature and dewpoint
 	float ambient_temperature = data.ambient_temperature;
 	if (ambient_temperature < -200) {
-		if (data.rh_temperature < -200) {
-			ambient_temperature = data.ir_sensor_temperature / 100.0;
-		} else {
+		if (data.rh_temperature > -200) {
 			ambient_temperature = data.rh_temperature;
+		} else if (data.atm_temperature > -200) {
+			ambient_temperature = data.atm_temperature;
+		} else {
+			ambient_temperature = data.ir_sensor_temperature / 100.0;
 		}
 	} else {
 		if (ambient_temperature > 1022) {
@@ -1028,10 +1085,16 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = 0;
 	}
 
+	if (data.atm_pressure != NO_READING) {
+		AUX_WEATHER_PRESSURE_ITEM->number.value = data.atm_pressure / 100.0; // Convert to hPa
+	} else {
+		AUX_WEATHER_PRESSURE_ITEM->number.value = 0;
+	}
+
 	// Sky quality
 	if(data.raw_sky_quality == NO_READING || data.raw_sky_quality == 0) {
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value =
-		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = -100;
+		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = 0;
 	} else {
 		double mpsas = 19.6 - 2.5 * log10(250000/data.raw_sky_quality);
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = (mpsas - 0.042) + (0.00212 * ambient_temperature);
@@ -1369,7 +1432,7 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_switch_item(X_ANEMOMETER_TYPE_GREY_ITEM, X_ANEMOMETER_TYPE_GREY_ITEM_NAME, "Grey", false);
 	PRIVATE_DATA->anemometer_black = true;
 	// -------------------------------------------------------------------------------- AUX_WEATHER
-	AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather conditions", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 7);
+	AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, WEATHER_GROUP, "Weather conditions", INDIGO_BUSY_STATE, INDIGO_RO_PERM, 8);
 	if (AUX_WEATHER_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Ambient temperature (°C)", -200, 80, 0, 0);
@@ -1379,6 +1442,8 @@ static int aag_init_properties(indigo_device *device) {
 	indigo_init_number_item(AUX_WEATHER_DEWPOINT_ITEM, AUX_WEATHER_DEWPOINT_ITEM_NAME, "Dewpoint (°C)", -200, 80, 1, 0);
 	indigo_copy_value(AUX_WEATHER_DEWPOINT_ITEM->number.format, "%.1f");
 	indigo_init_number_item(AUX_WEATHER_HUMIDITY_ITEM, AUX_WEATHER_HUMIDITY_ITEM_NAME, "Relative humidity (%)", 0, 100, 0, 0);
+	indigo_copy_value(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.0f");
+	indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Atmospheric pressure (hPa)", 0, 100, 0, 0);
 	indigo_copy_value(AUX_WEATHER_HUMIDITY_ITEM->number.format, "%.0f");
 	indigo_init_number_item(AUX_WEATHER_WIND_SPEED_ITEM, AUX_WEATHER_WIND_SPEED_ITEM_NAME, "Wind speed (m/s)", 0, 200, 0, 0);
 	indigo_copy_value(AUX_WEATHER_WIND_SPEED_ITEM->number.format, "%.1f");
