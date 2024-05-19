@@ -41,6 +41,7 @@
 #include <stdbool.h>
 #include <ctype.h>
 #include <sys/time.h>
+#include <termios.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
@@ -339,35 +340,9 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 	char buff[MAX_LEN];
 	struct timeval tv;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-	// flush
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 10000;
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
-			break;
-		if (result < 0) {
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		if (PRIVATE_DATA->udp) {
-			result = read(PRIVATE_DATA->handle, buff, MAX_LEN);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-			break;
-		} else {
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-				return false;
-			}
-		}
-	}
+
+	// flush input and output
+	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
 
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
@@ -384,7 +359,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			tv.tv_sec = timeout;
 			tv.tv_usec = 0;
-			timeout = 1;
+			timeout = 15; /* new sky darkness sensor may take up to 15 secods to read in complete darkness */
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
 			if (result <= 0)
 				break;
@@ -405,9 +380,16 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 					return false;
 				}
 				response[index++] = c;
+
+				/* If the last block is a handshake block, aka end of message (!XON), stop reading */
+				if (index >= BLOCK_SIZE && index % BLOCK_SIZE == 0 && response[index - BLOCK_SIZE + 1] == 0x11) {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Handshake block received");
+					break;
+				}
 			}
 		}
-		if ((index > BLOCK_SIZE) && (response[index - BLOCK_SIZE] == '!')) {
+		/* We do not need the handshake block - terminate the string at its beginning */
+		if ((index >= BLOCK_SIZE) && (response[index - BLOCK_SIZE] == '!')) {
 			response[index - BLOCK_SIZE] = '\0';
 		} else {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
@@ -1096,7 +1078,7 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value =
 		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = 0;
 	} else {
-		double mpsas = 19.6 - 2.5 * log10(250000/data.raw_sky_quality);
+		double mpsas = 19.6 - 2.5 * log10(250000.0/data.raw_sky_quality);
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = (mpsas - 0.042) + (0.00212 * ambient_temperature);
 		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(
