@@ -574,7 +574,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			int bottom_right_y = header->height * 0.95;
 			for (int i = 0; i < star_count; i++) {
 				if (
-					stars[i].oversaturated ||
+					stars[i].oversaturated || stars[i].close_to_other ||
 					stars[i].x < top_left_x || stars[i].x > bottom_right_x ||
 					stars[i].y < top_left_y || stars[i].y > bottom_right_y
 				) {
