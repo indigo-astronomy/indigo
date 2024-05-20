@@ -1,7 +1,7 @@
 #ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 55.25159.20240404 */
+/* Version: 55.25633.20240519 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -175,10 +175,10 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define MALLINCAM_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
 #define MALLINCAM_TEMP_DEF                 6503    /* color temperature, default value */
-#define MALLINCAM_TEMP_MIN                 1000    /* color temperature, minimum value */
-#define MALLINCAM_TEMP_MAX                 25000   /* color temperature, maximum value */
+#define MALLINCAM_TEMP_MIN                 2000    /* color temperature, minimum value */
+#define MALLINCAM_TEMP_MAX                 15000   /* color temperature, maximum value */
 #define MALLINCAM_TINT_DEF                 1000    /* tint */
-#define MALLINCAM_TINT_MIN                 100     /* tint */
+#define MALLINCAM_TINT_MIN                 200     /* tint */
 #define MALLINCAM_TINT_MAX                 2500    /* tint */
 #define MALLINCAM_HUE_DEF                  0       /* hue */
 #define MALLINCAM_HUE_MIN                  (-180)  /* hue */
@@ -220,9 +220,9 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define MALLINCAM_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define MALLINCAM_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define MALLINCAM_AUTOEXPO_DAMP_DEF        0       /* auto exposure damp: thousandths */
-#define MALLINCAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
-#define MALLINCAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
+#define MALLINCAM_AUTOEXPO_DAMP_DEF        0       /* auto exposure damping coefficient: thousandths */
+#define MALLINCAM_AUTOEXPO_DAMP_MIN        0       /* auto exposure damping coefficient: thousandths */
+#define MALLINCAM_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damping coefficient: thousandths */
 #define MALLINCAM_BANDWIDTH_DEF            100     /* bandwidth */
 #define MALLINCAM_BANDWIDTH_MIN            1       /* bandwidth */
 #define MALLINCAM_BANDWIDTH_MAX            100     /* bandwidth */
@@ -275,21 +275,21 @@ typedef struct {
     float               xpixsz;      /* physical pixel size in micrometer */
     float               ypixsz;      /* physical pixel size in micrometer */
     MallincamResolution   res[16];
-} MallincamModelV2; /* camera model v2 */
+} MallincamModelV2; /* device model v2 */
 
 typedef struct {
 #if defined(_WIN32)
-    wchar_t               displayname[64];    /* display name */
+    wchar_t               displayname[64];    /* display name: model name or user-defined name (if any and Mallincam_EnumWithName) */
     wchar_t               id[64];             /* unique and opaque id of a connected camera, for Mallincam_Open */
 #else
-    char                  displayname[64];    /* display name */
+    char                  displayname[64];    /* display name: model name or user-defined name (if any and Mallincam_EnumWithName) */
     char                  id[64];             /* unique and opaque id of a connected camera, for Mallincam_Open */
 #endif
     const MallincamModelV2* model;
-} MallincamDeviceV2; /* camera instance for enumerating */
+} MallincamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.25159.20240404
+    get the version of this dll/so/dylib, which is: 55.25633.20240519
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -1032,8 +1032,8 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 #define MALLINCAM_OPTION_OVERCLOCK              0x5d       /* overclock, default: 0 */
 #define MALLINCAM_OPTION_RESET_SENSOR           0x5e       /* reset sensor */
 #define MALLINCAM_OPTION_ISP                    0x5f       /* Enable hardware ISP: 0 => auto (disable in RAW mode, otherwise enable), 1 => enable, -1 => disable; default: 0 */
-#define MALLINCAM_OPTION_AUTOEXP_EXPOTIME_DAMP  0x60       /* Auto exposure damp: time (thousandths) */
-#define MALLINCAM_OPTION_AUTOEXP_GAIN_DAMP      0x61       /* Auto exposure damp: gain (thousandths) */
+#define MALLINCAM_OPTION_AUTOEXP_EXPOTIME_DAMP  0x60       /* Auto exposure damping coefficient: time (thousandths). The larger the damping coefficient, the smoother and slower the exposure time changes */
+#define MALLINCAM_OPTION_AUTOEXP_GAIN_DAMP      0x61       /* Auto exposure damping coefficient: gain (thousandths). The larger the damping coefficient, the smoother and slower the gain changes */
 #define MALLINCAM_OPTION_MOTOR_NUMBER           0x62       /* range: [1, 20] */
 #define MALLINCAM_OPTION_MOTOR_POS              0x10000000 /* range: [1, 702] */
 #define MALLINCAM_OPTION_PSEUDO_COLOR_START     0x63       /* Pseudo: start color, BGR format */
@@ -1079,12 +1079,19 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 #define MALLINCAM_OPTION_OVEREXP_POLICY         0x68       /* Auto exposure over exposure policy: when overexposed,
                                                                 0 => directly reduce the exposure time/gain to the minimum value; or
                                                                 1 => reduce exposure time/gain in proportion to current and target brightness.
+                                                                n(n>1) => first adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1
                                                             The advantage of policy 0 is that the convergence speed is faster, but there is black screen.
                                                             Policy 1 avoids the black screen, but the convergence speed is slower.
                                                             Default: 0
                                                          */
 #define MALLINCAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
 #define MALLINCAM_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
+#define MALLINCAM_OPTION_LENSSTATE              0x6b       /* Load/Save lens state to EEPROM: 0 => load, 1 => save */
+#define MALLINCAM_OPTION_AWB_CONTINUOUS         0x6c       /* Auto White Balance: continuous mode
+                                                                0:  disable (default)
+                                                                n>0: every n millisecond(s)
+                                                                n<0: every -n frame
+                                                         */
 
 /* pixel format */
 #define MALLINCAM_PIXELFORMAT_RAW8              0x00
@@ -1213,6 +1220,12 @@ MALLINCAM_API(HRESULT)  Mallincam_put_XY(HMallincam h, int x, int y);
 #define MALLINCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 #define MALLINCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
 #define MALLINCAM_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
+#define MALLINCAM_IOCONTROLTYPE_GET_USER_PULSE_HIGH         0x3e /* User pulse high level time: us */
+#define MALLINCAM_IOCONTROLTYPE_SET_USER_PULSE_HIGH         0x3f
+#define MALLINCAM_IOCONTROLTYPE_GET_USER_PULSE_LOW          0x40 /* User pulse low level time: us */
+#define MALLINCAM_IOCONTROLTYPE_SET_USER_PULSE_LOW          0x41
+#define MALLINCAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER       0x42 /* User pulse number: default 0 */
+#define MALLINCAM_IOCONTROLTYPE_SET_USER_PULSE_NUMBER       0x43
 
 #define MALLINCAM_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1283,6 +1296,17 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 MALLINCAM_API(void)   Mallincam_HotPlug(PMALLINCAM_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
+MALLINCAM_API(unsigned) Mallincam_EnumWithName(MallincamDeviceV2 pti[MALLINCAM_MAX]);
+MALLINCAM_API(HRESULT)  Mallincam_set_Name(HMallincam h, const char* name);
+MALLINCAM_API(HRESULT)  Mallincam_query_Name(HMallincam h, char name[64]);
+#if defined(_WIN32)
+MALLINCAM_API(HRESULT)  Mallincam_put_Name(const wchar_t* camId, const char* name);
+MALLINCAM_API(HRESULT)  Mallincam_get_Name(const wchar_t* camId, char name[64]);
+#else
+MALLINCAM_API(HRESULT)  Mallincam_put_Name(const char* camId, const char* name);
+MALLINCAM_API(HRESULT)  Mallincam_get_Name(const char* camId, char name[64]);
+#endif
+
 typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
@@ -1325,6 +1349,7 @@ typedef enum
 
 typedef enum
 {
+    MallincamAFStatus_NA           = 0x0,/* Not available */
     MallincamAFStatus_PEAKPOINT    = 0x1,/* Focus completed, find the focus position */
     MallincamAFStatus_DEFOCUS      = 0x2,/* End of focus, defocus */
     MallincamAFStatus_NEAR         = 0x3,/* Focusing ended, object too close */
@@ -1607,18 +1632,6 @@ MALLINCAM_API(HRESULT)  Mallincam_get_VignetMidPointInt(HMallincam h, int* nMidP
 #define MALLINCAM_FLAG_BITDEPTH12    MALLINCAM_FLAG_RAW12  /* pixel format, RAW 12bits */
 #define MALLINCAM_FLAG_BITDEPTH14    MALLINCAM_FLAG_RAW14  /* pixel format, RAW 14bits */
 #define MALLINCAM_FLAG_BITDEPTH16    MALLINCAM_FLAG_RAW16  /* pixel format, RAW 16bits */
-
-
-MALLINCAM_API(HRESULT)  Mallincam_set_Name(HMallincam h, const char* name);
-MALLINCAM_API(HRESULT)  Mallincam_query_Name(HMallincam h, char name[64]);
-#if defined(_WIN32)
-MALLINCAM_API(HRESULT)  Mallincam_put_Name(const wchar_t* camId, const char* name);
-MALLINCAM_API(HRESULT)  Mallincam_get_Name(const wchar_t* camId, char name[64]);
-#else
-MALLINCAM_API(HRESULT)  Mallincam_put_Name(const char* camId, const char* name);
-MALLINCAM_API(HRESULT)  Mallincam_get_Name(const char* camId, char name[64]);
-#endif
-MALLINCAM_API(unsigned) Mallincam_EnumWithName(MallincamDeviceV2 pti[MALLINCAM_MAX]);
 
 MALLINCAM_API(HRESULT)  Mallincam_log_File(const
 #if defined(_WIN32)
