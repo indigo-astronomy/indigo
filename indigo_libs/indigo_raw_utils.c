@@ -1922,52 +1922,6 @@ static double indigo_stddev_rgb48(uint16_t set[], const int width, const int hei
 	return sqrt(sum / real_count);
 }
 
-#define BUCKET_COUNT 65536
-
-static uint32_t star_detection_threshold(uint16_t *data, int size) {
-	// Initialize histogram
-	int histogram[BUCKET_COUNT] = {0};
-	double median = 0.0;
-
-	// Populate histogram and calculate sum and sum of squares for stddev
-	double sum = 0.0, sum_sq = 0.0;
-	for (int i = 0; i < size; i++) {
-		histogram[data[i]]++;
-		sum += data[i];
-		sum_sq += data[i] * data[i];
-	}
-
-	// Calculate median
-	int count = 0;
-	for (int i = 0; i < BUCKET_COUNT; i++) {
-		count += histogram[i];
-		if (count >= size / 2) {
-			if (size % 2 == 0 && count == size / 2) {
-				int first = i;
-				while (histogram[++i] == 0) {}
-				median = (first + i) / 2.0;
-			} else {
-				median = i;
-			}
-			break;
-		}
-	}
-
-	// Calculate mean
-	double mean = sum / size;
-
-	/* Calculate standard deviation - simplified, approximate estimate,
-	   with a nice property that it is less affected by outliers. This proeprty
-	   fixes the issue with finding guide stars in the presence of saturated stars.
-	*/
-	double stddev = sqrt(fabs(sum_sq / size - mean * mean));
-
-	/* Calculate threshold - add 4.5 stddev threshold for stars */
-	uint32_t threshold = 4.5 * stddev + median;
-	indigo_debug("%s(): median = %.2f, stddev = %.2f, threshold = %d", __FUNCTION__, median, stddev, threshold);
-	return threshold;
-}
-
 double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t *saturation_mask, const int width, const int height, bool *saturated) {
 	if (width <= 0 || height <=0 || data == NULL) return INDIGO_FAILED;
 
@@ -2211,6 +2165,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
 	double sum = 0;
+	double sum_sq = 0;
 
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
@@ -2218,6 +2173,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			for (int i = 0; i < size; i++) {
 				buf[i] = data8[i];
 				sum += buf[i];
+				sum_sq += buf[i] * buf[i];
 			}
 			break;
 		}
@@ -2226,6 +2182,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			for (int i = 0; i < size; i++) {
 				buf[i] = data16[i];
 				sum += buf[i];
+				sum_sq += buf[i] * buf[i];
 			}
 			break;
 		}
@@ -2234,6 +2191,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
 				buf[j] = (data8[i] + data8[i + 1] + data8[i + 2]) / 3;
 				sum += buf[j];
+				sum_sq += buf[j] * buf[j];
 				i += 2;
 			}
 			break;
@@ -2243,6 +2201,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
 				buf[j] = (data8[i] + data8[i + 1] + data8[i + 2]) / 3;
 				sum += buf[j];
+				sum_sq += buf[j] * buf[j];
 				i += 3;
 			}
 			break;
@@ -2252,6 +2211,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			for (int i = 0, j = 0; i < 4 * size; i++, j++) {
 				buf[j] = (data8[i + 1] + data8[i + 2] + data8[i + 3]) / 3;
 				sum += buf[j];
+				sum_sq += buf[j] * buf[j];
 				i += 3;
 			}
 			break;
@@ -2261,18 +2221,26 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			for (int i = 0, j = 0; i < 3 * size; i++, j++) {
 				buf[j] = (data16[i] + data16[i + 1] + data16[i + 2]) / 3;
 				sum += buf[j];
+				sum_sq += buf[j] * buf[j];
 				i += 2;
 			}
 			break;
 		}
 	}
 
-	uint32_t threshold = star_detection_threshold(buf, width * height);
+	// Calculate mean
+	double mean = sum / size;
 
-	/* for debug purposes */
-	//double stddev2 = indigo_stddev_16(buf, width, height, NULL);
-	//uint32_t threshold2 = 4.5 * stddev2 + sum / size;
-	//indigo_error("mean = %.2f, stddev2 = %.2f, threshold2 = %d", sum / size, stddev2, threshold2);
+	/* Calculate standard deviation - simplified, approximate estimate,
+	   with a nice property that it is less affected by outliers. This proeprty
+	   fixes the issue with finding guide stars in the presence of saturated stars,
+	   as it effectively filters out the outliers.
+	*/
+	double stddev = sqrt(fabs(sum_sq / size - mean * mean));
+
+	/* Calculate threshold - add 4.5 stddev threshold for stars */
+	uint32_t threshold = 4.5 * stddev + mean;
+	indigo_debug("%s(): image mean = %.2f, simplified stddev = %.2f, star detection threshold = %d", __FUNCTION__, mean, stddev, threshold);
 
 	int threshold_hist = threshold * 0.9;
 
