@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x001A
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -437,19 +437,15 @@ static void mount_handle_park(indigo_device *device) {
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		PRIVATE_DATA->parked = true;  /* a bit premature but need to cancel other movements from now on until unparked */
 		PRIVATE_DATA->park_in_progress = true;
-		/* Celestron and SkyWatcher do not go to real ALT and AZ on EQ mounts,
-			 they infact go to HA and DEC. So we can use tc_goto_azalt_p() directly
-		*/
 		double dec = MOUNT_PARK_POSITION_DEC_ITEM->number.value;
-		double ha =  MOUNT_PARK_POSITION_HA_ITEM->number.value * 15;
-		if (ha < 0)
-			ha += 360.0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Going to park position: HA = %.5f Dec = %.5f", ha, dec);
+		/* Park HA is at the time of start and when it reaches the position it will be slightly off, but it is good enough */
+		double ra = h2d(fmod((MOUNT_LST_TIME_ITEM->number.value - MOUNT_PARK_POSITION_HA_ITEM->number.value) + (24000), 24));
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Going to park position: RA = %.5f (ha = %.5f) Dec = %.5f", d2h(ra), MOUNT_PARK_POSITION_HA_ITEM->number.value, dec);
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		int res = tc_goto_azalt_p(PRIVATE_DATA->dev_id, ha, dec);
+		int res = tc_goto_rade_p(PRIVATE_DATA->dev_id, ra, dec);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res != RC_OK) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_azalt_p(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_goto_radec_p(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 			PRIVATE_DATA->parked = false;
 			PRIVATE_DATA->park_in_progress = false;
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -668,14 +664,11 @@ static void mount_handle_slew_rate(indigo_device *device) {
 }
 
 static void mount_handle_motion_ns(indigo_device *device) {
-	indigo_log("mount_handle_motion_ns 0"); //-----------
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res = RC_OK;
 	if (PRIVATE_DATA->slew_rate == 0)
 		mount_handle_slew_rate(device);
-	indigo_log("mount_handle_motion_ns 1"); //-----------
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	indigo_log("mount_handle_motion_ns 2"); //-----------
 	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -686,7 +679,6 @@ static void mount_handle_motion_ns(indigo_device *device) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, 0); // STOP move
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	}
-	indigo_log("mount_handle_motion_ns 3"); //-----------
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 	if (res != RC_OK) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_slew_fixed(%d) = %d (%s)", dev_id, res, strerror(errno));
@@ -928,7 +920,6 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_MOTION_DEC_PROPERTY, property, false);
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
-		indigo_log("MOUNT_MOTION_NS %d %d", MOUNT_MOTION_NORTH_ITEM->sw.value, MOUNT_MOTION_SOUTH_ITEM->sw.value); //-----------
 		indigo_set_timer(device, 0, mount_handle_motion_ns, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
