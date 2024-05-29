@@ -174,7 +174,7 @@ extern double indigo_parallactic_angle(double ha, double dec, double latitude);
  */
 extern double indigo_mean_gst(const time_t *utc);
 
-/** Local mean sidereal time (in degrees)
+/** Local mean sidereal time (in decimal hours)
  */
 extern double indigo_lst(const time_t *utc, const double longitude);
 
