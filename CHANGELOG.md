@@ -2,6 +2,78 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-284] - 31 May Fri 2024
+## Overall:
+- indigo_stretch:
+	- fix crash with GRBG CFA
+
+- indigo_filter:
+	- batch capture with DSLRs fixed
+
+- indigo_ccd_driver:
+	- fix crash in mkpath()
+	- simpler, non-racursive and more robust implementation of mkpath()
+
+- indigo_tools:
+	- add fits_to_raw.c usefull for debugging, it will not be compiled by default as it requires cfitsio
+
+- indigo_libs:
+	- add sky bortle class
+
+- insigo_aux_driver:
+	- move SKY_BRIGHTNESS and SKY_TEMPERATURE to WEATHER
+	- add SKY_BORTLE_CLASS to WEATHER
+
+- indigo_raw_utils:
+	- indigo_find_stars_precise() discards stars that are in close proximity and can be included in the same slection
+	- better star detection - the oversaturated stars will not affect the detection of the good stars
+
+### Driver Fixes:
+- indigo_agent_guider:
+	- fix star duplication in selection if there are no enough stars
+
+- indigo_agent_scripting:
+	- redundant message removed
+
+- indigo_ccd_touptek & OEM:
+	- updated SDK to version 55.25633.20240519
+
+- indigo_ccd_playerone:
+	- updated SDK to version 3.6.2
+
+- indigo_ccd_ptp:
+	- add missing mandatory CCD_FRAME property
+
+- indigo_ccd_svb:
+	- fixed abort streaming
+
+- indigo_aux_cloudwatcher:
+	- support fw 5.89
+	- add support for sky quality
+	- add sky bortle scale estimate
+	- C! command optimization
+	- use indigo_aux_dewpoint()
+	- fix read error with the new dark sensor in dark conditions
+	- remove forgotten message
+	- add warning regarding the initial reading
+
+- indigo_aux_sqm:
+	- add sky bortle scale estimate
+
+- indigo_ccd_asi:
+	- updted SDK to version 1.35
+
+- indigo_mount_simulator:
+	- DEC for parked mount on southern hemisphere fixed
+
+- indigo_mount_nexstar:
+	- fix park for southern hemisphere
+
+- indigo_ccd_mi:
+	- updated SDK to version 0.11.0 / 0.10.0
+		- sdd new camera PIDs
+		- fix macOS exposure issue
+
 # [2.0-282] - 02 May Thu 2024
 ## Overall:
 - indigo_raw_utils:
