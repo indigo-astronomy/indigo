@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -91,12 +91,12 @@ static void exposure_timer_callback(indigo_device *device) {
 		int state = 0;
 		bool ready = false;
 		state = gxccd_image_ready(PRIVATE_DATA->camera, &ready);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_image_ready(..., -> %d) -> %d", read, state);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_image_ready(..., -> %d) -> %d", ready, state);
 		while (state != -1 && !ready) {
 			indigo_usleep(200);
 			state = gxccd_image_ready(PRIVATE_DATA->camera, &ready);
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_image_ready(..., -> %d) -> %d", read, state);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_image_ready(..., -> %d) -> %d", ready, state);
 		if (state != -1) {
 			state = gxccd_read_image(PRIVATE_DATA->camera, (char *)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), PRIVATE_DATA->image_width * PRIVATE_DATA->image_height * 2);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_read_image(..., ..., %d) -> %d", PRIVATE_DATA->image_width * PRIVATE_DATA->image_height * 2, state);
