@@ -226,7 +226,7 @@ Sequence.prototype.sync_center = function(exposure) {
 
 Sequence.prototype.precise_goto = function(exposure, ra, dec) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step });
-	this.sequence.push({ execute: 'set_solver_target(' + ra + ', ' + dec + ')', step: this.step++ });
+	this.sequence.push({ execute: 'set_solver_target(' + ra + ', ' + dec + ')', step: this.step });
 	this.sequence.push({ execute: 'precise_goto()', step: this.step++ });
 };
 
