@@ -2,6 +2,24 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-286] - 06 Jun Thu 2024
+### Driver Fixes:
+- indigo_agent_guider:
+	- fix AGENT_GUIDER_FLIP_REVERSES_DEC proeprty initialization
+
+- indigo_agent_scripting:
+	- Sequencer.js: function precise_goto(exposure, ra, dec) added
+
+- indigo_mount_nexstar:
+	- better park but still not perfect
+	- libnexstar - fix mount capabilities CAN_GET_SIDE_OF_PIER & CAN_ALIGN for SkyWatcher
+
+- indigo_ccd_playerone:
+	- fix streaming abort for exposures < 1s
+
+- indigo_gps_nmea:
+	- move message that is not really error from ERROR to DEBUG
+
 # [2.0-284] - 31 May Fri 2024
 ## Overall:
 - indigo_stretch:
