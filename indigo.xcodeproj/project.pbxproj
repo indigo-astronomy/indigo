@@ -1484,7 +1484,7 @@
 		5979C885254A9EED005395BE /* qhy_simulator.ino */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = qhy_simulator.ino; sourceTree = "<group>"; };
 		5979C886254A9EED005395BE /* indigo_wheel_qhy.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_wheel_qhy.c; sourceTree = "<group>"; };
 		597BD14A2601381F00239274 /* indigo_agent_alpaca.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alpaca.h; sourceTree = "<group>"; };
-		597BD14B2601381F00239274 /* indigo_agent_alpaca.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_alpaca.c; sourceTree = "<group>"; };
+		597BD14B2601381F00239274 /* indigo_agent_alpaca.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_alpaca.c; sourceTree = "<group>"; wrapsLines = 0; };
 		597BD14C2601381F00239274 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		597BD16D2602552900239274 /* alpaca_wheel.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = alpaca_wheel.c; sourceTree = "<group>"; };
 		597BD1792602553E00239274 /* alpaca_common.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = alpaca_common.h; sourceTree = "<group>"; };
