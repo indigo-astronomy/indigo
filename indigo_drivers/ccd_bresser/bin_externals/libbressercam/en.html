@@ -1,0 +1,2396 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+<title>Bressercam API Manual</title>
+</head>
+<body>
+<h1 align="center">Bressercam API Manual</h1>
+<hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
+<hr/><ul><li>Version: 55.25780.$WCDATE=%Y%m%d$</li></ul>
+<ul><li>Platform<ul>
+      <li>Win32:<ul>
+          <li>x64: Win7 or above</li>
+          <li>x86: XP SP3 or above; CPU supports SSE2 instruction set or above</li>
+		  <li>arm64: Win10 or above</li>
+		  <li>arm: Win10 or above</li>
+        </ul></li>
+	  <li><a href="https://learn.microsoft.com/en-us/windows/uwp" target="_blank">WinRT/UWP</a>: x64, x86, arm64, arm; Windows10 or above</li>
+      <li>macOS:<ul>
+	  <li>x64+x86: macOS 10.10 or above</li>
+	  <li>x64+arm64: macOS 11.0 or above, support x64 and <a href="https://en.wikipedia.org/wiki/Apple_silicon" target="_blank">Apple silicon</a> (such as M1, M2, etc)</li>
+	  </ul></li>
+      <li>Linux: kernel 2.6.27 or above<ul><li>x64: GLIBC 2.14 or above</li>
+		  <li>x86: CPU supports SSE3 instruction set or above; GLIBC 2.8 or above</li>
+		  <li>arm64: GLIBC 2.17 or above; built by aarch64-linux-gnu (version 5.4.0)</li>
+		  <li>armhf: GLIBC 2.8 or above; built by arm-linux-gnueabihf (version 5.4.0)</li>
+		  <li>armel: GLIBC 2.8 or above; built by arm-linux-gnueabi (version 5.4.0)</li>
+		</ul></li>
+      <li>Android: __ANDROID_API__ &gt;= 24 (Android 7.0); built by android-ndk-r18b; see <a href="https://developer.android.com/ndk/guides/abis" target="_blank">here</a>
+        <ul><li>arm64: arm64-v8a</li>
+            <li>arm: armeabi-v7a</li>
+            <li>x64: x86_64</li>
+            <li>x86</li>
+</ul></li></ul></li></ul>
+<hr/><h1><font color="#0000FF">2. Introduction</font></h1><hr/>
+<p>Bressercam cameras support various kinds of APIs (Application Program Interface), namely
+ Native C/C++, <a href="#dotnet">.NET (C# &amp; VB.NET)</a>, <a href="#python">Python</a>, <a href="#java">Java</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/directshow/directshow" target="_blank">DirectShow</a>, <a href="http://twain.org" target="_blank">Twain</a>, LabView, MabLab and so on. Compared with other APIs, Native C/C++ API, as a low level API, don't depend any other runtime libraries. Besides, this interface is simple, flexible and easy to be integrated into the customized applications. 
+The SDK zip file contains all of the necessary resources and information:</p>
+<ul><li>inc</li></ul>
+<blockquote>
+ <p align="left">bressercam.h, C/C++ head file<br/></p>
+</blockquote>
+<ul><li>win: For Microsoft Windows
+   <ul><li>dotnet
+     <blockquote>
+       <p align="left">bressercam.cs, for C#. The bressercam.cs use P/Invoke to call into bressercam.dll. Please copy bressercam.cs to your C# project to use it.<br/>
+         bressercam.vb, for VB.NET. The bressercam.vb use P/Invoke to call into bressercam.dll. Please copy bressercam.vb to your VB.NET project to use it.<br/>
+      </p></blockquote></li>
+     <li>x86: bressercam.dll, bressercam.lib</li>
+     <li>x64: bressercam.dll, bressercam.lib</li>
+	  <li>arm: bressercam.dll, bressercam.lib</li>
+	  <li>arm64: bressercam.dll, bressercam.lib</li>
+	 <li>winrt<blockquote>
+		DLL files for WinRT / UWP (Universal Windows Platform) / Windows Store App.<br/>
+		These dll files are compatible with Windows Runtime, and can be consumed from a Universal Windows Platform app.<br/>
+		If use C# to develop the UWP, bressercam.cs wrapper class can be used to P/Invoke into bressercam.dll.<br/>
+		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
+		</blockquote></li>
+     <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)
+       <ol><li>x86 folder contains the kernel mode drivers for x86, including bressercam.cat, bressercam.inf and bressercam.sys.</li>
+         <li>x64 folder contains the kennel mode driver for x64, including bressercam.cat, bressercam.inf and bressercam.sys.</li>
+		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
+       </ol></li></ul></li>
+</ul><ul><li>linux: For Linux
+ 	<ul><li>udev: 99-bressercam.rules, udev rule file. Please see: <a href="http://reactivated.net/writing_udev_rules.html" target="_blank">http://reactivated.net/writing_udev_rules.html</a>
+            <blockquote>Reload rule without reboot:
+                <table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>udevadm control --reload-rules &amp;&amp; udevadm trigger</pre></td></tr></table>
+			</blockquote></li>
+     <li>x86: libbressercam.so, so file for x86</li>
+     <li>x64: libbressercam.so, so file for x64</li>
+	 <li>armel: libbressercam.so, so file for armel, use toolchain arm-linux-gnueabi</li>
+	 <li>armhf: libbressercam.so, so file for armhf, use toolchain arm-linux-gnueabihf</li>
+	 <li>arm64: libbressercam.so, so file for arm64, use toolchain aarch64-linux-gnu</li>
+	</ul><blockquote>***An easy way to distinguish the target platform armel/armhf/arm64, Execute file /bin/ls on the target platform. The following is the result under a Raspberry Pi, it can be seen that it belongs to armhf:
+    <table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>$ file /bin/ls
+/bin/ls: ELF 32-bit LSB executable, ARM, EABI5 version 1 (SYSV), dynamically linked, interpreter /lib/ld-linux-<strong>armhf</strong>.so.3, for GNU/Linux 3.2.0, BuildID[sha1]=67a394390830ea3ab4e83b5811c66fea9784ee69, stripped</pre></td></tr></table>
+Another example, which can be seen to belong to x64:<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>$ file /bin/ls
+/bin/ls: ELF 64-bit LSB executable, <strong>x86-64</strong>, version 1 (SYSV), dynamically linked (uses shared libs), for GNU/Linux 2.6.32, BuildID[sha1]=c8ada1f7095f6b2bb7ddc848e088c2d615c3743e, stripped</pre></td></tr></table>
+    </blockquote></li></ul>
+ <ul><li>android: libbressercam.so for Android on arm, arm64, x86 and x64</li></ul>
+ <ul><li>mac: For macOS, universal dylib: x64+x86, x64+arm64</li></ul>
+ <ul><li>python: bressercam.py and <a href="#demopython">sample code</a></li></ul>
+ <ul><li>java: bressercam.java and <a href="#demojava">sample code</a></li></ul>
+ <ul><li>doc: User manuals in English and <a href="hans.html" target="_blank">Simplified Chinese</a></li></ul>
+ <ul><li>extra
+       <ul><li>update: tools for update firmware. Remind: they all depend on the camera dynamic library, please copy bressercam.dll/so/dylib to the directory where it is running.
+		<ul><li>updatefw: update firmware, rename camera, set MAC/IP address for GigE camera, GUI, support Windows only</li>
+		<li>updatecli: update firmware, console UI, support Windows/Linux/MacOS</li>
+		</ul></li><li>directshow: DirectShow SDK and <a href="#demodshow">demo</a></li>
+         <li>twain: TWAIN SDK</li>
+         <li>labview: Labview SDK and <a href="#demolabview">demo</a></li>
+		 <li>matlab: MatLab demo</li>		 
+		<li>imagepro: liveedf, live stitch, live stack</li>
+</ul></li></ul>
+<hr/><h1><font color="#0000FF">3. Concepts &amp; Terminology</font></h1><hr/>
+<h2><font color="#0000FF">a. Modes for accessing image data: "Pull" Mode vs "Push" Mode</font></h2>
+<p>Bressercam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
+<ul><li>In Pull Mode, bressercam plays a passive role and the application 'PULL' image data from bressercam. The internal thread of bressercam obtains image data from the camera hardware and saves them to the internal buffers, then notify the application (see below). The application then call functions Bressercam_PullImageV3 or Bressercam_PullImage(WithRowPitch)(V2), Bressercam_PullStillImage(WithRowPitch)(V2) to access image data.</li>
+</ul><blockquote>
+ <p>There are to ways to notify applications:</p>
+<blockquote>
+ <p>a) Use Windows message: Start pull mode by using the function Bressercam_StartPullModeWithWndMsg. When event occurs, bressercam will post message (PostMessage) to the specified window. Parameter WPARAM is the event type, refer to the definition of BRESSERCAM_EVENT_xxxx. This model avoids the multithreading issues, so it's the most simple way. (Obviously, this is only supported in Windows systems, and not supported in Linux and macOS.)</p>
+ <p>b) Use Callback function: Start pull mode by using the function Bressercam_StartPullModeWithCallback. When event occurs, bressercam will callback the function PBRESSERCAM_EVENT_CALLBACK.</p>
+</blockquote></blockquote>
+<blockquote>
+ <p>In Pull Mode, the SDK could not only notify the application that the image data or still image are available for 'PULL', but also inform you of the other events, such as:</p>
+<div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+   <td width="25%">Event</td>
+   <td width="7%">Source</td>
+   <td width="68%">Description</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_EXPOSURE</td>
+   <td rowspan="19">Software</td>
+   <td>exposure time changed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_TEMPTINT</td>
+   <td>white balance changed. Temp/Tint Mode, please see <a href="#wb">here</a>.</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_WBGAIN</td>
+   <td>white balance changed. RGB Gain Mode, please see <a href="#wb">here</a>.</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_IMAGE</td>
+   <td>Video image data arrives. Use Bressercam_PullImageXXXX to 'pull' the image data</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_STILLIMAGE</td>
+   <td>Still image which is triggered by function Bressercam_Snap or Bressercam_SnapN or Bressercam_SnapR arrives. Use Bressercam_PullImageXXXX to 'pull' the image data</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_ERROR</td>
+   <td>Generic error, data acquisition cannot continue</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_DISCONNECTED</td>
+   <td>Camera disconnected, maybe has been pulled out</td>
+ </tr><tr>
+   <td><a id="evnoframe">BRESSERCAM_EVENT_NOFRAMETIMEOUT</a></td>
+   <td>No frame was not captured within the specified time. see <a href="#noframe">BRESSERCAM_OPTION_NOFRAME_TIMEOUT</a></td>
+ </tr><tr>
+   <td><a id="evnopacket">BRESSERCAM_EVENT_NOPACKETIMEOUT</a></td>
+   <td>No packet was not captured within the specified time. see <a href="#nopacket">BRESSERCAM_OPTION_NOPACKET_TIMEOUT</a></td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_TRIGGERFAIL</td>
+   <td>trigger failed (for example, bad frame data or timeout)</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_BLACK</td>
+   <td>black balance changed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_FFC</td>
+   <td>flat field correction status changed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_DFC</td>
+   <td>dark field correction status changed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_FPNC</td>
+   <td>fixed pattern noise correction status changed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_ROI</td>
+   <td>roi changed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_LEVELRANGE</td>
+   <td>level range changed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_AUTOEXPO_CONV</td>
+   <td>auto exposure convergence</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_AUTOEXPO_CONVFAIL</td>
+   <td>auto exposure once mode convergence failed</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_FACTORY</td>
+   <td>restore factory settings. Please note that restoring factory settings may cause resolution changes.</td>
+ </tr><tr>
+   <td><a id="hwevent">BRESSERCAM_EVENT_EXPO_START</a></td>
+   <td rowspan="5">Hardware</td>
+   <td>exposure start</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_EXPO_STOP</td>
+   <td>exposure stop</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_TRIGGER_ALLOW</td>
+   <td>next trigger allow</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_TRIGGER_IN</td>
+   <td>trigger in</td>
+ </tr><tr>
+   <td>BRESSERCAM_EVENT_HEARTBEAT</td>
+   <td>heartbeat, can be used to monitor whether the camera is alive. see <a href="#heartbeat">BRESSERCAM_OPTION_HEARTBEAT</a></td>
+ </tr></table></div></blockquote>
+<ul>
+  <li>In Push Mode, bressercam plays an active role. Once the video data is obtained from camera by internal thread, bressercam will 'PUSH' the image data to the application through PBRESSERCAM_DATA_CALLBACK. Call the function Bressercam_StartPushMode to start push mode. Push mode is more complex. There are some special precautions, such as multithread issues, being impossible to call Bressercam_Close and Bressercam_Stop in callback function PBRESSERCAM_DATA_CALLBACK_V4/V3, etc.</li>
+</ul><h2><font color="#0000FF">b. <a id="stillcapture">Still Capture (Still Image)</a></font></h2>
+<p>Most cameras support the so-called still capture capability. This function switches the camera to another resolution temporarily when the camera is in preview mode, after a "still" image in the new resolution is captured and then switch back to the original resolution and resume preview mode.</p>
+<p>For example, UCMOS05100KPA support 3 resolutions and the current one in preview mode is 1280 * 960. Call Bressercam_Snap(h, 0) to "still capture" an image in 2592 * 1944 resolution. To realize this function, the camera will temporarily switch to 2592 * 1944 firstly, get an image in 2592 * 1944 resolution and then switch back to 1280 * 960 and resume preview.</p>
+<blockquote>a) In pull mode operation, after the still capture, BRESSERCAM_EVENT_STILLIMAGE will be sent out for external acknowledgement. The external application should call Bressercam_PullImageV3 or Bressercam_PullStillImage(V2) to get the still captured image.</blockquote>
+<blockquote>b) In push mode operation, after the still capture, the callback function PBRESSERCAM_DATA_CALLBACK_V4/V3 will be called with bSnap parameter setting TRUE. The image information including the resolution information will be obtained via the parameter pHeader.</blockquote>
+<p>To check whether the camera have the still capture capability, call Bressercam_get_StillResolutionNumber function or check the still field of the struct BressercamModelV2.</p>
+<h2><font color="#0000FF"><a id="raw">c. Data format: RGB vs RAW</a></font></h2>
+<p>Bressercam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning BRESSERCAM_OPTION_RAW parameter to 1 when calling Bressercam_put_Option function.</p>
+<ul><li>RGB format: The output of every pixel contains 3 componants which stand for R/G/B value respectively. This output is a processed output from the internal color processing engine.</li></ul>
+<ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Bressercam_put_Hue or Bressercam_AwbOnce function and so on.</li></ul>
+<p>Users could switch these two format by calling Bressercam_put_Option function with different value setting to <a href="#rawo">BRESSERCAM_OPTION_RAW</a>. You change this option only when camera is NOT running.</p>
+<p>Users could change RGB bits by calling Bressercam_put_Option with different value setting to <a href="#rgb">BRESSERCAM_OPTION_RGB</a>. You change this option only when camera is NOT running.</p>
+<h2><font color="#0000FF"><a id="wb">d. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
+<p>1. Bressercam sdk supports two independent modes for white balance: a) Temp/Tint Mode; b) RGB Gain Mode</p>
+<blockquote>
+<p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Bressercam_get_TempTint function is used to acquire the temp and tint values and Bressercam_put_TempTint is used to set the temp and tint values. Function Bressercam_AwbOnce is used to execute the auto white balance. When the white balance parameters change, BRESSERCAM_EVENT_TEMPTINT event will be notified for external use.</p>
+<p>b) In RGB Gain mode, the while balace is controled by the gain values of the R,G,B channels. Bressercam_get_WhiteBalanceGain is used to acquire the parameters and Bressercam_put_WhiteBalanceGain is used to set the white balance parameters. Bressercam_AwbInit is used to execute the execute the auto white balance. When the white balance parameters change, BRESSERCAM_EVENT_WBGAIN event will be notified for external use.</p>
+<p>The functions for these two modes cannot be misused:</p>
+	<blockquote>
+	a) In Temp/Tint mode, please use Bressercam_get_TempTint and Bressercam_put_TempTint and Bressercam_AwbOnce. Bressercam_get_WhiteBalanceGain and Bressercam_put_WhiteBalanceGain and Bressercam_AwbInit cannot be used, they always return E_NOTIMPL.<br/>
+	b) In RGB Gain mode, please use Bressercam_get_WhiteBalanceGain and Bressercam_put_WhiteBalanceGain and Bressercam_AwbInit. Bressercam_get_TempTint and Bressercam_put_TempTint and Bressercam_AwbOnce cannot be used, they always return E_NOTIMPL<br/>
+	</blockquote>
+<p>This mode is specified when the camera is opened and cannot be changed unless the camera is closed and opened again. Please see <a href="#wbmode">here</a>.</p>
+</blockquote>
+<p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "once" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "once" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Bressercam cameras support "once" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
+<p>3. Monochromatic camera does not support white balance. The functions metioned above always return E_NOTIMPL.</p>
+<h2><font color="#0000FF">e. <a id="trigger">Trigger Mode</a></font></h2>
+<p>1. What is Trigger Mode</p>
+	<blockquote>
+		Bressercam camera has two working modes: video mode and trigger mode. When in trigger mode, no images will be available until the trigger conditions are met. Cameras have 2 types for triggering according to the types of trigger source, including software trigger mode, external trigger mode and simulated trigger mode.
+	</blockquote>
+<p>2. The Difference between Trigger and Snap</p>
+	<blockquote>
+		Trigger mode is designed for accurate control of the camera and images would be acquired only when the conditions are met. Users could get the images by controlling the trigger conditions. Trigger mode must be pre-specified. Once the trigger mode is entered, no images will come out from the camera until the trigger conditions are met. The triggered images will stay the same property as the pre-specified resolution. Snap is designed to acquire the images from the camera in video mode. The resolution of the snapped image could be the same resolution as the video or could be different.
+	</blockquote>
+<p>3. Software Trigger Mode</p>
+	<blockquote>
+		Camera could be triggered by software. In software trigger mode, images burst out only when users trigger the camera from the software. Numbers of the images of the triggering could also be controlled by software.
+	</blockquote>
+<p>4. External Trigger Mode</p>
+	<blockquote>
+		Camera could be triggered by external trigger signal. By now Bressercam camera only supports positive-edge trigger mode.
+	</blockquote>
+<p>5. Mix Trigger Mode</p>
+	<blockquote>
+		Both external and software trigger are enabled.
+	</blockquote>
+<p>6. Simulated Trigger Mode</p>
+	<blockquote>
+		For cameras that do not support software trigger and external trigger, simulated trigger mode could be available. When in simulated trigger mode, the camera hardware actually works in the same mode as the video mode. But the up-level software will not obtain any images from the camera. The software buffer will stay empty until the user set the trigger conditions by software. 
+	</blockquote>
+<p>7. How to Enter the Trigger Mode</p>
+	<blockquote>
+		After the numeration of the connected camera, you can check the flag and find out what trigger mode does the camera support according to the following definition.
+			<blockquote><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define BRESSERCAM_FLAG_TRIGGER_SOFTWARE   0x00080000  /* support software trigger */
+#define BRESSERCAM_FLAG_TRIGGER_EXTERNAL   0x00100000  /* support external trigger */
+#define BRESSERCAM_FLAG_TRIGGER_SINGLE     0x00200000  /* only support trigger single: one trigger, one image */</pre></td></tr></table></blockquote>
+		Function Bressercam_put_Option(HBressercam h, unsigned iOption, int iValue) could be used to set the camera to trigger mode when assign BRESSERCAM_OPTION_TRIGGER to the iOption parameter. iValue is used to specify the types of the trigger modes. Please see the following for reference.
+			<blockquote>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define BRESSERCAM_OPTION_TRIGGER   0x0b    /* 0 = video mode, 1 = software or simulated trigger mode, 2 = external trigger mode, 3 = external + software trigger, default value = 0 */</pre></td></tr></table>
+			</blockquote>
+		Function Bressercam_get_Option(HBressercam h, unsigned iOption, int* piValue) could be used to get what type of trigger mode the camera is in.
+	</blockquote>
+<p>8. How to Trigger the camera</p>
+	<blockquote>
+		Function Bressercam_Trigger(HBressercam h, unsigned short nNumber) could be used to trigger the camera. Assigning different value to nNumber means different:
+			<blockquote>
+			nNumber = 0 means stop the trigger.<br/>
+			nNumber = 0xFFFF means trigger continuously, the same as video mode;<br/>
+			nNumber = other valid values means nNumber images will come out from the camera.<br/>
+			</blockquote>
+		If the BRESSERCAM_FLAG_TRIGGER_SINGLE flag is checked, the nNumber parameter must be assigned to 1 and 1 image will come out from the camera when Bressercam_Trigger is called.<br/>Enter the trigger mode first and then call Bressercam_Trigger function to trigger the camera.
+	</blockquote>
+<p>9. Trigger timeout</p>
+	<blockquote>
+	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
+	</blockquote>
+<h2><font color="#0000FF">f. Thread safe</font></h2>
+<p>We use a "neutral" policy (similar to C++ standard library), which means:</p>
+<blockquote>
+<p>a) A camera object is thread-safe for reading from multiple threads. For example, given a camera object A, it is safe to read A from thread 1 and from thread 2 simultaneously.</p>
+<p>b) If a camera object is being written to by one thread, then all reads and writes to that object on the same or other threads must be protected. For example, given a camera object A, if thread 1 is writing to A, then thread 2 must be prevented from reading from or writing to A.</p>
+<p>c) It's safe to read and write to one camera object even if another thread is reading or writing to a different camera object. For example, given camera objects A and B, it's safe when A is being written in thread 1 and B is being read or write in thread 2.</p>
+</blockquote>
+<hr/><h1><font color="#0000FF">4. Functions</font></h1><hr/>
+<ul><li><h2><font color="#0000FF"><a id="hresult">HRESULT return value</a></font></h2>
+	<p>HRESULT is not uncommon on the Windows platform. It's borrowed to macOS and Linux, see table below:</p>
+	<p><strong>Please note that the return value &gt;= 0 means success (especially S_FALSE is also successful, indicating that the internal value and the value set by the user is equivalent, which means "no operation"). Therefore, the SUCCEEDED and FAILED macros should generally be used to determine whether the return value is successful or failed.<br/>
+(Unless there are special needs, do not use "==S_OK" or "==0" to judge the return value)</strong></p>
+  <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+      <tr><td width="15%">Name</td>
+        <td width="35%">Description</td>
+		<td width="35%">Remark</td>
+		<td width="15%">Value</td>
+      </tr><tr>
+        <td>S_OK</td>
+        <td>Success</td>
+		<td></td>
+		<td>0x00000000</td>
+	  </tr><tr>
+        <td>S_FALSE</td>
+        <td>Yet another <strong>success</strong></td>
+		<td>Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop</td>
+		<td>0x00000001</td>
+	  </tr><tr>
+        <td>E_ACCESSDENIED</td>
+        <td>Permission denied</td>
+		<td>The program on Linux does not have permission to open the USB device, please enable udev rules file or run as root</td>
+		<td>0x80070005</td>
+	  </tr><tr>
+        <td>E_INVALIDARG</td>
+        <td>One or more arguments are not valid</td>
+		<td></td>
+		<td>0x80070057</td>
+	  </tr><tr>
+        <td>E_NOTIMPL</td>
+        <td>Not supported or not implemented</td>
+		<td>This feature is not supported on this model of camera</td>
+		<td>0x80004001</td>
+	  </tr><tr>
+        <td>E_POINTER</td>
+        <td>Pointer that is not valid</td>
+		<td>Pointer is NULL</td>
+		<td>0x80004003</td>
+	  </tr><tr>
+        <td>E_UNEXPECTED</td>
+        <td>Catastrophic failure</td>
+		<td>Generally indicates that the conditions are not met, such as calling put_Option setting some options that do not support modification when the camera is running, and so on</td>
+		<td>0x8000ffff</td>
+	  </tr><tr>
+        <td>E_WRONG_THREAD</td>
+        <td>Call function in the wrong thread</td>
+		<td>See <a href="#wrongthread1">here</a>, <a href="#wrongthread2">here</a>, <a href="#wrongthread3">here</a></td>
+		<td>0x8001010e</td>
+	  </tr><tr>
+        <td>E_GEN_FAILURE</td>
+        <td>Device not functioning</td>
+		<td>It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, camera hardware damage, etc</td>
+		<td>0x8007001f</td>
+	  </tr><tr>
+        <td>E_BUSY</td>
+        <td>The requested resource is in use</td>
+		<td>The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc</td>
+		<td>0x800700aa</td>
+	  </tr><tr>
+        <td>E_PENDING</td>
+        <td>The data necessary to complete this operation is not yet available</td>
+		<td>No data is available at this time</td>
+		<td>0x8000000a</td>
+	  </tr><tr>
+        <td>E_TIMEOUT</td>
+        <td>This operation returned because the timeout period expired</td>
+		<td></td>
+		<td>0x8001011f</td>
+	  </tr><tr>
+        <td>E_FAIL</td>
+        <td>Unspecified failure</td>
+		<td></td>
+		<td>0x80004005</td>
+</tr></table></div><br/>
+<div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+  <tr><td><pre>#define SUCCEEDED(hr)   (((HRESULT)(hr)) &gt;= 0)
+#define FAILED(hr)      (((HRESULT)(hr)) &lt; 0)</pre></td></tr>
+</table></div>
+<p>On windows platform, these HRESULT constants are already defined in the system header file. On other platforms, if you need to use these constants, you can #define BRESSERCAM_HRESULT_ERRORCODE_NEEDED <strong>before</strong> #include "bressercam.h". See below:</p>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>#define BRESSERCAM_HRESULT_ERRORCODE_NEEDED
+#include "bressercam.h"</pre></td></tr></table>
+</li></ul><ul><li><h2><font color="#0000FF">Calling Convention</font></h2>
+	<p>Win: __stdcall, please see <a href="https://learn.microsoft.com/en-us/cpp/cpp/stdcall" target="_blank">here</a></p>
+	<p>macOS, Linux and Android: __cdecl</p>
+</li></ul><ul><li><h2><a id="callback"><font color="#0000FF">Callback: PBRESSERCAM_EVENT_CALLBACK and PBRESSERCAM_DATA_CALLBACK_V4/V3</font></a></h2>
+	<p>These callback functions are called back from the internal thread in bressercam.dll, so great attention should be paid to multithread issue.<br/>
+        Please ensure that the callback funcion is simple and return quickly.<br/>
+        Otherwise, in callback mode, BRESSERCAM_OPTION_CALLBACK_THREAD can be setted to use a dedicated thread for callback.</p>
+	<p><strong>Due to the need to wait for the callback function to return when performing the following actions, the callback function context has the following limitations:<br/>
+	(a) Do NOT call Bressercam_Stop and Bressercam_Close in this callback function, otherwise, deadlocks.<br/>
+	(b) <a id="wrongthread1">Do NOT call Bressercam_put_Option with BRESSERCAM_OPTION_TRIGGER, BRESSERCAM_OPTION_BITDEPTH, BRESSERCAM_OPTION_PIXEL_FORMAT, BRESSERCAM_OPTION_BINNING, BRESSERCAM_OPTION_ROTATE, it will fail with the error code E_WRONG_THREAD.</a><br/>
+	(c) <a id="wrongthread2">Do NOT call Bressercam_put_Roi, it will fail with the error code E_WRONG_THREAD.</a><br/>
+	(d) If try to acquire the same lock when performing the above operations and when callback functions, it will cause waiting forever for the callback to end, deadlock</strong></p>
+</li></ul><ul><li><h2><font color="#0000FF"><a id="cord">Coordinate</a></font></h2>
+<p>Functions with coordinate parameters, such as Bressercam_put_Roi, Bressercam_put_AEAuxRect, etc., the coordinate is <strong>always relative to the original resolution</strong>, even that the video has been flipped, rotated, digital binning, ROI, or combination of the previous operations.</p>
+<p>If the image is upside down (see <a href="#upsidedown">here</a>), the coordinate must be also upsize down.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_EnumV2<br/>Bressercam_EnumWithName</font></h2>
+    <p><strong>Return value: </strong> non-negative integer, enumerated camera number</p>
+    <p><strong>Parameters:</strong></p>
+    	<blockquote>
+    		<p>BressercamDeviceV2 arr[BRESSERCAM_MAX]: BressercamDeviceV2 buffer</p>
+    	</blockquote>
+    <p><strong>Remarks:</strong> call this function to enumerate Bressercam cameras that are currently connected to computer and when it is returned, BressercamDeviceV2 buffer contains the information of each camera instance enumerated.<strong>If we don't care about that multiple cameras connect to the computer simultaneously, it's optional to call this function to enumerate the camera instances</strong>.</p>
+    <p>(1) The code snippet shows as below:<br/></p>
+<table width="100%" border="0" bgcolor="#B0D0B0">
+  <tr><td><pre>BressercamDeviceV2 arr[BRESSERCAM_MAX];
+unsigned cnt = Bressercam_EnumV2(arr);
+for (unsigned i = 0; i &lt; cnt; ++i)
+    ......</pre></td></tr>
+</table><br/>
+<table width="100%" border="0" bgcolor="#B0D0B0">
+<tr><td><pre>typedef struct{
+#ifdef _WIN32
+    const wchar_t*     name;     /* model name */
+#else
+    const char*        name;
+#endif
+    unsigned long long flag;     /* BRESSERCAM_FLAG_xxx */
+    unsigned           maxspeed; /* maximum speed level, Bressercam_get_MaxSpeed, the speed range = [0, maxspeed], closed interval */
+    unsigned           preview;  /* number of preview resolution, Bressercam_get_ResolutionNumber */
+    unsigned           still;    /* number of still resolution, Bressercam_get_StillResolutionNumber */
+    unsigned           maxfanspeed; /* maximum fan speed, fan speed range = [0, max], closed interval */
+    unsigned           ioctrol;     /* number of input/output control */
+    float              xpixsz;      /* physical pixel size in micrometer */
+    float              ypixsz;      /* physical pixel size in micrometer */
+    BressercamResolution  res[BRESSERCAM_MAX];
+}BressercamModelV2; /* device model v2 */
+
+typedef struct {
+#if defined(_WIN32)
+    wchar_t  displayname[64];    /* display name: model name or user-defined name (if any and Bressercam_EnumWithName, Bressercam_EnumV2 always returns model name) */
+    wchar_t  id[64];             /* unique and opaque id of a connected camera, for Bressercam_Open */
+#else
+    char     displayname[64];    /* display name: model name or user-defined name (if any and Bressercam_EnumWithName, Bressercam_EnumV2 always returns model name) */
+    char     id[64];             /* unique and opaque id of a connected camera, for Bressercam_Open */
+#endif
+    const BressercamModelV2* model;
+} BressercamDeviceV2; /* device instance for enumerating */
+</pre></td></tr></table><br/>
+<div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+   <td width="8%">name</td>
+   <td colspan="2">The name of this model</td>
+   </tr><tr>
+   <td width="8%" rowspan="56">flag</td>
+   <td colspan="2">Bitwise flag</td>
+   </tr><tr>
+   <td width="29%">BRESSERCAM_FLAG_CMOS</td>
+   <td width="63%">cmos sensor</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_CCD_PROGRESSIVE</td>
+   <td>progressive ccd sensor</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_CCD_INTERLACED</td>
+   <td>interlaced ccd sensor</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_ROI_HARDWARE</td>
+   <td>support hardware ROI. Hardware ROI means only the ROI part of image is output from the sensor and the software cropping operation is not required. Higher frame rate is achieved when using hardware ROI method. Software ROI means the image with the complete field of view of the sensor will be output and software cropping operation is required to obtain the ROI image.</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_MONO</td>
+   <td>monochromatic sensor</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_BINSKIP_SUPPORTED</td>
+   <td>support bin/skip mode, see Bressercam_put_Mode and Bressercam_get_Mode</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_USB30</td>
+   <td>usb3.0</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_TEC</td>
+   <td>Thermoelectric Cooler</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_USB30_OVER_USB20</td>
+   <td>usb3.0 camera connected to usb2.0 port</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_ST4</td>
+   <td>ST4 port</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_GETTEMPERATURE</td>
+   <td>support to get the temperature of the sensor, Bressercam_get_Temperature</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_HIGH_FULLWELL</td>
+   <td>support high fullwell capacity</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_RAW10</td>
+   <td>BRESSERCAM_PIXELFORMAT_RAW10 Pixel format, RAW 10 bits</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_RAW11</td>
+   <td>BRESSERCAM_PIXELFORMAT_RAW11 Pixel format, RAW 11 bits</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_RAW12</td>
+   <td>BRESSERCAM_PIXELFORMAT_RAW12 Pixel format, RAW 12 bits</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_RAW12PACK</td>
+   <td>BRESSERCAM_PIXELFORMAT_RAW12PACK Pixel format, RAW 12 bits, packed</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_RAW14</td>
+   <td>BRESSERCAM_PIXELFORMAT_RAW14 Pixel format, RAW 14 bits</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_RAW16</td>
+   <td>BRESSERCAM_PIXELFORMAT_RAW16 Pixel format, RAW 16 bits</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_FAN</td>
+   <td>cooling fan</td>
+ </tr><tr>
+   <td>BRESSERCAM_FLAG_TEC_ONOFF</td>
+   <td>Thermoelectric Cooler can be turn on or off, target temperature of TEC, see:<br/>
+							BRESSERCAM_OPTION_TEC<br/>
+							BRESSERCAM_OPTION_TECTARGET</td>
+ </tr><tr>
+    <td>BRESSERCAM_FLAG_ISP</td>
+    <td>ISP (Image Signal Processing) chip</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_TRIGGER_SOFTWARE</td>
+    <td>support software trigger</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_TRIGGER_EXTERNAL</td>
+    <td>support external trigger</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_TRIGGER_SINGLE</td>
+    <td>only support trigger single, one trigger, one image</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_BLACKLEVEL</td>
+    <td>support set and get the black level</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_FOCUSMOTOR</td>
+    <td>support focus motor</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_AUTO_FOCUS</td>
+    <td>support auto focus</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_BUFFER</td>
+    <td>frame buffer</td>
+  </tr><tr>
+    <td><a id="ddr">BRESSERCAM_FLAG_DDR</a></td>
+    <td>use very large capacity DDR (Double Data Rate SDRAM) for frame buffer. The capacity is not less than one full frame.</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_CG</td>
+    <td>Conversion Gain: LCG, HCG</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_CGHDR</td>
+    <td>Conversion Gain: LCG, HCG, HDR</td>
+  </tr><tr>
+    <td><a id="hwflag">BRESSERCAM_FLAG_EVENT_HARDWARE</a></td>
+    <td>hardware event, such as exposure start &amp; stop. see <a href="#hwevent">here</a> and <a href="#hwoption">here</a></td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_YUV411</td>
+    <td>BRESSERCAM_PIXELFORMAT_YUV411 Pixel format</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_YUV422</td>
+    <td>BRESSERCAM_PIXELFORMAT_YUV422 Pixel format</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_YUV444</td>
+    <td>BRESSERCAM_PIXELFORMAT_YUV444 Pixel format</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_RGB888</td>
+    <td>BRESSERCAM_PIXELFORMAT_RGB888 Pixel format</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_RAW8</td>
+    <td>BRESSERCAM_PIXELFORMAT_RAW8 Pixel format, RAW 8 bits</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_GMCY8</td>
+    <td>BRESSERCAM_PIXELFORMAT_GMCY8 Pixel format, GMCY 8 bits</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_GMCY12</td>
+    <td>BRESSERCAM_PIXELFORMAT_GMCY12 Pixel format, GMCY 12 btis</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_GLOBALSHUTTER</td>
+    <td>global shutter</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_PRECISE_FRAMERATE</td>
+    <td>support precise framerate &amp; bandwidth, see <a href="#precise">BRESSERCAM_OPTION_PRECISE_FRAMERATE</a> &amp; BRESSERCAM_OPTION_BANDWIDTH</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_HEAT</td>
+    <td>support heat to prevent fogging up, see <a href="#heat">BRESSERCAM_OPTION_HEAT</a> &amp; <a href="#heatmax">BRESSERCAM_OPTION_HEAT_MAX</a></td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_LOW_NOISE</td>
+    <td>support low noise mode, see <a href="#lownoise">BRESSERCAM_OPTION_LOW_NOISE</a></td>
+  </tr><tr>
+    <td><a id="hwlevelrange">BRESSERCAM_FLAG_LEVELRANGE_HARDWARE</a></td>
+    <td>hardware level range</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_GIGE</td>
+    <td>1 Gigabit GigE</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_10GIGE</td>
+    <td>10 Gigabit GigE</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_5GIGE</td>
+    <td>5 Gigabit GigE</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_25GIGE</td>
+    <td>2.5 Gigabit GigE</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_CAMERALINK</td>
+    <td>camera link</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_CXP</td>
+    <td>CXP: CoaXPress</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_FILTERWHEEL</td>
+    <td>astro filter wheel</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_AUTOFOCUSER</td>
+    <td>astro auto focuser</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_LIGHTSOURCE</td>
+    <td>embedded light source</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_LIGHT_SOURCE</td>
+    <td>stand alone light source</td>
+  </tr><tr>
+    <td>BRESSERCAM_FLAG_GHOPTO</td>
+    <td>ghopto sensor</td>
+  </tr><tr>
+   <td width="8%">maxspeed</td>
+   <td colspan="2">Maximum speed level, same with Bressercam_get_MaxSpeed. The speed range is [0, maxspeed]. see Bressercam_put_Speed and Bressercam_get_Speed</td>
+   </tr><tr>
+   <td width="8%">preview</td>
+   <td colspan="2">Number of preview resolution. Same with Bressercam_get_ResolutionNumber</td>
+   </tr><tr>
+   <td width="8%">still</td>
+   <td colspan="2">Number of still resolution, zero means still capture is not supported. Same with Bressercam_get_StillResolutionNumber</td>
+   </tr><tr>
+   <td width="8%">ioctrol</td>
+   <td colspan="2">Number of input/output control</td>
+   </tr><tr>
+   <td width="8%">xpixsz<br/>ypixsz</td>
+   <td colspan="2">Physical pixel size in micrometer, see Bressercam_get_PixelSize</td>
+   </tr><tr>
+   <td width="8%">res</td>
+   <td colspan="2">Resolution, width and height</td>
+</tr></table></div>
+<p>(2) On the Android platform, if the camera cannot be enumerated, it is possible that NDK has been restricted from enumerating USB devices. See <a href="#androidopen">here</a>.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_HotPlug</font></h2>
+  <p><strong>Return value: </strong> NA</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>PBRESSERCAM_HOTPLUG funHotPlug: callback function</p>
+    <blockquote><table width="100%" border="0" bgcolor="#B0D0B0">
+      <tr><td><div align="center">typedef void (*PBRESSERCAM_HOTPLUG)(void* ctxHotPlug);</div></td></tr>
+    </table></blockquote>
+    <p>void* ctxHotPlug: callback context</p>
+  </blockquote>
+  <p><strong>Remarks:</strong></p><blockquote>
+  <p>This function is only available on macOS, Linux. To process the device plug in / pull out:</p><ul>
+  <li><a id="hotplugnotify"><object>On Windows, please refer to the MSDN(<a href="https://learn.microsoft.com/en-us/windows/win32/devio/device-management" target="_blank">Device Management</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/detecting-media-insertion-or-removal" target="_blank">Detecting Media Insertion or Removal</a>, <a href="https://learn.microsoft.com/en-us/windows/win32/devio/processing-a-request-to-remove-a-device" target="_blank">Processing a Request to Remove a Device</a>).</object></a></li>
+  <li>On Android, please refer <a href="https://developer.android.com/guide/topics/connectivity/usb/host" target="_blank">here</a></li>
+  <li>On Linux/macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Bressercam_EnumV2(...) again to enum the cameras.</li>
+  <li>On macOS, IONotificationPortCreate series APIs can also be used as an alternative.</li>
+</ul></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF"><a id="apigige">Bressercam_GigeEnable</a></font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+		<blockquote>
+			<p>PBRESSERCAM_HOTPLUG funHotPlug: callback function, used to notify GigE cameras online/offline. If online/offline notifications are not required, this callback function can be set to NULL.</p>
+			<p>void* ctxHotPlug: callback context</p>
+		</blockquote>
+    <p><strong>Remarks:</strong> Initialize support for GigE cameras, it only needs to be called once when the process starts.</p>
+</li></ul><ul><li><h2><font color="#0000FF"><a id="apiopen">Bressercam_Open</a></font></h2>
+  <p><strong>Return value: </strong> HBressercam handle. Return NULL when fails (Such as the device has been pulled out).</p>
+  <p><strong>Parameters:</strong></p>
+  	<blockquote>
+  		<p>camId: Bressercam camera instance, enumerated by Bressercam_EnumV2. <strong>If camId is NULL, Bressercam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Bressercam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
+  	</blockquote>
+  <p><strong>Remarks:</strong> open the camera instance.</p>
+  <p>(1) Supports attaching some additional parameters after camId parameter (<strong>Use semicolon (;) to split, case sensitive</strong>), such as:</p>
+    <blockquote><table width="100%" border="0" bgcolor="#B0D0B0">
+      <tr><td><div align="center">
+  Bressercam_Open(L"\\?\usb#vid_0547&amp;pid_1134#d&amp;397c94f3&amp;0&amp;3<strong>;registry=;wb=rgb</strong>")
+		</div></td>
+      </tr></table></blockquote>
+  <p>see table below:</p>
+  <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+        <td width="15%" rowspan="5"><a id="cfg">Camera Configuration</a></td>
+        <td width="85%" colspan="3">No parameter is required after camId parameter if automatic parameter saving or loading is not required.<br/>Attach parameters, the camera configuration are automatically loaded when the camera is opened, and is automatically saved when the camera is close.</td>
+      </tr><tr>
+        <td width="15%">;registry=xxxx\yyyy</td>
+        <td width="15%">Registry (Windows only)</td>
+		<td width="55%">Specify to use the relative path of the registry key HKEY_CURRENT_USER. Empty after “=” means that the default registry path will be used:<br/>
+        Software\XXX(CompanyName)\capi\YYY(Camera model name)</td>
+      </tr><tr>
+        <td>;ini=x:\yyyy\zzzz.ini</td>
+        <td>ini file</td>
+		<td>Use x:\yyyy\zzzz.ini as the file where camera parameters are saved to or load from. Complete directory must be specified and empty is not allowed. Please Make sure that the target directory exists and is readable and writeable</td>
+      </tr><tr>
+        <td>;json=x:\yyyy\zzzz.json</td>
+        <td>json file</td>
+		<td>Use x:\yyyy\zzzz.json as the file where camera parameters are saved to or load from. Complete directory must be specified and empty is not allowed. Please Make sure that the target directory exists and is readable and writeable</td>
+      </tr><tr>
+        <td>;eeprom=xxxx</td>
+        <td>EEPROM</td>
+		<td>Use EEPROM as the device where the camera parameters are saved to or load from. xxxx is the starting address in EEPROM and empty means the starting address is 0</td>
+      </tr><tr>
+        <td><a id="wbmode">White Balance Mode</a></td>
+        <td>;wb=temptint or rgb</td>
+        <td colspan="2">White Balance use Temp/Tint mode or RGB Gain mode, see <a href="#wb">here</a><br/>Default: Temp/Tint</td>
+      </tr><tr>
+        <td>USB Block Size</td>
+        <td>;usbblocksize=xxx</td>
+        <td colspan="2">Percentage, range: 10~1000, means 10%~1000%</td>
+      </tr><tr>
+      <td>Zerocopy on linux platform</td>
+      <td>;zerocopy=1 or 0</td>
+      <td colspan="2">Helps to reduce memory copy and improve efficiency. Requires kernel version &gt;= 4.6 and hardware platform support.<br/>
+      If the image is wrong, this indicates that the hardware platform does not support this feature, please disable it.<br/>
+      Disabled by default on Android or ARM, enabled on non-Android x86/x64</td></tr>
+</table></div>
+  <p>2. <a id="androidopen">Android</a></p>
+  <p>(a) If the NDK has been granted permission to enumerate the usb device, the same as the normal process, there is no difference.</p>
+  <p>(b) If the NDK has NOT been granted permission to enumerate the usb device, so, we can only get device permissions on the Java side, and then transfer the file descriptor to Bressercam_Open. And then, there is no difference after getting the HBressercam handle. See below:</p>
+<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
+usbManager = (UsbManager)getApplicationContext().getSystemService(Context.USB_SERVICE);
+HashMap&lt;String, UsbDevice&gt; deviceList = usbManager.getDeviceList();
+for (UsbDevice usbDevice : deviceList.values()) {
+    ModelV2 model = bressercam.get_Model((short)usbDevice.getVendorId(), (short)usbDevice.getProductId()); //Get the camera model by VID/PID, return null for non-supported devices
+    if (model != null) {
+        usbManager.requestPermission(usbDevice, mPermissionIntent);
+        UsbDeviceConnection usbDeviceConnection = usbManager.openDevice(camDevice);
+        if (usbDeviceConnection != null) {
+            int fileDescriptor = usbDeviceConnection.getFileDescriptor();                               //Get the native FileDescriptor
+            bressercam cam = bressercam.Open(String.format("fd-%d-%04x-%04x", fileDescriptor, usbDevice.getVendorId(), usbDevice.getProductId())); //Open the camera
+            usbDeviceConnection.close(); //Java side usb connection is no longer needed and is strongly recommended to be closed explicitly and immediately
+            if (cam != null) {
+                ... //From this point we can regularly use the bressercam object as usual
+            }
+        }
+    }
+}</pre></td></tr></table>
+<p>3. Bressercam_Open/Close, Start/Stop are relatively heavyweight calls, <strong>frequent operation is not recommended unless necessary</strong>.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_Close</font></h2>
+    <p><strong>Return value: </strong> void</p>
+    <p><strong>Parameters:</strong></p>
+		<blockquote>
+			<p>HBressercam h: camera handle</p>
+		</blockquote>
+    <p><strong>Remarks:</strong> close the camera. After the handle is closed, never use the HBressercam handle any more.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_StartPullModeWithWndMsg<br/>Bressercam_StartPullModeWithCallback</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>HWND hWnd: event occurs, message will be posted in this window</p>
+      <p>UINT nMsg: Windows custom message type. Its WPARAM parameter means event type BRESSERCAM_EVENT_xxxx, LPARAM is useless (always zero)</p>
+      <p>PBRESSERCAM_EVENT_CALLBACK funEvent, void* ctxEvent: callback function specified by user's application and callback context parameter.</p>
+        <table width="100%" border="0"><tr>
+            <td bgcolor="#B0D0B0"><div align="center">typedef void (*PBRESSERCAM_EVENT_CALLBACK)(unsigned nEvent, void* ctxEvent);</div></td>
+          </tr></table>
+		<p>see <a href="#callback">here</a>.</p>
+      </blockquote>
+    <p><strong>Remarks:</strong> Obviously, Bressercam_StartPullModeWithWndMsg is only supported in Windows OS.</p>
+</li></ul><ul><li><h2><font color="#0000FF"><a id="infov2">Bressercam_PullImageV3<br/>Bressercam_WaitImageV3<br/>Bressercam_PullImageV2<br/>Bressercam_PullStillImageV2<br/>Bressercam_PullImageWithRowPitchV2<br/>Bressercam_PullStillImageWithRowPitchV2</a><br/>
+			Bressercam_PullImage<br/>Bressercam_PullStillImage<br/><a id="rowpitch1">Bressercam_PullImageWithRowPitch</a><br/><a id="rowpitch2">Bressercam_PullStillImageWithRowPitch</a></font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
+      <p><strong>Parameters:</strong></p>
+      <blockquote><p>HBressercam h: camera handle</p>
+	  <p>nWaitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If nWaitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Bressercam_PullImageV3.</p>
+    <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
+    <p>int bStill: to pull still image, set to 1, otherwise 0</p>
+    <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">BRESSERCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
+    <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
+    <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
+	<p>BressercamFrameInfoV3/V2* pInfo: out parameter, frame info:</p>
+	<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
+#define BRESSERCAM_FRAMEINFO_FLAG_SEQ          0x0001 /* frame sequence number */
+#define BRESSERCAM_FRAMEINFO_FLAG_TIMESTAMP    0x0002 /* timestamp */
+#define BRESSERCAM_FRAMEINFO_FLAG_EXPOTIME     0x0004 /* exposure time */
+#define BRESSERCAM_FRAMEINFO_FLAG_EXPOGAIN     0x0008 /* exposure gain */
+#define BRESSERCAM_FRAMEINFO_FLAG_BLACKLEVEL   0x0010 /* black level */
+#define BRESSERCAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x0020 /* sequence shutter counter */
+#define BRESSERCAM_FRAMEINFO_FLAG_STILL        0x8000 /* still image */
+
+typedef struct {
+    unsigned            width;      /* image width, always available */
+    unsigned            height;     /* image height, always available */
+    unsigned            flag;       /* BRESSERCAM_FRAMEINFO_FLAG_xxxx, the flag is bit set, which means the corresponding value is valid, this depends on camera model */
+    unsigned            seq;        /* frame sequence number */
+    unsigned long long  timestamp;  /* microsecond */
+    unsigned            shutterseq; /* sequence shutter counter */
+    unsigned            expotime;   /* exposure time */
+    unsigned short      expogain;   /* exposure gain */
+    unsigned short      blacklevel; /* black level */
+} BressercamFrameInfoV3;
+</pre></td></tr></table>
+<p>Note: Except that the image width and height are always valid, everything else depends on whether the underlying hardware of the camera model supports it. Determine whether the corresponding value is valid by testing whether the corresponding flag bit is set.</p>
+</blockquote><p><strong>Remarks:</strong> when pImageData is NULL, while pInfo or pnWidth, pnHeight are not NULL, you can "peek" the meta data of images such as width and height.</p>
+  <blockquote><p>(a) When bits and BRESSERCAM_OPTION_RGB are inconsistent, format conversion will have to be performed, resulting in loss of efficiency. See the following bits and BRESSERCAM_OPTION_RGB correspondence table:</p>
+  <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+    <tr><td width="34%">BRESSERCAM_OPTION_RGB</td>
+    <td width="11%">0 (RGB24)</td>
+    <td width="11%">1 (RGB48)</td>
+    <td width="11%">2 (RGB32)</td>
+    <td width="11%">3 (Grey8)</td>
+    <td width="11%">4 (Grey16)</td>
+    <td width="11%">5 (RGB64)</td>
+    </tr><tr><td>bits = 0</td><td>24</td><td>48</td><td>32</td><td>8</td><td>16</td><td>64</td></tr>
+    <tr><td>bits = 24</td><td>24</td><td>NA</td><td>Convert to 24</td><td>Convert to 24</td><td>NA</td><td>NA</td></tr>
+    <tr><td>bits = 32</td><td>Convert to 32</td><td>NA</td><td>32</td><td>Convert to 32</td><td>NA</td><td>NA</td></tr>
+    <tr><td>bits = 48</td><td>NA</td><td>48</td><td>NA</td><td>NA</td><td>Convert to 48</td><td>Convert to 48</td></tr>
+    <tr><td>bits = 8</td><td>Convert to 8</td><td>NA</td><td>Convert to 8</td><td>8</td><td>NA</td><td>NA</td></tr>
+    <tr><td>bits = 16</td><td>NA</td><td>Convert to 16</td><td>NA</td><td>NA</td><td>16</td><td>Convert to 16</td></tr>
+    <tr><td>bits = 64</td><td>NA</td><td>Convert to 64</td><td>NA</td><td>NA</td><td>Convert to 64</td><td>64</td></tr>
+    </table></div>
+  <p>(b) Please ensure that the pImageData buffer is large enough to hold the entire frame data, see table below:</p>
+  <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+        <td colspan="2">Format</td>
+        <td>=0 means Default Row Pitch</td>
+        <td>=-1 means Minimum Row Pitch (zero paddding)</td>
+      </tr><tr>
+        <td width="10%" rowspan="6">RGB</td>
+        <td width="25%">RGB24</td>
+        <td width="35%">TDIBWIDTHBYTES(24 * Width)</td>
+        <td width="30%">Width * 3</td>
+      </tr><tr>
+        <td>RGB32</td>
+        <td>Width * 4</td>
+		<td>Width * 4</td>
+      </tr><tr>
+        <td>RGB48</td>
+        <td>TDIBWIDTHBYTES(48 * Width)</td>
+        <td>Width * 6</td>
+      </tr><tr>
+        <td>GREY8 grey image</td>
+        <td>TDIBWIDTHBYTES(8 * Width)</td>
+        <td>Width</td>
+      </tr><tr>
+        <td>GREY16 grey image</td>
+        <td>TDIBWIDTHBYTES(16 * Width)</td>
+        <td>Width * 2</td>
+      </tr><tr>
+        <td>RGB64</td>
+        <td>Width * 8</td>
+        <td>Width * 8</td>
+      </tr><tr>
+        <td rowspan="2">RAW</td>
+        <td>8bits Mode</td>
+        <td>Width</td>
+        <td>Width</td>
+      </tr><tr>
+        <td>10bits, 12bits, 14bits, 16bits Mode</td>
+        <td>Width * 2</td>
+        <td>Width * 2</td>
+      </tr></table></div><br/>
+<div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+  <tr><td>#ifndef TDIBWIDTHBYTES<br/>
+#define TDIBWIDTHBYTES(bits)&nbsp;&nbsp;&nbsp;&nbsp;((unsigned)(((bits) + 31) &amp; (~31)) / 8)<br/>
+#endif<br/>
+</td></tr></table></div></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_StartPushModeV4<br/>Bressercam_StartPushModeV3</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle.</p>
+      <p>funData, void* ctxData: the callback function and callback context parameters that are specified by the user's program. Bressercam.dll gets image data from the camera, then calls back this function.</p>
+    </blockquote>
+  <blockquote>
+    <table width="100%" border="0" bgcolor="#B0D0B0">
+      <tr><td>typedef void (*PBRESSERCAM_DATA_CALLBACK_V4)(const void* pData, const BressercamFrameInfoV3* pInfo, int bSnap, void* ctxData);</td></tr>
+	  <tr><td>typedef void (*PBRESSERCAM_DATA_CALLBACK_V3)(const void* pData, const BressercamFrameInfoV2* pInfo, int bSnap, void* ctxData);</td></tr>
+    </table>
+	<p>see <a href="#callback">here</a>.</p>
+  </blockquote><blockquote>
+    <p align="left">when calls back, if Parameter pData == NULL, then internal error occurs (eg: the camera is pulled out suddenly).<br/>
+      The row pitch of pData is always the default value.<br/>
+      For parameter int bSnap, TRUE means still image snap by Bressercam_Snap or Bressercam_SnapN function, FALSE means ordinary previewed pictures / videos.<br/>
+  </p></blockquote>
+  <p><strong>Remarks:</strong> start camera instance.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_Stop</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    	<blockquote><p>HBressercam handle</p></blockquote>
+    <p><strong>Remarks:</strong> stop the camera instance. After stopped, it can be restart again. For example, switching the video resolution:   </p>
+    <blockquote>
+      <p>Step 1: call Bressercam_Stop to stop</p>
+      <p>Step 2: call Bressercam_put_Size or Bressercam_put_eSize to set the new resolution</p>
+      <p>Step 3: call Bressercam_StartPullModeWithWndMsg or Bressercam_StartPullModeWithCallback or Bressercam_StartPushModeV4/V3 to restart</p>
+    </blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_Pause</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    	<blockquote>
+    		<p>HBressercam h: camera handle</p>
+			<p>int bPause: 1 =&gt; pause, 0 =&gt; continue</p>
+    	</blockquote>
+    <p><strong>Remarks:</strong> temporarily pause the video stream</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_SnapN<br/>Bressercam_SnapR<br/>Bressercam_Snap</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned nResolutionIndex: resolution index. 0xffffffff means use the cureent preview resolution</p>
+	<p><a id="snapn">unsigned nNum: the number to be snapped.</a></p>
+  </blockquote><p><strong>Remarks:</strong> snap 'still' image, please see <a href="#stillcapture">here</a>. When snap successfully:</p>
+  <blockquote><blockquote>
+  <p>a) If we use Pull Mode, it will be notified by BRESSERCAM_EVENT_STILLIMAGE.</p>
+  <p>b) If we use Push Mode, the image will be returned by callback function PBRESSERCAM_DATA_CALLBACK_V4/V3 with the parameter int bSnap is TRUE.</p>
+	</blockquote>
+    <p>Most cameras can snap still image with different resolutions under continuous preview. For example, UCMOS03100KPA's previewed resolution is 1024*768, if we call Bressercam_Snap(h, 0), we get so called "still image" with 2048*1536 resolution.<br/>
+    Some cameras hasn't this ability, so nResolutionIndex must be equal the preview resolution which is set by Bressercam_put_Size, or Bressercam_put_eSize.<br/>
+    Whether it supports "still snap" or not, see "still" domain in BressercamModelV2.</p>
+    <p>Bressercam_SnapR is used to snap "RAW" still image, bypass the hardware ISP if any.</p>
+	<p>Bressercam_Snap(h, index) == Bressercam_SnapN(h, index, 1)</p>
+  </blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_Trigger</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned short nNumber: 0xffff(trigger continuously), 0(stop / cancel trigger), others(number of images to be triggered)</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> in trigger mode, call this function to trigger an image:</p><blockquote>
+  <p>a) If we use Pull Mode, it will be notified by BRESSERCAM_EVENT_IMAGE.</p>
+  <p>b) If we use Push Mode, the image will be returned by callback function PBRESSERCAM_DATA_CALLBACK_V4/V3 with the parameter int bSnap is FALSE.</p>
+  </blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_TriggerSync</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+	<p>unsigned nWaitMS: The timeout interval, in milliseconds. If nWaitMS is zero, it means using the default value (exposure time * 102% + 4000 milliseconds), 0xffffffff means waiting forever, and other values represent the specific number of milliseconds.</p>
+<p>void* pImageData：Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
+    <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">BRESSERCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
+    <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
+	<p>BressercamFrameInfoV3* pInfo: out parameter, frame info</p>
+    </blockquote>
+  <p><strong>Remarks: </strong>In trigger mode, call this function for a <strong>single</strong> software trigger and wait for the image to arrive.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_Size<br/>Bressercam_get_Size<br/>Bressercam_put_eSize<br/>Bressercam_get_eSize<br/>Bressercam_get_FinalSize</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned nResolutionIndex: current/present resolution index</p>
+      <p>int nWidth, int nHeight: width and height of current resolution index</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> set/get current resolution</p>
+        <blockquote>
+          <p align="left">Set resolution while camera is NOT running<br/>
+            There are two ways to set current resolution: one is by resolution index, the other by width/height. Both ways are equivalent. For example, UCMOS03100KPA supports the following three kinds of resolution: <br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;Index 0: 2048, 1536<br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;Index 1: 1024, 768<br/>
+            &nbsp;&nbsp;&nbsp;&nbsp;Index 2: 680, 510<br/>
+            So Bressercam_put_Size(h, 1024, 768) is as effective as Bressercam_put_eSize(h, 1)</p>
+			<p align="left">Bressercam_get_FinalSize gets the <strong>final</strong> width and height of the image (after ROI, Binning, rotation, etc.)</p>
+        </blockquote>
+</li></ul><ul><li><h2><a id="roi"><font color="#0000FF">Bressercam_put_Roi<br/>Bressercam_get_Roi</font></a></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned xOffset: x offset, must be even number</p>
+      <p>unsigned yOffset: y offset, must be even number</p>
+      <p>unsigned xWidth: width, must be even number and must not be less than 16</p>
+      <p>unsigned yHeight: height, must be even number and must not be less than 16</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> set/get the ROI. Bressercam_put_Roi(h, 0, 0, 0, 0) means to clear the ROI and restore the original size.</p>
+  <blockquote>
+	<p><strong>Important: It is forbidden to call Bressercam_put_Roi in the callback context of PBRESSERCAM_EVENT_CALLBACK and PBRESSERCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</strong></p>
+  	<p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
+	<p>The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support ROI, so the return value is E_NOTIMPL.</p>
+  </blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_ResolutionNumber<br/>Bressercam_get_Resolution<br/>Bressercam_get_ResolutionRatio</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned nResolutionIndex: resolution index</p>
+      <p>int* pWidth, int* pHeight: width/height</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Bressercam_get_ResolutionNumber means the number of resolution supported. Take UCMOS03100KPA as an example, if we call the function Bressercam_get_ResolutionNumber and get "3", which means it can support three kinds of resolution. Bressercam_get_Resolution gets the width/height of each resolution.</p>
+  <blockquote>
+    <p align="left">These parameters have also been contained in BressercamModelV2.</p>
+	<p align="left">Bressercam_get_ResolutionRatio gets the Binning number of the resolution, expressed as a fraction, such as 1/1, 1/2, 1/3, etc.</p>	
+  </blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_RawFormat</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned* pFourCC: One of 4 Bayer pixel arrangement(MAKEFOURCC('G', 'B', 'R', 'G'), MAKEFOURCC('R', 'G', 'G', 'B'), MAKEFOURCC('B', 'G', 'G', 'R'), MAKEFOURCC('G', 'R', 'B', 'G'), see <a href="http://www.siliconimaging.com/RGB%20Bayer.htm" target="_blank">here</a>). <strong>Please note that the Y-axis direction of the coordinate system used by different software to define Bayer may be different (Y-axis upward or downward), so some mapping may be required during interoperation. Like the same pixel arrangement, Bayer is GRBG when the Y-axis is downward, and BGGR when the Y-axis is upward.</strong></p>
+    <p>unsigned* pBitsPerPixel: bitdepth, such as 8, 10, 12, 14, 16</p>
+<div align="center"><table width="100%" border="0" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0">
+  <tr><td>#ifndef MAKEFOURCC<br/>
+#define MAKEFOURCC(a, b, c, d) ((unsigned)(unsigned char)(a) | ((unsigned)(unsigned char)(b) &lt;&lt; 8) | ((unsigned)(unsigned char)(c) &lt;&lt; 16) | ((unsigned)(unsigned char)(d) &lt;&lt; 24))<br/>
+#endif<br/></td>
+</tr></table></div><br/></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_PixelFormatSupport</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>char cmd:<blockquote>
+		-1: query the number<br/>
+		0~number: query the nth pixel format</blockquote></p>
+    <p>int* piValue: output, BRESSERCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
+  </blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_PixelFormatName</font></h2>
+      <p><strong>Return value:</strong> name of pixel format, such as "RAW10", "HDR12HL", etc</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>int val: BRESSERCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
+  </blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_Option<br/>Bressercam_get_Option</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned iOption: see table below</p>
+    <p>int iValue: see table below</p>
+  <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+    	<td width="28%">Option</td><td width="48%">Description</td><td width="4%">Default</td>
+    	<td width="20%">Can be changed when camera is running?<br/>(Before Bressercam_StartXXXX or after Bressercam_Stop)</td>
+	</tr><tr>
+        <td><a id="rawo">BRESSERCAM_OPTION_RAW</a></td>
+        <td>0 means RGB mode.<br/>1 means RAW mode, read the CMOS or CCD raw data.</td>
+        <td>0</td>
+        <td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_ISP</td>
+        <td>Enable hardware ISP:<br/>0 => auto (disable in RAW mode, otherwise enable)<br/>1 => enable<br/>-1 => disable</td>
+        <td>0(Auto)</td>
+        <td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_BITDEPTH</td>
+      	<td>Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.<br/>
+      	  0 = use 8 bitdepth.<br/>1 = use the maximum bitdepth of this camera.</td>
+      	<td>Model Specific</td>
+      	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TRIGGER</td>
+      	<td>0 = video mode<br/>
+      	  1 = software or simulated trigger mode<br/>
+      	  2 = external trigger mode<br/>
+		  <a id="mix">3 = external + software trigger</a></td>
+      <td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td><a id="rgb">BRESSERCAM_OPTION_RGB</a></td>
+      	<td>0 = RGB24<br/>
+			1 = RGB48 format when bitdepth &gt; 8<br/>
+			2 = RGB32<br/>
+			3 = 8 bits grey (only for mono camera)<br/>
+			4 = 16 bits grey (only for mono camera and bitdepth &gt; 8)<br/>
+            5 = RGB64 format when bitdepth &gt; 8</td>
+      	<td>0</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+      	<td><a id="bgr">BRESSERCAM_OPTION_BYTEORDER</a></td>
+      	<td>Byte order:<br/>1: BGR<br/>0: RGB</td>
+      	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
+      	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
+      </tr><tr>
+      	<td><a id="upsidedown">BRESSERCAM_OPTION_UPSIDE_DOWN</a></td>
+      	<td>Upside down:<br/>1: yes<br/>0: no<br/>
+			Please distinguish it from Bressercam_put_VFlip, which requires the CPU to perform data moving work on each frame of data</td>
+      	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FAN</td>
+      	<td>Some cameras support the cooling fan.<br/>
+      	  0 = turn off the cooling fan<br/>[1, max] = fan speed<br/>
+		  set to "-1" means to use default fan speed</td>
+      <td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TEC</td>
+      	<td>Some cameras support to turn on or off the thermoelectric cooler.<br/>
+      	  0 = turn off the thermoelectric cooler<br/>1 = turn on the thermoelectric cooler</td>
+      	<td>1</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TECTARGET</td>
+      	<td>get or set the target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃.<br/>
+		Set the target temperature to "-2730" or below means using the default for that model.</td>
+      	<td>Model Specific</td>
+      	<td>Yes</td>
+      </tr>tr>
+      	<td>BRESSERCAM_OPTION_TECTARGET_RANGE</td>
+      	<td>get the range of target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃.<br/>
+		min(low 16 bits) = (short)(val & 0xffff)<br/>max(high 16 bits) = (short)((val >> 16) & 0xffff)</td>
+      	<td>Model Specific</td>
+      	<td>Yes</td>
+      </tr><tr>
+      	<td><a id="aepolicy">BRESSERCAM_OPTION_AUTOEXP_POLICY</a></td>
+      	<td>Auto Exposure Policy:<br/>0: Exposure Only<br/>1: Exposure Preferred<br/>2: Gain Only<br/>3: Gain Preferred</td>
+      	<td>1</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_AUTOEXP_THRESHOLD</td>
+      	<td>threshold of auto exposure, range: [2~15]</td>
+      	<td>5</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FRAMERATE</td>
+      	<td>limit the frame rate.<br/>frame rate control is disabled automatically in trigger mode.</td>
+      	<td>0<br/>(means no limit)</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+      	<td><a id="blacklevel">BRESSERCAM_OPTION_BLACKLEVEL</a></td>
+      	<td>Black Level<br/>
+      			Always return E_NOTIMPL for camera that don't support black level.</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_MULTITHREAD</td>
+      	<td>multithread image processing</td>
+      	<td>1</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+      	<td><a id="binning">BRESSERCAM_OPTION_BINNING</a></td>
+      	<td>digital binning:<br/><br/>
+					0x01 (no binning)<br/><br/>
+                    n: (saturating add, n*n), 0x02(2*2), 0x03(3*3), 0x04(4*4), 0x05(5*5), 0x06(6*6), 0x07(7*7), 0x08(8*8). The Bitdepth of the data remains unchanged.<br/><br/>
+                    0x40 | n: (unsaturated add, n*n, works only in <a href="#rawo">RAW</a> mode), 0x42(2*2), 0x43(3*3), 0x44(4*4), 0x45(5*5), 0x46(6*6), 0x47(7*7), 0x48(8*8). The Bitdepth of the data is increased. For example, the original data with bitdepth of 12 will increase the bitdepth by 2 bits and become 14 after 2*2 binning.<br/><br/>
+                    0x80 | n: (average, n*n), 0x82(2*2), 0x83(3*3), 0x84(4*4), 0x85(5*5), 0x86(6*6), 0x87(7*7), 0x88(8*8). The Bitdepth of the data remains unchanged.<br/><br/>
+                    The final image size is rounded down to an even number, such as 640/3 to get 212</td>
+      	<td>1</td><td>Yes</td>
+      </tr><tr>
+      	<td><a id="rotate">BRESSERCAM_OPTION_ROTATE</a></td>
+      	<td>rotate clockwise: 0, 90, 180, 270</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_CG</td>
+      	<td>Conversion Gain:<br/>
+			0: LCG<br/>
+			1: HCG<br/>
+			2: HDR (for camera with flag BRESSERCAM_FLAG_CGHDR)<br/>
+			2: MCG (for camera with flag BRESSERCAM_FLAG_GHOPTO)</td>
+      	<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_PIXEL_FORMAT</td>
+      	<td><a id="pflist">BRESSERCAM_PIXELFORMAT_RAW8<br/>
+BRESSERCAM_PIXELFORMAT_RAW10<br/>
+BRESSERCAM_PIXELFORMAT_RAW12<br/>
+BRESSERCAM_PIXELFORMAT_RAW14<br/>
+BRESSERCAM_PIXELFORMAT_RAW16<br/>
+BRESSERCAM_PIXELFORMAT_YUV411<br/>
+BRESSERCAM_PIXELFORMAT_VUYY<br/>
+BRESSERCAM_PIXELFORMAT_YUV444<br/>
+BRESSERCAM_PIXELFORMAT_RGB888<br/>
+BRESSERCAM_PIXELFORMAT_GMCY8 (map to RGGB 8 bits)<br/>
+BRESSERCAM_PIXELFORMAT_GMCY12 (map to RGGB 12 bits)<br/>
+BRESSERCAM_PIXELFORMAT_UYVY<br/>
+BRESSERCAM_PIXELFORMAT_RAW12PACK<br/>
+BRESSERCAM_PIXELFORMAT_RAW11<br/>
+BRESSERCAM_PIXELFORMAT_HDR8HL (HDR, Bitdepth: 8, Conversion Gain: High + Low)<br/>
+BRESSERCAM_PIXELFORMAT_HDR10HL (HDR, Bitdepth: 10, Conversion Gain: High + Low)<br/>
+BRESSERCAM_PIXELFORMAT_HDR11HL (HDR, Bitdepth: 11, Conversion Gain: High + Low)<br/>
+BRESSERCAM_PIXELFORMAT_HDR12HL (HDR, Bitdepth: 12, Conversion Gain: High + Low)<br/>
+BRESSERCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a></td>
+      	<td>Model Specific</td>
+      	<td>Yes.<br/>But not recommended to modify too frequently while camera is running, it's relatively heavy operation.</td>
+      </tr><tr>
+      	<td><a id="ddrdepth">BRESSERCAM_OPTION_DDR_DEPTH</a></td>
+      	<td>the number of the frames that DDR can cache:<br/>
+		                    1: DDR cache only one frame<br/>
+                            0: Auto:
+                                   <blockquote>=&gt; one for video mode when auto exposure is enabled</blockquote>
+                                   <blockquote>=&gt; full capacity for others</blockquote>
+                            -1: DDR can cache frames to full capacity</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td><a id="ffc">BRESSERCAM_OPTION_FFC</a></td>
+      	<td>Flat Field Correction:<br/>
+					set:
+                        <blockquote>0: disable<br/>
+                        1: enable<br/>
+						-1: reset<br/>
+                        (0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                    get:
+                        <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
+                        ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
+                        ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td><a id="dfc">BRESSERCAM_OPTION_DFC</a></td>
+      	<td>Dark Field Correction:<br/>
+					set:
+                        <blockquote>0: disable<br/>
+                        1: enable<br/>
+						-1: reset<br/>
+                        (0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                    get:
+                        <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
+                        ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
+                        ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FPNC</td>
+      	<td>Fixed Pattern Noise Correction:<br/>
+					set:
+                        <blockquote>0: disable<br/>
+                        1: enable<br/>
+						-1: reset<br/>
+                        (0xff000000 | n): set the average number to n, [1~255]</blockquote>
+                    get:
+                        <blockquote>(val &amp; 0xff): 0 =&gt; disable, 1 =&gt; enable, 2 =&gt; inited<br/>
+                        ((val &amp; 0xff00) &gt;&gt; 8): sequence<br/>
+                        ((val &amp; 0xff0000) &gt;&gt; 16): average number</blockquote></td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_SHARPENING</td>
+      	<td>Sharpening, (threshold &lt;&lt; 24) | (radius &lt;&lt; 16) | strength)
+						<blockquote>strength: [0, 500], default: 0 (disable)<br/>
+						radius: [1, 10]<br/>
+						threshold: [0, 255]</blockquote>
+		</td>
+      	<td>strength: Model Specific<br/>radius: 2<br/>threshold: 0</td>
+      	<td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FACTORY</td>
+      	<td>restore the factory settings</td>
+      	<td>Always 0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TEC_VOLTAGE</td>
+      	<td>get the current TEC voltage in 0.1V, 59 mean 5.9V;<br/>
+					Please do not get this value too frequently, the recommended interval is 2 seconds or more</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TEC_VOLTAGE_MAX</td>
+      	<td>TEC maximum voltage in 0.1V</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TEC_VOLTAGE_MAX_RANGE</td>
+      	<td>get the TEC maximum voltage range in 0.1V<br/>high 16 bits: max<br/>low 16 bits: min</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_POWER</td>
+      	<td>get power consumption, unit: milliwatt</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_GLOBAL_RESET_MODE</td>
+      	<td>global reset mode</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_DEVICE_RESET</td>
+      	<td>reset usb device, simulate a replug</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FOCUSPOS</td>
+      	<td>focus positon</td>
+      	<td>NA</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_AFMODE</td>
+      	<td>auto focus mode: see BressercamAFMode</td>
+      	<td>NA</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_AFSTATUS</td>
+      	<td>auto focus status: see BressercamAFStaus</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TESTPATTERN</td>
+      	<td>test pattern:<br/>0: off<br/>3: monochrome diagonal stripes<br/>5: monochrome vertical stripes<br/>7: monochrome horizontal stripes<br/>9: chromatic diagonal stripes</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="noframe">TBRESSERCAM_OPTION_NOFRAME_TIMEOUT</a></td>
+        <td>Timeout for grabbing no frame. Trigger an event when no frame is acquired within the set time, see <a href="#evnoframe">BRESSERCAM_EVENT_NOFRAMETIMEOUT</a><br/>
+          0 =&gt; disable<br/>
+          positive value (&gt;=BRESSERCAM_NOFRAME_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
+        <td>0</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="nopacket">BRESSERCAM_OPTION_NOPACKET_TIMEOUT</a></td>
+        <td>Timeout for grabbing no packet. Trigger an event when no packet is acquired within the set time, see <a href="#evnopacket">BRESSERCAM_EVENT_NOPACKETTIMEOUT</a><br/>
+          0 =&gt; disable<br/>
+          positive value (&gt;=BRESSERCAM_NOPACKET_TIMEOUT_MIN) =&gt; timeout milliseconds</td>
+        <td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_BANDWIDTH</td>
+        <td>bandwidth, range:[1-100]%<br/>After setting the bandwidth, get the accurate precise rate range, and then set the precise frame rate</td>
+		<td>100</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_MAX_PRECISE_FRAMERATE</td>
+        <td>get the precise frame maximum value in 0.1fps, such as 115 means 11.5fps<br/>
+          the maximum value depends the bandwidth/resolution/bitdepth/ROI<br/>
+          The return value is E_UNEXPECTED if camera is NOT running, E_NOTIMPL means not supported</td>
+		<td>NA</td><td>NA</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_MIN_PRECISE_FRAMERATE</td>
+        <td>get the precise frame minimum value in 0.1fps, such as 15 means 1.5fps<br/>
+          the minimum value depends the bandwidth/resolution/bitdepth/ROI<br/>
+          The return value is E_UNEXPECTED if camera is NOT running, E_NOTIMPL means not supported</td>
+		<td>NA</td><td>NA</td>
+      </tr><tr>
+        <td><a id="precise">BRESSERCAM_OPTION_PRECISE_FRAMERATE</a></td>
+        <td>in 0.1fps, such as 115 means 11.5fps. range:[1~maximum]</td>
+		<td>90% of the maximum</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="reload">BRESSERCAM_OPTION_RELOAD</a></td>
+        <td>Reload the last frame in the trigger mode<br/>
+        get return value S_OK means supporting this feature, E_NOTIMPL means not supported</td>
+		<td>NA</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_CALLBACK_THREAD</td>
+        <td>dedicated thread for callback, only available in pull mode:<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>0</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+        <td><a id="frontend">BRESSERCAM_OPTION_FRONTEND_DEQUE_LENGTH</a><br/>or<br/>BRESSERCAM_OPTION_FRAME_DEQUE_LENGTH</td>
+        <td>frontend (raw) frame deque length, range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
+		<td>4</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+        <td><a id="backend">BRESSERCAM_OPTION_BACKEND_DEQUE_LENGTH</a></td>
+        <td>backend (pipelined) frame deque length (Only available in pull mode), range: [2, 1024]<br/>All the memory will be pre-allocated when the camera starts, so, please attention to memory usage</td>
+		<td>3</td>
+      	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_SEQUENCER_ONOFF</td>
+        <td>sequencer trigger: on/off</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_SEQUENCER_NUMBER</td>
+        <td>sequencer trigger: number, range = [1, 255]</td>
+		<td>NA</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_SEQUENCER_EXPOTIME</td>
+        <td>sequencer trigger: exposure time<br/>iOption = BRESSERCAM_OPTION_SEQUENCER_EXPOTIME | index<br/>iValue = exposure time (no 50/60 HZ constraint)<br/><br/>
+		For example, to set the exposure time of the third group to 50ms, call<br/>Bressercam_put_Option(BRESSERCAM_OPTION_SEQUENCER_EXPOTIME | 3, 50000)</td>
+		<td>NA</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_SEQUENCER_EXPOGAIN</td>
+        <td>sequencer trigger: exposure gain<br/>iOption = BRESSERCAM_OPTION_SEQUENCER_EXPOGAIN | index<br/>iValue = gain</td>
+		<td>NA</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="denoise">BRESSERCAM_OPTION_DENOISE</a></td>
+        <td>Denoise<br/>
+		strength range: [0, 100], 0 means disable</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="heatmax">BRESSERCAM_OPTION_HEAT_MAX</a></td>
+        <td>get maximum level: heat to prevent fogging up<br/>
+		[0, max], 0 means off</td>
+		<td>NA</td><td>NA</td>
+      </tr><tr>
+        <td><a id="heat">BRESSERCAM_OPTION_HEAT</a></td>
+        <td>heat to prevent fogging up</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_LIGHTSOURCE_MAX</td>
+        <td>get maximum level: light source<br/>
+		[0, max], 0 means off</td>
+		<td>NA</td><td>NA</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_LIGHTSOURCE</td>
+        <td>light source level</td>
+		<td>50% max level</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="heartbeat">BRESSERCAM_OPTION_HEARTBEAT</a></td>
+        <td>Heartbeat interval in millisecond<br/>range: [BRESSERCAM_HEARTBEAT_MIN, BRESSERCAM_HEARTBEAT_MAX]<br/>0: disable</td>
+		<td>disable</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="hwoption">TOUCPAM_OPTION_EVENT_HARDWARE</a></td>
+        <td>enable or disable hardware event notify: 0 =&gt; disable, 1 =&gt; enable
+        <blockquote>(1) iOption = BRESSERCAM_OPTION_EVENT_HARDWARE, master switch for notification of all hardware events<br/>
+        (2) iOption = BRESSERCAM_OPTION_EVENT_HARDWARE | <a href="#hwevent">(event type)</a>, a specific type of sub-switch</blockquote>
+        Only if both the master switch and the sub-switch of a specific type remain on are actually enabled for that type of event notification.<br/>
+		see <a href="#hwevent">here</a> and <a href="#hwflag">here</a></td>
+		<td>disable</td>
+		<td>Master switch: <b>No</b><br/>
+        Sub-switch: Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_LOW_POWERCONSUMPTION</td>
+        <td>Low Power Consumption:<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td><a id="lownoise">BRESSERCAM_OPTION_LOW_NOISE</a></td>
+        <td>low noise mode (Higher signal noise ratio, lower frame rate):<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_HIGH_FULLWELL</td>
+        <td>high fullwell capacity:<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_AUTOEXPOSURE_PERCENT</td>
+        <td>Peak mode of brightness calculation method: Calculate the average brightness of specified percentage top brightest pixels in interest area. Enable this option when the background is dark and the target is overexposed in average mode. Frame rate may be affected when this option is enabled due to higher CPU consumption<br/>
+        1~99: average brightness of specified percentage top brightest pixels in ROI<br/>
+        0 or 100: average brightness of whole pixels in ROI, means "disabled"</td>
+		<td>0(Disabled)</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_DEFECT_PIXEL</td>
+        <td>Defect Pixel Correction<br/>0 =&gt; disable, 1 =&gt; enable</td>
+		<td>enable (1)</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_HDR_KB</td>
+        <td>HDR synthesize<br/>K (high 16 bits): [1, 25500]<br/>B (low 16 bits): [0, 65535]<br/>0xffffffff => set to default</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_HDR_THRESHOLD</td>
+        <td>HDR synthesize<br/>threshold: [1, 4094]<br/>0xffffffff => set to default</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_DYNAMIC_DEFECT</td>
+        <td>Dynamic Defect Pixel Correction<br/>threshold, t1: (high 16 bits): [10, 100], means: [1.0, 10.0]<br/>value, t2: (low 16 bits): [0, 100], means: [0.00, 1.00]</td>
+		<td>disable (t1=10, t2=0)</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_ANTI_SHUTTER_EFFECT</td>
+        <td>anti shutter effect: 1 =&gt; disable, 0 =&gt; disable</td>
+		<td>disable (0)</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_OVERCLOCK_MAX</td>
+        <td>maximum overclock</td>
+		<td>NA</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_OVERCLOCK</td>
+        <td>overclock</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_RESET_SENSOR</td>
+        <td>reset sensor</td>
+		<td>NA</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_CHAMBER_HT</td>
+        <td>get chamber humidity &amp; temperature:<br/>
+        high 16 bits: humidity, in 0.1%, such as: 325 means humidity is 32.5%<br/>
+        low 16 bits: temperature, in 0.1 degrees Celsius, such as: 32 means 3.2 degrees Celsius</td>
+		<td>NA</td><td>NA</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_ENV_HT</td>
+        <td>get environment humidity &amp; temperature</td>
+		<td>NA</td><td>NA</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_EXPOSURE_PRE_DELAY</td>
+        <td>exposure signal pre-delay, microsecond</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_EXPOSURE_POST_DELAY</td>
+        <td>exposure signal post-delay, microsecond</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_LINE_PRE_DELAY</td>
+        <td>specified line signal pre-delay, microsecond</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_LINE_POST_DELAY</td>
+        <td>specified line signal post-delay, microsecond</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_AUTOEXPO_CONV</td>
+        <td>get auto exposure convergence status:<br/>1(YES) or 0(NO), -1(NA)</td>
+		<td></td>
+		<td>NA</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_AUTOEXP_EXPOTIME_DAMP</td>
+        <td>Auto exposure damping coefficient: time (thousandths)<br/>The larger the damping coefficient, the smoother and slower the exposure time changes</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_AUTOEXP_GAIN_STEP</td>
+        <td>Auto exposure damping coefficient: gain (thousandths)<br/>The larger the damping coefficient, the smoother and slower the gain changes</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_OVEREXP_POLICY</td>
+        <td>Auto exposure over exposure policy: when overexposed,<br/>
+			<blockquote>0 =&gt; directly reduce the exposure time/gain to the minimum value; or<br/>
+			1 =&gt; reduce exposure time/gain in proportion to current and target brightness; or<br/>
+			n(n>1) =&gt; first adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1</blockquote><br/>
+		The advantage of policy 0 is that the convergence speed is faster, but there is black screen.<br/>
+		Policy 1 avoids the black screen, but the convergence speed is slower.</td>
+		<td>0</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_AUTOEXPO_TRIGGER</td>
+        <td>auto exposure on trigger mode:<br/>1(Enable) or 0(Disable)</td>
+		<td>0</td><td>Yes</td>
+		</tr><tr>
+		<td>BRESSERCAM_OPTION_AWB_CONTINUOUS</td>
+		<td>Auto White Balance: continuous mode<br/><blockquote>
+			0:  disable<br/>
+			n>0: every n millisecond(s)<br/>
+			n<0: every -n frame</blockquote>
+		</td><td>0 (Disable)</td><td>Yes</td>
+      </tr><tr>
+        <td>BRESSERCAM_OPTION_THREAD_PRIORITY</td>
+        <td>set the priority of the internal thread which grab data from the usb device.<br/>
+          Win:<blockquote>0 = THREAD_PRIORITY_NORMAL;<br/>1 = THREAD_PRIORITY_ABOVE_NORMAL;<br/>2 = THREAD_PRIORITY_HIGHEST;<br/>3 = THREAD_PRIORITY_TIME_CRITICAL;<br/>Please refer to <a href="https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority" target="_blank">SetThreadPriority</a></blockquote>
+		  Linux &amp; macOS: <blockquote>The high 16 bits for the scheduling policy, and the low 16 bits for the priority.<br/>
+		  Please refer to <a href="https://linux.die.net/man/3/pthread_setschedparam" target="_blank">pthread_setschedparam</a>
+		  </blockquote></td>
+        <td>Win: 1<br/>Linux / macOS: NA</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_LINEAR</td>
+      	<td>Builtin linear tone mapping:<br/>0 = turn off<br/>1 = turn on</td>
+      	<td>1</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_CURVE</td>
+      	<td>Builtin curve tone mapping:<br/>0 = turn off<br/>
+      	  1 = turn on polynomial<br/>
+		  2 = turn on logarithmic</td>
+      	<td>2</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_COLORMATIX</td>
+      	<td>0 = turn off the builtin color matrix<br/>
+      	  1 = turn on the builtin color matrix</td>
+      	<td>1</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_WBGAIN</td>
+      	<td>0 = turn off the builtin white balance gain<br/>
+      	  1 = turn on the builtin white balance gain</td>
+      	<td>1</td><td>Yes</td>
+      </tr><tr>
+      	<td width="28%"><a id="demosaic">BRESSERCAM_OPTION_DEMOSAIC</a></td>
+      	<td width="48%">Demosaic mothod for both video and still image: (Please refrence <a href="https://en.wikipedia.org/wiki/Demosaicing">https://en.wikipedia.org/wiki/Demosaicing</a>)<br/>
+      			0 = BILINEAR<br/>
+      			1 = VNG(Variable Number of Gradients)<br/>
+      			2 = PPG(Patterned Pixel Grouping)<br/>
+      			3 = AHD(Adaptive Homogeneity Directed)<br/>
+				4 = EA(Edge Aware)<br/>
+      			Always return E_NOTIMPL for monochromatic camera.</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_DEMOSAIC_VIDEO</td>
+      	<td>Demosaic mothod for video</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_DEMOSAIC_STILL</td>
+      	<td>Demosaic mothod for still image</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_OPEN_USB_ERRORCODE</td>
+      	<td>get the open usb error code</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FLUSH</td>
+      	<td>1: hard flush, discard frames cached by camera DDR (if any)<br/>
+		2: soft flush, discard frames cached by bressercam.dll (if any)<br/>
+		3: both<br/>
+		Bressercam_Flush means 'both'<br/>
+        return the number of soft flushed frames if successful, <a href="#hresult">HRESULT</a> if failed</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_READOUT_MODE</td>
+      	<td>Readout mode:<br/>
+		0 = IWR (Integrate While Read)<br/>
+		1 = ITR (Integrate Then Read)</td>
+      	<td>NA</td><td>YES</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_TAILLIGHT</td>
+      	<td>Turn on/off tail Led light:<br/>
+		0 =&gt; off<br/>
+		1 =&gt; on</td>
+      	<td>1</td><td>YES</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_PSEUDO_COLOR_START</td>
+      	<td>Pseudo: start color, BGR format</td>
+      	<td>NA</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_PSEUDO_COLOR_END</td>
+      	<td>Pseudo: end color, BGR format</td>
+      	<td>NA</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_PSEUDO_COLOR_ENABLE</td>
+      	<td>Pseudo:<br/>-1 => custom: use startcolor &amp; endcolor to generate the colormap<br/>
+                                                                    0 =&gt; disable<br/>
+                                                                    1 =&gt; spot<br/>
+                                                                    2 =&gt; spring<br/>
+                                                                    3 =&gt; summer<br/>
+                                                                    4 =&gt; autumn<br/>
+                                                                    5 =&gt; winter<br/>
+                                                                    6 =&gt; bone<br/>
+                                                                    7 =&gt; jet<br/>
+                                                                    8 =&gt; rainbow<br/>
+                                                                    9 =&gt; deepgreen<br/>
+                                                                    10 =&gt; ocean<br/>
+                                                                    11 =&gt; cool<br/>
+                                                                    12 =&gt; hsv<br/>
+                                                                    13 =&gt; pink<br/>
+                                                                    14 =&gt; hot<br/>
+                                                                    15 =&gt; parula<br/>
+                                                                    16 =&gt; magma<br/>
+                                                                    17 =&gt; inferno<br/>
+                                                                    18 =&gt; plasma<br/>
+                                                                    19 =&gt; viridis<br/>
+                                                                    20 =&gt; cividis<br/>
+                                                                    21 =&gt; twilight<br/>
+                                                                    22 =&gt; twilight_shifted<br/>
+                                                                    23 =&gt; turbo<br/>
+																	24 =&gt; red<br/>
+																	25 =&gt; green<br/>
+																	26 =&gt; blue</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_NUMBER_DROP_FRAME</td>
+      	<td>get the number of frames that have been grabbed from the USB but dropped by the software</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_DUMP_CFG</td>
+      	<td>0 = when camera is stopped, do not dump configuration automatically<br/>
+            1 = when camera is stopped, dump configuration automatically<br/>
+            -1 = explicitly dump configuration once</td>
+      	<td>1</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FRONTEND_DEQUE_CURRENT</td>
+      	<td>get the current number in frontend deque</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_BACKEND_DEQUE_CURRENT</td>
+      	<td>get the current number in backend deque</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_PACKET_NUMBER</td>
+      	<td>get the received packet number</td>
+      	<td>NA</td><td>NA</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_GIGETIMEOUT</td>
+      	<td>For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive. If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection. When the application is stopped by the debugger, the application cannot create the heartbeat signals.<br/>
+		0 =&gt; auto: when the camera is opened, disable if debugger is present or enable if no debugger is present<br/>
+		1 =&gt; enable<br/>
+		2 =&gt; disable</td>
+      	<td>0</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FILTERWHEEL_SLOT</td>
+      	<td>filter wheel slot number</td>
+      	<td>7</td><td>Yes</td>
+      </tr><tr>
+      	<td>BRESSERCAM_OPTION_FILTERWHEEL_POSITION</td>
+      	<td>filter wheel position:<br/>
+					set:
+                        <blockquote>-1: calibrate<br/>
+                        val &amp; 0xff: position between 0 and N-1, where N is the number of filter slots<br/>
+						(val &gt;&gt; 8) &amp; 0x1: direction, 0 =&gt; clockwise spinning, 1 =&gt; auto direction spinning</blockquote>
+                    get:
+                        <blockquote>-1: in motion<br/>
+                        val: position arrived</blockquote>
+        </td>
+      	<td>NA</td><td>Yes</td>
+</tr></table></div></blockquote><blockquote>
+	<p><strong>Important:</strong></p>
+<p><strong>a. Some options cannot be changed while the camera is running.</strong></p>
+  <p><strong>b. <a id="wrongthread3">It is forbidden to call Bressercam_put_Option with BRESSERCAM_OPTION_TRIGGER, BRESSERCAM_OPTION_BITDEPTH, BRESSERCAM_OPTION_PIXEL_FORMAT, BRESSERCAM_OPTION_BINNING, BRESSERCAM_OPTION_ROTATE in the callback context of PBRESSERCAM_EVENT_CALLBACK and PBRESSERCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</a></strong></p>
+  <p>c. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
+</blockquote></li></ul><ul><li><h2><font color="#0000FF"><a id="realtime">Bressercam_put_RealTime<br/>Bressercam_get_RealTime</a></font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>int val:</p>
+    <blockquote>0: stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full<br/>
+    1: realtime
+          <blockquote>use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full<br/>
+          If DDR present, also limit the DDR frame buffer to only one frame.</blockquote>
+    2: soft realtime
+          <blockquote>Drop the oldest frame when the queue is full and then enqueue the new frame</blockquote>
+    </blockquote></blockquote>
+    <p><strong>Remarks:</strong> If you set RealTime mode as 1, then you get shorter frame delay but lower frame rate which damages fluency. The default value is 0.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_AutoExpoEnable<br/>Bressercam_put_AutoExpoEnable<br/>Bressercam_get_AutoExpoTarget<br/>
+Bressercam_put_AutoExpoTarget<br/>Bressercam_put_MaxAutoExpoTimeAGain<br/>Bressercam_put_AutoExpoRange<br/>Bressercam_get_AutoExpoRange<br/>
+Bressercam_get_MaxAutoExpoTimeAGain<br/>Bressercam_put_MinAutoExpoTimeAGain<br/>Bressercam_get_MinAutoExpoTimeAGain</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p><a id="aexpo">int bAutoExposure:</a></p>
+		<blockquote>0: disable auto exposure<br/>
+		1: auto exposure continue mode<br/>
+		2: auto exposure once mode</blockquote>
+      <p>unsigned short Target: auto-exposure target</p>
+      <p>unsigned maxTime, unsigned short maxAGain: the maximum time and maximum gain of auto exposure. The default values are 350ms and 500.</p>
+	  <p>unsigned minTime, unsigned short minAGain: the minimal time and minimal gain of auto exposure. The default values are 0 and 100.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> If auto exposure is enabled, the exposure time and gain are controlled by software to make the average brightness of the target rectangle as close as possible to the auto exposure target. The auto exposure target value is the target brightness of the target rectangle (see Bressercam_put_AEAuxRect, Bressercam_get_AEAuxRect).</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_ExpoTime<br/>Bressercam_put_ExpoTime<br/>Bressercam_get_ExpTimeRange<br/>Bressercam_get_RealExpoTime</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned Time: exposure time, unit: microsecond</p>
+      <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> exposure time related. Bressercam_get_RealExpoTime get the real exposure time based on 50HZ/60HZ.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_ExpoAGain<br/>Bressercam_put_ExpoAGain<br/>Bressercam_get_ExpoAGainRange</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned short AGain: gain, shown in percentage, eg, 200 means the gain is 200%</p>
+      <p>unsigned short* nMin, unsigned short* nMax, unsigned short* nDef: the minimum, maximum and default value of gain.</p>
+    </blockquote>
+  <p><strong>Remarks:</strong> gain related.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_Hue<br/>Bressercam_get_Hue<br/>Bressercam_put_Saturation<br/>Bressercam_get_Saturation<br/>
+Bressercam_put_Brightness<br/>Bressercam_get_Brightness<br/>Bressercam_get_Contrast<br/>Bressercam_put_Contrast<br/>Bressercam_get_Gamma<br/>Bressercam_put_Gamma</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HBressercam h: camera handle</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> set or get hue, saturation, brightness, contrast and gamma.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_Chrome<br/>Bressercam_put_Chrome</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>int bChrome: 1(monochromatic) or color(0)</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> color or monochromatic mode</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_VFlip<br/>Bressercam_put_VFlip<br/>Bressercam_get_HFlip<br/>Bressercam_put_HFlip</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong> HBressercam h: camera handle</p>
+      <p><strong>Remarks:</strong> vertical/horizontal flip.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_Speed<br/>Bressercam_get_Speed<br/>Bressercam_get_MaxSpeed</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned short nSpeed: frame rate level</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> the minimum frame rate level is "0", the maximum one can be achieved through Function "Bressercam_get_MaxSpeed" which equals to maxspeed in BressercamModelV2.<br/>
+	For some cameras that support the so-called <a href="#precise">precise frame rate</a>, it is recommended to use precise frame rate control. In order to maintain compatibility, Speed is still valid, and the mapping mechanism is: MaxSpeed is 9 (10 levels in total), corresponding to the maximum frame rate when Bandwidth is from 10% to 100%. For example, set the speed to 8, which is equivalent to: The precise frame rate is set to the maximum frame rate with bandwith is set to 90%.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_HZ<br/>Bressercam_get_HZ</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>int nHZ: 0: 60Hz alternating current, 1: 50Hz alternating current, 2: direct current</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> set the light source power frequency</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_Temperature<br/>Bressercam_put_Temperature</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure, E_NOTIMPL means not supporting get or set the temperature</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>short nTemperature: in 0.1℃ (32 means 3.2℃, -35 means -3.5℃). Set "-2730" or below means using the default value of this model.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> get the temperature of the sensor. see BRESSERCAM_FLAG_GETTEMPERATURE.</p>
+	<blockquote><p>set the target temperature of the sensor, equivalent to Bressercam_put_Option(, BRESSERCAM_OPTION_TECTARGET, ).</p></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_Mode<br/>Bressercam_get_Mode</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>int bSkip: Bin mode or Skip mode.</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> set Bin mode or Skip mode. Cameras with higher resolution can support two sampling modes, one is Bin mode (Neighborhood averaging), the other is Skip (sampling extraction). In comparison, the former is with better image effect but decreasing frame rate while the latter is just the reverse.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_TempTint<br/>Bressercam_get_TempTint</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+      <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HBressercam h: camera handle</p>
+    	<p>int nTemp, int nTint: color temperature and Tint</p>
+	</blockquote>
+  <p><strong>Remarks:</strong> set/get the color temperature and Tint parameters of white balance (Temp/Tint Mode, please see <a href="#wb">here</a>).</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_AwbOnce</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int Temp/Tint mode. Does not work int RGB Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>PIBRESSERCAM_TEMPTINT_CALLBACK funTT, void* ctxTT: callback function and callback context when the automatic white balance completes.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in Temp/Tint Mode. When the "auto white balance" completes, BRESSERCAM_EVENT_TEMPTINT event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_WhiteBalanceGain<br/>Bressercam_get_WhiteBalanceGain</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint Gain mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+      <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HBressercam h: camera handle</p>
+    	<p>int aGain[3]: RGB Gain</p>
+	</blockquote>
+  <p><strong>Remarks:</strong> set/get the RGB gain parameters of white balance (RGB Gain Mode, please see <a href="#wb">here</a>).</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_AwbInit</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. Works int RGB Gain mode. Does not work int Temp/Tint mode, E_NOTIMPL will be return. For mono camera, return value always is E_NOTIMPL.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>PIBRESSERCAM_WHITEBALANCE_CALLBACK funWB, void* ctxWB: callback function and callback context when the automatic white balance completes.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Call this function to perform one "auto white balance" in RGB Gain Mode. When the "auto white balance" completes, BRESSERCAM_EVENT_WBGAIN event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
+</li></ul><ul><li><h2><a id="black"><font color="#0000FF">Bressercam_AbbOnce</font></a></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. For mono camera, return value always is E_NOTIMPL.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>PIBRESSERCAM_BLACKBALANCE_CALLBACK funBB, void* ctxBB: callback function and callback context when the automatic black balance completes.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Call this function to perform one "auto black balance". When the "auto black balance" completes, BRESSERCAM_EVENT_BLACK event notify the application (In Pull Mode) and callback happens. In pull mode, this callback is useless, set it to NULL.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_BlackBalance<br/>Bressercam_get_BlackBalance</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
+      <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>HBressercam h: camera handle</p>
+    	<p>unsigned short aSub[3]: RGB Offset</p>
+	</blockquote>
+  <p><strong>Remarks:</strong> set/get the RGB offset parameters of black balance.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_AWBAuxRect<br/>Bressercam_get_AWBAuxRect<br/>Bressercam_put_AEAuxRect<br/>Bressercam_get_AEAuxRect<br/>Bressercam_put_ABBAuxRect<br/>Bressercam_get_ABBAuxRect</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+      <blockquote><p>HBressercam h: camera handle</p></blockquote>
+      <p><strong>Remarks:</strong> set/get the rectangle of automatic white balance and auto-exposure and automatic black balance. The default Rectangle is in the center of the image, its width is 20% image with, its height is 20% image height.</p>
+	  <p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
+	  <p>For mono camera, white balance and black balance always return E_NOTIMPL.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_MonoMode</font></h2>
+    <p><strong>Return value: </strong> S_OK means mono mode, S_FALSE means color mode</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+    	<p>Bressercam h: camera handle</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> grey camera or not, find the flag in BressercamModelV2: BRESSERCAM_FLAG_MONO</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_MaxBitDepth</font></h2>
+    <p><strong>Return value: </strong> the maximum bitdepth this camera supports.</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote><p>HBressercam h: camera handle</p></blockquote>
+    <p><strong>Remarks:</strong> Some cameras support the bitdepth which is more than 8 such as 10, 12, 14, 16.</p>
+</li></ul><ul><li>
+    <h2><font color="#0000FF">Bressercam_get_StillResolutionNumber<br/>Bressercam_get_StillResolution</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned nResolutionIndex: resolution index</p>
+      <p>int* pWidth, int* pHeight: width/height</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Bressercam_get_StillResolutionNumber means the number of supported still resolution. Take UCMOS03100KPA as an example, if we call the function Bressercam_get_StillResolutionNumber and get "3", which means it can support three kinds of resolution. If it doesn't support "still snap", then we get "0". Bressercam_get_Resolution gs the width/height of each kind of resolution.</p>
+</li></ul><ul><li>
+    <h2><font color="#0000FF">Bressercam_get_SerialNumber<br/>Bressercam_get_FwVersion<br/>Bressercam_get_HwVersion<br/>Bressercam_get_ProductionDate<br/>Bressercam_get_Revision</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>char sn[32]: buffer to the serial number, such as: TP110826145730ABCD1234FEDC56787</p>
+    <p>char fwver[16]: buffer to the firmware version, such as: 3.2.1.20140922</p>
+    <p>char hwver[16]: buffer to the hardware version, such as: 3.12</p>
+    <p>char pdate[10]: buffer to the production date, such as: 20150327</p>
+	<p>unsigned short pRevision: revision</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> each camera has a unique serial number with 31 letters.</p>
+</li></ul><ul><li>
+    <h2><font color="#0000FF">Bressercam_get_PixelSize</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned nResolutionIndex: resolution index</p>
+    <p>float* x, float* y: sensor physical pixel size, such as 2.4μm × 2.4μm</p>
+  </blockquote>
+</li></ul><ul><li>
+    <h2><font color="#0000FF">Bressercam_put_LEDState</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned short iLed: the index of LED light</p>
+    <p>unsigned short iState: LED status, 1 =&gt; Ever bright; 2 =&gt; Flashing; other =&gt; Off</p>
+    <p>unsigned short iPeriod: Flashing Period (&gt;= 500ms)</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> One or more LED lights installed on some camera. This function controls the status of these lights.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_read_EEPROM<br/>Bressercam_write_EEPROM</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned addr: EEPROM address</p>
+    <p>const unsigned char* pBuffer: data buffer to be written</p>
+    <p>unsigned char* pBuffer: read EEPROM to buffer</p>
+    <p>unsigned nBufferLen: buffer length</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> In some cameras, EEPROM is available for read and write. If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_IoControl</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>unsigned ioLineNumber:</p>
+	<blockquote>0 =&gt; Opto-isolated input<br/>
+    1 =&gt; Opto-isolated output<br/>
+    2 =&gt; GPIO0<br/>
+    3 =&gt; GPIO1</blockquote>
+    <p>unsigned nType: type of control</p>
+    <p>int outVal: output control value</p>
+	<p>int* inVal: input control value</p>
+<div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+        <td width="28%">BRESSERCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
+        <td width="72%">get the supported mode:<br/>0x01 =&gt; Input<br/>0x02 =&gt; Output<br/>(0x01 | 0x02) =&gt; support both Input and Output</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_GPIODIR</td>
+        <td rowspan="2">0x00 =&gt; Input, 0x01 =&gt; Output</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_GPIODIR</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_FORMAT</td>
+        <td rowspan="2">format:<br/>0x00 =&gt; not connected<br/>0x01 =&gt; Tri-state<br/>0x02 =&gt; TTL<br/>0x03 =&gt; LVDS<br/>0x04 =&gt; RS422<br/>0x05 =&gt; Opto-coupled</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_FORMAT</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_OUTPUTINVERTER</td>
+        <td rowspan="2">boolean, only support output signal</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_OUTPUTINVERTER</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_INPUTACTIVATION</td>
+        <td rowspan="2">0x00 =&gt; Rising edge, 0x01 =&gt; Falling edge, 0x02 =&gt; Level high, 0x03 =&gt; Level low</td>
+      </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_INPUTACTIVATION</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_DEBOUNCERTIME</td>
+   <td rowspan="2">debouncer time in microseconds, [0, 20000]</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_DEBOUNCERTIME</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_TRIGGERSOURCE</td>
+   <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>
+                                0x01 =&gt; GPIO0<br/>
+                                0x02 =&gt; GPIO1<br/>
+                                0x03 =&gt; Counter<br/>
+                                0x04 =&gt; PWM<br/>
+                                0x05 =&gt; Software</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_TRIGGERSOURCE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_TRIGGERDELAY</td>
+   <td rowspan="2">Trigger delay time in microseconds, [0, 5000000]</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_TRIGGERDELAY</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_BURSTCOUNTER</td>
+   <td rowspan="2">Burst Counter, range: [1 ~ 65535]</td>
+ </tr><tr>
+   <td>BRESSERCAM_IOCONTROLTYPE_SET_BURSTCOUNTER</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_COUNTERSOURCE</td>
+   <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>0x01 =&gt; GPIO0<br/>0x02 =&gt; GPIO1</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_COUNTERSOURCE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_COUNTERVALUE</td>
+   <td rowspan="2">Counter Value, range: [1 ~ 65535]</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_COUNTERVALUE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_RESETCOUNTER</td><td></td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_PWMSOURCE</td>
+   <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>
+		0x01 =&gt; GPIO0<br/>
+		0x02 =&gt; GPIO1</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_PWMSOURCE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_OUTPUTMODE</td>
+   <td rowspan="2">0x00 =&gt; Frame Trigger Wait<br/>
+                                0x01 =&gt; Exposure Active<br/>
+                                0x02 =&gt; Strobe<br/>
+                                0x03 =&gt; User output<br/>
+                                0x04 =&gt; Counter Output<br/>
+                                0x05 =&gt; Timer Output</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_OUTPUTMODE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_STROBEDELAYMODE</td>
+   <td rowspan="2">boolean, 0 =&gt; pre-delay, 1 =&gt; delay; compared to exposure active signal</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_STROBEDELAYMODE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_STROBEDELAYTIME</td>
+   <td rowspan="2">Strobe delay or pre-delay time in microseconds, [0, 5000000]</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_STROBEDELAYTIME</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_STROBEDURATION</td>
+   <td rowspan="2">Strobe duration time in microseconds, [0, 5000000]</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_STROBEDURATION</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_USERVALUE</td>
+   <td rowspan="2">bit0 =&gt; Opto-isolated output<br/>
+       bit1 =&gt; GPIO0 output<br/>
+       bit2 =&gt; GPIO1 output</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_USERVALUE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_UART_ENABLE</td>
+   <td rowspan="2">UART enable: 1 =&gt; on; 0 =&gt; off</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_UART_ENABLE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_UART_BAUDRATE</td>
+   <td rowspan="2">baud rate:<br/>0 =&gt; 9600<br/>1 =&gt; 19200<br/>2 =&gt; 38400<br/>3 =&gt; 57600<br/>4 =&gt; 115200</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_UART_BAUDRATE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_UART_LINEMODE</td>
+   <td rowspan="2">Line Mode:<br/>0 =&gt; TX(GPIO_0)/RX(GPIO_1)<br/>1 =&gt; TX(GPIO_1)/RX(GPIO_0)</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_UART_LINEMODE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE</td>
+   <td rowspan="2">exposure time signal:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE</td>
+   <td rowspan="2">exposure event:<br/>0 =&gt; specified line<br/>1 =&gt; common exposure time</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_EXPO_START_LINE</td>
+   <td rowspan="2">exposure start line, default: 1</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_EXPO_START_LINE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_EXPO_END_LINE</td>
+   <td rowspan="2">exposure end line, default: 0<br/>end line must be no less than start line</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_EXPO_END_LINE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE</td>
+   <td rowspan="2">Output Counter Value, range: [0 ~ 65535]</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE</td>
+   <td>Output pause: 1 =&gt; puase, 0 =&gt; unpause</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_INPUT_STATE</td>
+   <td>Input state: 0 (low level) or 1 (high level)</td>
+</tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_USER_PULSE_HIGH</td>
+   <td rowspan="2">User pulse high level time: us</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_USER_PULSE_HIGH</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_USER_PULSE_LOW</td>
+   <td rowspan="2">User pulse low level time: us</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_USER_PULSE_LOW</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER</td>
+   <td rowspan="2">User pulse number: default 0</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_SET_USER_PULSE_NUMBER</td>
+ </tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_EXTERNAL_TRIGGER_NUMBER</td>
+   <td>External trigger number</td>
+</tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_DEBOUNCER_TRIGGER_NUMBER</td>
+   <td>Trigger signal number after debounce</td>
+</tr><tr><td>BRESSERCAM_IOCONTROLTYPE_GET_EFFECTIVE_TRIGGER_NUMBER</td>
+   <td>Effective trigger signal number</td>
+</tr></table></div></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_read_UART<br/>Bressercam_write_UART</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>const unsigned char* pBuffer: data buffer to be written</p>
+    <p>unsigned char* pBuffer: read buffer</p>
+    <p>unsigned nBufferLen: buffer length</p>
+  </blockquote><p><strong>Remarks:</strong> If failed to read or write, a negative HRESULT error code will be return, when success, the bytes number has been read or written will be return.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_FfcOnce<br/>Bressercam_DfcOnce<br/>Bressercam_FpncOnce</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote><p>HBressercam h: camera handle</p></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_FfcExport<br/>Bressercam_FfcImport<br/>Bressercam_DfcExport<br/>Bressercam_DfcImport<br/>Bressercam_FpncExport<br/>Bressercam_FpncImport</font></h2>
+  <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+  <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+	<p>filepath: file path</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> Export or import *.dfc, *.ffc or *.fpnc file.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_LevelRangeAuto</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+      <blockquote><p>HBressercam h: camera handle</p></blockquote>
+      <p><strong>Remarks:</strong> auto Level Range.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_LevelRange<br/>Bressercam_get_LevelRange</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HBressercam h: camera handle</p>
+      <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Grey. RGB is only available for color image, and grey is only available for grey image.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> level range related.</p>
+</li></ul><ul><li><h2><font color="#0000FF"><a id="levelrangev2">Bressercam_put_LevelRangeV2<br/>Bressercam_get_LevelRangeV2</a></font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote><p>HBressercam h: camera handle</p>
+	  <p>unsigned short mode:</p>
+	  <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+        <td width="50%">BRESSERCAM_LEVELRANGE_MANUAL</td>
+        <td width="50%">Manual mode</td>
+      </tr><tr>
+        <td>BRESSERCAM_LEVELRANGE_ONCE</td>
+        <td>Once</td>
+	  </tr><tr>
+        <td>BRESSERCAM_LEVELRANGE_CONTINUE</td>
+        <td>Continue mode</td>
+	  </tr><tr>
+        <td>BRESSERCAM_LEVELRANGE_ROI</td>
+        <td>Update the ROI rectangle</td>
+</tr></table></div>
+	<p>RECT* pRoiRect: ROI rectangle</p>
+      <p>unsigned short aLow[4], unsigned short aHigh[4]: Level Range of R, G, B, and Grey. RGB is only available for color image, and grey is only available for grey image.</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> level range related.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_put_Demosaic</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p><blockquote><p>funDemosaic: To replace the builtin demosaic function</p>
+    <blockquote><table width="100%" border="0" bgcolor="#B0D0B0"><tr>
+        <td><div align="center">typedef void (*PBRESSERCAM_DEMOSAIC_CALLBACK)(unsigned nFourCC, int nW, int nH, const void* input, void* output, unsigned char nBitDepth, void* ctxDemosaic);</div></td>
+      </tr></table></blockquote>
+	<p>ctxDemosaic: callback context</p></blockquote>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_Update</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>camId: camera ID</p>
+      <p>filePath: ufw file full path</p>
+      <p>pFun, ctxProgress: progress percent callback</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> firmware update. Please do not unplug the camera or lost power during the upgrade process, this is very very important. Once an unplugging or power outage occurs during the upgrade process, the camera will no longer be available and can only be returned to the factory for repair.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_Replug</font></h2>
+    <p><strong>Return value: </strong> &gt;0: the number of device has been replug; = 0: no device found; E_ACCESSDENIED: no UAC Administrator privileges</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote><p>camId: camera ID</p></blockquote>
+    <p><strong>Remarks:</strong> simulate replug. for each device found, it will take about 3 seconds.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Bressercam_GetHistogram</font></h2>
+      <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+      <p><strong>Parameters:</strong></p>
+  <blockquote>
+    <p>HBressercam h: camera handle</p>
+    <p>PIBRESSERCAM_HISTOGRAM_CALLBACK funHistogram, void* ctxHistogram: callback function and callback context of histogram data.</p>
+  </blockquote>
+  <p><strong>Remarks:</strong> get histogram data.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Ranges and default value of some parameters</font></h2>
+<div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+    <td colspan="3">Parameters</td>
+    <td width="15%">Range</td>
+    <td width="8%">Default value</td>
+    <td width="17%">Get</td>
+    <td width="17%">Set</td>
+    <td width="14%">Auto</td>
+  </tr><tr>
+    <td colspan="3">Auto Exposure Target</td>
+    <td>16~220</td><td>120</td>
+    <td>Bressercam_get_AutoExpoTarget</td>
+    <td>Bressercam_put_AutoExpoTarget</td><td></td>
+  </tr><tr>
+    <td colspan="3">Exposure Gain</td>
+    <td>100~</td><td>100</td>
+    <td>Bressercam_get_ExpoAGain</td>
+    <td>Bressercam_put_ExpoAGain</td><td></td>
+  </tr><tr>
+    <td width="14%" rowspan="5">White Balance</td>
+    <td width="9%" rowspan="2">Temp/Tint Mode</td>
+    <td width="10%">Color Temperature</td>
+    <td>2000~15000</td><td>6503</td>
+    <td rowspan="2">Bressercam_get_TempTint</td>
+    <td rowspan="2">Bressercam_put_TempTint</td>
+    <td rowspan="2">Bressercam_AwbOnce</td>
+  </tr><tr>
+    <td>Tint</td><td>200~2500</td>
+    <td>1000</td></tr><tr>
+    <td rowspan="3">RGB Gain Mode</td>
+    <td>Red Gain</td>
+    <td rowspan="3">-127~127</td>
+    <td rowspan="3">0</td>
+    <td rowspan="3">Bressercam_get_WhiteBalanceGain</td>
+    <td rowspan="3">Bressercam_put_WhiteBalanceGain</td>
+    <td rowspan="3">Bressercam_AwbInit</td>
+  </tr><tr><td>Green Gain</td>
+  </tr><tr><td>Blue Gain</td>
+  </tr><tr>
+    <td colspan="3">Black Balance</td>
+    <td>0~255(bitdepth=8)<br/>
+		0~1023(bitdepth=10)<br/>
+		0~4095(bitdepth=12)<br/>
+		0~16383(bitdepth=14)<br/>
+		0~65535(bitdepth=16)</td>
+    <td>0</td>
+    <td>Bressercam_get_BlackBalance</td>
+    <td>Bressercam_put_BlackBalance</td>
+    <td>Bressercam_AbbOnce</td>
+  </tr><tr>
+    <td colspan="2" rowspan="2">LevelRange</td>
+	<td>Software</td>
+    <td rowspan="2">0~255</td>
+    <td rowspan="2">Low = 0<br/>High = 255</td>
+    <td>Bressercam_get_LevelRange</td>
+    <td>Bressercam_put_LevelRange</td>
+    <td>Bressercam_LevelRangeAuto</td>
+  </tr><tr>
+	<td>Hardware</td>
+    <td>Bressercam_get_LevelRangeV2</td>
+    <td colspan="2">Bressercam_put_LevelRangeV2</td>
+  </tr><tr>
+    <td colspan="3">Contrast</td>
+    <td>-150~150</td><td>0</td>
+    <td>Bressercam_get_Contrast</td>
+    <td>Bressercam_put_Contrast</td><td></td>
+  </tr><tr>
+    <td colspan="3">Hue</td>
+    <td>-180~180</td><td>0</td>
+    <td>Bressercam_get_Hue</td>
+    <td>Bressercam_put_Hue</td><td></td>
+  </tr><tr>
+    <td colspan="3">Saturation</td>
+    <td>0~255</td><td>128</td>
+    <td>Bressercam_get_Saturation</td>
+    <td>Bressercam_put_Saturation</td>
+    <td></td>
+  </tr><tr>
+    <td colspan="3">Brightness</td>
+    <td>-128~128</td><td>0</td>
+    <td>Bressercam_get_Brightness</td>
+    <td>Bressercam_put_Brightness</td><td></td>
+  </tr><tr>
+    <td colspan="3">Gamma</td>
+    <td>20~180</td><td>100</td>
+    <td>Bressercam_get_Gamma</td>
+    <td>Bressercam_put_Gamma</td>
+    <td></td>
+  </tr><tr>
+    <td colspan="3">Black Level</td>
+    <td>0~31 (bitdepth=8)<br/>
+    	0~31 * 4 (bitdepth=10)<br/>
+    	0~31 * 16 (bitdepth=12)<br/>
+    	0~31 * 64 (bitdepth=14)<br/>
+    	0~31 * 256 (bitdepth=16)</td>
+    <td>Model Specific</td>
+    <td>Bressercam_get_Option</td>
+    <td>Bressercam_put_Option</td>
+    <td></td>
+  </tr><tr>
+    <td rowspan="5">Auto Exposure</td>
+    <td rowspan="2">Max</td>
+    <td>Exposure Time</td>
+    <td rowspan="2">&nbsp;</td><td>350ms</td>
+    <td rowspan="2">Bressercam_get_AutoExpoRange<br/>Bressercam_get_MaxAutoExpoTimeAGain<br/>Bressercam_get_MinAutoExpoTimeAGain</td>
+    <td rowspan="2">Bressercam_put_AutoExpoRange<br/>Bressercam_put_MaxAutoExpoTimeAGain<br/>Bressercam_put_MinAutoExpoTimeAGain</td>
+    <td rowspan="2">&nbsp;</td>
+  </tr><tr>
+    <td>Gain</td><td>500</td></tr><tr>
+    <td rowspan="2">Min</td>
+    <td>Exposure Time</td>
+    <td rowspan="2">&nbsp;</td><td>0</td>
+    <td rowspan="2">Bressercam_get_MinAutoExpoTimeAGain</td>
+    <td rowspan="2">Bressercam_put_MinAutoExpoTimeAGain</td>
+    <td rowspan="2">&nbsp;</td>
+  </tr><tr>
+    <td>Gain</td><td>100</td>
+  </tr><tr>
+    <td colspan="2">Percent</td><td>0~100</td>
+    <td>0(Disable)<br/>10(Enable)</td>
+    <td colspan="2">BRESSERCAM_OPTION_AUTOEXPOSURE_PERCENT</td>
+    <td></td>
+  </tr><tr>
+    <td colspan="3">TEC Target</td>
+    <td>Model Specific</td>
+    <td>Model Specific</td>
+    <td colspan="2">BRESSERCAM_OPTION_TECTARGET</td><td></td>
+</tr></table></div></li></ul>
+<hr/><h1><font color="#0000FF"><a id="dotnet">5. .NET (C# &amp; VB.NET)</a></font></h1><hr/>
+<p>Bressercam does support .NET development environment (C# and VB.NET).</p>
+<p>bressercam.cs use P/Invoke to call into bressercam.dll. Copy bressercam.cs to your C# project, please reference samples.</p>
+<p>Please pay attation to that <strong>the object of the C# class Bressercam. Bressercam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new Bressercam</strong> (The constructor is private on purpose).</p>
+<p>Most properties and methods of the Bressercam class P/Invoke into the corresponding Bressercam_xxxx functions of bressercam.dll/so. So, the descriptions of the Bressercam_xxxx function are also applicable for the corresponding C# properties or methods. For example, the C# Snap method call the function Bressercam_Snap, the descriptions of the Bressercam_Snap function is applicable for C# Snap method:</p>
+<table width="100%" border="0" bgcolor="#B0D0B0">
+<tr><td><pre>[DllImport(&quot;bressercam.dll&quot;, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+private static extern int Bressercam_Snap(SafeHBressercamHandle h, uint nResolutionIndex);
+
+public bool Snap(uint nResolutionIndex)
+{
+    if (_handle == null || _handle.IsInvalid || _handle.IsClosed)
+        return false;
+    return (Bressercam_Snap(_handle, nResolutionIndex) &gt;= 0);
+}</pre></td></tr></table>
+<p>VB.NET is similar with C#, not otherwise specified.</p>
+<hr/><h1><font color="#0000FF"><a id="python">6. Python</a></font></h1><hr/>
+<p>Bressercam does support Python (version 3.0 or above), please import bressercam to use bressercam.py and reference the sample code simplest.py and qt.py.</p>
+<p>Please pay attation to that <strong>the object of the python class bressercam.Bressercam must be obtained by classmethod Open or OpenByIndex, it cannot be obtained by obj = bressercam.Bressercam()</strong></p>
+<p>Most methods of the Bressercam class use ctypes to call into the corresponding Bressercam_xxxx functions of bressercam.dll/so/dylib. So, the descriptions of the Bressercam_xxxx function are also applicable for the corresponding python methods.</p>
+<p>Please reference __errcheck in bressercam.py, the original HRESULT return code is mapped to HRESULTException exception (in win32 it's inherited from OSError).</p>
+<p>Please make sure the bressercam dll/so/dylib library file is in the same directory with bressercam.py.</p>
+<hr/><h1><font color="#0000FF"><a id="java">7. Java</a></font></h1><hr/>
+<p>Bressercam does support Java, bressercam.java use <a href="https://github.com/java-native-access/jna" target="_blank">JNA</a> to call into bressercam.dll/so/dylib. Copy bressercam.java to your java project, please reference the sample code simplest.java (Console), javafx.java, swing.java.</p>
+<p>Please pay attation to that <strong>the object of the java class bressercam must be obtained by static method Open or OpenByIndex, it cannot be obtained by obj = new bressercam()</strong>(The constructor is private on purpose).</p>
+<p>Most methods of the bressercam class use <a href="https://github.com/java-native-access/jna" target="_blank">JNA</a> to call into the corresponding Bressercam_xxxx functions of bressercam.dll/so/dylib. So, the descriptions of the Bressercam_xxxx function are also applicable for the corresponding java methods.</p>
+<p>Please reference errcheck in bressercam.java, the original HRESULT return code is mapped to HRESULTException exception.</p>
+<p>Remark: (1) Download jna-*.jar from github; (2) Make sure bressercam.dll/so/dylib is placed in the correct directory.</p>
+<hr/><h1><font color="#0000ff">8. Samples</font></h1><hr/>
+<div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
+        <td width="14%" colspan="2">Name</td>
+        <td width="8%">Platform</td>
+        <td width="6%">Language</td><td width="6%">Dependency</td><td width="6%">UI</td>
+        <td width="60%">Description</td>
+      </tr><tr>
+		<td colspan="2">demosimplest</td>
+		<td rowspan="10">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="20">C++</td><td rowspan="10">&nbsp;</td>
+		<td rowspan="10">console</td>
+		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td colspan="2">demowait</td>
+		<td>Instead of using the callback function, use the Bressercam_WaitImageV3 to get the image, about 60 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demomulti</td>
+		<td>Open all the enumerated cameras (possibly multiple) and pull image, about 90 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demostill</td>
+		<td>simplest sample to demo snap still image, about 120 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demosofttrigger</td>
+		<td>simplest sample to demo soft trigger, about 80 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demotriggersync</td>
+		<td>simplest sample to demo soft trigger synchronously (TriggerSync), about 80 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demoexternaltrigger</td>
+		<td>simplest sample to demo external trigger, about 130 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demotriggerout</td>
+		<td>simplest sample to demo output signal, about 150 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demoraw</td>
+		<td>raw data, snap still image and save raw data to *.raw files, about 140 lines of code. <a href="./images/demoraw.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td colspan="2">demostillraw</td>
+		<td>snap still raw image and save to *.raw files, about 140 lines of code</td>
+	  </tr><tr>
+		<td colspan="2">demoqt</td>
+		<td rowspan="2">Win32<br/>Linux<br/>macOS</td>
+		<td rowspan="2">Qt</td><td rowspan="16">GUI</td>
+		<td>Qt sample, <a href="./images/demoqt.png">snapshot</a>.<br/>Enumerate device, open device, video preview, (still) image capture, preview resolution, image save to file, etc. This sample use Pull Mode, StartPullModeWithCallback.</td>
+	  </tr><tr>
+		<td colspan="2">demotwoqt</td>
+		<td>Qt sample, <a href="./images/demotwoqt.png">snapshot</a>.<br/>Use two cameras simultaneously</td>
+	  </tr><tr>
+		<td colspan="2">democpp</td><td rowspan="8">Win32</td>
+		<td rowspan="6">ATL/<a href="http://sourceforge.net/projects/wtl" target="_blank">WTL</a></td>
+		<td><a href="./images/democpp.png">snapshot</a>. demonstrates to enumerate device (Respone to <a href="#hotplugnotify">device plugin/unplug notifications</a>), <a href="#apigige">initialize support GigE</a>, open device, video preview, image capture, preview resolution, trigger, image saving multi-format (.bmp, .jpg, .png, etc), wmv format video recording, trigger mode, IO control, read write EEPROM/FLASH, etc. This sample use Pull Mode. To keep the code clean, this sample uses the WTL library which can be downloaded from <a href="http://sourceforge.net/projects/wtl" target="_blank">http://sourceforge.net/projects/wtl</a></td>
+	  </tr><tr>
+		<td colspan="2">democallback</td>
+		<td><a href="./images/democallback.png">snapshot</a>. use Pull Mode, StartPullModeWithCallback</td>
+	  </tr><tr>
+		<td colspan="2">demopush</td>
+		<td><a href="./images/demopush.png">snapshot</a>. use Push Mode, StartPushModeV4</td>
+	  </tr><tr>
+		<td colspan="2">demomono</td>
+		<td>demonstrates to use mono camera with 8 or 16 bits</td>
+	  </tr><tr>
+		<td colspan="2">democns</td>
+		<td><a href="./images/democns.png">snapshot</a>. Consistency test: The image is evenly divided into m*n zones, and each zone takes a small area in the center to calculate the average value, connect the average value into a line, and check the fluctuation range of the line up and down</td>
+	  </tr><tr>
+		<td colspan="2">triggertest</td>
+		<td><a href="./images/triggertest.png">snapshot</a>. Soft trigger test, use a background thread to save the image file to disk (SSD is recommended, otherwise, when the disk speed is insufficient, the storage speed will not be able to keep up, more and more images will be stored in the deque, and the memory consumption will also increase).</td>
+	  </tr><tr>
+		<td colspan="2">demomfc</td>
+		<td rowspan="2">MFC</td>
+		<td><a href="./images/demomfc.png">snapshot</a>. use MFC as the GUI library. It demonstrates to open device, video preview, image capture, set the preview resolution, multi-format image saving (.bmp, .jpg, .png, etc). This sample use Pull Mode</td>
+	  </tr><tr>
+		<td colspan="2">autotest</td>
+		<td><a href="./images/autotest.png">snapshot</a>. auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</td>
+	  </tr><tr>
+		<td colspan="2">demowpf</td>
+		<td rowspan="4">.NET</td><td rowspan="3">C#</td><td>WPF</td>
+		<td>WPF sample, <a href="./images/demowpf.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr><tr>
+		<td colspan="2">demowinformcs</td>
+		<td rowspan="3">WinForm</td>
+		<td>winform sample, <a href="./images/demowinformcs.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr><tr>
+		<td colspan="2">demotwocs</td>
+		<td>winform sample, <a href="./images/demotwocs.png">snapshot</a>.<br/>Use two cameras simultaneously. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr><tr>
+		<td colspan="2">demowinformvb</td><td>VB.NET</td>
+		<td>winform sample, <a href="./images/demowinformvb.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
+	  </tr><tr>
+		<td colspan="2">demouwp</td>
+		<td>WinRT</td><td>C#</td>
+		<td rowspan="2">&nbsp;</td>
+		<td>UWP (Universal Windows Platform) simple demo, <a href="./images/demouwp.png">snapshot</a>.<br/>Before build and run this demo, please pay attention to the value of vid in file Package.appxmanifest</td>
+	  </tr><tr>
+		<td colspan="2">demoandroid</td>
+		<td>Android</td><td>Java<br/>C++</td><td>Android sample</td>
+	  </tr><tr>
+		<td rowspan="3"><a id="demojava">demojava</a></td>
+		<td>simplest</td>
+		<td rowspan="5">Win32<br/>Linux<br/>macOS</td>
+		<td rowspan="3">Java</td>
+		<td rowspan="3"><a href="http://sourceforge.net/projects/wtl" target="_blank">jna</a></td>
+		<td>console</td>
+		<td>simplest java sample. IntelliJ project</td>
+	  </tr><tr>
+		<td>javafx</td><td rowspan="2">GUI</td>
+		<td>javafx sample. IntelliJ project</td>
+	  </tr><tr>
+		<td>swing</td><td>swing sample. IntelliJ project</td>
+	  </tr><tr>
+		<td rowspan="2"><a id="demopython">demopython</a></td>
+		<td>simplest</td><td rowspan="2">Python</td><td></td><td>console</td>
+		<td>simplest python sample</td>
+	  </tr><tr>
+		<td>qt</td><td>PyQt</td><td rowspan="10">GUI</td>
+		<td>PyQt sample, <a href="./images/pyqt.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td colspan="2"><a id="demodshow">demodshow</a></td>
+		<td rowspan="2">DirectShow</td>
+		<td rowspan="2">C++</td><td>MFC</td>
+		<td>DirectShow sample</td>
+	  </tr><tr>
+		<td colspan="2">amcap</td><td></td>
+		<td>Microsoft sample demonstrates various tasks related to video capture, see <a href="https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap" target="_blank">https://github.com/microsoft/Windows-classic-samples/tree/main/Samples/Win7Samples/multimedia/directshow/capture/amcap</a></td>
+	  </tr><tr>
+		<td colspan="2"><a id="demolabview">LVDemo1</a></td>
+		<td rowspan="3">LabView</td>
+		<td rowspan="3">&nbsp;</td>
+		<td rowspan="3">&nbsp;</td>
+		<td>Labview program which works with one camera, <a href="./images/lvdemo1.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td colspan="2">LVDemo2</td>
+		<td>Labview program which opens two cameras and control them respectively</td>
+      </tr><tr>
+        <td colspan="2">LVDemo3</td>
+        <td>Labview sample, <a href="./images/lvdemo3.png">snapshot</a>.<br />open camera, preview video, captuare (still) image, set the preview resolution, auto exposure, bitdepth, color adjustment, white (black) balance, digital binning, flat (dark) field corrction, etc.</td>
+      </tr><tr>
+		<td rowspan="4">imagepro</td>
+		<td rowspan="2">liveedf</td>
+		<td rowspan="4">Win32</td>
+		<td>C++</td><td>Qt</td>
+		<td>Qt sample, <a href="./images/liveedfqt.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td>C#</td><td>WinForm</td>
+		<td>C# sample, <a href="./images/liveedfcs.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td rowspan="2">livestack</td>
+		<td>C++</td><td>Qt</td>
+		<td>Qt sample, <a href="./images/livestackqt.png">snapshot</a>.</td>
+	  </tr><tr>
+		<td>C#</td><td>WinForm</td>
+		<td>C# sample, <a href="./images/livestackcs.png">snapshot</a>.</td>
+</tr></table></div>
+<hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v55: Add Support to HDR Pixel Format</p>
+<p>v54: Add support to GigE. Please see <a href="#apigige">here</a></p>
+<p>v53: Add BressercamFrameInfoV3, Bressercam_PullImageV3, Bressercam_StartPushModeV4</p>
+<p>v52: Android Java side transfer file descriptor to <a href="#apiopen">Bressercam_Open</a> to open camera. Please see <a href="#androidopen">here</a></p>
+<p>v51: Add support auto exposure "once" mode. Please see <a href="#aexpo">here</a></p>
+<p>v50: SIMD optimize in Windows(x86/x64), Linux(x64) and Android(x64)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;frontend and backend deque length: <a href="#frontend">BRESSERCAM_OPTION_FRONTEND_DEQUE_LENGTH</a>, <a href="#backend">BRESSERCAM_OPTION_BACKEND_DEQUE_LENGTH</a></p>
+<p>v49: Add support to save &amp; load configuration. Please see <a href="#cfg">here</a></p>
+<p>v48: hardware event. Please see <a href="#hwflag">here</a>, <a href="#hwevent">here</a> and <a href="#hwoption">here</a></p>
+<p>v47: hardware level range. Please see <a href="#hwlevelrange">here</a> and <a href="#levelrangev2">here</a></p>
+<p>v46: Add support denose. Please see <a href="#denoise">here</a></p>
+<p>v45: Add sequencer trigger, UART, mix trigger (<a href="#mix">external and software trigger both are enabled</a>)</p>
+<p>v44: Extend the realtime mode, Please see <a href="#realtime">here</a><br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add BRESSERCAM_OPTION_CALLBACK_THREAD and BRESSERCAM_OPTION_FRAME_DEQUE_LENGTH</p>
+<p>v43: Reload the last frame in the trigger mode. Please see <a href="#reload">BRESSERCAM_OPTION_RELOAD</a></p>
+<p>v42: Precise frame rate and bandwidth. Please see <a href="#precise">here</a> and BRESSERCAM_FLAG_PRECISE_FRAMERATE</p>
+<p>v41: no packet timeout. Please see <a href="#nopacket">here</a></p>
+<p>v40: Auto test tool, see samples\autotest</p>
+<p>v39: Update C#/VB.NET/Java/Python</p>
+<p>v38: Add support to byte order, change BGR/RGB. Please see <a href="#bgr">here</a></p>
+<p>v37: Add Android support<br/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Bressercam_StartPushModeV3 (Bressercam_StartPushModeV2 and Bressercam_StartPushMode are obsoleted)</p>
+<p>v36: Add Java support. Please see <a href="#java">here</a></p>
+<p>v35: Add Python support. Please see <a href="#python">here</a></p>
+<p>v34: Auto Focus and Focus Motor</p>
+<p>v33: extend BRESSERCAM_OPTION_AGAIN to BRESSERCAM_OPTION_AUTOEXP_POLICY, support more options. Please see <a href="#aepolicy">here</a></p>
+<p>v32: Addd support to Windows 10 on ARM and ARM64, both desktop and WinRT</p>
+<p>v31: Add Bressercam_deBayerV2, support RGB48 and RGB64</p>
+<p>v30: Add BRESSERCAM_FLAG_CGHDR</p>
+<p>v29: Add BressercamFrameInfoV2, a group of functions (PullImageV2 and StartPushModeV2), some cameras support frame sequence number and timestamp. Please see <a href="#infov2">here</a></p>
+<p>v28: Add Bressercam_read_Pipe, Bressercam_write_Pipe, Bressercam_feed_Pipe</p>
+<p>v27: Add Bressercam_SnapN, support to snap multiple images, please see <a href="#snapn">here</a> and democpp</p>
+<p>v26: Add support to restore factory settings, BRESSERCAM_OPTION_FACTORY</p>
+<p>v25: Add sharpening, BRESSERCAM_OPTION_SHARPENING</p>
+<p>v24: Add support to Exposure time with the 50/60 HZ constraint</p>
+<p>v23: Add support to Linux armhf, armel and arm64<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add FFC and DFC, please see <a href="#ffc">here</a> and <a href="#dfc">here</a></p>
+<p>v22: Add BRESSERCAM_OPTION_DDR_DEPTH, please see <a href="#ddrdepth">here</a></p>
+<p>v21: Add Bressercam_IoControl</p>
+<p>v20: Add Bressercam_EnumV2, BressercamModelV2, BressercamDeviceV2; (Bressercam_Enum, BressercamModel and BressercamDevice are obsoleted)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Pixel Format, see BRESSERCAM_OPTION_PIXEL_FORMAT; (BRESSERCAM_OPTION_PIXEL_FORMAT is the super set of BRESSERCAM_OPTION_BITDEPTH)<br/>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Add Flat Field Correction</p>
+<p>v19: Add Black Balance: please see <a href="#black">here</a></p>
+<p>v18: Add Bressercam_get_Revision</p>
+<p>v17: Add <a href="#rotate">BRESSERCAM_OPTION_ROTATE</a></p>
+<p>v16: Add <a href="#ddr">BRESSERCAM_FLAG_DDR</a>, use very large capacity DDR (Double Data Rate SDRAM) for frame buffer</p>
+<p>v15: Add <a href="#binning">BRESSERCAM_OPTION_BINNING</a></p>
+<p>v14: Add support to WinRT / UWP (Universal Windows Platform) / Windows Store App</p>
+<p>v13: support row pitch, please see <a href="#rowpitch1">Bressercam_PullImageWithRowPitch</a> and <a href="#rowpitch2">Bressercam_PullStillImageWithRowPitch</a></p>
+<p>v12: support RGB32, 8 bits Grey, 16 bits Grey, please see <a href="#rgb">here</a></p>
+<p>v11: black level: please see <a href="#blacklevel">here</a></p>
+<p>v10: demosaic method: please see <a href="#demosaic">here</a></p>
+<p>v9: change the histogram data type from double to float</p>
+<p>v8: support simulated trigger, please see <a href="#trigger">here</a></p>
+<p>v7: support RGB48 when bitdepth &gt; 8, please see <a href="#rgb">here</a></p>
+<p>v6: support trigger mode, please see <a href="#trigger">here</a></p>
+<p>v5: White Balance: Temp/Tint Mode vs RGB Gain Mode, please see <a href="#wb">here</a></p>
+<p>v4: ROI (Region Of Interest) supported: please see <a href="#roi">here</a></p>
+<p>v3: more bitdepth supported: 10bits, 12bits, 14bits, 16bits</p>
+<p>v2: support RAW format, please see <a href="#raw">here</a> and <a href="#rawo">here</a>; support Linux and macOS</p>
+<p>v1: initial release</p>
+</body>
+</html>
