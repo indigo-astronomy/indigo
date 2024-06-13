@@ -24,7 +24,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x000A
+#define DRIVER_VERSION 0x000B
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -565,6 +565,13 @@ static void streaming_timer_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAStartExposure(%d, false) > %d", id, res);
 			while (CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 				CCD_STREAMING_EXPOSURE_ITEM->number.value = CCD_STREAMING_EXPOSURE_ITEM->number.target;
+				if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+					CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
+					CCD_STREAMING_COUNT_ITEM->number.value = 0;
+					CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
+					exposure_failed = true;
+					break;
+				}
 				while (CCD_STREAMING_EXPOSURE_ITEM->number.value >= 1) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = POAGetCameraState(id, &state);

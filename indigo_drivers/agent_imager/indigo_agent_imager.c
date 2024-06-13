@@ -612,8 +612,8 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 				AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].x;
 				AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[0].y;
 				for (int i = 0; i < AGENT_IMAGER_STARS_PROPERTY->count - 1; i++) {
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "star %d -> oversturated = %d NCD = %f", i, DEVICE_PRIVATE_DATA->stars[i].oversaturated, DEVICE_PRIVATE_DATA->stars[i].nc_distance);
-					if (DEVICE_PRIVATE_DATA->stars[i].oversaturated || DEVICE_PRIVATE_DATA->stars[i].nc_distance > 0.5)
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "star %d -> oversturated = %d NCD = %f, close_to_other = %d", i, DEVICE_PRIVATE_DATA->stars[i].oversaturated, DEVICE_PRIVATE_DATA->stars[i].nc_distance, DEVICE_PRIVATE_DATA->stars[i].close_to_other);
+					if (DEVICE_PRIVATE_DATA->stars[i].oversaturated || DEVICE_PRIVATE_DATA->stars[i].nc_distance > 0.5 || DEVICE_PRIVATE_DATA->stars[i].close_to_other)
 						continue;
 					AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
 					AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[i].y;

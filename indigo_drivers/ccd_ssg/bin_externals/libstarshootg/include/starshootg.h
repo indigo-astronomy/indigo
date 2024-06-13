@@ -1,7 +1,7 @@
 #ifndef __starshootg_h__
 #define __starshootg_h__
 
-/* Version: 55.25159.20240404 */
+/* Version: 55.25633.20240519 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -175,10 +175,10 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_EXPOGAIN_DEF             100     /* exposure gain, default value */
 #define STARSHOOTG_EXPOGAIN_MIN             100     /* exposure gain, minimum value */
 #define STARSHOOTG_TEMP_DEF                 6503    /* color temperature, default value */
-#define STARSHOOTG_TEMP_MIN                 1000    /* color temperature, minimum value */
-#define STARSHOOTG_TEMP_MAX                 25000   /* color temperature, maximum value */
+#define STARSHOOTG_TEMP_MIN                 2000    /* color temperature, minimum value */
+#define STARSHOOTG_TEMP_MAX                 15000   /* color temperature, maximum value */
 #define STARSHOOTG_TINT_DEF                 1000    /* tint */
-#define STARSHOOTG_TINT_MIN                 100     /* tint */
+#define STARSHOOTG_TINT_MIN                 200     /* tint */
 #define STARSHOOTG_TINT_MAX                 2500    /* tint */
 #define STARSHOOTG_HUE_DEF                  0       /* hue */
 #define STARSHOOTG_HUE_MIN                  (-180)  /* hue */
@@ -220,9 +220,9 @@ typedef struct Starshootg_t { int unused; } *HStarshootg;
 #define STARSHOOTG_AUTOEXPO_THRESHOLD_DEF   5       /* auto exposure threshold */
 #define STARSHOOTG_AUTOEXPO_THRESHOLD_MIN   2       /* auto exposure threshold */
 #define STARSHOOTG_AUTOEXPO_THRESHOLD_MAX   15      /* auto exposure threshold */
-#define STARSHOOTG_AUTOEXPO_DAMP_DEF        0       /* auto exposure damp: thousandths */
-#define STARSHOOTG_AUTOEXPO_DAMP_MIN        0       /* auto exposure damp: thousandths */
-#define STARSHOOTG_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damp: thousandths */
+#define STARSHOOTG_AUTOEXPO_DAMP_DEF        0       /* auto exposure damping coefficient: thousandths */
+#define STARSHOOTG_AUTOEXPO_DAMP_MIN        0       /* auto exposure damping coefficient: thousandths */
+#define STARSHOOTG_AUTOEXPO_DAMP_MAX        1000    /* auto exposure damping coefficient: thousandths */
 #define STARSHOOTG_BANDWIDTH_DEF            100     /* bandwidth */
 #define STARSHOOTG_BANDWIDTH_MIN            1       /* bandwidth */
 #define STARSHOOTG_BANDWIDTH_MAX            100     /* bandwidth */
@@ -275,21 +275,21 @@ typedef struct {
     float               xpixsz;      /* physical pixel size in micrometer */
     float               ypixsz;      /* physical pixel size in micrometer */
     StarshootgResolution   res[16];
-} StarshootgModelV2; /* camera model v2 */
+} StarshootgModelV2; /* device model v2 */
 
 typedef struct {
 #if defined(_WIN32)
-    wchar_t               displayname[64];    /* display name */
+    wchar_t               displayname[64];    /* display name: model name or user-defined name (if any and Starshootg_EnumWithName) */
     wchar_t               id[64];             /* unique and opaque id of a connected camera, for Starshootg_Open */
 #else
-    char                  displayname[64];    /* display name */
+    char                  displayname[64];    /* display name: model name or user-defined name (if any and Starshootg_EnumWithName) */
     char                  id[64];             /* unique and opaque id of a connected camera, for Starshootg_Open */
 #endif
     const StarshootgModelV2* model;
-} StarshootgDeviceV2; /* camera instance for enumerating */
+} StarshootgDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.25159.20240404
+    get the version of this dll/so/dylib, which is: 55.25633.20240519
 */
 #if defined(_WIN32)
 STARSHOOTG_API(const wchar_t*)   Starshootg_Version();
@@ -1032,8 +1032,8 @@ STARSHOOTG_API(HRESULT)  Starshootg_feed_Pipe(HStarshootg h, unsigned pipeId);
 #define STARSHOOTG_OPTION_OVERCLOCK              0x5d       /* overclock, default: 0 */
 #define STARSHOOTG_OPTION_RESET_SENSOR           0x5e       /* reset sensor */
 #define STARSHOOTG_OPTION_ISP                    0x5f       /* Enable hardware ISP: 0 => auto (disable in RAW mode, otherwise enable), 1 => enable, -1 => disable; default: 0 */
-#define STARSHOOTG_OPTION_AUTOEXP_EXPOTIME_DAMP  0x60       /* Auto exposure damp: time (thousandths) */
-#define STARSHOOTG_OPTION_AUTOEXP_GAIN_DAMP      0x61       /* Auto exposure damp: gain (thousandths) */
+#define STARSHOOTG_OPTION_AUTOEXP_EXPOTIME_DAMP  0x60       /* Auto exposure damping coefficient: time (thousandths). The larger the damping coefficient, the smoother and slower the exposure time changes */
+#define STARSHOOTG_OPTION_AUTOEXP_GAIN_DAMP      0x61       /* Auto exposure damping coefficient: gain (thousandths). The larger the damping coefficient, the smoother and slower the gain changes */
 #define STARSHOOTG_OPTION_MOTOR_NUMBER           0x62       /* range: [1, 20] */
 #define STARSHOOTG_OPTION_MOTOR_POS              0x10000000 /* range: [1, 702] */
 #define STARSHOOTG_OPTION_PSEUDO_COLOR_START     0x63       /* Pseudo: start color, BGR format */
@@ -1079,12 +1079,19 @@ STARSHOOTG_API(HRESULT)  Starshootg_feed_Pipe(HStarshootg h, unsigned pipeId);
 #define STARSHOOTG_OPTION_OVEREXP_POLICY         0x68       /* Auto exposure over exposure policy: when overexposed,
                                                                 0 => directly reduce the exposure time/gain to the minimum value; or
                                                                 1 => reduce exposure time/gain in proportion to current and target brightness.
+                                                                n(n>1) => first adjust the exposure time to (maximum automatic exposure time * maximum automatic exposure gain) * n / 1000, and then adjust according to the strategy of 1
                                                             The advantage of policy 0 is that the convergence speed is faster, but there is black screen.
                                                             Policy 1 avoids the black screen, but the convergence speed is slower.
                                                             Default: 0
                                                          */
 #define STARSHOOTG_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
 #define STARSHOOTG_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
+#define STARSHOOTG_OPTION_LENSSTATE              0x6b       /* Load/Save lens state to EEPROM: 0 => load, 1 => save */
+#define STARSHOOTG_OPTION_AWB_CONTINUOUS         0x6c       /* Auto White Balance: continuous mode
+                                                                0:  disable (default)
+                                                                n>0: every n millisecond(s)
+                                                                n<0: every -n frame
+                                                         */
 
 /* pixel format */
 #define STARSHOOTG_PIXELFORMAT_RAW8              0x00
@@ -1213,6 +1220,12 @@ STARSHOOTG_API(HRESULT)  Starshootg_put_XY(HStarshootg h, int x, int y);
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
 #define STARSHOOTG_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
 #define STARSHOOTG_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
+#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_HIGH         0x3e /* User pulse high level time: us */
+#define STARSHOOTG_IOCONTROLTYPE_SET_USER_PULSE_HIGH         0x3f
+#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_LOW          0x40 /* User pulse low level time: us */
+#define STARSHOOTG_IOCONTROLTYPE_SET_USER_PULSE_LOW          0x41
+#define STARSHOOTG_IOCONTROLTYPE_GET_USER_PULSE_NUMBER       0x42 /* User pulse number: default 0 */
+#define STARSHOOTG_IOCONTROLTYPE_SET_USER_PULSE_NUMBER       0x43
 
 #define STARSHOOTG_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
 
@@ -1283,6 +1296,17 @@ Recommendation: for better rubustness, when notify of device insertion arrives, 
 STARSHOOTG_API(void)   Starshootg_HotPlug(PSTARSHOOTG_HOTPLUG funHotPlug, void* ctxHotPlug);
 #endif
 
+STARSHOOTG_API(unsigned) Starshootg_EnumWithName(StarshootgDeviceV2 pti[STARSHOOTG_MAX]);
+STARSHOOTG_API(HRESULT)  Starshootg_set_Name(HStarshootg h, const char* name);
+STARSHOOTG_API(HRESULT)  Starshootg_query_Name(HStarshootg h, char name[64]);
+#if defined(_WIN32)
+STARSHOOTG_API(HRESULT)  Starshootg_put_Name(const wchar_t* camId, const char* name);
+STARSHOOTG_API(HRESULT)  Starshootg_get_Name(const wchar_t* camId, char name[64]);
+#else
+STARSHOOTG_API(HRESULT)  Starshootg_put_Name(const char* camId, const char* name);
+STARSHOOTG_API(HRESULT)  Starshootg_get_Name(const char* camId, char name[64]);
+#endif
+
 typedef struct {
     unsigned short lensID;
     unsigned char  lensType;
@@ -1325,6 +1349,7 @@ typedef enum
 
 typedef enum
 {
+    StarshootgAFStatus_NA           = 0x0,/* Not available */
     StarshootgAFStatus_PEAKPOINT    = 0x1,/* Focus completed, find the focus position */
     StarshootgAFStatus_DEFOCUS      = 0x2,/* End of focus, defocus */
     StarshootgAFStatus_NEAR         = 0x3,/* Focusing ended, object too close */
@@ -1607,18 +1632,6 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_VignetMidPointInt(HStarshootg h, int* nM
 #define STARSHOOTG_FLAG_BITDEPTH12    STARSHOOTG_FLAG_RAW12  /* pixel format, RAW 12bits */
 #define STARSHOOTG_FLAG_BITDEPTH14    STARSHOOTG_FLAG_RAW14  /* pixel format, RAW 14bits */
 #define STARSHOOTG_FLAG_BITDEPTH16    STARSHOOTG_FLAG_RAW16  /* pixel format, RAW 16bits */
-
-
-STARSHOOTG_API(HRESULT)  Starshootg_set_Name(HStarshootg h, const char* name);
-STARSHOOTG_API(HRESULT)  Starshootg_query_Name(HStarshootg h, char name[64]);
-#if defined(_WIN32)
-STARSHOOTG_API(HRESULT)  Starshootg_put_Name(const wchar_t* camId, const char* name);
-STARSHOOTG_API(HRESULT)  Starshootg_get_Name(const wchar_t* camId, char name[64]);
-#else
-STARSHOOTG_API(HRESULT)  Starshootg_put_Name(const char* camId, const char* name);
-STARSHOOTG_API(HRESULT)  Starshootg_get_Name(const char* camId, char name[64]);
-#endif
-STARSHOOTG_API(unsigned) Starshootg_EnumWithName(StarshootgDeviceV2 pti[STARSHOOTG_MAX]);
 
 STARSHOOTG_API(HRESULT)  Starshootg_log_File(const
 #if defined(_WIN32)

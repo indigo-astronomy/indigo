@@ -23,7 +23,7 @@
  \file indigo_aux_skyalert.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_skyalert"
 
 #include <stdlib.h>
@@ -42,22 +42,22 @@
 
 #include "indigo_aux_skyalert.h"
 
-#define PRIVATE_DATA												((skyalert_private_data *)device->private_data)
+#define PRIVATE_DATA                               ((skyalert_private_data *)device->private_data)
 
-#define AUX_WEATHER_PROPERTY								(PRIVATE_DATA->weather_property)
-#define AUX_WEATHER_TEMPERATURE_ITEM				(AUX_WEATHER_PROPERTY->items + 0)
-#define AUX_WEATHER_HUMIDITY_ITEM						(AUX_WEATHER_PROPERTY->items + 1)
-#define AUX_WEATHER_RAIN_ITEM								(AUX_WEATHER_PROPERTY->items + 2)
-#define AUX_WEATHER_WIND_SPEED_ITEM					(AUX_WEATHER_PROPERTY->items + 3)
-#define AUX_WEATHER_PRESSURE_ITEM						(AUX_WEATHER_PROPERTY->items + 4)
+#define AUX_WEATHER_PROPERTY                       (PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_TEMPERATURE_ITEM               (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_HUMIDITY_ITEM                  (AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_RAIN_ITEM                      (AUX_WEATHER_PROPERTY->items + 2)
+#define AUX_WEATHER_WIND_SPEED_ITEM                (AUX_WEATHER_PROPERTY->items + 3)
+#define AUX_WEATHER_PRESSURE_ITEM                  (AUX_WEATHER_PROPERTY->items + 4)
+#define AUX_WEATHER_SKY_TEMPERATURE_ITEM           (AUX_WEATHER_PROPERTY->items + 5)
 
-#define AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
-#define AUX_INFO_SKY_BRIGHTNESS_ITEM				(AUX_INFO_PROPERTY->items + 0)
-#define AUX_INFO_SKY_TEMPERATURE_ITEM				(AUX_INFO_PROPERTY->items + 1)
-#define AUX_INFO_POWER_ITEM									(AUX_INFO_PROPERTY->items + 2)
+#define AUX_INFO_PROPERTY                          (PRIVATE_DATA->info_property)
+#define AUX_INFO_SKY_BRIGHTNESS_ITEM               (AUX_INFO_PROPERTY->items + 0)
+#define AUX_INFO_POWER_ITEM                        (AUX_INFO_PROPERTY->items + 1)
 
 
-#define RESPONSE_LENGTH											256
+#define RESPONSE_LENGTH 256
 
 typedef struct {
 	int handle;
@@ -134,7 +134,7 @@ static void aux_timer_callback(indigo_device *device) {
 			AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (!strcmp(tok, "Data")) {
 			AUX_WEATHER_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
-			AUX_INFO_SKY_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
+			AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
 			AUX_WEATHER_RAIN_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
 			AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
 			AUX_WEATHER_HUMIDITY_ITEM->number.value = indigo_atod(strtok_r(NULL, " ", &pnt));
@@ -202,14 +202,13 @@ static indigo_result aux_attach(indigo_device *device) {
 		INFO_PROPERTY->count = 6;
 		strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Interactive Astronomy SkyAlert");
 		// -------------------------------------------------------------------------------- INFO
-		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Info", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Info", "Info", INDIGO_OK_STATE, INDIGO_RO_PERM, 2);
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_INFO_SKY_BRIGHTNESS_ITEM, AUX_INFO_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [raw]", 0, 0, 0, 0);
-		indigo_init_number_item(AUX_INFO_SKY_TEMPERATURE_ITEM, AUX_INFO_SKY_TEMPERATURE_ITEM_NAME, "Sky temperature [\u00B0C]", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_INFO_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [raw]", 0, 0, 0, 0);
 		indigo_init_number_item(AUX_INFO_POWER_ITEM, AUX_INFO_POWER_ITEM_NAME, "Power [1 = ok, 0 = failure]", 0, 1, 0, 0);
 		// -------------------------------------------------------------------------------- WEATHER
-		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Info", "Weather conditions", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Info", "Weather conditions", INDIGO_OK_STATE, INDIGO_RO_PERM, 6);
 		if (AUX_WEATHER_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AUX_WEATHER_TEMPERATURE_ITEM, AUX_WEATHER_TEMPERATURE_ITEM_NAME, "Temperature [C]", 0, 0, 0, 0);
@@ -217,6 +216,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_WEATHER_PRESSURE_ITEM, AUX_WEATHER_PRESSURE_ITEM_NAME, "Pressure [hPa]", 0, 0, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_WIND_SPEED_ITEM, AUX_WEATHER_WIND_SPEED_ITEM_NAME, "Wind speed [raw]", 0, 0, 0, 0);
 		indigo_init_number_item(AUX_WEATHER_RAIN_ITEM, AUX_WEATHER_RAIN_ITEM_NAME, "Dampness [raw]", 0, 0, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_SKY_TEMPERATURE_ITEM, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, "Sky temperature [\u00B0C]", 0, 0, 0, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;

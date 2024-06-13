@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0022
+#define DRIVER_VERSION 0x0023
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -574,7 +574,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			int bottom_right_y = header->height * 0.95;
 			for (int i = 0; i < star_count; i++) {
 				if (
-					stars[i].oversaturated ||
+					stars[i].oversaturated || stars[i].close_to_other ||
 					stars[i].x < top_left_x || stars[i].x > bottom_right_x ||
 					stars[i].y < top_left_y || stars[i].y > bottom_right_y
 				) {
@@ -599,26 +599,25 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		}
 		if (missing_selection && AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
 			int star_count = 0;
-			int j = 0;
 			for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
-				if (item_x->number.value == 0 || item_y->number.value == 0) {
-					if (j == AGENT_GUIDER_STARS_PROPERTY->count - 1) {
-						indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
-						break;
-					}
-					item_x->number.target = item_x->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
-					item_y->number.target = item_y->number.value = DEVICE_PRIVATE_DATA->stars[j].y;
-					j++;
+				if (i == AGENT_GUIDER_STARS_PROPERTY->count - 1) {
+					indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
+					break;
 				}
+				item_x->number.target = item_x->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
+				item_y->number.target = item_y->number.value = DEVICE_PRIVATE_DATA->stars[i].y;
+				//indigo_debug("#### Star %d: %d, %d", i, (int)item_x->number.value, (int)item_y->number.value);
 				star_count++;
 			}
+			//indigo_debug("#### Star ----------------- %d", star_count);
 			for (int i = star_count; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 				item_x->number.target = item_x->number.value = 0;
 				item_y->number.target = item_y->number.value = 0;
+				//indigo_debug("#### Star %d: %d, %d", i, (int)item_x->number.value, (int)item_y->number.value);
 			}
 			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		}
@@ -1863,7 +1862,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY_NAME, "Agent", "Reverse Dec speed after meridian flip", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM, AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM, AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM_NAME, "Enabled", true);
 		indigo_init_switch_item(AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM, AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM_NAME, "Disabled", false);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_GUIDER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_GUIDER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);

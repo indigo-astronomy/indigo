@@ -23,7 +23,7 @@
  \file indigo_aux_sqm.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x00010
 #define DRIVER_NAME "indigo_aux_sqm"
 
 #include <stdlib.h>
@@ -42,20 +42,24 @@
 
 #include "indigo_aux_sqm.h"
 
-#define PRIVATE_DATA												((sqm_private_data *)device->private_data)
+#define PRIVATE_DATA                                    ((sqm_private_data *)device->private_data)
 
-#define AUX_INFO_PROPERTY										(PRIVATE_DATA->info_property)
-#define AUX_INFO_SKY_BRIGHTNESS_ITEM				(AUX_INFO_PROPERTY->items + 0)
-#define AUX_INFO_SKY_TEMPERATURE_ITEM				(AUX_INFO_PROPERTY->items + 1)
-#define X_AUX_SENSOR_FREQUENCY_ITEM					(AUX_INFO_PROPERTY->items + 2)
-#define X_AUX_SENSOR_COUNTS_ITEM						(AUX_INFO_PROPERTY->items + 3)
-#define X_AUX_SENSOR_PERIOD_ITEM						(AUX_INFO_PROPERTY->items + 4)
+#define AUX_INFO_PROPERTY                               (PRIVATE_DATA->info_property)
+#define X_AUX_SENSOR_FREQUENCY_ITEM                     (AUX_INFO_PROPERTY->items + 0)
+#define X_AUX_SENSOR_COUNTS_ITEM                        (AUX_INFO_PROPERTY->items + 1)
+#define X_AUX_SENSOR_PERIOD_ITEM                        (AUX_INFO_PROPERTY->items + 2)
 
-#define RESPONSE_LENGTH											120
+#define AUX_WEATHER_PROPERTY                            (PRIVATE_DATA->weather_property)
+#define AUX_WEATHER_SKY_BRIGHTNESS_ITEM                 (AUX_WEATHER_PROPERTY->items + 0)
+#define AUX_WEATHER_SKY_TEMPERATURE_ITEM                (AUX_WEATHER_PROPERTY->items + 1)
+#define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM               (AUX_WEATHER_PROPERTY->items + 2)
+
+#define RESPONSE_LENGTH 120
 
 typedef struct {
 	int handle;
 	indigo_property *info_property;
+	indigo_property *weather_property;
 	indigo_timer *timer_callback;
 	pthread_mutex_t mutex;
 } sqm_private_data;
@@ -104,18 +108,23 @@ static void aux_timer_callback(indigo_device *device) {
 		char *tok = strtok_r(response, ",", &pnt);
 		if (tok == NULL) {
 			AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+			AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else if (*tok == 'r') {
-			AUX_INFO_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+			AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+			AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = indigo_aux_sky_bortle(AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value);
 			X_AUX_SENSOR_FREQUENCY_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 			X_AUX_SENSOR_COUNTS_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 			X_AUX_SENSOR_PERIOD_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
-			AUX_INFO_SKY_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
+			AUX_WEATHER_SKY_TEMPERATURE_ITEM->number.value = indigo_atod(strtok_r(NULL, ",", &pnt));
 			AUX_INFO_PROPERTY->state = INDIGO_OK_STATE;
+			AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else {
 		AUX_INFO_PROPERTY->state = INDIGO_ALERT_STATE;
+		AUX_WEATHER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	indigo_update_property(device, AUX_INFO_PROPERTY, NULL);
+	indigo_update_property(device, AUX_WEATHER_PROPERTY, NULL);
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->timer_callback);
 }
 
@@ -141,6 +150,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE) {
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->timer_callback);
 		} else {
 			sqm_close(device);
@@ -150,6 +160,7 @@ static void aux_connection_handler(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
 		sqm_close(device);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
@@ -164,16 +175,22 @@ static indigo_result aux_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_aux_attach(device, DRIVER_NAME, DRIVER_VERSION, INDIGO_INTERFACE_AUX_SQM) == INDIGO_OK) {
 		// -------------------------------------------------------------------------------- INFO
-		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 5);
+		AUX_INFO_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_INFO_PROPERTY_NAME, "Srnsor readings", "Sensor readings", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
 		if (AUX_INFO_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_number_item(AUX_INFO_SKY_BRIGHTNESS_ITEM, AUX_INFO_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
-		indigo_init_number_item(AUX_INFO_SKY_TEMPERATURE_ITEM, AUX_INFO_SKY_TEMPERATURE_ITEM_NAME, "Sky temperature [\u00B0C]", -100, 100, 0, 0);
 		indigo_init_number_item(X_AUX_SENSOR_FREQUENCY_ITEM, "X_AUX_SENSOR_FREQUENCY", "SQM sensor frequency [Hz]", 0, 1000000000, 0, 0);
 		strcpy(X_AUX_SENSOR_FREQUENCY_ITEM->number.format, "%.0f");
 		indigo_init_number_item(X_AUX_SENSOR_COUNTS_ITEM, "X_AUX_SENSOR_COUNTS", "SQM sensor period [counts]", 0, 1000000000, 0, 0);
 		strcpy(X_AUX_SENSOR_COUNTS_ITEM->number.format, "%.0f");
 		indigo_init_number_item(X_AUX_SENSOR_PERIOD_ITEM, "X_AUX_SENSOR_PERIOD", "SQM sensor period [sec]", 0, 1000000000, 0, 0);
+
+		// -------------------------------------------------------------------------------- WEATHER
+		AUX_WEATHER_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_WEATHER_PROPERTY_NAME, "Sky quality", "Sky quality", INDIGO_OK_STATE, INDIGO_RO_PERM, 3);
+		if (AUX_WEATHER_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_number_item(AUX_WEATHER_SKY_BRIGHTNESS_ITEM, AUX_WEATHER_SKY_BRIGHTNESS_ITEM_NAME, "Sky brightness [m/arcsec\u00B2]", -20, 30, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_SKY_TEMPERATURE_ITEM, AUX_WEATHER_SKY_TEMPERATURE_ITEM_NAME, "Sky temperature [\u00B0C]", -100, 100, 0, 0);
+		indigo_init_number_item(AUX_WEATHER_SKY_BORTLE_CLASS_ITEM, AUX_WEATHER_SKY_BORTLE_CLASS_ITEM_NAME, "Sky Bortle class", 1, 9, 0, 0);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -206,6 +223,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	if (IS_CONNECTED) {
 		if (indigo_property_match(AUX_INFO_PROPERTY, property))
 			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
+			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
@@ -235,6 +254,7 @@ static indigo_result aux_detach(indigo_device *device) {
 		aux_connection_handler(device);
 	}
 	indigo_release_property(AUX_INFO_PROPERTY);
+	indigo_release_property(AUX_WEATHER_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
