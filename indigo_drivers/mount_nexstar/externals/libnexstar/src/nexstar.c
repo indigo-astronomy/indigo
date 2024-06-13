@@ -198,7 +198,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 		*caps |= CAN_SLEW;
 	}
 
-	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 39) && (GET_REVISION(firmware_version) >= 5)) {
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 3) && (GET_REVISION(firmware_version) >= 39)) {
 		*caps |= CAN_ALIGN;
 	}
 
@@ -208,7 +208,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 		*caps |= CAN_PULSE_GUIDE;
 	}
 
-	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 37) && (GET_REVISION(firmware_version) >= 3) && (*caps & TRUE_EQ_MOUNT)) {
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (GET_RELEASE(firmware_version) >= 3) && (GET_REVISION(firmware_version) >= 37) && (*caps & TRUE_EQ_MOUNT)) {
 		*caps |= CAN_GET_SIDE_OF_PIER;
 	}
 

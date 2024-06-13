@@ -54,6 +54,22 @@
 #include <altaircam.h>
 #include "../ccd_altair/indigo_ccd_altair.h"
 
+#elif defined(BRESSER)
+
+#define ENTRY_POINT						indigo_ccd_bresser
+#define CAMERA_NAME_PREFIX		"Bresser"
+#define DRIVER_LABEL					"Bresser Camera"
+#define DRIVER_NAME						"indigo_ccd_bresser"
+#define DRIVER_PRIVATE_DATA		bresser_private_data
+
+#define SDK_CALL(x)						Bressercam_##x
+#define SDK_DEF(x)						BRESSERCAM_##x
+#define SDK_TYPE(x)						Bressercam##x
+#define SDK_HANDLE						HBressercam
+
+#include <bressercam.h>
+#include "../ccd_bresser/indigo_ccd_bresser.h"
+
 #elif defined(OMEGONPRO)
 
 #define ENTRY_POINT						indigo_ccd_omegonpro

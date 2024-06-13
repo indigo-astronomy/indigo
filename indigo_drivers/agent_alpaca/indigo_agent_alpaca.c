@@ -540,27 +540,27 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				}
 				if (alpaca_device->device_type) {
 					int device_number;
-					for (device_number = 0; device_number < private_data->devices_property->count; device_number++) {
-						indigo_item *item = private_data->devices_property->items + device_number;
+					for (device_number = 0; device_number < AGENT_DEVICES_PROPERTY->count; device_number++) {
+						indigo_item *item = AGENT_DEVICES_PROPERTY->items + device_number;
 						if (!strcmp(property->device, item->text.value)) {
 							alpaca_device->device_number = device_number;
 							break;
 						}
 					}
 					if (alpaca_device->device_number < 0) {
-						for (device_number = 0; device_number < private_data->devices_property->count; device_number++) {
-							item = private_data->devices_property->items + device_number;
-							if (*private_data->devices_property->items[device_number].text.value == 0)
+						for (device_number = 0; device_number < AGENT_DEVICES_PROPERTY->count; device_number++) {
+							item = AGENT_DEVICES_PROPERTY->items + device_number;
+							if (*AGENT_DEVICES_PROPERTY->items[device_number].text.value == 0)
 								break;
 						}
 						if (device_number < ALPACA_MAX_ITEMS) {
-							indigo_item *item = private_data->devices_property->items + device_number;
+							indigo_item *item = AGENT_DEVICES_PROPERTY->items + device_number;
 							strcpy(item->text.value, property->device);
 							alpaca_device->device_number = device_number;
-							indigo_delete_property(indigo_agent_alpaca_device, private_data->devices_property, NULL);
-							if (device_number == private_data->devices_property->count)
-								private_data->devices_property->count++;
-							indigo_define_property(indigo_agent_alpaca_device, private_data->devices_property, NULL);
+							indigo_delete_property(indigo_agent_alpaca_device, AGENT_DEVICES_PROPERTY, NULL);
+							if (device_number == AGENT_DEVICES_PROPERTY->count)
+								AGENT_DEVICES_PROPERTY->count++;
+							indigo_define_property(indigo_agent_alpaca_device, AGENT_DEVICES_PROPERTY, NULL);
 							save_config(indigo_agent_alpaca_device);
 						} else {
 							indigo_send_message(indigo_agent_alpaca_device, "Too many Alpaca devices configured");
