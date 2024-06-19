@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0027
+#define DRIVER_VERSION 0x0028
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -800,6 +800,8 @@ static void mount_connect_callback(indigo_device *device) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "Cube II EQ");
 				} else if (!strcmp(PRIVATE_DATA->product, "0011")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "SmartEQ Pro+");
+				} else if (!strcmp(PRIVATE_DATA->product, "0015")) {
+					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "HEM15");
 				} else if (!strcmp(PRIVATE_DATA->product, "0025")) {
 					strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM25");
 				} else if (!strcmp(PRIVATE_DATA->product, "0026")) {
@@ -913,6 +915,10 @@ static void mount_connect_callback(indigo_device *device) {
 						PRIVATE_DATA->protocol = 0x0300;
 						PRIVATE_DATA->no_park = false;
 					}
+					if (strncmp("230420", response, 6) <= 0 && (product == 15)) {
+						PRIVATE_DATA->protocol = 0x0300;
+						PRIVATE_DATA->no_park = false;
+					}
 					strcpy(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 					if (ieq_command(device, ":FW2#", response, sizeof(response))) {
 						response[6] = 0;
@@ -953,7 +959,6 @@ static void mount_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->protocol = 0x0205;
 			} else if (PROTOCOL_0300_ITEM->sw.value) {
 				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
-				PRIVATE_DATA->no_park = true;
 				PRIVATE_DATA->no_park = true;
 				PRIVATE_DATA->protocol = 0x0300;
 			}
