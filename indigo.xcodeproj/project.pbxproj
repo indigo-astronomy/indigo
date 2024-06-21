@@ -4942,7 +4942,7 @@
 		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
 		9DF312B62C255D3800A35CE3 /* FocusLynx_Command_Processing_rev3.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FocusLynx_Command_Processing_rev3.pdf; sourceTree = "<group>"; };
 		9DF312B72C255D3800A35CE3 /* indigo_focuser_optecfl_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optecfl_main.c; sourceTree = "<group>"; };
-		9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optecfl.c; sourceTree = "<group>"; };
+		9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optecfl.c; sourceTree = "<group>"; wrapsLines = 0; };
 		9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_optecfl.h; sourceTree = "<group>"; };
 		9DF312BA2C255D3800A35CE3 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DF312C42C2593F900A35CE3 /* optecfl_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = optecfl_simulator.c; sourceTree = "<group>"; };
