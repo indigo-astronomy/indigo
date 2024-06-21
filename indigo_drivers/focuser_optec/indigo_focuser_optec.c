@@ -88,9 +88,9 @@ static bool optec_open(indigo_device *device) {
 			return true;
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize");
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = 0;
 		}
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}

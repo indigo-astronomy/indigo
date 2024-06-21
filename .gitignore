@@ -10,6 +10,7 @@
 **/*.la
 **/.deps
 **/*.log
+**/a.out
 *.deb
 **/configure~
 Dockerfile
