@@ -41,7 +41,7 @@ static bool connected = false;
 bool finished = false;
 
 static void slew_mount(indigo_client *client, double ra, double dec) {
-	static const char * items[] = { 
+	static const char * items[] = {
 		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME,
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME
 	};
@@ -57,7 +57,7 @@ static bool get_mount_coordinates(indigo_property *property, double *ra, double 
 		return false;
 
 	indigo_item *item = indigo_get_item(property, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME);
-	if (item) { 
+	if (item) {
 		*ra = item->number.value;
 	} else {
 		return false;
@@ -133,14 +133,14 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 	} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		if (property->state != INDIGO_OK_STATE) {
 			double ra = 0, dec = 0;
-			if (get_mount_coordinates(property, &ra, &dec)) {		
+			if (get_mount_coordinates(property, &ra, &dec)) {
 				indigo_log("slewing to target... (current RA = %f, Dec = %f)", ra, dec);
 			} else {
 				indigo_error("slewing to target...");
 			}
 		} else {
-			double ra = 0, dec = 0;	
-			if (get_mount_coordinates(property, &ra, &dec)) {		
+			double ra = 0, dec = 0;
+			if (get_mount_coordinates(property, &ra, &dec)) {
 				indigo_log("slew finished: RA = %f, Dec = %f", ra, dec);
 			} else {
 				indigo_error("slew finished, but coordinates can not be read!");
