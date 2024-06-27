@@ -171,6 +171,8 @@
 #include "aux_wbprov3/indigo_aux_wbprov3.h"
 #include "aux_wcv4ec/indigo_aux_wcv4ec.h"
 #include "focuser_ioptron/indigo_focuser_ioptron.h"
+#include "ccd_bresser/indigo_ccd_bresser.h"
+#include "focuser_optecfl/indigo_focuser_optecfl.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -233,6 +235,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_apogee,
 	indigo_ccd_asi,
 	indigo_ccd_atik,
+	indigo_ccd_bresser,
 	indigo_ccd_dsi,
 	indigo_ccd_fli,
 #ifdef INDIGO_LINUX
@@ -288,6 +291,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_nfocus,
 	indigo_focuser_nstep,
 	indigo_focuser_optec,
+	indigo_focuser_optecfl,
 	indigo_focuser_primaluce,
 	indigo_focuser_prodigy,
 	indigo_focuser_robofocus,

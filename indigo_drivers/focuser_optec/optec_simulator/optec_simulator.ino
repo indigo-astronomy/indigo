@@ -1,4 +1,4 @@
-// Optec focuser simulator for Arduino
+// Optec TCF-S focuser simulator for Arduino
 //
 // Copyright (c) 2018 CloudMakers, s. r. o.
 // All rights reserved.
