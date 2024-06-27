@@ -140,7 +140,7 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 				indigo_error("slewing to target...");
 			}
 		} else if (property->state == INDIGO_ALERT_STATE) {
-			indigo_log("slew failed");
+			indigo_error("slew failed");
 			indigo_device_disconnect(client, MOUNT_SIMULATOR);
 		} else {
 			double ra = 0, dec = 0;
