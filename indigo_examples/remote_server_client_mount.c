@@ -122,6 +122,7 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			if (connected) {
 				indigo_log("disconnected...");
 				connected = false;
+				finished = true;
 			}
 		}
 	} else if (!strcmp(property->name, MOUNT_PARK_PROPERTY_NAME) && property->state == INDIGO_OK_STATE) {
@@ -131,13 +132,16 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			indigo_log("target set: RA = %f, Dec = %f", RA, DEC);
 		}
 	} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
-		if (property->state != INDIGO_OK_STATE) {
+		if (property->state == INDIGO_BUSY_STATE) {
 			double ra = 0, dec = 0;
 			if (get_mount_coordinates(property, &ra, &dec)) {
 				indigo_log("slewing to target... (current RA = %f, Dec = %f)", ra, dec);
 			} else {
 				indigo_error("slewing to target...");
 			}
+		} else if (property->state == INDIGO_ALERT_STATE) {
+			indigo_log("slew failed");
+			indigo_device_disconnect(client, MOUNT_SIMULATOR);
 		} else {
 			double ra = 0, dec = 0;
 			if (get_mount_coordinates(property, &ra, &dec)) {
@@ -146,7 +150,6 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 				indigo_error("slew finished, but coordinates can not be read!");
 			}
 			indigo_device_disconnect(client, MOUNT_SIMULATOR);
-			finished = true;
 		}
 	}
 	return INDIGO_OK;
