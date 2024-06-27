@@ -2,6 +2,8 @@
 
 https://optecinc.com/astronomy/catalog/tcf/index.htm
 
+For Optec FocusLynx focusers use indigo_focuser_optecfl driver instead.
+
 ## Supported devices
 * Optec TCF-S focuser
 

@@ -835,6 +835,29 @@
 		59FFB068288D3D5C00F172AC /* indigo_ccd_playerone.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FFB04A288D3CB900F172AC /* indigo_ccd_playerone.c */; };
 		59FFB069288D3D6500F172AC /* PlayerOneCamera.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB050288D3CB900F172AC /* PlayerOneCamera.h */; };
 		59FFB06A288D3D6600F172AC /* PlayerOneCamera.h in Headers */ = {isa = PBXBuildFile; fileRef = 59FFB050288D3CB900F172AC /* PlayerOneCamera.h */; };
+		9D0829482C198614002166E1 /* bressercam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D0829312C198614002166E1 /* bressercam.h */; };
+		9D0829492C198614002166E1 /* bressercam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D0829312C198614002166E1 /* bressercam.h */; };
+		9D08294A2C198614002166E1 /* libbressercam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D08293C2C198614002166E1 /* libbressercam.dylib */; };
+		9D08294B2C198614002166E1 /* libbressercam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D08293C2C198614002166E1 /* libbressercam.dylib */; };
+		9D08294E2C198614002166E1 /* indigo_ccd_bresser.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0829442C198614002166E1 /* indigo_ccd_bresser.c */; };
+		9D08294F2C198614002166E1 /* indigo_ccd_bresser.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D0829442C198614002166E1 /* indigo_ccd_bresser.c */; };
+		9D0829502C198614002166E1 /* indigo_ccd_bresser.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D0829452C198614002166E1 /* indigo_ccd_bresser.h */; };
+		9D0829512C198614002166E1 /* indigo_ccd_bresser.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D0829452C198614002166E1 /* indigo_ccd_bresser.h */; };
+		9D0829522C198698002166E1 /* libbressercam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 9D08293C2C198614002166E1 /* libbressercam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829532C198699002166E1 /* libdc1394.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5942229E22E34AA9009DAD5C /* libdc1394.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829542C19869D002166E1 /* libusb-1.0.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5942229C22E34AA4009DAD5C /* libusb-1.0.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829552C1986A5002166E1 /* libaltaircam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017421A49F55006A1CD8 /* libaltaircam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829562C1986A7002166E1 /* libatikcameras.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017021A49F3B006A1CD8 /* libatikcameras.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829572C1986A8002166E1 /* libbressercam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 9D08293C2C198614002166E1 /* libbressercam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829582C1986A9002166E1 /* libdc1394.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5942229E22E34AA9009DAD5C /* libdc1394.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829592C1986B1002166E1 /* libomegonprocam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F029805E30003243AE /* libomegonprocam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D08295A2C1986B1002166E1 /* libPlayerOneCamera.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5947BB8E2990270000040E99 /* libPlayerOneCamera.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D08295B2C1986B1002166E1 /* libPlayerOnePW.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5947BB8F2990270000040E99 /* libPlayerOnePW.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D08295C2C1986B1002166E1 /* libqhyccd.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5964F6F62B77ED2100E28F4C /* libqhyccd.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D08295D2C1986BA002166E1 /* libstarshootg.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D08295E2C1986BA002166E1 /* libSVBCameraSDK.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59A68E37277DF2B0000439CC /* libSVBCameraSDK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D08295F2C1986BA002166E1 /* libtoupcam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		9D0829602C1986BA002166E1 /* libusb-1.0.0.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5942229C22E34AA4009DAD5C /* libusb-1.0.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D1880C11E534BBC002F75D7 /* indigo_prop_tool.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */; };
 		9D35EA0223CDB27D00B6A41F /* indigo_gps_gpsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D35E9D323CDB27D00B6A41F /* indigo_gps_gpsd.h */; };
 		9D35EA2B23CDB27D00B6A41F /* indigo_gps_gpsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D35EA0023CDB27D00B6A41F /* indigo_gps_gpsd.c */; };
@@ -966,6 +989,10 @@
 		9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 9DDEFC0421EE35C000657C8F /* libc++.tbd */; };
 		9DE0E7C222C6465500289234 /* indigo_focuser_dsd.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DE0E7B322C6465500289234 /* indigo_focuser_dsd.c */; };
 		9DE0E7C422C6465500289234 /* indigo_focuser_dsd.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */; };
+		9DF312BE2C255D3900A35CE3 /* indigo_focuser_optecfl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */; };
+		9DF312BF2C255D3900A35CE3 /* indigo_focuser_optecfl.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */; };
+		9DF312C02C255D3900A35CE3 /* indigo_focuser_optecfl.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */; };
+		9DF312C12C255D3900A35CE3 /* indigo_focuser_optecfl.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
 		9DFA598B2361D94B00326A74 /* indigo_aux_flatmaster.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA59852361D92600326A74 /* indigo_aux_flatmaster.c */; };
 		9DFC61A723854DD0003977C7 /* indigo_aux_flipflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFC61A5238530FF003977C7 /* indigo_aux_flipflat.c */; };
@@ -1022,8 +1049,20 @@
 			dstSubfolderSpec = 10;
 			files = (
 				59989A7A2A1BCEA200665AB7 /* libnncam.dylib in Embed Libraries */,
+				9D0829572C1986A8002166E1 /* libbressercam.dylib in Embed Libraries */,
+				9D08295E2C1986BA002166E1 /* libSVBCameraSDK.dylib in Embed Libraries */,
+				9D0829552C1986A5002166E1 /* libaltaircam.dylib in Embed Libraries */,
 				59118C412996ED950004BEC8 /* libogmacam.dylib in Embed Libraries */,
+				9D0829562C1986A7002166E1 /* libatikcameras.dylib in Embed Libraries */,
+				9D0829602C1986BA002166E1 /* libusb-1.0.0.dylib in Embed Libraries */,
+				9D0829592C1986B1002166E1 /* libomegonprocam.dylib in Embed Libraries */,
+				9D08295D2C1986BA002166E1 /* libstarshootg.dylib in Embed Libraries */,
+				9D08295C2C1986B1002166E1 /* libqhyccd.dylib in Embed Libraries */,
 				59989A7C2A1BCEB200665AB7 /* libmallincam.dylib in Embed Libraries */,
+				9D0829582C1986A9002166E1 /* libdc1394.dylib in Embed Libraries */,
+				9D08295A2C1986B1002166E1 /* libPlayerOneCamera.dylib in Embed Libraries */,
+				9D08295F2C1986BA002166E1 /* libtoupcam.dylib in Embed Libraries */,
+				9D08295B2C1986B1002166E1 /* libPlayerOnePW.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1037,10 +1076,13 @@
 				59118C442996EDA30004BEC8 /* libogmacam.dylib in Embed Libraries */,
 				59B348AD29E85F8A0062C2EA /* libomegonprocam.dylib in Embed Libraries */,
 				599150D429EF2AC900E63C3B /* libstarshootg.dylib in Embed Libraries */,
+				9D0829542C19869D002166E1 /* libusb-1.0.0.dylib in Embed Libraries */,
 				59B348B229E85FA80062C2EA /* libSVBCameraSDK.dylib in Embed Libraries */,
 				59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */,
 				59B348B029E85F8B0062C2EA /* libmallincam.dylib in Embed Libraries */,
 				59B348B429E85FA80062C2EA /* libtoupcam.dylib in Embed Libraries */,
+				9D0829522C198698002166E1 /* libbressercam.dylib in Embed Libraries */,
+				9D0829532C198699002166E1 /* libdc1394.dylib in Embed Libraries */,
 				59B348AA29E85F8A0062C2EA /* libnncam.dylib in Embed Libraries */,
 			);
 			name = "Embed Libraries";
@@ -4532,6 +4574,18 @@
 		59FFB063288D3CB900F172AC /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		59FFB064288D3CB900F172AC /* indigo_ccd_playerone_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_playerone_main.c; sourceTree = "<group>"; };
 		9D035EBE299E695E00226FC7 /* NYX101.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = NYX101.pdf; sourceTree = "<group>"; };
+		9D0829312C198614002166E1 /* bressercam.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bressercam.h; sourceTree = "<group>"; };
+		9D0829332C198614002166E1 /* libbressercam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libbressercam.so; sourceTree = "<group>"; };
+		9D0829352C198614002166E1 /* libbressercam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libbressercam.so; sourceTree = "<group>"; };
+		9D0829372C198614002166E1 /* libbressercam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libbressercam.so; sourceTree = "<group>"; };
+		9D0829392C198614002166E1 /* libbressercam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libbressercam.so; sourceTree = "<group>"; };
+		9D08293C2C198614002166E1 /* libbressercam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libbressercam.dylib; sourceTree = "<group>"; };
+		9D08293F2C198614002166E1 /* 99-bressercam.rules */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "99-bressercam.rules"; sourceTree = "<group>"; };
+		9D0829402C198614002166E1 /* en.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
+		9D0829432C198614002166E1 /* indigo_ccd_bresser_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_bresser_main.c; sourceTree = "<group>"; };
+		9D0829442C198614002166E1 /* indigo_ccd_bresser.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_bresser.c; sourceTree = "<group>"; };
+		9D0829452C198614002166E1 /* indigo_ccd_bresser.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_bresser.h; sourceTree = "<group>"; };
+		9D0829462C198614002166E1 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D09DF6821DF5D0E00683399 /* skywatcher_motor_controller_command_set.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = skywatcher_motor_controller_command_set.pdf; sourceTree = "<group>"; };
 		9D1880BE1E534B5E002F75D7 /* indigo_prop_tool */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = indigo_prop_tool; sourceTree = BUILT_PRODUCTS_DIR; };
 		9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_prop_tool.c; sourceTree = "<group>"; };
@@ -4886,6 +4940,12 @@
 		9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dsd_main.c; sourceTree = "<group>"; };
 		9DE0E7B522C6465500289234 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
+		9DF312B62C255D3800A35CE3 /* FocusLynx_Command_Processing_rev3.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FocusLynx_Command_Processing_rev3.pdf; sourceTree = "<group>"; };
+		9DF312B72C255D3800A35CE3 /* indigo_focuser_optecfl_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optecfl_main.c; sourceTree = "<group>"; };
+		9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optecfl.c; sourceTree = "<group>"; wrapsLines = 0; };
+		9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_optecfl.h; sourceTree = "<group>"; };
+		9DF312BA2C255D3800A35CE3 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DF312C42C2593F900A35CE3 /* optecfl_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = optecfl_simulator.c; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -4945,6 +5005,7 @@
 				59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */,
 				59B348A729E85F8A0062C2EA /* libaltaircam.dylib in Frameworks */,
 				598A1C07259BA94A00C0B34C /* libfcusb.a in Frameworks */,
+				9D08294B2C198614002166E1 /* libbressercam.dylib in Frameworks */,
 				596FCA942BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				598A1C08259BA94A00C0B34C /* libgpusb.a in Frameworks */,
 				59B348AC29E85F8A0062C2EA /* libomegonprocam.dylib in Frameworks */,
@@ -5013,6 +5074,7 @@
 				596FCA912BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				596FCA952BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				59E6B7FB27E383B9007A2A7B /* libgxccd.a in Frameworks */,
+				9D08294A2C198614002166E1 /* libbressercam.dylib in Frameworks */,
 				9DDEFC0521EE35C000657C8F /* libc++.tbd in Frameworks */,
 				9D495737245601B400674101 /* libusb-1.0.0.dylib in Frameworks */,
 				5947BB922990272400040E99 /* libPlayerOneCamera.dylib in Frameworks */,
@@ -9926,6 +9988,7 @@
 				59BBD16F21823693008199D6 /* ccd_altair */,
 				9D59D3C020D3F828009EA8FF /* ccd_apogee */,
 				590A863E1DB8096A002F12FB /* ccd_asi */,
+				9D0829472C198614002166E1 /* ccd_bresser */,
 				9D9EA69F1DBE1F5000E11841 /* ccd_atik */,
 				5911F7AB1F02E10B0053F3CA /* ccd_dsi */,
 				5992F7B01E1EC84B0035242E /* ccd_fli */,
@@ -9972,6 +10035,7 @@
 				9DADEE5321511322008C6FBE /* focuser_nfocus */,
 				599E6A70214D8EEB00E45C9E /* focuser_nstep */,
 				59399D882177D316002886CA /* focuser_optec */,
+				9DF312BB2C255D3800A35CE3 /* focuser_optecfl */,
 				59B3489229E728D80062C2EA /* focuser_primaluce */,
 				9D3E906B28995B140093C9EB /* focuser_prodigy */,
 				59F682A3250FD48200ABD731 /* focuser_robofocus */,
@@ -12851,6 +12915,105 @@
 			path = doc;
 			sourceTree = "<group>";
 		};
+		9D0829322C198614002166E1 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829312C198614002166E1 /* bressercam.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		9D0829342C198614002166E1 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829332C198614002166E1 /* libbressercam.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		9D0829362C198614002166E1 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829352C198614002166E1 /* libbressercam.so */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		9D0829382C198614002166E1 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829372C198614002166E1 /* libbressercam.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		9D08293A2C198614002166E1 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829392C198614002166E1 /* libbressercam.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		9D08293B2C198614002166E1 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829342C198614002166E1 /* arm */,
+				9D0829362C198614002166E1 /* arm64 */,
+				9D0829382C198614002166E1 /* x64 */,
+				9D08293A2C198614002166E1 /* x86 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		9D08293D2C198614002166E1 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				9D08293C2C198614002166E1 /* libbressercam.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		9D08293E2C198614002166E1 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				9D08293B2C198614002166E1 /* Linux */,
+				9D08293D2C198614002166E1 /* macOS */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		9D0829412C198614002166E1 /* libbressercam */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829322C198614002166E1 /* include */,
+				9D08293E2C198614002166E1 /* lib */,
+				9D08293F2C198614002166E1 /* 99-bressercam.rules */,
+				9D0829402C198614002166E1 /* en.html */,
+			);
+			path = libbressercam;
+			sourceTree = "<group>";
+		};
+		9D0829422C198614002166E1 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829412C198614002166E1 /* libbressercam */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		9D0829472C198614002166E1 /* ccd_bresser */ = {
+			isa = PBXGroup;
+			children = (
+				9D0829462C198614002166E1 /* README.md */,
+				9D0829452C198614002166E1 /* indigo_ccd_bresser.h */,
+				9D0829442C198614002166E1 /* indigo_ccd_bresser.c */,
+				9D0829432C198614002166E1 /* indigo_ccd_bresser_main.c */,
+				9D0829422C198614002166E1 /* bin_externals */,
+			);
+			path = ccd_bresser;
+			sourceTree = "<group>";
+		};
 		9D1880BF1E534B89002F75D7 /* indigo_tools */ = {
 			isa = PBXGroup;
 			children = (
@@ -13968,6 +14131,27 @@
 			path = focuser_dsd;
 			sourceTree = "<group>";
 		};
+		9DF312B52C255D3800A35CE3 /* optecfl_simulator */ = {
+			isa = PBXGroup;
+			children = (
+				9DF312C42C2593F900A35CE3 /* optecfl_simulator.c */,
+			);
+			path = optecfl_simulator;
+			sourceTree = "<group>";
+		};
+		9DF312BB2C255D3800A35CE3 /* focuser_optecfl */ = {
+			isa = PBXGroup;
+			children = (
+				9DF312BA2C255D3800A35CE3 /* README.md */,
+				9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */,
+				9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */,
+				9DF312B72C255D3800A35CE3 /* indigo_focuser_optecfl_main.c */,
+				9DF312B62C255D3800A35CE3 /* FocusLynx_Command_Processing_rev3.pdf */,
+				9DF312B52C255D3800A35CE3 /* optecfl_simulator */,
+			);
+			path = focuser_optecfl;
+			sourceTree = "<group>";
+		};
 		9DF7E64B1F6AA0E600156652 /* ccd_qsi */ = {
 			isa = PBXGroup;
 			children = (
@@ -14049,6 +14233,7 @@
 				598A1C1B259BA94A00C0B34C /* libdsusb.h in Headers */,
 				591CD0CD298042C1003243AE /* starshootg.h in Headers */,
 				598A1C1C259BA94A00C0B34C /* duk_config.h in Headers */,
+				9D0829512C198614002166E1 /* indigo_ccd_bresser.h in Headers */,
 				598A1C1D259BA94A00C0B34C /* DDHidUsageTables.h in Headers */,
 				598A1C1E259BA94A00C0B34C /* indigo_driver_json.h in Headers */,
 				598A1C1F259BA94A00C0B34C /* indigo_dome_driver.h in Headers */,
@@ -14123,6 +14308,7 @@
 				598A1C4F259BA94A00C0B34C /* indigo_aux_sqm.h in Headers */,
 				59D29A182841469D00D5E7F7 /* indigo_mount_starbook.h in Headers */,
 				598A1C50259BA94A00C0B34C /* indigo_focuser_steeldrive2.h in Headers */,
+				9D0829492C198614002166E1 /* bressercam.h in Headers */,
 				598A1C51259BA94A00C0B34C /* indigo_agent.h in Headers */,
 				598A1C52259BA94A00C0B34C /* nexstar_pec.h in Headers */,
 				598A1C53259BA94A00C0B34C /* indigo_agent_mount.h in Headers */,
@@ -14182,6 +14368,7 @@
 				598A1C7E259BA94A00C0B34C /* NSDictionary+DDHidExtras.h in Headers */,
 				59118C322996EB440004BEC8 /* indigo_ccd_ogma.h in Headers */,
 				5920078A2A5B2D050063C472 /* indigo_aux_uch.h in Headers */,
+				9DF312C12C255D3900A35CE3 /* indigo_focuser_optecfl.h in Headers */,
 				59111D0F285F53D100E57194 /* indigocat_solar_system.h in Headers */,
 				598A1C80259BA94A00C0B34C /* gxccd.h in Headers */,
 				598A1C81259BA94A00C0B34C /* indigo_mount_driver.h in Headers */,
@@ -14275,6 +14462,7 @@
 				595F291C211E211100380EF4 /* DDHidElement.h in Headers */,
 				595F2924211E211200380EF4 /* DDHidDevice.h in Headers */,
 				9DAD522421246C18002FCC79 /* indigo_mount_synscan_driver.h in Headers */,
+				9D0829502C198614002166E1 /* indigo_ccd_bresser.h in Headers */,
 				599F61932BB494EA009065BC /* indigo_polynomial_fit.h in Headers */,
 				9DA451CF21908CBC00818B58 /* indigo_agent_imager.h in Headers */,
 				59A52DF121A33E4C000B6F27 /* libfli.h in Headers */,
@@ -14369,6 +14557,7 @@
 				59D7076A1DC527B800DEF566 /* indigo_mount_driver.h in Headers */,
 				9DAD52472126BD99002FCC79 /* indigo_wheel_quantum.h in Headers */,
 				9DA71D052A029BE500CFA533 /* indigo_ica_ptp_nikon.h in Headers */,
+				9D0829482C198614002166E1 /* bressercam.h in Headers */,
 				9D59D67020D3F82A009EA8FF /* indigo_ccd_apogee.h in Headers */,
 				595F292C211E211200380EF4 /* DDHidAppleRemote.h in Headers */,
 				5955CB6C2684BC9C00685071 /* indigo_dome_beaver.h in Headers */,
@@ -14382,6 +14571,7 @@
 				9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */,
 				59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */,
 				59487D6E221B3C19007027AE /* indigocat_star.h in Headers */,
+				9DF312C02C255D3900A35CE3 /* indigo_focuser_optecfl.h in Headers */,
 				590BF1AB21EBBBEE00C24DBA /* indigo_ao_driver.h in Headers */,
 				9DBC34671DCB267700588DB9 /* indigo_wheel_asi.h in Headers */,
 				59A52F2D21A341E0000B6F27 /* altaircam.h in Headers */,
@@ -14694,6 +14884,7 @@
 				598A1B58259BA94A00C0B34C /* indigo_dome_baader.c in Sources */,
 				598A1B59259BA94A00C0B34C /* indigo_dome_dragonfly.c in Sources */,
 				598A1B5B259BA94A00C0B34C /* indigo_raw_utils.c in Sources */,
+				9D08294F2C198614002166E1 /* indigo_ccd_bresser.c in Sources */,
 				59111CEE285F504200E57194 /* indigocat_jupiter.c in Sources */,
 				598C02002AFC129500DF705B /* indigo_ptp_nikon.c in Sources */,
 				598C01FC2AFC129500DF705B /* indigo_ptp.c in Sources */,
@@ -14743,6 +14934,7 @@
 				598A1B7B259BA94A00C0B34C /* indigo_dome_simulator.c in Sources */,
 				598A1B7C259BA94A00C0B34C /* indigo_base64.c in Sources */,
 				597BD1D0260CE2A800239274 /* alpaca_rotator.c in Sources */,
+				9DF312BF2C255D3900A35CE3 /* indigo_focuser_optecfl.c in Sources */,
 				598A1B7D259BA94A00C0B34C /* indigo_driver.c in Sources */,
 				597BD19E2606974900239274 /* alpaca_lightbox.c in Sources */,
 				598A1B7E259BA94A00C0B34C /* indigo_gps_gpsd.c in Sources */,
@@ -15111,6 +15303,7 @@
 				59D138A5283E6BAA00FCC514 /* indigo_dslr_raw.c in Sources */,
 				9DA71D012A029BE500CFA533 /* indigo_ccd_ica.m in Sources */,
 				59A321B821D691D600EC0F4A /* indigo_mount_synscan_guider.c in Sources */,
+				9DF312BE2C255D3900A35CE3 /* indigo_focuser_optecfl.c in Sources */,
 				595AA1CD1FC5ED8A00350E7B /* indigo_agent_snoop.c in Sources */,
 				59C3BAFD254DE8AD000720B4 /* indigo_ser.c in Sources */,
 				59111CFE285F504300E57194 /* indigocat_transform.c in Sources */,
@@ -15121,6 +15314,7 @@
 				5955CB7D2684E93E00685071 /* indigo_aux_astromechanics.c in Sources */,
 				599C9A521DA022E3008BBCC1 /* indigo_client_xml.c in Sources */,
 				59D8BBC5260E624600B904EE /* alpaca_dome.c in Sources */,
+				9D08294E2C198614002166E1 /* indigo_ccd_bresser.c in Sources */,
 				59111CF6285F504300E57194 /* indigocat_moon.c in Sources */,
 				9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */,
 				5913653928CFB42000ABB99B /* indigo_md5.c in Sources */,
@@ -15513,6 +15707,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -15594,6 +15789,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -15732,6 +15928,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -15805,6 +16002,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x64",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";

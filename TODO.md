@@ -32,7 +32,7 @@
 
 #### DSLRs
 
-1. Sony driver (based on WS API)
+1. Sony driver __DONE__ (supported by PTP driver)
 2. Pentax driver
 3. FujiFilm driver __DONE__ (supported by PTP driver)
 
@@ -45,8 +45,8 @@
 #### Focusers
 
 1. Microtouch focuser
-2. Sesto-Senso focuser
-3. FocysDreamPro focuser
+2. Sesto-Senso focuser __DONE__
+3. FocusDreamPro focuser __DONE__
 
 #### Mounts
 
@@ -58,7 +58,7 @@
 
 #### Dome
 2. UNIVERSAL dome driver
-3. Maxdome II
+3. Maxdome II __DONE__
 3. Lunatico Astronomia Dragonfly dome driver __DONE__
 
 #### AUX
