@@ -17,7 +17,7 @@ else
 	endif
 endif
 
-all: executable_driver_client dynamic_driver_client remote_server_client servce_discovery
+all: executable_driver_client dynamic_driver_client remote_server_client remote_server_client_mount servce_discovery
 
 executable_driver_client: executable_driver_client.c
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
@@ -26,6 +26,9 @@ dynamic_driver_client: dynamic_driver_client.c
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 remote_server_client: remote_server_client.c
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
+
+remote_server_client_mount: remote_server_client_mount.c
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS)
 
 servce_discovery: service_discovery.c
