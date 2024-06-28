@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x002B
+#define DRIVER_VERSION 0x002C
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -2434,13 +2434,15 @@ static void sequence_process(indigo_device *device) {
 			if (DEVICE_PRIVATE_DATA->focus_exposure > 0) {
 				AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_FOCUSING;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
+				int image_format = save_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 				double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 				AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = DEVICE_PRIVATE_DATA->focus_exposure;
 				indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 				DEVICE_PRIVATE_DATA->find_stars = (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0);
 				indigo_send_message(device, "Autofocus started");
 				DEVICE_PRIVATE_DATA->restore_initial_position = true;
-				if (autofocus_repeat(device)) {
+				bool success = autofocus_repeat(device);
+				if (success) {
 					indigo_send_message(device, "Autofocus finished");
 				} else {
 					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -2448,11 +2450,12 @@ static void sequence_process(indigo_device *device) {
 					} else {
 						indigo_send_message(device, "Autofocus failed");
 					}
-					break;
 				}
+				restore_switch_state(device, INDIGO_FILTER_CCD_INDEX, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 				AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = exposure;
 				indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 				DEVICE_PRIVATE_DATA->focus_exposure = 0;
+				if (!success) break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				break;
