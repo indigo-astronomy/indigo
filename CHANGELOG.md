@@ -2,6 +2,31 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-288] - 28 Jun Fri 2024
+## Overall:
+- indigo_examples: add remote_server_client_mount.c example
+
+### Driver Fixes:
+- indigo_agent_imager:
+	- fix image format restoration after focus failure in a sequence
+
+- indigo_agent_alpaca:
+	- naming convetion fixed
+
+- indigo_gps_nmea:
+	- add support for GALILEO, GLONASS, BEIDOU, NAVIC and QZSS
+	- automatic or user selectable positioning system
+
+- indigo_mount_ioptron
+	- add support for HEM15 mount
+
+### New drivers
+- indigo_ccd_bresser:
+	- driver for Bresser (touptek OEM) cameras
+
+- indigo_ocuser_optecfl:
+	- Optec FocusLynx focusers driver
+
 # [2.0-286] - 06 Jun Thu 2024
 ### Driver Fixes:
 - indigo_agent_guider:
