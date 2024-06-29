@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 05.03.2023 (draft)
+Revision: 29.06.2024 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -615,7 +615,9 @@ int main(int argc, const char * argv[]) {
 
 An open source examples of client API usage are the following pieces of code:
 
-1. [indigo_examples/remote_server_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/remote_server_client.c) - Basic API example
+1. [indigo_examples/remote_server_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/remote_server_client.c) - Basic API example which takes exposures with the camera
+
+1. [indigo_examples/remote_server_client_mount.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/remote_server_client_mount.c) - Basic API example which unparks and moves the mount
 
 1. [indigo_tools/indigo_prop_tool.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_tools/indigo_prop_tool.c) - Command line property management tool
 
