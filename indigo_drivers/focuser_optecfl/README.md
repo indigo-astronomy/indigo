@@ -2,7 +2,7 @@
 
 https://optec.us/resources/documents/FocusLynx/FocusLynx_Command_Processing_rev3.pdf
 
-For Optec FocusLynx focusers use indigo_focuser_optec driver instead.
+For Optec TCF-S focusers use indigo_focuser_optec driver instead.
 
 ## Supported devices
 * Optec FocusLynx focusers
