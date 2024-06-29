@@ -27,6 +27,8 @@ indigo_server indigo_ccd_touptek
 Tested with:
 * GP-1200KMB
 * GPCMOS02000KMA
+* GP3M678C
+* GPM462M
 * Touptek FILTERWHEEL
 
 ## Comments
