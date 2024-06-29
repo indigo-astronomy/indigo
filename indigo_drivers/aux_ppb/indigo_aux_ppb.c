@@ -24,7 +24,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x0014
+#define DRIVER_VERSION 0x0015
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
