@@ -564,7 +564,7 @@ static void worker_thread(handler_data *data) {
 					AGENT_MOUNT_START_SLEW_ITEM->sw.value = true;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-					indigo_set_timer(device, 0, slew_process, NULL);
+					indigo_set_timer(device, 0, sync_process, NULL);
 				}
 				strcpy(buffer_out, "OK#");
 			} else if (strcmp(buffer_in, "RG") == 0) {
@@ -610,7 +610,8 @@ static void worker_thread(handler_data *data) {
 			} else if (strcmp(buffer_in, "Q") == 0) {
 				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ABORT_MOTION_PROPERTY_NAME, MOUNT_ABORT_MOTION_ITEM_NAME, true);
 			} else if (strncmp(buffer_in, "SC", 2) == 0) {
-				strcpy(buffer_out, "1Updating        planetary data. #\n                              #");
+				// http://www.dv-fansler.com/FTP%20Files/Astronomy/LX200%20Hand%20Controller%20Communications.pdf
+				strcpy(buffer_out, "1Updating        planetary data. #                                #");
 			} else if (strncmp(buffer_in, "S", 1) == 0) {
 				strcpy(buffer_out, "1");
 			}
