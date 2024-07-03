@@ -24,7 +24,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x0015
+#define DRIVER_VERSION 0x0016
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -148,7 +148,6 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AUX_POWER_OUTLET_1_ITEM, AUX_POWER_OUTLET_1_ITEM_NAME, "Power outlets", true);
 		indigo_init_switch_item(AUX_POWER_OUTLET_2_ITEM, AUX_POWER_OUTLET_2_ITEM_NAME, "DSLR outlet", true);
-
 		// -------------------------------------------------------------------------------- DSLR_POWER
 		AUX_DSLR_POWER_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_DSLR_POWER", AUX_GROUP, "DSLR Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 5);
 		if (AUX_DSLR_POWER_PROPERTY == NULL)
@@ -403,7 +402,6 @@ static void aux_connection_handler(indigo_device *device) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPB %s", DEVICE_PORT_ITEM->text.value);
 							PRIVATE_DATA->is_advance = false;
 							PRIVATE_DATA->is_micro = false;
-							AUX_POWER_OUTLET_PROPERTY->count = 1;
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = true;
 							AUX_DSLR_POWER_PROPERTY->hidden = true;
 							break;
@@ -411,7 +409,6 @@ static void aux_connection_handler(indigo_device *device) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPBA %s", DEVICE_PORT_ITEM->text.value);
 							PRIVATE_DATA->is_advance = true;
 							PRIVATE_DATA->is_micro = false;
-							AUX_POWER_OUTLET_PROPERTY->count = 2;
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 							AUX_DSLR_POWER_PROPERTY->hidden = false;
 							break;
@@ -419,7 +416,6 @@ static void aux_connection_handler(indigo_device *device) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPBM %s", DEVICE_PORT_ITEM->text.value);
 							PRIVATE_DATA->is_advance = true;
 							PRIVATE_DATA->is_micro = true;
-							AUX_POWER_OUTLET_PROPERTY->count = 2;
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 							AUX_DSLR_POWER_PROPERTY->hidden = false;
 							break;
@@ -494,7 +490,7 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->handle > 0) {
 			if (ppb_command(device, "PV", response, sizeof(response)) ) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->is_advance ? (PRIVATE_DATA->is_micro ? "PPBM" : "PPBA") : "PPB");
-				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
+				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
 			ppb_command(device, "PL:1", response, sizeof(response));
@@ -643,8 +639,6 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		if (IS_CONNECTED) {
 			indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-			indigo_delete_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
-			indigo_define_property(device, AUX_POWER_OUTLET_STATE_PROPERTY, NULL);
 			indigo_update_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
