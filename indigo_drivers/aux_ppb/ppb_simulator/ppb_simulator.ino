@@ -22,19 +22,17 @@
 #define Serial SerialUSB
 #endif
 
-#define PPBA
+//#define PPBA
 
-bool power1 = true;
-bool power2 = true;
-bool power3 = true;
-bool power4 = true;
-byte power5 = 0;
-byte power6 = 0;
+bool power_1234 = true;
+byte power_5 = 0;
+byte power_6 = 0;
 bool power_dslr = true;
 bool autodev = true;
 #ifdef PPBA
 bool power_alert = 0;
 int power_adj = 5;
+int dew_aggr = 210;
 #endif
 
 void setup() {
@@ -53,13 +51,11 @@ void loop() {
     Serial.println("PPB_OK");
 #endif
   } else if (command.startsWith("PE:")) {
-    power1 = command.charAt(3) == '1';
-    power2 = command.charAt(4) == '1';
-    power3 = command.charAt(5) == '1';
-    power4 = command.charAt(6) == '1';
+    power_1234 = command.charAt(5) == '1';
+    power_dslr = command.charAt(6) == '1';
     Serial.println("PE:1");
   } else if (command.startsWith("P1:")) {
-    power1 = power2 = power3 = power4 = command.charAt(3) == '1';
+    power_1234 = command.charAt(3) == '1';
     Serial.println(command);
   } else if (command.startsWith("P2:")) {
     int value = command.substring(3).toInt();
@@ -72,35 +68,34 @@ void loop() {
         break;
 #ifdef PPBA
       default:
+        power_dslr = true;
         power_adj = value;
         break;
 #endif
     }
     Serial.println(command);
   } else if (command.startsWith("P3:")) {
-    power5 = command.substring(3).toInt();
+    power_5 = command.substring(3).toInt();
     Serial.println(command);
   } else if (command.startsWith("P4:")) {
-    power6 = command.substring(3).toInt();
+    power_6 = command.substring(3).toInt();
     Serial.println(command);
   } else if (command.startsWith("PF")) {
-    Serial.println("RBT");
   } else if (command.startsWith("PA")) {
 #ifdef PPBA
     Serial.print("PPBA:12.2:");
-    Serial.print((power1 || power2 || power3 || power4 || power5 || power6 || power_dslr) * 600);
 #else
     Serial.print("PPB:12.2:");
-    Serial.print((power1 || power2 || power3 || power4 || power5 || power6) * 65);
 #endif
+    Serial.print((power_1234 || power_dslr || power_5 || power_6) * 65);
     Serial.print(".0:23.2:59:14.7:");
-    Serial.print(power1 + power2 + power3 + power4 ? '1' : '0');
+    Serial.print(power_1234 ? '1' : '0');
     Serial.print(':');
 		Serial.print(power_dslr ? '1' : '0');
 		Serial.print(':');
-    Serial.print(power5);
+    Serial.print(power_5);
     Serial.print(':');
-    Serial.print(power6);
+    Serial.print(power_6);
     Serial.print(':');
 #ifdef PPBA
     Serial.print(autodev ? '1' : '0');
@@ -111,12 +106,22 @@ void loop() {
 #else    
     Serial.println(autodev ? '1' : '0');
 #endif
-  } else if (command.startsWith("PD:")) {
-    autodev = command.charAt(3) == '1';
-    Serial.println(command);
   } else if (command.startsWith("PL:")) {
     Serial.println(command);
   } else if (command.equals("PV")) {
-    Serial.println("1.0");
+    Serial.println("1.5");
+#ifdef PPBA
+  } else if (command.startsWith("DA:")) {
+    dew_aggr = command.substring(3).toInt();
+    Serial.println(command);
+  } else if (command.startsWith("PD:")) {
+    autodev = command.charAt(3) == '1';
+    Serial.print("PD:");
+    Serial.println(dew_aggr);
+#else    
+  } else if (command.startsWith("PD:")) {
+    autodev = command.charAt(3) == '1';
+    Serial.println(command);
+#endif
   }
 }
