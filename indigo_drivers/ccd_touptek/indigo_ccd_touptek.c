@@ -20,7 +20,7 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 // 2.0 by Rumen Bogdanovski <rumenastro@gmail.com>
 
-/** INDIGO ToupTek CCD & filter wheel driver
+/** INDIGO ToupTek CCD, filter wheel & focuser driver
  \file indigo_ccd_touptek.c
  */
 
@@ -232,6 +232,13 @@ typedef struct {
 	indigo_timer *wheel_timer;
 	indigo_property *calibrate_property;
 	indigo_property *wheel_model_property;
+	/* focuser related */
+	int current_position, target_position;
+	int max_position;
+	int backlash;
+	double prev_temp;
+	indigo_timer *focuser_timer;
+
 } DRIVER_PRIVATE_DATA;
 
 #define ADVANCED_GROUP                 "Advanced"
@@ -1817,6 +1824,605 @@ static indigo_result wheel_detach(indigo_device *device) {
 	return indigo_wheel_detach(device);
 }
 
+
+// -------------------------------------------------------------------------------- INDIGO focuser device implementation
+static void focuser_timer_callback(indigo_device *device) {
+	int is_moving = 0;
+	HRESULT res;
+
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_ISMOVING), 0, &is_moving));
+	if (FAILED(res)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_ISMOVING) -> %08x (value = %d) (failed)", res, is_moving);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_ISMOVING) -> %08x (value = %d)", res, is_moving);
+	}
+
+	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETPOSITION), 0, &PRIVATE_DATA->current_position));
+	if (FAILED(res)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->current_position);
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d)", res, PRIVATE_DATA->current_position);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+
+	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+
+	if ((!is_moving) || (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position)) {
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+	} else {
+		indigo_reschedule_timer(device, 0.5, &(PRIVATE_DATA->focuser_timer));
+	}
+	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+}
+
+
+static void temperature_timer_callback(indigo_device *device) {
+	/*
+	float temp;
+	static bool has_sensor = true;
+	//bool moving = false, moving_HC = false;
+	int res;
+
+	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
+	FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+	if ((res != EAF_SUCCESS) && (FOCUSER_TEMPERATURE_ITEM->number.value > -270.0)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
+	}
+	// static double ctemp = 0;
+	// FOCUSER_TEMPERATURE_ITEM->number.value = ctemp;
+	// temp = ctemp;
+	// ctemp += 0.12;
+	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) {
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+		if (has_sensor) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
+			has_sensor = false;
+		}
+	} else {
+		has_sensor = true;
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	}
+	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+		compensate_focus(device, temp);
+	} else {
+		// reset temp so that the compensation starts when auto mode is selected
+		PRIVATE_DATA->prev_temp = -273;
+	}
+	*/
+	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
+}
+
+
+static void compensate_focus(indigo_device *device, double new_temp) {
+	/*
+	int compensation;
+	double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
+
+	// we do not have previous temperature reading 
+	if (PRIVATE_DATA->prev_temp < -270) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: PRIVATE_DATA->prev_temp = %f", PRIVATE_DATA->prev_temp);
+		PRIVATE_DATA->prev_temp = new_temp;
+		return;
+	}
+
+	// we do not have current temperature reading or focuser is moving
+	if ((new_temp < -270) || (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE)) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not compensating: new_temp = %f, FOCUSER_POSITION_PROPERTY->state = %d", new_temp, FOCUSER_POSITION_PROPERTY->state);
+		return;
+	}
+
+	// temperature difference if more than 1 degree so compensation needed
+	if ((fabs(temp_difference) >= FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) && (fabs(temp_difference) < 100)) {
+		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.0f, threshold = %.2f",
+			temp_difference,
+			compensation,
+			FOCUSER_COMPENSATION_ITEM->number.value,
+			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
+		);
+	} else {
+		INDIGO_DRIVER_DEBUG(
+			DRIVER_NAME,
+			"Not compensating (not needed): temp_difference = %.2f, threshold = %.2f",
+			temp_difference,
+			FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value
+		);
+		return;
+	}
+
+	PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + compensation;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
+
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+
+	// Make sure we do not attempt to go beyond the limits
+	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
+		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
+
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+	if (res != EAF_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+	}
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+
+	PRIVATE_DATA->prev_temp = new_temp;
+	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+	indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+	*/
+}
+
+
+static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
+	/*
+	if (IS_CONNECTED) {
+		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
+			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
+	}
+	*/
+	return indigo_focuser_enumerate_properties(device, NULL, NULL);
+}
+
+
+static indigo_result focuser_attach(indigo_device *device) {
+	assert(device != NULL);
+	assert(PRIVATE_DATA != NULL);
+	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
+		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
+
+		FOCUSER_LIMITS_PROPERTY->hidden = false;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 1000000;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
+		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
+		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "\'%s\' MaxStep = %d",device->name ,PRIVATE_DATA->info.MaxStep);
+
+		FOCUSER_SPEED_PROPERTY->hidden = true;
+
+		FOCUSER_BACKLASH_PROPERTY->hidden = false;
+		FOCUSER_BACKLASH_ITEM->number.min = 0;
+		FOCUSER_BACKLASH_ITEM->number.max = 10000;
+		FOCUSER_BACKLASH_ITEM->number.step = 1;
+
+		FOCUSER_POSITION_ITEM->number.min = 0;
+		FOCUSER_POSITION_ITEM->number.step = 1;
+		FOCUSER_POSITION_ITEM->number.max = 1000000;
+
+		FOCUSER_STEPS_ITEM->number.min = 0;
+		FOCUSER_STEPS_ITEM->number.step = 1;
+		FOCUSER_STEPS_ITEM->number.max = 1000000;
+
+		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
+		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
+		FOCUSER_REVERSE_MOTION_PROPERTY->hidden = false;
+
+		// -------------------------------------------------------------------------- FOCUSER_COMPENSATION
+		FOCUSER_COMPENSATION_PROPERTY->hidden = false;
+		FOCUSER_COMPENSATION_ITEM->number.min = -10000;
+		FOCUSER_COMPENSATION_ITEM->number.max = 10000;
+		FOCUSER_COMPENSATION_PROPERTY->count = 2;
+		// -------------------------------------------------------------------------- FOCUSER_MODE
+		FOCUSER_MODE_PROPERTY->hidden = false;
+		/*
+		// -------------------------------------------------------------------------- BEEP_PROPERTY
+		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (EAF_BEEP_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(EAF_BEEP_ON_ITEM, EAF_BEEP_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(EAF_BEEP_OFF_ITEM, EAF_BEEP_OFF_ITEM_NAME, "Off", true);
+		*/
+		// --------------------------------------------------------------------------
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
+		return focuser_enumerate_properties(device, NULL, NULL);
+	}
+	return INDIGO_FAILED;
+}
+
+static void focuser_connect_callback(indigo_device *device) {
+indigo_lock_master_device(device);
+	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		if (PRIVATE_DATA->handle == NULL) {
+			if (indigo_try_global_lock(device) != INDIGO_OK) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+			} else {
+				char id[66];
+				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
+				PRIVATE_DATA->handle = SDK_CALL(Open)(id);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
+			}
+		}
+		device->gp_bits = 1;
+		if (PRIVATE_DATA->handle) {
+			HRESULT result = SDK_CALL(get_HwVersion)(PRIVATE_DATA->handle, INFO_DEVICE_HW_REVISION_ITEM->text.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_HwVersion() -> %08x", result);
+			result = SDK_CALL(get_FwVersion)(PRIVATE_DATA->handle, INFO_DEVICE_FW_REVISION_ITEM->text.value);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_FwVersion() -> %08x", result);
+			indigo_update_property(device, INFO_PROPERTY, NULL);
+			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
+
+			pthread_mutex_lock(&PRIVATE_DATA->mutex);
+			int value = 0;
+			HRESULT res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_RANGEMAX), 0, &value));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_RANGEMAX) -> %08x (value = %d) (failed)", res, value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_RANGEMAX) -> %08x (value = %d)", res, value);
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)value;
+				PRIVATE_DATA->max_position = value;
+			}
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_RANGEMIN), 0, &value));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_RANGEMIN) -> %08x (value = %d) (failed)", res, value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_RANGEMIN) -> %08x (value = %d)", res, value);
+				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = (double)value;
+			}
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETBACKLASH), 0, &value));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETBACKLASH) -> %08x (value = %d) (failed)", res, value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETBACKLASH) -> %08x (value = %d)", res, value);
+				FOCUSER_BACKLASH_ITEM->number.value = (double)value;
+				PRIVATE_DATA->backlash = value;
+			}
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETPOSITION), 0, &value));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d) (failed)", res, value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d)", res, value);
+				FOCUSER_POSITION_ITEM->number.value = (double)value;
+				PRIVATE_DATA->current_position = PRIVATE_DATA->target_position = value;
+			}
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETDIRECTION), 0, &value));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETDIRECTION) -> %08x (value = %d) (failed)", res, value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETDIRECTION) -> %08x (value = %d)", res, value);
+				FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = (value >= 0);
+				FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value;
+			}
+
+			/*
+						res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
+						if (res != EAF_SUCCESS) {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+						}
+						EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
+			*/
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+
+			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+
+			//indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
+			//indigo_define_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
+
+			PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */ 
+			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+			indigo_set_timer(device, 0.1, temperature_timer_callback, &PRIVATE_DATA->temperature_timer);
+		} else {
+			CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+			device->gp_bits = 0;
+		}
+	} else {
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
+		//indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
+		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
+			if (PRIVATE_DATA->handle != NULL) {
+				pthread_mutex_lock(&PRIVATE_DATA->mutex);
+				SDK_CALL(Close)(PRIVATE_DATA->handle);
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				indigo_global_unlock(device);
+			}
+			PRIVATE_DATA->handle = NULL;
+		}
+		device->gp_bits = 0;
+		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_focuser_change_property(device, NULL, CONNECTION_PROPERTY);
+	indigo_unlock_master_device(device);
+}
+
+static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
+	assert(device != NULL);
+	assert(DEVICE_CONTEXT != NULL);
+	assert(property != NULL);
+	HRESULT res;
+	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONNECTION
+		if (indigo_ignore_connection_change(device, property))
+			return INDIGO_OK;
+		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
+		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_connect_callback, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_REVERSE_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_REVERSE_MOTION
+		indigo_property_copy_values(FOCUSER_REVERSE_MOTION_PROPERTY, property, false);
+		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+
+		int value = FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? 1 : -1;
+		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETDIRECTION), value, NULL));
+		if (FAILED(res)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETDIRECTION) -> %08x (value = %d) (failed)", res, value);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_SETDIRECTION) -> %08x (value = %d)", res, value);
+			FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = (value > 0);
+			FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value;
+		}
+
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		indigo_update_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_POSITION
+		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
+		if (FOCUSER_POSITION_PROPERTY->state == INDIGO_BUSY_STATE) {
+			return INDIGO_OK;
+		}
+		if (FOCUSER_POSITION_ITEM->number.target < 0 || FOCUSER_POSITION_ITEM->number.target > FOCUSER_POSITION_ITEM->number.max) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		} else if (FOCUSER_POSITION_ITEM->number.target == PRIVATE_DATA->current_position) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		} else {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+
+			if (FOCUSER_ON_POSITION_SET_GOTO_ITEM->sw.value) { /* GOTO POSITION */
+				pthread_mutex_lock(&PRIVATE_DATA->mutex);
+				res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETPOSITION), PRIVATE_DATA->target_position, NULL));
+				if (FAILED(res)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->target_position);
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_SETPOSITION) -> %08x (value = %d)", res, PRIVATE_DATA->target_position);
+				}
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+			}
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
+		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
+		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		/*
+		int res = EAFSetMaxStep(PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetMaxStep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position, res);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		*/
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_BACKLASH
+		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
+		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
+		/*
+		int res = EAFSetBacklash(PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetBacklash(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash, res);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+		}
+		*/
+		FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_STEPS_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_STEPS
+		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
+		if (FOCUSER_STEPS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			return INDIGO_OK;
+		}
+		if (FOCUSER_STEPS_ITEM->number.value < 0 || FOCUSER_STEPS_ITEM->number.value > FOCUSER_STEPS_ITEM->number.max) {
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		} else {
+			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			pthread_mutex_lock(&PRIVATE_DATA->mutex);
+			/*
+			int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+			}
+			*/
+			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+			} else {
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+			}
+
+			/* Make sure we do not attempt to go beyond the limits */
+			if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
+				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+			} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
+				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+			}
+
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+			/*
+			res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
+			if (res != EAF_SUCCESS) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+			}
+			*/
+			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+		}
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_ABORT_MOTION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_ABORT_MOTION
+		indigo_property_copy_values(FOCUSER_ABORT_MOTION_PROPERTY, property, false);
+		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_cancel_timer(device, &PRIVATE_DATA->focuser_timer);
+
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_HALT), 1, NULL));
+		if (FAILED(res)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_HALT) -> %08x (value = %d) (failed)", res, 1);
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_HALT) -> %08x (value = %d)", res, 1);
+		}
+		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETPOSITION), 0, &PRIVATE_DATA->current_position));
+		if (FAILED(res)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->current_position);
+			FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d)", res, PRIVATE_DATA->current_position);
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+
+		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
+		FOCUSER_ABORT_MOTION_ITEM->sw.value = false;
+		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+		indigo_update_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FOCUSER_COMPENSATION_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- FOCUSER_COMPENSATION_PROPERTY
+		indigo_property_copy_values(FOCUSER_COMPENSATION_PROPERTY, property, false);
+		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
+		return INDIGO_OK;
+	/* } else if (indigo_property_match_changeable(EAF_BEEP_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- EAF_BEEP_PROPERTY
+		indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
+		EAF_BEEP_PROPERTY->state = INDIGO_OK_STATE;
+		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		int res = EAFSetBeep(PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value);
+		if (res != EAF_SUCCESS) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBeep(%d, %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
+			EAF_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
+		return INDIGO_OK;
+	*/
+		// ------------------------------------------------------------------------------- FOCUSER_MODE
+	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
+		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
+		if (FOCUSER_MODE_MANUAL_ITEM->sw.value) {
+			indigo_define_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			indigo_define_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RW_PERM;
+			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		} else {
+			indigo_delete_property(device, FOCUSER_ON_POSITION_SET_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_SPEED_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_REVERSE_MOTION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_ABORT_MOTION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+			FOCUSER_POSITION_PROPERTY->perm = INDIGO_RO_PERM;
+			indigo_define_property(device, FOCUSER_POSITION_PROPERTY, NULL);
+		}
+		FOCUSER_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- CONFIG
+		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
+			//indigo_save_property(device, NULL, EAF_BEEP_PROPERTY);
+		}
+		// --------------------------------------------------------------------------------
+	}
+	return indigo_focuser_change_property(device, client, property);
+}
+
+
+static indigo_result focuser_detach(indigo_device *device) {
+	assert(device != NULL);
+	if (IS_CONNECTED) {
+		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
+		focuser_connect_callback(device);
+	}
+	//indigo_release_property(EAF_BEEP_PROPERTY);
+	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
+	return indigo_focuser_detach(device);
+}
+
+
 // -------------------------------------------------------------------------------- hot-plug support
 
 static indigo_device *devices[SDK_DEF(MAX)];
@@ -1894,7 +2500,7 @@ static void process_plug_event(indigo_device *unusued) {
 #ifdef TOUPTEK
 	count += OEMCamEnum(&cams[count], TOUPCAM_MAX - count);
 #endif
-	
+
 	for (int j = 0; j < count; j++) {
 		SDK_TYPE(DeviceV2) cam = cams[j];
 		bool found = false;
@@ -1987,6 +2593,33 @@ static void process_plug_event(indigo_device *unusued) {
 				private_data->cam = cam;
 				private_data->present = true;
 				indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
+				indigo_make_name_unique(camera->name, NULL);
+				camera->private_data = private_data;
+				camera->master_device = camera;
+				private_data->camera = camera;
+				for (int i = 0; i < SDK_DEF(MAX); i++) {
+					if (devices[i] == NULL) {
+						indigo_attach_device(devices[i] = camera);
+						break;
+					}
+				}
+			}
+			if (cam.model->flag & SDK_DEF(FLAG_AUTOFOCUSER)) {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Focus motor '%s' found, unsupported yet", cam.displayname);
+				static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
+					"",
+					focuser_attach,
+					focuser_enumerate_properties,
+					focuser_change_property,
+					NULL,
+					focuser_detach
+				);
+
+				DRIVER_PRIVATE_DATA *private_data = indigo_safe_malloc(sizeof(DRIVER_PRIVATE_DATA));
+				private_data->cam = cam;
+				private_data->present = true;
+				indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
 				indigo_make_name_unique(camera->name, NULL);
 				camera->private_data = private_data;
