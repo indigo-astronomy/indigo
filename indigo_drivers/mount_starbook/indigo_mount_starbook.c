@@ -23,7 +23,7 @@
  \file indigo_mount_starbook.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_starbook"
 
 #include <stdlib.h>
@@ -41,9 +41,7 @@
 #include <termios.h>
 #include <sys/time.h>
 
-#include <netdb.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
+#include <curl/curl.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
@@ -89,119 +87,34 @@ typedef struct {
 	pthread_mutex_t driver_mutex;
 	indigo_property *timezone_property;
 	indigo_property *reset_property;
+	CURL *curl;
+	size_t buffer_size;
+	char *buffer;
 } starbook_private_data;
 
 // -------------------------------------------------------------------------------- Ethernet support
-
-//static bool get_host_ip(char *hostname , unsigned long *ip) {
-//	struct addrinfo hints, *servinfo, *p;
-//	int rv;
-//
-//	memset(&hints, 0, sizeof hints);
-//	hints.ai_family = AF_INET; // use AF_INET6 to force IPv6
-//	hints.ai_socktype = SOCK_STREAM;
-//
-//	if ((rv = getaddrinfo(hostname, NULL, &hints, &servinfo)) != 0) {
-//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "getaddrinfo(): %s\n", gai_strerror(rv));
-//		return false;
-//	}
-//
-//	for(p = servinfo; p != NULL; p = p->ai_next) {
-//		if(p->ai_family == AF_INET) {
-//			*ip = ((struct sockaddr_in *)(p->ai_addr))->sin_addr.s_addr;
-//			/* ip should be litle endian */
-//			*ip = (*ip >> 24) | ((*ip << 8) & 0x00ff0000) | ((*ip >> 8) & 0x0000ff00) | (*ip << 24);
-//			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "IP: 0x%X\n", *ip);
-//			freeaddrinfo(servinfo);
-//			return true;
-//		}
-//	}
-//	freeaddrinfo(servinfo);
-//	return false;
-//}
-
-
-static int connect_with_timeout(int sock, const struct sockaddr *name, int namelen, struct timeval timeout) {
-	// set async
-	int flags = fcntl(sock, F_GETFL);
-	if (flags == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "GETFL failed.");
-		return -1;
-	}
-	int result = fcntl(sock, F_SETFL, flags | O_NONBLOCK);
-	if (flags == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SETFL failed.");
-		return -1;
-	}
-
-	// connect
-	result = connect(sock, name, namelen);
-	if (result < 0) {
-		if (errno == EINPROGRESS) {
-			// succeed. wait by select()
-			errno = 0;
-		} else {
-			// failed.
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "connect failed: %d", errno);
-			// reset flags
-			fcntl(sock, F_SETFL, flags);
-			if (errno == 64) {  // Linux:ENONET, Mac:EHOSTDOWN
-				// TODO: mount was disconnected?
-			}
-			return -1;
-		}
-	}
-
-	// set await
-	result = fcntl(sock, F_SETFL, flags);
-	if (result == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "SETFL failed.");
-		return -1;
-	}
-
-	// wait connect
-	fd_set readFd, writeFd, errFd;
-	FD_ZERO(&readFd);
-	FD_ZERO(&writeFd);
-	FD_ZERO(&errFd);
-	FD_SET(sock, &readFd);
-	FD_SET(sock, &writeFd);
-	FD_SET(sock, &errFd);
-	int sockNum = select(sock + 1, &readFd, &writeFd, &errFd, &timeout);
-	if (sockNum == 0) {
-		// timeout
-		return -1;
-	} else if (FD_ISSET(sock, &readFd) || FD_ISSET(sock, &writeFd)) {
-		// read/writable
-		// do nothing here
-	} else {
-		// error
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "select failed.");
-		return -1;
-	}
-
-	// check socket error
-	int optval = 0;
-	socklen_t optlen = (socklen_t)sizeof(optval);
-	errno = 0;
-	result = getsockopt(sock, SOL_SOCKET, SO_ERROR, (void *)&optval, &optlen);
-	if (result < 0) {
-		// error
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "getsockopt failed.");
-		return -1;
-	} else if (optval != 0) {
-		// error
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid optval: %d", optval);
-		return -1;
-	}
-	return 0;
-}
 
 //
 // verbose options
 //
 //#define DEBUG_HTTP_RESPONSE
 #define DEBUG_API_RESPONSE
+
+size_t write_callback(char *ptr, size_t size, size_t nmemb, void *userdata) {
+	indigo_device *device = (indigo_device*)userdata;
+	const size_t data_size = size * nmemb;
+	if (PRIVATE_DATA->buffer == NULL) {
+		return 0;
+	}
+	PRIVATE_DATA->buffer = indigo_safe_realloc(PRIVATE_DATA->buffer, PRIVATE_DATA->buffer_size + data_size + 1);
+	if (PRIVATE_DATA->buffer == NULL) {
+		return 0;
+	}
+	memcpy(PRIVATE_DATA->buffer + PRIVATE_DATA->buffer_size, ptr, data_size);
+	PRIVATE_DATA->buffer_size += data_size;
+	PRIVATE_DATA->buffer[PRIVATE_DATA->buffer_size] = 0;
+	return data_size;
+}
 
 // timeout: milliseconds
 static bool starbook_http_get(indigo_device *device, const char *path, char *result, int length, int timeout) {
@@ -225,110 +138,53 @@ static bool starbook_http_get(indigo_device *device, const char *path, char *res
 			memcpy(PRIVATE_DATA->port, "80", 2);
 		}
 	}
+	bool port_specified = strcmp(PRIVATE_DATA->port, "80") != 0;
 	assert(PRIVATE_DATA->host);
 	assert(PRIVATE_DATA->port);
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "starbook_http_get(\"%s\", \"%s\", \"%s\")", PRIVATE_DATA->host, PRIVATE_DATA->port, path);
 
-	struct addrinfo hints = {};
-	struct addrinfo *res = NULL;
-	hints.ai_socktype = SOCK_STREAM;
-	hints.ai_family = AF_INET;
+	// "http://" + host + (port ? (":" + port) : "") + path + "\0"
+	const int url_len = 7 + strlen(PRIVATE_DATA->host) + (port_specified ? (1 + strlen(PRIVATE_DATA->port)) : 0) + strlen(path) + 1;
+	char *url = indigo_safe_malloc(url_len);
+	if (port_specified) {
+		sprintf(url, "http://%s:%s%s", PRIVATE_DATA->host, PRIVATE_DATA->port, path);
+	} else {
+		sprintf(url, "http://%s%s", PRIVATE_DATA->host, path);
+	}
+	//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", url);
 
-	int err = -1;
-	if ((err = getaddrinfo(PRIVATE_DATA->host, PRIVATE_DATA->port, &hints, &res)) != 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "getaddrinfo(): %s", gai_strerror(err));
+	// initialize buffer
+	if (PRIVATE_DATA->buffer != NULL && PRIVATE_DATA->buffer_size > 0) {
+		indigo_safe_free(PRIVATE_DATA->buffer);
+		PRIVATE_DATA->buffer = NULL;
+		PRIVATE_DATA->buffer_size = 0;
+	}
+	PRIVATE_DATA->buffer = indigo_safe_malloc(1);  // '\0'
+	PRIVATE_DATA->buffer[0] = 0;
+	PRIVATE_DATA->buffer_size = 0;
+
+	// setup curl
+	curl_easy_setopt(PRIVATE_DATA->curl, CURLOPT_URL, url);
+	curl_easy_setopt(PRIVATE_DATA->curl, CURLOPT_WRITEDATA, device);
+	curl_easy_setopt(PRIVATE_DATA->curl, CURLOPT_WRITEFUNCTION, write_callback);
+	CURLcode ret = curl_easy_perform(PRIVATE_DATA->curl);
+	indigo_safe_free(url);
+	if (ret != CURLE_OK) {
 		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: curl_easy_perform() failed: %d", ret);
 		return false;
 	}
 
-	int sock = -1;
-	if ((sock = socket(res->ai_family, res->ai_socktype, res->ai_protocol)) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: cannot create socket.");
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		return false;
+	if (PRIVATE_DATA->buffer_size + 1 < length) {
+		memcpy(result, PRIVATE_DATA->buffer, PRIVATE_DATA->buffer_size + 1);
+	} else {
+		memcpy(result, PRIVATE_DATA->buffer, length - 1);
+		result[length-1] = 0;
 	}
 
-	struct timeval tv = {};
-	tv.tv_sec = timeout / 1000;
-	tv.tv_usec = (timeout % 1000) * 1000;
-
-	if (connect_with_timeout(sock, res->ai_addr, res->ai_addrlen, tv) != 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: cannot connect %s:%s", PRIVATE_DATA->host, PRIVATE_DATA->port);
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		return false;
-	}
-
-	// build message:
-	//   GET /path HTTP/1.0\r\n
-	//   Host: example.com\r\n
-	//   \r\n
-	const int port_len = (strcmp(PRIVATE_DATA->port, "80") == 0) ? 0 : (1 + (int)strlen(PRIVATE_DATA->port));
-	int message_length = (
-		4     // "GET "
-		+ (int)strlen(path)  // /path
-		+ 11  // " HTTP/1.0\r\n"
-		+ 6   // "Host: "
-		+ (int)strlen(PRIVATE_DATA->host) + port_len
-		+ 4   // "\r\n\r\n"
-	);
-	char *message = (char *)malloc(message_length + 1);
-	sprintf(
-		message,
-		"GET %s HTTP/1.0\r\n"
-		"Host: %s%s%s\r\n"
-		"\r\n",
-		path,
-		PRIVATE_DATA->host,
-		(port_len == 0 ? "" : ":"),
-		(port_len == 0 ? "" : PRIVATE_DATA->port)
-	);
-	int ret = write(sock, message, message_length);
-	free(message);
-
-	// set read timeout
-	setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (const void *)&tv, sizeof(tv));
-
-	int read_size = 0;
-	while (true) {
-		int size = (int)read(sock, &result[read_size], length - read_size);
-		if (size == 0) {
-			break;
-		} else if (size < 0) {
-			// network was disconnected?
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "read failed.");
-			close(sock);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-		read_size += size;
-		if (read_size == length) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "not enough buffer.");
-			close(sock);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-	}
-	result[read_size] = '\0';
-	close(sock);
 #ifdef DEBUG_HTTP_RESPONSE
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", result);
 #endif
-	if (strlen(result) < 13) {  // length of "HTTP/1.x NNN "
-		// empty?
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: bad response: %d", strlen(result));
-		pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-		return false;
-	}
-	if (memcmp(result, "HTTP/1.0 200 OK\r\n", 17) != 0) {
-		if (memcmp(result, "HTTP/1.1 200 OK\r\n", 17) != 0) {
-			// not 200 OK
-			char code[4] = {};
-			memcpy(code, (char *)&result[9], 3);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: code: %s", code);
-			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
-			return false;
-		}
-	}
 	pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 	return true;
 }
@@ -354,17 +210,11 @@ static bool starbook_get(indigo_device *device, const char *path, char *buffer, 
 			// broken response:
 			// StarBookTen v5.10 /GETTIME
 			//
-			// HTTP/1.0 200 OK
-			// Server: StarBook/1.0.0
-			// Content-type: text/html
-			// Content-length: 31
-			// Connection:  close
-			// 
 			// TIME=2024+03+22+15+00+00</html>
 			//
-			beg = strstr(temp, "\r\n\r\n");
+			beg = temp;
 			end = strstr(temp, "</html>");
-			beg_tag_len = 4;
+			beg_tag_len = 0;
 			if (beg == NULL || end == NULL) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: Unknown response: %s", temp);
 				return false;
@@ -1193,6 +1043,14 @@ static bool starbook_stop(indigo_device *device) {
 static bool starbook_open(indigo_device *device) {
 	CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	PRIVATE_DATA->currentSpeed = -1;
+	if (PRIVATE_DATA->curl == NULL) {
+		curl_global_init(CURL_GLOBAL_ALL);
+		PRIVATE_DATA->curl = curl_easy_init();
+		if (PRIVATE_DATA->curl == NULL) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: cURL cannot init.");
+			return false;
+		}
+	}
 	indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 	bool ok;
 	double version = 0;
@@ -1239,6 +1097,14 @@ static void starbook_close(indigo_device *device) {
 	indigo_safe_free(PRIVATE_DATA->port);
 	PRIVATE_DATA->host = NULL;
 	PRIVATE_DATA->port = NULL;
+	indigo_safe_free(PRIVATE_DATA->buffer);
+	PRIVATE_DATA->buffer = NULL;
+	PRIVATE_DATA->buffer_size = 0;
+	if (PRIVATE_DATA->curl) {
+		curl_easy_cleanup(PRIVATE_DATA->curl);
+		PRIVATE_DATA->curl = NULL;
+		curl_global_cleanup();
+	}
 	return;
 }
 
@@ -1418,6 +1284,7 @@ static void mount_connect_callback(indigo_device *device) {
 		}
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
+		indigo_cancel_timer_sync(device, &PRIVATE_DATA->status_timer);
 		indigo_delete_property(device, TIMEZONE_PROPERTY, NULL);
 		indigo_delete_property(device, RESET_PROPERTY, NULL);
 		if (--PRIVATE_DATA->device_count == 0) {
