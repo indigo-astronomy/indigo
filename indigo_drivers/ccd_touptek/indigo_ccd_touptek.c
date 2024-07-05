@@ -1866,52 +1866,7 @@ static void focuser_timer_callback(indigo_device *device) {
 }
 
 
-static void temperature_timer_callback(indigo_device *device) {
-	/*
-	float temp;
-	static bool has_sensor = true;
-	//bool moving = false, moving_HC = false;
-	int res;
-
-	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	res = EAFGetTemp(PRIVATE_DATA->dev_id, &temp);
-	FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp;
-	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-	if ((res != EAF_SUCCESS) && (FOCUSER_TEMPERATURE_ITEM->number.value > -270.0)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFGetTemp(%d, -> %f) = %d", PRIVATE_DATA->dev_id, FOCUSER_TEMPERATURE_ITEM->number.value, res);
-	}
-	// static double ctemp = 0;
-	// FOCUSER_TEMPERATURE_ITEM->number.value = ctemp;
-	// temp = ctemp;
-	// ctemp += 0.12;
-	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) {
-		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
-		if (has_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected.");
-			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected.");
-			has_sensor = false;
-		}
-	} else {
-		has_sensor = true;
-		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
-	}
-	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-		compensate_focus(device, temp);
-	} else {
-		// reset temp so that the compensation starts when auto mode is selected
-		PRIVATE_DATA->prev_temp = -273;
-	}
-	*/
-	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
-}
-
-
 static void compensate_focus(indigo_device *device, double new_temp) {
-	/*
 	int compensation;
 	double temp_difference = new_temp - PRIVATE_DATA->prev_temp;
 
@@ -1953,9 +1908,9 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: PRIVATE_DATA->current_position = %d, PRIVATE_DATA->target_position = %d", PRIVATE_DATA->current_position, PRIVATE_DATA->target_position);
 
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+	HRESULT res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETPOSITION), 0, &PRIVATE_DATA->current_position));
+	if (FAILED(res)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->current_position);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 
@@ -1968,9 +1923,9 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
-	if (res != EAF_SUCCESS) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETPOSITION), PRIVATE_DATA->target_position, NULL));
+	if (FAILED(res)) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->target_position);
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1980,7 +1935,58 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 	FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
-	*/
+}
+
+
+static void temperature_timer_callback(indigo_device *device) {
+	int temp10 = -2732;
+	static bool has_sensor = true;
+	HRESULT res;
+
+	FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETAMBIENTTEMP), 0, &temp10));
+	if (FAILED(res)) {
+		if(has_sensor) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected (using internal sensor).");
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected (using internal sensor).");
+		}
+		has_sensor = false;
+	} else {
+		if(!has_sensor) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor connected.");
+			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor connected.");
+		}
+		has_sensor = true;
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETAMBIENTTEMP) -> %08x (value = %d)", res, temp10);
+
+	if (!has_sensor) {
+		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETTEMP), 0, &temp10));
+		if (FAILED(res)) {
+			temp10 = -2732;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETTEMP) -> %08x (value = %d) (failed)", res, temp10);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETTEMP) -> %08x (value = %d)", res, temp10);
+		}
+	}
+
+	FOCUSER_TEMPERATURE_ITEM->number.value = (double)temp10/10.0;
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+
+	if (FOCUSER_TEMPERATURE_ITEM->number.value < -270.0) {
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_IDLE_STATE;
+	}
+	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+
+	if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+		compensate_focus(device, FOCUSER_TEMPERATURE_ITEM->number.value);
+	} else {
+		// reset temp so that the compensation starts when auto mode is selected
+		PRIVATE_DATA->prev_temp = -273;
+	}
+	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
 }
 
 
