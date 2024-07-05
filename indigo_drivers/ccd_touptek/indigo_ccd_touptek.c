@@ -24,7 +24,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0024
+#define DRIVER_VERSION 0x0025
 
 #include <stdlib.h>
 #include <string.h>
@@ -2120,7 +2120,6 @@ indigo_lock_master_device(device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETMAXSTEP) -> %08x (value = %d)", res, PRIVATE_DATA->max_position);
 				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = (double)PRIVATE_DATA->max_position;
 			}
-
 			/*
 						res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
 						if (res != EAF_SUCCESS) {
@@ -2231,6 +2230,31 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				}
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
+			} else { /* SYNC POSITION */
+				FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
+				pthread_mutex_lock(&PRIVATE_DATA->mutex);
+				res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETZERO), PRIVATE_DATA->target_position, NULL));
+				if (FAILED(res)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETZERO) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->target_position);
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_SETZERO) -> %08x (value = %d)", res, PRIVATE_DATA->target_position);
+				}
+
+				res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETPOSITION), 0, &PRIVATE_DATA->current_position));
+				if (FAILED(res)) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->current_position);
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+				} else {
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d)", res, PRIVATE_DATA->current_position);
+					FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
+					FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
+					FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
+				}
+				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+				indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
+				indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			}
 		}
 		return INDIGO_OK;
@@ -2614,6 +2638,7 @@ static void process_plug_event(indigo_device *unusued) {
 					}
 				}
 			}
+			// Device is focuser
 			if (cam.model->flag & SDK_DEF(FLAG_AUTOFOCUSER)) {
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "Focus motor '%s' found, unsupported yet", cam.displayname);
 				static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
