@@ -2003,8 +2003,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 		FOCUSER_LIMITS_PROPERTY->hidden = false;
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.min = 0;
-		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 1000000;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.max = 65000;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.min = 0;
+		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.step = 100;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = 0;
 		FOCUSER_LIMITS_MIN_POSITION_ITEM->number.max = 0;
 		//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "\'%s\' MaxStep = %d",device->name ,PRIVATE_DATA->info.MaxStep);
@@ -2016,13 +2017,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_BACKLASH_ITEM->number.max = 10000;
 		FOCUSER_BACKLASH_ITEM->number.step = 1;
 
+		// TESTED: focuser does not go beyond 65000
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.step = 1;
-		FOCUSER_POSITION_ITEM->number.max = 1000000;
+		FOCUSER_POSITION_ITEM->number.max = 65000;
 
 		FOCUSER_STEPS_ITEM->number.min = 0;
 		FOCUSER_STEPS_ITEM->number.step = 1;
-		FOCUSER_STEPS_ITEM->number.max = 1000000;
+		FOCUSER_STEPS_ITEM->number.max = 65000;
 
 		FOCUSER_ON_POSITION_SET_PROPERTY->hidden = false;
 		FOCUSER_TEMPERATURE_PROPERTY->hidden = false;
@@ -2077,21 +2079,6 @@ indigo_lock_master_device(device);
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			int value = 0;
 			HRESULT res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_RANGEMAX), 0, &value));
-			if (FAILED(res)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_RANGEMAX) -> %08x (value = %d) (failed)", res, value);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_RANGEMAX) -> %08x (value = %d)", res, value);
-				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)value;
-				PRIVATE_DATA->max_position = value;
-			}
-
-			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_RANGEMIN), 0, &value));
-			if (FAILED(res)) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_RANGEMIN) -> %08x (value = %d) (failed)", res, value);
-			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_RANGEMIN) -> %08x (value = %d)", res, value);
-				FOCUSER_LIMITS_MIN_POSITION_ITEM->number.value = (double)value;
-			}
 
 			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETBACKLASH), 0, &value));
 			if (FAILED(res)) {
@@ -2118,6 +2105,14 @@ indigo_lock_master_device(device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETDIRECTION) -> %08x (value = %d)", res, value);
 				FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = (value > 0);
 				FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value;
+			}
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETMAXSTEP), 0, &PRIVATE_DATA->max_position));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETMAXSTEP) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->max_position);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETMAXSTEP) -> %08x (value = %d)", res, PRIVATE_DATA->max_position);
+				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = (double)PRIVATE_DATA->max_position;
 			}
 
 			/*
@@ -2237,22 +2232,21 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_LIMITS
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
 		FOCUSER_LIMITS_PROPERTY->state = INDIGO_OK_STATE;
+		int max_position = PRIVATE_DATA->max_position;
 		PRIVATE_DATA->max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
+
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		/*
-		int res = EAFSetMaxStep(PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetMaxStep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->max_position, res);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
+		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETMAXSTEP), PRIVATE_DATA->max_position, NULL));
+		if (FAILED(res)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETMAXSTEP) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->max_position);
 			FOCUSER_LIMITS_PROPERTY->state = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->max_position = max_position;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_SETMAXSTEP) -> %08x (value = %d)", res, PRIVATE_DATA->max_position);
 		}
-		res = EAFGetMaxStep(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->max_position));
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetMaxStep(%d) = %d", PRIVATE_DATA->dev_id, res);
-		}
-		*/
 		FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = (double)PRIVATE_DATA->max_position;
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+
 		indigo_update_property(device, FOCUSER_LIMITS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_BACKLASH_PROPERTY, property)) {
