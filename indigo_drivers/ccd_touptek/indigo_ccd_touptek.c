@@ -994,6 +994,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CCD_LED_PROPERTY, NULL);
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1460,6 +1461,7 @@ static void guider_connect_callback(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1721,8 +1723,9 @@ static void wheel_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->wheel_timer);
 		indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
-		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
+		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
 			if (PRIVATE_DATA->handle != NULL) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -2113,7 +2116,7 @@ indigo_lock_master_device(device);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETDIRECTION) -> %08x (value = %d) (failed)", res, value);
 			} else {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETDIRECTION) -> %08x (value = %d)", res, value);
-				FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = (value >= 0);
+				FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value = (value > 0);
 				FOCUSER_REVERSE_MOTION_ENABLED_ITEM->sw.value = !FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value;
 			}
 
@@ -2143,8 +2146,9 @@ indigo_lock_master_device(device);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 		//indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
-		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
+		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
 			if (PRIVATE_DATA->handle != NULL) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -2179,7 +2183,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
 
-		int value = FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? 1 : -1;
+		int value = FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value ? 1 : 0;
 		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETDIRECTION), value, NULL));
 		if (FAILED(res)) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETDIRECTION) -> %08x (value = %d) (failed)", res, value);
