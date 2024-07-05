@@ -203,6 +203,13 @@
 #define X_CCD_BIN_MODE_EXPAND_ITEM								(X_CCD_BIN_MODE_PROPERTY->items + 1)
 #define X_CCD_BIN_MODE_AVERAGE_ITEM								(X_CCD_BIN_MODE_PROPERTY->items + 2)
 
+#define X_BEEP_PROPERTY               (PRIVATE_DATA->beep_property)
+#define X_BEEP_ON_ITEM                (X_BEEP_PROPERTY->items+0)
+#define X_BEEP_OFF_ITEM               (X_BEEP_PROPERTY->items+1)
+#define X_BEEP_PROPERTY_NAME          "X_AAF_BEEP"
+#define X_BEEP_ON_ITEM_NAME           "ON"
+#define X_BEEP_OFF_ITEM_NAME          "OFF"
+
 typedef struct {
 	SDK_TYPE(DeviceV2) cam;
 	SDK_HANDLE handle;
@@ -238,7 +245,7 @@ typedef struct {
 	int backlash;
 	double prev_temp;
 	indigo_timer *focuser_timer;
-
+	indigo_property *beep_property;
 } DRIVER_PRIVATE_DATA;
 
 #define ADVANCED_GROUP                 "Advanced"
@@ -1991,12 +1998,10 @@ static void temperature_timer_callback(indigo_device *device) {
 
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	/*
 	if (IS_CONNECTED) {
-		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
-			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
+		if (indigo_property_match(X_BEEP_PROPERTY, property))
+			indigo_define_property(device, X_BEEP_PROPERTY, NULL);
 	}
-	*/
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
 
@@ -2043,15 +2048,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_COMPENSATION_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------- FOCUSER_MODE
 		FOCUSER_MODE_PROPERTY->hidden = false;
-		/*
 		// -------------------------------------------------------------------------- BEEP_PROPERTY
-		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
-		if (EAF_BEEP_PROPERTY == NULL)
+		X_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BEEP_PROPERTY_NAME, "Advanced", "Buzzer", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_BEEP_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
-		indigo_init_switch_item(EAF_BEEP_ON_ITEM, EAF_BEEP_ON_ITEM_NAME, "On", false);
-		indigo_init_switch_item(EAF_BEEP_OFF_ITEM, EAF_BEEP_OFF_ITEM_NAME, "Off", true);
-		*/
+		indigo_init_switch_item(X_BEEP_ON_ITEM, X_BEEP_ON_ITEM_NAME, "On", false);
+		indigo_init_switch_item(X_BEEP_OFF_ITEM, X_BEEP_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return focuser_enumerate_properties(device, NULL, NULL);
@@ -2120,19 +2123,21 @@ indigo_lock_master_device(device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETMAXSTEP) -> %08x (value = %d)", res, PRIVATE_DATA->max_position);
 				FOCUSER_LIMITS_MAX_POSITION_ITEM->number.value = FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target = (double)PRIVATE_DATA->max_position;
 			}
-			/*
-						res = EAFGetBeep(PRIVATE_DATA->dev_id, &(EAF_BEEP_ON_ITEM->sw.value));
-						if (res != EAF_SUCCESS) {
-							INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBeep(%d, -> %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
-						}
-						EAF_BEEP_OFF_ITEM->sw.value = !EAF_BEEP_ON_ITEM->sw.value;
-			*/
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETBUZZER), 0, &value));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETBUZZER) -> %08x (value = %d) (failed)", res, value);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETBUZZER) -> %08x (value = %d)", res, value);
+				X_BEEP_ON_ITEM->sw.value = (value > 0);
+			}
+			X_BEEP_OFF_ITEM->sw.value = !X_BEEP_ON_ITEM->sw.value;
+
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
-			//indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
-			//indigo_define_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
+			indigo_define_property(device, X_BEEP_PROPERTY, NULL);
 
 			PRIVATE_DATA->prev_temp = -273;  /* we do not have previous temperature reading */ 
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
@@ -2145,7 +2150,7 @@ indigo_lock_master_device(device);
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->focuser_timer);
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
-		//indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
+		indigo_delete_property(device, X_BEEP_PROPERTY, NULL);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
 			if (PRIVATE_DATA->handle != NULL) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser");
@@ -2390,20 +2395,21 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_COMPENSATION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, FOCUSER_COMPENSATION_PROPERTY, NULL);
 		return INDIGO_OK;
-	/* } else if (indigo_property_match_changeable(EAF_BEEP_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_BEEP_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- EAF_BEEP_PROPERTY
-		indigo_property_copy_values(EAF_BEEP_PROPERTY, property, false);
-		EAF_BEEP_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_property_copy_values(X_BEEP_PROPERTY, property, false);
+		X_BEEP_PROPERTY->state = INDIGO_OK_STATE;
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
-		int res = EAFSetBeep(PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBeep(%d, %d) = %d", PRIVATE_DATA->dev_id, EAF_BEEP_ON_ITEM->sw.value, res);
-			EAF_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
+		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETBUZZER), X_BEEP_ON_ITEM->sw.value, NULL));
+		if (FAILED(res)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETBUZZER) -> %08x (value = %d) (failed)", res, X_BEEP_ON_ITEM->sw.value);
+			X_BEEP_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_SETBUZZER) -> %08x (value = %d)", res, X_BEEP_ON_ITEM->sw.value);
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
-		indigo_update_property(device, EAF_BEEP_PROPERTY, NULL);
+		indigo_update_property(device, X_BEEP_PROPERTY, NULL);
 		return INDIGO_OK;
-	*/
 		// ------------------------------------------------------------------------------- FOCUSER_MODE
 	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
@@ -2450,7 +2456,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		focuser_connect_callback(device);
 	}
-	//indigo_release_property(EAF_BEEP_PROPERTY);
+	indigo_release_property(X_BEEP_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
 }
