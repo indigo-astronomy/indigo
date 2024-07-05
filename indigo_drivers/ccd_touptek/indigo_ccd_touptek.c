@@ -2260,19 +2260,18 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(FOCUSER_BACKLASH_PROPERTY, property, false);
 		FOCUSER_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		pthread_mutex_lock(&PRIVATE_DATA->mutex);
+		int backlash = PRIVATE_DATA->backlash;
 		PRIVATE_DATA->backlash = (int)FOCUSER_BACKLASH_ITEM->number.target;
-		/*
-		int res = EAFSetBacklash(PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EAFSetBacklash(%d, -> %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->backlash, res);
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFSetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
+
+		res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETBACKLASH), PRIVATE_DATA->backlash, NULL));
+		if (FAILED(res)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETBACKLASH) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->backlash);
 			FOCUSER_BACKLASH_PROPERTY->state = INDIGO_ALERT_STATE;
+			PRIVATE_DATA->backlash = backlash;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_SETBACKLASH) -> %08x (value = %d)", res, PRIVATE_DATA->backlash);
 		}
-		res = EAFGetBacklash(PRIVATE_DATA->dev_id, &(PRIVATE_DATA->backlash));
-		if (res != EAF_SUCCESS) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetBacklash(%d) = %d", PRIVATE_DATA->dev_id, res);
-		}
-		*/
+
 		FOCUSER_BACKLASH_ITEM->number.value = (double)PRIVATE_DATA->backlash;
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		indigo_update_property(device, FOCUSER_BACKLASH_PROPERTY, NULL);
@@ -2294,12 +2293,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
-			/*
-			int res = EAFGetPosition(PRIVATE_DATA->dev_id, &PRIVATE_DATA->current_position);
-			if (res != EAF_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETPOSITION), 0, &PRIVATE_DATA->current_position));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->current_position);
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_GETPOSITION) -> %08x (value = %d)", res, PRIVATE_DATA->current_position);
+				FOCUSER_POSITION_ITEM->number.value = (double)PRIVATE_DATA->current_position;
 			}
-			*/
+
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
 				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
 			} else {
@@ -2314,12 +2316,15 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-			/*
-			res = EAFMove(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position);
-			if (res != EAF_SUCCESS) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFMove(%d, %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_position, res);
+
+			res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_SETPOSITION), PRIVATE_DATA->target_position, NULL));
+			if (FAILED(res)) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AAF(AAF_SETPOSITION) -> %08x (value = %d) (failed)", res, PRIVATE_DATA->target_position);
+				FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AAF(AAF_SETPOSITION) -> %08x (value = %d)", res, PRIVATE_DATA->target_position);
 			}
-			*/
+
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 		}
