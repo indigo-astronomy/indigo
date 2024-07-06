@@ -23,7 +23,7 @@
  \file indigo_aux_wcv4ec.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_aux_wcv4ec"
 
 #include <stdlib.h>
@@ -94,6 +94,7 @@ typedef struct {
 	float open_position;
 	float current_position;
 	float input_voltage;
+	int brightness;
 	bool ready;
 } wcv4ec_status_t;
 
@@ -139,8 +140,16 @@ static bool wcv4ec_parse_status(char *status_line, wcv4ec_status_t *status) {
 	}
 	status->input_voltage = atof(token);
 
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nclose_position = %.2f\nopen_position = %.2f\ncurrent_position = %.2f\ninput_voltage = %.2fV, done = %d\n",
-	status->model_id, status->firmware, status->close_position, status->open_position, status->current_position, status->input_voltage, status->ready);
+	/* inctroduced with firmware 20240618 */
+	token = strtok_r(NULL, "A", &buf);
+	if (token != NULL) {
+		status->brightness = atoi(token);
+	} else {
+		status->brightness = 0;
+	}
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "model_id = '%s'\nfirmware = '%s'\nclose_position = %.2f\nopen_position = %.2f\ncurrent_position = %.2f\ninput_voltage = %.2fV\nbrightness = %d/255\ndone = %d\n",
+	status->model_id, status->firmware, status->close_position, status->open_position, status->current_position, status->input_voltage, status->brightness, status->ready);
  
 	return true;
 }
@@ -349,10 +358,10 @@ static void aux_connection_handler(indigo_device *device) {
 	char response[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+		wcv4ec_status_t wc_stat = {0};
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
 			indigo_usleep(ONE_SECOND_DELAY);
-			wcv4ec_status_t wc_stat;
 			if (wcv4ec_read_status(device, &wc_stat)) {
 				if (!strcmp(wc_stat.model_id, DEVICE_ID)) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, wc_stat.model_id);
@@ -371,10 +380,16 @@ static void aux_connection_handler(indigo_device *device) {
 		}
 		if (PRIVATE_DATA->handle > 0) {
 			PRIVATE_DATA->operation_start_time = 0;
-			wcv4ec_command(device, "9999"); // turn light off as the state is not known
-			AUX_LIGHT_SWITCH_ON_ITEM->sw.value = false;
-			AUX_LIGHT_SWITCH_OFF_ITEM->sw.value = true;
-			AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+			if (wc_stat.brightness > 0) {
+				AUX_LIGHT_SWITCH_ON_ITEM->sw.value = true;
+				AUX_LIGHT_SWITCH_OFF_ITEM->sw.value = false;
+				AUX_LIGHT_INTENSITY_ITEM->number.value = wc_stat.brightness;
+			} else {
+				wcv4ec_command(device, "9999"); // turn light off as the state is not known with older firmware
+				AUX_LIGHT_SWITCH_ON_ITEM->sw.value = false;
+				AUX_LIGHT_SWITCH_OFF_ITEM->sw.value = true;
+				AUX_LIGHT_SWITCH_PROPERTY->state = INDIGO_OK_STATE;
+			}
 
 			wcv4ec_command(device, "2000"); // turn the heater off as the state is not known
 			AUX_HEATER_OFF_ITEM->sw.value = true;
