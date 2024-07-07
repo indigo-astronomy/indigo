@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Ogmacam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 55.25633.$WCDATE=%Y%m%d$</li></ul>
+<hr/><ul><li>Version: 56.25996.20240707</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -56,12 +56,17 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		If use C# to develop the UWP, ogmacam.cs wrapper class can be used to P/Invoke into ogmacam.dll.<br/>
 		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
 		</blockquote></li>
-     <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)
-       <ol><li>x86 folder contains the kernel mode drivers for x86, including ogmacam.cat, ogmacam.inf and ogmacam.sys.</li>
+     <li>drivers
+		<blockquote>USB (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)<blockquote>
+		<ol><li>x86 folder contains the kernel mode drivers for x86, including ogmacam.cat, ogmacam.inf and ogmacam.sys.</li>
          <li>x64 folder contains the kennel mode driver for x64, including ogmacam.cat, ogmacam.inf and ogmacam.sys.</li>
 		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
-       </ol></li></ul></li>
+		</ol></blockquote></blockquote>
+		<blockquote>GigE: GigE Performance Driver, is optional for gigabit cameras, must be installed and enabled for 10G cameras. Please use the command line (Administrator mode), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd):<blockquote>
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv</pre></td></tr></table>
+		</blockquote></blockquote>
+		</li></ul></li>
 </ul><ul><li>linux: For Linux
  	<ul><li>udev: 99-ogmacam.rules, udev rule file. Please see: <a href="http://reactivated.net/writing_udev_rules.html" target="_blank">http://reactivated.net/writing_udev_rules.html</a>
             <blockquote>Reload rule without reboot:
@@ -1043,6 +1048,12 @@ typedef struct {
       	<td>Model Specific</td>
       	<td>Yes</td>
       </tr><tr>
+      	<td>OGMACAM_OPTION_TECTARGET_RANGE</td>
+      	<td>get the range of target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃.<br/>
+		min(low 16 bits) = (short)(val &amp; 0xffff)<br/>max(high 16 bits) = (short)((val >> 16) &amp; 0xffff)</td>
+      	<td>Model Specific</td>
+      	<td>Yes</td>
+      </tr><tr>
       	<td><a id="aepolicy">OGMACAM_OPTION_AUTOEXP_POLICY</a></td>
       	<td>Auto Exposure Policy:<br/>0: Exposure Only<br/>1: Exposure Preferred<br/>2: Gain Only<br/>3: Gain Preferred</td>
       	<td>1</td><td>Yes</td>
@@ -1052,7 +1063,7 @@ typedef struct {
       	<td>5</td><td>Yes</td>
       </tr><tr>
       	<td>OGMACAM_OPTION_FRAMERATE</td>
-      	<td>limit the frame rate, range=[0, 63].<br/>frame rate control is disabled automatically in trigger mode.</td>
+      	<td>limit the frame rate.<br/>frame rate control is disabled automatically in trigger mode.</td>
       	<td>0<br/>(means no limit)</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
       </tr><tr>
@@ -1423,8 +1434,8 @@ OGMACAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
 		<td>OGMACAM_OPTION_AWB_CONTINUOUS</td>
 		<td>Auto White Balance: continuous mode<br/><blockquote>
 			0:  disable<br/>
-			n>0: every n millisecond(s)<br/>
-			n<0: every -n frame</blockquote>
+			n&gt;0: every n millisecond(s)<br/>
+			n&lt;0: every -n frame</blockquote>
 		</td><td>0 (Disable)</td><td>Yes</td>
       </tr><tr>
         <td>OGMACAM_OPTION_THREAD_PRIORITY</td>
@@ -1530,7 +1541,10 @@ OGMACAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</a>
                                                                     20 =&gt; cividis<br/>
                                                                     21 =&gt; twilight<br/>
                                                                     22 =&gt; twilight_shifted<br/>
-                                                                    23 =&gt; turbo</td>
+                                                                    23 =&gt; turbo<br/>
+																	24 =&gt; red<br/>
+																	25 =&gt; green<br/>
+																	26 =&gt; blue</td>
       	<td>0</td><td>Yes</td>
       </tr><tr>
       	<td>OGMACAM_OPTION_NUMBER_DROP_FRAME</td>
@@ -1922,7 +1936,13 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
  </tr><tr><td>OGMACAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER</td>
    <td rowspan="2">User pulse number: default 0</td>
  </tr><tr><td>OGMACAM_IOCONTROLTYPE_SET_USER_PULSE_NUMBER</td>
- </tr></table></div></blockquote>
+ </tr><tr><td>OGMACAM_IOCONTROLTYPE_GET_EXTERNAL_TRIGGER_NUMBER</td>
+   <td>External trigger number</td>
+</tr><tr><td>OGMACAM_IOCONTROLTYPE_GET_DEBOUNCER_TRIGGER_NUMBER</td>
+   <td>Trigger signal number after debounce</td>
+</tr><tr><td>OGMACAM_IOCONTROLTYPE_GET_EFFECTIVE_TRIGGER_NUMBER</td>
+   <td>Effective trigger signal number</td>
+</tr></table></div></blockquote>
 </li></ul><ul><li><h2><font color="#0000FF">Ogmacam_read_UART<br/>Ogmacam_write_UART</font></h2>
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means failure or byte(s) transferred</p>
   <p><strong>Parameters:</strong></p>
@@ -2132,7 +2152,7 @@ Ogmacam_put_Brightness<br/>Ogmacam_get_Brightness<br/>Ogmacam_get_Contrast<br/>O
     <td></td>
   </tr><tr>
     <td colspan="3">TEC Target</td>
-    <td>-500 ~ 400<br/>(-50℃ ~ 40℃)</td>
+    <td>Model Specific</td>
     <td>Model Specific</td>
     <td colspan="2">OGMACAM_OPTION_TECTARGET</td><td></td>
 </tr></table></div></li></ul>
@@ -2317,6 +2337,7 @@ public bool Snap(uint nResolutionIndex)
 		<td>C# sample, <a href="./images/livestackcs.png">snapshot</a>.</td>
 </tr></table></div>
 <hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v56: Performance improvements: reduced frame data copy in RAW mode</p>
 <p>v55: Add Support to HDR Pixel Format</p>
 <p>v54: Add support to GigE. Please see <a href="#apigige">here</a></p>
 <p>v53: Add OgmacamFrameInfoV3, Ogmacam_PullImageV3, Ogmacam_StartPushModeV4</p>
