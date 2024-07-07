@@ -1,7 +1,7 @@
 #ifndef __omegonprocam_h__
 #define __omegonprocam_h__
 
-/* Version: 55.25633.20240519 */
+/* Version: 56.25996.20240707 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -229,9 +229,6 @@ typedef struct Omegonprocam_t { int unused; } *HOmegonprocam;
 #define OMEGONPROCAM_DENOISE_DEF              0       /* denoise */
 #define OMEGONPROCAM_DENOISE_MIN              0       /* denoise */
 #define OMEGONPROCAM_DENOISE_MAX              100     /* denoise */
-#define OMEGONPROCAM_TEC_TARGET_MIN           (-500)  /* TEC target: -50.0 degrees Celsius */
-#define OMEGONPROCAM_TEC_TARGET_DEF           100     /* 10.0 degrees Celsius */
-#define OMEGONPROCAM_TEC_TARGET_MAX           400     /* TEC target: 40.0 degrees Celsius */
 #define OMEGONPROCAM_HEARTBEAT_MIN            100     /* millisecond */
 #define OMEGONPROCAM_HEARTBEAT_MAX            10000   /* millisecond */
 #define OMEGONPROCAM_AE_PERCENT_MIN           0       /* auto exposure percent; 0 or 100 => full roi average, means "disabled" */
@@ -289,7 +286,7 @@ typedef struct {
 } OmegonprocamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.25633.20240519
+    get the version of this dll/so/dylib, which is: 56.25996.20240707
 */
 #if defined(_WIN32)
 OMEGONPROCAM_API(const wchar_t*)   Omegonprocam_Version();
@@ -821,7 +818,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_read_EEPROM(HOmegonprocam h, unsigned ad
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_read_Pipe(HOmegonprocam h, unsigned pipeId, void* pBuffer, unsigned nBufferLen);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_write_Pipe(HOmegonprocam h, unsigned pipeId, const void* pBuffer, unsigned nBufferLen);
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_feed_Pipe(HOmegonprocam h, unsigned pipeId);
-                                             
+
 #define OMEGONPROCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* no frame timeout: 0 => disable, positive value (>= OMEGONPROCAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define OMEGONPROCAM_OPTION_THREAD_PRIORITY        0x02       /* set the priority of the internal thread which grab data from the usb device.
                                                              Win: iValue: 0 => THREAD_PRIORITY_NORMAL; 1 => THREAD_PRIORITY_ABOVE_NORMAL; 2 => THREAD_PRIORITY_HIGHEST; 3 => THREAD_PRIORITY_TIME_CRITICAL; default: 1; see: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority
@@ -847,7 +844,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_feed_Pipe(HOmegonprocam h, unsigned pipe
                                                              3: Gain Preferred
                                                              default value: 1
                                                          */
-#define OMEGONPROCAM_OPTION_FRAMERATE              0x11       /* limit the frame rate, range=[0, 63], the default value 0 means no limit */
+#define OMEGONPROCAM_OPTION_FRAMERATE              0x11       /* limit the frame rate, the default value 0 means no limit */
 #define OMEGONPROCAM_OPTION_DEMOSAIC               0x12       /* demosaic method for both video and still image: BILINEAR = 0, VNG(Variable Number of Gradients) = 1, PPG(Patterned Pixel Grouping) = 2, AHD(Adaptive Homogeneity Directed) = 3, EA(Edge Aware) = 4, see https://en.wikipedia.org/wiki/Demosaicing, default value: 0 */
 #define OMEGONPROCAM_OPTION_DEMOSAIC_VIDEO         0x13       /* demosaic method for video */
 #define OMEGONPROCAM_OPTION_DEMOSAIC_STILL         0x14       /* demosaic method for still image */
@@ -1021,8 +1018,8 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_feed_Pipe(HOmegonprocam h, unsigned pipe
                                                          */
 #define OMEGONPROCAM_OPTION_GIGETIMEOUT            0x5a       /* For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive.
                                                             If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection.
-                                                            When the application is stopped by the debugger, the application cannot create the heartbeat signals
-                                                                0 => auto: when the camera is opened, disable if debugger is present or enable if no debugger is present
+                                                            When the application is stopped by the debugger, the application cannot send the heartbeat signals
+                                                                0 => auto: when the camera is opened, enable if no debugger is present or disable if debugger is present
                                                                 1 => enable
                                                                 2 => disable
                                                                 default: auto
@@ -1063,6 +1060,9 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_feed_Pipe(HOmegonprocam h, unsigned pipe
                                                                     21 => twilight
                                                                     22 => twilight_shifted
                                                                     23 => turbo
+                                                                    24 => red
+                                                                    25 => green
+                                                                    26 => blue
                                                          */
 #define OMEGONPROCAM_OPTION_LOW_POWERCONSUMPTION   0x66       /* Low Power Consumption: 0 => disable, 1 => enable */
 #define OMEGONPROCAM_OPTION_FPNC                   0x67       /* Fix Pattern Noise Correction
@@ -1092,6 +1092,7 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_feed_Pipe(HOmegonprocam h, unsigned pipe
                                                                 n>0: every n millisecond(s)
                                                                 n<0: every -n frame
                                                          */
+#define OMEGONPROCAM_OPTION_TECTARGET_RANGE        0x6d       /* TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
 
 /* pixel format */
 #define OMEGONPROCAM_PIXELFORMAT_RAW8              0x00
@@ -1137,97 +1138,100 @@ OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_RoiN(HOmegonprocam h, unsigned xOffs
 
 OMEGONPROCAM_API(HRESULT)  Omegonprocam_put_XY(HOmegonprocam h, int x, int y);
 
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE           0x01 /* 0x01 => Input, 0x02 => Output, (0x01 | 0x02) => support both Input and Output */
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_GPIODIR                 0x03 /* 0x00 => Input, 0x01 => Output */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_GPIODIR                 0x04
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_FORMAT                  0x05 /*
-                                                                   0x00 => not connected
-                                                                   0x01 => Tri-state: Tri-state mode (Not driven)
-                                                                   0x02 => TTL: TTL level signals
-                                                                   0x03 => LVDS: LVDS level signals
-                                                                   0x04 => RS422: RS422 level signals
-                                                                   0x05 => Opto-coupled
-                                                               */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_FORMAT                  0x06
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTINVERTER          0x07 /* boolean, only support output signal */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTINVERTER          0x08
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_INPUTACTIVATION         0x09 /* 0x00 => Rising edge, 0x01 => Falling edge, 0x02 => Level high, 0x03 => Level low */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_INPUTACTIVATION         0x0a
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_DEBOUNCERTIME           0x0b /* debouncer time in microseconds, range: [0, 20000] */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_DEBOUNCERTIME           0x0c
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_TRIGGERSOURCE           0x0d /*
-                                                                  0x00 => Opto-isolated input
-                                                                  0x01 => GPIO0
-                                                                  0x02 => GPIO1
-                                                                  0x03 => Counter
-                                                                  0x04 => PWM
-                                                                  0x05 => Software
-                                                               */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_TRIGGERSOURCE           0x0e
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_TRIGGERDELAY            0x0f /* Trigger delay time in microseconds, range: [0, 5000000] */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_TRIGGERDELAY            0x10
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_BURSTCOUNTER            0x11 /* Burst Counter, range: [1 ~ 65535] */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_BURSTCOUNTER            0x12
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_COUNTERSOURCE           0x13 /* 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_COUNTERSOURCE           0x14
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_COUNTERVALUE            0x15 /* Counter Value, range: [1 ~ 65535] */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_COUNTERVALUE            0x16
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_RESETCOUNTER            0x18
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_PWM_FREQ                0x19
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_PWM_FREQ                0x1a
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO           0x1b
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_PWM_DUTYRATIO           0x1c
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_PWMSOURCE               0x1d /* 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_PWMSOURCE               0x1e
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTMODE              0x1f /*
-                                                                  0x00 => Frame Trigger Wait
-                                                                  0x01 => Exposure Active
-                                                                  0x02 => Strobe
-                                                                  0x03 => User output
-                                                                  0x04 => Counter Output
-                                                                  0x05 => Timer Output
-                                                               */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTMODE              0x20
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_STROBEDELAYMODE         0x21 /* boolean, 0 => pre-delay, 1 => delay; compared to exposure active signal */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_STROBEDELAYMODE         0x22
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_STROBEDELAYTIME         0x23 /* Strobe delay or pre-delay time in microseconds, range: [0, 5000000] */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_STROBEDELAYTIME         0x24
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_STROBEDURATION          0x25 /* Strobe duration time in microseconds, range: [0, 5000000] */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_STROBEDURATION          0x26
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_USERVALUE               0x27 /*
-                                                                  bit0 => Opto-isolated output
-                                                                  bit1 => GPIO0 output
-                                                                  bit2 => GPIO1 output
-                                                               */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_USERVALUE               0x28
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_UART_ENABLE             0x29 /* enable: 1 => on; 0 => off */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_UART_ENABLE             0x2a
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_UART_BAUDRATE           0x2b /* baud rate: 0 => 9600; 1 => 19200; 2 => 38400; 3 => 57600; 4 => 115200 */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_UART_BAUDRATE           0x2c
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_UART_LINEMODE           0x2d /* line mode: 0 => TX(GPIO_0)/RX(GPIO_1); 1 => TX(GPIO_1)/RX(GPIO_0) */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_UART_LINEMODE           0x2e
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE        0x2f /* exposure time signal: 0 => specified line, 1 => common exposure time */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE        0x30
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_START_LINE         0x31 /* exposure start line, default: 0 */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_START_LINE         0x32
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_END_LINE           0x33 /* exposure end line, default: 0
-                                                                  end line must be no less than start line
-                                                               */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_END_LINE           0x34
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE       0x35 /* exposure event: 0 => specified line, 1 => common exposure time */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE       0x36
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE      0x37 /* Output Counter Value, range: [0 ~ 65535] */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE      0x38
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE            0x3a /* Output pause: 1 => puase, 0 => unpause */
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_INPUT_STATE             0x3c /* Input state: 0 (low level) or 1 (high level) */
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_HIGH         0x3e /* User pulse high level time: us */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_HIGH         0x3f
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_LOW          0x40 /* User pulse low level time: us */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_LOW          0x41
-#define OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER       0x42 /* User pulse number: default 0 */
-#define OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_NUMBER       0x43
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE            0x01 /* 0x01 => Input, 0x02 => Output, (0x01 | 0x02) => support both Input and Output */
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_GPIODIR                  0x03 /* 0x00 => Input, 0x01 => Output */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_GPIODIR                  0x04
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_FORMAT                   0x05 /*
+                                                                    0x00 => not connected
+                                                                    0x01 => Tri-state: Tri-state mode (Not driven)
+                                                                    0x02 => TTL: TTL level signals
+                                                                    0x03 => LVDS: LVDS level signals
+                                                                    0x04 => RS422: RS422 level signals
+                                                                    0x05 => Opto-coupled
+                                                                */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_FORMAT                   0x06
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTINVERTER           0x07 /* boolean, only support output signal */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTINVERTER           0x08
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_INPUTACTIVATION          0x09 /* 0x00 => Rising edge, 0x01 => Falling edge, 0x02 => Level high, 0x03 => Level low */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_INPUTACTIVATION          0x0a
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_DEBOUNCERTIME            0x0b /* debouncer time in microseconds, range: [0, 20000] */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_DEBOUNCERTIME            0x0c
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_TRIGGERSOURCE            0x0d /*
+                                                                   0x00 => Opto-isolated input
+                                                                   0x01 => GPIO0
+                                                                   0x02 => GPIO1
+                                                                   0x03 => Counter
+                                                                   0x04 => PWM
+                                                                   0x05 => Software
+                                                                */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_TRIGGERSOURCE            0x0e
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_TRIGGERDELAY             0x0f /* Trigger delay time in microseconds, range: [0, 5000000] */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_TRIGGERDELAY             0x10
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_BURSTCOUNTER             0x11 /* Burst Counter, range: [1 ~ 65535] */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_BURSTCOUNTER             0x12
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_COUNTERSOURCE            0x13 /* 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_COUNTERSOURCE            0x14
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_COUNTERVALUE             0x15 /* Counter Value, range: [1 ~ 65535] */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_COUNTERVALUE             0x16
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_RESETCOUNTER             0x18
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_PWM_FREQ                 0x19
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_PWM_FREQ                 0x1a
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO            0x1b
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_PWM_DUTYRATIO            0x1c
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_PWMSOURCE                0x1d /* 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_PWMSOURCE                0x1e
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTMODE               0x1f /*
+                                                                   0x00 => Frame Trigger Wait
+                                                                   0x01 => Exposure Active
+                                                                   0x02 => Strobe
+                                                                   0x03 => User output
+                                                                   0x04 => Counter Output
+                                                                   0x05 => Timer Output
+                                                                */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTMODE               0x20
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_STROBEDELAYMODE          0x21 /* boolean, 0 => pre-delay, 1 => delay; compared to exposure active signal */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_STROBEDELAYMODE          0x22
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_STROBEDELAYTIME          0x23 /* Strobe delay or pre-delay time in microseconds, range: [0, 5000000] */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_STROBEDELAYTIME          0x24
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_STROBEDURATION           0x25 /* Strobe duration time in microseconds, range: [0, 5000000] */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_STROBEDURATION           0x26
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_USERVALUE                0x27 /*
+                                                                   bit0 => Opto-isolated output
+                                                                   bit1 => GPIO0 output
+                                                                   bit2 => GPIO1 output
+                                                                */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_USERVALUE                0x28
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_UART_ENABLE              0x29 /* enable: 1 => on; 0 => off */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_UART_ENABLE              0x2a
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_UART_BAUDRATE            0x2b /* baud rate: 0 => 9600; 1 => 19200; 2 => 38400; 3 => 57600; 4 => 115200 */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_UART_BAUDRATE            0x2c
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_UART_LINEMODE            0x2d /* line mode: 0 => TX(GPIO_0)/RX(GPIO_1); 1 => TX(GPIO_1)/RX(GPIO_0) */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_UART_LINEMODE            0x2e
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_ACTIVE_MODE         0x2f /* exposure time signal: 0 => specified line, 1 => common exposure time */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_ACTIVE_MODE         0x30
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_START_LINE          0x31 /* exposure start line, default: 0 */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_START_LINE          0x32
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXPO_END_LINE            0x33 /* exposure end line, default: 0
+                                                                   end line must be no less than start line
+                                                                */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXPO_END_LINE            0x34
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXEVT_ACTIVE_MODE        0x35 /* exposure event: 0 => specified line, 1 => common exposure time */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_EXEVT_ACTIVE_MODE        0x36
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_OUTPUTCOUNTERVALUE       0x37 /* Output Counter Value, range: [0 ~ 65535] */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUTCOUNTERVALUE       0x38
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_OUTPUT_PAUSE             0x3a /* Output pause: 1 => puase, 0 => unpause */
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_INPUT_STATE              0x3b /* Input state: 0 (low level) or 1 (high level) */
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_HIGH          0x3d /* User pulse high level time: us */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_HIGH          0x3e
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_LOW           0x3f /* User pulse low level time: us */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_LOW           0x40
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_USER_PULSE_NUMBER        0x41 /* User pulse number: default 0 */
+#define OMEGONPROCAM_IOCONTROLTYPE_SET_USER_PULSE_NUMBER        0x42
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_EXTERNAL_TRIGGER_NUMBER  0x43 /* External trigger number */
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_DEBOUNCER_TRIGGER_NUMBER 0x45 /* Trigger signal number after debounce */
+#define OMEGONPROCAM_IOCONTROLTYPE_GET_EFFECTIVE_TRIGGER_NUMBER 0x47 /* Effective trigger signal number */
 
-#define OMEGONPROCAM_IOCONTROL_DELAYTIME_MAX                   (5 * 1000 * 1000)
+#define OMEGONPROCAM_IOCONTROL_DELAYTIME_MAX                    (5 * 1000 * 1000)
 
 /*
   ioLineNumber:
