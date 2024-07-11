@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Bressercam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 55.25780.$WCDATE=%Y%m%d$</li></ul>
+<hr/><ul><li>Version: 56.25996.20240707</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -56,12 +56,17 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		If use C# to develop the UWP, bressercam.cs wrapper class can be used to P/Invoke into bressercam.dll.<br/>
 		Please pay attation to:<blockquote>1. uwp must use winusb, cannot use the proprietary driver. If the proprietary driver has already been installed, please uninstall it in the device manager, after this, Windows will use winusb automatically.<br/>2. DeviceCapability of uwp, see: <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/usbcon/updating-the-app-manifest-with-usb-device-capabilities" target="_blank">How to add USB device capabilities to the app manifest</a>.</blockquote>
 		</blockquote></li>
-     <li>drivers (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)
-       <ol><li>x86 folder contains the kernel mode drivers for x86, including bressercam.cat, bressercam.inf and bressercam.sys.</li>
+     <li>drivers
+		<blockquote>USB (<b>The cameras produced after Jan. 1, 2017 support WinUSB, It is strongly recommended not to install the driver on Windows 8 and above</b>)<blockquote>
+		<ol><li>x86 folder contains the kernel mode drivers for x86, including bressercam.cat, bressercam.inf and bressercam.sys.</li>
          <li>x64 folder contains the kennel mode driver for x64, including bressercam.cat, bressercam.inf and bressercam.sys.</li>
 		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
-       </ol></li></ul></li>
+		</ol></blockquote></blockquote>
+		<blockquote>GigE: GigE Performance Driver, is optional for gigabit cameras, must be installed and enabled for 10G cameras. Please use the command line (Administrator mode), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd):<blockquote>
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv</pre></td></tr></table>
+		</blockquote></blockquote>
+		</li></ul></li>
 </ul><ul><li>linux: For Linux
  	<ul><li>udev: 99-bressercam.rules, udev rule file. Please see: <a href="http://reactivated.net/writing_udev_rules.html" target="_blank">http://reactivated.net/writing_udev_rules.html</a>
             <blockquote>Reload rule without reboot:
@@ -1042,10 +1047,10 @@ typedef struct {
 		Set the target temperature to "-2730" or below means using the default for that model.</td>
       	<td>Model Specific</td>
       	<td>Yes</td>
-      </tr>tr>
+      </tr><tr>
       	<td>BRESSERCAM_OPTION_TECTARGET_RANGE</td>
       	<td>get the range of target temperature of the thermoelectric cooler, in 0.1℃. For example, 125 means 12.5℃, -35 means -3.5℃.<br/>
-		min(low 16 bits) = (short)(val & 0xffff)<br/>max(high 16 bits) = (short)((val >> 16) & 0xffff)</td>
+		min(low 16 bits) = (short)(val &amp; 0xffff)<br/>max(high 16 bits) = (short)((val >> 16) &amp; 0xffff)</td>
       	<td>Model Specific</td>
       	<td>Yes</td>
       </tr><tr>
@@ -1429,8 +1434,8 @@ BRESSERCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)<
 		<td>BRESSERCAM_OPTION_AWB_CONTINUOUS</td>
 		<td>Auto White Balance: continuous mode<br/><blockquote>
 			0:  disable<br/>
-			n>0: every n millisecond(s)<br/>
-			n<0: every -n frame</blockquote>
+			n&gt;0: every n millisecond(s)<br/>
+			n&lt;0: every -n frame</blockquote>
 		</td><td>0 (Disable)</td><td>Yes</td>
       </tr><tr>
         <td>BRESSERCAM_OPTION_THREAD_PRIORITY</td>
@@ -2332,6 +2337,7 @@ public bool Snap(uint nResolutionIndex)
 		<td>C# sample, <a href="./images/livestackcs.png">snapshot</a>.</td>
 </tr></table></div>
 <hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v56: Performance improvements: reduced frame data copy in RAW mode</p>
 <p>v55: Add Support to HDR Pixel Format</p>
 <p>v54: Add support to GigE. Please see <a href="#apigige">here</a></p>
 <p>v53: Add BressercamFrameInfoV3, Bressercam_PullImageV3, Bressercam_StartPushModeV4</p>
