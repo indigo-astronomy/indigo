@@ -1,10 +1,10 @@
-# OGMA Camera driver
+# OGMA Camera, filter wheel and focuser driver
 
 https://getogma.com
 
 ## Supported devices
 
-OGMA Camera USB 2.0 and USB 3.0 devices supported by vendor SDK
+OGMA Camera USB 2.0 and USB 3.0 devices (cameras, filter wheels and focusers) supported by the vendor SDK
 
 This driver supports hot-plug (multiple devices).
 
