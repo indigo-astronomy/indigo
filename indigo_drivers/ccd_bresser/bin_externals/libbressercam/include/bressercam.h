@@ -1,7 +1,7 @@
 #ifndef __bressercam_h__
 #define __bressercam_h__
 
-/* Version: 55.25780.20240606 */
+/* Version: 56.25996.20240707 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -286,7 +286,7 @@ typedef struct {
 } BressercamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 55.25780.20240606
+    get the version of this dll/so/dylib, which is: 56.25996.20240707
 */
 #if defined(_WIN32)
 BRESSERCAM_API(const wchar_t*)   Bressercam_Version();
@@ -818,7 +818,7 @@ BRESSERCAM_API(HRESULT)  Bressercam_read_EEPROM(HBressercam h, unsigned addr, un
 BRESSERCAM_API(HRESULT)  Bressercam_read_Pipe(HBressercam h, unsigned pipeId, void* pBuffer, unsigned nBufferLen);
 BRESSERCAM_API(HRESULT)  Bressercam_write_Pipe(HBressercam h, unsigned pipeId, const void* pBuffer, unsigned nBufferLen);
 BRESSERCAM_API(HRESULT)  Bressercam_feed_Pipe(HBressercam h, unsigned pipeId);
-                                             
+
 #define BRESSERCAM_OPTION_NOFRAME_TIMEOUT        0x01       /* no frame timeout: 0 => disable, positive value (>= BRESSERCAM_NOFRAME_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define BRESSERCAM_OPTION_THREAD_PRIORITY        0x02       /* set the priority of the internal thread which grab data from the usb device.
                                                              Win: iValue: 0 => THREAD_PRIORITY_NORMAL; 1 => THREAD_PRIORITY_ABOVE_NORMAL; 2 => THREAD_PRIORITY_HIGHEST; 3 => THREAD_PRIORITY_TIME_CRITICAL; default: 1; see: https://docs.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setthreadpriority
@@ -1018,8 +1018,8 @@ BRESSERCAM_API(HRESULT)  Bressercam_feed_Pipe(HBressercam h, unsigned pipeId);
                                                          */
 #define BRESSERCAM_OPTION_GIGETIMEOUT            0x5a       /* For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive.
                                                             If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection.
-                                                            When the application is stopped by the debugger, the application cannot create the heartbeat signals
-                                                                0 => auto: when the camera is opened, disable if debugger is present or enable if no debugger is present
+                                                            When the application is stopped by the debugger, the application cannot send the heartbeat signals
+                                                                0 => auto: when the camera is opened, enable if no debugger is present or disable if debugger is present
                                                                 1 => enable
                                                                 2 => disable
                                                                 default: auto
