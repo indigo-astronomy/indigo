@@ -1,10 +1,10 @@
-# Bresser CCD driver
+# Bresser CCD camera, filter wheel and focuser driver
 
 https://www.bresser.de
 
 ## Supported devices
 
-Bresser USB 2.0 and USB 3.0 devices supported by vendor SDK. This driver supports only Breesser cameras and products produced by Touptek.
+Bresser USB 2.0 and USB 3.0 devices (cameras, filter wheels and focusers) supported by the vendor SDK. This driver supports only Breesser cameras and products produced by Touptek.
 
 This driver supports hot-plug (multiple devices).
 
@@ -24,7 +24,7 @@ indigo_server indigo_ccd_bresser
 
 ## Driver is developed and tested with:
 
-* Other Touptek OEM cameras
+* Untested with real device, uses generalised Touptek driver. Tested with other Touptek OEM cameras, filter wheels and focusers
 
 ## Comments
 

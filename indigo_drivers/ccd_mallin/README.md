@@ -1,10 +1,10 @@
-# MallinCam CCD driver
+# MallinCam CCD camera, filter wheel and focuser driver
 
 https://www.mallincam.net
 
 ## Supported devices
 
-MallinCam USB 2.0 and USB 3.0 devices supported by vendor SDK
+MallinCam USB 2.0 and USB 3.0 devices (cameras, filter wheels and focusers) supported by the vendor SDK
 
 This driver supports hot-plug (multiple devices).
 
