@@ -1,4 +1,4 @@
-// Copyright (C) 2024 Rumen G. Bogdanovski
+// Copyright (C) 2024 Astroasis Vision Technology, Inc.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -17,7 +17,7 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Rumen G. Bogdanovski
+// 2.0 by Frank Chen <frank.chen@astroasis.com>
 
 /** INDIGO Astroasis Oasis focuser driver main
  \file indigo_focuser_astroasis_main.c
