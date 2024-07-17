@@ -4780,6 +4780,7 @@
 		9D743A5C23FD58070093319F /* indigo_rotator_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_driver.h; sourceTree = "<group>"; };
 		9D7BA5042C47F18200091C68 /* falcon_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = falcon_simulator.c; sourceTree = "<group>"; };
 		9D7BA5062C48010100091C68 /* 99-indigo_rotator_falcon.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_rotator_falcon.rules"; sourceTree = "<group>"; };
+		9D7BA5072C48034C00091C68 /* dmfc_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dmfc_simulator.c; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -13829,6 +13830,7 @@
 			isa = PBXGroup;
 			children = (
 				9DB88E9E214BEDD900CECBCE /* dmfc_simulator.ino */,
+				9D7BA5072C48034C00091C68 /* dmfc_simulator.c */,
 			);
 			path = dmfc_simulator;
 			sourceTree = "<group>";
