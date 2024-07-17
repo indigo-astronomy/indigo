@@ -101,7 +101,7 @@ int main() {
 			if (version == 1)
 				sim_printf(fd, "FR_OK\n");
 			else if (version == 2)
-				sim_printf(fd, "F2R_%s_OK\n", id);
+				sim_printf(fd, "F2R_%s_A\n", id);
 		} else if (!strcmp(buffer, "FA")) {
 			if (version == 1)
 				sim_printf(fd, "FR_OK:0:%.2f:%d:0:0:%d\n", position, target == position ? 0 : 1, direction);
