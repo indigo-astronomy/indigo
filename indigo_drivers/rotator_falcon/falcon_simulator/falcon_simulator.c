@@ -106,7 +106,7 @@ int main() {
 			if (version == 1)
 				sim_printf(fd, "FR_OK:0:%.2f:%d:0:0:%d\n", position, target == position ? 0 : 1, direction);
 			else if (version == 2)
-				sim_printf(fd, "F2A:%.2f:%d:0:0:%d\n", position, target == position ? 0 : 1, direction);
+				sim_printf(fd, "F2R:%.2f:%d:0:0:%d\n", position, target == position ? 0 : 1, direction);
 		} else if (!strncmp(buffer, "SD:", 2)) {
 			target = position = atof(buffer + 3);
 			sim_printf(fd, "%s\n", buffer);
