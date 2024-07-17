@@ -67,20 +67,20 @@ static void rotator_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 9600);
 		if (PRIVATE_DATA->handle > 0) {
-			if (falcon_command(device, "F#", response, sizeof(response))) {
-				if (!strcmp(response, "FR_OK")) {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value ,"Falcon Rotator");
-				} else if (!strncmp(response, "F2R_", 4)) {
-					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator v2");
-				} else {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
-				}
+			if (falcon_command(device, "F#", response, sizeof(response)) && !strcmp(response, "FR_OK")) {
+				strcpy(INFO_DEVICE_MODEL_ITEM->text.value ,"Falcon Rotator");
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
 				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
+				if (PRIVATE_DATA->handle > 0) {
+					if (falcon_command(device, "F#", response, sizeof(response)) && !strncmp(response, "F2R_", 4)) {
+						strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "Falcon Rotator v2");
+					} else {
+						INDIGO_DRIVER_ERROR(DRIVER_NAME, "Rotator not detected");
+						close(PRIVATE_DATA->handle);
+						PRIVATE_DATA->handle = 0;
+					}
+				}
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
