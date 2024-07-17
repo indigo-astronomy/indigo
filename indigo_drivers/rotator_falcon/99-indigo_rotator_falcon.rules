@@ -1,0 +1,1 @@
+SUBSYSTEM=="tty", ATTRS{product}=="FalconRotator*", SYMLINK+="ttyFalconRotator",  MODE="0666"

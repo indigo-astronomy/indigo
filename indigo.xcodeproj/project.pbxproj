@@ -4778,6 +4778,8 @@
 		9D743A5823FD56EF0093319F /* indigo_rotator_simulator.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_simulator.h; sourceTree = "<group>"; };
 		9D743A5A23FD57F80093319F /* indigo_rotator_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_rotator_driver.c; sourceTree = "<group>"; };
 		9D743A5C23FD58070093319F /* indigo_rotator_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_rotator_driver.h; sourceTree = "<group>"; };
+		9D7BA5042C47F18200091C68 /* falcon_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = falcon_simulator.c; sourceTree = "<group>"; };
+		9D7BA5062C48010100091C68 /* 99-indigo_rotator_falcon.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_rotator_falcon.rules"; sourceTree = "<group>"; };
 		9D7D59191DF6B21B003D2B59 /* rjsmin.py */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.python; path = rjsmin.py; sourceTree = "<group>"; };
 		9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_alignment.h; sourceTree = "<group>"; };
 		9D85FAE221E38E3900ECDF82 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -9579,6 +9581,7 @@
 				59B51355297077920075C8A1 /* indigo_rotator_falcon.c */,
 				59B51359297077920075C8A1 /* indigo_rotator_falcon_main.c */,
 				59B51361297078DE0075C8A1 /* Falcon_Serial_Command_Table.pdf */,
+				9D7BA5062C48010100091C68 /* 99-indigo_rotator_falcon.rules */,
 				59B51357297077920075C8A1 /* falcon_simulator */,
 			);
 			path = rotator_falcon;
@@ -9587,6 +9590,7 @@
 		59B51357297077920075C8A1 /* falcon_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				9D7BA5042C47F18200091C68 /* falcon_simulator.c */,
 				59B51358297077920075C8A1 /* falcon_simulator.ino */,
 			);
 			path = falcon_simulator;
