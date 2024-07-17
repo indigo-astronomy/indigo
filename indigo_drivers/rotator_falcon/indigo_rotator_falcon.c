@@ -52,7 +52,7 @@ static bool falcon_command(indigo_device *device, char *command, char *response,
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 	indigo_write(PRIVATE_DATA->handle, "\n", 1);
 	if (response != NULL) {
-		if (indigo_read_line(PRIVATE_DATA->handle, response, max) == 0) {
+		if (indigo_read_line(PRIVATE_DATA->handle, response, max) <= 0) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> no response", command);
 			return false;
 		}
