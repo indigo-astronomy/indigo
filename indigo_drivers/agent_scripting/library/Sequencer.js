@@ -535,7 +535,7 @@ var indigo_sequencer = {
 	},
 	
 	wait: function(seconds) {
-		indigo_send_message("Suspened for " + seconds + " seconds");
+		indigo_send_message("Suspended for " + seconds + " seconds");
 		this.wait_for_timer = indigo_set_timer(indigo_sequencer_next_handler, seconds);
 	},
 		
