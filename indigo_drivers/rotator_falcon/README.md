@@ -5,8 +5,10 @@ https://pegasusastro.com//products/falcon-rotator/
 ## Supported devices
 
 * PegasusAstro Falcon field rotator
+* PegasusAstro Falcon v2 field rotator (USB connection only)
 
 Single device is present on the first startup. Additional devices can be configured on runtime.
+Field derotation is not supported.
 
 ## Supported platforms
 
