@@ -127,7 +127,9 @@ int main() {
 			} else if (!strncmp(buffer, "FD:", 3)) {
 				direction = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
-			} else if (!strncmp(buffer, "FS:", 3)) {
+			} else if (!strcmp(buffer, "SP")) {
+				sim_printf(fd, "SP:%d\n", speed);
+			} else if (!strncmp(buffer, "SP:", 3)) {
 				speed = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strncmp(buffer, "BL:", 3)) {

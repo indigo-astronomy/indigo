@@ -173,6 +173,7 @@
 #include "focuser_ioptron/indigo_focuser_ioptron.h"
 #include "ccd_bresser/indigo_ccd_bresser.h"
 #include "focuser_optecfl/indigo_focuser_optecfl.h"
+#include "focuser_focuscube/indigo_focuser_focuscube.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -277,6 +278,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_dsd,
 	indigo_focuser_efa,
 	indigo_focuser_fcusb,
+	indigo_focuser_focuscube,
 	indigo_focuser_focusdreampro,
 	indigo_focuser_fli,
 	indigo_focuser_ioptron,
