@@ -128,12 +128,17 @@ static void *new_switch_vector_handler(parser_state state, char *name, char *val
 
 static void *get_properties_handler(parser_state state, char *name, char *value, indigo_property **property_ref, indigo_device *device, indigo_client *client, char *message) {
 	INDIGO_TRACE_PARSER(indigo_trace("JSON Parser: %s %s '%s' '%s'", __FUNCTION__, parser_state_name[state], name != NULL ? name : "", value != NULL ? value : ""));
+	indigo_property *property = *property_ref;
 	if (state == NUMBER_VALUE && !strcmp(name, "version")) {
 		client->version = (int)atol(value);
 	} else if (state == TEXT_VALUE && !strcmp(name, "client")) {
 		indigo_copy_name(client->name, value);
+	} else if (state == TEXT_VALUE && !strcmp(name, "device")) {
+		indigo_copy_name(property->device, value);
+	} else if (state == TEXT_VALUE && !strcmp(name, "name")) {
+		indigo_copy_name(property->name, value);
 	} else if (state == END_STRUCT) {
-		indigo_enumerate_properties(client, *property_ref);
+		indigo_enumerate_properties(client, property);
 		return top_level_handler;
 	}
 	return get_properties_handler;
@@ -263,8 +268,9 @@ static void *top_level_handler(parser_state state, char *name, char *value, indi
 	if (state == BEGIN_STRUCT) {
 		indigo_clear_property(property);
 		if (name != NULL) {
-			if (!strcmp(name, "getProperties"))
+			if (!strcmp(name, "getProperties")) {
 				return get_properties_handler;
+			}
 			if (!strcmp(name, "newTextVector")) {
 				property->type = INDIGO_TEXT_VECTOR;
 				property->version = client->version;
