@@ -57,6 +57,8 @@ int sim_read_line(int handle, char *buffer, int length) {
 	long total_bytes = 0;
 	while (total_bytes < length) {
 		long bytes_read = read(handle, &c, 1);
+		if (bytes_read <= 0)
+			continue;
 		if (c == '\n')
 			break;
 		buffer[total_bytes++] = c;
@@ -88,7 +90,7 @@ int main() {
 	pthread_t thread;
 	char buffer[80];
 
-	int fd = open("/dev/ptmx", O_RDWR | O_NOCTTY);
+	int fd = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
 	grantpt(fd);
 	unlockpt(fd);
 	ptsname_r(fd, buffer, 80);
@@ -100,17 +102,17 @@ int main() {
 	while (true) {
 		sim_read_line(fd, buffer, sizeof(buffer));
 		if (version == 3) {
-			if (!strcmp(buffer, "F#")) {
+			if (!strcmp(buffer, "F#") || !strcmp(buffer, "##")) {
 				sim_printf(fd, "F3C_%s_A\n", id);
 			} else if (!strcmp(buffer, "FA")) {
 				sim_printf(fd, "FC3:%d:%d:%.2f:%d:%d\n", position, target == position ? 0 : 1, temperature, direction, backlash);
-			} else if (!strncmp(buffer, "FN:", 2)) {
+			} else if (!strncmp(buffer, "FN:", 3)) {
 				target = position = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
-			} else if (!strncmp(buffer, "FM:", 2)) {
+			} else if (!strncmp(buffer, "FM:", 3)) {
 				target = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
-			} else if (!strncmp(buffer, "FG:", 2)) {
+			} else if (!strncmp(buffer, "FG:", 3)) {
 				target += atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strcmp(buffer, "FH")) {
@@ -122,11 +124,14 @@ int main() {
 				sim_printf(fd, "FI:%d\n", target == position ? 0 : 1);
 			} else if (!strcmp(buffer, "FV")) {
 				sim_printf(fd, "FV:%s\n", fw);
-			} else if (!strncmp(buffer, "FD:", 2)) {
+			} else if (!strncmp(buffer, "FD:", 3)) {
 				direction = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
-			} else if (!strncmp(buffer, "FS:", 2)) {
+			} else if (!strncmp(buffer, "FS:", 3)) {
 				speed = atoi(buffer + 3);
+				sim_printf(fd, "%s\n", buffer);
+			} else if (!strncmp(buffer, "BL:", 3)) {
+				backlash = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
 			}
 		}
