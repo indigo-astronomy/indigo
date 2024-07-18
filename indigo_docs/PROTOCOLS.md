@@ -84,11 +84,11 @@ The mapping of XML to JSON messages demonstrated on a few examples is as follows
 
 XML message
 ```
-→ <getProperties client='My Client' version='2.0'/>
+→ <getProperties client='My Client' device='Server' name='LOAD' version='2.0'/>
 ```
 is mapped to JSON message
 ```
-→ { "getProperties": { "version": 512, "client": "My Client" } }
+→ { "getProperties": { "version": 512, "client": "My Client", "device": "Server", "name": "LOAD" } }
 ```
 XML message
 ```
