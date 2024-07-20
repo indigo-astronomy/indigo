@@ -1,0 +1,1 @@
+SUBSYSTEM=="tty", ATTRS{idVendor}=="303a", ATTRS{product}=="*UPBv3*", SYMLINK+="ttyUPB3",  MODE="0666"
