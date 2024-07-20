@@ -20,11 +20,11 @@
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
 /** INDIGO PegasusAstro FocusCube focuser driver
- \file indigo_focuser_focuscube.c
+ \file indigo_focuser_fc3.c
  */
 
 #define DRIVER_VERSION 0x0001
-#define DRIVER_NAME "indigo_focuser_focuscube"
+#define DRIVER_NAME "indigo_focuser_fc3"
 
 #include <stdlib.h>
 #include <string.h>
@@ -41,7 +41,7 @@
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
 
-#include "indigo_focuser_focuscube.h"
+#include "indigo_focuser_fc3.h"
 
 #define PRIVATE_DATA	((focuscube_private_data *)device->private_data)
 
@@ -430,13 +430,13 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO driver implementation
 
-indigo_result indigo_focuser_focuscube(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_focuser_fc3(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 	static focuscube_private_data *private_data = NULL;
 	static indigo_device *focuser = NULL;
 
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-		"Pegasus FocusCube",
+		"Pegasus FocusCube3",
 		focuser_attach,
 		focuser_enumerate_properties,
 		focuser_change_property,
@@ -444,7 +444,7 @@ indigo_result indigo_focuser_focuscube(indigo_driver_action action, indigo_drive
 		focuser_detach
 	);
 
-	SET_DRIVER_INFO(info, "PegasusAstro FocusCube Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
+	SET_DRIVER_INFO(info, "PegasusAstro FocusCube v3 Focuser", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
 	if (action == last_action)
 		return INDIGO_OK;

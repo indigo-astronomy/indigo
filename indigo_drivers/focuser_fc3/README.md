@@ -17,7 +17,7 @@ INDIGO Astronomy open-source license.
 
 ## Use
 
-indigo_server indigo_focuser_focuscube
+indigo_server indigo_focuser_fc3
 
 ## Status: Stable
 
