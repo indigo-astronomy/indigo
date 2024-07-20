@@ -19,28 +19,27 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO PegasusAstro FocusCube focuser driver
- \file indigo_focuser_focuscube.h
+/** INDIGO PegasusAstro FocusCube focuser driver main
+ \file indigo_focuser_fc3_main.c
  */
 
-#ifndef focuser_focuscube_h
-#define focuser_focuscube_h
+#include <stdio.h>
+#include <string.h>
 
-#include <indigo/indigo_driver.h>
-#include <indigo/indigo_focuser_driver.h>
+#include <indigo/indigo_driver_xml.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+#include "indigo_focuser_fc3.h"
 
-/** Register FocusCube driver
- */
-
-extern indigo_result indigo_focuser_focuscube(indigo_driver_action action, indigo_driver_info *info);
-
-#ifdef __cplusplus
+int main(int argc, const char * argv[]) {
+	indigo_main_argc = argc;
+	indigo_main_argv = argv;
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_start();
+	indigo_focuser_fc3(INDIGO_DRIVER_INIT, NULL);
+	indigo_attach_client(protocol_adapter);
+	indigo_xml_parse(NULL, protocol_adapter);
+	indigo_focuser_fc3(INDIGO_DRIVER_SHUTDOWN, NULL);
+	indigo_stop();
+	return 0;
 }
-#endif
-
-#endif /* focuser_focuscube_h */
 
