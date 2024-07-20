@@ -100,6 +100,7 @@
 #include "focuser_optec/indigo_focuser_optec.h"
 #include "aux_ppb/indigo_aux_ppb.h"
 #include "aux_upb/indigo_aux_upb.h"
+#include "aux_upb3/indigo_aux_upb3.h"
 #include "aux_rts/indigo_aux_rts.h"
 #include "aux_dsusb/indigo_aux_dsusb.h"
 #include "guider_gpusb/indigo_guider_gpusb.h"
@@ -228,6 +229,7 @@ driver_entry_point static_drivers[] = {
 	indigo_aux_sqm,
 	indigo_aux_uch,
 	indigo_aux_upb,
+	indigo_aux_upb3,
 	indigo_aux_usbdp,
 	indigo_aux_wbplusv3,
 	indigo_aux_wbprov3,
