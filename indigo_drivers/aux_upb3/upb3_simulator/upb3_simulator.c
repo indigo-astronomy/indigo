@@ -48,7 +48,6 @@ int boost_voltage = 12;
 int position = 0;
 int target = 0;
 int direction = 0;
-int backlash = 3;
 int speed = 400;
 
 char id[] = "AA000000";
@@ -193,10 +192,22 @@ int main() {
 				relay = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strncmp(buffer, "PJ:", 3)) {
-				buck_voltage = atoi(buffer + 3);
+				int value = atoi(buffer + 3);
+				if (value == 0)
+					buck = 0;
+				else if (value == 1)
+					buck = 1;
+				else
+					buck_voltage = value;
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strncmp(buffer, "PB:", 3)) {
-				boost_voltage = atoi(buffer + 3);
+				int value = atoi(buffer + 3);
+				if (value == 0)
+					boost = 0;
+				else if (value == 1)
+					boost = 1;
+				else
+					boost_voltage = value;
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strncmp(buffer, "ADW1:", 5)) {
 				autodew[0] = atoi(buffer + 5);
@@ -216,8 +227,10 @@ int main() {
 			} else if (!strcmp(buffer, "ES")) {
 				sim_printf(fd, "ES:22.5:50.1:12.2\n");
 			} else if (!strcmp(buffer, "SA")) {
-				sim_printf(fd, "SA:%d:%d:%d:%d\n", position, target == position ? 0 : 1, direction, backlash);
-			} else if (!strncmp(buffer, "SN:", 3)) {
+				sim_printf(fd, "SA:%d:%d:%d:1:1:0:1\n", position, target == position ? 0 : 1, direction, speed);
+			} else if (!strcmp(buffer, "SP")) {
+				sim_printf(fd, "SP:%d\n", position);
+			} else if (!strncmp(buffer, "SC:", 3)) {
 				target = position = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strncmp(buffer, "SM:", 3)) {
@@ -236,9 +249,6 @@ int main() {
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strncmp(buffer, "SS:", 3)) {
 				speed = atoi(buffer + 3);
-				sim_printf(fd, "%s\n", buffer);
-			} else if (!strncmp(buffer, "SB:", 3)) {
-				backlash = atoi(buffer + 3);
 				sim_printf(fd, "%s\n", buffer);
 			} else if (!strcmp(buffer, "PF")) {
 			}
