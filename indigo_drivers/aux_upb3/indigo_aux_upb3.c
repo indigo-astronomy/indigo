@@ -298,7 +298,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, "X_AUX_VARIABLE_POWER_OUTLET", AUX_GROUP, "Variable voltage power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (X_AUX_VARIABLE_POWER_OUTLET_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->hidden = true;
 		indigo_init_number_item(X_AUX_VARIABLE_POWER_OUTLET_7_ITEM, "OUTLET_7", "Voltage of adjustable buck output", 3, 12, 1, 3);
 		indigo_init_number_item(X_AUX_VARIABLE_POWER_OUTLET_8_ITEM, "OUTLET_8", "voltage of adjustable boost output", 12, 24, 1, 12);
 		AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY = indigo_init_switch_property(NULL, device->name, AUX_SAVE_OUTLET_STATES_AS_DEFAULT_PROEPRTY_NAME, AUX_GROUP, "Save current outlet states as default", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
@@ -609,7 +608,7 @@ static void aux_connection_handler(indigo_device *device) {
 }
 
 static void aux_power_outlet_handler(indigo_device *device) {
-	char response[128], command[32];
+	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	upb_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "P1:100" : "P1:0", response, sizeof(response));
 	upb_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "P2:100" : "P2:0", response, sizeof(response));
@@ -617,13 +616,23 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	upb_command(device, AUX_POWER_OUTLET_4_ITEM->sw.value ? "P4:100" : "P4:0", response, sizeof(response));
 	upb_command(device, AUX_POWER_OUTLET_5_ITEM->sw.value ? "P5:100" : "P5:0", response, sizeof(response));
 	upb_command(device, AUX_POWER_OUTLET_6_ITEM->sw.value ? "P6:100" : "P6:0", response, sizeof(response));
-	sprintf(command, "PJ:%d:%d", (int)X_AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value, AUX_POWER_OUTLET_7_ITEM->sw.value ? 1 : 0);
-	upb_command(device, command, response, sizeof(response));
-	sprintf(command, "PB:%d:%d", (int)X_AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.value, AUX_POWER_OUTLET_8_ITEM->sw.value ? 1 : 0);
-	upb_command(device, command, response, sizeof(response));
+	upb_command(device, AUX_POWER_OUTLET_7_ITEM->sw.value ? "PJ:1" : "PJ:0", response, sizeof(response));
+	upb_command(device, AUX_POWER_OUTLET_8_ITEM->sw.value ? "PB:1" : "PB:0", response, sizeof(response));
 	upb_command(device, AUX_POWER_OUTLET_9_ITEM->sw.value ? "RL:1" : "RL:0", response, sizeof(response));
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
+}
+
+static void aux_adjustable_power_outlet_handler(indigo_device *device) {
+	char response[128], command[32];
+	pthread_mutex_lock(&PRIVATE_DATA->mutex);
+	sprintf(command, "PJ:%d", (int)X_AUX_VARIABLE_POWER_OUTLET_7_ITEM->number.value);
+	upb_command(device, command, response, sizeof(response));
+	sprintf(command, "PB:%d", (int)X_AUX_VARIABLE_POWER_OUTLET_8_ITEM->number.value);
+	upb_command(device, command, response, sizeof(response));
+	X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 }
 
@@ -799,7 +808,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, property, false);
 		X_AUX_VARIABLE_POWER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, X_AUX_VARIABLE_POWER_OUTLET_PROPERTY, NULL);
-		indigo_set_timer(device, 0, aux_power_outlet_handler, NULL);
+		indigo_set_timer(device, 0, aux_adjustable_power_outlet_handler, NULL);
 		return INDIGO_OK;
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
@@ -887,14 +896,14 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 	bool update = false;
 	if (upb_command(device, "SP", response, sizeof(response))) {
-		int pos = atoi(response);
+		int pos = atoi(response + 3);
 		if (FOCUSER_POSITION_ITEM->number.value != pos) {
 			FOCUSER_POSITION_ITEM->number.value = pos;
 			update = true;
 		}
 	}
 	if (upb_command(device, "SI", response, sizeof(response))) {
-		if (*response == '0') {
+		if (response[3] == '0') {
 			if (FOCUSER_POSITION_PROPERTY->state != INDIGO_OK_STATE) {
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
@@ -940,16 +949,13 @@ static void focuser_connection_handler(indigo_device *device) {
 					indigo_set_switch(FOCUSER_REVERSE_MOTION_PROPERTY, *token == '1' ? FOCUSER_REVERSE_MOTION_ENABLED_ITEM : FOCUSER_REVERSE_MOTION_DISABLED_ITEM, true);
 				}
 				token = strtok_r(NULL, ":", &pnt);
-				if (token) { // backlash
-					FOCUSER_BACKLASH_ITEM->number.value = FOCUSER_BACKLASH_ITEM->number.target = atoi(token);
+				if (token) { // speed
+					FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(token);
 				}
 			}
 			if (upb_command(device, "PV", response, sizeof(response)) && !strncmp(response, "PV:", 3)) {
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
 			}
-//			if (upb_command(device, "SS", response, sizeof(response)) && !strncmp(response, "SS:", 3)) {
-//				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atoi(response + 3);
-//			}
 			upb_command(device, "PL:1", response, sizeof(response));
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -992,7 +998,7 @@ static void focuser_speed_handler(indigo_device *device) {
 static void focuser_steps_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char command[16];
-	snprintf(command, sizeof(command), "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? 1 : -1));
+	snprintf(command, sizeof(command), "SG:%d", (int)FOCUSER_STEPS_ITEM->number.value * (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value ? -1 : 1));
 	if (upb_command(device, command, NULL, 0)) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
@@ -1018,7 +1024,7 @@ static void focuser_position_handler(indigo_device *device) {
 		indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 	} else if (FOCUSER_ON_POSITION_SET_SYNC_ITEM->sw.value) {
-		snprintf(command, sizeof(command), "SN:%d", (int)FOCUSER_POSITION_ITEM->number.value);
+		snprintf(command, sizeof(command), "SC:%d", (int)FOCUSER_POSITION_ITEM->number.value);
 		if (upb_command(device, command, response, sizeof(response))) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
