@@ -23,7 +23,7 @@
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>
@@ -146,18 +146,13 @@
 #define X_HOLD_CURR_OFF_ITEM									(X_HOLD_CURR_PROPERTY->items+0)
 #define X_HOLD_CURR_ON_ITEM										(X_HOLD_CURR_PROPERTY->items+1)
 
-#define X_CALIBRATE_SS_PROPERTY								(PRIVATE_DATA->calibrate_ss_property)
-#define X_CALIBRATE_SS_START_ITEM							(X_CALIBRATE_SS_PROPERTY->items+0)
-#define X_CALIBRATE_SS_START_INVERTED_ITEM		(X_CALIBRATE_SS_PROPERTY->items+1)
-#define X_CALIBRATE_SS_END_ITEM								(X_CALIBRATE_SS_PROPERTY->items+2)
+#define X_CALIBRATE_F_PROPERTY								(PRIVATE_DATA->calibrate_f_property)
+#define X_CALIBRATE_F_START_ITEM							(X_CALIBRATE_F_PROPERTY->items+0)
+#define X_CALIBRATE_F_START_INVERTED_ITEM			(X_CALIBRATE_F_PROPERTY->items+1)
+#define X_CALIBRATE_F_END_ITEM								(X_CALIBRATE_F_PROPERTY->items+2)
 
-#define X_CALIBRATE_SS_PROPERTY								(PRIVATE_DATA->calibrate_ss_property)
-#define X_CALIBRATE_SS_START_ITEM							(X_CALIBRATE_SS_PROPERTY->items+0)
-#define X_CALIBRATE_SS_START_INVERTED_ITEM		(X_CALIBRATE_SS_PROPERTY->items+1)
-#define X_CALIBRATE_SS_END_ITEM								(X_CALIBRATE_SS_PROPERTY->items+2)
-
-#define X_CALIBRATE_A_PROPERTY								(PRIVATE_DATA->calibrate_a_property)
-#define X_CALIBRATE_A_START_ITEM							(X_CALIBRATE_A_PROPERTY->items+0)
+#define X_CALIBRATE_R_PROPERTY								(PRIVATE_DATA->calibrate_r_property)
+#define X_CALIBRATE_R_START_ITEM							(X_CALIBRATE_R_PROPERTY->items+0)
 
 typedef struct {
 	int handle;
@@ -180,8 +175,8 @@ typedef struct {
 	indigo_property *runpreset_3_property;
 	indigo_property *runpreset_property;
 	indigo_property *hold_curr_property;
-	indigo_property *calibrate_ss_property;
-	indigo_property *calibrate_a_property;
+	indigo_property *calibrate_f_property;
+	indigo_property *calibrate_r_property;
 } primaluce_private_data;
 
 static char *GET_MODNAME[] = { "res", "get", "MODNAME", NULL };
@@ -559,13 +554,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_HOLD_CURR_OFF_ITEM, "OFF", "Off", true);
 		indigo_init_switch_item(X_HOLD_CURR_ON_ITEM, "ON", "On", false);
-		// -------------------------------------------------------------------------------- X_CALIBRATE_SS
-		X_CALIBRATE_SS_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CALIBRATE_SS", "Advanced", "Calibrate focuser", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
-		if (X_CALIBRATE_SS_PROPERTY == NULL)
+		// -------------------------------------------------------------------------------- X_CALIBRATE
+		X_CALIBRATE_F_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CALIBRATE", "Advanced", "Calibrate focuser", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		if (X_CALIBRATE_F_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(X_CALIBRATE_SS_START_ITEM, "START", "Start", false);
-		indigo_init_switch_item(X_CALIBRATE_SS_START_INVERTED_ITEM, "START_INVERTED", "Start inverted", false);
-		indigo_init_switch_item(X_CALIBRATE_SS_END_ITEM, "END", "End", false);
+		indigo_init_switch_item(X_CALIBRATE_F_START_ITEM, "START", "Start", false);
+		indigo_init_switch_item(X_CALIBRATE_F_START_INVERTED_ITEM, "START_INVERTED", "Start inverted", false);
+		indigo_init_switch_item(X_CALIBRATE_F_END_ITEM, "END", "End", false);
 		// -------------------------------------------------------------------------------- DEVICE_PORT, DEVICE_PORTS
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
@@ -628,8 +623,8 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, X_RUNPRESET_PROPERTY, NULL);
 		if (indigo_property_match(X_HOLD_CURR_PROPERTY, property))
 			indigo_define_property(device, X_HOLD_CURR_PROPERTY, NULL);
-		if (indigo_property_match(X_CALIBRATE_SS_PROPERTY, property))
-			indigo_define_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+		if (indigo_property_match(X_CALIBRATE_F_PROPERTY, property))
+			indigo_define_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -671,7 +666,6 @@ static void focuser_connection_handler(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Model: %s", text);
 					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, text);
 					if (!strncmp(text, "SESTOSENSO", 10)) {
-						X_CALIBRATE_SS_PROPERTY->hidden = false;
 						X_STATE_PROPERTY->count = 2;
 						X_CONFIG_PROPERTY->hidden = false;
 						X_RUNPRESET_PROPERTY->hidden = false;
@@ -684,7 +678,6 @@ static void focuser_connection_handler(indigo_device *device) {
 						X_HOLD_CURR_PROPERTY->hidden = false;
 					} else if (!strncmp(text, "ESATTO", 6)) {
 						X_STATE_PROPERTY->count = 3;
-						X_CALIBRATE_SS_PROPERTY->hidden = true;
 						X_CONFIG_PROPERTY->hidden = true;
 						X_RUNPRESET_PROPERTY->hidden = true;
 						X_RUNPRESET_L_PROPERTY->hidden = true;
@@ -696,7 +689,7 @@ static void focuser_connection_handler(indigo_device *device) {
 						X_HOLD_CURR_PROPERTY->hidden = true;
 					} else {
 						X_STATE_PROPERTY->count = 2;
-						X_CALIBRATE_SS_PROPERTY->hidden = true;
+						X_CALIBRATE_F_PROPERTY->hidden = true;
 						X_CONFIG_PROPERTY->hidden = true;
 						X_RUNPRESET_PROPERTY->hidden = true;
 						X_RUNPRESET_L_PROPERTY->hidden = true;
@@ -838,7 +831,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_define_property(device, X_RUNPRESET_3_PROPERTY, NULL);
 			indigo_define_property(device, X_RUNPRESET_PROPERTY, NULL);
 			indigo_define_property(device, X_HOLD_CURR_PROPERTY, NULL);
-			indigo_define_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+			indigo_define_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 			indigo_set_timer(device, 0, focuser_timer_callback, &PRIVATE_DATA->timer);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
@@ -863,7 +856,7 @@ static void focuser_connection_handler(indigo_device *device) {
 			indigo_delete_property(device, X_RUNPRESET_3_PROPERTY, NULL);
 			indigo_delete_property(device, X_RUNPRESET_PROPERTY, NULL);
 			indigo_delete_property(device, X_HOLD_CURR_PROPERTY, NULL);
-			indigo_delete_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+			indigo_delete_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			if (--PRIVATE_DATA->device_count == 0) {
 				primaluce_close(device->master_device);
@@ -1161,11 +1154,11 @@ static void focuser_wifi_sta_handler(indigo_device *device) {
 	indigo_update_property(device, X_WIFI_STA_PROPERTY, NULL);
 }
 
-static void focuser_calibrate_ss_handler(indigo_device *device) {
+static void focuser_calibrate_handler(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
 	bool result = true;
-	if (X_CALIBRATE_SS_START_ITEM->sw.value) {
+	if (X_CALIBRATE_F_START_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"Init\"}}}}", response, sizeof(response), tokens, 128);
 		if (result) {
 			indigo_usleep(1000000);
@@ -1179,7 +1172,7 @@ static void focuser_calibrate_ss_handler(indigo_device *device) {
 			indigo_usleep(1000000);
 			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"}}}}", response, sizeof(response), tokens, 128);
 		}
-	} else if (X_CALIBRATE_SS_START_INVERTED_ITEM->sw.value) {
+	} else if (X_CALIBRATE_F_START_INVERTED_ITEM->sw.value) {
 		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"Init\"}}}}", response, sizeof(response), tokens, 128);
 		if (result) {
 			indigo_usleep(1000000);
@@ -1193,8 +1186,8 @@ static void focuser_calibrate_ss_handler(indigo_device *device) {
 			indigo_usleep(1000000);
 			result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"GoOutToFindMaxPos\"}}}}", response, sizeof(response), tokens, 128);
 		}
-	} else if (X_CALIBRATE_SS_END_ITEM->sw.value) {
-		X_CALIBRATE_SS_START_ITEM->sw.value = X_CALIBRATE_SS_START_INVERTED_ITEM->sw.value = X_CALIBRATE_SS_END_ITEM->sw.value = false;
+	} else if (X_CALIBRATE_F_END_ITEM->sw.value) {
+		X_CALIBRATE_F_START_ITEM->sw.value = X_CALIBRATE_F_START_INVERTED_ITEM->sw.value = X_CALIBRATE_F_END_ITEM->sw.value = false;
 		result = primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT1\": {\"CAL_FOCUSER\":\"StoreAsMaxPos\"}}}}", response, sizeof(response), tokens, 128);
 		if (result) {
 			char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS\":\"STEP\",\"STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT1\":{\"ABS_POS_STEP\":\"\",\"STATUS\":\"\"}}}}";
@@ -1204,8 +1197,8 @@ static void focuser_calibrate_ss_handler(indigo_device *device) {
 			}
 		}
 	}
-	X_CALIBRATE_SS_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+	X_CALIBRATE_F_PROPERTY->state = result ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 }
 
 static indigo_result focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1319,12 +1312,12 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, X_WIFI_STA_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_wifi_sta_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(X_CALIBRATE_SS_PROPERTY, property)) {
-		// -------------------------------------------------------------------------------- X_CALIBRATE_SS
-		indigo_property_copy_values(X_CALIBRATE_SS_PROPERTY, property, false);
-		X_CALIBRATE_SS_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
-		indigo_set_timer(device, 0, focuser_calibrate_ss_handler, NULL);
+	} else if (indigo_property_match_changeable(X_CALIBRATE_F_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- X_CALIBRATE
+		indigo_property_copy_values(X_CALIBRATE_F_PROPERTY, property, false);
+		X_CALIBRATE_F_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+		indigo_set_timer(device, 0, focuser_calibrate_handler, NULL);
 		return INDIGO_OK;
 	}
 	return indigo_focuser_change_property(device, client, property);
@@ -1350,7 +1343,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(X_RUNPRESET_3_PROPERTY);
 	indigo_release_property(X_RUNPRESET_PROPERTY);
 	indigo_release_property(X_HOLD_CURR_PROPERTY);
-	indigo_release_property(X_CALIBRATE_SS_PROPERTY);
+	indigo_release_property(X_CALIBRATE_F_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
@@ -1364,11 +1357,11 @@ static indigo_result rotator_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_rotator_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- X_CALIBRATE_SS
-		X_CALIBRATE_A_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CALIBRATE_A", "Advanced", "Calibrate rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
-		if (X_CALIBRATE_A_PROPERTY == NULL)
+		// -------------------------------------------------------------------------------- X_CALIBRATE
+		X_CALIBRATE_R_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_CALIBRATE_A", "Advanced", "Calibrate rotator", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		if (X_CALIBRATE_R_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(X_CALIBRATE_A_START_ITEM, "START", "Start", false);
+		indigo_init_switch_item(X_CALIBRATE_R_START_ITEM, "START", "Start", false);
 		// --------------------------------------------------------------------------------
 		ROTATOR_ON_POSITION_SET_PROPERTY->hidden = true;
 		// --------------------------------------------------------------------------------
@@ -1399,7 +1392,7 @@ static void rotator_connection_handler(indigo_device *device) {
 				}
 				PRIVATE_DATA->has_abs_pos = getToken(response, tokens, 0, GET_MOT2_ABS_POS) != -1;
 				ROTATOR_POSITION_ITEM->number.value = ROTATOR_POSITION_ITEM->number.target = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
-				indigo_define_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+				indigo_define_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1416,7 +1409,7 @@ static void rotator_connection_handler(indigo_device *device) {
 			if (primaluce_command(device, "{\"req\":{\"set\": {\"ARCO\":0}}}}", response, sizeof(response), tokens, 1024)) {
 			}
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer);
-			indigo_delete_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+			indigo_delete_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
 			if (--PRIVATE_DATA->device_count == 0) {
 				primaluce_close(device);
@@ -1488,16 +1481,16 @@ static void rotator_abort_handler(indigo_device *device) {
 static void focuser_calibrate_a_handler(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
-	if (X_CALIBRATE_SS_START_ITEM->sw.value) {
-		X_CALIBRATE_SS_START_ITEM->sw.value = false;
+	if (X_CALIBRATE_F_START_ITEM->sw.value) {
+		X_CALIBRATE_F_START_ITEM->sw.value = false;
 		if (!primaluce_command(device, "{\"req\":{\"cmd\": {\"MOT2\": {\"CAL_STATUS\":\"exec\"}}}}", response, sizeof(response), tokens, 128)) {
-			X_CALIBRATE_A_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+			X_CALIBRATE_R_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 		}
 		char *state = get_string(response, tokens, CMD_MOT2_CAL_STATUS);
 		if (state == NULL || strcmp(state, "done")) {
-			X_CALIBRATE_A_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+			X_CALIBRATE_R_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 			return;
 		}
 		char *get_pos_command = PRIVATE_DATA->has_abs_pos ? "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS\":\"DEG\",\"CAL_STATUS\":\"\"}}}}" : "{\"req\":{\"get\":{\"MOT2\":{\"ABS_POS_DEG\":\"\",\"CAL_STATUS\":\"\"}}}}";
@@ -1512,8 +1505,8 @@ static void focuser_calibrate_a_handler(indigo_device *device) {
 		}
 		
 	}
-	X_CALIBRATE_SS_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, X_CALIBRATE_SS_PROPERTY, NULL);
+	X_CALIBRATE_F_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, X_CALIBRATE_F_PROPERTY, NULL);
 }
 
 static indigo_result rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -1543,11 +1536,11 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, ROTATOR_ABORT_MOTION_PROPERTY, NULL);
 		indigo_set_timer(device, 0, rotator_abort_handler, NULL);
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(X_CALIBRATE_A_PROPERTY, property)) {
+	} else if (indigo_property_match_changeable(X_CALIBRATE_R_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- X_CALIBRATE_A
-		indigo_property_copy_values(X_CALIBRATE_A_PROPERTY, property, false);
-		X_CALIBRATE_A_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_update_property(device, X_CALIBRATE_A_PROPERTY, NULL);
+		indigo_property_copy_values(X_CALIBRATE_R_PROPERTY, property, false);
+		X_CALIBRATE_R_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, X_CALIBRATE_R_PROPERTY, NULL);
 		indigo_set_timer(device, 0, focuser_calibrate_a_handler, NULL);
 		return INDIGO_OK;
 	}
@@ -1560,7 +1553,7 @@ static indigo_result rotator_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		rotator_connection_handler(device);
 	}
-	indigo_release_property(X_CALIBRATE_A_PROPERTY);
+	indigo_release_property(X_CALIBRATE_R_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_rotator_detach(device);
 }
@@ -1574,22 +1567,22 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 	static indigo_device *rotator = NULL;
 	
 	static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
-																																		"PrimaluceLab Focuser",
-																																		focuser_attach,
-																																		focuser_enumerate_properties,
-																																		focuser_change_property,
-																																		NULL,
-																																		focuser_detach
-																																		);
+		"PrimaluceLab Focuser",
+		focuser_attach,
+		focuser_enumerate_properties,
+		focuser_change_property,
+		NULL,
+		focuser_detach
+		);
 	
 	static indigo_device rotator_template = INDIGO_DEVICE_INITIALIZER(
-																																		"PrimaluceLab Rotator",
-																																		rotator_attach,
-																																		indigo_rotator_enumerate_properties,
-																																		rotator_change_property,
-																																		NULL,
-																																		rotator_detach
-																																		);
+		"PrimaluceLab Rotator",
+		rotator_attach,
+		indigo_rotator_enumerate_properties,
+		rotator_change_property,
+		NULL,
+		rotator_detach
+		);
 	
 	SET_DRIVER_INFO(info, "PrimaluceLab Focuser/Rotator", __FUNCTION__, DRIVER_VERSION, false, last_action);
 	
