@@ -21,3 +21,4 @@ indigo_server indigo_focuser_fc3
 
 ## Status: Stable
 
+Tested with simulator
