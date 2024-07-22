@@ -2,6 +2,46 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-290] - 22 Jul Mon 2024
+## Overall:
+- name and device attributes added to getProperty command in JSON protocol
+
+## Driver Fixes:
+- indigo_focuser_primaluce:
+	- calibration routine enabled for Esatto2 focusers
+
+- indigo_rotator_falcon:
+	- support for v2 added
+	
+- indigo_ccd_playerone
+	- SDK updated to v3.6.3
+	
+- indigo_ccd_touptek & OEMs
+	- SDK updated to v56.25996.20240707
+	- focuser support added
+	
+- indigo_aux_wcv4ec
+	- support for firmware 20240618
+	
+- indigo_mount_starbook
+	- responsiveness issues fixed
+	
+- indigo_agent_mount
+	- broken LX200 server fixed 
+
+- indigo_aux_upb:
+	- issues with powerlines persistence fixed 
+	
+## New drivers:
+- indigo_aux_upb3:
+	- driver for PegasusAstro UltimatePowebox v3 and newer 
+
+- indigo_focuser_fc3:
+	- driver for PegasusAstro FocusCube v3 and newer 
+
+- indigo_focuser_astroasis
+	- driver for Astroasis Oasis focuser
+
 # [2.0-288] - 28 Jun Fri 2024
 ## Overall:
 - indigo_examples: add remote_server_client_mount.c example
