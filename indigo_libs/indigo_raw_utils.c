@@ -1004,6 +1004,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	*/
 	digest->centroid_x = m10 / m00 - 0.5;
 	digest->centroid_y = m01 / m00 - 0.5;
+	digest->snr = sqrt(m00);
 	digest->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
@@ -1985,6 +1986,7 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 	digest->algorithm = centroid;
 	digest->width = new_digest[0].width;
 	digest->height = new_digest[0].height;
+	digest->snr = new_digest[0].snr;
 	digest->centroid_x = avg_ref->centroid_x;
 	digest->centroid_y = avg_ref->centroid_y;
 
@@ -2046,6 +2048,7 @@ indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest 
 	digest->algorithm = centroid;
 	digest->width = new_digest[0].width;
 	digest->height = new_digest[0].height;
+	digest->snr = new_digest[0].snr;
 	digest->centroid_x = avg_ref->centroid_x;
 	digest->centroid_y = avg_ref->centroid_y;
 
