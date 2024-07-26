@@ -871,7 +871,7 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			} else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value) {
 				return meade_command(device, ":RT0#", NULL, 0, 0);
 			}
-		} else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 			return meade_command(device, ":Te#", response, sizeof(response), 0) && *response == '1';
 		} else if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 			if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
@@ -895,7 +895,7 @@ static bool meade_set_tracking(indigo_device *device, bool on) {
 			return meade_command(device, ":X120#", NULL, 0, 0);
 		} else if (MOUNT_TYPE_AP_ITEM->sw.value) {
 			return meade_command(device, ":RT9#", NULL, 0, 0);
-		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value) {
+		} else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_ZWO_ITEM->sw.value || MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 			return meade_command(device, ":Td#", NULL, 0, 0);
 		} else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
 			return meade_command(device, ":MT0#", response, sizeof(response), 0) && *response == '1';
