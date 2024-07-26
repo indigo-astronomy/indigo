@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -198,10 +198,10 @@ static void ccd_connect_callback(indigo_device *device) {
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = int_value;
 			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_PIXEL_W, &int_value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_integer_parameter(..., GIP_PIXEL_W, -> %d)", int_value);
-			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(int_value / 100.0) / 10.0;
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = round(int_value / 10.0) / 100.0;
 			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_PIXEL_D, &int_value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_integer_parameter(..., GIP_PIXEL_D, -> %d)", int_value);
-			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(int_value / 100.0) / 10.0;
+			CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = round(int_value / 10.0) / 100.0;
 			CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 			CCD_BIN_PROPERTY->perm = INDIGO_RW_PERM;
 			gxccd_get_integer_parameter(PRIVATE_DATA->camera, GIP_MAX_BINNING_X, &int_value);
