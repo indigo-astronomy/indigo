@@ -653,6 +653,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					header->height,
 					DEVICE_PRIVATE_DATA->reference
 				);
+				AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
 			} else if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) {
 				int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 				int used = 0;
@@ -662,6 +663,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->reference->height = header->height;
 				DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
 				DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
+				DEVICE_PRIVATE_DATA->reference->snr = 0;
 				for (int i = 0; i < count && result == INDIGO_OK; i++) {
 					indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 					indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
@@ -682,8 +684,12 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						DEVICE_PRIVATE_DATA->reference->centroid_y += DEVICE_PRIVATE_DATA->reference[used].centroid_y;
 					}
 				}
-				DEVICE_PRIVATE_DATA->reference->centroid_x /= used;
-				DEVICE_PRIVATE_DATA->reference->centroid_y /= used;
+				if (used > 0) {
+					DEVICE_PRIVATE_DATA->reference->centroid_x /= used;
+					DEVICE_PRIVATE_DATA->reference->centroid_y /= used;
+					DEVICE_PRIVATE_DATA->reference->snr = DEVICE_PRIVATE_DATA->reference[1].snr;
+				}
+				AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && result == INDIGO_GUIDE_ERROR) {
@@ -745,6 +751,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 					header->height,
 					&digest
 				);
+				AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
 			} else if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) {
 				int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 				int used = 0;
@@ -783,6 +790,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 
 				if (result == INDIGO_OK) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+					AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
 				} else if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && result == INDIGO_GUIDE_ERROR) {
 					if (exposure_attempt < 2)
 						continue;
