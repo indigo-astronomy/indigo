@@ -38,7 +38,7 @@
 #include <indigo/indigo_driver_xml.h>
 #include "indigo_focuser_astroasis.h"
 
-#if !(defined(__APPLE__) || defined(__i386__))
+#if !defined(__i386__)
 
 #if defined(INDIGO_FREEBSD)
 #include <libusb.h>
