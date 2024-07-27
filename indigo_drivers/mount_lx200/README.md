@@ -11,6 +11,7 @@
 * OnStep controllers (http://www.stellarjourney.com/index.php?r=site/software_telescope)
 * ZWO AM5 mount (https://astronomy-imaging-camera.com/)
 * Pegasus NYX-101 (https://pegasusastro.com/products/nyx-101-harmonic-gear-mount/)
+* TeenAstro controllers (https://groups.io/g/TeenAstro)
 
 Connection over serial port or network.
 
