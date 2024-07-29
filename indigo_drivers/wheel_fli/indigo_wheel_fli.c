@@ -23,7 +23,7 @@
  \file indigo_wheel_fli.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME		"indigo_wheel_fli"
 
 #include <stdlib.h>
@@ -103,7 +103,6 @@ static indigo_result wheel_attach(indigo_device *device) {
 		pthread_mutex_init(&PRIVATE_DATA->usb_mutex, NULL);
 		/* Use all info property fields */
 		INFO_PROPERTY->count = 8;
-
 		return indigo_wheel_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -175,7 +174,6 @@ static void wheel_connect_callback(indigo_device *device) {
 						indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
 
 						CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, CONNECTION_PROPERTY, NULL);
 						device->is_connected = true;
 
 						indigo_set_timer(device, 0, wheel_timer_callback, NULL);
