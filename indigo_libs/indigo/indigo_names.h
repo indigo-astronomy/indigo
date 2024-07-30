@@ -469,6 +469,15 @@
 #define CCD_GAIN_ITEM_NAME                    "GAIN"
 
 //----------------------------------------------------------------------
+/** CCD_EGAIN property name.
+ */
+#define CCD_EGAIN_PROPERTY_NAME               "CCD_EGAIN"
+
+/** CCD_EGAIN.EGAIN property item name.
+ */
+#define CCD_EGAIN_ITEM_NAME                   "EGAIN"
+
+//----------------------------------------------------------------------
 /** CCD_OFFSET property name.
  */
 #define CCD_OFFSET_PROPERTY_NAME              "CCD_OFFSET"

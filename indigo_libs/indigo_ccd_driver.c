@@ -230,6 +230,12 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			CCD_GAIN_PROPERTY->hidden = true;
 			indigo_init_number_item(CCD_GAIN_ITEM, CCD_GAIN_ITEM_NAME, "Gain", 0, 500, 1, 100);
+			// -------------------------------------------------------------------------------- CCD_EGAIN
+			CCD_EGAIN_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_EGAIN_PROPERTY_NAME, CCD_MAIN_GROUP, "E-Gain", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+			if (CCD_EGAIN_PROPERTY == NULL)
+				return INDIGO_FAILED;
+			CCD_EGAIN_PROPERTY->hidden = true;
+			indigo_init_number_item(CCD_EGAIN_ITEM, CCD_EGAIN_ITEM_NAME, "E-gain (e-/ADU)", 0, 10000, 0, 0);
 			// -------------------------------------------------------------------------------- CCD_OFFSET
 			CCD_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, CCD_OFFSET_PROPERTY_NAME, CCD_MAIN_GROUP, "Offset", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (CCD_OFFSET_PROPERTY == NULL)
@@ -389,6 +395,8 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
 		if (indigo_property_match(CCD_GAIN_PROPERTY, property))
 			indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
+		if (indigo_property_match(CCD_EGAIN_PROPERTY, property))
+			indigo_define_property(device, CCD_EGAIN_PROPERTY, NULL);
 		if (indigo_property_match(CCD_GAMMA_PROPERTY, property))
 			indigo_define_property(device, CCD_GAMMA_PROPERTY, NULL);
 		if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
@@ -498,6 +506,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
 			indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
 			indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
+			indigo_define_property(device, CCD_EGAIN_PROPERTY, NULL);
 			indigo_define_property(device, CCD_GAMMA_PROPERTY, NULL);
 			indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
 			indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
@@ -541,6 +550,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, CCD_BIN_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_OFFSET_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_GAIN_PROPERTY, NULL);
+			indigo_delete_property(device, CCD_EGAIN_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_GAMMA_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
 			indigo_delete_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
@@ -920,6 +930,7 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_FRAME_PROPERTY);
 	indigo_release_property(CCD_BIN_PROPERTY);
 	indigo_release_property(CCD_GAIN_PROPERTY);
+	indigo_release_property(CCD_EGAIN_PROPERTY);
 	indigo_release_property(CCD_GAMMA_PROPERTY);
 	indigo_release_property(CCD_OFFSET_PROPERTY);
 	indigo_release_property(CCD_FRAME_TYPE_PROPERTY);
@@ -1213,6 +1224,8 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 		add_key(&next_key, false, "IMAGETYP= 'DarkFlat'            / frame type");
 	if (!CCD_GAIN_PROPERTY->hidden)
 		add_key(&next_key, false, "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
+	if (!CCD_EGAIN_PROPERTY->hidden)
+		add_key(&next_key, false, "EGAIN   = %20.4f / E-gain", CCD_EGAIN_ITEM->number.value);
 	if (!CCD_OFFSET_PROPERTY->hidden)
 		add_key(&next_key, false, "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
 	if (!CCD_GAMMA_PROPERTY->hidden)
@@ -1686,6 +1699,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			add_key(&header, true,  "IMAGETYP= 'DarkFlat'            / frame type");
 		if (!CCD_GAIN_PROPERTY->hidden)
 			add_key(&header, true,  "GAIN    = %20.2f / Gain", CCD_GAIN_ITEM->number.value);
+		if (!CCD_EGAIN_PROPERTY->hidden)
+			add_key(&header, true,  "EGAIN   = %20.4f / E-gain", CCD_EGAIN_ITEM->number.value);
 		if (!CCD_OFFSET_PROPERTY->hidden)
 			add_key(&header, true,  "OFFSET  = %20.2f / Offset", CCD_OFFSET_ITEM->number.value);
 		if (!CCD_GAMMA_PROPERTY->hidden)

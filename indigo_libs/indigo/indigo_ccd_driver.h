@@ -260,6 +260,14 @@ extern "C" {
  */
 #define CCD_GAIN_ITEM                     (CCD_GAIN_PROPERTY->items+0)
 
+/** CCD_EGAIN property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
+ */
+#define CCD_EGAIN_PROPERTY                 (CCD_CONTEXT->ccd_egain_property)
+
+/** CCD_EGAIN.EGAIN property item pointer.
+ */
+#define CCD_EGAIN_ITEM                     (CCD_EGAIN_PROPERTY->items+0)
+
 /** CCD_OFFSET property pointer, property is optional, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_OFFSET_PROPERTY               (CCD_CONTEXT->ccd_offset_property)
@@ -525,6 +533,7 @@ typedef struct {
 	indigo_property *ccd_bin_property;            ///< CCD_BIN property pointer
 	indigo_property *ccd_offset_property;         ///< CCD_OFFSET property pointer
 	indigo_property *ccd_gain_property;           ///< CCD_GAIN property pointer
+	indigo_property *ccd_egain_property;          ///< CCD_EGAIN property pointer
 	indigo_property *ccd_gamma_property;          ///< CCD_GAMMA property pointer
 	indigo_property *ccd_frame_type_property;     ///< CCD_FRAME_TYPE property pointer
 	indigo_property *ccd_image_format_property;   ///< CCD_IMAGE_FORMAT property pointer

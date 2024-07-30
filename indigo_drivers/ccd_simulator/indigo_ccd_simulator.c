@@ -774,6 +774,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_LENS_FOCAL_LENGTH_ITEM->number.value = 12.7;
 				CCD_LENS_APERTURE_ITEM->number.value = 4;
 				CCD_LENS_PROPERTY->state = INDIGO_OK_STATE;
+				CCD_EGAIN_PROPERTY->hidden = false;
+				CCD_EGAIN_ITEM->number.value = 0.82;
 			} else {
 				CCD_COOLER_PROPERTY->hidden = true;
 				CCD_COOLER_POWER_PROPERTY->hidden = true;
