@@ -1233,6 +1233,7 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	add_key(&next_key, false, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
 	add_key(&next_key, false, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 	add_key(&next_key, false, "ROWORDER= 'TOP-DOWN'           / Image row order");
+	add_key(&next_key, false, "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
 	if (keywords) {
 		while (keywords->type && (next_key - fits_header) < (FITS_HEADER_SIZE - 80)) {
 			switch (keywords->type) {
@@ -1708,6 +1709,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		add_key(&header, true,  "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
+		add_key(&header, true,  "SWCREATE= 'INDIGO 2.0-%s'     / Capture sotware", INDIGO_BUILD);
 		if (!CCD_LENS_PROPERTY->hidden) {
 			// https://indico.esa.int/event/124/attachments/711/771/06_ESA-SSA-NEO-RS-0003_1_6_FITS_keyword_requirements_2014-08-01.pdf
 			// 5.4 Telescope information
