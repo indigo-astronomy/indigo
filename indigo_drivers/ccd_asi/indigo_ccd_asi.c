@@ -26,7 +26,7 @@
  \file indigo_ccd_asi.c
  */
 
-#define DRIVER_VERSION 0x0029
+#define DRIVER_VERSION 0x002A
 #define DRIVER_NAME "indigo_ccd_asi"
 
 #include <stdlib.h>
@@ -894,6 +894,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_GAIN) {
 		CCD_GAIN_PROPERTY->hidden = false;
+		CCD_EGAIN_PROPERTY->hidden = false;
 		if(ctrl_caps.IsWritable)
 			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
 		else
@@ -1064,11 +1065,13 @@ static void handle_ccd_connect_property(indigo_device *device) {
 				);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
-					INDIGO_DRIVER_LOG( DRIVER_NAME, "ASIGetGainOffset(%d) = %d", id, res);
+					INDIGO_DRIVER_ERROR( DRIVER_NAME, "ASIGetGainOffset(%d) = %d", id, res);
 				}
 
 				PRIVATE_DATA->gain_unity_gain = get_unity_gain(device);
 				PRIVATE_DATA->gain_highest_dr = 0;
+
+				CCD_EGAIN_ITEM->number.value = CCD_EGAIN_ITEM->number.target = PRIVATE_DATA->info.ElecPerADU;
 
 				char item_desc[100];
 				sprintf(item_desc, "Highest Dynamic Range (%d, %d)", PRIVATE_DATA->gain_highest_dr, PRIVATE_DATA->offset_highest_dr);
@@ -1271,8 +1274,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 
+		ASI_CAMERA_INFO info;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)(CCD_GAIN_ITEM->number.value), ASI_FALSE);
+		ASIGetCameraProperty(&info, PRIVATE_DATA->dev_id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
@@ -1283,8 +1288,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		adjust_preset_switches(device);
+		CCD_EGAIN_ITEM->number.value = CCD_EGAIN_ITEM->number.target = info.ElecPerADU;
 
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_EGAIN_PROPERTY, NULL);
 		indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- ASI_PRESETS
@@ -1312,8 +1319,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
 		ASI_PRESETS_PROPERTY->state = INDIGO_OK_STATE;
 
+		ASI_CAMERA_INFO info;
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		ASI_ERROR_CODE res = ASISetControlValue(PRIVATE_DATA->dev_id, ASI_GAIN, (long)gain, ASI_FALSE);
+		ASIGetCameraProperty(&info, PRIVATE_DATA->dev_id);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, ASI_GAIN) = %d", PRIVATE_DATA->dev_id, res);
@@ -1332,8 +1341,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 
 		CCD_GAIN_ITEM->number.value = gain;
 		CCD_OFFSET_ITEM->number.value = offset;
+		CCD_EGAIN_ITEM->number.value = CCD_EGAIN_ITEM->number.target = info.ElecPerADU;
 
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_EGAIN_PROPERTY, NULL);
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		indigo_update_property(device, ASI_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
