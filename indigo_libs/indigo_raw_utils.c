@@ -2416,7 +2416,7 @@ static int nc_distance_comparator(const void *item_1, const void *item_2) {
 	return 0;
 }
 
-indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data) {
+indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data, double *psf_min, double *psf_max) {
 	int pixel_size = 0;
 	switch (map_raw_type) {
 		case INDIGO_RAW_RGB24:
@@ -2500,6 +2500,10 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 				map_data[ii + 3] = 255;
 		}
 	}
+	if (psf_min)
+		*psf_min = min_psf;
+	if (psf_max)
+		*psf_max = max_psf;
 	indigo_log("Inspect %s: Star count = %d, MIN = %g, MAX = %g", label, last_star - first_star, min_psf, max_psf);
 	// create PSF map from PSF averages
 	double psf_scale = (max_psf - min_psf) / 8;
