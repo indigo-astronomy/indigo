@@ -23,7 +23,7 @@
  \file indigo_ccd_mi.c
  */
 
-#define DRIVER_VERSION 0x0019
+#define DRIVER_VERSION 0x001A
 #define DRIVER_NAME "indigo_ccd_mi"
 
 #include <ctype.h>
@@ -296,11 +296,8 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_GAIN_ITEM->number.value = 0.0;
 				} else if (gxccd_get_value(PRIVATE_DATA->camera, GV_ADC_GAIN, &float_value) != -1) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_ADC_GAIN, -> %g)", float_value);
-					CCD_GAIN_PROPERTY->hidden = false;
-					CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
-					CCD_GAIN_ITEM->number.min = 0.0;
-					CCD_GAIN_ITEM->number.step = 0.1;
-					CCD_GAIN_ITEM->number.value = float_value;
+					CCD_EGAIN_PROPERTY->hidden = false;
+					CCD_EGAIN_ITEM->number.value = float_value;
 				}
 			}
 
@@ -487,8 +484,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
 		if (IS_CONNECTED && !CCD_GAIN_PROPERTY->hidden) {
+			float float_value;
 			gxccd_set_gain(PRIVATE_DATA->camera, CCD_GAIN_ITEM->number.value);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_set_gain(..., %g)", CCD_GAIN_ITEM->number.value);
+			if (gxccd_get_value(PRIVATE_DATA->camera, GV_ADC_GAIN, &float_value) != -1) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_ADC_GAIN, -> %g)", float_value);
+				CCD_EGAIN_ITEM->number.value = float_value;
+				indigo_update_property(device, CCD_EGAIN_PROPERTY, NULL);
+			}
 			indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		}
 		return INDIGO_OK;
