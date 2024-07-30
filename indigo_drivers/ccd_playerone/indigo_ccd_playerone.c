@@ -24,7 +24,7 @@
  \file indigo_ccd_playerone.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME "indigo_ccd_playerone"
 
 /* POA_SAFE_READOUT enables workaround for a bug in POAGetImageData().
@@ -1044,6 +1044,27 @@ static indigo_result init_camera_property(indigo_device *device, POAConfigAttrib
 		return INDIGO_OK;
 	}
 
+	if (ctrl_caps.configID == POA_EGAIN) {
+		CCD_EGAIN_PROPERTY->hidden = false;
+		if (ctrl_caps.isWritable)
+			CCD_EGAIN_PROPERTY->perm = INDIGO_RW_PERM;
+		else
+			CCD_EGAIN_PROPERTY->perm = INDIGO_RO_PERM;
+
+		CCD_EGAIN_ITEM->number.min = ctrl_caps.minValue.intValue;
+		CCD_EGAIN_ITEM->number.max = ctrl_caps.maxValue.intValue;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		unused = false;
+		res = POAGetConfig(id, POA_EGAIN, &value, &unused);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", id, res);
+		else
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN,  > %d)", id, value.floatValue);
+		CCD_EGAIN_ITEM->number.value = CCD_EGAIN_ITEM->number.target = value.floatValue;
+		return INDIGO_OK;
+	}
+
 	if (ctrl_caps.configID == POA_TARGET_TEMP) {
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
 		if (ctrl_caps.isWritable)
@@ -1371,8 +1392,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+
 		POAConfigValue value;
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		value.intValue = (long)(CCD_GAIN_ITEM->number.value);
 		POAErrors res = POASetConfig(PRIVATE_DATA->dev_id, POA_GAIN, value, POA_FALSE);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1384,8 +1406,22 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		adjust_preset_switches(device);
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = POAGetConfig(PRIVATE_DATA->dev_id, POA_EGAIN, &value, POA_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", PRIVATE_DATA->dev_id, res);
+			CCD_EGAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN, > %d)", PRIVATE_DATA->dev_id, value.floatValue);
+			CCD_EGAIN_ITEM->number.value = value.floatValue;
+			CCD_EGAIN_ITEM->number.target = value.floatValue;
+			CCD_EGAIN_PROPERTY->state = INDIGO_OK_STATE;
+		}
+
 		indigo_update_property(device, POA_PRESETS_PROPERTY, NULL);
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_EGAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 		// ------------------------------------------------------------------------------- POA_PRESETS
 	} else if (indigo_property_match_changeable(POA_PRESETS_PROPERTY, property)) {
@@ -1438,7 +1474,21 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_GAIN_ITEM->number.value = gain;
 		CCD_OFFSET_ITEM->number.value = offset;
 
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = POAGetConfig(PRIVATE_DATA->dev_id, POA_EGAIN, &value, POA_FALSE);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+		if (res) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", PRIVATE_DATA->dev_id, res);
+			CCD_EGAIN_PROPERTY->state = INDIGO_ALERT_STATE;
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN, > %d)", PRIVATE_DATA->dev_id, value.floatValue);
+			CCD_EGAIN_ITEM->number.value = value.floatValue;
+			CCD_EGAIN_ITEM->number.target = value.floatValue;
+			CCD_EGAIN_PROPERTY->state = INDIGO_OK_STATE;
+		}
+
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
+		indigo_update_property(device, CCD_EGAIN_PROPERTY, NULL);
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		indigo_update_property(device, POA_PRESETS_PROPERTY, NULL);
 		return INDIGO_OK;
