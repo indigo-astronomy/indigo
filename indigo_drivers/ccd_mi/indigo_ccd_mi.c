@@ -294,7 +294,8 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_GAIN_ITEM->number.max = int_value;
 					CCD_GAIN_ITEM->number.step = 1.0;
 					CCD_GAIN_ITEM->number.value = 0.0;
-				} else if (gxccd_get_value(PRIVATE_DATA->camera, GV_ADC_GAIN, &float_value) != -1) {
+				}
+				if (gxccd_get_value(PRIVATE_DATA->camera, GV_ADC_GAIN, &float_value) != -1) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_ADC_GAIN, -> %g)", float_value);
 					CCD_EGAIN_PROPERTY->hidden = false;
 					CCD_EGAIN_ITEM->number.value = float_value;
