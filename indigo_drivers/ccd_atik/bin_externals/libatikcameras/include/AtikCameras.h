@@ -21,202 +21,6 @@ extern "C" {
 #include <stdbool.h>
 #endif
 
-	/// Main error enum for methods with "int" as return type.
-	enum ARTEMISERROR
-	{
-		/// Operation successful
-		ARTEMIS_OK = 0,
-		/// The camera handle passed is not a valid handle.
-		/// @see ArtemisConnect()
-		ARTEMIS_INVALID_PARAMETER,
-		/// Camera is not connected
-		ARTEMIS_NOT_CONNECTED,
-		/// Not impl
-		ARTEMIS_NOT_IMPLEMENTED,
-		/// No response
-		ARTEMIS_NO_RESPONSE,
-		/// Invalid function
-		ARTEMIS_INVALID_FUNCTION,
-		/// Camera Not init
-		ARTEMIS_NOT_INITIALIZED,
-		/// Failed
-		ARTEMIS_OPERATION_FAILED,
-	};
-
-	/// Camera colour properties
-	enum ARTEMISCOLOURTYPE
-	{
-		/// Either the device is not a camera or the colour cannot be determined
-		ARTEMIS_COLOUR_UNKNOWN = 0,
-		/// Device sensor is monochrome
-		ARTEMIS_COLOUR_NONE,
-		/// Device sensor is colour (RGGB)
-		ARTEMIS_COLOUR_RGGB
-	};
-
-	/// @brief 
-	enum ARTEMISPRECHARGEMODE
-	{
-		/// Precharge ignored
-		PRECHARGE_NONE = 0,		
-		/// In-camera precharge subtraction
-		PRECHARGE_ICPS,			
-		/// Precharge sent with image data
-		PRECHARGE_FULL,			
-	};
-
-	/// @see ArtemisCameraState()
-	enum ARTEMISCAMERASTATE
-	{
-		CAMERA_ERROR = -1,
-		CAMERA_IDLE = 0,
-		CAMERA_WAITING,
-		CAMERA_EXPOSING,
-		CAMERA_READING,
-		CAMERA_DOWNLOADING,
-		CAMERA_FLUSHING,
-	};
-
-	// @see ArtemisCameraConnectionState
-	enum ARTEMISCONNECTIONSTATE
-	{
-		CAMERA_CONNECTING      = 1,
-		CAMERA_CONNECTED       = 2,
-		CAMERA_CONNECT_FAILED  = 3,
-		CAMERA_SUSPENDED       = 4,
-		CAMERA_CONNECT_UNKNOWN = 5
-	};
-
-	/// Flags for ArtemisGet/SetProcessing
-	/// @see ArtemisGetProcessing(), ArtemisSetProcessing()
-	enum ARTEMISPROCESSING
-	{
-		/// compensate for JFET nonlinearity
-		ARTEMIS_PROCESS_LINEARISE = 1,	
-		/// adjust for 'Venetian Blind effect'
-		ARTEMIS_PROCESS_VBE = 2, 
-	};
-
-	/// @brief Index into the ccdflags value of ARTEMISPROPERTIES
-	/// @see ARTEMISPROPERTIES
-	enum ARTEMISPROPERTIESCCDFLAGS
-	{
-		/// CCD is interlaced type
-		ARTEMIS_PROPERTIES_CCDFLAGS_INTERLACED = 1, 
-		/// Enum padding to 4 bytes. Not used
-		ARTEMIS_PROPERTIES_CCDFLAGS_DUMMY = 0x7FFFFFFF 
-	};
-
-	/// Index into the camera flags of ARTEMISPROPERTIES
-	/// @see ARTEMISPROPERTIES
-	enum ARTEMISPROPERTIESCAMERAFLAGS
-	{
-		/// Camera has readout FIFO fitted
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_FIFO = 1, 
-		/// Camera has external trigger capabilities
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_EXT_TRIGGER = 2, 
-		/// Camera can return preview data
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_PREVIEW = 4, 
-		/// Camera can return subsampled data
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_SUBSAMPLE = 8, 
-		/// Camera has a mechanical shutter
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_SHUTTER = 16, 
-		/// Camera has a guide port
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_GUIDE_PORT = 32, 
-		/// Camera has GPIO capability
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_GPIO = 64, 
-		/// Camera has a window heater
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_WINDOW_HEATER = 128, 
-		/// Camera can download 8-bit images
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_EIGHT_BIT_MODE = 256, 
-		/// Camera can overlap
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_OVERLAP_MODE = 512, 
-		/// Camera has internal filterwheel
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_HAS_FILTERWHEEL = 1024, 
-		/// Enum padding to 4 bytes. Not used
-		ARTEMIS_PROPERTIES_CAMERAFLAGS_DUMMY = 0x7FFFFFFF 
-	};
-
-	/// @brief Index into ArtemisCoolingInfo() Flags
-	/// @see ArtemisCoolingInfo()
-	enum ARTEMISCOOLINGINFO
-	{
-		/// Camera can be cooled. 0= No cooling ability 1= Has cooling
-		ARTEMIS_COOLING_INFO_HASCOOLING          = 1,
-		/// Cooling is always on or can be controlled. 0= Always on 1= Controllable
-		ARTEMIS_COOLING_INFO_CONTROLLABLE        = 2,
-		/// Cooling can be switched On/Off. 0= On/Off control not available 1= On/Off control available
-		ARTEMIS_COOLING_INFO_ONOFFCOOLINGCONTROL = 4,
-		/// Cooling can be set via ArtemisSetCoolingPower()
-		ARTEMIS_COOLING_INFO_POWERLEVELCONTROL   = 8,
-		/// Cooling can be set via ArtemisSetCooling()
-		ARTEMIS_COOLING_INFO_SETPOINTCONTROL     = 16,
-		/// Currently warming up. 0= Normal control 1= Warming Up
-		ARTEMIS_COOLING_INFO_WARMINGUP           = 32,
-		/// Currently cooling. 0= Cooling off 1= Cooling on
-		ARTEMIS_COOLING_INFO_COOLINGON           = 64,
-		/// Currently under setpoint control 0= No set point control 1= Set point control
-		ARTEMIS_COOLING_INFO_SETPOINTCONTROLON   = 128
-	};
-
-	/// @brief Filter wheel type. 
-	/// @note An EFW3 will show as EFW2 as they use the same firmware
-	/// @see ArtemisEFWGetDeviceDetails()
-	enum ARTEMISEFWTYPE
-	{
-		ARTEMIS_EFW1 = 1,
-		ARTEMIS_EFW2 = 2
-	};
-
-	/// @brief ID's for the camera specific options
-	/// @see ArtemisHasCameraSpecificOption()
-	enum CameraSpecificOptionsIDs
-	{
-		ID_GOPresetMode     = 1,
-		ID_GOPresetLow      = 2,
-		ID_GOPresetMed      = 3,
-		ID_GOPresetHigh     = 4,
-		ID_GOCustomGain     = 5,
-		ID_GOCustomOffset   = 6,
-		ID_EvenIllumination = 12,
-		ID_PadData          = 13,
-		ID_ExposureSpeed    = 14,
-		ID_BitSendMode      = 15, //ACIS specific
-		ID_16BitMode        = 18, //ChemiMOS specific
-		ID_FX3Version       = 200,
-		ID_FPGAVersion      = 201,
-	};
-
-	/// Return type for ArtemisProperties
-	/// @see ArtemisProperties()
-	struct ARTEMISPROPERTIES
-	{
-		/// Firmware version
-		int Protocol;
-		/// X resolution
-		int nPixelsX;
-		/// Y resolution
-		int nPixelsY;
-		/// Physical size of each pixel in microns, horizontally
-		float PixelMicronsX;
-		/// Physical size of each pixel in microns, vertically
-		float PixelMicronsY;
-		/// CCD flags
-		/// @see ARTEMISPROPERTIESCCDFLAGS
-		int ccdflags;
-		/// Camera flags
-		/// @see ARTEMISPROPERTIESCAMERAFLAGS
-		int cameraflags;
-		/// Model of the device
-		char Description[40];
-		/// Manufacturer of device
-		char Manufacturer[40];
-	};
-
-	/// Atik SDK handle type
-	/// @see ArtemisConnect(), ArtemisEFWConnect()
-	typedef void * ArtemisHandle;
-
 	/// @brief DLL handle set by ArtemisLoadDLL(). 
 	/// This is irrelevant if you are linking at compile time
 	extern HINSTANCE hArtemisDLL;
@@ -362,6 +166,12 @@ extern "C" {
 	/// @param serial a pointer to an integer which will be set to the serial number of the connected Atik device.
 	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure.
 	artfn int ArtemisCameraSerial(ArtemisHandle handle, int* flags, int* serial);
+
+	/// @brief Retrieves the serial number of the connected device.
+	/// @param handle the connected device handle.
+	/// @param serial a pointer to an internal buffer containing the serial number of the camera
+	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure.
+	artfn int ArtemisCameraSerialEx(ArtemisHandle hCam, const char** serial);
 
 	/// @brief Retrieves the colour properties of the the connected device.
 	/// @param handle the connected device handle.
@@ -580,6 +390,88 @@ extern "C" {
 	artfn int ArtemisAutoExposureLength(ArtemisHandle handle, int percentile, unsigned short adu, 
 										float* exposureLength, float startingExposureLength);
 
+	/// @brief Set the regions-of-interest to be returned by the ArtemisGetRegionsOfInterest() function
+	/// after an exposure has been taken.
+	/// 
+	/// @param	handle the connected Atik device handle.
+	/// @param	ROIs pointer to an array of AtikROI structures. The function takes a copy of this data.
+	///			The caller is responsible for destroying the array after the call.
+	/// @param	numROIs number of AtikROI structures in the array pointed to by the ROIs pointer.
+	/// 
+	/// @return
+	///		- ARTEMIS_OK on success.
+	///		- ARTEMIS_INVALID_PARAMETER if: handle is not valid; any of the ROIs overlap the same line;
+	///			any of the ROIs contain invalid values (e.g. ROI is outside the bounds of the image or
+	///			the binning values are greater than the camera supports).
+	///		- ARTEMIS_NOT_IMPLEMENTED if function is not supported by the camera.
+	/// 
+	/// @see ArtemisGetRegionsOfInterest()
+	/// 
+	/// @code{.cpp}
+	/// // **** Example ****
+	/// std::vector<AtikROI> ROIs;
+	/// 
+	/// ROIs.push_back({ 273, 513, 1124, 272, 1, 2 });
+	/// ROIs.push_back({ 1385, 785, 450, 416, 1, 2 });
+	/// ROIs.push_back({ 466, 1910, 1930, 152, 1, 2 });
+	/// 
+	/// if (ArtemisSetRegionsOfInterest(handle, &ROIs[0], static_cast<int>(ROIs.size())) != ARTEMIS_OK)
+	/// {
+	///     // Deal with error...
+	/// }
+	/// 
+	/// // Continue with exposure...
+	/// @endcode
+	artfn int ArtemisSetRegionsOfInterest(ArtemisHandle handle, AtikROI const* ROIs, int numROIs);
+
+	/// @brief Returns regions-of-interest set by ArtemisSetRegionsOfInterest after an exposure has been taken.
+	/// 
+	/// @param	handle the connected Atik device handle
+	/// @param	ROIs the user passes in an AtikROI pointer and the call will set the pointer
+	///			to point to an array of AtikROI structures. The pointer will be set to NULL if no
+	///			regions of interest have been captured. The library manages the memory of this array.
+	///			The caller should not destroy or modify the array returned.
+	/// @param	numROIs pointer to an integer that the function will populate with the
+	///			number of AtikROI structures pointed to by the ROIs pointer. Set to zero if no
+	///			regions of interest have been captured.
+	/// 
+	/// @return 
+	///		- ARTEMIS_OK on success.
+	///		- ARTEMIS_INVALID_PARAMETER if handle is not valid camera handle.
+	///		- ARTEMIS_NOT_IMPLEMENTED if function is not supported by the camera.
+	/// 
+	/// @see ArtemisSetRegionsOfInterest()
+	/// 
+	/// @code{.cpp}
+	/// // **** Example ****
+	/// AtikROI const* ROIsPtr;
+	/// int numROIs = 0;
+	/// if (ArtemisGetRegionsOfInterest(handle, &ROIsPtr, &numROIs) == ARTEMIS_OK)
+	/// {
+	///		for (int roi = 0; roi < numROIs; ++roi)
+	///		{
+	///			unsigned short* imageData = static_cast<unsigned short*>(ROIsPtr[roi].imageBuffer);
+	///	
+	///			std::cout << "X:\t" << ROIsPtr[roi].x << "\n";
+	///			std::cout << "Y:\t" << ROIsPtr[roi].y << "\n";
+	///			std::cout << "Width:\t" << ROIsPtr[roi].w << "\n";
+	///			std::cout << "Height:\t" << ROIsPtr[roi].h << "\n";
+	///			std::cout << "BinX:\t" << ROIsPtr[roi].binx << "\n";
+	///			std::cout << "BinY:\t" << ROIsPtr[roi].biny << "\n";
+	///			
+	///			double mean = 0.0;
+	///			for (int i = 0; i < ROIsPtr[roi].w * ROIsPtr[roi].h; ++i)
+	///			{
+	///				mean += imageData[i];
+	///			}
+	///			mean /= (ROIsPtr[roi].w * ROIsPtr[roi].h);
+	///			
+	///			std::cout << "*** Mean:\t" << mean << "\n\n";
+	///		}
+	/// }
+	/// @endcode
+	artfn int ArtemisGetRegionsOfInterest(ArtemisHandle handle, AtikROI const** ROIs, int* numROIs);
+
 	// ------------------- Exposures -----------------------------------
 
 	/// @brief Begin an exposure for the device, specifying a duration as floating point seconds.
@@ -696,7 +588,7 @@ extern "C" {
 	/// @param handle the connected Atik device handle.
 	/// @param callback a pointer to a function which will be invoked when fast mode is completed.
 	/// @return TRUE on success, FALSE on failure.
-	artfn BOOL ArtemisSetFastCallback(  ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer));
+	artfn BOOL ArtemisSetFastCallback(  ArtemisHandle handle, FastModeCallbackFnPtr callback);
 
 	/// @brief Set the callback that will be invoked when a fast mode exposure is completed. This extension provides
 	/// a pointer to extra info passed to the function. See AtikDefs.h for a description of the structure
@@ -706,7 +598,7 @@ extern "C" {
 	/// @param handle the connected Atik device handle.
 	/// @param callback a pointer to a function which will be invoked when fast mode is completed.
 	/// @return TRUE on success, FALSE on failure.
-	artfn BOOL ArtemisSetFastCallbackEx(ArtemisHandle handle, void(*callback)(ArtemisHandle handle, int x, int y, int w, int h, int binx, int biny, void * imageBuffer, unsigned char * info));
+	artfn BOOL ArtemisSetFastCallbackEx(ArtemisHandle handle, FastModeCallbackExFnPtr callbackEx);
 
 	// ------------------- Amplifier -----------------------------------
 
@@ -1014,8 +906,6 @@ extern "C" {
 
 	// ------------------- Hot Pixel ------------------------------
 
-	enum HotPixelSensitivity { HPS_HIGH, HPS_MEDIUM, HPS_LOW };
-
 	/// @brief A software based hot pixel remover with some pre defined parameters. 
 	/// darkFrame = false, checkForAdjacentHotPixels = false, hps = HPS_MEDIUM
 	/// @see ArtemisAdvancedHotPixelRemoval()
@@ -1200,6 +1090,10 @@ extern "C" {
 	/// @see ARTEMISERROR, ArtemisGetWindowHeaterPower()
 	/// @return ARTEMIS_OK on success, ARTEMARTEMIS_INVALID_PARAMETER if the device does not have a window heater, or ARTEMISERROR enumeration on failure
 	artfn int ArtemisSetWindowHeaterPower( ArtemisHandle handle, int  windowHeaterPower);
+
+	artfn int ArtemisGetFPGAValue(ArtemisHandle handle, unsigned short address, unsigned short* value);
+
+	artfn int ArtemisSetFPGAValue(ArtemisHandle handle, unsigned short address, unsigned short value);
 	
 	/// @brief Dynamically loads the Atik implementation DLL.
 	/// This method is only needed if the DLL is linked dynamically.
