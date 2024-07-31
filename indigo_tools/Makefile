@@ -28,7 +28,7 @@ else
 	INDIGO_LIBS = $(BUILD_LIB)/libindigo.a -lz -ldl -lm
 endif
 
-all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_drivers
+all: $(BUILD_BIN)/indigo_prop_tool $(BUILD_BIN)/indigo_raw_to_fits $(BUILD_BIN)/indigo_drivers $(BUILD_BIN)/indigo_driver_metadata
 
 install: all
 	cp $(BUILD_BIN)/indigo_prop_tool $(INSTALL_BIN)
@@ -55,3 +55,6 @@ $(BUILD_BIN)/indigo_raw_to_fits: indigo_raw_to_fits.o
 
 $(BUILD_BIN)/indigo_drivers: indigo_drivers.o
 	$(CC) $(CFLAGS)  -o $@ indigo_drivers.o $(LDFLAGS) -lindigo
+
+$(BUILD_BIN)/indigo_driver_metadata: indigo_driver_metadata.o
+	$(CC) $(CFLAGS)  -o $@ indigo_driver_metadata.o $(LDFLAGS) -lindigo

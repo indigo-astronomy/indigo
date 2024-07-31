@@ -52,22 +52,22 @@ clean-all: OP = clean-all
 clean-all: folders $(FOLDERS_WITH_MAKEFILE) $(FOLDERS_WITHOUT_MAKEFILE)
 
 $(FOLDERS_WITH_MAKEFILE):
+	@$(MAKE) -C $@ $(OP)
 ifeq ($(MAKECMDGOALS),all)
-	cd $@;bash ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
+	$(BUILD_BIN)/indigo_driver_metadata $(BUILD_DRIVERS)/indigo_$@  >>$(BUILD_SHARE)/indigo/$(GROUP)
 endif
 ifeq ($(MAKECMDGOALS),install)
-	cd $@;bash ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
+	$(BUILD_BIN)/indigo_driver_metadata $(BUILD_DRIVERS)/indigo_$@ >>$(INSTALL_SHARE)/indigo/$(GROUP)
 endif
-	@$(MAKE) -C $@ $(OP)
 
 $(FOLDERS_WITHOUT_MAKEFILE):
+	@$(MAKE) -C $@ -f ../../Makefile.drv $(OP)
 ifeq ($(MAKECMDGOALS),all)
-	cd $@;bash ../../tools/metainfo.sh >>$(BUILD_SHARE)/indigo/$(GROUP)
+	$(BUILD_BIN)/indigo_driver_metadata $(BUILD_DRIVERS)/indigo_$@ >>$(BUILD_SHARE)/indigo/$(GROUP)
 endif
 ifeq ($(MAKECMDGOALS),install)
-	cd $@;bash ../../tools/metainfo.sh >>$(INSTALL_SHARE)/indigo/$(GROUP)
+	$(BUILD_BIN)/indigo_driver_metadata $(BUILD_DRIVERS)/indigo_$@ >>$(INSTALL_SHARE)/indigo/$(GROUP)
 endif
-	@$(MAKE) -C $@ -f ../../Makefile.drv $(OP)
 
 folders:
 	@printf "\n$(GROUP) -------------------------\n\n"

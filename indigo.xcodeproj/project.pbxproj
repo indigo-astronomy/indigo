@@ -1494,7 +1494,6 @@
 		595F2917211E211100380EF4 /* DDHidQueue.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DDHidQueue.m; sourceTree = "<group>"; };
 		595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = indigo_aux_joystick.m; sourceTree = "<group>"; };
 		595F747D228224800091B366 /* test */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = test; sourceTree = BUILT_PRODUCTS_DIR; };
-		5963BBCD21D2A88100F1EC5A /* metainfo.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = metainfo.sh; sourceTree = "<group>"; };
 		5964D75421F788170059AEA8 /* AstroPhysics-G.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-G.pdf"; sourceTree = "<group>"; };
 		5964D75521F7888C0059AEA8 /* AstroPhysics-D.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "AstroPhysics-D.pdf"; sourceTree = "<group>"; };
 		5964D75621F789720059AEA8 /* 10micron-2.13.2.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "10micron-2.13.2.pdf"; sourceTree = "<group>"; };
@@ -4968,6 +4967,7 @@
 		9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_optecfl.h; sourceTree = "<group>"; };
 		9DF312BA2C255D3800A35CE3 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DF312C42C2593F900A35CE3 /* optecfl_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = optecfl_simulator.c; sourceTree = "<group>"; };
+		9DF4DCCB2C5A182B00A1852B /* indigo_driver_metadata.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_driver_metadata.c; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -7744,7 +7744,6 @@
 				590EE1A322AAFE3500828030 /* rpi_ctrl.sh */,
 				9D7D59191DF6B21B003D2B59 /* rjsmin.py */,
 				599A240D1DBEC5BA0020BF8F /* cltools.sh */,
-				5963BBCD21D2A88100F1EC5A /* metainfo.sh */,
 				9DD01BEA298A81DD0044FB3B /* make_indigo_build.sh */,
 			);
 			path = tools;
@@ -13068,6 +13067,7 @@
 				598C583E21A890B5001CA8C0 /* Makefile */,
 				595705A321866D9700E713A9 /* indigo_drivers.c */,
 				9D1880C01E534BB5002F75D7 /* indigo_prop_tool.c */,
+				9DF4DCCB2C5A182B00A1852B /* indigo_driver_metadata.c */,
 			);
 			path = indigo_tools;
 			sourceTree = "<group>";
