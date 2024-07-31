@@ -377,17 +377,17 @@ static void process_axis_timer(uint8_t axis) {
 					mode = '+';
 				value = axis_increment[axis];
 			}
-			mvwprintw(top, 1, axis ? 42 : 2, "abs. position: %06X", axis_abs_position[axis] & 0xFFFFFF);
-			mvwprintw(top, 2, axis ? 42 : 2, "position:      %06X", axis_position[axis] & 0xFFFFFF);
-			mvwprintw(top, 3, axis ? 42 : 2, "target:       %c%06X", mode, value & 0xFFFFFF);
-			mvwprintw(top, 4, axis ? 42 : 2, "home:          %06X", axis_home_index[axis] & 0xFFFFFF);
-			mvwprintw(top, 5, axis ? 42 : 2, "t1:            %02X", axis_t1[axis]);
+			mvwprintw(top, 1, axis ? 42 : 2, "status:           %04X", status & 0xFFFF);
+			mvwprintw(top, 2, axis ? 42 : 2, "abs. position:  %06X", axis_abs_position[axis] & 0xFFFFFF);
+			mvwprintw(top, 3, axis ? 42 : 2, "position:       %06X", axis_position[axis] & 0xFFFFFF);
+			mvwprintw(top, 4, axis ? 42 : 2, "target:        %c%06X", mode, value & 0xFFFFFF);
+			mvwprintw(top, 5, axis ? 42 : 2, "t1:                 %02X", axis_t1[axis]);
 		} else {
-			mvwprintw(top, 1, axis ? 42 : 2, "abs. position:      -");
-			mvwprintw(top, 2, axis ? 42 : 2, "position:           -");
-			mvwprintw(top, 3, axis ? 42 : 2, "target:             -");
-			mvwprintw(top, 4, axis ? 42 : 2, "home:               -");
-			mvwprintw(top, 5, axis ? 42 : 2, "t1:                 -");
+			mvwprintw(top, 1, axis ? 42 : 2, "status:           %04X", status & 0xFFFF);
+			mvwprintw(top, 2, axis ? 42 : 2, "abs. position:       -");
+			mvwprintw(top, 3, axis ? 42 : 2, "position:            -");
+			mvwprintw(top, 4, axis ? 42 : 2, "target:              -");
+			mvwprintw(top, 5, axis ? 42 : 2, "t1:                  -");
 		}
 		
 		wrefresh(top);
@@ -446,6 +446,7 @@ void *background(void* arg) {
 	while (true) {
 		process_axis_timer(0);
 		process_axis_timer(1);
+		usleep(5000);
 	}
 }
 
