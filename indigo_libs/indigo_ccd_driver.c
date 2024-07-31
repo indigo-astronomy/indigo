@@ -1709,7 +1709,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		add_key(&header, true,  "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
-		add_key(&header, true,  "SWCREATE= 'INDIGO 2.0-%s'     / Capture sotware", INDIGO_BUILD);
+		add_key(&header, true,  "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_BUILD);
 		if (!CCD_LENS_PROPERTY->hidden) {
 			// https://indico.esa.int/event/124/attachments/711/771/06_ESA-SSA-NEO-RS-0003_1_6_FITS_keyword_requirements_2014-08-01.pdf
 			// 5.4 Telescope information
