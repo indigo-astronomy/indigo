@@ -56,7 +56,7 @@ void init_curses() {
 	top = newwin(7, cols, 0, 0);
 	box(top, 0, 0);
 	mvwprintw(top, 0, 2, " PegasusAstro FocusCube v%d rotator simulator is running on %s ", version, port);
-	mvwprintw(top, 6, cols - 20, " CTRL + C to exit ", version, port);
+	mvwprintw(top, 6, cols - 20, " CTRL + C to exit ");
 	wrefresh(top);
 	bottom = newwin(rows - 7, cols, 7, 0);
 	scrollok(bottom, TRUE);

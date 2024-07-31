@@ -4968,6 +4968,7 @@
 		9DF312BA2C255D3800A35CE3 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DF312C42C2593F900A35CE3 /* optecfl_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = optecfl_simulator.c; sourceTree = "<group>"; };
 		9DF4DCCB2C5A182B00A1852B /* indigo_driver_metadata.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_driver_metadata.c; sourceTree = "<group>"; };
+		9DF4DCCD2C5A768700A1852B /* eq8_simulator.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = eq8_simulator.c; sourceTree = "<group>"; };
 		9DF7E64C1F6AA17900156652 /* indigo_ccd_qsi_main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi_main.cpp; sourceTree = "<group>"; };
 		9DF7E64D1F6AA17900156652 /* indigo_ccd_qsi.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = indigo_ccd_qsi.cpp; sourceTree = "<group>"; };
 		9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qsi.h; sourceTree = "<group>"; };
@@ -13678,6 +13679,7 @@
 		9D89441F22DCD297002DFE13 /* eq8_simulator */ = {
 			isa = PBXGroup;
 			children = (
+				9DF4DCCD2C5A768700A1852B /* eq8_simulator.c */,
 				9D89442022DCD297002DFE13 /* eq8_simulator.ino */,
 				59A4ED5B22DD888E00384056 /* LOGS.md */,
 			);

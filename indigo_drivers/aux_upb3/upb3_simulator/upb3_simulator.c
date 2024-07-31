@@ -68,7 +68,7 @@ void init_curses() {
 	top = newwin(6, cols, 0, 0);
 	box(top, 0, 0);
 	mvwprintw(top, 0, 2, " PegasusAstro UPB v%d simulator is running on %s ", version, port);
-	mvwprintw(top, 6, cols - 20, " CTRL + C to exit ", version, port);
+	mvwprintw(top, 6, cols - 20, " CTRL + C to exit ");
 	wrefresh(top);
 	bottom = newwin(rows - 6, cols, 6, 0);
 	scrollok(bottom, TRUE);
