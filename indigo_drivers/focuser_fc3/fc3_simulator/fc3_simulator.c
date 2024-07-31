@@ -28,7 +28,9 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <math.h>
+#include <curses.h>
 
+char port[128];
 int version = 3;
 int position = 0;
 int target = 0;
@@ -40,6 +42,27 @@ char id[] = "AA000000";
 char fw[] = "1.4.1";
 double temperature = 23.5;
 
+WINDOW *top, *bottom;
+pthread_mutex_t curses_mutex;
+
+void init_curses() {
+	int rows, cols;
+	pthread_mutex_init(&curses_mutex, NULL);
+	initscr();
+	cbreak();
+	noecho();
+	keypad(stdscr, TRUE);
+	getmaxyx(stdscr, rows, cols);
+	top = newwin(7, cols, 0, 0);
+	box(top, 0, 0);
+	mvwprintw(top, 0, 2, " PegasusAstro FocusCube v%d rotator simulator is running on %s ", version, port);
+	mvwprintw(top, 6, cols - 20, " CTRL + C to exit ", version, port);
+	wrefresh(top);
+	bottom = newwin(rows - 7, cols, 7, 0);
+	scrollok(bottom, TRUE);
+	wrefresh(bottom);
+}
+
 void* background(void* arg) {
 	while (true) {
 		if (target < position) {
@@ -47,6 +70,14 @@ void* background(void* arg) {
 		} else if (target > position) {
 			position++;
 		}
+		pthread_mutex_lock(&curses_mutex);
+		mvwprintw(top, 1, 2, "position:  %6d", position);
+		mvwprintw(top, 2, 2, "target:    %6d", target);
+		mvwprintw(top, 3, 2, "direction: %6d", direction);
+		mvwprintw(top, 4, 2, "backlash:  %6d", backlash);
+		mvwprintw(top, 5, 2, "speed:     %6d", speed);
+		wrefresh(top);
+		pthread_mutex_unlock(&curses_mutex);
 		usleep(1000);
 	}
 	return NULL;
@@ -64,8 +95,12 @@ int sim_read_line(int handle, char *buffer, int length) {
 		buffer[total_bytes++] = c;
 	}
 	buffer[total_bytes] = '\0';
-	if (*buffer)
-		printf("-> %s\n", buffer);
+	if (*buffer) {
+		pthread_mutex_lock(&curses_mutex);
+		wprintw(bottom, " -> %s\n", buffer);
+		wrefresh(bottom);
+		pthread_mutex_unlock(&curses_mutex);
+	}
 	return (int)total_bytes;
 }
 
@@ -76,12 +111,18 @@ bool sim_printf(int handle, const char *format, ...) {
 		va_start(args, format);
 		int length = vsnprintf(buffer, 80, format, args);
 		va_end(args);
-		printf("<- %s", buffer);
+		pthread_mutex_lock(&curses_mutex);
+		wprintw(bottom, " <- %s", buffer);
+		wrefresh(bottom);
+		pthread_mutex_unlock(&curses_mutex);
 		bool result = write(handle, buffer, length);
 		free(buffer);
 		return result;
 	} else {
-		printf("<- %s", format);
+		pthread_mutex_lock(&curses_mutex);
+		wprintw(bottom, " <- %s", format);
+		wrefresh(bottom);
+		pthread_mutex_unlock(&curses_mutex);
 		return write(handle, format, strlen(format));
 	}
 }
@@ -93,9 +134,9 @@ int main() {
 	int fd = open("/dev/ptmx", O_RDWR | O_NOCTTY | O_NONBLOCK);
 	grantpt(fd);
 	unlockpt(fd);
-	ptsname_r(fd, buffer, 80);
-	
-	printf("PegasusAstro FocusCube v%d rotator simulator is running on %s\n", version, buffer);
+	ptsname_r(fd, port, sizeof(port));
+
+	init_curses();
 	
 	pthread_create(&thread, NULL, background, NULL);
 	
