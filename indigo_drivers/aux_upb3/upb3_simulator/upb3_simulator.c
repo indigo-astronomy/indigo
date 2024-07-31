@@ -65,12 +65,12 @@ void init_curses() {
 	noecho();
 	keypad(stdscr, TRUE);
 	getmaxyx(stdscr, rows, cols);
-	top = newwin(7, cols, 0, 0);
+	top = newwin(6, cols, 0, 0);
 	box(top, 0, 0);
 	mvwprintw(top, 0, 2, " PegasusAstro UPB v%d simulator is running on %s ", version, port);
 	mvwprintw(top, 6, cols - 20, " CTRL + C to exit ", version, port);
 	wrefresh(top);
-	bottom = newwin(rows - 7, cols, 7, 0);
+	bottom = newwin(rows - 6, cols, 6, 0);
 	scrollok(bottom, TRUE);
 	wrefresh(bottom);
 }
@@ -83,23 +83,15 @@ void* background(void* arg) {
 			position++;
 		}
 		pthread_mutex_lock(&curses_mutex);
-		mvwprintw(top, 1, 2, "power:      %3d%% %3d%% %3d%% %3d%% %3d%% %3d%%", power[0], power[1], power[2], power[3], power[4], power[5]);
-		mvwprintw(top, 2, 2, "dew/auto:   %3d%% %4s %3d%% %4s %3d%% %4s", heat[0], autodew[0] ? "on" : "off", heat[1], autodew[1] ? "on" : "off", heat[2],  autodew[2] ? "on" : "off");
-		if (buck & boost)
-			mvwprintw(top, 3, 2, "variable:   %3dV %3dV", buck ? buck_voltage : 0, boost ? boost_voltage : 0);
-		else if (buck)
-			mvwprintw(top, 3, 2, "variable:   %3dV  off", buck ? buck_voltage : 0, boost ? boost_voltage : 0);
-		else if (boost)
-			mvwprintw(top, 3, 2, "variable:    off %3dV", buck ? buck_voltage : 0, boost ? boost_voltage : 0);
-		else
-			mvwprintw(top, 3, 2, "variable:    off  off", buck ? buck_voltage : 0, boost ? boost_voltage : 0);
-		mvwprintw(top, 4, 2, "usb:        %4s %4s %4s %4s %4s %4s %4s %4s", usb[0] ? "on" : "off", usb[1] ? "on" : "off", usb[2] ? "on" : "off", usb[3] ? "on" : "off", usb[4] ? "on" : "off", usb[5] ? "on" : "off", usb[6] ? "on" : "off", usb[7] ? "on" : "off");
-		mvwprintw(top, 5, 2, "relay:      %4s", relay  ? "on" : "off");
+		mvwprintw(top, 1, 2, "power:    %3d%% %3d%% %3d%% %3d%% %3d%% %3d%% %4s %4s %4s", power[0], power[1], power[2], power[3], power[4], power[5], buck ? "on" : "off", boost ? "on" : "off", relay  ? "on" : "off");
+		mvwprintw(top, 2, 2, "dew/auto: %3d%% %4s %3d%% %4s %3d%% %4s", heat[0], autodew[0] ? "on" : "off", heat[1], autodew[1] ? "on" : "off", heat[2],  autodew[2] ? "on" : "off");
+			mvwprintw(top, 3, 2, "voltage:  %3dV %3dV", buck_voltage, boost_voltage);
+		mvwprintw(top, 4, 2, "usb:      %4s %4s %4s %4s %4s %4s %4s %4s", usb[0] ? "on" : "off", usb[1] ? "on" : "off", usb[2] ? "on" : "off", usb[3] ? "on" : "off", usb[4] ? "on" : "off", usb[5] ? "on" : "off", usb[6] ? "on" : "off", usb[7] ? "on" : "off");
 
-		mvwprintw(top, 1, 55, "position:  %6d", position);
-		mvwprintw(top, 2, 55, "target:    %6d", target);
-		mvwprintw(top, 3, 55, "direction: %6d", direction);
-		mvwprintw(top, 4, 55, "speed:     %6d", speed);
+		mvwprintw(top, 1, 61, "position:  %6d", position);
+		mvwprintw(top, 2, 61, "target:    %6d", target);
+		mvwprintw(top, 3, 61, "direction: %6d", direction);
+		mvwprintw(top, 4, 61, "speed:     %6d", speed);
 		wrefresh(top);
 		pthread_mutex_unlock(&curses_mutex);
 		usleep(1000);
