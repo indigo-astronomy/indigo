@@ -23,6 +23,7 @@
 #endif
 
 //#define PPBA
+//#define SPB
 
 bool power_1234 = true;
 byte power_5 = 0;
@@ -48,7 +49,11 @@ void loop() {
 #ifdef PPBA
     Serial.println("PPBA_OK");
 #else
+#ifdef SPB
+Serial.println("SPB");
+#else
     Serial.println("PPB_OK");
+#endif
 #endif
   } else if (command.startsWith("PE:")) {
     power_1234 = command.charAt(5) == '1';
