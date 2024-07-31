@@ -33,6 +33,3 @@
 #define DRIVER_VERSION           0x0008
 
 #include "shared/lunatico_shared.c"
-
-//fake metainfo
-//SET_DRIVER_INFO(info, DRIVER_INFO, __FUNCTION__, DRIVER_VERSION, false, last_action);

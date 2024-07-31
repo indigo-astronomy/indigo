@@ -147,6 +147,7 @@ endif
 
 all:	init $(BUILD_LIB)/libindigo.$(SOEXT)
 	@$(MAKE)	-C indigo_libs all
+	@$(MAKE)	-C indigo_tools all
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs all
 ifeq ($(OS_DETECTED),Darwin)
 	@$(MAKE)	-C indigo_mac_drivers  -f ../Makefile.drvs all
@@ -155,7 +156,6 @@ ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers  -f ../Makefile.drvs all
 endif
 	@$(MAKE)	-C indigo_server all
-	@$(MAKE)	-C indigo_tools all
 
 $(BUILD_LIB)/libindigo.$(SOEXT): $(filter-out $(INDIGO_ROOT)/indigo_libs/indigo/indigo_config.h, $(wildcard $(INDIGO_ROOT)/indigo_libs/indigo/*.h))
 	@echo --------------------------------------------------------------------- Forced clean - framework headers are changed
@@ -163,6 +163,7 @@ $(BUILD_LIB)/libindigo.$(SOEXT): $(filter-out $(INDIGO_ROOT)/indigo_libs/indigo/
 
 status:
 	@$(MAKE)	-C indigo_libs status
+	@$(MAKE)	-C indigo_tools status
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs status
 ifeq ($(OS_DETECTED),Darwin)
 	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs status
@@ -171,7 +172,6 @@ ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs status
 endif
 	@$(MAKE)	-C indigo_server status
-	@$(MAKE)	-C indigo_tools status
 
 reconfigure:
 	rm -f Makefile.inc
@@ -188,6 +188,7 @@ reconfigure:
 
 install: reconfigure init all
 	@sudo $(MAKE)	-C indigo_libs install
+	@sudo $(MAKE)	-C indigo_tools install
 	@sudo $(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 ifeq ($(OS_DETECTED),Darwin)
 	@sudo $(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs install
@@ -196,7 +197,6 @@ ifeq ($(OS_DETECTED),Linux)
 	@sudo $(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 endif
 	@sudo $(MAKE)	-C indigo_server install
-	@sudo $(MAKE)	-C indigo_tools install
 ifeq ($(OS_DETECTED),Linux)
 	sudo udevadm control --reload-rules
 	@$(MAKE)	    -C tools/fxload -f Makefile
@@ -214,6 +214,7 @@ indigo-environment-install:
 
 uninstall: reconfigure init
 	@sudo $(MAKE)	-C indigo_libs uninstall
+	@sudo $(MAKE)	-C indigo_tools uninstall
 	@sudo $(MAKE)	-C indigo_drivers -f ../Makefile.drvs uninstall
 ifeq ($(OS_DETECTED),Darwin)
 	@sudo $(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs uninstall
@@ -222,7 +223,6 @@ ifeq ($(OS_DETECTED),Linux)
 	@sudo $(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs uninstall
 endif
 	@sudo $(MAKE)	-C indigo_server uninstall
-	@sudo $(MAKE)	-C indigo_tools uninstall
 ifeq ($(OS_DETECTED),Linux)
 	sudo udevadm control --reload-rules
 endif
@@ -238,10 +238,10 @@ package: INSTALL_RULES = $(INSTALL_ROOT)/lib/udev/rules.d
 package: INSTALL_FIRMWARE = $(INSTALL_ROOT)/lib/firmware
 package: reconfigure init all
 	@$(MAKE)	-C indigo_libs install
+	@$(MAKE)	-C indigo_tools install
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs install
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs install
 	@$(MAKE)	-C indigo_server install
-	@$(MAKE)	-C indigo_tools install
 	@$(MAKE)	-C tools/fxload -f Makefile
 ifeq ($(ARCH_DETECTED),$(filter $(ARCH_DETECTED),arm arm64))
 	install -d $(INSTALL_ROOT)/usr/bin
@@ -307,6 +307,7 @@ endif
 
 clean: init
 	@$(MAKE)	-C indigo_libs clean
+	@$(MAKE)	-C indigo_tools clean
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean
 ifeq ($(OS_DETECTED),Darwin)
 	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs clean
@@ -315,10 +316,10 @@ ifeq ($(OS_DETECTED),Linux)
 	@$(MAKE)	-C indigo_linux_drivers -f ../Makefile.drvs clean
 endif
 	@$(MAKE)	-C indigo_server clean
-	@$(MAKE)	-C indigo_tools clean
 
 clean-all: Makefile.inc
 	@$(MAKE)	-C indigo_libs clean-all
+	@$(MAKE)	-C indigo_tools clean-all
 	@$(MAKE)	-C indigo_drivers -f ../Makefile.drvs clean-all
 ifeq ($(OS_DETECTED),Darwin)
 	@$(MAKE)	-C indigo_mac_drivers -f ../Makefile.drvs clean-all
@@ -329,7 +330,6 @@ ifeq ($(OS_DETECTED),Linux)
 	rm -rf $(INDIGO_ROOT)/indigo-$(INDIGO_VERSION)-$(INDIGO_BUILD)-$(DEBIAN_ARCH)
 endif
 	@$(MAKE)	-C indigo_server clean-all
-	@$(MAKE)	-C indigo_tools clean-all
 	rm -rf $(BUILD_ROOT)
 	rm -rf Makefile.inc
 
