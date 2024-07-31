@@ -207,15 +207,15 @@ static void upb_open(indigo_device *device) {
 					PRIVATE_DATA->version = 2;
 					break;
 				} else {
-					close(PRIVATE_DATA->handle);
-					PRIVATE_DATA->handle = 0;
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected, '%s' reported as device type", response);
 				}
 			}
 			if (attempt++ == 3) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected");
+				close(PRIVATE_DATA->handle);
+				PRIVATE_DATA->handle = 0;
 				break;
 			}
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying in 1 second...");
 			indigo_usleep(ONE_SECOND_DELAY);
 		}
 	}

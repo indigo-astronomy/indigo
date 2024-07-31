@@ -396,7 +396,7 @@ static void aux_connection_handler(indigo_device *device) {
 			if (PRIVATE_DATA->handle > 0) {
 				bool connected = false;
 				int attempt = 0;
-				while (!connected) {
+				while (true) {
 					if (ppb_command(device, "P#", response, sizeof(response))) {
 						if (!strcmp(response, "PPB_OK")) {
 							INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to PPB %s", DEVICE_PORT_ITEM->text.value);
@@ -419,6 +419,8 @@ static void aux_connection_handler(indigo_device *device) {
 							AUX_POWER_OUTLET_STATE_PROPERTY->hidden = false;
 							AUX_DSLR_POWER_PROPERTY->hidden = false;
 							break;
+						} else {
+							INDIGO_DRIVER_ERROR(DRIVER_NAME, "PPB not detected, '%s' reported as device type", response);
 						}
 					}
 					if (attempt++ == 3) {
@@ -428,7 +430,6 @@ static void aux_connection_handler(indigo_device *device) {
 						break;
 					}
 					indigo_usleep(ONE_SECOND_DELAY);
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "PPB not detected - retrying...");	
 				}
 			}
 		}
