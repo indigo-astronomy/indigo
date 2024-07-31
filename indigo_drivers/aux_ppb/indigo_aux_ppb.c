@@ -24,7 +24,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -593,7 +593,7 @@ static void aux_save_defaults_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (AUX_SAVE_OUTLET_STATES_AS_DEFAULT_ITEM->sw.value) {
 		char command[] = "PE:0000";
-		char *port_mask = command + 5;
+		char *port_mask = command + 3;
 		for (int i = 0; i < AUX_POWER_OUTLET_PROPERTY->count; i++) {
 			port_mask[i] = AUX_POWER_OUTLET_PROPERTY->items[i].sw.value ? '1' : '0';
 		}
