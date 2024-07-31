@@ -163,8 +163,8 @@ enum CONTROL_ID
 {
 /*0*/  CONTROL_BRIGHTNESS = 0, //!< image brightness
 /*1*/  CONTROL_CONTRAST,       //!< image contrast
-/*2*/  CONTROL_WBR,            //!< red of white balance
-/*3*/  CONTROL_WBB,            //!< blue of white balance
+/*2*/  CONTROL_WBR,            //!< the red of white balance
+/*3*/  CONTROL_WBB,            //!< the blue of white balance
 /*4*/  CONTROL_WBG,            //!< the green of white balance
 /*5*/  CONTROL_GAMMA,          //!< screen gamma
 /*6*/  CONTROL_GAIN,           //!< camera gain
@@ -202,8 +202,8 @@ enum CONTROL_ID
 
 /*37*/  CAM_IGNOREOVERSCAN_INTERFACE,            //!< ignore overscan area
 
-/*38*/  QHYCCD_3A_AUTOBALANCE,					 //!< auto white balance
-/*39*/  QHYCCD_3A_AUTOEXPOSURE,					 //!< auto exposure
+/*38*/  //QHYCCD_3A_AUTOBALANCE,					 //!< auto white balance//lyl move to 1024
+/*39*/  QHYCCD_3A_AUTOEXPOSURE=39,					 //!< auto exposure
 /*40*/  QHYCCD_3A_AUTOFOCUS,
 /*41*/  CONTROL_AMPV,                            //!< ccd or cmos ampv
 /*42*/  CONTROL_VCAM,                            //!< Virtual Camera on off
@@ -243,16 +243,48 @@ enum CONTROL_ID
 /*73*/  CAM_SPEAKER_LED_ALARM, // for OEM-600
 /*74*/  CAM_WATCH_DOG_FPGA, // for _QHY5III178C Celestron, SDK have to feed this dog or it go reset
 
-/*75*/  CAM_BIN6X6MODE,         //!< check if camera has bin4x4 mode
-/*76*/  CAM_BIN8X8MODE,         //!< check if camera has bin4x4 mode
+/*75*/  CAM_BIN6X6MODE,         //!< check if camera has bin6x6 mode
+/*76*/  CAM_BIN8X8MODE,         //!< check if camera has bin8x8 mode
 /*77*/  CAM_GlobalSensorGPSLED,         ///Show GPS LED tab on sharpCap
 /*78*/  CONTROL_ImgProc,   /// Process image
-/*79*/  CONTROL_RemoveRBI,   /// Remove single RBI
+/*79*/  CONTROL_RemoveRBI,   /// RBI, Remove single residual image
+/*80*/  CONTROL_GlobalReset,		//!<image stabilization
+/*81*/  CONTROL_FrameDetect,
+/*82*/  CAM_GainDBConversion, //!<Supports the conversion between db and gain
+/*83*/  CAM_CurveSystemGain,  //!
+/*84*/	CAM_CurveFullWell,
+/*85*/	CAM_CurveReadoutNoise,
+/*86*/	CAM_UseAverageBinning,
+/*87*/	CONTROL_OUTSIDE_PUMP_V2, // air pump outside
 
+/*88*/  CONTROL_AUTOEXPOSURE,           //!<auto exposure
+/*89*/  CONTROL_AUTOEXPTargetBrightness,	//!<auto exposure Target Brightness
+/*90*/  CONTROL_AUTOEXPSampleArea,   //!<auto exposure Sample Area
+/*91*/  CONTROL_AUTOEXPexpMaxMS,        //!<auto exposure max exp(ms)
+/*92*/  CONTROL_AUTOEXPgainMax,         //!<auto exposure max gain
 
 /* Do not Put Item after  CONTROL_MAX_ID !! This should be the max index of the list */
-/*Last One */  CONTROL_MAX_ID
-};
+/*Last One */  CONTROL_MAX_ID,
+
+//TEST id name list
+/*1024*/ CONTROL_AUTOWHITEBALANCE=1024, //!<auto white balance  eg.CONTROL_TEST=1024
+///*1025*/ CONTROL_AUTOEXPOSURE,			//!<auto exposure
+///*1026*/ CONTROL_AUTOEXPTargetBrightness,//CONTROL_AUTOEXPmessureValue,
+///*1027*/ CONTROL_AUTOEXPSampleArea,//CONTROL_AUTOEXPmessureMethod,
+///*1028*/ CONTROL_AUTOEXPexpMaxMS,       //!<auto exposure max exp(ms)
+///*1029*/ CONTROL_AUTOEXPgainMax,        //!<auto exposure max gain
+/*1030*/ CONTROL_ImageStabilization,    //!<image stabilization      
+/*1031*/ CONTROL_GAINdB,                //!<uesed to test dBGain control  //CONTROL_dB_TO_GAIN
+/*1032*/ CONTROL_DPC,                   //!<Turn on or off the image DPC function(Remove thermal noise)
+/*1033*/ CONTROL_DPC_value,             //!<value the image DPC function(Remove thermal noise)
+/*1034*/ CONTROL_HDR,                   //!<HDR For cameras with high gain and low gain channels combined into 16 bits, set combination parameters>
+                    //!<HDR status  0:As-is output  1:Splice according to k and b values  2:Calculate k and b, only once
+/*1035*/ CONTROL_HDR_H_k,               //!<HDR H k
+/*1036*/ CONTROL_HDR_H_b,               //!<HDR H b
+/*1037*/ CONTROL_HDR_L_k,               //!<HDR L k
+/*1038*/ CONTROL_HDR_L_b,              //!<HDR L b
+/*1039*/ CONTROL_HDR_x                  //!<HDR X
+};   
 
 /**
  * debayer mode for mono to color */

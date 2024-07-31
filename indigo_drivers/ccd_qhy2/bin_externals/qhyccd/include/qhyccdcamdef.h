@@ -415,6 +415,47 @@
 
 #define DEVICETYPE_QHY600M_OEM     		4119
 #define DEVICETYPE_QHY533M              4120
+#define DEVICETYPE_QHY5III200M              4121
+#define DEVICETYPE_QHY5III585C              4122
+#define DEVICETYPE_QHY10768              4123
+#define DEVICETYPE_QHY6060Pro              4124
+
+#define DEVICETYPE_QHY5III678              4125
+#define DEVICETYPE_QHY5III678C             4126
+#define DEVICETYPE_QHY5III678M             4127
+
+#define DEVICETYPE_QHY342PRO              4128
+
+#define DEVICETYPE_QHY5III715              4129
+#define DEVICETYPE_QHY5III715C             4130
+#define DEVICETYPE_QHY5III715M             4131
+
+#define DEVICETYPE_QHY630T                 4132
+
+#define DEVICETYPE_QHY268_OEM              4133
+#define DEVICETYPE_QHY268M_OEM             4134
+#define DEVICETYPE_QHY268C_OEM             4135
+
+#define DEVICETYPE_QHY5III568M             4136
+#define DEVICETYPE_QHY5III568C             4137
+
+#define DEVICETYPE_QHYMINICAM8M            4138
+#define DEVICETYPE_QHYMINICAM8C            4139
+
+#define DEVICETYPE_QHY533M_OEM             4140
+#define DEVICETYPE_QHY533C_OEM             4141
+
+#define DEVICETYPE_QHY487                  4142
+#define DEVICETYPE_QHY992                  4143
+
+#define DEVICETYPE_QHY533M_OI533M          4144
+#define DEVICETYPE_QHY533C_OI533C          4145
+
+#define DEVICETYPE_QHY268M_OI268M          4146
+#define DEVICETYPE_QHY268C_OI268C          4147
+
+#define DEVICETYPE_QHY600M_C600MC2         4148
+
 /**
  * Type define for QHY5IIIEND*/
 #define DEVICETYPE_QHY5IIIEND   	4999
@@ -580,8 +621,12 @@
 #define DEVICETYPE_QHY600PCIE      		0X6618c603
 #define DEVICETYPE_QHY268PCIE      		0X6618c269
 #define DEVICETYPE_QHY530PCIE      		0X6618c531
+#define DEVICETYPE_QHY6060P_PCIE      	0X66186063
 #define DEVICETYPE_QHY990PCIE      		0X6618c991
+#define DEVICETYPE_QHY991PCIE      		0X6618d992
 #define DEVICETYPE_QHY461PCIE      		0X6618c462
+#define DEVICETYPE_QHY342PCIE      		0X66180345
+#define DEVICETYPE_QHY487PCIE			0X6618c488
 
 
 
@@ -1080,6 +1125,9 @@
 #define QHY6060_MAX_WIDTH        	7936
 #define QHY6060_MAX_HEIGHT        	6134
 
+#define QHY10768_MAX_WIDTH        	1028
+#define QHY10768_MAX_HEIGHT        	50
+
 #define QHY411_MAX_WIDTH        	14304
 #define QHY411_MAX_HEIGHT        	10748
 
@@ -1089,15 +1137,20 @@
 #define QHY411ERIS_MAX_WIDTH        14304
 // the target image is  W 14304 H 10748, top blank cut by soft roi, so, have to add 38 to bottom
 #define QHY411ERIS_MAX_HEIGHT       (10802 + 38)
-#define QHY411ERIS_Left_Blank       48
-#define QHY411ERIS_right_Blank      48
+// can not use isOverscanRemoved=false to get a black border image in sharpCap,because sharpCap use effective size to set whole image size, not like ezcap or ascom driver
+#define QHY411ERIS_Left_Blank_single       48
+#define QHY411ERIS_right_Blank_single      48
+#define QHY411ERIS_Left_Blank_live       0
+#define QHY411ERIS_right_Blank_live      0
 #define QHY411ERIS_Top_Blank        92
 //81 is a default shift value, set to 81 can save data size
 #define QHY411ERIS_M_Default_SHIFT  81
 // for color sensor, shift value must be an odd number
 #define QHY411ERIS_C_Default_SHIFT  81
 // bottom can be set to 0 to reduce data size (set bottom to 0 and set max_height to 10748 (but now we need overScan area and fit to W 14304 H 10748 , so, can not set to 0)
-#define QHY411ERIS_Bottom_Blank     (54 + 38)
+//#define QHY411ERIS_Bottom_Blank     (54 + 38)
+#define QHY411ERIS_Bottom_Blank_live     (0 + 0)
+#define QHY411ERIS_Bottom_Blank_single     (54 + 38)
 
 
 #define QHY411ERIS_BIN33_MAX_WIDTH        4768
@@ -1123,11 +1176,11 @@
 #define QHY461_MAX_WIDTH		   11760
 #define QHY461_MAX_HEIGHT		   8842
 
-#define QHY268C_MAX_WIDTH        6280
+#define QHY268C_MAX_WIDTH        6288
 #define QHY268C_MAX_HEIGHT       4210
 
-#define QHY410C_MAX_WIDTH        6112
-#define QHY410C_MAX_HEIGHT       4140-100
+//#define QHY410C_MAX_WIDTH        6112
+//#define QHY410C_MAX_HEIGHT       4140-100
 
 #define QHY432_MAX_WIDTH        1624
 #define QHY432_MAX_HEIGHT       1136
@@ -1336,7 +1389,7 @@
 
 #define		MAX_CAMERA_NUMBER		200
 #define		CAMERA_ID_LENGTH		64   //(CAMERA_ID_LENGTH and ID_STR_LEN) more like a full ID length: QHY178-xxxxx(Mode included)
-#define   	MAXDEVICES 				10
+#define   	MAXDEVICES 				15
 
 
 #define		MAX_READMODE_NAME			256
