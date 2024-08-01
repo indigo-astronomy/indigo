@@ -4698,6 +4698,7 @@
 		9D3BBBA521147EB500800FB0 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D3BBBA621147EB500800FB0 /* indigo_agent_lx200_server.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_lx200_server.c; sourceTree = "<group>"; wrapsLines = 0; };
 		9D3BBBA721147EB500800FB0 /* indigo_agent_lx200_server.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_lx200_server.h; sourceTree = "<group>"; };
+		9D3E900D2C5BA60A007B8233 /* fc3_simulator.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = fc3_simulator.py; sourceTree = "<group>"; wrapsLines = 0; };
 		9D3E906C28995B140093C9EB /* 99-indigo_focuser_prodigy.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_prodigy.rules"; sourceTree = "<group>"; };
 		9D3E906D28995B140093C9EB /* indigo_focuser_prodigy.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_prodigy.c; sourceTree = "<group>"; };
 		9D3E906E28995B140093C9EB /* indigo_focuser_prodigy_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_prodigy_main.c; sourceTree = "<group>"; };
@@ -13649,6 +13650,7 @@
 			isa = PBXGroup;
 			children = (
 				9D7FC60B2C4906B2004496F2 /* fc3_simulator.c */,
+				9D3E900D2C5BA60A007B8233 /* fc3_simulator.py */,
 			);
 			path = fc3_simulator;
 			sourceTree = "<group>";
