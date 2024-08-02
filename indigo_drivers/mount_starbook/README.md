@@ -22,4 +22,5 @@ indigo_server indigo_mount_starbook
 
 Driver is developed and tested with:
 
+* Vixen StarBook (firmware v1.2)
 * Vixen StarBook Ten (firmware v4.20)
