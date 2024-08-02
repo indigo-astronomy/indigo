@@ -74,6 +74,7 @@ typedef struct {
 	int errorCounter;
 	double currentRA;
 	double currentDec;
+	int currentState;
 	int currentSpeed;
 	bool currentMoveN;
 	bool currentMoveS;
@@ -311,9 +312,19 @@ static bool starbook_parse_query_value(const char *query, const char *key, char 
 	// search query key
 	const char *beg = strstr(query, key);
 	if (beg == NULL) {
-		// not found
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: key \"%s\" was not found: %s", key, query);
-		return false;
+		// Not found. Continue testing lowercase.
+		char *lowercase = indigo_safe_malloc(strlen(key) + 1);
+		for (int i = 0; i < strlen(key); ++i) {
+			lowercase[i] = tolower(key[i]);
+		}
+		lowercase[strlen(key)] = '\0';
+		beg = strstr(query, lowercase);
+		indigo_safe_free(lowercase);
+		if (beg == NULL) {
+			// Not found.
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: key \"%s\" was not found: %s", key, query);
+			return false;
+		}
 	}
 	if (value == NULL) {
 		// do nothing
@@ -499,10 +510,8 @@ static bool starbook_get_place(indigo_device *device, double *lng, double *lat, 
 	}
 	if (lng) {
 		char temp[128];
-		if (!starbook_parse_query_value(buffer, "longitude=", temp, sizeof(temp))) {
-			if (!starbook_parse_query_value(buffer, "LONGITUDE=", temp, sizeof(temp))) {
-				return false;
-			}
+		if (!starbook_parse_query_value(buffer, "LONGITUDE=", temp, sizeof(temp))) {
+			return false;
 		}
 		// response format is "Ddd+mm"; "E139+00"
 		// get East or West
@@ -535,10 +544,8 @@ static bool starbook_get_place(indigo_device *device, double *lng, double *lat, 
 	}
 	if (lat) {
 		char temp[128];
-		if (!starbook_parse_query_value(buffer, "latitude=", temp, sizeof(temp))) {
-			if (!starbook_parse_query_value(buffer, "LATITUDE=", temp, sizeof(temp))) {
-				return false;
-			}
+		if (!starbook_parse_query_value(buffer, "LATITUDE=", temp, sizeof(temp))) {
+			return false;
 		}
 		// response format is "Ddd+mm"; "N35+00"
 		// get sign
@@ -759,9 +766,11 @@ static bool starbook_get_version(indigo_device *device, double *version) {
 	}
 	if (version) {
 		if (!starbook_parse_query_double(buffer, "VERSION=", version)) {
-			// parse error
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unknown response: %s", buffer);
-			return false;
+			if (!starbook_parse_query_double(buffer, "version=", version)) {
+				// parse error
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unknown response: %s", buffer);
+				return false;
+			}
 		}
 	}
 	return true;
@@ -1022,9 +1031,16 @@ static bool starbook_reset(indigo_device *device) {
 
 static bool starbook_start(indigo_device *device, bool init) {
 	int error = 0;
-	if (!starbook_set(device, init ? "/START?INIT=ON" : "/START?INIT=OFF", &error)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: %d", error);
-		return false;
+	if (PRIVATE_DATA->version <= 2.7) {
+		if (!starbook_set(device, "/START", &error)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: %d", error);
+			return false;
+		}
+	} else {
+		if (!starbook_set(device, init ? "/START?INIT=ON" : "/START?INIT=OFF", &error)) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: %d", error);
+			return false;
+		}
 	}
 	return true;
 }
@@ -1058,6 +1074,11 @@ static bool starbook_open(indigo_device *device) {
 	if (ok) {
 		PRIVATE_DATA->version = version;
 		PRIVATE_DATA->errorCounter = 0;
+		if (PRIVATE_DATA->version <= 2.7) {
+			// STAR BOOK or STAR BOOK-TypeS
+			MOUNT_TRACKING_PROPERTY->hidden = true;
+			MOUNT_SIDE_OF_PIER_PROPERTY->hidden = true;
+		}
 		// coord
 		double ra, dec;
 		int now_on_goto, state;
@@ -1121,6 +1142,7 @@ static void position_timer_callback(indigo_device *device) {
 			PRIVATE_DATA->resetWaiting = false;
 			PRIVATE_DATA->currentRA = ra;
 			PRIVATE_DATA->currentDec = dec;
+			PRIVATE_DATA->currentState = state;
 			PRIVATE_DATA->isBusy = now_on_goto;
 			if (PRIVATE_DATA->isBusy) {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -1138,32 +1160,38 @@ static void position_timer_callback(indigo_device *device) {
 
 static void status_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->device_count > 0) {
-		// MOUNT_TRACKING
-		int track_state = 0;
-		if (starbook_get_track_status(device, &track_state)) {
-			bool now = MOUNT_TRACKING_OFF_ITEM->sw.value;
-			bool off = track_state == STARBOOK_TRACK_STATE_STOP;
-			if (now != off) {
-				MOUNT_TRACKING_OFF_ITEM->sw.value = off;
-				MOUNT_TRACKING_ON_ITEM->sw.value = !off;
-				indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		if (PRIVATE_DATA->version > 2.7) {
+			//
+			// STARBOOK TEN features
+			//
+
+			// MOUNT_TRACKING
+			int track_state = 0;
+			if (starbook_get_track_status(device, &track_state)) {
+				bool now = MOUNT_TRACKING_OFF_ITEM->sw.value;
+				bool off = track_state == STARBOOK_TRACK_STATE_STOP;
+				if (now != off) {
+					MOUNT_TRACKING_OFF_ITEM->sw.value = off;
+					MOUNT_TRACKING_ON_ITEM->sw.value = !off;
+					indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+				}
+			} else {
+				// maybe network error
+				indigo_reschedule_timer(device, POSITION_TIMER_INTERVAL, &PRIVATE_DATA->status_timer);
+				return;
 			}
-		} else {
-			// maybe network error
-			indigo_reschedule_timer(device, POSITION_TIMER_INTERVAL, &PRIVATE_DATA->status_timer);
-			return;
-		}
-		// MOUNT_SIDE_OF_PIER
-		if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
-			int side = STARBOOK_PIERSIDE_UNKNOWN;
-			if (starbook_get_pierside(device, &side) && side != STARBOOK_PIERSIDE_UNKNOWN) {
-				bool is_east = side == STARBOOK_PIERSIDE_EAST;
-				if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value != is_east) {
-					// changed
-					MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = is_east;
-					MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = !is_east;
-					// notify update
-					indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			// MOUNT_SIDE_OF_PIER
+			if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
+				int side = STARBOOK_PIERSIDE_UNKNOWN;
+				if (starbook_get_pierside(device, &side) && side != STARBOOK_PIERSIDE_UNKNOWN) {
+					bool is_east = side == STARBOOK_PIERSIDE_EAST;
+					if (MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value != is_east) {
+						// changed
+						MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value = is_east;
+						MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value = !is_east;
+						// notify update
+						indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+					}
 				}
 			}
 		}
@@ -1299,6 +1327,9 @@ static void mount_connect_callback(indigo_device *device) {
 
 static void mount_align_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	if (PRIVATE_DATA->currentState == STARBOOK_STATE_INIT) {
+		starbook_start(device, false);
+	}
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	int error = STARBOOK_NO_ERROR;
@@ -1319,6 +1350,9 @@ static void mount_align_callback(indigo_device* device) {
 
 static void mount_slew_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	if (PRIVATE_DATA->currentState == STARBOOK_STATE_INIT) {
+		starbook_start(device, false);
+	}
 	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
 	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 	int error = STARBOOK_NO_ERROR;
@@ -1345,6 +1379,9 @@ static void mount_slew_callback(indigo_device* device) {
 
 static void mount_motion_dec_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	if (PRIVATE_DATA->currentState == STARBOOK_STATE_INIT) {
+		starbook_start(device, false);
+	}
 	bool north = MOUNT_MOTION_NORTH_ITEM->sw.value;
 	bool south = MOUNT_MOTION_SOUTH_ITEM->sw.value;
 	bool east = MOUNT_MOTION_EAST_ITEM->sw.value;
@@ -1363,6 +1400,9 @@ static void mount_motion_dec_callback(indigo_device* device) {
 
 static void mount_motion_ra_callback(indigo_device* device) {
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
+	if (PRIVATE_DATA->currentState == STARBOOK_STATE_INIT) {
+		starbook_start(device, false);
+	}
 	bool north = MOUNT_MOTION_NORTH_ITEM->sw.value;
 	bool south = MOUNT_MOTION_SOUTH_ITEM->sw.value;
 	bool east = MOUNT_MOTION_EAST_ITEM->sw.value;
@@ -1400,8 +1440,12 @@ static void mount_slew_rate_callback(indigo_device* device) {
 static void mount_set_host_time_callback(indigo_device *device) {
 	if (MOUNT_SET_HOST_TIME_ITEM->sw.value) {
 		MOUNT_SET_HOST_TIME_ITEM->sw.value = false;
+		bool settable = true;
+		if (PRIVATE_DATA->version <= 2.7 && PRIVATE_DATA->currentState != STARBOOK_STATE_INIT) {
+			settable = false;
+		}
 		time_t secs = time(NULL);
-		if (starbook_set_utc(device, &secs, indigo_get_utc_offset())) {
+		if (settable && starbook_set_utc(device, &secs, indigo_get_utc_offset())) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			MOUNT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_timetoisogm(secs, MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
@@ -1421,7 +1465,11 @@ static void mount_set_utc_time_callback(indigo_device *device) {
 		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, "Wrong date/time format!");
 	} else {
-		if (starbook_set_utc(device, &secs, offset)) {
+		bool settable = true;
+		if (PRIVATE_DATA->version <= 2.7 && PRIVATE_DATA->currentState != STARBOOK_STATE_INIT) {
+			settable = false;
+		}
+		if (settable && starbook_set_utc(device, &secs, offset)) {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1472,9 +1520,13 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, property, false);
 		double lng = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value;
 		double lat = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
+		bool settable = true;
+		if (PRIVATE_DATA->version <= 2.7 && PRIVATE_DATA->currentState != STARBOOK_STATE_INIT) {
+			settable = false;
+		}
 		int timezone = TIMEZONE_VALUE_ITEM->number.value;
 		if (starbook_set_place(device, lng, lat, timezone)) {
-			if (starbook_get_place(device, &lng, &lat, &timezone)) {
+			if (settable && starbook_get_place(device, &lng, &lat, &timezone)) {
 				MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lng;
 				MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 				TIMEZONE_VALUE_ITEM->number.value = timezone;
@@ -1486,7 +1538,12 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 				TIMEZONE_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SETPLACE failed. (%f, %f, %d)", lng, lat, timezone);
+			if (settable) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "SETPLACE failed. (%f, %f, %d)", lng, lat, timezone);
+			} else {
+				// STAR BOOK can only be set location in the initial state.
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "STAR BOOK is not INIT state.");
+			}
 			MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			TIMEZONE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
