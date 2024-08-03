@@ -40,11 +40,11 @@ void parseCommand() {
     int length = Serial.readBytesUntil('#', command, sizeof(command));
     command[length] = 0;
     if (strcmp(command, "MountInfo") == 0) {
-      Serial.write("0120");
+      Serial.write("0044");
     } else if (strcmp(command, "FW1") == 0) {
-      Serial.write("2017100120171001#");
+      Serial.write("210605xxxxxx#");
     } else if (strcmp(command, "FW2") == 0) {
-      Serial.write("2017100120171001#");
+      Serial.write("210420210420#");
     } else if (strncmp(command, "GLS", 3) == 0) {
       Serial.write(lon);
       Serial.write(formatLong((atol(lat) / 100L + 90L * 60L * 60L) * 100L, false, 8));

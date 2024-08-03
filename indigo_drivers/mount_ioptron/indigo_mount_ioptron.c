@@ -23,7 +23,7 @@
  \file indigo_mount_ioptron.c
  */
 
-#define DRIVER_VERSION 0x0028
+#define DRIVER_VERSION 0x0029
 #define DRIVER_NAME	"indigo_mount_ioptron"
 
 #include <stdlib.h>
@@ -951,15 +951,13 @@ static void mount_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->protocol = 0x0100;
 			} else if (PROTOCOL_0200_ITEM->sw.value) {
 				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
-				PRIVATE_DATA->no_park = true;
 				PRIVATE_DATA->protocol = 0x0200;
 			} else if (PROTOCOL_0205_ITEM->sw.value) {
 				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
-				PRIVATE_DATA->no_park = true;
 				PRIVATE_DATA->protocol = 0x0205;
 			} else if (PROTOCOL_0300_ITEM->sw.value) {
 				PRIVATE_DATA->hc8406 = PRIVATE_DATA->hc8407 = false;
-				PRIVATE_DATA->no_park = true;
+				PRIVATE_DATA->no_park = false;
 				PRIVATE_DATA->protocol = 0x0300;
 			}
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s (%s), firmware %s, protocol %d.%d %s", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF, PRIVATE_DATA->hc8406 ? "HC8406" : (PRIVATE_DATA->hc8407 ? "HC8407" : "" ));
