@@ -23,7 +23,7 @@
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>
@@ -567,6 +567,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_ITEM->number.min = 0;
 		FOCUSER_POSITION_ITEM->number.max = 1000000;
 		strcpy(FOCUSER_POSITION_ITEM->number.format, "%.0f");
+		FOCUSER_STEPS_ITEM->number.min = 0;
+		FOCUSER_STEPS_ITEM->number.max = 1000000;
+		strcpy(FOCUSER_STEPS_ITEM->number.format, "%.0f");
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
