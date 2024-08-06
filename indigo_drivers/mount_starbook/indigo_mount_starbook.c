@@ -40,6 +40,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <sys/time.h>
+#include <ctype.h>
 
 #include <curl/curl.h>
 
