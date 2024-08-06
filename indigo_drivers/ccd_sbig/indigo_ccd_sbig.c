@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -2622,33 +2622,12 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 
 	SET_DRIVER_INFO(info, "SBIG Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
 
-#ifdef __APPLE__
-	static void *dl_handle = NULL;
-#endif
-
 	if (action == last_action)
 		return INDIGO_OK;
 
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
-#ifdef __linux__
 		sbig_command = SBIGUnivDrvCommand;
-#elif __APPLE__
-		dl_handle = dlopen("/Library/Frameworks/SBIGUDrv.framework/SBIGUDrv", RTLD_LAZY);
-		if (!dl_handle) {
-			const char* dlsym_error = dlerror();
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SBIG SDK can't be loaded (%s)", dlsym_error);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Please install SBIGUDrv framework from http://www.sbig.com");
-			return INDIGO_FAILED;
-		}
-		sbig_command = dlsym(dl_handle, "SBIGUnivDrvCommand");
-		const char* dlsym_error = dlerror();
-		if (dlsym_error) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't load %s() (%s)", "SBIGUnivDrvCommand", dlsym_error);
-			dlclose(dl_handle);
-			return INDIGO_NOT_FOUND;
-		}
-#endif
 
 		GetDriverInfoParams di_req = {
 			.request = DRIVER_STD
@@ -2706,11 +2685,6 @@ indigo_result indigo_ccd_sbig(indigo_driver_action action, indigo_driver_info *i
 		if (res != CE_NO_ERROR) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_CLOSE_DRIVER error = %d (%s)", res, sbig_error_string(res));
 		}
-
-#ifdef __APPLE__
-		if (dl_handle)
-			dlclose(dl_handle);
-#endif
 
 		break;
 

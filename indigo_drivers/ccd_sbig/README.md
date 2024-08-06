@@ -47,13 +47,3 @@ one should set environment variable SBIG_LEGACY_AO to AO7 like:
 export SBIG_LEGACY_AO=AO7
 
 This will expose the device even if it is not really present.
-
-### MacOS SDK distributed separately (MacOS only)
-
-On MacOS the driver requires the SDK provided by the camera manufacturer:
-[SBIGDriverInstallerUniv.dmg](https://www.indigo-astronomy.org/download/SBIGDriverInstallerUniv.dmg)
-
-This third party software is not digitally signed by the vendor, therefore it may fail to load the camera
-firmware when camera is connected on the recent versions of MacOSX without disabling some security features
-of the operating system. If you are affected, please refer to Apple documentation how to enable loading of
-unsigned kernel extensions.
