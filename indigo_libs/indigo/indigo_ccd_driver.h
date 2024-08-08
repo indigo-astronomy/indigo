@@ -140,6 +140,10 @@ extern "C" {
  */
 #define CCD_UPLOAD_MODE_BOTH_ITEM         (CCD_UPLOAD_MODE_PROPERTY->items+2)
 
+/** CCD_UPLOAD_MODE.NONE property item pointer.
+ */
+#define CCD_UPLOAD_MODE_NONE_ITEM         (CCD_UPLOAD_MODE_PROPERTY->items+3)
+
 /** CCD_PREVIEW property pointer, property is mandatory, read-write property, property change request is fully handled by indigo_ccd_change_property().
  */
 #define CCD_PREVIEW_PROPERTY         		(CCD_CONTEXT->ccd_preview_property)
