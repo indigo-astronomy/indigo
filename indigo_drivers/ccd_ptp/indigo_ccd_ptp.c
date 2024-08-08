@@ -71,6 +71,9 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value =  CCD_INFO_PIXEL_SIZE_ITEM->number.value = PRIVATE_DATA->model.pixel_size;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = 16;
 		CCD_JPEG_SETTINGS_PROPERTY->hidden = true;
+		if (PRIVATE_DATA->vendor == NIKON_VID || PRIVATE_DATA->vendor == CANON_VID) {
+			CCD_UPLOAD_MODE_PROPERTY->count = 4; // enable NONE item
+		}
 		// -------------------------------------------------------------------------------- CCD_IMAGE_FORMAT
 		CCD_IMAGE_FORMAT_PROPERTY = indigo_resize_property(CCD_IMAGE_FORMAT_PROPERTY, 5);
 		indigo_init_switch_item(CCD_IMAGE_FORMAT_FITS_ITEM, CCD_IMAGE_FORMAT_FITS_ITEM_NAME, "FITS format", false);
@@ -543,6 +546,7 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "found %s", CAMERA[i].name);
 			ptp_private_data *private_data = indigo_safe_malloc(sizeof(ptp_private_data));
 			private_data->model = CAMERA[i];
+			private_data->vendor = vendor;
 			if (vendor == CANON_VID) {
 				private_data->operation_code_label = ptp_operation_canon_code_label;
 				private_data->response_code_label = ptp_response_canon_code_label;

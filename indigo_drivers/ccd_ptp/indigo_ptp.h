@@ -33,7 +33,7 @@
 #include <indigo/indigo_driver.h>
 
 #define PRIVATE_DATA                ((ptp_private_data *)device->private_data)
-#define DRIVER_VERSION              0x001F
+#define DRIVER_VERSION              0x0020
 #define DRIVER_NAME                 "indigo_ccd_ptp"
 
 #define PTP_TIMEOUT                 10000
@@ -360,6 +360,7 @@ typedef struct {
 	indigo_property *dslr_lock_property;
 	indigo_property *dslr_af_property;
 	indigo_property *dslr_set_host_time_property;
+	uint32_t vendor;
 	ptp_camera_model model;
 	pthread_mutex_t usb_mutex;
 	uint32_t session_id;
@@ -402,6 +403,7 @@ typedef struct {
 	pthread_mutex_t message_mutex;
 	int message_property_index;
 	bool abort_capture;
+	bool image_added;
 	uint32_t last_error;
 	void *image_buffer;
 } ptp_private_data;
