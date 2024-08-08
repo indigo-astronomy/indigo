@@ -288,6 +288,10 @@
  */
 #define CCD_UPLOAD_MODE_BOTH_ITEM_NAME        "BOTH"
 
+/** CCD_UPLOAD_MODE.NONE property item name.
+ */
+#define CCD_UPLOAD_MODE_NONE_ITEM_NAME        "NONE"
+
 //----------------------------------------------------------------------
 
 /** CCD_LENS property name.

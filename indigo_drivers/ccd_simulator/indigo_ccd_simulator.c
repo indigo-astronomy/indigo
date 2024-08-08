@@ -549,7 +549,9 @@ static void create_frame(indigo_device *device) {
 
 static void exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
-		create_frame(device);
+		if (device != PRIVATE_DATA->dslr || !CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
+			create_frame(device);
+		}
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -568,7 +570,9 @@ static void streaming_timer_callback(indigo_device *device) {
 		}
 		indigo_usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
-			create_frame(device);
+			if (device != PRIVATE_DATA->dslr || !CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
+				create_frame(device);
+			}
 			if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
 				CCD_STREAMING_COUNT_ITEM->number.value--;
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
@@ -688,6 +692,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_COOLER_PROPERTY->hidden = true;
 			CCD_COOLER_POWER_PROPERTY->hidden = true;
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
+			CCD_UPLOAD_MODE_PROPERTY->count = 4;
 		} else if (device == PRIVATE_DATA->file) {
 			FILE_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, "FILE_NAME", MAIN_GROUP, "File name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			indigo_init_text_item(FILE_NAME_ITEM, "PATH", "Path", "");
