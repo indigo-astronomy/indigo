@@ -1638,26 +1638,31 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 				source = ptp_decode_string(source + 40 , filename);
 				free(buffer);
 				buffer = NULL;
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s'", params[0], size, filename);
-				if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
-					const char *ext = strchr(filename, '.');
-					if (PRIVATE_DATA->check_dual_compression != NULL && PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
-						if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
-							indigo_process_dslr_preview_image(device, buffer, size);
+				if (CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s' skipped", params[0], size, filename);
+				} else {
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "ptp_event_ObjectAdded: handle = %08x, size = %u, name = '%s' downloading", params[0], size, filename);
+					if (size && ptp_transaction_1_0_i(device, ptp_operation_GetObject, params[0], &buffer, NULL)) {
+						const char *ext = strchr(filename, '.');
+						if (PRIVATE_DATA->check_dual_compression != NULL && PRIVATE_DATA->check_dual_compression(device) && ptp_check_jpeg_ext(ext)) {
+							if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+								indigo_process_dslr_preview_image(device, buffer, size);
+							}
+						} else {
+							indigo_process_dslr_image(device, buffer, size, ext, false);
+							if (PRIVATE_DATA->image_buffer)
+								free(PRIVATE_DATA->image_buffer);
+							PRIVATE_DATA->image_buffer = buffer;
+							buffer = NULL;
 						}
-					} else {
-						indigo_process_dslr_image(device, buffer, size, ext, false);
-						if (PRIVATE_DATA->image_buffer)
-							free(PRIVATE_DATA->image_buffer);
-						PRIVATE_DATA->image_buffer = buffer;
-						buffer = NULL;
+						if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
+							ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
 					}
-					if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
-						ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
 				}
+				if (buffer)
+					free(buffer);
 			}
-			if (buffer)
-				free(buffer);
+			PRIVATE_DATA->image_added = true;
 			return true;
 		}
 		case ptp_event_DevicePropChanged: {

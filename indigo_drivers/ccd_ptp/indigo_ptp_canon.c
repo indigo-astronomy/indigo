@@ -1147,32 +1147,36 @@ static void ptp_canon_get_event(indigo_device *device) {
 					} else {
 						strncpy(filename, (char *)source + 0x24, PTP_MAX_CHARS);
 					}
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): handle = %08x, size = %u, name = '%s'", ptp_event_canon_code_label(event), event, handle, length, filename);
-					void *buffer = NULL;
-					if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
-						const char *ext = strchr(filename, '.');
-						if (ptp_check_jpeg_ext(ext) && ptp_canon_check_dual_compression(device)) {
-							if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
-								indigo_process_dslr_preview_image(device, buffer, (int)length);
+					if (CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): handle = %08x, size = %u, name = '%s' skipped", ptp_event_canon_code_label(event), event, handle, length, filename);
+					} else {
+						INDIGO_DRIVER_LOG(DRIVER_NAME, "%s (%04x): handle = %08x, size = %u, name = '%s' downloading", ptp_event_canon_code_label(event), event, handle, length, filename);
+						void *buffer = NULL;
+						if (ptp_transaction_1_0_i(device, ptp_operation_canon_GetObject, handle, &buffer, &length)) {
+							const char *ext = strchr(filename, '.');
+							if (ptp_check_jpeg_ext(ext) && ptp_canon_check_dual_compression(device)) {
+								if (CCD_PREVIEW_ENABLED_ITEM->sw.value) {
+									indigo_process_dslr_preview_image(device, buffer, (int)length);
+								}
+							} else {
+								indigo_process_dslr_image(device, buffer, (int)length, ext, false);
+								if (PRIVATE_DATA->image_buffer)
+									free(PRIVATE_DATA->image_buffer);
+								PRIVATE_DATA->image_buffer = buffer;
+								buffer = NULL;
 							}
-						} else {
-							indigo_process_dslr_image(device, buffer, (int)length, ext, false);
-							if (PRIVATE_DATA->image_buffer)
-								free(PRIVATE_DATA->image_buffer);
-							PRIVATE_DATA->image_buffer = buffer;
-							buffer = NULL;
+							if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
+								ptp_transaction_1_0(device, ptp_operation_canon_DeleteObject, handle);
 						}
-						if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
-							ptp_transaction_1_0(device, ptp_operation_canon_DeleteObject, handle);
+						if (buffer)
+							free(buffer);
 					}
-					if (buffer)
-						free(buffer);
+					PRIVATE_DATA->image_added = true;
 					break;
 				}
 				default:
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x): +%d skipped", ptp_event_canon_code_label(event), event, size);
 			}
-
 			record += size;
 		}
 		for (ptp_property **property = updated; *property; property++) {
@@ -1400,6 +1404,7 @@ bool ptp_canon_exposure(indigo_device *device) {
 	bool result = false;
 	if (ptp_operation_supported(device, ptp_operation_canon_SetUILock))
 		ptp_transaction_0_0(device, ptp_operation_canon_SetUILock);
+	PRIVATE_DATA->image_added = false;
 	if (ptp_operation_supported(device, ptp_operation_canon_RemoteReleaseOn)) {
 		int delay = 0;
 		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
@@ -1455,7 +1460,7 @@ bool ptp_canon_exposure(indigo_device *device) {
 		}
 		while (true) {
 			ptp_canon_get_event(device);
-			if (PRIVATE_DATA->abort_capture || (CCD_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_PREVIEW_IMAGE_PROPERTY->state != INDIGO_BUSY_STATE && CCD_IMAGE_FILE_PROPERTY->state != INDIGO_BUSY_STATE))
+			if (PRIVATE_DATA->abort_capture || PRIVATE_DATA->image_added)
 				break;
 			indigo_usleep(100000);
 		}
@@ -1503,11 +1508,13 @@ bool ptp_canon_liveview(indigo_device *device) {
 							CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 							indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 						}
-						indigo_process_dslr_image(device, source, length, ".jpeg", true);
-						if (PRIVATE_DATA->image_buffer)
-							free(PRIVATE_DATA->image_buffer);
-						PRIVATE_DATA->image_buffer = buffer;
-						buffer = NULL;
+						if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
+							indigo_process_dslr_image(device, source, length, ".jpeg", true);
+							if (PRIVATE_DATA->image_buffer)
+								free(PRIVATE_DATA->image_buffer);
+							PRIVATE_DATA->image_buffer = buffer;
+							buffer = NULL;
+						}
 						CCD_STREAMING_COUNT_ITEM->number.value--;
 						if (CCD_STREAMING_COUNT_ITEM->number.value < 0)
 							CCD_STREAMING_COUNT_ITEM->number.value = -1;
