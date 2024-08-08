@@ -1,6 +1,6 @@
 # PTP (ISO15740:2000) DSLR driver
 
-PTP driver can handle multiple DSLR or mirrorless cameras using PTP-over-USB protocol. It supports generic PTP protocol and its Nikon, Canon and Sony extensions.
+PTP driver can handle multiple DSLR or mirrorless cameras using PTP-over-USB protocol. It supports generic PTP protocol and its Nikon, Canon, Sony and Fuji extensions.
 
 It is a multiplatform replacement for platform dependent gPhoto2 and ICA drivers.
 
@@ -38,6 +38,8 @@ Driver is developed and tested with:
 * Nikon D7000
 * Nikon D750
 * Sony 7RII
+* Sony 7RIV
+* Fujifilm X-T1
 
 ### NOTE: If you have trouble connecting to your camera with Linux please make sure the following programs are not running:
 * gvfs-gphoto2-volume-monitor
