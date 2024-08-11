@@ -2,6 +2,32 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-294] - 11 Aug Thu 2024
+## Overall:
+- CCD_UPLOAD_MODE_NONE_ITEM added to CCD_UPLOAD_MODE_PROPERTY, hidden by default
+
+## Driver Fixes:
+- indigo_ccd_ptp
+	- CCD_UPLOAD_MODE_NONE_ITEM on CCD_UPLOAD_MODE_PROPERTY implemented DSLR simulator
+
+- indigo_ccd_ptp
+	- CCD_UPLOAD_MODE_NONE_ITEM on CCD_UPLOAD_MODE_PROPERTY implemented for Nikon and Canon (doesn't download the image from the camera at all)
+
+- indigo_ccd_sbig
+	- SDK updated, external SDK not needed for macOS anymore
+	
+- indigo_focuser_primaluce
+	- max value for FOCUSER_STEPS fixed
+	
+indigo_mount_ioptron
+	- no_park flag settings fixed
+	
+- indigo_mount_starbook
+	- added support for firmware version lower than 2.7
+	
+- indigo_ccd_mi
+	- SDK updated to 0.11.1 / 0.10.1
+
 # [2.0-292] - 01 Aug Thu 2024
 ## Overall:
 - indigo_make_psf_map() added to raw utils
