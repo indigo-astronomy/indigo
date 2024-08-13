@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x001B
+#define DRIVER_VERSION 0x001C
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -91,6 +91,7 @@ typedef struct {
 	indigo_property *command_guide_rate_property;
 	indigo_property *tracking_mode_property;
 	indigo_device *gps;
+	bool guiding_in_progress;
 } nexstar_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
@@ -135,115 +136,117 @@ static void position_timer_callback(indigo_device *device) {
 	if (dev_id < 0)
 		return;
 
-	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if (
-		tc_goto_in_progress(dev_id) ||
-		MOUNT_MOTION_NORTH_ITEM->sw.value ||
-		MOUNT_MOTION_SOUTH_ITEM->sw.value ||
-		MOUNT_MOTION_EAST_ITEM->sw.value ||
-		MOUNT_MOTION_WEST_ITEM->sw.value
-	) {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
-	} else {
-		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	res = tc_get_rade_p(dev_id, &ra, &dec);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d (%s)", dev_id, res, strerror(errno));
-	}
-	res = tc_get_location(dev_id, &lon, &lat);
-	if (res != RC_OK) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d (%s)", dev_id, res, strerror(errno));
-	}
-	if (lon < 0)
-		lon += 360;
-	time_t ttime;
-	int tz, dst;
-	res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
-	if (res == -1) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_time(%d) = %d (%s)", dev_id, res, strerror(errno));
-		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
-	} else {
-		MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
-	}
-	if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
-		int mode = tc_get_tracking_mode(dev_id);
-		if (mode < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d (%s)", dev_id, mode, strerror(errno));
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
-		} else if (mode != TC_TRACK_OFF) {
-			if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_AUTO_ITEM->sw.value) {
-				if (mode == TC_TRACK_ALT_AZ) {
-					indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+	if (!PRIVATE_DATA->guiding_in_progress) {
+		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
+		if (
+				tc_goto_in_progress(dev_id) ||
+				MOUNT_MOTION_NORTH_ITEM->sw.value ||
+				MOUNT_MOTION_SOUTH_ITEM->sw.value ||
+				MOUNT_MOTION_EAST_ITEM->sw.value ||
+				MOUNT_MOTION_WEST_ITEM->sw.value
+				) {
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 				} else {
-					indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				}
-				TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
-				indigo_send_message(device, "Tracking mode detected");
-			}
-			indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
-			MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
+		res = tc_get_rade_p(dev_id, &ra, &dec);
+		if (res != RC_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d (%s)", dev_id, res, strerror(errno));
 		}
-	}
-	if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
-		res = tc_get_side_of_pier(dev_id);
-		if (res < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, res, strerror(errno));
+		res = tc_get_location(dev_id, &lon, &lat);
+		if (res != RC_OK) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_location(%d) = %d (%s)", dev_id, res, strerror(errno));
+		}
+		if (lon < 0)
+			lon += 360;
+		time_t ttime;
+		int tz, dst;
+		res = (int)tc_get_time(dev_id, &ttime, &tz, &dst);
+		if (res == -1) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_time(%d) = %d (%s)", dev_id, res, strerror(errno));
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
-			side_of_pier = res;
+			MOUNT_UTC_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		}
-	}
-	bool linked = false;
-	if (PRIVATE_DATA->gps && PRIVATE_DATA->gps->gp_bits) {
-		char response[3];
-		if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0x37, 0, 0, 0, 1, response) == RC_OK) {
-			linked = response[0] > 0;
-		}
-	}
-	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-	MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
-	MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
-	indigo_update_coordinates(device, NULL);
-	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-	indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-	indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-	snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
-	indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
-	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
-	if (!TRACKING_MODE_PROPERTY->hidden)
-		indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
-	if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
-		if (side_of_pier == 'W' && MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		} else if (side_of_pier == 'E' && MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
-			indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
-			indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
-		}
-	}
-	if (PRIVATE_DATA->gps && PRIVATE_DATA->gps->gp_bits) {
-		nexstar_private_data *private_data = PRIVATE_DATA;
-		indigo_device *device = private_data->gps;
-		if (linked) {
-			if (GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
-				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+		if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
+			int mode = tc_get_tracking_mode(dev_id);
+			if (mode < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_tracking_mode(%d) = %d (%s)", dev_id, mode, strerror(errno));
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_ALERT_STATE;
+			} else if (mode != TC_TRACK_OFF) {
+				if (!TRACKING_MODE_PROPERTY->hidden && TRACKING_AUTO_ITEM->sw.value) {
+					if (mode == TC_TRACK_ALT_AZ) {
+						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_AA_ITEM, true);
+					} else {
+						indigo_set_switch(TRACKING_MODE_PROPERTY, TRACKING_EQ_ITEM, true);
+					}
+					TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_send_message(device, "Tracking mode detected");
+				}
+				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
+				MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 			}
-			GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
-			GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
-			indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-			indigo_timetoisolocal(ttime - ((tz + dst) * 3600), GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
-			snprintf(GPS_UTC_OFFEST_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
-			indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
-		} else {
-			if (GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
-				GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
-				GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
-				indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+		}
+		if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
+			res = tc_get_side_of_pier(dev_id);
+			if (res < 0) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_side_of_pier(%d) = %d (%s)", dev_id, res, strerror(errno));
+			} else {
+				side_of_pier = res;
+			}
+		}
+		bool linked = false;
+		if (PRIVATE_DATA->gps && PRIVATE_DATA->gps->gp_bits) {
+			char response[3];
+			if (tc_pass_through_cmd(dev_id, 1, 0xB0, 0x37, 0, 0, 0, 1, response) == RC_OK) {
+				linked = response[0] > 0;
+			}
+		}
+		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
+		indigo_update_coordinates(device, NULL);
+		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+		MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+		indigo_update_property(device, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+		indigo_timetoisolocal(ttime - ((tz + dst) * 3600), MOUNT_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+		snprintf(MOUNT_UTC_OFFSET_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
+		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
+		if (!TRACKING_MODE_PROPERTY->hidden)
+			indigo_update_property(device, TRACKING_MODE_PROPERTY, NULL);
+		if (!MOUNT_SIDE_OF_PIER_PROPERTY->hidden) {
+			if (side_of_pier == 'W' && MOUNT_SIDE_OF_PIER_EAST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			} else if (side_of_pier == 'E' && MOUNT_SIDE_OF_PIER_WEST_ITEM->sw.value) {
+				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_EAST_ITEM, true);
+				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
+			}
+		}
+		if (PRIVATE_DATA->gps && PRIVATE_DATA->gps->gp_bits) {
+			nexstar_private_data *private_data = PRIVATE_DATA;
+			indigo_device *device = private_data->gps;
+			if (linked) {
+				if (GPS_STATUS_3D_FIX_ITEM->light.value != INDIGO_OK_STATE) {
+					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_OK_STATE;
+					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+				}
+				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
+				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
+				indigo_update_property(device, GPS_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
+				indigo_timetoisolocal(ttime - ((tz + dst) * 3600), GPS_UTC_ITEM->text.value, INDIGO_VALUE_SIZE);
+				snprintf(GPS_UTC_OFFEST_ITEM->text.value, INDIGO_VALUE_SIZE, "%d", tz + dst);
+				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
+			} else {
+				if (GPS_STATUS_NO_FIX_ITEM->light.value != INDIGO_ALERT_STATE) {
+					GPS_STATUS_NO_FIX_ITEM->light.value = INDIGO_ALERT_STATE;
+					GPS_STATUS_2D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					GPS_STATUS_3D_FIX_ITEM->light.value = INDIGO_IDLE_STATE;
+					indigo_update_property(device, GPS_STATUS_PROPERTY, NULL);
+				}
 			}
 		}
 	}
@@ -1037,6 +1040,7 @@ static void guider_handle_ra(indigo_device *device) {
 	}
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
+	PRIVATE_DATA->guiding_in_progress = GUIDER_GUIDE_DEC_PROPERTY->state == INDIGO_BUSY_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 }
 
@@ -1099,6 +1103,7 @@ static void guider_handle_dec(indigo_device *device) {
 	}
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
+	PRIVATE_DATA->guiding_in_progress = GUIDER_GUIDE_RA_PROPERTY->state == INDIGO_BUSY_STATE;
 	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 }
 
@@ -1175,6 +1180,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		if (GUIDER_GUIDE_DEC_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
+			PRIVATE_DATA->guiding_in_progress = true;
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
 			indigo_set_timer(device, 0, guider_handle_dec, &PRIVATE_DATA->guider_timer_dec);
@@ -1184,6 +1190,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		if (GUIDER_GUIDE_RA_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
+			PRIVATE_DATA->guiding_in_progress = true;
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
 			indigo_set_timer(device, 0, guider_handle_ra, &PRIVATE_DATA->guider_timer_ra);
