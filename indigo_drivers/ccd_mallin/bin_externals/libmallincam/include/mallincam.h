@@ -1,7 +1,7 @@
 #ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 56.25996.20240707 */
+/* Version: 57.26291.20240811 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -92,21 +92,21 @@ extern "C" {
 /*                                                                              */
 /********************************************************************************/
 #if defined(MALLINCAM_HRESULT_ERRORCODE_NEEDED)
-#define S_OK                0x00000000 /* Success */
-#define S_FALSE             0x00000001 /* Yet another success */
-#define E_UNEXPECTED        0x8000ffff /* Catastrophic failure */
-#define E_NOTIMPL           0x80004001 /* Not supported or not implemented */
-#define E_NOINTERFACE       0x80004002
-#define E_ACCESSDENIED      0x80070005 /* Permission denied */
-#define E_OUTOFMEMORY       0x8007000e /* Out of memory */
-#define E_INVALIDARG        0x80070057 /* One or more arguments are not valid */
-#define E_POINTER           0x80004003 /* Pointer that is not valid */
-#define E_FAIL              0x80004005 /* Generic failure */
-#define E_WRONG_THREAD      0x8001010e /* Call function in the wrong thread */
-#define E_GEN_FAILURE       0x8007001f /* Device not functioning */
-#define E_BUSY              0x800700aa /* The requested resource is in use */
-#define E_PENDING           0x8000000a /* The data necessary to complete this operation is not yet available */
-#define E_TIMEOUT           0x8001011f /* This operation returned because the timeout period expired */
+#define S_OK                (HRESULT)(0x00000000) /* Success */
+#define S_FALSE             (HRESULT)(0x00000001) /* Yet another success */ /* Remark: Different from S_OK, such as internal values and user-set values have coincided, equivalent to noop */
+#define E_UNEXPECTED        (HRESULT)(0x8000ffff) /* Catastrophic failure */ /* Remark: Generally indicates that the conditions are not met, such as calling put_Option setting some options that do not support modification when the camera is running, and so on */
+#define E_NOTIMPL           (HRESULT)(0x80004001) /* Not supported or not implemented */ /* Remark: This feature is not supported on this model of camera */
+#define E_NOINTERFACE       (HRESULT)(0x80004002)
+#define E_ACCESSDENIED      (HRESULT)(0x80070005) /* Permission denied */ /* Remark: The program on Linux does not have permission to open the USB device, please enable udev rules file or run as root */
+#define E_OUTOFMEMORY       (HRESULT)(0x8007000e) /* Out of memory */
+#define E_INVALIDARG        (HRESULT)(0x80070057) /* One or more arguments are not valid */
+#define E_POINTER           (HRESULT)(0x80004003) /* Pointer that is not valid */ /* Remark: Pointer is NULL */
+#define E_FAIL              (HRESULT)(0x80004005) /* Generic failure */
+#define E_WRONG_THREAD      (HRESULT)(0x8001010e) /* Call function in the wrong thread */
+#define E_GEN_FAILURE       (HRESULT)(0x8007001f) /* Device not functioning */ /* Remark: It is generally caused by hardware errors, such as cable problems, USB port problems, poor contact, camera hardware damage, etc */
+#define E_BUSY              (HRESULT)(0x800700aa) /* The requested resource is in use */ /* Remark: The camera is already in use, such as duplicated opening/starting the camera, or being used by other application, etc */
+#define E_PENDING           (HRESULT)(0x8000000a) /* The data necessary to complete this operation is not yet available */ /* Remark: No data is available at this time */
+#define E_TIMEOUT           (HRESULT)(0x8001011f) /* This operation returned because the timeout period expired */
 #endif
 
 /* handle */
@@ -190,8 +190,8 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_BRIGHTNESS_MIN           (-128)  /* brightness */
 #define MALLINCAM_BRIGHTNESS_MAX           128     /* brightness */
 #define MALLINCAM_CONTRAST_DEF             0       /* contrast */
-#define MALLINCAM_CONTRAST_MIN             (-150)  /* contrast */
-#define MALLINCAM_CONTRAST_MAX             150     /* contrast */
+#define MALLINCAM_CONTRAST_MIN             (-200)  /* contrast */
+#define MALLINCAM_CONTRAST_MAX             200     /* contrast */
 #define MALLINCAM_GAMMA_DEF                100     /* gamma */
 #define MALLINCAM_GAMMA_MIN                20      /* gamma */
 #define MALLINCAM_GAMMA_MAX                180     /* gamma */
@@ -236,18 +236,20 @@ typedef struct Mallincam_t { int unused; } *HMallincam;
 #define MALLINCAM_AE_PERCENT_DEF           10      /* auto exposure percent: enabled, percentage = 10% */
 #define MALLINCAM_NOPACKET_TIMEOUT_MIN     500     /* no packet timeout minimum: 500ms */
 #define MALLINCAM_NOFRAME_TIMEOUT_MIN      500     /* no frame timeout minimum: 500ms */
-#define MALLINCAM_DYNAMIC_DEFECT_T1_MIN    10      /* dynamic defect pixel correction, threshold, means: 1.0 */
-#define MALLINCAM_DYNAMIC_DEFECT_T1_MAX    100     /* means: 10.0 */
-#define MALLINCAM_DYNAMIC_DEFECT_T1_DEF    13      /* means: 1.3 */
-#define MALLINCAM_DYNAMIC_DEFECT_T2_MIN    0       /* dynamic defect pixel correction, value, means: 0.00 */
-#define MALLINCAM_DYNAMIC_DEFECT_T2_MAX    100     /* means: 1.00 */
-#define MALLINCAM_DYNAMIC_DEFECT_T2_DEF    100
+#define MALLINCAM_DYNAMIC_DEFECT_T1_MIN    0       /* dynamic defect pixel correction, dead pixel ratio: the smaller the dead ratio is, the more stringent the conditions for processing dead pixels are, and fewer pixels will be processed */
+#define MALLINCAM_DYNAMIC_DEFECT_T1_MAX    100     /* means: 1.0 */
+#define MALLINCAM_DYNAMIC_DEFECT_T1_DEF    90      /* means: 0.9 */
+#define MALLINCAM_DYNAMIC_DEFECT_T2_MIN    0       /* dynamic defect pixel correction, hot pixel ratio: the smaller the hot ratio is, the more stringent the conditions for processing hot pixels are, and fewer pixels will be processed */
+#define MALLINCAM_DYNAMIC_DEFECT_T2_MAX    100
+#define MALLINCAM_DYNAMIC_DEFECT_T2_DEF    90
 #define MALLINCAM_HDR_K_MIN                1       /* HDR synthesize */
 #define MALLINCAM_HDR_K_MAX                25500
 #define MALLINCAM_HDR_B_MIN                0
 #define MALLINCAM_HDR_B_MAX                65535
 #define MALLINCAM_HDR_THRESHOLD_MIN        0
 #define MALLINCAM_HDR_THRESHOLD_MAX        4094
+#define MALLINCAM_CDS_MIN                  0       /* Correlated Double Sampling */
+#define MALLINCAM_CDS_MAX                  100
 
 typedef struct {
     unsigned    width;
@@ -286,7 +288,7 @@ typedef struct {
 } MallincamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 56.25996.20240707
+    get the version of this dll/so/dylib, which is: 57.26291.20240811
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -369,6 +371,9 @@ MALLINCAM_API(HRESULT)  Mallincam_StartPullModeWithCallback(HMallincam h, PMALLI
 #define MALLINCAM_FRAMEINFO_FLAG_EXPOGAIN     0x00000008 /* exposure gain */
 #define MALLINCAM_FRAMEINFO_FLAG_BLACKLEVEL   0x00000010 /* black level */
 #define MALLINCAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x00000020 /* sequence shutter counter */
+#define MALLINCAM_FRAMEINFO_FLAG_GPS          0x00000040 /* GPS */
+#define MALLINCAM_FRAMEINFO_FLAG_AUTOFOCUS    0x00000080 /* auto focus: uLum & uFV */
+#define MALLINCAM_FRAMEINFO_FLAG_COUNT        0x00000100 /* timecount, framecount, tricount */
 #define MALLINCAM_FRAMEINFO_FLAG_STILL        0x00008000 /* still image */
 
 typedef struct {
@@ -383,9 +388,29 @@ typedef struct {
     unsigned short      blacklevel; /* black level */
 } MallincamFrameInfoV3;
 
+typedef struct {
+    unsigned long long utcstart;    /* exposure start time: nanosecond since epoch (00:00:00 UTC on Thursday, 1 January 1970, see https://en.wikipedia.org/wiki/Unix_time) */
+    unsigned long long utcend;      /* exposure end time */
+    int                longitude;   /* millionth of a degree, 0.000001 degree */
+    int                latitude;
+    int                altitude;    /* millimeter */
+    unsigned short     satellite;   /* number of satellite */
+    unsigned short     reserved;    /* not used */
+} MallincamGps;
+
+typedef struct {
+    MallincamFrameInfoV3 v3;
+    unsigned reserved; /* not used */
+    unsigned uLum;
+    unsigned long long uFV;
+    unsigned long long timecount;
+    unsigned framecount, tricount;
+    MallincamGps gps;
+} MallincamFrameInfoV4;
+
 /*
     nWaitMS: The timeout interval, in milliseconds. If a nonzero value is specified, the function waits until the image is ok or the interval elapses.
-             If nWaitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Mallincam_PullImageV3.
+             If nWaitMS is zero, the function does not enter a wait state if the image is not available; it always returns immediately; this is equal to Mallincam_PullImageV4.
     bStill: to pull still image, set to 1, otherwise 0
     bits: 24 (RGB24), 32 (RGB32), 48 (RGB48), 8 (Grey), 16 (Grey), 64 (RGB64).
           In RAW mode, this parameter is ignored.
@@ -425,6 +450,8 @@ typedef struct {
             |           | 10/12/14/16bits Mode   | Width * 2                     | Width * 2             |
             |-----------|------------------------|-------------------------------|-----------------------|
 */
+MALLINCAM_API(HRESULT)  Mallincam_PullImageV4(HMallincam h, void* pImageData, int bStill, int bits, int rowPitch, MallincamFrameInfoV4* pInfo);
+MALLINCAM_API(HRESULT)  Mallincam_WaitImageV4(HMallincam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, MallincamFrameInfoV4* pInfo);
 MALLINCAM_API(HRESULT)  Mallincam_PullImageV3(HMallincam h, void* pImageData, int bStill, int bits, int rowPitch, MallincamFrameInfoV3* pInfo);
 MALLINCAM_API(HRESULT)  Mallincam_WaitImageV3(HMallincam h, unsigned nWaitMS, void* pImageData, int bStill, int bits, int rowPitch, MallincamFrameInfoV3* pInfo);
 
@@ -463,7 +490,7 @@ MALLINCAM_API(HRESULT)  Mallincam_StartPushModeV3(HMallincam h, PMALLINCAM_DATA_
 MALLINCAM_API(HRESULT)  Mallincam_Stop(HMallincam h);
 MALLINCAM_API(HRESULT)  Mallincam_Pause(HMallincam h, int bPause); /* 1 => pause, 0 => continue */
 
-/*  for pull mode: MALLINCAM_EVENT_STILLIMAGE, and then Mallincam_PullStillImageXXXX/Mallincam_PullImageV3
+/*  for pull mode: MALLINCAM_EVENT_STILLIMAGE, and then Mallincam_PullStillImageXXXX/Mallincam_PullImageV4
     for push mode: the snapped image will be return by PMALLINCAM_DATA_CALLBACK(V2/V3), with the parameter 'bSnap' set to 'TRUE'
     nResolutionIndex = 0xffffffff means use the cureent preview resolution
 */
@@ -484,6 +511,7 @@ MALLINCAM_API(HRESULT)  Mallincam_Trigger(HMallincam h, unsigned short nNumber);
                 0xffffffff:     wait infinite
                 other:          milliseconds to wait
 */
+MALLINCAM_API(HRESULT)  Mallincam_TriggerSyncV4(HMallincam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, MallincamFrameInfoV4* pInfo);
 MALLINCAM_API(HRESULT)  Mallincam_TriggerSync(HMallincam h, unsigned nWaitMS, void* pImageData, int bits, int rowPitch, MallincamFrameInfoV3* pInfo);
 
 /*
@@ -542,7 +570,7 @@ MALLINCAM_API(HRESULT)  Mallincam_get_RawFormat(HMallincam h, unsigned* pFourCC,
     | Temp                    |   1000~25000  |   6503                |
     | Tint                    |   100~2500    |   1000                |
     | LevelRange              |   0~255       |   Low = 0, High = 255 |
-    | Contrast                |   -150~150    |   0                   |
+    | Contrast                |   -250~250    |   0                   |
     | Hue                     |   -180~180    |   0                   |
     | Saturation              |   0~255       |   128                 |
     | Brightness              |   -64~64      |   0                   |
@@ -1004,8 +1032,8 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
                                                          */
 #define MALLINCAM_OPTION_HIGH_FULLWELL          0x55       /* high fullwell capacity: 0 => disable, 1 => enable */
 #define MALLINCAM_OPTION_DYNAMIC_DEFECT         0x56       /* dynamic defect pixel correction:
-                                                                threshold, t1: (high 16 bits): [10, 100], means: [1.0, 10.0]
-                                                                value, t2: (low 16 bits): [0, 100], means: [0.00, 1.00]
+                                                                dead pixel ratio, t1: (high 16 bits): [0, 100], means: [0.0, 1.0]
+                                                                hot pixel ratio, t2: (low 16 bits): [0, 100], means: [0.0, 1.0]
                                                          */
 #define MALLINCAM_OPTION_HDR_KB                 0x57       /* HDR synthesize
                                                                 K (high 16 bits): [1, 25500]
@@ -1093,6 +1121,8 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
                                                                 n<0: every -n frame
                                                          */
 #define MALLINCAM_OPTION_TECTARGET_RANGE        0x6d       /* TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
+#define MALLINCAM_OPTION_CDS                    0x6e       /* Correlated Double Sampling */
+#define MALLINCAM_OPTION_LOW_POWER_EXPOTIME     0x6f       /* Low Power Consumption: Enable if exposure time is greater than the set value */
 
 /* pixel format */
 #define MALLINCAM_PIXELFORMAT_RAW8              0x00
@@ -1117,12 +1147,16 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 
 /*
 * cmd: input
-*   -1:         query the number
-*   0~number:   query the nth pixel format
-* piValue: output, MALLINCAM_PIXELFORMAT_xxxx
+*    -1:       query the number
+*    0~number: query the nth pixel format
+* pixelFormat: output, MALLINCAM_PIXELFORMAT_xxxx
 */
-MALLINCAM_API(HRESULT)     Mallincam_get_PixelFormatSupport(HMallincam h, char cmd, int* piValue);
-MALLINCAM_API(const char*) Mallincam_get_PixelFormatName(int val);
+MALLINCAM_API(HRESULT)     Mallincam_get_PixelFormatSupport(HMallincam h, char cmd, int* pixelFormat);
+
+/*
+* pixelFormat: MALLINCAM_PIXELFORMAT_XXXX
+*/
+MALLINCAM_API(const char*) Mallincam_get_PixelFormatName(int pixelFormat);
 
 MALLINCAM_API(HRESULT)  Mallincam_put_Option(HMallincam h, unsigned iOption, int iValue);
 MALLINCAM_API(HRESULT)  Mallincam_get_Option(HMallincam h, unsigned iOption, int* piValue);
@@ -1481,7 +1515,7 @@ MALLINCAM_API(double)   Mallincam_calc_ClarityFactorV2(const void* pImageData, i
                     48 => RGB48
                     64 => RGB64
 */
-MALLINCAM_API(void)     Mallincam_deBayerV2(unsigned nFourCC, int nW, int nH, const void* input, void* output, unsigned char nBitDepth, unsigned char nBitCount);
+MALLINCAM_API(void)     Mallincam_deBayerV2(unsigned nFourCC, int nW, int nH, const void* pRaw, void* pRGB, unsigned char nBitDepth, unsigned char nBitCount);
 
 
 #ifndef __MALLINCAMFOCUSMOTOR_DEFINED__
@@ -1501,12 +1535,17 @@ MALLINCAM_DEPRECATED
 MALLINCAM_API(HRESULT)  Mallincam_get_FocusMotor(HMallincam h, MallincamFocusMotor* pFocusMotor);
 
 /*
-    obsolete, please use Mallincam_deBayerV2
-*/
-MALLINCAM_DEPRECATED
-MALLINCAM_API(void)     Mallincam_deBayer(unsigned nFourCC, int nW, int nH, const void* input, void* output, unsigned char nBitDepth);
+* raw image process
+* step:
+*  'F': very beginning
+*  'B': just before black balance
+*  'D': just before demosaic
+ */
+typedef void (__stdcall* PMALLINCAM_PROCESS_CALLBACK)(char step, char bStill, unsigned nFourCC, int nW, int nH, void* pRaw, unsigned char pixelFormat, void* ctxProcess);
+MALLINCAM_API(HRESULT)  Mallincam_put_Process(HMallincam h, PMALLINCAM_PROCESS_CALLBACK funProcess, void* ctxProcess);
 
-typedef void (__stdcall* PMALLINCAM_DEMOSAIC_CALLBACK)(unsigned nFourCC, int nW, int nH, const void* input, void* output, unsigned char nBitDepth, void* ctxDemosaic);
+/* debayer: raw to RGB */
+typedef void (__stdcall* PMALLINCAM_DEMOSAIC_CALLBACK)(unsigned nFourCC, int nW, int nH, const void* pRaw, void* pRGB, unsigned char nBitDepth, void* ctxDemosaic);
 MALLINCAM_API(HRESULT)  Mallincam_put_Demosaic(HMallincam h, PMALLINCAM_DEMOSAIC_CALLBACK funDemosaic, void* ctxDemosaic);
 
 /*
@@ -1524,6 +1563,12 @@ typedef struct {
     unsigned            still;      /* number of still resolution, same as Mallincam_get_StillResolutionNumber() */
     MallincamResolution   res[16];
 } MallincamModel; /* camera model */
+
+/*
+    obsolete, please use Mallincam_deBayerV2
+*/
+MALLINCAM_DEPRECATED
+MALLINCAM_API(void)     Mallincam_deBayer(unsigned nFourCC, int nW, int nH, const void* pRaw, void* pRGB, unsigned char nBitDepth);
 
 /*
     obsolete, please use MallincamDeviceV2

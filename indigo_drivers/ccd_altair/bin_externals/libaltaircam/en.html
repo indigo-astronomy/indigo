@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Altaircam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 56.25996.20240707</li></ul>
+<hr/><ul><li>Version: 57.26291.20240811</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -63,7 +63,7 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
 		</ol></blockquote></blockquote>
-		<blockquote>GigE: GigE Performance Driver, is optional for gigabit cameras, must be installed and enabled for 10G cameras. Please use the command line (Administrator mode), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd):<blockquote>
+		<blockquote>GigE: GigE Performance Driver, is optional for gigabit cameras, must be installed and enabled for 10G cameras. Please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd):<blockquote>
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv</pre></td></tr></table>
 		</blockquote></blockquote>
 		</li></ul></li>
@@ -101,7 +101,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <hr/><h1><font color="#0000FF">3. Concepts &amp; Terminology</font></h1><hr/>
 <h2><font color="#0000FF">a. Modes for accessing image data: "Pull" Mode vs "Push" Mode</font></h2>
 <p>Altaircam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
-<ul><li>In Pull Mode, altaircam plays a passive role and the application 'PULL' image data from altaircam. The internal thread of altaircam obtains image data from the camera hardware and saves them to the internal buffers, then notify the application (see below). The application then call functions Altaircam_PullImageV3 or Altaircam_PullImage(WithRowPitch)(V2), Altaircam_PullStillImage(WithRowPitch)(V2) to access image data.</li>
+<ul><li>In Pull Mode, altaircam plays a passive role and the application 'PULL' image data from altaircam. The internal thread of altaircam obtains image data from the camera hardware and saves them to the internal buffers, then notify the application (see below). The application then call functions Altaircam_PullImageV4(V3) or Altaircam_PullImage(WithRowPitch)(V2), Altaircam_PullStillImage(WithRowPitch)(V2) to access image data.</li>
 </ul><blockquote>
  <p>There are to ways to notify applications:</p>
 <blockquote>
@@ -194,7 +194,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 </ul><h2><font color="#0000FF">b. <a id="stillcapture">Still Capture (Still Image)</a></font></h2>
 <p>Most cameras support the so-called still capture capability. This function switches the camera to another resolution temporarily when the camera is in preview mode, after a "still" image in the new resolution is captured and then switch back to the original resolution and resume preview mode.</p>
 <p>For example, UCMOS05100KPA support 3 resolutions and the current one in preview mode is 1280 * 960. Call Altaircam_Snap(h, 0) to "still capture" an image in 2592 * 1944 resolution. To realize this function, the camera will temporarily switch to 2592 * 1944 firstly, get an image in 2592 * 1944 resolution and then switch back to 1280 * 960 and resume preview.</p>
-<blockquote>a) In pull mode operation, after the still capture, ALTAIRCAM_EVENT_STILLIMAGE will be sent out for external acknowledgement. The external application should call Altaircam_PullImageV3 or Altaircam_PullStillImage(V2) to get the still captured image.</blockquote>
+<blockquote>a) In pull mode operation, after the still capture, ALTAIRCAM_EVENT_STILLIMAGE will be sent out for external acknowledgement. The external application should call Altaircam_PullImageV4(V3) or Altaircam_PullStillImage(V2) to get the still captured image.</blockquote>
 <blockquote>b) In push mode operation, after the still capture, the callback function PALTAIRCAM_DATA_CALLBACK_V4/V3 will be called with bSnap parameter setting TRUE. The image information including the resolution information will be obtained via the parameter pHeader.</blockquote>
 <p>To check whether the camera have the still capture capability, call Altaircam_get_StillResolutionNumber function or check the still field of the struct AltaircamModelV2.</p>
 <h2><font color="#0000FF"><a id="raw">c. Data format: RGB vs RAW</a></font></h2>
@@ -726,18 +726,18 @@ for (UsbDevice usbDevice : deviceList.values()) {
 		<p>see <a href="#callback">here</a>.</p>
       </blockquote>
     <p><strong>Remarks:</strong> Obviously, Altaircam_StartPullModeWithWndMsg is only supported in Windows OS.</p>
-</li></ul><ul><li><h2><font color="#0000FF"><a id="infov2">Altaircam_PullImageV3<br/>Altaircam_WaitImageV3<br/>Altaircam_PullImageV2<br/>Altaircam_PullStillImageV2<br/>Altaircam_PullImageWithRowPitchV2<br/>Altaircam_PullStillImageWithRowPitchV2</a><br/>
+</li></ul><ul><li><h2><font color="#0000FF"><a id="infov2">Altaircam_PullImageV4<br/>Altaircam_WaitImageV4<br/>Altaircam_PullImageV3<br/>Altaircam_WaitImageV3<br/>Altaircam_PullImageV2<br/>Altaircam_PullStillImageV2<br/>Altaircam_PullImageWithRowPitchV2<br/>Altaircam_PullStillImageWithRowPitchV2</a><br/>
 			Altaircam_PullImage<br/>Altaircam_PullStillImage<br/><a id="rowpitch1">Altaircam_PullImageWithRowPitch</a><br/><a id="rowpitch2">Altaircam_PullStillImageWithRowPitch</a></font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure. <strong>Return E_PENDING when there isn't image ready for pull</strong>.</p>
       <p><strong>Parameters:</strong></p>
       <blockquote><p>HAltaircam h: camera handle</p>
-	  <p>nWaitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If nWaitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Altaircam_PullImageV3.</p>
+	  <p>nWaitMS: The timeout interval, in milliseconds. If a non-zero value is specified, the function either successfully fetches the image or waits for a timeout. If nWaitMS is zero, the function does not wait when there are no images to fetch; It always returns immediately; this is equal to Altaircam_PullImageV4(V3).</p>
     <p>void* pImageData: Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bStill: to pull still image, set to 1, otherwise 0</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">ALTAIRCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
     <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
     <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
-	<p>AltaircamFrameInfoV3/V2* pInfo: out parameter, frame info:</p>
+	<p>AltaircamFrameInfoV4/V3/V2* pInfo: out parameter, frame info:</p>
 	<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
 #define ALTAIRCAM_FRAMEINFO_FLAG_SEQ          0x0001 /* frame sequence number */
 #define ALTAIRCAM_FRAMEINFO_FLAG_TIMESTAMP    0x0002 /* timestamp */
@@ -745,6 +745,9 @@ for (UsbDevice usbDevice : deviceList.values()) {
 #define ALTAIRCAM_FRAMEINFO_FLAG_EXPOGAIN     0x0008 /* exposure gain */
 #define ALTAIRCAM_FRAMEINFO_FLAG_BLACKLEVEL   0x0010 /* black level */
 #define ALTAIRCAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x0020 /* sequence shutter counter */
+#define ALTAIRCAM_FRAMEINFO_FLAG_GPS          0x0040 /* GPS */
+#define ALTAIRCAM_FRAMEINFO_FLAG_AUTOFOCUS    0x0080 /* auto focus: uLum & uFV */
+#define ALTAIRCAM_FRAMEINFO_FLAG_COUNT        0x0100 /* timecount, framecount, tricount */
 #define ALTAIRCAM_FRAMEINFO_FLAG_STILL        0x8000 /* still image */
 
 typedef struct {
@@ -758,6 +761,26 @@ typedef struct {
     unsigned short      expogain;   /* exposure gain */
     unsigned short      blacklevel; /* black level */
 } AltaircamFrameInfoV3;
+
+typedef struct {
+    unsigned long long utcstart;    /* exposure start time: nanosecond since epoch (00:00:00 UTC on Thursday, 1 January 1970, see https://en.wikipedia.org/wiki/Unix_time) */
+    unsigned long long utcend;      /* exposure end time */
+    int                longitude;   /* millionth of a degree, 0.000001 degree */
+    int                latitude;
+    int                altitude;    /* millimeter */
+    unsigned short     satellite;   /* number of satellite */
+    unsigned short     reserved;    /* not used */
+} AltaircamGps;
+
+typedef struct {
+    AltaircamFrameInfoV3 v3;
+    unsigned reserved; /* not used */
+    unsigned uLum;
+    unsigned long long uFV;
+    unsigned long long timecount;
+    unsigned framecount, tricount;
+    AltaircamGps gps;
+} AltaircamFrameInfoV4;
 </pre></td></tr></table>
 <p>Note: Except that the image width and height are always valid, everything else depends on whether the underlying hardware of the camera model supports it. Determine whether the corresponding value is valid by testing whether the corresponding flag bit is set.</p>
 </blockquote><p><strong>Remarks:</strong> when pImageData is NULL, while pInfo or pnWidth, pnHeight are not NULL, you can "peek" the meta data of images such as width and height.</p>
@@ -889,7 +912,7 @@ typedef struct {
   <p>a) If we use Pull Mode, it will be notified by ALTAIRCAM_EVENT_IMAGE.</p>
   <p>b) If we use Push Mode, the image will be returned by callback function PALTAIRCAM_DATA_CALLBACK_V4/V3 with the parameter int bSnap is FALSE.</p>
   </blockquote>
-</li></ul><ul><li><h2><font color="#0000FF">Altaircam_TriggerSync</font></h2>
+</li></ul><ul><li><h2><font color="#0000FF">Altaircam_TriggerSyncV4<br/>Altaircam_TriggerSync</font></h2>
   <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure.</p>
   <p><strong>Parameters:</strong></p>
   <blockquote>
@@ -898,7 +921,7 @@ typedef struct {
 <p>void* pImageData：Data buffer. Users have to make sure that the data buffer capacity is enough to save the image data, data buffer capacity must &gt;= rowPitch * nHeight.</p>
     <p>int bits: 24, 32, 48, 8, 16, 64, means RGB24, RGB32, RGB48, 8 bits grey, 16 bits grey or RGB64 images. bits = 0 means using default bits base on <a href="#rgb">ALTAIRCAM_OPTION_RGB</a>. This parameter is ignored in RAW mode.</p>
     <p>int rowPitch: the distance from one row to the next row, =0 means using the default row pitch, =-1 means minimum row pitch (zero padding)</p>
-	<p>AltaircamFrameInfoV3* pInfo: out parameter, frame info</p>
+	<p>AltaircamFrameInfoV4/V3* pInfo: out parameter, frame info</p>
     </blockquote>
   <p><strong>Remarks: </strong>In trigger mode, call this function for a <strong>single</strong> software trigger and wait for the image to arrive.</p>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_put_Size<br/>Altaircam_get_Size<br/>Altaircam_put_eSize<br/>Altaircam_get_eSize<br/>Altaircam_get_FinalSize</font></h2>
@@ -968,13 +991,13 @@ typedef struct {
     <p>char cmd:<blockquote>
 		-1: query the number<br/>
 		0~number: query the nth pixel format</blockquote></p>
-    <p>int* piValue: output, ALTAIRCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
+    <p>int* pixelFormat: output, ALTAIRCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
   </blockquote>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_get_PixelFormatName</font></h2>
       <p><strong>Return value:</strong> name of pixel format, such as "RAW10", "HDR12HL", etc</p>
       <p><strong>Parameters:</strong></p>
   <blockquote>
-    <p>int val: ALTAIRCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
+    <p>int pixelFormat: ALTAIRCAM_PIXELFORMAT_xxxx, see <a href="#pflist">here</a></p>
   </blockquote>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_put_Option<br/>Altaircam_get_Option</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -1333,6 +1356,10 @@ ALTAIRCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</
         <td>Low Power Consumption:<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
+        <td>ALTAIRCAM_OPTION_LOW_POWER_EXPOTIME</td>
+        <td>Low Power Consumption: Enable if exposure time is greater than the set value</td>
+		<td>Model Specific</td><td>Yes</td>
+      </tr><tr>
         <td><a id="lownoise">ALTAIRCAM_OPTION_LOW_NOISE</a></td>
         <td>low noise mode (Higher signal noise ratio, lower frame rate):<br/>0 =&gt; disable, 1 =&gt; enable</td>
 		<td>Model Specific</td><td>Yes</td>
@@ -1360,8 +1387,8 @@ ALTAIRCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</
 		<td>Model Specific</td><td>Yes</td>
       </tr><tr>
         <td>ALTAIRCAM_OPTION_DYNAMIC_DEFECT</td>
-        <td>Dynamic Defect Pixel Correction<br/>threshold, t1: (high 16 bits): [10, 100], means: [1.0, 10.0]<br/>value, t2: (low 16 bits): [0, 100], means: [0.00, 1.00]</td>
-		<td>disable (t1=10, t2=0)</td><td>Yes</td>
+        <td>Dynamic Defect Pixel Correction<br/>dead pixel ratio, t1: (high 16 bits): [0, 100], means: [0.0, 1.0]<br/>hot pixel ratio, t2: (low 16 bits): [0, 100], means: [0.0, 1.0]<br/>See:<br/>ALTAIRCAM_DYNAMIC_DEFECT_T1_(MIN/MAX/DEF), ALTAIRCAM_DYNAMIC_DEFECT_T2_(MIN/MAX/DEF)</td>
+		<td>disable<br/>(t1=10, t2=0)</td><td>Yes</td>
       </tr><tr>
         <td>ALTAIRCAM_OPTION_ANTI_SHUTTER_EFFECT</td>
         <td>anti shutter effect: 1 =&gt; disable, 0 =&gt; disable</td>
@@ -2091,7 +2118,7 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
     <td colspan="2">Altaircam_put_LevelRangeV2</td>
   </tr><tr>
     <td colspan="3">Contrast</td>
-    <td>-150~150</td><td>0</td>
+    <td>-250~250</td><td>0</td>
     <td>Altaircam_get_Contrast</td>
     <td>Altaircam_put_Contrast</td><td></td>
   </tr><tr>
@@ -2192,13 +2219,16 @@ public bool Snap(uint nResolutionIndex)
         <td width="60%">Description</td>
       </tr><tr>
 		<td colspan="2">demosimplest</td>
-		<td rowspan="10">Win32<br/>Linux<br/>macOS<br/>Android</td>
-		<td rowspan="20">C++</td><td rowspan="10">&nbsp;</td>
-		<td rowspan="10">console</td>
+		<td rowspan="11">Win32<br/>Linux<br/>macOS<br/>Android</td>
+		<td rowspan="21">C++</td><td rowspan="11">&nbsp;</td>
+		<td rowspan="11">console</td>
 		<td>simplest sample, about 70 lines of code. <a href="./images/demosimplest.png">snapshot</a>.</td>
 	  </tr><tr>
+		<td colspan="2">gigesimplest</td>
+		<td>simplest sample for GigE camera, about 75 lines of code</td>
+	  </tr><tr>
 		<td colspan="2">demowait</td>
-		<td>Instead of using the callback function, use the Altaircam_WaitImageV3 to get the image, about 60 lines of code</td>
+		<td>Instead of using the callback function, use the Altaircam_WaitImageV4 to get the image, about 60 lines of code</td>
 	  </tr><tr>
 		<td colspan="2">demomulti</td>
 		<td>Open all the enumerated cameras (possibly multiple) and pull image, about 90 lines of code</td>
@@ -2337,6 +2367,7 @@ public bool Snap(uint nResolutionIndex)
 		<td>C# sample, <a href="./images/livestackcs.png">snapshot</a>.</td>
 </tr></table></div>
 <hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<p>v57: Add Altaircam_PullImageV4, AltaircamFrameInfoV4, GPS</p>
 <p>v56: Performance improvements: reduced frame data copy in RAW mode</p>
 <p>v55: Add Support to HDR Pixel Format</p>
 <p>v54: Add support to GigE. Please see <a href="#apigige">here</a></p>
