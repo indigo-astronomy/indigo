@@ -24,7 +24,7 @@
  */
 
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME "indigo_ccd_sbig"
 
 #include <stdlib.h>
@@ -39,7 +39,7 @@
 #include <indigo/indigo_driver_xml.h>
 #include "indigo_ccd_sbig.h"
 
-#if !(defined(__APPLE__) && defined(__arm64__))
+#if !(defined(__APPLE__) && defined(__arm64__)) && !(defined(__linux__) && defined(__aarch64__))
 
 #include <sbigudrv.h>
 
@@ -94,9 +94,6 @@
 #define SBIG_ABG_CLK_LOW_ITEM            (SBIG_ABG_PROPERTY->items + 1)
 #define SBIG_ABG_CLK_MED_ITEM            (SBIG_ABG_PROPERTY->items + 2)
 #define SBIG_ABG_CLK_HI_ITEM             (SBIG_ABG_PROPERTY->items + 3)
-
-
-
 
 #define DEVICE_CONNECTED_MASK            0x01
 #define PRIMARY_CCD_MASK                 0x02
@@ -2505,7 +2502,11 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 			int usb_id = find_plugged_device(cam_name);
 			if (usb_id < 0) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No SBIG Camera plugged.");
+				static char *broken_message = "Warning: SBIG Camera hotplug is broken. Please restart the diver to rescan SBIG devices.";
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", broken_message);
+				indigo_device device;
+				strncpy(device.name, DRIVER_NAME, INDIGO_NAME_SIZE);
+				indigo_send_message(&device, "%s", broken_message);
 				//pthread_mutex_unlock(&hotplug_mutex);
 				return 0;
 			}
