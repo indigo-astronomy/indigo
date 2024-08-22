@@ -10,7 +10,7 @@ This driver supports hot-plug (multiple devices).
 
 ## Supported platforms
 
-This driver depends on 3rd party library and is supported on Linux (Intel 32/64 bit and ARM v6+) and MacOS.
+This driver depends on 3rd party library and is only partly supported on Linux (Intel 32/64 bit, ARM v6+ and ARM 64 bit) and MacOS, because Diffraction Limited/SBIG cancelled the suport of the closed source libraries for these platforms.
 
 ## License
 
@@ -30,6 +30,19 @@ Driver is developed and tested with:
 * SBIG Camera Simulator
 
 ## NOTES
+### Problem on ARM 64 bit architecture
+
+If the driver fails to load on a 64-bit Raspberry PI with the error:
+
+```
+ELF load command address/offset not page-aligned
+```
+
+The solution is add the folowing line to /boot/firmware/config.txt
+```
+kernel=kernel8.img
+```
+
 ### Legacy Filter wheels
 
 CFW8 and CFW6A are legacy filter wheels and can not be auto detected. In order to use

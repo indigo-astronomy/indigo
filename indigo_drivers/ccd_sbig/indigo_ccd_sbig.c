@@ -39,7 +39,7 @@
 #include <indigo/indigo_driver_xml.h>
 #include "indigo_ccd_sbig.h"
 
-#if !(defined(__APPLE__) && defined(__arm64__)) && !(defined(__linux__) && defined(__aarch64__))
+#if !(defined(__APPLE__) && defined(__arm64__))
 
 #include <sbigudrv.h>
 
