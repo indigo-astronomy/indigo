@@ -1396,7 +1396,8 @@ bool ptp_canon_set_property(indigo_device *device, ptp_property *property) {
 		case INDIGO_NUMBER_VECTOR:
 			return set_number_property(device, property->code, (uint32_t)property->property->items->number.value);
 		default:
-			assert(false);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bad type: 0x%x", property->property->type);
+			return false;
 	}
 }
 

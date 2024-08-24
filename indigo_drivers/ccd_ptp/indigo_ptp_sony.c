@@ -962,7 +962,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 		}
 		default:
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bad type: 0x%x", target->type);
-			assert(false);
+			return NULL;
 	}
 	source = ptp_decode_uint8(source, &target->form);
 	switch (target->form) {
@@ -1061,7 +1061,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 					break;
 				default:
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bad type: 0x%x", target->type);
-					assert(false);
+					return NULL;
 			}
 			break;
 		case ptp_enum_form: {
@@ -1125,7 +1125,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 					}
 					default:
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bad type: 0x%x", target->type);
-						assert(false);
+						return NULL;
 				}
 			}
 			break;
@@ -1182,7 +1182,7 @@ uint8_t *ptp_sony_decode_property(uint8_t *source, indigo_device *device) {
 						break;
 					default:
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bad type: 0x%x", target->type);
-						assert(false);
+						return NULL;
 					}
 				}
 				break;
@@ -1373,6 +1373,8 @@ bool ptp_sony_initialise(indigo_device *device) {
 				source += sizeof(uint32_t);
 				for (int i = 0; i < count; i++) {
 					source = ptp_sony_decode_property(source, device);
+					if (source == NULL)
+						break;
 				}
 				free(buffer);
 				buffer = NULL;
@@ -1399,6 +1401,8 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 				source += sizeof(uint32_t);
 				for (int i = 0; i < count; i++) {
 					source = ptp_sony_decode_property(source, device);
+					if (source == NULL)
+						break;
 				}
 			}
 			free(buffer);

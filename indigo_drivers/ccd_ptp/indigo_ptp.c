@@ -633,7 +633,7 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 			return source;
 		default:
 			INDIGO_LOG(indigo_log("Unsupported type=%x", target->type));
-			assert(false);
+			return NULL;
 	}
 	// Some models are not given a form flag.
 	CHECK_SENTINEL();
@@ -733,7 +733,7 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 					source += 3 * 4 * sizeof(uint32_t);
 					break;
 				default:
-					assert(false);
+					return NULL;
 			}
 			break;
 		case ptp_enum_form: {
@@ -797,7 +797,7 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 					}
 					default:
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Unknown target type: %d code=%x", target->type, target->code);
-						assert(false);
+						return NULL;
 				}
 			}
 			break;
@@ -867,7 +867,7 @@ uint8_t *ptp_decode_property_value(uint8_t *source, indigo_device *device, ptp_p
 			return source;
 		}
 		default:
-			assert(false);
+			return NULL;
 	}
 }
 
@@ -1558,7 +1558,8 @@ bool ptp_refresh_property(indigo_device *device, ptp_property *property) {
 		void *buffer = NULL;
 		uint32_t size = 0;
 		if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, property->code, &buffer, &size)) {
-			result = ptp_decode_property(buffer, size, device, property);
+			ptp_decode_property(buffer, size, device, property);
+			result = true;
 		}
 		if (buffer)
 			free(buffer);
