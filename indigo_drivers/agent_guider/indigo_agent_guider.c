@@ -2193,8 +2193,16 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SELECTION
 		if (FILTER_DEVICE_CONTEXT->running_process) {
-			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Selection can not be changed while process is running!");
-			return INDIGO_OK;
+			indigo_item *item = indigo_get_item(property, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME);
+			if (item && AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value != item->number.value) {
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Edge clipping can not be changed while process is running!");
+				return INDIGO_OK;
+			}
+			item = indigo_get_item(property, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME);
+			if (item && AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value != item->number.value) {
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Star count can not be changed while process is running!");
+				return INDIGO_OK;
+			}
 		}
 		int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
