@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#define MAX_MULTISTAR_COUNT 24
+#define INDIGO_MAX_MULTISTAR_COUNT 24
 
 typedef struct {
 	double x;             /* Star X */

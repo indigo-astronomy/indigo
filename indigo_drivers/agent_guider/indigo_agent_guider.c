@@ -198,7 +198,7 @@ typedef struct {
 	double saved_frame_left, saved_frame_top;
 	bool properties_defined;
 	indigo_star_detection stars[MAX_STAR_COUNT];
-	indigo_frame_digest reference[MAX_MULTISTAR_COUNT + 1];
+	indigo_frame_digest reference[INDIGO_MAX_MULTISTAR_COUNT + 1];
 	double drift_x, drift_y, drift;
 	double avg_drift_x, avg_drift_y;
 	double rmse_ra_sum, rmse_dec_sum;
@@ -598,26 +598,27 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			}
 		}
 		if (missing_selection && AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
-			int star_count = 0;
-			for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
-				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
-				if (i == AGENT_GUIDER_STARS_PROPERTY->count - 1) {
-					indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
-					break;
-				}
-				item_x->number.target = item_x->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
-				item_y->number.target = item_y->number.value = DEVICE_PRIVATE_DATA->stars[i].y;
-				//indigo_debug("#### Star %d: %d, %d", i, (int)item_x->number.value, (int)item_y->number.value);
-				star_count++;
+			int selection_index = 0;
+			for (int i = 0; i < AGENT_GUIDER_STARS_PROPERTY->count && selection_index < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
+				indigo_star_detection *star = DEVICE_PRIVATE_DATA->stars + i;
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "star #%d -> oversturated = %d, NCD = %g, close_to_other = %d", i, star->oversaturated, star->nc_distance, star->close_to_other);
+				if (star->oversaturated || star->close_to_other)
+					continue;
+				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * selection_index;
+				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * selection_index;
+				item_x->number.target = item_x->number.value = star->x;
+				item_y->number.target = item_y->number.value = star->y;
+				selection_index++;
 			}
-			//indigo_debug("#### Star ----------------- %d", star_count);
-			for (int i = star_count; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
-				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
-				item_x->number.target = item_x->number.value = 0;
-				item_y->number.target = item_y->number.value = 0;
-				//indigo_debug("#### Star %d: %d, %d", i, (int)item_x->number.value, (int)item_y->number.value);
+			if (selection_index < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value) {
+				indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", selection_index, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
+			} else {
+				for (int i = selection_index; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
+					indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
+					indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
+					item_x->number.target = item_x->number.value = 0;
+					item_y->number.target = item_y->number.value = 0;
+				}
 			}
 			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		}
@@ -626,7 +627,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = 0;
 			AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = 0;
 			AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = 0;
-			for (int i = 0; i <= MAX_MULTISTAR_COUNT; i++)
+			for (int i = 0; i <= INDIGO_MAX_MULTISTAR_COUNT; i++)
 				indigo_delete_frame_digest(DEVICE_PRIVATE_DATA->reference + i);
 			DEVICE_PRIVATE_DATA->stack_size = 0;
 			DEVICE_PRIVATE_DATA->drift_x = DEVICE_PRIVATE_DATA->drift_y = 0;
@@ -755,7 +756,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			} else if (AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) {
 				int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 				int used = 0;
-				indigo_frame_digest digests[MAX_MULTISTAR_COUNT] = { 0 };
+				indigo_frame_digest digests[INDIGO_MAX_MULTISTAR_COUNT] = { 0 };
 				result = INDIGO_OK;
 				digest.algorithm = centroid;
 				digest.centroid_x = 0;
@@ -1879,14 +1880,14 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_STARS_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_GUIDER_STARS_REFRESH_ITEM, AGENT_GUIDER_STARS_REFRESH_ITEM_NAME, "Refresh", false);
 		// -------------------------------------------------------------------------------- Selected star
-		AGENT_GUIDER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 4 + 2 * MAX_MULTISTAR_COUNT);
+		AGENT_GUIDER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 4 + 2 * INDIGO_MAX_MULTISTAR_COUNT);
 		if (AGENT_GUIDER_SELECTION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 20, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, "Edge Clipping (px)", 0, 500, 1, 8);
-		indigo_init_number_item(AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME, "Maximum number of stars", 1, MAX_MULTISTAR_COUNT, 1, 1);
-		for (int i = 0; i < MAX_MULTISTAR_COUNT; i++) {
+		indigo_init_number_item(AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME, "Maximum number of stars", 1, INDIGO_MAX_MULTISTAR_COUNT, 1, 1);
+		for (int i = 0; i < INDIGO_MAX_MULTISTAR_COUNT; i++) {
 			indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 			indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 			char name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
@@ -2192,11 +2193,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SELECTION
 		if (FILTER_DEVICE_CONTEXT->running_process) {
-			indigo_item *item = indigo_get_item(property, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME);
-			if (item && AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value != item->number.value) {
-				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Edge clipping can not be changed while process is running!");
-				return INDIGO_OK;
-			}
+			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Selection can not be changed while process is running!");
+			return INDIGO_OK;
 		}
 		int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
@@ -2212,8 +2210,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 			indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		}
-		AGENT_GUIDER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
+		AGENT_GUIDER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
@@ -2346,7 +2344,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_GUIDER_DITHER_PROPERTY);
 	indigo_release_property(AGENT_GUIDER_LOG_PROPERTY);
 	indigo_release_property(AGENT_PROCESS_FEATURES_PROPERTY);
-	for (int i = 0; i <= MAX_MULTISTAR_COUNT; i++)
+	for (int i = 0; i <= INDIGO_MAX_MULTISTAR_COUNT; i++)
 		indigo_delete_frame_digest(DEVICE_PRIVATE_DATA->reference + i);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);

@@ -1969,9 +1969,9 @@ double indigo_contrast(indigo_raw_type raw_type, const void *data, const uint8_t
 /* multistar guide */
 
 indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest) {
-	double drifts[MAX_MULTISTAR_COUNT] = {0};
-	double drifts_x[MAX_MULTISTAR_COUNT] = {0};
-	double drifts_y[MAX_MULTISTAR_COUNT] = {0};
+	double drifts[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+	double drifts_x[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+	double drifts_y[INDIGO_MAX_MULTISTAR_COUNT] = {0};
 	double average = 0;
 	double drift_x, drift_y;
 
@@ -2031,9 +2031,9 @@ indigo_result indigo_reduce_multistar_digest(const indigo_frame_digest *avg_ref,
 }
 
 indigo_result indigo_reduce_weighted_multistar_digest(const indigo_frame_digest *avg_ref, const indigo_frame_digest ref[], const indigo_frame_digest new_digest[], const int count, indigo_frame_digest *digest) {
-	double drifts[MAX_MULTISTAR_COUNT] = {0};
-	double drifts_x[MAX_MULTISTAR_COUNT] = {0};
-	double drifts_y[MAX_MULTISTAR_COUNT] = {0};
+	double drifts[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+	double drifts_x[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+	double drifts_y[INDIGO_MAX_MULTISTAR_COUNT] = {0};
 	double average = 0;
 	double drift_x, drift_y;
 
