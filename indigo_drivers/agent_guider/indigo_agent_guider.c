@@ -598,6 +598,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			}
 		}
 		if (missing_selection && AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
+			/* DEVICE_PRIVATE_DATA->stars is already filtered for oversaturation and close stars */
 			int star_count = 0;
 			for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
@@ -608,16 +609,17 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				}
 				item_x->number.target = item_x->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
 				item_y->number.target = item_y->number.value = DEVICE_PRIVATE_DATA->stars[i].y;
-				//indigo_debug("#### Star %d: %d, %d", i, (int)item_x->number.value, (int)item_y->number.value);
 				star_count++;
 			}
-			//indigo_debug("#### Star ----------------- %d", star_count);
+			/* In case the number of the stars found is less than AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM
+			   set ramaining selections to 0. Otherwise we will have leftover "ghost" stars from the
+			   previous search.
+			 */
 			for (int i = star_count; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 				item_x->number.target = item_x->number.value = 0;
 				item_y->number.target = item_y->number.value = 0;
-				//indigo_debug("#### Star %d: %d, %d", i, (int)item_x->number.value, (int)item_y->number.value);
 			}
 			indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		}
