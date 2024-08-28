@@ -25,6 +25,7 @@ make
 cd indigo_optional_drivers/ccd_andor
 
 make
+make install
 
 
 Tested to compile against:
