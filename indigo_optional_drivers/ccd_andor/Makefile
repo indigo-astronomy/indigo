@@ -2,13 +2,12 @@
 # Copyright (c) 2018 Rumen G. Bogdanovski
 # All rights reserved.
 
+include ../../Makefile.inc
+
 DRIVER_NAME=indigo_ccd_andor
 
 ROOT=../..
-BUILD_ROOT=$(ROOT)/build
-BUILD_DRIVERS=$(BUILD_ROOT)/drivers
-BUILD_LIB=$(BUILD_ROOT)/lib
-BUILD_INCLUDE=$(BUILD_ROOT)/include
+DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT)
 
 DEBUG_BUILD=-g
 
@@ -41,6 +40,9 @@ $(BUILD_DRIVERS)/$(DRIVER_NAME): $(DRIVER_NAME)_main.o $(BUILD_DRIVERS)/$(DRIVER
 
 $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT): $(DRIVER_NAME).o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -landor
+
+install:
+	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
 
 clean:
 	rm $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(BUILD_DRIVERS)/$(DRIVER_NAME) $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT) $(DRIVER_NAME)_main.o $(DRIVER_NAME).o
