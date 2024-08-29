@@ -5,6 +5,7 @@
 include ../../Makefile.inc
 
 DRIVER_NAME=indigo_ccd_andor
+DRIVER_METADATA=indigo/indigo_andor_drivers
 
 ROOT=../..
 DRIVER_SO = $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT)
@@ -30,7 +31,7 @@ endif
 #
 #---------------------------------------------------------------------
 
-all: $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(BUILD_DRIVERS)/$(DRIVER_NAME) $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT)
+all: $(BUILD_SHARE)/$(DRIVER_METADATA) $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(BUILD_DRIVERS)/$(DRIVER_NAME) $(DRIVER_SO)
 
 $(BUILD_DRIVERS)/$(DRIVER_NAME).a: $(DRIVER_NAME).o
 	$(AR) $(ARFLAGS) $@ $^
@@ -41,8 +42,17 @@ $(BUILD_DRIVERS)/$(DRIVER_NAME): $(DRIVER_NAME)_main.o $(BUILD_DRIVERS)/$(DRIVER
 $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT): $(DRIVER_NAME).o
 	$(CC) -shared -o $@ $^ $(LDFLAGS) -lindigo -landor
 
-install:
+$(BUILD_SHARE)/$(DRIVER_METADATA): $(DRIVER_SO)
+	$(BUILD_BIN)/indigo_driver_metadata $^ >$@
+
+install: all
 	install -m 0644 $(DRIVER_SO) $(INSTALL_LIB)
+	install -m 0644 $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(INSTALL_LIB)
+	install $(BUILD_DRIVERS)/$(DRIVER_NAME) $(INSTALL_BIN)
+	$(BUILD_BIN)/indigo_driver_metadata $(DRIVER_SO) >$(INSTALL_SHARE)/$(DRIVER_METADATA)
+
+uninstall:
+	rm -f $(INSTALL_LIB)/$(DRIVER_NAME).$(SOEXT) $(INSTALL_LIB)/$(DRIVER_NAME).a $(INSTALL_BIN)/$(DRIVER_NAME) $(INSTALL_SHARE)/$(DRIVER_METADATA)
 
 clean:
-	rm $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(BUILD_DRIVERS)/$(DRIVER_NAME) $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT) $(DRIVER_NAME)_main.o $(DRIVER_NAME).o
+	rm -f $(BUILD_DRIVERS)/$(DRIVER_NAME).a $(BUILD_DRIVERS)/$(DRIVER_NAME) $(BUILD_DRIVERS)/$(DRIVER_NAME).$(SOEXT) $(DRIVER_NAME)_main.o $(DRIVER_NAME).o
