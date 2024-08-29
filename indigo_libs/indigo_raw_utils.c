@@ -2396,7 +2396,17 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 
 	INDIGO_DEBUG(
 		for (size_t i = 0;i < found; i++) {
-			indigo_debug("indigo_find_stars: star #%u = (%lf, %lf), ncdist = %lf, lum = %lf, close_to_other = %d", i+1, star_list[i].x, star_list[i].y, star_list[i].nc_distance, star_list[i].luminance, star_list[i].close_to_other);
+			indigo_debug(
+				"%s: star #%u = (%lf, %lf), ncdist = %lf, lum = %lf, close_to_other = %d, oversaturated = %d",
+				__FUNCTION__,
+				i+1,
+				star_list[i].x,
+				star_list[i].y,
+				star_list[i].nc_distance,
+				star_list[i].luminance,
+				star_list[i].close_to_other,
+				star_list[i].oversaturated
+			);
 		}
 	)
 
@@ -2407,6 +2417,38 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	return indigo_find_stars_precise(raw_type, data, 0, width, height, stars_max, star_list, stars_found);
 }
+
+indigo_result indigo_find_stars_precise_filtered(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
+	indigo_result res = indigo_find_stars_precise(raw_type, data, radius, width, height, stars_max, star_list, stars_found);
+	if (res != INDIGO_OK) {
+		return res;
+	}
+	/* Filter out stars that are too close to the edges or are oversaturated */
+	int top_left_x = width * 0.05;
+	int bottom_right_x = width * 0.95;
+	int top_left_y = height * 0.05;
+	int bottom_right_y = height * 0.95;
+	int usable = 0;
+	for (int i = 0; i < *stars_found; i++) {
+		if (
+			star_list[i].oversaturated || star_list[i].close_to_other ||
+			star_list[i].x < top_left_x || star_list[i].x > bottom_right_x ||
+			star_list[i].y < top_left_y || star_list[i].y > bottom_right_y
+		) {
+			indigo_debug("%s: SKIP star #%d (%lf, %lf), oversaturated = %d close_to_other = %d", __FUNCTION__, i+1, star_list[i].x, star_list[i].y, star_list[i].oversaturated, star_list[i].close_to_other);
+			continue;
+		}
+		indigo_debug("%s: KEEP star #%d (%lf, %lf) , oversaturated = %d close_to_other = %d", __FUNCTION__, i+1, star_list[i].x, star_list[i].y, star_list[i].oversaturated, star_list[i].close_to_other);
+		star_list[usable++] = star_list[i];
+	}
+	indigo_debug("%s: %d usable stars of %d found", __FUNCTION__, usable, *stars_found);
+	*stars_found = usable;
+	//for (int i = 0; i < usable; i++) {
+	//	indigo_debug("%s: usable star #%d (%lf, %lf)", __FUNCTION__, i+1, star_list[i].x, star_list[i].y);
+	//}
+	return INDIGO_OK;
+}
+
 
 static int nc_distance_comparator(const void *item_1, const void *item_2) {
 	if (((indigo_star_detection *)item_1)->nc_distance < ((indigo_star_detection *)item_2)->nc_distance)

@@ -115,7 +115,7 @@
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+0)
 #define AGENT_GUIDER_FLIP_REVERSES_DEC_DISABLED_ITEM		(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->items+1)
 
-#define MAX_STAR_COUNT												50
+#define MAX_STAR_COUNT												75
 #define AGENT_GUIDER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
 #define AGENT_GUIDER_STARS_REFRESH_ITEM  			(AGENT_GUIDER_STARS_PROPERTY->items+0)
 
@@ -557,7 +557,7 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			int star_count;
 			indigo_star_detection stars[MAX_STAR_COUNT];
 			indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-			indigo_find_stars_precise(
+			indigo_find_stars_precise_filtered(
 				header->signature,
 				(void*)header + sizeof(indigo_raw_header),
 				(int)AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value,
@@ -567,30 +567,18 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				(indigo_star_detection *)&stars,
 				&star_count
 			);
-			int j = 0;
-			int top_left_x = header->width * 0.05;
-			int bottom_right_x = header->width * 0.95;
-			int top_left_y = header->height * 0.05;
-			int bottom_right_y = header->height * 0.95;
 			for (int i = 0; i < star_count; i++) {
-				if (
-					stars[i].oversaturated || stars[i].close_to_other ||
-					stars[i].x < top_left_x || stars[i].x > bottom_right_x ||
-					stars[i].y < top_left_y || stars[i].y > bottom_right_y
-				) {
-					continue;
-				}
-				DEVICE_PRIVATE_DATA->stars[j] = stars[i];
+				DEVICE_PRIVATE_DATA->stars[i] = stars[i];
 				char name[8];
 				char label[32];
-				snprintf(name, sizeof(name), "%d", j);
-				snprintf(label, sizeof(label), "[%d, %d]", (int)DEVICE_PRIVATE_DATA->stars[j].x, (int)DEVICE_PRIVATE_DATA->stars[j].y);
-				indigo_init_switch_item(AGENT_GUIDER_STARS_PROPERTY->items + j++ + 1, name, label, false);
+				snprintf(name, sizeof(name), "%d", i);
+				snprintf(label, sizeof(label), "[%d, %d]", (int)DEVICE_PRIVATE_DATA->stars[i].x, (int)DEVICE_PRIVATE_DATA->stars[i].y);
+				indigo_init_switch_item(AGENT_GUIDER_STARS_PROPERTY->items + i + 1, name, label, false);
 			}
-			AGENT_GUIDER_STARS_PROPERTY->count = j + 1;
+			AGENT_GUIDER_STARS_PROPERTY->count = star_count + 1;
 			AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-			if (j == 0 && (!AGENT_GUIDER_START_PREVIEW_ITEM->sw.value || AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0)) {
+			if (star_count == 0 && (!AGENT_GUIDER_START_PREVIEW_ITEM->sw.value || AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0)) {
 				indigo_send_message(device, "Warning: No stars detected");
 				AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
 				indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -598,7 +586,6 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			}
 		}
 		if (missing_selection && AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 0) {
-			/* DEVICE_PRIVATE_DATA->stars is already filtered for oversaturation and close stars */
 			int star_count = 0;
 			for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
