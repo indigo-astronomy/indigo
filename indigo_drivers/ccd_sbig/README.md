@@ -24,6 +24,7 @@ indigo_server indigo_ccd_sbig
 
 Driver is developed and tested with:
 * SBIG ST-2000XCM
+* SBIG ST-2000XM
 * SBIG ST-7XE
 * SBIG CFW-8A
 * SBIG AO-7

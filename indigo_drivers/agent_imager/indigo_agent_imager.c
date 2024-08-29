@@ -582,7 +582,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 			if (DEVICE_PRIVATE_DATA->find_stars || (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count == 1)) {
 				int star_count;
 				indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-				indigo_find_stars_precise(
+				indigo_find_stars_precise_filtered(
 					header->signature,
 					(void*)header + sizeof(indigo_raw_header),
 					AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value,
@@ -613,27 +613,27 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 				}
 			}
 			if (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0 && AGENT_IMAGER_STARS_PROPERTY->count > 1) {
-				int selection_index = 0;
-				for (int i = 0; i < AGENT_IMAGER_STARS_PROPERTY->count && selection_index < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-					indigo_star_detection *star = DEVICE_PRIVATE_DATA->stars + i;
-					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "star #%d -> oversturated = %d, NCD = %g, close_to_other = %d", i, star->oversaturated, star->nc_distance, star->close_to_other);
-					if (star->oversaturated || star->nc_distance > 0.5 || star->close_to_other)
-						continue;
-					indigo_item *item_x = AGENT_IMAGER_SELECTION_X_ITEM + 2 * selection_index;
-					indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * selection_index;
-					item_x->number.target = item_x->number.value = star->x;
-					item_y->number.target = item_y->number.value = star->y;
-					selection_index++;
-				}
-				if (selection_index < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value) {
-					indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", selection_index, (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value);
-				} else {
-					for (int i = selection_index; i < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
-						indigo_item *item_x = AGENT_IMAGER_SELECTION_X_ITEM + 2 * i;
-						indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
-						item_x->number.target = item_x->number.value = 0;
-						item_y->number.target = item_y->number.value = 0;
+				int star_count = 0;
+				for (int i = 0; i < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
+					indigo_item *item_x = AGENT_IMAGER_SELECTION_X_ITEM + 2 * i;
+					indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
+					if (i == AGENT_IMAGER_STARS_PROPERTY->count - 1) {
+						indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value);
+						break;
 					}
+					item_x->number.target = item_x->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
+					item_y->number.target = item_y->number.value = DEVICE_PRIVATE_DATA->stars[i].y;
+					star_count++;
+				}
+				/* In case the number of the stars found is less than AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM
+				set ramaining selections to 0. Otherwise we will have leftover "ghost" stars from the
+				previous search.
+				*/
+				for (int i = star_count; i < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
+					indigo_item *item_x = AGENT_IMAGER_SELECTION_X_ITEM + 2 * i;
+					indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
+					item_x->number.target = item_x->number.value = 0;
+					item_y->number.target = item_y->number.value = 0;
 				}
 				indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 			}
