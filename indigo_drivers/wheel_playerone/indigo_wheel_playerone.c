@@ -23,7 +23,7 @@
  \file indigo_wheel_playerone.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME "indigo_wheel_playerone"
 
 #define PONE_HANDLE_MAX 24
@@ -503,12 +503,17 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No Pheoenix FW unplugged (maybe Player One camera)!");
 					continue;
 				}
-				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
+				/* WE SHOULD FIND THE ROOT CAUSE !!! */
+				/*
+				   The driver locks with ASI EAF if timeout is the same (ASI uses 0.5s). With other drivers it does not seem to be an issue.
+				   I tried with Touptek AAF and ASI EFW and all work fine with 0.5s timeout. Only ASI EAF and Player One FW do not play well together.
+				*/
+				indigo_set_timer(NULL, 0.7, process_plug_event, NULL);
 			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
+			indigo_set_timer(NULL, 0.7, process_unplug_event, NULL);
 			break;
 		}
 	}
