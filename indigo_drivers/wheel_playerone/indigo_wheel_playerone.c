@@ -294,7 +294,6 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- hot-plug support
 
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 #define MAX_DEVICES                   10
 #define NO_DEVICE                 (-1000)
 
@@ -412,23 +411,23 @@ static void process_plug_event(indigo_device *unused) {
 		NULL,
 		wheel_detach
 		);
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	int slot = find_available_device_slot();
 	if (slot < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 	int handle = find_plugged_device_handle();
 	if (handle == NO_DEVICE) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No plugged device found.");
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	}
 	int res = POAOpenPW(handle);
 	if (res) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d}) = %d", handle, res);
-		pthread_mutex_unlock(&device_mutex);
+		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	} else {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d}) = %d", handle, res);
@@ -442,7 +441,7 @@ static void process_plug_event(indigo_device *unused) {
 		}
 		if (res != PW_ERROR_IS_MOVING) {
 			POAClosePW(handle);
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
 		indigo_usleep(ONE_SECOND_DELAY);
@@ -466,19 +465,19 @@ static void process_plug_event(indigo_device *unused) {
 	device->private_data = private_data;
 	indigo_attach_device(device);
 	devices[slot]=device;
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static void process_unplug_event(indigo_device *unused) {
 	int slot, handle;
 	bool removed = false;
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	while ((handle = find_unplugged_device_handle()) != -1) {
 		slot = find_device_slot(handle);
 		if (slot < 0) continue;
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
-			pthread_mutex_unlock(&device_mutex);
+			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
 		indigo_detach_device(*device);
@@ -490,7 +489,7 @@ static void process_unplug_event(indigo_device *unused) {
 	if (!removed) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No Pheoenix FW unplugged (maybe Player One camera)!");
 	}
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {
@@ -503,17 +502,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "No Pheoenix FW unplugged (maybe Player One camera)!");
 					continue;
 				}
-				/* WE SHOULD FIND THE ROOT CAUSE !!! */
-				/*
-				   The driver locks with ASI EAF if timeout is the same (ASI uses 0.5s). With other drivers it does not seem to be an issue.
-				   I tried with Touptek AAF and ASI EFW and all work fine with 0.5s timeout. Only ASI EAF and Player One FW do not play well together.
-				*/
-				indigo_set_timer(NULL, 0.7, process_plug_event, NULL);
+				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			}
 			break;
 		}
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT: {
-			indigo_set_timer(NULL, 0.7, process_unplug_event, NULL);
+			indigo_set_timer(NULL, 0.5, process_unplug_event, NULL);
 			break;
 		}
 	}

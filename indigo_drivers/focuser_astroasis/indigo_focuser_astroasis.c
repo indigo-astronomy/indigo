@@ -23,7 +23,7 @@
  \file indigo_focuser_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_focuser_astroasis"
 
 #include <stdlib.h>
@@ -798,7 +798,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 }
 
 // hot-plug support
-static pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 typedef struct _FOCUSER_LIST {
 	indigo_device *device[AO_FOCUSER_MAX_NUM];
@@ -915,7 +914,7 @@ static void focuser_refresh(void) {
 
 	AOFocuserScan(&number, ids);
 
-	pthread_mutex_lock(&global_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 
 	for (i = 0; i < number; i++) {
 		int pos = focuser_get_index(ids[i]);
@@ -945,7 +944,7 @@ static void focuser_refresh(void) {
 
 	memcpy(&gFocusers, &focusers, sizeof(FOCUSER_LIST));
 
-	pthread_mutex_unlock(&global_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static void process_plug_event(indigo_device *unused) {
@@ -974,7 +973,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 };
 
 static void remove_all_devices() {
-	pthread_mutex_lock(&global_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 
 	for (int i = 0; i < gFocusers.count; i++) {
 		indigo_device *device = gFocusers.device[i];
@@ -988,7 +987,7 @@ static void remove_all_devices() {
 
 	memset(&gFocusers, 0, sizeof(FOCUSER_LIST));
 
-	pthread_mutex_unlock(&global_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static libusb_hotplug_callback_handle callback_handle;

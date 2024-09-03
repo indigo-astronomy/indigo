@@ -23,7 +23,7 @@
  \file indigo_wheel_mi.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_wheel_mi"
 
 #include <ctype.h>
@@ -250,7 +250,6 @@ static indigo_result wheel_detach(indigo_device *device) {
 
 static indigo_device *devices[MAX_DEVICES];
 static int new_eid = -1;
-static pthread_mutex_t device_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void callback(int eid) {
 	for (int i = 0; i < MAX_DEVICES; i++) {
@@ -271,7 +270,7 @@ static void process_plug_event(libusb_device *dev) {
 		NULL,
 		wheel_detach
 		);
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	new_eid = -1;
 	gxfw_enumerate_usb(callback);
 	if (new_eid != -1) {
@@ -296,11 +295,11 @@ static void process_plug_event(libusb_device *dev) {
 			}
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static void process_unplug_event(libusb_device *dev) {
-	pthread_mutex_lock(&device_mutex);
+	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	uint8_t bus = libusb_get_bus_number(dev);
 	uint8_t addr = libusb_get_device_address(dev);
 	for (int i = MAX_DEVICES - 1; i >=0; i--) {
@@ -313,7 +312,7 @@ static void process_unplug_event(libusb_device *dev) {
 			devices[i] = NULL;
 		}
 	}
-	pthread_mutex_unlock(&device_mutex);
+	pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 }
 
 static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotplug_event event, void *user_data) {

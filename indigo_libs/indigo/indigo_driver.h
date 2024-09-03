@@ -410,6 +410,10 @@ extern void indigo_lock_master_device(indigo_device *device);
 extern void indigo_unlock_master_device(indigo_device *device);
 
 
+/** Global mutex for device enumeration. Should be locked for device enumeration in the drivers.
+ */
+extern pthread_mutex_t indigo_device_enumeration_mutex;
+
 #ifdef __cplusplus
 }
 #endif

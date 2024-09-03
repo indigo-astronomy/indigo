@@ -69,6 +69,8 @@
 
 #define MAX_SLAVE_DEVICES 10
 
+extern pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 indigo_result indigo_try_global_lock(indigo_device *device) {
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
