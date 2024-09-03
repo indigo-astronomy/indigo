@@ -43,6 +43,7 @@
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_raw_utils.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_guider.h"
 
@@ -214,6 +215,7 @@ typedef struct {
 	unsigned int dither_num;
 	pthread_mutex_t mutex;
 	int log_file;
+	char log_file_name[PATH_MAX];
 } agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -247,18 +249,19 @@ static void save_config(indigo_device *device) {
 }
 
 static void open_log(indigo_device *device) {
-	char path[PATH_MAX];
 	time_t now = time(NULL);
 	struct tm *local = localtime(&now);
-	strncpy(path, AGENT_GUIDER_LOG_DIR_ITEM->text.value, PATH_MAX);
-	int len = (int)strlen(path);
-	strftime(path + len, PATH_MAX - len, AGENT_GUIDER_LOG_TEMPLATE_ITEM->text.value, local);
+	strncpy(DEVICE_PRIVATE_DATA->log_file_name, AGENT_GUIDER_LOG_DIR_ITEM->text.value, PATH_MAX);
+	int len = (int)strlen(DEVICE_PRIVATE_DATA->log_file_name);
+	strftime(DEVICE_PRIVATE_DATA->log_file_name + len, PATH_MAX - len, AGENT_GUIDER_LOG_TEMPLATE_ITEM->text.value, local);
 	if (DEVICE_PRIVATE_DATA->log_file > 0)
 		close(DEVICE_PRIVATE_DATA->log_file);
-	DEVICE_PRIVATE_DATA->log_file = open(path, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	DEVICE_PRIVATE_DATA->log_file = open(DEVICE_PRIVATE_DATA->log_file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (DEVICE_PRIVATE_DATA->log_file == -1) {
 		indigo_send_message(device, "Failed to create guiding log file (%s)", strerror(errno));
 	}
+	indigo_server_remove_resource("/guiding");
+	indigo_server_add_file_resource("/guiding", DEVICE_PRIVATE_DATA->log_file_name, "text/csv; charset=UTF-8");
 }
 
 static void write_log_header(indigo_device *device, const char *log_type) {

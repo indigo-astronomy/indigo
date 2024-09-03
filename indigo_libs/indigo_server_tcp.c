@@ -289,7 +289,11 @@ static void start_worker_thread(int *client_socket) {
 							char file_name[256];
 							struct stat file_stat;
 							int handle;
-							sprintf(file_name, "%s/%s", getenv("HOME"), resource->file_name);
+							if (*resource->file_name == '/') {
+								strcpy(file_name, resource->file_name);
+							} else {
+								sprintf(file_name, "%s/%s", getenv("HOME"), resource->file_name);
+							}
 							if (stat(file_name, &file_stat) < 0 || (handle = open(file_name, O_RDONLY)) < 0) {
 								INDIGO_PRINTF(socket, "HTTP/1.1 404 Not found\r\n");
 								INDIGO_PRINTF(socket, "Content-Type: text/plain\r\n");
@@ -298,9 +302,12 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_TRACE(indigo_trace("%d <- // Failed to stat/open file (%s, %s)", socket, file_name, strerror(errno)));
 								goto failure;
 							} else {
+								const char *base_name = strrchr(file_name, '/');
+								base_name = base_name ? base_name + 1 : file_name;
 								INDIGO_PRINTF(socket, "HTTP/1.1 200 OK\r\n");
 								INDIGO_PRINTF(socket, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								INDIGO_PRINTF(socket, "Content-Type: %s\r\n", resource->content_type);
+								INDIGO_PRINTF(socket, "Content-Disposition: attachment; filename=%s\r\n", base_name);
 								INDIGO_PRINTF(socket, "Content-Length: %d\r\n", file_stat.st_size);
 								INDIGO_PRINTF(socket, "\r\n");
 								long remaining = file_stat.st_size;
