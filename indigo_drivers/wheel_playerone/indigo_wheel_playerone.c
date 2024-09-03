@@ -426,11 +426,11 @@ static void process_plug_event(indigo_device *unused) {
 	}
 	int res = POAOpenPW(handle);
 	if (res) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d}) = %d", handle, res);
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAOpenPW(%d) = %d", handle, res);
 		pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 		return;
 	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d}) = %d", handle, res);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAOpenPW(%d) = %d", handle, res);
 	}
 	while (true) {
 		res = POAGetPWPropertiesByHandle(handle, &info);

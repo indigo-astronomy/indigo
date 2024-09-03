@@ -2646,7 +2646,6 @@ static void process_plug_event(indigo_device *unusued) {
 			}
 			// Device is focuser
 			if (cam.model->flag & SDK_DEF(FLAG_AUTOFOCUSER)) {
-				INDIGO_DRIVER_LOG(DRIVER_NAME, "Focus motor '%s' found, unsupported yet", cam.displayname);
 				static indigo_device focuser_template = INDIGO_DEVICE_INITIALIZER(
 					"",
 					focuser_attach,
