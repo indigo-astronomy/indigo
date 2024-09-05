@@ -175,6 +175,7 @@
 #include "ccd_bresser/indigo_ccd_bresser.h"
 #include "focuser_optecfl/indigo_focuser_optecfl.h"
 #include "focuser_fc3/indigo_focuser_fc3.h"
+#include "focuser_lacerta/indigo_focuser_lacerta.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -284,6 +285,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_focusdreampro,
 	indigo_focuser_fli,
 	indigo_focuser_ioptron,
+	indigo_focuser_lacerta,
 	indigo_focuser_lakeside,
 	indigo_focuser_lunatico,
 	indigo_focuser_mjkzz,
