@@ -632,7 +632,7 @@ uint8_t *ptp_decode_property(uint8_t *source, uint32_t size, indigo_device *devi
 			INDIGO_LOG(indigo_log("code:%x is array type(%x)", target->code, target->type));
 			return source;
 		default:
-			INDIGO_LOG(indigo_log("Unsupported type=%x", target->type));
+			INDIGO_LOG(indigo_log("Unsupported property %x type=%x", target->code, target->type));
 			return NULL;
 	}
 	// Some models are not given a form flag.
@@ -1581,7 +1581,7 @@ bool ptp_initialise(indigo_device *device) {
 		PTP_DUMP_DEVICE_INFO();
 		if (PRIVATE_DATA->inject_property) {
 			PRIVATE_DATA->inject_property(device);
-		indigo_log("injected:");
+			indigo_log("injected:");
 			PTP_DUMP_DEVICE_INFO();
 		}
 		if (buffer)
@@ -1607,7 +1607,7 @@ bool ptp_initialise(indigo_device *device) {
 			i--;
 		}
 #endif
-		
+		PTP_DUMP_DEVICE_INFO();
 		uint32_t size = 0;
 		for (int i = 0; properties[i]; i++) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, &size)) {
