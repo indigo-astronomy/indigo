@@ -254,7 +254,7 @@ As mentioned above the devices that the driver will handle should be initialized
 - **enable BLOB** - client requests enableBLOB mode change (BLOBs are explained in [CLIENT_DEVELOPMENT_BASICS.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/CLIENT_DEVELOPMENT_BASICS.md))
 - **device detach** - device is detached from the bus
 
-For each of this event a callback should be registered and if ignored the callback shall be set to *NULL*, however there are predefined callbacks for each device class that can be used if the driver does not need to handle this event. Also if the device does not need to handle some event it can be left to the base class handler. It is important to note that if the device registers its own callback it should call the base class callback for all not handled cases.
+For each of these events a callback should be registered and if ignored the callback shall be set to *NULL*, however there are predefined callbacks for each device class that can be used if the driver does not need to handle this event. Also if the device does not need to handle some event it can be left to the base class handler. It is important to note that if the device registers its own callback it should call the base class callback for all not handled cases.
 The following example illustrates this:
 
 ```C
