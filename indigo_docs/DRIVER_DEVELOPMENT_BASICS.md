@@ -254,7 +254,7 @@ As mentioned above the devices that the driver will handle should be initialized
 - **enable BLOB** - client requests enableBLOB mode change (BLOBs are explained in [CLIENT_DEVELOPMENT_BASICS.md](https://github.com/indigo-astronomy/indigo/blob/master/indigo_docs/CLIENT_DEVELOPMENT_BASICS.md))
 - **device detach** - device is detached from the bus
 
-For each of this event a callback should be registered and if ignored the callback shall be set to *NULL*, however there are predefined callbacks for each device class that can be used if the driver does not need to handle this event. Also if the device does not need to handle some event it can be left to the base class handler. It is important to note that if the device registers its own callback it should call the base class callback for all not handled cases.
+For each of these events a callback should be registered and if ignored the callback shall be set to *NULL*, however there are predefined callbacks for each device class that can be used if the driver does not need to handle this event. Also if the device does not need to handle some event it can be left to the base class handler. It is important to note that if the device registers its own callback it should call the base class callback for all not handled cases.
 The following example illustrates this:
 
 ```C
@@ -310,7 +310,7 @@ static indigo_result atik_wheel_detach(indigo_device *device) {
 }
 ```
 
-In the example above we handle only  **device attach**, **change property** and **device detach** handled, we do not have any custom properties so we will relay on the base class handler for the property enumeration and we do not have any BLOBSs so we will ignore them.
+In the example above we handle only  **device attach**, **change property** and **device detach**. Since we do not have any custom properties, we will rely on the base class handler for the property enumeration; we also do not have any BLOBs so we will ignore them.
 We need to provide our callbacks in the *indigo_device* structure. There is an initializer macro, where we also provide the device name:
 
 ```C

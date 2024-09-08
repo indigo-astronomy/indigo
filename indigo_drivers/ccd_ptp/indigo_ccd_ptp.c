@@ -705,8 +705,10 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 		char usb_path[INDIGO_NAME_SIZE];
 		snprintf(usb_path, INDIGO_NAME_SIZE, "%08x", dev.usbLocationID);
 		indigo_device *device = attach_device(dev.usbVendorID, dev.usbProductID, usb_path);
-		PRIVATE_DATA->dev = (ICCameraDevice *)dev;
-		[dev.userData setObject:[NSValue valueWithPointer:device] forKey:@"device"];
+		if (device != NULL) {
+			PRIVATE_DATA->dev = (ICCameraDevice *)dev;
+			[dev.userData setObject:[NSValue valueWithPointer:device] forKey:@"device"];
+		}
 		pthread_mutex_unlock(&device_mutex);
 	});
 }

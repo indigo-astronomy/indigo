@@ -779,7 +779,23 @@ bool ptp_nikon_initialise(indigo_device *device) {
 				;
 			uint32_t size = 0;
 			for (int i = 0; properties[i]; i++) {
-				target[index] = properties[i];
+				uint16_t code = properties[i];
+
+				char *name = PRIVATE_DATA->property_code_name(code);
+				bool skip = true;
+				if (!strncmp(name, "CCD_", 4)) {
+					skip = false;
+				} else if (!strncmp(name, "DSLR_", 5)) {
+					skip = false;
+				}
+	#ifdef ADVANCED_GROUP
+				else if (!strncmp(name, "ADV_", 4)) {
+					skip = false;
+				}
+	#endif
+				if (skip)
+					continue;				
+				target[index] = code;
 				if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, target[index], &buffer, &size)) {
 					ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + index);
 				}
@@ -792,6 +808,8 @@ bool ptp_nikon_initialise(indigo_device *device) {
 		}
 		if (buffer)
 			free(buffer);
+		indigo_log("vendor:");
+		PTP_DUMP_DEVICE_INFO();
 	}
 	indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
 	return true;
