@@ -254,6 +254,18 @@ var indigo_flipper = {
 	waiting_for_guiding: false,
 	resume_guiding: false,
 	use_solver: false,
+	transitTimer,
+	transitTimerSet: false,
+
+
+	transitTimerTrigger: function() {
+		indigo_send_message("Meridian flip started");
+		this.waiting_for_transit = false;
+		this.waiting_for_slew = true;
+		indigo_change_switch_property(this.devices[3], "AGENT_START_PROCESS", { SLEW: true});
+		// indigo_cancel_timer(this.transitTimer);
+		this.transitTimerSet = false;
+	},
 
 	on_update: function(property) {
 		if (this.waiting_for_transit)
@@ -265,12 +277,21 @@ var indigo_flipper = {
 		else if (this.waiting_for_guiding)
 			indigo_log("waiting_for_guiding " + property.name + " -> " + property.state);
 		if (this.waiting_for_transit && property.device == this.devices[3] && property.name == "AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY") {
+			if (!this.transitTimerSet) {
+				this.transitTimerSet = true;
+				// Convert TIME_TO_TRANSIT to seconds and set a timer for that long
+				var interval = property.items.TIME_TO_TRANSIT*3600 + 60;
+				indigo_send_message("Meridian flip timer set for " + String(interval) + " seconds");
+				this.transitTimer = indigo_set_timer(this.transitTimerTrigger, interval);
+			}
+			/*
 			if (property.items.TIME_TO_TRANSIT > 12) {
 				indigo_send_message("Meridian flip started");
 				this.waiting_for_transit = false;
 				this.waiting_for_slew = true;
 				indigo_change_switch_property(this.devices[3], "AGENT_START_PROCESS", { SLEW: true});
 			}
+			*/
 		} else if (this.waiting_for_slew && property.device == this.devices[3] && property.name == "AGENT_START_PROCESS") {
 			if (property.state == "Alert") {
 				delete indigo_event_handlers.indigo_flipper;
