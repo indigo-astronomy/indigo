@@ -1440,38 +1440,38 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(SBIG_ADD_WHEEL_PROPERTY, property, false);
 		SBIG_ADD_WHEEL_PROPERTY->state = INDIGO_OK_STATE;
 
-		indigo_error("SBIG_ADD_WHEEL_PROPERTY: %d %d", cfw6a_state, cfw8_state);
-		pthread_mutex_lock(&driver_mutex);
-		if (cfw6a_state != SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A state changed from %d to %d", cfw6a_state, SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value);
-			CFWResults cfwr;
+		//indigo_error("SBIG_ADD_WHEEL_PROPERTY: %d %d", cfw6a_state, cfw8_state);
+		//pthread_mutex_lock(&driver_mutex);
+
+		if (cfw6a_state != SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value && !SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A unplug state changed to %d", SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value);
+			unplug_wheel(PRIVATE_DATA->dev_name, CFWSEL_CFW6A);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A unplug end");
+		}
+
+		if (cfw8_state != SBIG_ADD_WHEEL_CFW8_ITEM->sw.value && !SBIG_ADD_WHEEL_CFW8_ITEM->sw.value) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 unplug state changed to %d", SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value);
+			unplug_wheel(PRIVATE_DATA->dev_name, CFWSEL_CFW8);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 unplug end");
+		}
+
+		CFWResults cfwr;
+		if (cfw6a_state != SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value && SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value) {
 			cfwr.cfwModel = CFWSEL_CFW6A;
 			cfwr.cfwResult2 = 6;
-			if (SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A state changed to %d", SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value);
-				plug_wheel(device, cfwr);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A end");
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A unplug state changed to %d", SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value);
-				unplug_wheel(PRIVATE_DATA->dev_name, cfwr.cfwModel);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A unplug end");
-			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A state changed to %d", SBIG_ADD_WHEEL_CFW6A_ITEM->sw.value);
+			plug_wheel(device, cfwr);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW6A end");
 		}
-		if (cfw8_state != SBIG_ADD_WHEEL_CFW8_ITEM->sw.value) {
-			CFWResults cfwr;
+
+		if (cfw8_state != SBIG_ADD_WHEEL_CFW8_ITEM->sw.value && SBIG_ADD_WHEEL_CFW8_ITEM->sw.value) {
 			cfwr.cfwModel = CFWSEL_CFW8;
 			cfwr.cfwResult2 = 5;
-			if (SBIG_ADD_WHEEL_CFW8_ITEM->sw.value) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 state changed to %d", SBIG_ADD_WHEEL_CFW8_ITEM->sw.value);
-				plug_wheel(device, cfwr);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 plug end");
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 unplug state changed to %d", SBIG_ADD_WHEEL_CFW8_ITEM->sw.value);
-				unplug_wheel(PRIVATE_DATA->dev_name, cfwr.cfwModel);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 unplug end");
-			}
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 state changed to %d", SBIG_ADD_WHEEL_CFW8_ITEM->sw.value);
+			plug_wheel(device, cfwr);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFW8 plug end");
 		}
-		pthread_mutex_unlock(&driver_mutex);
+		//pthread_mutex_unlock(&driver_mutex);
 
 		indigo_update_property(device, SBIG_ADD_WHEEL_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1481,7 +1481,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(SBIG_ADD_AO_PROPERTY, property, false);
 		SBIG_ADD_AO_PROPERTY->state = INDIGO_OK_STATE;
 
-		pthread_mutex_lock(&driver_mutex);
+		//pthread_mutex_lock(&driver_mutex);
 		if (ao_state != SBIG_ADD_AO_ITEM->sw.value) {
 			if (SBIG_ADD_AO_ITEM->sw.value) {
 				plug_ao(device, false);
@@ -1489,7 +1489,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				unplug_ao(PRIVATE_DATA->dev_name);
 			}
 		}
-		pthread_mutex_unlock(&driver_mutex);
+		//pthread_mutex_unlock(&driver_mutex);
 		indigo_update_property(device, SBIG_ADD_AO_PROPERTY, NULL);
 		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- CONFIG
@@ -1989,7 +1989,9 @@ static void wheel_connect_callback(indigo_device *device) {
 		}
 	} else { /* disconnect */
 		if(DEVICE_CONNECTED) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Disconnecting filter wheel");
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->wheel_timer);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Cancel timer");
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 			if ( res != CE_NO_ERROR ) {
