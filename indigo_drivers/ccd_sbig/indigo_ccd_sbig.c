@@ -2166,6 +2166,120 @@ static int find_device_slot(SBIG_DEVICE_TYPE usb_id) {
 }
 
 
+static bool plug_optional_device(indigo_device *device) {
+	short res;
+
+	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
+		"",
+		wheel_attach,
+		indigo_wheel_enumerate_properties,
+		wheel_change_property,
+		NULL,
+		wheel_detach
+	);
+
+	static indigo_device ao_template = INDIGO_DEVICE_INITIALIZER(
+		"",
+		ao_attach,
+		indigo_ao_enumerate_properties,
+		ao_change_property,
+		NULL,
+		ao_detach
+	);
+	indigo_device *master_device = device;
+	indigo_device *new_device = NULL;
+
+	char device_index_str[20] = "NET";
+	if (PRIVATE_DATA->is_usb) {
+		sprintf(device_index_str, "%d", usb_to_index(PRIVATE_DATA->usb_id));
+	}
+
+	/* Check it there is filter wheel present */
+	CFWParams cfwp = {
+		.cfwModel = CFWSEL_AUTO,
+		.cfwCommand = CFWC_OPEN_DEVICE,
+	};
+	CFWResults cfwr;
+
+	if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) == CE_NO_ERROR) {
+		cfwp.cfwCommand = CFWC_GET_INFO;
+		cfwp.cfwParam1 = CFWG_FIRMWARE_VERSION;
+		if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) != CE_NO_ERROR) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_GET_INFO error = %d (%s), asuming no filter wheel", res, sbig_error_string(res));
+		} else {
+			if ((cfwr.cfwModel == CFWSEL_CFW8) || (cfwr.cfwModel == CFWSEL_CFW6A)) {
+				/* These are legacy filter wheels and can not be autodetected
+				   set env SBIG_LEGACY_CFW = CFW8 | CFW6A in order to use them
+				*/
+				cfwr.cfwModel = 0;
+				if (getenv("SBIG_LEGACY_CFW") != NULL) {
+					if (!strcmp(getenv("SBIG_LEGACY_CFW"),"CFW8")) {
+						cfwr.cfwModel = CFWSEL_CFW8;
+						cfwr.cfwResult2 = 5;
+					} else if(!strcmp(getenv("SBIG_LEGACY_CFW"),"CFW6A")) {
+						cfwr.cfwModel = CFWSEL_CFW6A;
+						cfwr.cfwResult2 = 6;
+					}
+				}
+			}
+		}
+		CFWResults cfwr1;
+		cfwp.cfwCommand = CFWC_CLOSE_DEVICE;
+		if ((res = sbig_command(CC_CFW, &cfwp, &cfwr1)) != CE_NO_ERROR) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_CLOSE_DEVICE error = %d (%s)", res, sbig_error_string(res));
+		}
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_OPEN_DEVICE error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
+	}
+
+	if (cfwr.cfwModel != 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d cfwStatus = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2, cfwr.cfwStatus);
+		int slot = find_available_device_slot();
+		if (slot < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+			return false;
+		}
+
+		new_device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
+		sprintf(new_device->name, "SBIG %s", cfw_type[cfwr.cfwModel]);
+		indigo_make_name_unique(new_device->name, "%s", device_index_str);
+		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, new_device->name);
+		PRIVATE_DATA->fw_device = cfwr.cfwModel;
+		PRIVATE_DATA->fw_count = (int)cfwr.cfwResult2;
+		new_device->private_data = PRIVATE_DATA;
+		new_device->master_device = master_device;
+		indigo_attach_device(new_device);
+		devices[slot]=new_device;
+	}
+
+	GetCCDInfoParams gcp;
+
+	/* Check it there is an AO device present */
+	gcp.request = CCD_INFO_EXTENDED2_IMAGING; /* imaging CCD */
+	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &(PRIVATE_DATA->imager_ccd_extended_info4))) == CE_NO_ERROR) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info4.capabilitiesBits = 0x%x", PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits);
+		if ((PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits & 0x10) || getenv("SBIG_LEGACY_AO") != NULL) {
+			if((res = sbig_ao_center()) == CE_NO_ERROR) {
+				int slot = find_available_device_slot();
+				if (slot < 0) {
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
+					return false;
+				}
+
+				new_device = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
+				sprintf(new_device->name, "SBIG AO");
+				indigo_make_name_unique(new_device->name, "%s", device_index_str);
+				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, new_device->name);
+				PRIVATE_DATA->ao_x_deflection = PRIVATE_DATA->ao_y_deflection = 0;
+				new_device->private_data = PRIVATE_DATA;
+				new_device->master_device = master_device;
+				indigo_attach_device(new_device);
+				devices[slot] = new_device;
+			}
+		}
+	}
+}
+
 static bool plug_device(char *cam_name, unsigned short device_type, unsigned long ip_address) {
 	GetCCDInfoParams gcp;
 	GetCCDInfoResults0 gcir0;
@@ -2186,24 +2300,6 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		guider_change_property,
 		NULL,
 		guider_detach
-	);
-
-	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		wheel_attach,
-		indigo_wheel_enumerate_properties,
-		wheel_change_property,
-		NULL,
-		wheel_detach
-	);
-
-	static indigo_device ao_template = INDIGO_DEVICE_INITIALIZER(
-		"",
-		ao_attach,
-		indigo_ao_enumerate_properties,
-		ao_change_property,
-		NULL,
-		ao_detach
 	);
 
 	pthread_mutex_lock(&driver_mutex);
@@ -2334,91 +2430,11 @@ static bool plug_device(char *cam_name, unsigned short device_type, unsigned lon
 		devices[slot]=device;
 	}
 
-	/* Check it there is filter wheel present */
-	CFWParams cfwp = {
-		.cfwModel = CFWSEL_AUTO,
-		.cfwCommand = CFWC_OPEN_DEVICE,
-	};
-	CFWResults cfwr;
-
-	if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) == CE_NO_ERROR) {
-		cfwp.cfwCommand = CFWC_GET_INFO;
-		cfwp.cfwParam1 = CFWG_FIRMWARE_VERSION;
-		if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) != CE_NO_ERROR) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_GET_INFO error = %d (%s), asuming no filter wheel", res, sbig_error_string(res));
-		} else {
-			if ((cfwr.cfwModel == CFWSEL_CFW8) || (cfwr.cfwModel == CFWSEL_CFW6A)) {
-				/* These are legacy filter wheels and can not be autodetected
-				   set env SBIG_LEGACY_CFW = CFW8 | CFW6A in order to use them
-				*/
-				cfwr.cfwModel = 0;
-				if (getenv("SBIG_LEGACY_CFW") != NULL) {
-					if (!strcmp(getenv("SBIG_LEGACY_CFW"),"CFW8")) {
-						cfwr.cfwModel = CFWSEL_CFW8;
-						cfwr.cfwResult2 = 5;
-					} else if(!strcmp(getenv("SBIG_LEGACY_CFW"),"CFW6A")) {
-						cfwr.cfwModel = CFWSEL_CFW6A;
-						cfwr.cfwResult2 = 6;
-					}
-				}
-			}
-
-			if (cfwr.cfwModel != 0) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "cfwModel = %d (%s) cfwPosition = %d positions = %d cfwStatus = %d", cfwr.cfwModel, cfw_type[cfwr.cfwModel], cfwr.cfwPosition, cfwr.cfwResult2, cfwr.cfwStatus);
-				int slot = find_available_device_slot();
-				if (slot < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-					sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-					pthread_mutex_unlock(&driver_mutex);
-					return false;
-				}
-
-				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-				sprintf(device->name, "SBIG %s", cfw_type[cfwr.cfwModel]);
-				indigo_make_name_unique(device->name, "%s", device_index_str);
-				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-				private_data->fw_device = cfwr.cfwModel;
-				private_data->fw_count = (int)cfwr.cfwResult2;
-				device->private_data = private_data;
-				indigo_attach_device(device);
-				devices[slot]=device;
-			}
-		}
-
-		cfwp.cfwCommand = CFWC_CLOSE_DEVICE;
-		if ((res = sbig_command(CC_CFW, &cfwp, &cfwr)) != CE_NO_ERROR) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CFWC_CLOSE_DEVICE error = %d (%s)", res, sbig_error_string(res));
-		}
-	} else {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CFWC_OPEN_DEVICE error = %d (%s), asuming no Secondary CCD", res, sbig_error_string(res));
+	if (plug_optional_device(master_device) == false) {
+		sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
+		pthread_mutex_unlock(&driver_mutex);
+		return false;
 	}
-
-	/* Check it there is an AO device present */
-	gcp.request = CCD_INFO_EXTENDED2_IMAGING; /* imaging CCD */
-	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &(PRIVATE_DATA->imager_ccd_extended_info4))) == CE_NO_ERROR) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info4.capabilitiesBits = 0x%x", PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits);
-		if ((PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits & 0x10) || getenv("SBIG_LEGACY_AO") != NULL) {
-			if((res = sbig_ao_center()) == CE_NO_ERROR) {
-				int slot = find_available_device_slot();
-				if (slot < 0) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No device slots available.");
-					sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
-					pthread_mutex_unlock(&driver_mutex);
-					return false;
-				}
-
-				device = indigo_safe_malloc_copy(sizeof(indigo_device), &ao_template);
-				sprintf(device->name, "SBIG AO");
-				indigo_make_name_unique(device->name, "%s", device_index_str);
-				INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-				private_data->ao_x_deflection = private_data->ao_y_deflection = 0;
-				device->private_data = private_data;
-				indigo_attach_device(device);
-				devices[slot] = device;
-			}
-		}
-	}
-
 
 	sbig_command(CC_CLOSE_DEVICE, NULL, NULL);
 	pthread_mutex_unlock(&driver_mutex);
