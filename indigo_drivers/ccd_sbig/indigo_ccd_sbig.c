@@ -1980,9 +1980,7 @@ static void wheel_connect_callback(indigo_device *device) {
 		}
 	} else { /* disconnect */
 		if(DEVICE_CONNECTED) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Disconnecting filter wheel");
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->wheel_timer);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Cancel timer");
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 			if ( res != CE_NO_ERROR ) {
@@ -2034,7 +2032,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			PRIVATE_DATA->fw_target_slot = WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->fw_current_slot;
 
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Requested filter %d", PRIVATE_DATA->fw_target_slot);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Requested filter %d", PRIVATE_DATA->fw_target_slot);
 
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
