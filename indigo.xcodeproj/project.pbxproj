@@ -224,6 +224,10 @@
 		59588CAD211CC08D00E9FC27 /* indigo_aux_joystick.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */; };
 		59588CB0211CC30C00E9FC27 /* indigo_aux_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */; };
 		59588CB1211CC30C00E9FC27 /* indigo_aux_driver.h in Headers */ = {isa = PBXBuildFile; fileRef = 59588CAF211CC30C00E9FC27 /* indigo_aux_driver.h */; };
+		595A8E592C9479E600E7998C /* indigo_ccd_pentax.c in Sources */ = {isa = PBXBuildFile; fileRef = 595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */; };
+		595A8E5A2C9479E600E7998C /* indigo_ccd_pentax.c in Sources */ = {isa = PBXBuildFile; fileRef = 595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */; };
+		595A8E5B2C9479E600E7998C /* indigo_ccd_pentax.h in Headers */ = {isa = PBXBuildFile; fileRef = 595A8E4E2C9479E600E7998C /* indigo_ccd_pentax.h */; };
+		595A8E5C2C9479E600E7998C /* indigo_ccd_pentax.h in Headers */ = {isa = PBXBuildFile; fileRef = 595A8E4E2C9479E600E7998C /* indigo_ccd_pentax.h */; };
 		595AA1CD1FC5ED8A00350E7B /* indigo_agent_snoop.c in Sources */ = {isa = PBXBuildFile; fileRef = 595AA1CA1FC5ED8A00350E7B /* indigo_agent_snoop.c */; };
 		595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */; };
 		595AA1D11FC5EEFE00350E7B /* indigo_agent.h in Headers */ = {isa = PBXBuildFile; fileRef = 595AA1CF1FC5EEFE00350E7B /* indigo_agent.h */; };
@@ -1467,6 +1471,10 @@
 		59588CAA211CC08D00E9FC27 /* indigo_aux_joystick.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_joystick.h; sourceTree = "<group>"; };
 		59588CAE211CC30B00E9FC27 /* indigo_aux_driver.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_aux_driver.c; sourceTree = "<group>"; };
 		59588CAF211CC30C00E9FC27 /* indigo_aux_driver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_aux_driver.h; sourceTree = "<group>"; };
+		595A8E4B2C9479E600E7998C /* indigo_ccd_pentax_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_pentax_main.c; sourceTree = "<group>"; };
+		595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_pentax.c; sourceTree = "<group>"; wrapsLines = 0; };
+		595A8E4E2C9479E600E7998C /* indigo_ccd_pentax.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_pentax.h; sourceTree = "<group>"; };
+		595A8E512C9479E600E7998C /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		595AA1CA1FC5ED8A00350E7B /* indigo_agent_snoop.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_agent_snoop.c; sourceTree = "<group>"; };
 		595AA1CB1FC5ED8A00350E7B /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		595AA1CC1FC5ED8A00350E7B /* indigo_agent_snoop.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_agent_snoop.h; sourceTree = "<group>"; };
@@ -6449,6 +6457,17 @@
 			path = aux_joystick;
 			sourceTree = "<group>";
 		};
+		595A8E522C9479E600E7998C /* ccd_pentax */ = {
+			isa = PBXGroup;
+			children = (
+				595A8E512C9479E600E7998C /* README.md */,
+				595A8E4E2C9479E600E7998C /* indigo_ccd_pentax.h */,
+				595A8E4D2C9479E600E7998C /* indigo_ccd_pentax.c */,
+				595A8E4B2C9479E600E7998C /* indigo_ccd_pentax_main.c */,
+			);
+			path = ccd_pentax;
+			sourceTree = "<group>";
+		};
 		595AA1C91FC5ED2900350E7B /* agent_snoop */ = {
 			isa = PBXGroup;
 			children = (
@@ -10090,6 +10109,7 @@
 				59FC2E90210CA26D00730343 /* ccd_mi */,
 				59118C142996EB440004BEC8 /* ccd_ogma */,
 				591CCD872980396A003243AE /* ccd_omegonpro */,
+				595A8E522C9479E600E7998C /* ccd_pentax */,
 				59FFB049288D3CB900F172AC /* ccd_playerone */,
 				9D586C3C22FB0C16002D382E /* ccd_ptp */,
 				591CD0CF29805BAF003243AE /* ccd_rising */,
@@ -14419,6 +14439,7 @@
 				598A1C48259BA94A00C0B34C /* DDHidKeyboardBarcodeScanner.h in Headers */,
 				59111D06285F50A800E57194 /* indigocat_dso.h in Headers */,
 				59BBED26278493E400BA9CD6 /* indigo_agent_astap.h in Headers */,
+				595A8E5C2C9479E600E7998C /* indigo_ccd_pentax.h in Headers */,
 				598A1C49259BA94A00C0B34C /* libfcusb.h in Headers */,
 				59111D10285F53D100E57194 /* indigocat_transform.h in Headers */,
 				598A1C4A259BA94A00C0B34C /* indigo_tiff.h in Headers */,
@@ -14540,6 +14561,7 @@
 				595F291E211E211100380EF4 /* DDHidUsageTables.h in Headers */,
 				599A63B11DEA2F4700ABC827 /* indigo_driver_json.h in Headers */,
 				592007892A5B2D050063C472 /* indigo_aux_uch.h in Headers */,
+				595A8E5B2C9479E600E7998C /* indigo_ccd_pentax.h in Headers */,
 				59DD69CF1FC1D30300AEF0DF /* indigo_dome_driver.h in Headers */,
 				59C76F0C237872480091B966 /* nexstar.h in Headers */,
 				59111D13285F53D500E57194 /* indigocat_dynamical_time.h in Headers */,
@@ -15030,6 +15052,7 @@
 				598A1B67259BA94A00C0B34C /* libuvc_stream.c in Sources */,
 				59A413392971E54C00F0A80B /* Makefile.inc in Sources */,
 				9DA71D0C2A029BE600CFA533 /* indigo_ica_ptp.m in Sources */,
+				595A8E5A2C9479E600E7998C /* indigo_ccd_pentax.c in Sources */,
 				9DA71D142A029BE600CFA533 /* indigo_ica_ptp_sony.m in Sources */,
 				598A1B68259BA94A00C0B34C /* indigo_mount_ioptron.c in Sources */,
 				596FCAA02BD0320E00F5BACB /* indigo_wheel_mi.c in Sources */,
@@ -15281,6 +15304,7 @@
 				5911B6CB22630FE900D6B9EC /* indigo_raw_utils.c in Sources */,
 				593894B22C4C22B100CEF4A5 /* indigo_aux_upb3.c in Sources */,
 				9D541EA82BBC0D260066DBB2 /* indigo_focuser_ioptron.c in Sources */,
+				595A8E592C9479E600E7998C /* indigo_ccd_pentax.c in Sources */,
 				597C7225293CFC3A0016D45A /* indigo_ccd_asi.c in Sources */,
 				59FE34652187B2F8004FB5D4 /* indigo_aux_dsusb.c in Sources */,
 				59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */,

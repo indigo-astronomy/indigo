@@ -176,6 +176,7 @@
 #include "focuser_optecfl/indigo_focuser_optecfl.h"
 #include "focuser_fc3/indigo_focuser_fc3.h"
 #include "focuser_lacerta/indigo_focuser_lacerta.h"
+#include "ccd_pentax/indigo_ccd_pentax.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -252,6 +253,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_mi,
 	indigo_ccd_ogma,
 	indigo_ccd_omegonpro,
+	indigo_ccd_pentax,
 	indigo_ccd_playerone,
 	indigo_ccd_ptp,
 	indigo_ccd_qhy2,
