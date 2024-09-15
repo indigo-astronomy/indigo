@@ -1457,6 +1457,60 @@ static bool autofocus_overshoot(indigo_device *device, uint8_t **saturation_mask
 	}
 }
 
+static int quality_comparator(double *quality1, double *quality2, int count) {
+	int comparison = 0;
+	for (int i = 0; i < count; i++) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "COMAPRE Q1[%d] = %f Q2[%d] = %f", i, quality1[i], i, quality2[i]);
+		//if(quality1[i] == 0 || quality2[i] == 0) {
+		//	continue;
+		//}
+		if (quality1[i] > quality2[i]) {
+			comparison ++;
+		} else if (quality1[i] < quality2[i]) {
+			comparison --;
+		}
+	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality comparison = %d", comparison);
+	return comparison; // ==0 - equal, > 0 - quality1 better, < 0 - quality2 better
+}
+
+static bool quality_is_zero(double *quality, int count) {
+	for (int i = 0; i < count; i++) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality[%d] = %g", i, quality[i]);
+		if (quality[i] != 0) {
+			return false;
+		}
+	}
+	return true;
+}
+
+static double reduce_ucurve_best_focus(double *best_focuses, int count) {
+	double avg_best_focus = 0;
+	for(int i = 0; i < count; i++) {
+		avg_best_focus += best_focuses[i];
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus for star #%d is at position %.3f", i, best_focuses[i]);
+	}
+	avg_best_focus /= count;
+
+	double best_focus_stddev = indigo_stddev(best_focuses, count);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus standard deviation = %f", best_focus_stddev);
+
+	double best_focus = 0;
+	int used_values = 0;
+	for (int i = 0; i < count; i++) {
+		double focus_diff = fabs(best_focuses[i] - avg_best_focus);
+		if (focus_diff < 3 * best_focus_stddev) {
+			best_focus += best_focuses[i];
+			used_values++;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC (+): Using best focus for star #%d at position %.3f", i, best_focuses[i]);
+		} else {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC (-): Ignoring outlier best focus for star #%d at position %.3f", i, best_focuses[i]);
+		}
+		best_focus /= used_values;
+	}
+	return best_focus;
+}
+
 static bool autofocus_ucurve(indigo_device *device) {
 	indigo_client *client = FILTER_DEVICE_CONTEXT->client;
 	char *ccd_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX];
@@ -1473,7 +1527,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	clear_hfd_stats(device);
 	AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	double last_quality = 0, min_est = 1e10;
+	double last_quality[INDIGO_MAX_MULTISTAR_COUNT] = {0}, min_est = 1e10;
 	double steps = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
 	double backlash_overshoot = AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM->number.value;
 	int current_offset = 0;
@@ -1512,7 +1566,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
 		}
-		double quality = 0;
+		double quality[INDIGO_MAX_MULTISTAR_COUNT] = {0};
 		int frame_count = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
 			if (capture_raw_frame(device, NULL) != INDIGO_OK_STATE) {
@@ -1535,16 +1589,24 @@ static bool autofocus_ucurve(indigo_device *device) {
 					);
 					continue;
 				}
-				double current_quality = 1 / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
-				quality = (quality > current_quality) ? quality : current_quality;
+
+				double current_quality[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+				for (int n = 0; n < count; n++) {
+					current_quality[n] = 1 / AGENT_IMAGER_STATS_HFD_ITEM[n].number.value;
+				}
+
+				// quality = (quality > current_quality) ? quality : current_quality;
+				if(quality_comparator(quality, current_quality, count) < 0) {
+					memcpy(quality, current_quality, sizeof(double) * count);
+				}
 				INDIGO_DRIVER_DEBUG(
 					DRIVER_NAME,
 					"UC: Peak = %g, HFD = %g, FWHM = %g, current_quality = %g, best_quality = %g",
 					AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
 					AGENT_IMAGER_STATS_HFD_ITEM->number.value,
 					AGENT_IMAGER_STATS_FWHM_ITEM->number.value,
-					current_quality,
-					quality
+					current_quality[0],
+					quality[0]
 				);
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "BUG: This should not happen - Only U-CURVE estimator is supported for this function");
@@ -1553,7 +1615,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 			frame_count++;
 		}
-		if (frame_count == 0 || quality == 0) {
+		if (frame_count == 0 || quality_is_zero(quality, count)) {
 			indigo_send_message(device, "Failed to evaluate quality");
 			continue;
 		}
@@ -1565,7 +1627,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
 			return false;
 		}
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Focus Quality = %g (Previous %g)", quality, last_quality);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Focus Quality = %g (Previous %g)", quality[0], last_quality[0]);
 
 		if (sample == 0) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: First sample");
@@ -1582,7 +1644,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 				hfds[i][sample-1] = item_hfd[i].number.value;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d][%d] = (%g, %f)", i, sample-1, focus_pos[sample-1], hfds[i][sample-1]);
 			}
-			if (last_quality >= quality) {
+			if (quality_comparator(last_quality, quality, count) >= 0) {
 				moving_out = false;
 				if (!move_focuser(device, focuser_name, moving_out, steps)) break;
 				current_offset -= steps;
@@ -1593,7 +1655,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 		} else {
 			int midpoint = rint(DEVICE_PRIVATE_DATA->ucurve_samples_number / 2.0);
-			if (sample > midpoint && last_quality <= quality) {
+			if (sample > midpoint && quality_comparator(last_quality, quality, count) <= 0) {
 				/* We've traversed through half of the samples without encountering the optimal one - it's necessary
 				   to move all samples to the left and continue the search. This is a common situation when the best
 				   focus is outside the initial window.
@@ -1699,7 +1761,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		sample++;
 		AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		last_quality = quality;
+		memcpy(last_quality, quality, sizeof(double) * count);
 		if (abs(current_offset) >= limit) {
 			indigo_send_message(device, "No focus reached within maximum travel limit per AF run");
 			focus_failed = true;
@@ -1755,12 +1817,8 @@ static bool autofocus_ucurve(indigo_device *device) {
 		}
 	}
 
-	double best_focus = 0;
-	for(int i = 0; i < count; i++) {
-		best_focus += best_focuses[i];
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus for star #%d is at position %.3f", i, best_focuses[i]);
-	}
-	best_focus /= count;
+	/* Reduce the best focus positions */
+	double best_focus = reduce_ucurve_best_focus(best_focuses, count);
 
 	/* Calculate the steps to best focus */
 	double steps_to_focus = fabs(CLIENT_PRIVATE_DATA->focuser_position - best_focus);
@@ -1829,7 +1887,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		indigo_send_message(device, "No focus reached, did not converge");
 		focus_failed = true;
 	} else if (
-		(DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 15) /* for HFD 15% deviation is ok - tested on realsky */
+		(DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 25) /* for HFD 25% deviation is ok - tested on realsky */
 	) {
 		indigo_send_message(device, "Focus does not meet the quality criteria");
 		focus_failed = true;
