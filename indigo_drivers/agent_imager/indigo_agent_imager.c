@@ -1491,6 +1491,12 @@ static double reduce_ucurve_best_focus(double *best_focuses, int count) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus for star #%d is at position %.3f", i, best_focuses[i]);
 	}
 	avg_best_focus /= count;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Average best focus = %f", avg_best_focus);
+
+	if (count < 4) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Not enough stars to calculate standard deviation using average best focus");
+		return avg_best_focus;
+	}
 
 	double best_focus_stddev = indigo_stddev(best_focuses, count);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus standard deviation = %f", best_focus_stddev);
