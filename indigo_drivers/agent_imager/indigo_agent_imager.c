@@ -1562,6 +1562,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	double hfds[INDIGO_MAX_MULTISTAR_COUNT][MAX_UCURVE_SAMPLES] = {0};
 	double focus_pos[MAX_UCURVE_SAMPLES] = {0};
 	int count = (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
+	int midpoint = rint(DEVICE_PRIVATE_DATA->ucurve_samples_number / 2.0);
 	while (repeat) {
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
@@ -1660,7 +1661,6 @@ static bool autofocus_ucurve(indigo_device *device) {
 				current_offset += steps;
 			}
 		} else {
-			int midpoint = rint(DEVICE_PRIVATE_DATA->ucurve_samples_number / 2.0);
 			if (sample > midpoint && quality_comparator(last_quality, quality, count) <= 0) {
 				/* We've traversed through half of the samples without encountering the optimal one - it's necessary
 				   to move all samples to the left and continue the search. This is a common situation when the best
@@ -1672,42 +1672,37 @@ static bool autofocus_ucurve(indigo_device *device) {
 						hfds[j][i] = hfds[j][i+1];
 					}
 				}
-				sample = midpoint;
+				sample --;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Did not reach best focus - shifting samples to the left");
 			}
+
+			/* Copy sample to the U-Curve data */
 			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
 			for (int i = 0; i < count; i++) {
 				hfds[i][sample-1] = AGENT_IMAGER_STATS_HFD_ITEM[i].number.value;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d][%d] = (%g, %f)", i, sample-1, focus_pos[sample-1], hfds[i][sample-1]);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: shifted pos[%d][%d] = (%g, %f)", i, sample-1, focus_pos[sample-1], hfds[i][sample-1]);
 			}
-			//hfds[sample-1] = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
-			//INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d] = (%g, %f)", sample-1, focus_pos[sample-1], hfds[sample-1]);
 
-			/* If we've crossed the halfway point, we identify the optimal value index up to this point.
-			   If it's sufficiently distant, we can begin moving towards the best focus and the result
-			   will be a well-balanced U-Curve.
-			 */
-			if (sample > midpoint + 2 && !focus_far_enough) {
-				int window_offset = sample - midpoint - 2;
-				int window_lenght = midpoint + 2;
-				double *window_base = hfds[0] + window_offset;
-				best_value = window_base[0];
-				best_index = 0;
-				for(int i = 0; i < window_lenght; i++) {
-					if (window_base[i] < best_value) {
-						best_value = window_base[i];
-						best_index = i;
-					}
+			/* Find best sample index and value */
+			best_value = hfds[0][0];
+			best_index = 0;
+			for(int i = 0; i < sample; i++) {
+				if (hfds[0][i] < best_value) {
+					best_value = hfds[0][i];
+					best_index = i;
 				}
+			}
+
+			if (sample > midpoint + 1 && !focus_far_enough) {
 				/* If we are at a sufficient distance from the optimal focus, we can begin to move towards it,
 				   resulting in a symmetric U-Curve.
 				 */
-				if (best_index == 0) {
+				if (best_index <= 1) {
 					if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
 						INDIGO_DRIVER_DEBUG(
 							DRIVER_NAME,
 							"UC: The best focus is outside the window hfds[%d, %d] - starting approach",
-							window_offset, window_lenght-1
+							0, sample - 1
 						);
 
 						for(int n = 0; n < count; n++) {
@@ -1734,15 +1729,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 
 			if (sample == DEVICE_PRIVATE_DATA->ucurve_samples_number) {
-				best_value = hfds[0][0];
-				best_index = 0;
-				for(int i = 0; i < DEVICE_PRIVATE_DATA->ucurve_samples_number; i++) {
-					if (hfds[0][i] < best_value) {
-						best_value = hfds[0][i];
-						best_index = i;
-					}
-				}
-				/* If the optimal focus is not close enough to center,
+				/* If the optimal focus is not close enough to the center,
 				   we need restart the process to get a symmetric U-Curve.
 				 */
 				if (abs(best_index - midpoint) > 1) {
