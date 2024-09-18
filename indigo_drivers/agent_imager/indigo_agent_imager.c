@@ -1484,6 +1484,22 @@ static bool quality_is_zero(double *quality, int count) {
 	return true;
 }
 
+static int calculate_mode(int arr[], int n) {
+	int max_count = 0, mode = arr[0];
+
+	for (int i = 0; i < n; ++i) {
+		int count = 0;
+		for (int j = 0; j < n; ++j) {
+            if (arr[j] == arr[i]) ++count;
+		}
+		if (count > max_count) {
+			max_count = count;
+			mode = arr[i];
+		}
+	}
+	return mode;
+}
+
 static double reduce_ucurve_best_focus(double *best_focuses, int count) {
 	double avg_best_focus = 0;
 	for(int i = 0; i < count; i++) {
@@ -1512,8 +1528,11 @@ static double reduce_ucurve_best_focus(double *best_focuses, int count) {
 		} else {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC (-): Ignoring outlier best focus for star #%d at position %.3f", i, best_focuses[i]);
 		}
-		best_focus /= used_values;
 	}
+
+	best_focus /= used_values;
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Best focus after outlier removal = %f", best_focus);
+
 	return best_focus;
 }
 
@@ -1561,7 +1580,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	bool focus_failed = false;
 	double hfds[INDIGO_MAX_MULTISTAR_COUNT][MAX_UCURVE_SAMPLES] = {0};
 	double focus_pos[MAX_UCURVE_SAMPLES] = {0};
-	int count = (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
+	int star_count = (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
 	int midpoint = rint(DEVICE_PRIVATE_DATA->ucurve_samples_number / 2.0);
 	while (repeat) {
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1598,13 +1617,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 				}
 
 				double current_quality[INDIGO_MAX_MULTISTAR_COUNT] = {0};
-				for (int n = 0; n < count; n++) {
+				for (int n = 0; n < star_count; n++) {
 					current_quality[n] = 1 / AGENT_IMAGER_STATS_HFD_ITEM[n].number.value;
 				}
 
 				// quality = (quality > current_quality) ? quality : current_quality;
-				if(quality_comparator(quality, current_quality, count) < 0) {
-					memcpy(quality, current_quality, sizeof(double) * count);
+				if(quality_comparator(quality, current_quality, star_count) < 0) {
+					memcpy(quality, current_quality, sizeof(double) * star_count);
 				}
 				INDIGO_DRIVER_DEBUG(
 					DRIVER_NAME,
@@ -1622,7 +1641,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 			frame_count++;
 		}
-		if (frame_count == 0 || quality_is_zero(quality, count)) {
+		if (frame_count == 0 || quality_is_zero(quality, star_count)) {
 			indigo_send_message(device, "Failed to evaluate quality");
 			continue;
 		}
@@ -1647,11 +1666,11 @@ static bool autofocus_ucurve(indigo_device *device) {
 		} else if (sample == 1) {
 			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
 			indigo_item *item_hfd = AGENT_IMAGER_STATS_HFD_ITEM;
-			for (int i = 0; i < count; i++) {
+			for (int i = 0; i < star_count; i++) {
 				hfds[i][sample-1] = item_hfd[i].number.value;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d][%d] = (%g, %f)", i, sample-1, focus_pos[sample-1], hfds[i][sample-1]);
 			}
-			if (quality_comparator(last_quality, quality, count) >= 0) {
+			if (quality_comparator(last_quality, quality, star_count) >= 0) {
 				moving_out = false;
 				if (!move_focuser(device, focuser_name, moving_out, steps)) break;
 				current_offset -= steps;
@@ -1661,14 +1680,14 @@ static bool autofocus_ucurve(indigo_device *device) {
 				current_offset += steps;
 			}
 		} else {
-			if (sample > midpoint && quality_comparator(last_quality, quality, count) <= 0) {
+			if (sample > midpoint && quality_comparator(last_quality, quality, star_count) <= 0) {
 				/* We've traversed through half of the samples without encountering the optimal one - it's necessary
 				   to move all samples to the left and continue the search. This is a common situation when the best
 				   focus is outside the initial window.
 				 */
 				for (int i = 0; i < sample-1; i++) {
 					focus_pos[i] = focus_pos[i+1];
-					for(int j = 0; j < count; j++) {
+					for(int j = 0; j < star_count; j++) {
 						hfds[j][i] = hfds[j][i+1];
 					}
 				}
@@ -1678,7 +1697,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 
 			/* Copy sample to the U-Curve data */
 			focus_pos[sample-1] = CLIENT_PRIVATE_DATA->focuser_position;
-			for (int i = 0; i < count; i++) {
+			for (int i = 0; i < star_count; i++) {
 				hfds[i][sample-1] = AGENT_IMAGER_STATS_HFD_ITEM[i].number.value;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: shifted pos[%d][%d] = (%g, %f)", i, sample-1, focus_pos[sample-1], hfds[i][sample-1]);
 			}
@@ -1686,12 +1705,33 @@ static bool autofocus_ucurve(indigo_device *device) {
 			/* Find best sample index and value */
 			best_value = hfds[0][0];
 			best_index = 0;
+			int best_indices[INDIGO_MAX_MULTISTAR_COUNT] = {0};
 			for(int i = 0; i < sample; i++) {
 				if (hfds[0][i] < best_value) {
 					best_value = hfds[0][i];
 					best_index = i;
 				}
 			}
+
+
+			// Find the best index for each star
+			for (int star = 0; star < star_count; star++) {
+				best_value = hfds[star][0];
+				best_index = 0;
+				for (int i = 0; i < sample; i++) {
+					if (hfds[star][i] < best_value) {
+						best_value = hfds[star][i];
+						best_index = i;
+					}
+				}
+				best_indices[star] = best_index;
+			}
+
+			// Calculate the mode of the best indices
+			best_index = calculate_mode(best_indices, star_count);
+
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: The best samle focus is at position median %d, (%d for star #0)", best_index, best_indices[0]);
+
 
 			if (sample > midpoint + 1 && !focus_far_enough) {
 				/* If we are at a sufficient distance from the optimal focus, we can begin to move towards it,
@@ -1705,7 +1745,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 							0, sample - 1
 						);
 
-						for(int n = 0; n < count; n++) {
+						for(int n = 0; n < star_count; n++) {
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Currently collected %d samples for star #%d:", sample, n);
 							for (int i = 0; i < sample; i++) {
 								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d][%d] = (%g, %f)", n, i, focus_pos[i], hfds[n][i]);
@@ -1754,7 +1794,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		sample++;
 		AGENT_IMAGER_STATS_FOCUS_OFFSET_ITEM->number.value = current_offset;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		memcpy(last_quality, quality, sizeof(double) * count);
+		memcpy(last_quality, quality, sizeof(double) * star_count);
 		if (abs(current_offset) >= limit) {
 			indigo_send_message(device, "No focus reached within maximum travel limit per AF run");
 			focus_failed = true;
@@ -1770,7 +1810,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	double polynomial[UCURVE_ORDER + 1];
 	double best_focuses[INDIGO_MAX_MULTISTAR_COUNT] = {0};
 
-	for (int n = 0; n < count; n++) {
+	for (int n = 0; n < star_count; n++) {
 		int res = indigo_polynomial_fit(DEVICE_PRIVATE_DATA->ucurve_samples_number, focus_pos, hfds[n], UCURVE_ORDER + 1, polynomial);
 		if (res < 0) {
 			indigo_send_message(device, "U-Curve failed to fit data points with polynomial");
@@ -1811,7 +1851,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	}
 
 	/* Reduce the best focus positions */
-	double best_focus = reduce_ucurve_best_focus(best_focuses, count);
+	double best_focus = reduce_ucurve_best_focus(best_focuses, star_count);
 
 	/* Calculate the steps to best focus */
 	double steps_to_focus = fabs(CLIENT_PRIVATE_DATA->focuser_position - best_focus);
