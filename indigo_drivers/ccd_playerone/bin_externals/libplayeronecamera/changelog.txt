@@ -1,6 +1,8 @@
+2024.09.05(3.7.0)
+- Add support for Apollo 428M MAX and Apollo 428M MAX PRO
+
 2024.07.04(3.6.3)
 - Improved accuracy for short exposure time(Snap Mode)
-Known Issues:On some devices(such as PI5), SDK will drop frames on Ubuntu 24.04 with linux kernel 6.7 or higher.
 
 2024.04.23(3.6.2)
 - Add python wrapper
