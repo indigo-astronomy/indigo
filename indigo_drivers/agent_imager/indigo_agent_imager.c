@@ -695,10 +695,11 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 							&peak
 						);
 						if (i == 0) {
+							AGENT_IMAGER_STATS_FWHM_ITEM->number.value = fwhm;
+							AGENT_IMAGER_STATS_PEAK_ITEM->number.value = peak;
+
 							if (AGENT_IMAGER_STATS_FRAME_ITEM->number.value == 0) {
 								memcpy(&DEVICE_PRIVATE_DATA->reference, &reference, sizeof(reference));
-								AGENT_IMAGER_STATS_FWHM_ITEM->number.value = fwhm;
-								AGENT_IMAGER_STATS_PEAK_ITEM->number.value = peak;
 							} else {
 								if (indigo_calculate_drift(
 									&DEVICE_PRIVATE_DATA->reference,
