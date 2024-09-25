@@ -669,7 +669,7 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 				indigo_item *item_hfd = AGENT_IMAGER_STATS_HFD_ITEM + i;
 				if (item_x->number.value != 0 && item_y->number.value != 0) {
 					used++;
-					result = indigo_selection_frame_digest_iterative(
+					indigo_selection_frame_digest_iterative(
 						header->signature,
 						(void*)header + sizeof(indigo_raw_header),
 						&item_x->number.value,
@@ -680,20 +680,24 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 						&reference,
 						DIGEST_CONVERGE_ITERATIONS
 					);
-					if(result == INDIGO_OK) {
-						double fwhm = 0, peak = 0;
-						indigo_selection_psf(
-							header->signature,
-							(void*)header + sizeof(indigo_raw_header),
-							item_x->number.value,
-							item_y->number.value,
-							AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value,
-							header->width,
-							header->height,
-							&fwhm,
-							&item_hfd->number.value,
-							&peak
-						);
+
+					double fwhm = 0, peak = 0;
+					result = indigo_selection_psf(
+						header->signature,
+						(void*)header + sizeof(indigo_raw_header),
+						item_x->number.value,
+						item_y->number.value,
+						AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value,
+						header->width,
+						header->height,
+						&fwhm,
+						&item_hfd->number.value,
+						&peak
+					);
+
+					if (item_hfd->number.value > AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value * 2) {
+						item_hfd->number.value = 0;
+					} else {
 						if (i == 0) {
 							AGENT_IMAGER_STATS_FWHM_ITEM->number.value = fwhm;
 							AGENT_IMAGER_STATS_PEAK_ITEM->number.value = peak;
@@ -713,6 +717,8 @@ static indigo_property_state _capture_raw_frame(indigo_device *device, uint8_t *
 								}
 							}
 						}
+					}
+					if (result == INDIGO_OK) {
 						indigo_delete_frame_digest(&reference);
 					}
 				}
@@ -1477,12 +1483,22 @@ static int quality_comparator(double *quality1, double *quality2, int count) {
 
 static bool quality_is_zero(double *quality, int count) {
 	for (int i = 0; i < count; i++) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality[%d] = %g", i, quality[i]);
 		if (quality[i] != 0) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality[%d] = %g -> is_zero = false", i, quality[i]);
 			return false;
 		}
 	}
 	return true;
+}
+
+static bool quality_has_zero(double *quality, int count) {
+	for (int i = 0; i < count; i++) {
+		if (quality[i] == 0) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Quality[%d] = %g -> has_zero = true", i, quality[i]);
+			return true;
+		}
+	}
+	return false;
 }
 
 static int calculate_mode(int arr[], int n) {
@@ -1595,7 +1611,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		}
 		double quality[INDIGO_MAX_MULTISTAR_COUNT] = {0};
 		int frame_count = 0;
-		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
+		for (int i = 0; i < 3 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
 			if (capture_raw_frame(device, NULL) != INDIGO_OK_STATE) {
 				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 					SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
@@ -1619,10 +1635,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 
 				double current_quality[INDIGO_MAX_MULTISTAR_COUNT] = {0};
 				for (int n = 0; n < star_count; n++) {
-					current_quality[n] = 1 / AGENT_IMAGER_STATS_HFD_ITEM[n].number.value;
+					if (AGENT_IMAGER_STATS_HFD_ITEM[n].number.value == 0) {
+						current_quality[n] = 0;
+					} else {
+						current_quality[n] = 1 / AGENT_IMAGER_STATS_HFD_ITEM[n].number.value;
+					}
 				}
 
-				// quality = (quality > current_quality) ? quality : current_quality;
 				if(quality_comparator(quality, current_quality, star_count) < 0) {
 					memcpy(quality, current_quality, sizeof(double) * star_count);
 				}
@@ -1642,18 +1661,16 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 			frame_count++;
 		}
-		if (frame_count == 0 || quality_is_zero(quality, star_count)) {
-			indigo_send_message(device, "Failed to evaluate quality");
-			continue;
+
+		/* Check if there is at least one star with measured HFD (qiality), if not fail */
+		if (quality_is_zero(quality, star_count)){
+			indigo_send_message(device, "No stars detected, maybe focus is too far");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: No stars detected, maybe focus is too far (frame_count = %d)", frame_count);
+			focus_failed = true;
+			goto ucurve_finish;
 		}
 
-		if (DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
-			min_est = (min_est > AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : min_est;
-		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "BUG: This should not happen - Only U-CURVE estimator is supported for this function");
-			SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
-			return false;
-		}
+		min_est = (min_est > AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : min_est;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Focus Quality = %g (Previous %g)", quality[0], last_quality[0]);
 
 		if (sample == 0) {
@@ -1810,49 +1827,68 @@ static bool autofocus_ucurve(indigo_device *device) {
 
 	double polynomial[UCURVE_ORDER + 1];
 	double best_focuses[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+	int stars_used = 0;
 
 	for (int n = 0; n < star_count; n++) {
+		if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve collected %d samples for star #%d (final set):", DEVICE_PRIVATE_DATA->ucurve_samples_number, n);
+			for (int i = 0; i < DEVICE_PRIVATE_DATA->ucurve_samples_number; i++) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: point[%d][%d] = (%g, %f)",n , i, focus_pos[i], hfds[n][i]);
+			}
+		}
+
+		if (quality_has_zero(hfds[n], DEVICE_PRIVATE_DATA->ucurve_samples_number)) {
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve data for star #%d has bad quality data points - skipping", n);
+			continue;
+		}
+
 		int res = indigo_polynomial_fit(DEVICE_PRIVATE_DATA->ucurve_samples_number, focus_pos, hfds[n], UCURVE_ORDER + 1, polynomial);
 		if (res < 0) {
 			indigo_send_message(device, "U-Curve failed to fit data points with polynomial");
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to fit polynomial");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to fit polynomial");
 			SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
 			focus_failed = true;
 			goto ucurve_finish;
 		}
 
 		if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve collected %d samples for star #%d (final set):", DEVICE_PRIVATE_DATA->ucurve_samples_number, n);
-			for (int i = 0; i < DEVICE_PRIVATE_DATA->ucurve_samples_number; i++) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: point[%d][%d] = (%g, %f)",n , i, focus_pos[i], hfds[n][i]);
-			}
 			char polynomial_str[1204];
 			indigo_polinomial_string(UCURVE_ORDER + 1, polynomial, polynomial_str);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Polynomial fit for star #d: %s", polynomial_str, n);
 		}
 
 		if (focus_pos[0] < focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 1]) {
-			best_focuses[n] = indigo_polynomial_min_x(UCURVE_ORDER + 1, polynomial, focus_pos[0], focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 1], 0.00001);
-			if (best_focuses[n] < focus_pos[1] || best_focuses[n] > focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 2]) {
+			best_focuses[stars_used] = indigo_polynomial_min_x(UCURVE_ORDER + 1, polynomial, focus_pos[0], focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 1], 0.00001);
+			if (best_focuses[stars_used] < focus_pos[1] || best_focuses[stars_used] > focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 2]) {
 				focus_failed = true;
 			}
 		} else {
-			best_focuses[n] = indigo_polynomial_min_x(UCURVE_ORDER + 1, polynomial, focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 1], focus_pos[0], 0.00001);
-			if (best_focuses[n] < focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 2] || best_focuses[n] > focus_pos[1]) {
+			best_focuses[stars_used] = indigo_polynomial_min_x(UCURVE_ORDER + 1, polynomial, focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 1], focus_pos[0], 0.00001);
+			if (best_focuses[stars_used] < focus_pos[DEVICE_PRIVATE_DATA->ucurve_samples_number - 2] || best_focuses[stars_used] > focus_pos[1]) {
 				focus_failed = true;
 			}
 		}
+		stars_used++;
 
 		if (focus_failed) {
 			indigo_send_message(device, "U-Curve failed to find best focus position in the acceptable range");
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to find best focus position in the acceptable range");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to find best focus position in the acceptable range");
 			SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
 			goto ucurve_finish;
 		}
 	}
 
+	if (stars_used == 0) {
+		indigo_send_message(device, "U-Curve failed to find the best focus position for any of the selected stars");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to find the best focus position for any of the selected stars");
+		SET_BACKLASH_IF_OVERSHOOT(DEVICE_PRIVATE_DATA->saved_backlash);
+		focus_failed = true;
+		goto ucurve_finish;
+	}
+
 	/* Reduce the best focus positions */
-	double best_focus = reduce_ucurve_best_focus(best_focuses, star_count);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Reducing best focus positions for %d of %d stars", stars_used, star_count);
+	double best_focus = reduce_ucurve_best_focus(best_focuses, stars_used);
 
 	/* Calculate the steps to best focus */
 	double steps_to_focus = fabs(CLIENT_PRIVATE_DATA->focuser_position - best_focus);
