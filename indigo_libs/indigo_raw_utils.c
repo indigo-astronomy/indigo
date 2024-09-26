@@ -462,11 +462,11 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 	free(values);
 	double stddev = sqrt(sum / background_count);
 
-	indigo_debug("HFD : background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev,  background + 2 * stddev, max);
-	indigo_debug("FWHM: background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev,  background + 6 * stddev, max);
+	/* HFD calculation */
+	double threshold = background + 2 * stddev; /* 2 * stddev is a good threshold for HFD */
+	indigo_debug("HFD : background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev, threshold, max);
 
-	/* HFD works fine with gignal 2 * stddev */
-	if (max < background + 2 * stddev) {
+	if (max < threshold) {
 		*hfd = 2 * radius + 1;
 	} else {
 		double prod = 0, total = 0;
@@ -504,7 +504,7 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 						break;
 					}
 				}
-				value -= background;
+				value -= threshold;
 					if (value > 0) {
 					double dist = sqrt((x - i) * (x - i) + (y - j) * (y - j));
 					prod += dist * value;
@@ -515,8 +515,11 @@ indigo_result indigo_selection_psf(indigo_raw_type raw_type, const void *data, d
 		*hfd = 2 * prod / total;
 	}
 
-	/* FWHM is erratic with peak < 6*stddev */
-	if (max < background + 6 * stddev) {
+	/* FWHM calculation */
+	threshold = background + 6 * stddev; /* 6 * stddev is a good threshold for FWHM*/
+	indigo_debug("FWHM: background = %2f, stddev = %.2f, threshold = %.2f, max = %.2f", background, stddev, threshold, max);
+
+	if (max < threshold) {
 		*fwhm = 2 * radius + 1;
 	} else {
 		double half_max = *peak / 2 + background;
