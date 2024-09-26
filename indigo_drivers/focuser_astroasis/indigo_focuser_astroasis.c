@@ -23,7 +23,7 @@
  \file indigo_focuser_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME "indigo_focuser_astroasis"
 
 #include <stdlib.h>
@@ -206,7 +206,7 @@ static void focuser_compensation(indigo_device *device, double curr_temp) {
 	/* Temperature difference is big enough to do compensation */
 	if ((fabs(temp_diff) >= FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value) && (fabs(temp_diff) < 100)) {
 		compensation = (int)(temp_diff * FOCUSER_COMPENSATION_ITEM->number.value);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temperature difference = %.2f, ompensation = %d, steps/degC = %.0f, threshold = %.2f",
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensation: temperature difference = %.2f, compensation = %d, steps/degC = %.0f, threshold = %.2f",
 			temp_diff, compensation, FOCUSER_COMPENSATION_ITEM->number.value, FOCUSER_COMPENSATION_THRESHOLD_ITEM->number.value);
 	} else {
 		return;
@@ -226,6 +226,8 @@ static void focuser_compensation(indigo_device *device, double curr_temp) {
 }
 
 static void temperature_timer_callback(indigo_device *device) {
+	static bool has_sensor = true;
+	char *property_message = NULL;
 	AOReturn ret = AOFocuserGetStatus(PRIVATE_DATA->dev_id, &PRIVATE_DATA->status);
 
 	if (ret == AO_SUCCESS) {
@@ -234,17 +236,26 @@ static void temperature_timer_callback(indigo_device *device) {
 
 		if (PRIVATE_DATA->status.temperatureDetection && (PRIVATE_DATA->status.temperatureExt != TEMPERATURE_INVALID)) {
 			FOCUSER_TEMPERATURE_ITEM->number.value = (double)PRIVATE_DATA->status.temperatureExt / 100;
-			FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
-
-			if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
-				focuser_compensation(device, (double)PRIVATE_DATA->status.temperatureExt / 100);
-			} else {
-				/* reset temp so that the compensation starts when auto mode is selected */
-				PRIVATE_DATA->compensation_last_temp = -273.15;
+			if (!has_sensor) {
+				property_message = "Temperature sensor connected.";
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", property_message);
+				has_sensor = true;
 			}
 		} else {
-			FOCUSER_TEMPERATURE_ITEM->number.value = -273.15;
-			FOCUSER_TEMPERATURE_PROPERTY->state = PRIVATE_DATA->status.temperatureDetection ? INDIGO_ALERT_STATE : INDIGO_IDLE_STATE;
+			FOCUSER_TEMPERATURE_ITEM->number.value = FOCUSER_TEMPERATURE_BOARD_ITEM->number.value;
+			if (has_sensor) {
+				property_message = "No temperature sensor connected. Using board temperature as ambient.";
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s", property_message);
+				has_sensor = false;
+			}
+		}
+		FOCUSER_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
+
+		if (FOCUSER_MODE_AUTOMATIC_ITEM->sw.value) {
+			focuser_compensation(device, FOCUSER_TEMPERATURE_ITEM->number.value);
+		} else {
+			/* reset temp so that the compensation starts when auto mode is selected */
+			PRIVATE_DATA->compensation_last_temp = -273.15;
 		}
 
 	} else {
@@ -254,7 +265,7 @@ static void temperature_timer_callback(indigo_device *device) {
 	}
 
 	indigo_update_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
-	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, property_message);
 
 	indigo_reschedule_timer(device, 2, &(PRIVATE_DATA->temperature_timer));
 }

@@ -222,6 +222,36 @@ static void search_stars(indigo_device *device) {
 	}
 }
 
+#ifdef USE_DISK_BLUR
+static void disk_blur(uint16_t *input_image, uint16_t *output_image, int width, int height, int radius) {
+	radius = abs(radius);
+	int diameter = 2 * radius + 1;
+	int area = M_PI * radius * radius;
+
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			uint32_t sum = 0;
+			int count = 0;
+			for (int dy = -radius; dy <= radius; dy++) {
+				for (int dx = -radius; dx <= radius; dx++) {
+					int nx = x + dx;
+					int ny = y + dy;
+					if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+						if (dx * dx + dy * dy <= radius * radius) {
+							sum += input_image[ny * width + nx];
+							count++;
+						}
+					}
+				}
+			}
+			output_image[y * width + x] = (uint16_t)(sum / count);
+		}
+	}
+}
+#define blur_image disk_blur
+
+#else /* use gaussian blur */
+
 // gausian blur algorithm is based on the paper http://blog.ivank.net/fastest-gaussian-blur.html by Ivan Kuckir
 
 static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
@@ -311,36 +341,7 @@ static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	box_blur(scl, tcl, w, h, (sizes[2] - 1) / 2);
 }
 
-static void disk_blur(uint16_t *input_image, uint16_t *output_image, int width, int height, int radius) {
-    radius = abs(radius);
-    int diameter = 2 * radius + 1;
-    int area = M_PI * radius * radius;
-
-    for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-            uint32_t sum = 0;
-            int count = 0;
-            for (int dy = -radius; dy <= radius; dy++) {
-                for (int dx = -radius; dx <= radius; dx++) {
-                    int nx = x + dx;
-                    int ny = y + dy;
-                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
-                        if (dx * dx + dy * dy <= radius * radius) {
-                            sum += input_image[ny * width + nx];
-                            count++;
-                        }
-                    }
-                }
-            }
-            output_image[y * width + x] = (uint16_t)(sum / count);
-        }
-    }
-}
-
-#ifdef USE_DISK_BLUR
-#  define blur_image disk_blur
-#else
-#  define blur_image gauss_blur
+#define blur_image gauss_blur
 #endif/* USE_DISK_BLUR */
 
 static void create_frame(indigo_device *device) {
