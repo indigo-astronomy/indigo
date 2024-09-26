@@ -181,7 +181,7 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 		compensation = (int)(temp_difference * FOCUSER_COMPENSATION_ITEM->number.value);
 		INDIGO_DRIVER_DEBUG(
 			DRIVER_NAME,
-			"Compensation: temp_difference = %.2f, Compensation = %d, steps/degC = %.0f, threshold = %.2f",
+			"Compensation: temp_difference = %.2f, compensation = %d, steps/degC = %.0f, threshold = %.2f",
 			temp_difference,
 			compensation,
 			FOCUSER_COMPENSATION_ITEM->number.value,
