@@ -62,7 +62,7 @@
 
 // USE_DISK_BLUR is used to simulate disk blur effect
 // if not defined then gaussian blur is used
-#define USE_DISK_BLUR
+// #define USE_DISK_BLUR
 
 // gp_bits is used as boolean
 #define is_connected                gp_bits
