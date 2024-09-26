@@ -337,11 +337,11 @@ static void disk_blur(uint16_t *input_image, uint16_t *output_image, int width, 
     }
 }
 
-# ifdef USE_DISK_BLUR
+#ifdef USE_DISK_BLUR
 #  define blur_image disk_blur
-# endif
+#else
 #  define blur_image gauss_blur
-# /* USE_DISK_BLUR */
+#endif/* USE_DISK_BLUR */
 
 static void create_frame(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->image_mutex);
