@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0016
+#define DRIVER_VERSION 0x0017
 #define DRIVER_NAME	"indigo_ccd_simulator"
 //#define ENABLE_BACKLASH_PROPERTY
 
@@ -58,6 +58,11 @@
 
 #define ECLIPSE									360
 #define TEMP_UPDATE         		5.0
+
+
+// USE_DISK_BLUR is used to simulate disk blur effect
+// if not defined then gaussian blur is used
+#define USE_DISK_BLUR
 
 // gp_bits is used as boolean
 #define is_connected                gp_bits
@@ -306,6 +311,38 @@ static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	box_blur(scl, tcl, w, h, (sizes[2] - 1) / 2);
 }
 
+static void disk_blur(uint16_t *input_image, uint16_t *output_image, int width, int height, int radius) {
+    radius = abs(radius);
+    int diameter = 2 * radius + 1;
+    int area = M_PI * radius * radius;
+
+    for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+            uint32_t sum = 0;
+            int count = 0;
+            for (int dy = -radius; dy <= radius; dy++) {
+                for (int dx = -radius; dx <= radius; dx++) {
+                    int nx = x + dx;
+                    int ny = y + dy;
+                    if (nx >= 0 && nx < width && ny >= 0 && ny < height) {
+                        if (dx * dx + dy * dy <= radius * radius) {
+                            sum += input_image[ny * width + nx];
+                            count++;
+                        }
+                    }
+                }
+            }
+            output_image[y * width + x] = (uint16_t)(sum / count);
+        }
+    }
+}
+
+# ifdef USE_DISK_BLUR
+#  define blur_image disk_blur
+# endif
+#  define blur_image gauss_blur
+# /* USE_DISK_BLUR */
+
 static void create_frame(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->image_mutex);
 	if (device == PRIVATE_DATA->dslr) {
@@ -372,7 +409,7 @@ static void create_frame(indigo_device *device) {
 
 		if (FOCUSER_SETTINGS_FOCUS_ITEM->number.value != 0 && PRIVATE_DATA->file_image_header.signature == INDIGO_RAW_MONO16) {
 			uint16_t *tmp = indigo_safe_malloc(2 * size);
-			gauss_blur(PRIVATE_DATA->file_image, tmp, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
+			blur_image(PRIVATE_DATA->file_image, tmp, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
 			indigo_process_image(device, tmp, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, strlen(BAYERPAT_ITEM->text.value) == 4 ? keywords : NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 			free(tmp);
 		} else {
@@ -497,7 +534,7 @@ static void create_frame(indigo_device *device) {
 		}
 		if (FOCUSER_SETTINGS_FOCUS_ITEM->number.value != 0) {
 			uint16_t *tmp = indigo_safe_malloc(2 * size);
-			gauss_blur(raw, tmp, frame_width, frame_height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
+			blur_image(raw, tmp, frame_width, frame_height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
 			memcpy(raw, tmp, 2 * size);
 			free(tmp);
 		}
