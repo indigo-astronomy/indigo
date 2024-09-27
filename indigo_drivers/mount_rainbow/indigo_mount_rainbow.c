@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x000B
+#define DRIVER_VERSION 0x000C
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -56,23 +56,6 @@ typedef struct {
 	unsigned long version;
 } rainbow_private_data;
 
-static bool rainbow_open(indigo_device *device) {
-	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!indigo_is_device_url(name, "rainbow")) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
-	} else {
-		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
-	}
-	if (PRIVATE_DATA->handle > 0) {
-		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-		return true;
-	} else {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
-		return false;
-	}
-}
-
 static bool rainbow_command(indigo_device *device, char *command, indigo_property *property) {
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	bool result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
@@ -82,6 +65,38 @@ static bool rainbow_command(indigo_device *device, char *command, indigo_propert
 		property->state = INDIGO_ALERT_STATE;
 		if (IS_CONNECTED)
 			indigo_update_property(device, property, NULL);
+	}
+	return result;
+}
+
+static bool rainbow_response(indigo_device *device, char *response, int length) {
+	char c;
+	bool result = false;
+	struct timeval tv;
+	fd_set readout;
+	int i = 0;
+	while (true) {
+		response[i] = 0;
+		if (i == length - 1) {
+			break;
+		}
+		FD_ZERO(&readout);
+		FD_SET(PRIVATE_DATA->handle, &readout);
+		tv.tv_sec = 0;
+		tv.tv_usec = 200000;
+		if (select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv) <= 0) {
+			break;
+		}
+		if (read(PRIVATE_DATA->handle, &c, 1) < 1) {
+			break;
+		}
+		response[i++] = c;
+		if (c == '#') {
+			response[i] = 0;
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "<- %s", response);
+			result = true;
+			break;
+		}
 	}
 	return result;
 }
@@ -102,6 +117,40 @@ static bool rainbow_sync_command(indigo_device *device, char *command, indigo_pr
 	return false;
 }
 
+static bool rainbow_open(indigo_device *device) {
+	char *name = DEVICE_PORT_ITEM->text.value;
+	if (!indigo_is_device_url(name, "rainbow")) {
+		PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
+	} else {
+		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
+		PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
+	}
+	if (PRIVATE_DATA->handle > 0) {
+		char *command=":AV#";
+		bool result = indigo_write(PRIVATE_DATA->handle, command, strlen(command));
+		if (result) {
+			result = false;
+			char response[128];
+			if (rainbow_response(device, response, sizeof(response))) {
+				if (!strncmp(response, ":AV", 3)) {
+					result = true;
+				}
+			}
+		}
+		if (result) {
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
+		} else {
+			close(PRIVATE_DATA->handle);
+			PRIVATE_DATA->handle = -1;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed: %s is not a Rainbow Astro mount", name);
+		}
+		return result;
+	} else {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
+		return false;
+	}
+}
+
 static void rainbow_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
@@ -112,32 +161,12 @@ static void rainbow_close(indigo_device *device) {
 
 static void rainbow_reader(indigo_device *device) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Reader started");
-	char response[128], c;
-	struct timeval tv;
-	fd_set readout;
+	char response[128];
 	while (PRIVATE_DATA->handle > 0) {
-		int i = 0;
-		while (true) {
-			response[i] = 0;
-			if (i == sizeof(response) - 1)
-				break;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = 0;
-			tv.tv_usec = 100000;
-			if (select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv) <= 0)
-				break;
-			if (read(PRIVATE_DATA->handle, &c, 1) < 1)
-				break;
-			response[i++] = c;
-			if (c == '#') {
-				response[i] = 0;
-				break;
-			}
-		}
-		if (*response == 0)
+		rainbow_response(device, response, sizeof(response));
+		if (*response == 0) {
 			continue;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "<- %s", response);
+		}
 		if (!strncmp(response, ":GR", 3)) {
 			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_stod(response + 3);
 			continue;
