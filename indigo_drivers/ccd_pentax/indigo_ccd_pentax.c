@@ -941,6 +941,10 @@ static void ccd_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->state_timer);
 		indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_APERTURE_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_SHUTTER_PROPERTY, NULL);
+		indigo_delete_property(device, DSLR_ISO_PROPERTY, NULL);
 		pentax_connect(device, false);
 		pentax_close(device);
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
