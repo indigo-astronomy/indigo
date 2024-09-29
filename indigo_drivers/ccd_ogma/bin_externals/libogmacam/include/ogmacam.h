@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 57.26291.20240811 */
+/* Version: 57.26598.20240928 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -187,11 +187,11 @@ typedef struct Ogmacam_t { int unused; } *HOgmacam;
 #define OGMACAM_SATURATION_MIN           0       /* saturation */
 #define OGMACAM_SATURATION_MAX           255     /* saturation */
 #define OGMACAM_BRIGHTNESS_DEF           0       /* brightness */
-#define OGMACAM_BRIGHTNESS_MIN           (-128)  /* brightness */
-#define OGMACAM_BRIGHTNESS_MAX           128     /* brightness */
+#define OGMACAM_BRIGHTNESS_MIN           (-255)  /* brightness */
+#define OGMACAM_BRIGHTNESS_MAX           255     /* brightness */
 #define OGMACAM_CONTRAST_DEF             0       /* contrast */
-#define OGMACAM_CONTRAST_MIN             (-200)  /* contrast */
-#define OGMACAM_CONTRAST_MAX             200     /* contrast */
+#define OGMACAM_CONTRAST_MIN             (-255)  /* contrast */
+#define OGMACAM_CONTRAST_MAX             255     /* contrast */
 #define OGMACAM_GAMMA_DEF                100     /* gamma */
 #define OGMACAM_GAMMA_MIN                20      /* gamma */
 #define OGMACAM_GAMMA_MAX                180     /* gamma */
@@ -288,7 +288,7 @@ typedef struct {
 } OgmacamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.26291.20240811
+    get the version of this dll/so/dylib, which is: 57.26598.20240928
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -570,10 +570,10 @@ OGMACAM_API(HRESULT)  Ogmacam_get_RawFormat(HOgmacam h, unsigned* pFourCC, unsig
     | Temp                    |   1000~25000  |   6503                |
     | Tint                    |   100~2500    |   1000                |
     | LevelRange              |   0~255       |   Low = 0, High = 255 |
-    | Contrast                |   -250~250    |   0                   |
+    | Contrast                |   -255~255    |   0                   |
     | Hue                     |   -180~180    |   0                   |
     | Saturation              |   0~255       |   128                 |
-    | Brightness              |   -64~64      |   0                   |
+    | Brightness              |   -255~255    |   0                   |
     | Gamma                   |   20~180      |   100                 |
     | WBGain                  |   -127~127    |   0                   |
     ------------------------------------------------------------------|
@@ -750,7 +750,8 @@ OGMACAM_API(HRESULT)  Ogmacam_get_MonoMode(HOgmacam h);
 OGMACAM_API(HRESULT)  Ogmacam_get_StillResolutionNumber(HOgmacam h);
 OGMACAM_API(HRESULT)  Ogmacam_get_StillResolution(HOgmacam h, unsigned nResolutionIndex, int* pWidth, int* pHeight);
 
-/*  0: stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full
+/*  0: no realtime
+          stop grab frame when frame buffer deque is full, until the frames in the queue are pulled away and the queue is not full
     1: realtime
           use minimum frame buffer. When new frame arrive, drop all the pending frame regardless of whether the frame buffer is full.
           If DDR present, also limit the DDR frame buffer to only one frame.
@@ -873,7 +874,10 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
                                                              default value: 1
                                                          */
 #define OGMACAM_OPTION_FRAMERATE              0x11       /* limit the frame rate, the default value 0 means no limit */
-#define OGMACAM_OPTION_DEMOSAIC               0x12       /* demosaic method for both video and still image: BILINEAR = 0, VNG(Variable Number of Gradients) = 1, PPG(Patterned Pixel Grouping) = 2, AHD(Adaptive Homogeneity Directed) = 3, EA(Edge Aware) = 4, see https://en.wikipedia.org/wiki/Demosaicing, default value: 0 */
+#define OGMACAM_OPTION_DEMOSAIC               0x12       /* demosaic method for both video and still image: BILINEAR = 0, VNG(Variable Number of Gradients) = 1, PPG(Patterned Pixel Grouping) = 2, AHD(Adaptive Homogeneity Directed) = 3, EA(Edge Aware) = 4, see https://en.wikipedia.org/wiki/Demosaicing
+                                                              In terms of CPU usage, EA is the lowest, followed by BILINEAR, and the others are higher.
+                                                              default value: 0
+                                                         */
 #define OGMACAM_OPTION_DEMOSAIC_VIDEO         0x13       /* demosaic method for video */
 #define OGMACAM_OPTION_DEMOSAIC_STILL         0x14       /* demosaic method for still image */
 #define OGMACAM_OPTION_BLACKLEVEL             0x15       /* black level */
@@ -950,7 +954,7 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
 #define OGMACAM_OPTION_BYTEORDER              0x2a       /* Byte order, BGR or RGB: 0 => RGB, 1 => BGR, default value: 1(Win), 0(macOS, Linux, Android) */
 #define OGMACAM_OPTION_NOPACKET_TIMEOUT       0x2b       /* no packet timeout: 0 => disable, positive value (>= OGMACAM_NOPACKET_TIMEOUT_MIN) => timeout milliseconds. default: disable */
 #define OGMACAM_OPTION_MAX_PRECISE_FRAMERATE  0x2c       /* get the precise frame rate maximum value in 0.1 fps, such as 115 means 11.5 fps */
-#define OGMACAM_OPTION_PRECISE_FRAMERATE      0x2d       /* precise frame rate current value in 0.1 fps */
+#define OGMACAM_OPTION_PRECISE_FRAMERATE      0x2d       /* precise frame rate current value in 0.1 fps. use OGMACAM_OPTION_MAX_PRECISE_FRAMERATE, OGMACAM_OPTION_MIN_PRECISE_FRAMERATE to get the range. if the set value is out of range, E_INVALIDARG will be returned */
 #define OGMACAM_OPTION_BANDWIDTH              0x2e       /* bandwidth, [1-100]% */
 #define OGMACAM_OPTION_RELOAD                 0x2f       /* reload the last frame in trigger mode */
 #define OGMACAM_OPTION_CALLBACK_THREAD        0x30       /* dedicated thread for callback: 0 => disable, 1 => enable, default: 0 */
@@ -1123,6 +1127,13 @@ OGMACAM_API(HRESULT)  Ogmacam_feed_Pipe(HOgmacam h, unsigned pipeId);
 #define OGMACAM_OPTION_TECTARGET_RANGE        0x6d       /* TEC target range: min(low 16 bits) = (short)(val & 0xffff), max(high 16 bits) = (short)((val >> 16) & 0xffff) */
 #define OGMACAM_OPTION_CDS                    0x6e       /* Correlated Double Sampling */
 #define OGMACAM_OPTION_LOW_POWER_EXPOTIME     0x6f       /* Low Power Consumption: Enable if exposure time is greater than the set value */
+#define OGMACAM_OPTION_ZERO_OFFSET            0x70       /* Sensor output offset to zero: 0 => disable, 1 => eanble; default: 0 */
+#define OGMACAM_OPTION_GVCP_TIMEOUT           0x71       /* GVCP Timeout: millisecond, range = [3, 75], default: 15
+                                                              Unless in very special circumstances, generally no modification is required, just use the default value
+                                                         */
+#define OGMACAM_OPTION_GVCP_RETRY             0x72       /* GVCP Retry: range = [2, 8], default: 4
+                                                              Unless in very special circumstances, generally no modification is required, just use the default value
+                                                         */
 
 /* pixel format */
 #define OGMACAM_PIXELFORMAT_RAW8              0x00
