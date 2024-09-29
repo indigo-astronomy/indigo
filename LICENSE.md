@@ -1,4 +1,4 @@
-## INDIGO Astronomy open-source license (version 2.0, December 2020)
+## INDIGO Astronomy open-source license (version 3.0, September 2024)
 
 Copyright (c) 2020 CloudMakers, s. r. o.
 
@@ -15,10 +15,6 @@ notice, this list of conditions and the following disclaimer.
 copyright notice, this list of conditions and the following
 disclaimer in the documentation and/or other materials provided
 with the distribution.
-
-3. Redistribution in source or binary form for fee is permitted only
-as part of another different product or as product derived from this
-software.
 
 THIS SOFTWARE IS PROVIDED BY THE AUTHORS 'AS IS' AND ANY EXPRESS
 OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
