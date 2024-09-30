@@ -989,20 +989,29 @@ static bool exposure_batch(indigo_device *device) {
 				}
 			}
 		}
-		if (light_frame && !is_controlled_instance) {
+		if (!is_controlled_instance) {
 			if (remaining_exposures != 0) {
-				// AGENT_IMAGER_STATS_FRAMES_TO_DITHERING < 0 is deprecated
-				if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value >= 0 && AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM->sw.value && (remaining_exposures > 1 || remaining_exposures == -1 || (remaining_exposures == 1 && AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM->sw.value))) {
-					if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value > 0) {
-						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value--;
+				if (light_frame) {
+					// AGENT_IMAGER_STATS_FRAMES_TO_DITHERING < 0 is deprecated
+					if (
+						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value >= 0 &&
+						AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM->sw.value && (
+							remaining_exposures > 1 || remaining_exposures == -1 || (
+								remaining_exposures == 1 && AGENT_IMAGER_DITHER_AFTER_BATCH_FEATURE_ITEM->sw.value
+							)
+						)
+					) {
+						if (AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value > 0) {
+							AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value--;
+						} else {
+							AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
+							if (!do_dither(device)) {
+								return false;
+							}
+						}
 					} else {
 						AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
-						if (!do_dither(device)) {
-							return false;
-						}
 					}
-				} else {
-					AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM->number.value = AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM->number.target;
 				}
 				check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_PRE_DELAY_ITEM);
 				double reported_delay_time = AGENT_IMAGER_BATCH_DELAY_ITEM->number.target;
