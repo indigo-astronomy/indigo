@@ -121,8 +121,6 @@ typedef struct {
 	bool moving;
 	bool use_crc;
 	int count;
-	indigo_device *focuser;
-	indigo_device *aux;
 } steeldrive2_private_data;
 
 // -------------------------------------------------------------------------------- Low level communication routines
@@ -366,7 +364,8 @@ static void focuser_timer_callback(indigo_device *device) {
 	if (PRIVATE_DATA->handle == 0)
 		return;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	device = PRIVATE_DATA->focuser;
+	indigo_device *aux = device;
+	device = device->master_device;
 	char response[256], *value;
 	bool status_update = false;
 	if (steeldrive2_command(device, "$BS SUMMARY", response, sizeof(response))) {
@@ -405,7 +404,6 @@ static void focuser_timer_callback(indigo_device *device) {
 						status_update = true;
 					}
 				} else if (!strcmp(token, "PWM")) {
-					indigo_device *aux = PRIVATE_DATA->focuser;
 					indigo_device *device = aux;
 					double tmp = indigo_atod(value);
 					if (AUX_HEATER_OUTLET_1_ITEM->number.value != tmp) {
@@ -1273,12 +1271,10 @@ indigo_result indigo_focuser_steeldrive2(indigo_driver_action action, indigo_dri
 			private_data = indigo_safe_malloc(sizeof(steeldrive2_private_data));
 			focuser = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 			focuser->private_data = private_data;
-			private_data->focuser = focuser;
 			indigo_attach_device(focuser);
 			aux = indigo_safe_malloc_copy(sizeof(indigo_device), &aux_template);
 			aux->private_data = private_data;
 			aux->master_device = focuser;
-			private_data->aux = aux;
 			indigo_attach_device(aux);
 			break;
 
