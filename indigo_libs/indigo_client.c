@@ -538,6 +538,14 @@ indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, 
 	double d = fabs(value);
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
+	if (s == 60) {
+		s = 0;
+		m++;
+		if (m == 60) {
+			m = 0;
+			d += value > 0 ? 1 : -1;
+		}
+	}
 	if (!strcmp(format + format_length - 3, "10m")) {
 		snprintf(buffer, buffer_size, "%d:%02d:%06.3f", (int)value, (int)m, s);
 		return INDIGO_OK;
