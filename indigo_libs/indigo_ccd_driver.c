@@ -1354,7 +1354,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if (fs[1] == 'E' || (isdigit(fs[1]) && fs[2] == 'E')) { // %E or %nE - exposure time
-			char e[16];
+			char buffer[16];
 			int digits = 0;
 			if (fs[1] == 'E') {
 				if (CCD_EXPOSURE_ITEM->number.target < 0.001)
@@ -1368,9 +1368,9 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			} else {
 				digits = fs[1] - '0';
 			}
-			sprintf(e, "%.*f", digits, CCD_EXPOSURE_ITEM->number.target);
+			sprintf(buffer, "%.*f", digits, CCD_EXPOSURE_ITEM->number.target);
 			strncpy(tmp, format, fs - format);
-			strcat(tmp, e);
+			strcat(tmp, buffer);
 			if (fs[1] == 'E')
 				strcat(tmp, fs + 2);
 			else
@@ -1378,7 +1378,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcpy(format, tmp);
 		} else if (fs[1] == 'T') { // %T - temperature
 			char t[16];
-			sprintf(t, "%.2f", CCD_TEMPERATURE_ITEM->number.value);
+			sprintf(t, "%.0fC", CCD_TEMPERATURE_ITEM->number.value);
 			strncpy(tmp, format, fs - format);
 			strcat(tmp, t);
 			strcat(tmp, fs + 2);
@@ -1390,6 +1390,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 					strcat(tmp, CCD_FRAME_TYPE_PROPERTY->items[i].label);
 				}
 			}
+			strncpy(tmp, format, fs - format);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if ((fs[1] == 'D' || fs[1] == 'H') || ((fs[1] == '.' || fs[1] == '-') && (fs[2] == 'D' || fs[2] == 'H'))) { // %D, %.D, %-D - date, %H, %.H, %-H - time
@@ -1419,22 +1420,44 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 				strcat(tmp, fs + 3);
 			strcpy(format, tmp);
 		} else if (fs[1] == 'C') { // %C - colour filter, R G B Ha etc.
-			bool found = false;
-			strncpy(tmp, format, fs - format);
+			char buffer[50] = "NA";
 			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
 				indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
 				if (!strcmp(item->name, "FILTER") && item->text.value[0] == '\'') {
-					char filter[50];
-					strcpy(filter, item->text.value + 1);
-					filter[strlen(filter) - 1] = 0;
-					sanitise(filter);
-					strcat(tmp, filter);
-					found = true;
+					strcpy(buffer, item->text.value + 1);
+					buffer[strlen(buffer) - 1] = 0;
+					sanitise(buffer);
 				}
 			}
-			if (!found) {
-				strcat(tmp, "nofilter");
+			strncpy(tmp, format, fs - format);
+			strcat(tmp, buffer);
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
+		} else if (fs[1] == 'P') { // %P - focuser position
+			char buffer[15] = "NA";
+			for (int i = 0; i < CCD_FITS_HEADERS_PROPERTY->count; i++) {
+				indigo_item *item = CCD_FITS_HEADERS_PROPERTY->items + i;
+				if (!strcmp(item->name, "FOCUS")) {
+					strncpy(buffer, item->text.value, sizeof(buffer));
+					break;
+				}
 			}
+			strncpy(tmp, format, fs - format);
+			strcat(tmp, buffer);
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
+		} else if (fs[1] == 'G') { // %G - gain
+			char buffer[15];
+			sprintf(buffer, "%.0f", CCD_GAIN_ITEM->number.value);
+			strncpy(tmp, format, fs - format);
+			strcat(tmp, buffer);
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
+		} else if (fs[1] == 'O') { // %O - offset
+			char buffer[15];
+			sprintf(buffer, "%.0f", CCD_OFFSET_ITEM->number.value);
+			strncpy(tmp, format, fs - format);
+			strcat(tmp, buffer);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if (isdigit(fs[1]) && fs[2] == 'S') { // %nS - sequence number in %0nd format
@@ -1472,7 +1495,7 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			}
 			return false;
 		} else {
-			return false;
+			*fs = '_';
 		}
 		fs = strchr(format, '%');
 	}
