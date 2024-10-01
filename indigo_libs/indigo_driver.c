@@ -312,12 +312,13 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		/* Decrease count as other items are rare if you need them just set count to 8 in the driver */
 		INFO_PROPERTY->count = 4;
 		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		bool is_simulator = strstr(device->name, "Simulator") != NULL;
+		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_OK_STATE, is_simulator ? INDIGO_RO_PERM : INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SIMULATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		SIMULATION_PROPERTY->hidden = true;
-		indigo_init_switch_item(SIMULATION_ENABLED_ITEM, SIMULATION_ENABLED_ITEM_NAME, "Enabled", false);
-		indigo_init_switch_item(SIMULATION_DISABLED_ITEM, SIMULATION_DISABLED_ITEM_NAME, "Disabled", true);
+		SIMULATION_PROPERTY->hidden = !is_simulator;
+		indigo_init_switch_item(SIMULATION_ENABLED_ITEM, SIMULATION_ENABLED_ITEM_NAME, "Enabled", is_simulator);
+		indigo_init_switch_item(SIMULATION_DISABLED_ITEM, SIMULATION_DISABLED_ITEM_NAME, "Disabled", !is_simulator);
 		// -------------------------------------------------------------------------------- CONFIG
 		CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, CONFIG_PROPERTY_NAME, MAIN_GROUP, "Configuration control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (CONFIG_PROPERTY == NULL)
@@ -383,15 +384,6 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		pthread_mutex_init(&DEVICE_CONTEXT->config_mutex, NULL);
 		pthread_mutex_init(&DEVICE_CONTEXT->multi_device_mutex, NULL);
 		indigo_device *master_device = device->master_device;
-		if (DEVICE_CONTEXT->base_device == NULL && master_device != NULL && master_device != device) {
-			// create the same number of additional devices as defined on the master device
-			int count = ((((indigo_device_context *)master_device->device_context)->device_inst_property)->items)->number.value;
-			if (count > 0) {
-				const char *names[] = { ADDITIONAL_INSTANCES_COUNT_ITEM_NAME };
-				const double values[] = { count };
-				indigo_change_number_property(NULL, device->name, ADDITIONAL_INSTANCES_PROPERTY_NAME, 1, names, values);
-			}
-		}
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;
@@ -567,80 +559,98 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_update_property(device, AUTHENTICATION_PROPERTY, NULL);
 	} else if (indigo_property_match_changeable(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
-		assert(DEVICE_CONTEXT->base_device == NULL);
+		assert(DEVICE_CONTEXT->base_device == NULL && (device->master_device == NULL || device->master_device == device));
 		indigo_device *slave_devices[MAX_SLAVE_DEVICES];
+		int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
 		int saved_count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
 		int count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
-		if (device->master_device == NULL || device->master_device == device) {
-			for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
-				indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
-				if (additional_device != NULL) {
-					if (((indigo_device_context *)additional_device->device_context)->connection_property->items->sw.value) {
+		// remove all devices over 'count' -----------------------------------------
+		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
+			// make sure removed device is not connected
+			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
+			if (additional_device != NULL) {
+				if (((indigo_device_context *)additional_device->device_context)->connection_property->items->sw.value) {
+					ADDITIONAL_INSTANCES_COUNT_ITEM->number.target = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value = saved_count;
+					ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_ALERT_STATE;
+					indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, "Device %s is connected", additional_device->name);
+					return INDIGO_OK;
+				}
+				// make sure slave devices of removed device are not connected
+				for (int j = 0; j < slave_count; j++) {
+					indigo_device *slave_device = slave_devices[j];
+					indigo_device *additional_slave_device = ((indigo_device_context *)slave_device->device_context)->additional_device_instances[i];
+					if (additional_slave_device != NULL && ((indigo_device_context *)additional_slave_device->device_context)->connection_property->items->sw.value) {
 						ADDITIONAL_INSTANCES_COUNT_ITEM->number.target = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value = saved_count;
 						ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_ALERT_STATE;
-						indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, "Device %s is connected", additional_device->name);
+						indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, "Device %s is connected", additional_slave_device->name);
 						return INDIGO_OK;
-					}
-					int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
-					for (int j = 0; j < slave_count; j++) {
-						indigo_device *slave_device = slave_devices[j];
-						for (int k = count; k < MAX_ADDITIONAL_INSTANCES; k++) {
-							indigo_device *additional_device = ((indigo_device_context *)slave_device->device_context)->additional_device_instances[k];
-							if (additional_device != NULL && ((indigo_device_context *)additional_device->device_context)->connection_property->items->sw.value) {
-								ADDITIONAL_INSTANCES_COUNT_ITEM->number.target = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value = saved_count;
-								ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_ALERT_STATE;
-								indigo_update_property(device, ADDITIONAL_INSTANCES_PROPERTY, "Device %s is connected", additional_device->name);
-								return INDIGO_OK;
-							}
-						}
 					}
 				}
 			}
 		}
+		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
+			// remove master device
+			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
+			if (additional_device != NULL) {
+				// remove slave devices first
+				int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
+				for (int j = 0; j < slave_count; j++) {
+					indigo_device *slave_device = slave_devices[j];
+					indigo_device *additional_slave_device = ((indigo_device_context *)slave_device->device_context)->additional_device_instances[i];
+					if (additional_slave_device != NULL) {
+						if (indigo_detach_device(additional_slave_device) != INDIGO_NOT_FOUND) {
+							free(additional_slave_device);
+						}
+						((indigo_device_context *)slave_device->device_context)->additional_device_instances[i] = NULL;
+					}
+				}
+				if (indigo_detach_device(additional_device) != INDIGO_NOT_FOUND) {
+					free(additional_device);
+					free(additional_device->private_data);
+				}
+				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
+			}
+		}
+		// all devices over 'count' removed -----------------------------------------
+		// add devices up to 'count' -----------------------------------------
 		for (int i = 0; i < count; i++) {
 			if (DEVICE_CONTEXT->additional_device_instances[i] == NULL) {
 				indigo_device *additional_device = indigo_safe_malloc_copy(sizeof(indigo_device), device);
+				void *private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
 				snprintf(additional_device->name, INDIGO_NAME_SIZE, "%s #%d", device->name, i + 2);
 				additional_device->lock = -1;
 				additional_device->is_remote = false;
 				additional_device->gp_bits = 0;
 				additional_device->last_result = 0;
 				additional_device->access_token = 0;
-				additional_device->device_context = indigo_safe_malloc(MALLOCED_SIZE(device->device_context));
+				additional_device->device_context = NULL;
+				additional_device->private_data = private_data;
 				if (device->master_device == NULL) {
 					additional_device->master_device = NULL;
-					additional_device->private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
 				} else if (device->master_device == device) {
 					additional_device->master_device = additional_device;
-					additional_device->private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
-				} else {
-					indigo_device *master_device = ((indigo_device_context *)device->master_device->device_context)->additional_device_instances[i];
-					additional_device->master_device = master_device;
-					additional_device->private_data = master_device->private_data;
 				}
-				((indigo_device_context *)additional_device->device_context)->base_device = device;
 				indigo_attach_device(additional_device);
+				((indigo_device_context *)additional_device->device_context)->base_device = device;
 				DEVICE_CONTEXT->additional_device_instances[i] = additional_device;
-			}
-		}
-		if (device->master_device == NULL || device->master_device == device) {
-			int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
-			for (int j = 0; j < slave_count; j++) {
-				const char *names[] = { ADDITIONAL_INSTANCES_COUNT_ITEM_NAME };
-				const double values[] = { count };
-				indigo_change_number_property(client, slave_devices[j]->name, ADDITIONAL_INSTANCES_PROPERTY_NAME, 1, names, values);
-			}
-		}
-		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
-			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
-			if (additional_device != NULL) {
-				if (indigo_detach_device(additional_device) != INDIGO_NOT_FOUND) {
-					if (additional_device->master_device == NULL || additional_device->master_device == additional_device)
-						free(additional_device->private_data);
-					free(additional_device);
+				// add slaved devices
+				for (int j = 0; j < slave_count; j++) {
+					indigo_device *slave_device = slave_devices[j];
+					indigo_device *additional_slave_device = indigo_safe_malloc_copy(sizeof(indigo_device), slave_device);
+					snprintf(additional_slave_device->name, INDIGO_NAME_SIZE, "%s #%d", slave_device->name, i + 2);
+					additional_slave_device->lock = -1;
+					additional_slave_device->is_remote = false;
+					additional_slave_device->gp_bits = 0;
+					additional_slave_device->last_result = 0;
+					additional_slave_device->access_token = 0;
+					additional_slave_device->device_context = NULL;
+					additional_slave_device->private_data = private_data;
+					additional_slave_device->master_device = additional_device;
+					indigo_attach_device(additional_slave_device);
+					((indigo_device_context *)additional_device->device_context)->base_device = slave_device;
+					((indigo_device_context *)slave_device->device_context)->additional_device_instances[i] = additional_slave_device;
 				}
-				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
 			}
 		}
 		ADDITIONAL_INSTANCES_PROPERTY->state = INDIGO_OK_STATE;

@@ -1842,7 +1842,12 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	if (format == NULL) {
 		format = "%d:%02d:%05.2f";
 	}
-
+	int component_count = 0;
+	char *f = format;
+	while (*f) {
+		if (*f++ == '%')
+			component_count++;
+	}
 	char buf[127];
 	static char string_1[128], string_2[128], string_3[128], string_4[128];
 	static char *string = string_4;
@@ -1855,47 +1860,78 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	} else if (string == string_4) {
 		string = string_1;
 	}
-
-	int format_len = strlen(format);
+	int format_len = (int)strlen(format);
 	if (format[format_len - 1] == 'd') {
-		s = round(s);
-		if (s >= 60) {
-			s = 0;
-			m++;
-		}
-		if (m >= 60) {
-			m = 0;
-			d++;
-		}
-		snprintf(buf, sizeof(buf), format, (int)d, (int)m, (int)s);
-	} else if (format[format_len - 1] == 'f') {
-		if (format[format_len - 3] == '.') {
-			if (format[format_len - 2] == '0') {
-				s = round(s);
-			} else if (format[format_len - 2] == '1') {
-				s = (round(s*10.0))/10.0;
-			} else if (format[format_len - 2] == '2') {
-				s = (round(s*100.0))/100.0;
-			} else if (format[format_len - 2] == '3') {
-				s = (round(s*1000.0))/1000.0;
+		if (component_count == 1) {
+			snprintf(buf, sizeof(buf), format, (int)d);
+		} else if (component_count == 2) {
+			m = round(m);
+			if (m >= 60) {
+				m = 0;
+				d++;
 			}
+			snprintf(buf, sizeof(buf), format, (int)d, (int)m);
 		} else {
-			s = (round(s*10000.0))/10000.0;
+			s = round(s);
+			if (s >= 60) {
+				s = 0;
+				m++;
+			}
+			if (m >= 60) {
+				m = 0;
+				d++;
+			}
+			snprintf(buf, sizeof(buf), format, (int)d, (int)m, (int)s);
 		}
-
-		if (s >= 60) {
-			s = 0;
-			m++;
+	} else if (format[format_len - 1] == 'f') {
+		if (component_count == 1) {
+			snprintf(buf, sizeof(buf), format, d);
+		} else if (component_count == 2) {
+			if (format[format_len - 3] == '.') {
+				if (format[format_len - 2] == '0') {
+					m = round(m);
+				} else if (format[format_len - 2] == '1') {
+					m = (round(m * 10.0)) / 10.0;
+				} else if (format[format_len - 2] == '2') {
+					m = (round(m * 100.0)) / 100.0;
+				} else if (format[format_len - 2] == '3') {
+					m = (round(m * 1000.0)) / 1000.0;
+				}
+			} else {
+				m = (round(m * 10000.0)) / 10000.0;
+			}
+			if (m >= 60) {
+				m = 0;
+				d++;
+			}
+			snprintf(buf, sizeof(buf), format, (int)d, m);
+		} else {
+			if (format[format_len - 3] == '.') {
+				if (format[format_len - 2] == '0') {
+					s = round(s);
+				} else if (format[format_len - 2] == '1') {
+					s = (round(s * 10.0)) / 10.0;
+				} else if (format[format_len - 2] == '2') {
+					s = (round(s * 100.0)) / 100.0;
+				} else if (format[format_len - 2] == '3') {
+					s = (round(s * 1000.0)) / 1000.0;
+				}
+			} else {
+				s = (round(s * 10000.0)) / 10000.0;
+			}
+			if (s >= 60) {
+				s = 0;
+				m++;
+			}
+			if (m >= 60) {
+				m = 0;
+				d++;
+			}
+			snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
 		}
-		if (m >= 60) {
-			m = 0;
-			d++;
-		}
-		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
 	} else {
-		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
+		snprintf(buf, sizeof(buf), format, d);
 	}
-
 	if (value < 0) {
 		if (buf[0] == '+') {
 			buf[0] = '-';

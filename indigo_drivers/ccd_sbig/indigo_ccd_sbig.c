@@ -1753,8 +1753,6 @@ static indigo_result eth_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_device_attach(device, DRIVER_NAME, DRIVER_VERSION, 0) == INDIGO_OK) {
 		INFO_PROPERTY->count = 2;
-		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
 		indigo_copy_value(DEVICE_PORT_ITEM->text.value, "192.168.0.100");

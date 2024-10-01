@@ -597,8 +597,6 @@ bool rpio_unexport_all(bool use_pwm) {
 // --------------------------------------------------------------------------------- INDIGO AUX RELAYS device implementation
 
 static int rpio_init_properties(indigo_device *device) {
-	// -------------------------------------------------------------------------------- SIMULATION
-	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT
 	DEVICE_PORT_PROPERTY->hidden = true;
 	// --------------------------------------------------------------------------------

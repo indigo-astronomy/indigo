@@ -372,7 +372,6 @@ static indigo_result gps_attach(indigo_device *device) {
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->serial_mutex, NULL);
-		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
