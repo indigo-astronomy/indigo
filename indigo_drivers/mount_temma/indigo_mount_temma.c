@@ -351,7 +351,6 @@ static indigo_result mount_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		*PRIVATE_DATA->slewCommand = 0;
-		SIMULATION_PROPERTY->hidden = true;
 		MOUNT_SET_HOST_TIME_PROPERTY->hidden = true;
 		MOUNT_UTC_TIME_PROPERTY->hidden = true;
 		MOUNT_PARK_PROPERTY->count = 1;

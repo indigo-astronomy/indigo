@@ -1080,8 +1080,6 @@ static indigo_result ethernet_attach(indigo_device *device) {
 	assert(device != NULL);
 	if (indigo_device_attach(device, DRIVER_NAME, (indigo_version)DRIVER_VERSION, 0) == INDIGO_OK) {
 		INFO_PROPERTY->count = 2;
-		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- INFO
 		INFO_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT

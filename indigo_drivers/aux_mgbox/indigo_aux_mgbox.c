@@ -512,7 +512,6 @@ static indigo_result gps_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_gps_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		SIMULATION_PROPERTY->hidden = true;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		DEVICE_BAUDRATE_PROPERTY->hidden = false;
@@ -704,8 +703,6 @@ static void mg_reset_device(indigo_device *device) {
 
 
 static int aux_init_properties(indigo_device *device) {
-	// -------------------------------------------------------------------------------- SIMULATION
-	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT
 	DEVICE_PORT_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_PORTS

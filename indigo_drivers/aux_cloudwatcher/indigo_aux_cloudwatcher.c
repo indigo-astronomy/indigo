@@ -1239,8 +1239,6 @@ static void aag_close(indigo_device *device) {
 // --------------------------------------------------------------------------------- INDIGO AUX RELAYS device implementation
 
 static int aag_init_properties(indigo_device *device) {
-	// -------------------------------------------------------------------------------- SIMULATION
-	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT
 	DEVICE_PORT_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_PORTS
