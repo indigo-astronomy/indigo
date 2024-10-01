@@ -1862,7 +1862,9 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	}
 	int format_len = (int)strlen(format);
 	if (format[format_len - 1] == 'd') {
-		if (component_count == 2) {
+		if (component_count == 1) {
+			snprintf(buf, sizeof(buf), format, (int)d);
+		} else if (component_count == 2) {
 			m = round(m);
 			if (m >= 60) {
 				m = 0;
@@ -1882,7 +1884,9 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 			snprintf(buf, sizeof(buf), format, (int)d, (int)m, (int)s);
 		}
 	} else if (format[format_len - 1] == 'f') {
-		if (component_count == 2) {
+		if (component_count == 1) {
+			snprintf(buf, sizeof(buf), format, d);
+		} else if (component_count == 2) {
 			if (format[format_len - 3] == '.') {
 				if (format[format_len - 2] == '0') {
 					m = round(m);
@@ -1926,7 +1930,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 			snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
 		}
 	} else {
-		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
+		snprintf(buf, sizeof(buf), format, d);
 	}
 	if (value < 0) {
 		if (buf[0] == '+') {
