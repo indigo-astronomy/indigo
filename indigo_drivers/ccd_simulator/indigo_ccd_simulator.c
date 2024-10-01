@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0017
+#define DRIVER_VERSION 0x0018
 #define DRIVER_NAME	"indigo_ccd_simulator"
 //#define ENABLE_BACKLASH_PROPERTY
 
@@ -687,6 +687,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 		SIMULATION_PROPERTY->perm = INDIGO_RO_PERM;
 		SIMULATION_ENABLED_ITEM->sw.value = true;
 		SIMULATION_DISABLED_ITEM->sw.value = false;
+		if (!strncmp(device->name, CCD_SIMULATOR_IMAGER_CAMERA_NAME, strlen(CCD_SIMULATOR_IMAGER_CAMERA_NAME))) {
+			PRIVATE_DATA->imager = device;
+		} else if (!strncmp(device->name, CCD_SIMULATOR_GUIDER_CAMERA_NAME, strlen(CCD_SIMULATOR_GUIDER_CAMERA_NAME))) {
+			PRIVATE_DATA->guider = device;
+		} else if (!strncmp(device->name, CCD_SIMULATOR_DSLR_NAME, strlen(CCD_SIMULATOR_DSLR_NAME))) {
+			PRIVATE_DATA->dslr = device;
+		} else if (!strncmp(device->name, CCD_SIMULATOR_FILE_NAME, strlen(CCD_SIMULATOR_FILE_NAME))) {
+			PRIVATE_DATA->file = device;
+		}
 		if (device == PRIVATE_DATA->dslr) {
 			DSLR_PROGRAM_PROPERTY = indigo_init_switch_property(NULL, device->name, DSLR_PROGRAM_PROPERTY_NAME, "DSLR", "Program mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			indigo_init_switch_item(DSLR_PROGRAM_PROPERTY->items + 0, "M", "Manual", true);
@@ -1810,7 +1819,6 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			pthread_mutex_init(&private_data->image_mutex, NULL);
 			imager_ccd = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_camera_template);
 			imager_ccd->private_data = private_data;
-			private_data->imager = imager_ccd;
 			indigo_attach_device(imager_ccd);
 			imager_wheel = indigo_safe_malloc_copy(sizeof(indigo_device), &imager_wheel_template);
 			imager_wheel->private_data = private_data;
@@ -1823,7 +1831,6 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			guider_ccd = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_camera_template);
 			guider_ccd->private_data = private_data;
 			guider_ccd->master_device = imager_ccd;
-			private_data->guider = guider_ccd;
 			indigo_attach_device(guider_ccd);
 			guider_guider = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 			guider_guider->private_data = private_data;
@@ -1837,13 +1844,11 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			dslr = indigo_safe_malloc_copy(sizeof(indigo_device), &dslr_template);
 			dslr->private_data = private_data;
 			dslr->master_device = imager_ccd;
-			private_data->dslr = dslr;
 			indigo_attach_device(dslr);
 
 			file = indigo_safe_malloc_copy(sizeof(indigo_device), &file_template);
 			file->private_data = private_data;
 			file->master_device = imager_ccd;
-			private_data->file = file;
 			indigo_attach_device(file);
 			break;
 
