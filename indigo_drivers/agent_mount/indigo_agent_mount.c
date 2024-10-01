@@ -314,11 +314,11 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_DOME_ITEM, AGENT_SITE_DATA_SOURCE_DOME_ITEM_NAME, "Use dome coordinates", false);
 		indigo_init_switch_item(AGENT_SITE_DATA_SOURCE_GPS_ITEM, AGENT_SITE_DATA_SOURCE_GPS_ITEM_NAME, "Use GPS coordinates", false);
 		// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
-		AGENT_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SET_HOST_TIME_PROPERTY_NAME, "Agent", "Set host time", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		AGENT_SET_HOST_TIME_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_SET_HOST_TIME_PROPERTY_NAME, "Agent", "Use host time", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (AGENT_SET_HOST_TIME_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_SET_HOST_TIME_MOUNT_ITEM, AGENT_SET_HOST_TIME_MOUNT_ITEM_NAME, "Set host time to mount", true);
-		indigo_init_switch_item(AGENT_SET_HOST_TIME_DOME_ITEM, AGENT_SET_HOST_TIME_DOME_ITEM_NAME, "Set host time to dome", true);
+		indigo_init_switch_item(AGENT_SET_HOST_TIME_MOUNT_ITEM, AGENT_SET_HOST_TIME_MOUNT_ITEM_NAME, "Use host time for mount", true);
+		indigo_init_switch_item(AGENT_SET_HOST_TIME_DOME_ITEM, AGENT_SET_HOST_TIME_DOME_ITEM_NAME, "Use host time for dome", true);
 		// -------------------------------------------------------------------------------- AGENT_ABORT_RELATED_PROCESS
 		AGENT_ABORT_RELATED_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_ABORT_RELATED_PROCESS_PROPERTY_NAME, "Agent", "Allow to abort related process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (AGENT_ABORT_RELATED_PROCESS_PROPERTY == NULL)
