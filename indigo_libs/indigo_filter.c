@@ -39,7 +39,7 @@
 static int interface_mask[INDIGO_FILTER_LIST_COUNT] = { INDIGO_INTERFACE_CCD, INDIGO_INTERFACE_WHEEL, INDIGO_INTERFACE_FOCUSER, INDIGO_INTERFACE_ROTATOR, INDIGO_INTERFACE_MOUNT, INDIGO_INTERFACE_GUIDER, INDIGO_INTERFACE_DOME, INDIGO_INTERFACE_GPS, INDIGO_INTERFACE_AUX_JOYSTICK, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX, INDIGO_INTERFACE_AUX };
 static char *property_name_prefix[INDIGO_FILTER_LIST_COUNT] = { "CCD_", "WHEEL_", "FOCUSER_", "ROTATOR_", "MOUNT_", "GUIDER_", "DOME_", "GPS_", "JOYSTICK_", "AUX_1_", "AUX_2_", "AUX_3_", "AUX_4_" };
 static int property_name_prefix_len[INDIGO_FILTER_LIST_COUNT] = { 4, 6, 8, 8, 6, 7, 5, 4, 9, 6, 6, 6, 6 };
-static char *property_name_label[INDIGO_FILTER_LIST_COUNT] = { "CCD ", "Wheel ", "Focuser ", "Rotator ", "Mount ", "Guider ", "Dome ", "GPS ", "Joystick", "AUX #1 ", "AUX #2 ", "AUX #3 ", "AUX #4 " };
+static char *property_name_label[INDIGO_FILTER_LIST_COUNT] = { "Camera ", "Filter Wheel ", "Focuser ", "Rotator ", "Mount ", "Guider ", "Dome ", "GPS ", "Joystick", "AUX #1 ", "AUX #2 ", "AUX #3 ", "AUX #4 " };
 
 indigo_result indigo_filter_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface) {
 	assert(device != NULL);
@@ -58,7 +58,7 @@ indigo_result indigo_filter_device_attach(indigo_device *device, const char* dri
 			FILTER_CCD_LIST_PROPERTY->count = 1;
 			indigo_init_switch_item(FILTER_CCD_LIST_PROPERTY->items, FILTER_DEVICE_LIST_NONE_ITEM_NAME, "No camera", true);
 			// -------------------------------------------------------------------------------- wheel property
-			FILTER_WHEEL_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_WHEEL_LIST_PROPERTY_NAME, "Main", "Wheel list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
+			FILTER_WHEEL_LIST_PROPERTY = indigo_init_switch_property(NULL, device->name, FILTER_WHEEL_LIST_PROPERTY_NAME, "Main", "Filter wheel list", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, INDIGO_FILTER_MAX_DEVICES);
 			if (FILTER_WHEEL_LIST_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			FILTER_WHEEL_LIST_PROPERTY->hidden = true;
@@ -784,8 +784,6 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 				}
 			}
 		}
-	} else if (!strcmp(property->group, MAIN_GROUP)) {
-		return INDIGO_OK;
 	} else {
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 			char *name_prefix = property_name_prefix[i];
@@ -815,8 +813,13 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 						if (translate) {
 							strcpy(agent_property->name, name_prefix);
 							strcat(agent_property->name, property->name);
-							strcpy(agent_property->label, property_name_label[i]);
-							strcat(agent_property->label, property->label);
+							if (!strcmp(property->group, MAIN_GROUP)) {
+								strcpy(agent_property->group, property_name_label[i]);
+								strcat(agent_property->group, property->group);
+							} else {
+								strcpy(agent_property->label, property_name_label[i]);
+								strcat(agent_property->label, property->label);
+							}
 						}
 						agent_cache[free_index] = agent_property;
 						indigo_define_property(device, agent_property, message);
