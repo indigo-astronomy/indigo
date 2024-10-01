@@ -1720,20 +1720,22 @@ static bool autofocus_ucurve(indigo_device *device) {
 			/* Find best sample index and value */
 			best_value = hfds[0][0];
 			best_index = 0;
-			//int best_indices[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+			int best_indices[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+
+			/*
 			for (int i = 0; i <= sample_index; i++) {
 				if (hfds[0][i] < best_value) {
 					best_value = hfds[0][i];
 					best_index = i;
 				}
 			}
+			*/
 
-			/*
 			// Find the best index for each star
 			for (int star = 0; star < star_count; star++) {
 				best_value = hfds[star][0];
 				best_index = 0;
-				for (int i = 0; i < sample; i++) {
+				for (int i = 0; i <= sample_index; i++) {
 					if (hfds[star][i] < best_value) {
 						best_value = hfds[star][i];
 						best_index = i;
@@ -1745,8 +1747,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			// Calculate the mode of the best indices
 			best_index = calculate_mode(best_indices, star_count);
 
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: The best samle focus is at position median %d, (%d for star #0)", best_index, best_indices[0]);
-			*/
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: The best sample focus is at position %d (mode), %d for star #0", best_index, best_indices[0]);
 
 			if (sample_index > mid_index && best_index < mid_index) {
 				/* The best focus is below the middle of the U-Curve.
