@@ -153,8 +153,6 @@ static int lunatico_init_properties(indigo_device *device) {
 	// -------------------------------------------------------------------------------- AUTHENTICATION
 	AUTHENTICATION_PROPERTY->hidden = false;
 	AUTHENTICATION_PROPERTY->count = 1;
-	// -------------------------------------------------------------------------------- SIMULATION
-	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT
 	DEVICE_PORT_PROPERTY->hidden = false;
 	DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;

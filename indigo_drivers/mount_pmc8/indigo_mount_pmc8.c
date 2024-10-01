@@ -422,8 +422,6 @@ static indigo_result mount_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_mount_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY->hidden = true;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		strcpy(DEVICE_PORT_ITEM->text.value, "udp://192.168.47.1");
 		DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;

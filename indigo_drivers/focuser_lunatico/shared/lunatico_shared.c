@@ -754,9 +754,6 @@ static void configure_ports(indigo_device *device) {
 
 
 static int lunatico_init_properties(indigo_device *device) {
-	// -------------------------------------------------------------------------- LA_MODEL_PROPERTY
-	// -------------------------------------------------------------------------------- SIMULATION
-	SIMULATION_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------------- DEVICE_PORT
 	DEVICE_PORT_PROPERTY->hidden = false;
 	// -------------------------------------------------------------------------------- DEVICE_PORTS

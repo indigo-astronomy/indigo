@@ -312,12 +312,13 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		/* Decrease count as other items are rare if you need them just set count to 8 in the driver */
 		INFO_PROPERTY->count = 4;
 		// -------------------------------------------------------------------------------- SIMULATION
-		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		bool is_simulator = strstr(device->name, "Simulator") != NULL;
+		SIMULATION_PROPERTY = indigo_init_switch_property(NULL, device->name, SIMULATION_PROPERTY_NAME, MAIN_GROUP, "Simulation status", INDIGO_OK_STATE, is_simulator ? INDIGO_RO_PERM : INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (SIMULATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		SIMULATION_PROPERTY->hidden = true;
-		indigo_init_switch_item(SIMULATION_ENABLED_ITEM, SIMULATION_ENABLED_ITEM_NAME, "Enabled", false);
-		indigo_init_switch_item(SIMULATION_DISABLED_ITEM, SIMULATION_DISABLED_ITEM_NAME, "Disabled", true);
+		SIMULATION_PROPERTY->hidden = !is_simulator;
+		indigo_init_switch_item(SIMULATION_ENABLED_ITEM, SIMULATION_ENABLED_ITEM_NAME, "Enabled", is_simulator);
+		indigo_init_switch_item(SIMULATION_DISABLED_ITEM, SIMULATION_DISABLED_ITEM_NAME, "Disabled", !is_simulator);
 		// -------------------------------------------------------------------------------- CONFIG
 		CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, CONFIG_PROPERTY_NAME, MAIN_GROUP, "Configuration control", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (CONFIG_PROPERTY == NULL)
