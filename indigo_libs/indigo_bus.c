@@ -1930,7 +1930,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 			snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
 		}
 	} else {
-		snprintf(buf, sizeof(buf), format, d);
+		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
 	}
 	if (value < 0) {
 		if (buf[0] == '+') {
