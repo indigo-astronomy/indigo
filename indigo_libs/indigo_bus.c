@@ -1958,7 +1958,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	} else {
 		snprintf(string, 128, "%s", buffer);
 	}
-	printf("%18s -> %s\n", format, string);
+	//printf("%18s -> %s\n", format, string);
 	return string;
 }
 
