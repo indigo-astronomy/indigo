@@ -36,7 +36,6 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
-#include <ctype.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <sys/time.h>
 #include <syslog.h>
@@ -60,6 +59,9 @@
 #define MAX_BLOBS	32
 
 #define BUFFER_SIZE	1024
+
+#define isdigit(c) (c >= '0' && c <= '9')
+#define isspace(c) (c == ' ')
 
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
@@ -1956,7 +1958,7 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	} else {
 		snprintf(string, 128, "%s", buffer);
 	}
-	//printf("%18s -> %s\n", format, string);
+	printf("%18s -> %s\n", format, string);
 	return string;
 }
 
@@ -1977,9 +1979,6 @@ void indigo_usleep(unsigned int delay) {
 	Sleep(s);
 #endif
 }
-
-#define isdigit(c) (c >= '0' && c <= '9')
-#define isspace(c) (c == ' ')
 
 double indigo_atod(const char *str) {
 	double value = 0;
