@@ -74,6 +74,8 @@ typedef enum PARSE_STATES {
 	HEADER1
 } parser_state;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
 
 static char *parser_state_name[] = {
 	"ERROR",
@@ -94,6 +96,8 @@ static char *parser_state_name[] = {
 	"HEADER",
 	"HEADER1"
 };
+
+#pragma clang diagnostic pop
 
 static indigo_property_state parse_state(indigo_version version, char *value) {
 	if (!strcmp(value, "Ok"))

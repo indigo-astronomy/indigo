@@ -1354,8 +1354,6 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 // -------------------------------------------------------------------------------- INDIGO rotator device implementation
 
-static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
-
 static indigo_result rotator_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
