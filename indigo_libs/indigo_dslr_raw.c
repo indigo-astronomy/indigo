@@ -201,10 +201,20 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 		goto cleanup;
 	}
 
-	outout_image->bayer_pattern[0] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 2, 2)];
-	outout_image->bayer_pattern[1] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 2, 3)];
-	outout_image->bayer_pattern[2] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 3, 2)];
-	outout_image->bayer_pattern[3] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 3, 3)];
+	if (raw_data->idata.filters == 9) {
+		for (int r = 0; r < 6; r++) {
+			for (int c = 0; c < 6; c++) {
+				outout_image->bayer_pattern[6 * r + c] = raw_data->idata.cdesc[raw_data->idata.xtrans_abs[r][c]];
+			}
+		}
+		outout_image->bayer_pattern[36] = 0;
+	} else {
+		outout_image->bayer_pattern[0] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 0, 0)];
+		outout_image->bayer_pattern[1] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 0, 1)];
+		outout_image->bayer_pattern[2] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 1, 0)];
+		outout_image->bayer_pattern[3] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 1, 1)];
+		outout_image->bayer_pattern[4] = 0;
+	}
 
 	indigo_debug("Maker       : %s, Model      : %s", raw_data->idata.make, raw_data->idata.model);
 	indigo_debug("Norm Maker  : %s, Norm Model : %s", raw_data->idata.normalized_make, raw_data->idata.normalized_model);
@@ -212,7 +222,7 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 	indigo_debug("iwidth      = %d, iheight    = %d", raw_data->sizes.iwidth, raw_data->sizes.iheight);
 	indigo_debug("raw_width   = %d, raw_height = %d", raw_data->sizes.raw_width, raw_data->sizes.raw_height);
 	indigo_debug("left_margin = %d, top_margin = %d", raw_data->sizes.left_margin, raw_data->sizes.top_margin);
-	indigo_debug("bayerpat    : %s, cdesc      : %s", outout_image->bayer_pattern, raw_data->idata.cdesc);
+	indigo_debug("bayerpat    : %s", outout_image->bayer_pattern);
 
 	if (raw_data->params.user_qual > 20) {
 		rc = image_bayered_data(raw_data, outout_image, false);

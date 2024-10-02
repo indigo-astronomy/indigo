@@ -33,7 +33,7 @@ typedef struct {
 	uint8_t bits;
 	uint8_t colors;
 	bool debayered;
-	char bayer_pattern[5];
+	char bayer_pattern[37];
 } indigo_dslr_raw_image_s;
 
 typedef struct {
