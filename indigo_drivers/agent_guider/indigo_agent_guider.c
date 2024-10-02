@@ -1642,7 +1642,11 @@ static void guide_process(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
 				if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value)
 					DEVICE_PRIVATE_DATA->rmse_count++;
-				for (int i = 0; i < DEVICE_PRIVATE_DATA->rmse_count; i++) {
+				int count = (int)DEVICE_PRIVATE_DATA->rmse_count;
+				if (count > MAX_STACK) {
+					count = MAX_STACK;
+				}
+				for (int i = 0; i < count; i++) {
 					double drift_ra_i =  DEVICE_PRIVATE_DATA->stack_x[i] * cos_angle + DEVICE_PRIVATE_DATA->stack_y[i] * sin_angle;
 					double drift_dec_i = DEVICE_PRIVATE_DATA->stack_x[i] * sin_angle - DEVICE_PRIVATE_DATA->stack_y[i] * cos_angle;
 					DEVICE_PRIVATE_DATA->rmse_ra_sum += drift_ra_i * drift_ra_i;
