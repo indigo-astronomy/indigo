@@ -982,6 +982,13 @@ uint32_t ptp_type_size(ptp_type type) {
 - (void)deviceDidBecomeReadyWithCompleteContentCatalog:(nonnull ICCameraDevice *)device {
 }
 
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didReceiveMetadata:(NSDictionary * _Nullable)metadata forItem:(nonnull ICCameraItem *)item error:(NSError * _Nullable)error { 
+}
+
+
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didReceiveThumbnail:(CGImageRef _Nullable)thumbnail forItem:(nonnull ICCameraItem *)item error:(NSError * _Nullable)error { 
+}
+
 -(void)didSendPTPCommand:(NSData*)command inData:(NSData*)inData response:(NSData*)response error:(NSError*)error contextInfo:(void*)contextInfo {
 	if (error == nil) {
 		if (_ptpSemafor) {
