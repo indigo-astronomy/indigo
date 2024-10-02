@@ -1558,6 +1558,14 @@ static void focuser_timer_callback(indigo_device *device) {
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 		}
 	}
+	double r = (double)rand() / RAND_MAX;
+	if (r < 0.1) {
+		FOCUSER_TEMPERATURE_ITEM->number.value += 0.1;
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	} else if (r > 0.9) {
+		FOCUSER_TEMPERATURE_ITEM->number.value -= 0.1;
+		indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, NULL);
+	}
 }
 
 static void focuser_connect_callback(indigo_device *device) {
