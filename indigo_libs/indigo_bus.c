@@ -36,6 +36,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
+#include <ctype.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <sys/time.h>
 #include <syslog.h>
@@ -1834,21 +1835,51 @@ double indigo_stod(char *string) {
 	return value;
 }
 
+static void fix_dms(double *d, double *m, double *s) {
+	if (s && *s >= 60) {
+		*s = 0;
+		(*m)++;
+	}
+	if (*m >= 60) {
+		*m = 0;
+		(*d)++;
+	}
+}
+
 char* indigo_dtos(double value, char *format) { // circular use of 4 static buffers!
 	double d = fabs(value);
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
-
 	if (format == NULL) {
 		format = "%d:%02d:%05.2f";
 	}
-	int component_count = 0;
-	char *f = format;
-	while (*f) {
-		if (*f++ == '%')
-			component_count++;
+	char buffer[127], signature[16];
+	// compute format signature
+	char *fp = format, *sp = signature;
+	while (*fp && sp - signature < sizeof(signature) - 1) {
+		if (*fp == '%') {
+			fp++;
+			while (*fp == '0' || *fp == '-' || *fp == '+') {
+				fp++;
+			}
+			while (isdigit((unsigned char)*fp)) {
+				fp++;
+			}
+			if (*fp == '.') {
+				fp++;
+				while (isdigit((unsigned char)*fp)) {
+					*(sp++) = *(fp++);
+				}
+			}
+			if (*fp) {
+				*(sp++) = *(fp++);
+			}
+		} else {
+			fp++;
+		}
 	}
-	char buf[127];
+	*sp = 0;
+	// select circular buffer
 	static char string_1[128], string_2[128], string_3[128], string_4[128];
 	static char *string = string_4;
 	if (string == string_1) {
@@ -1860,88 +1891,72 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	} else if (string == string_4) {
 		string = string_1;
 	}
-	int format_len = (int)strlen(format);
-	if (format[format_len - 1] == 'd') {
-		if (component_count == 1) {
-			snprintf(buf, sizeof(buf), format, (int)d);
-		} else if (component_count == 2) {
+	// format number
+	if (!strcmp(signature, "d")) {
+			snprintf(buffer, sizeof(buffer), format, (int)d);
+	} else if (!strcmp(signature, "dd")) {
 			m = round(m);
-			if (m >= 60) {
-				m = 0;
-				d++;
-			}
-			snprintf(buf, sizeof(buf), format, (int)d, (int)m);
-		} else {
-			s = round(s);
-			if (s >= 60) {
-				s = 0;
-				m++;
-			}
-			if (m >= 60) {
-				m = 0;
-				d++;
-			}
-			snprintf(buf, sizeof(buf), format, (int)d, (int)m, (int)s);
-		}
-	} else if (format[format_len - 1] == 'f') {
-		if (component_count == 1) {
-			snprintf(buf, sizeof(buf), format, d);
-		} else if (component_count == 2) {
-			if (format[format_len - 3] == '.') {
-				if (format[format_len - 2] == '0') {
-					m = round(m);
-				} else if (format[format_len - 2] == '1') {
-					m = (round(m * 10.0)) / 10.0;
-				} else if (format[format_len - 2] == '2') {
-					m = (round(m * 100.0)) / 100.0;
-				} else if (format[format_len - 2] == '3') {
-					m = (round(m * 1000.0)) / 1000.0;
-				}
-			} else {
-				m = (round(m * 10000.0)) / 10000.0;
-			}
-			if (m >= 60) {
-				m = 0;
-				d++;
-			}
-			snprintf(buf, sizeof(buf), format, (int)d, m);
-		} else {
-			if (format[format_len - 3] == '.') {
-				if (format[format_len - 2] == '0') {
-					s = round(s);
-				} else if (format[format_len - 2] == '1') {
-					s = (round(s * 10.0)) / 10.0;
-				} else if (format[format_len - 2] == '2') {
-					s = (round(s * 100.0)) / 100.0;
-				} else if (format[format_len - 2] == '3') {
-					s = (round(s * 1000.0)) / 1000.0;
-				}
-			} else {
-				s = (round(s * 10000.0)) / 10000.0;
-			}
-			if (s >= 60) {
-				s = 0;
-				m++;
-			}
-			if (m >= 60) {
-				m = 0;
-				d++;
-			}
-			snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
-		}
+			fix_dms(&d, &m, NULL);
+			snprintf(buffer, sizeof(buffer), format, (int)d, (int)m);
+	} else if (!strcmp(signature, "ddd")) {
+		s = round(s);
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, (int)s);
+	} else if (!strcmp(signature, "d0f")) {
+		m = round(m);
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, sizeof(buffer), format, (int)d, m);
+	} else if (!strcmp(signature, "d1f")) {
+		m = (round(m * 10.0)) / 10.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, sizeof(buffer), format, (int)d, m);
+	} else if (!strcmp(signature, "d2f")) {
+		m = (round(m * 100.0)) / 100.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, sizeof(buffer), format, (int)d, m);
+	} else if (!strcmp(signature, "d3f")) {
+		m = (round(m * 1000.0)) / 1000.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, sizeof(buffer), format, (int)d, m);
+	} else if (!strcmp(signature, "d4f")) {
+		m = (round(m * 10000.0)) / 10000.0;
+		fix_dms(&d, &m, NULL);
+		snprintf(buffer, sizeof(buffer), format, (int)d, m);
+	} else if (!strcmp(signature, "dd0f")) {
+		s = round(s);
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd1f")) {
+		s = (round(s * 10.0)) / 10.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd2f")) {
+		s = (round(s * 100.0)) / 100.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd3f")) {
+		s = (round(s * 1000.0)) / 1000.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
+	} else if (!strcmp(signature, "dd4f")) {
+		s = (round(s * 10000.0)) / 10000.0;
+		fix_dms(&d, &m, &s);
+		snprintf(buffer, sizeof(buffer), format, (int)d, (int)m, s);
 	} else {
-		snprintf(buf, sizeof(buf), format, (int)d, (int)m, s);
+		snprintf(buffer, sizeof(buffer), format, d);
 	}
+	// fix sign
 	if (value < 0) {
-		if (buf[0] == '+') {
-			buf[0] = '-';
-			snprintf(string, 128, "%s", buf);
+		if (buffer[0] == '+') {
+			buffer[0] = '-';
+			snprintf(string, 128, "%s", buffer);
 		} else {
-			snprintf(string, 128, "-%s", buf);
+			snprintf(string, 128, "-%s", buffer);
 		}
 	} else {
-		snprintf(string, 128, "%s", buf);
+		snprintf(string, 128, "%s", buffer);
 	}
+	//printf("%18s -> %s\n", format, string);
 	return string;
 }
 
