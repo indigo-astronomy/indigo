@@ -38,11 +38,21 @@
 
 #include <indigo/indigo_bus.h>
 
+typedef struct {
+	int vendor_id;
+	int pproduct_id;
+	char vendor_string[256];
+	char product_string[256];
+	char serial_string[256];
+	char path[256];
+} indigo_serial_info_t;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 extern indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
+extern int indigo_list_usb_serial_devices(indigo_serial_info_t *serial_info, int num_serial_info);
 	
 #ifdef __cplusplus
 }
