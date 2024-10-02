@@ -126,10 +126,10 @@ static bool starbook_http_get(indigo_device *device, const char *path, char *res
 		const char *test = strstr(DEVICE_PORT_ITEM->text.value, ":");
 		if (test != NULL) {
 			// xxx.xxx.xxx.xxx:port
-			int host_length = test - DEVICE_PORT_ITEM->text.value;
+			long host_length = test - DEVICE_PORT_ITEM->text.value;
 			PRIVATE_DATA->host = indigo_safe_malloc(host_length + 1);
 			memcpy(PRIVATE_DATA->host, DEVICE_PORT_ITEM->text.value, host_length);
-			int port_length = strlen(DEVICE_PORT_ITEM->text.value) - host_length - 1;
+			long port_length = strlen(DEVICE_PORT_ITEM->text.value) - host_length - 1;
 			PRIVATE_DATA->port = indigo_safe_malloc(port_length + 1);
 			memcpy(PRIVATE_DATA->port, test + 1, port_length);
 		} else {
@@ -146,7 +146,7 @@ static bool starbook_http_get(indigo_device *device, const char *path, char *res
 	//INDIGO_DRIVER_LOG(DRIVER_NAME, "starbook_http_get(\"%s\", \"%s\", \"%s\")", PRIVATE_DATA->host, PRIVATE_DATA->port, path);
 
 	// "http://" + host + (port ? (":" + port) : "") + path + "\0"
-	const int url_len = 7 + strlen(PRIVATE_DATA->host) + (port_specified ? (1 + strlen(PRIVATE_DATA->port)) : 0) + strlen(path) + 1;
+	const int url_len = (int)(7 + strlen(PRIVATE_DATA->host) + (port_specified ? (1 + strlen(PRIVATE_DATA->port)) : 0) + strlen(path) + 1);
 	char *url = indigo_safe_malloc(url_len);
 	if (port_specified) {
 		sprintf(url, "http://%s:%s%s", PRIVATE_DATA->host, PRIVATE_DATA->port, path);
@@ -801,24 +801,24 @@ static bool starbook_get_pierside(indigo_device *device, int *side) {
 }
 
 
-static bool starbook_getround(indigo_device *device, int *value) {
-	if (value) {
-		*value = 0;
-	}
-	char buffer[1024] = {};
-	if (!starbook_get(device, "/GETROUND", buffer, sizeof(buffer))) {
-		return false;
-	}
-	if (value) {
-		//INDIGO_DRIVER_LOG(DRIVER_NAME, "buffer: %s", buffer);
-		if (!starbook_parse_query_int(buffer, "ROUND=", value)) {
-			// parse error
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unknown response: %s", buffer);
-			return false;
-		}
-	}
-	return true;
-}
+//static bool starbook_getround(indigo_device *device, int *value) {
+//	if (value) {
+//		*value = 0;
+//	}
+//	char buffer[1024] = {};
+//	if (!starbook_get(device, "/GETROUND", buffer, sizeof(buffer))) {
+//		return false;
+//	}
+//	if (value) {
+//		//INDIGO_DRIVER_LOG(DRIVER_NAME, "buffer: %s", buffer);
+//		if (!starbook_parse_query_int(buffer, "ROUND=", value)) {
+//			// parse error
+//			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Unknown response: %s", buffer);
+//			return false;
+//		}
+//	}
+//	return true;
+//}
 
 
 #define STARBOOK_MOVE_ON  1
@@ -908,49 +908,49 @@ static bool starbook_set_place(indigo_device *device, double lng, double lat, in
 }
 
 
-static bool starbook_set_pulse_speed(indigo_device *device, int ra_sec, int dec_sec) {
-	if (ra_sec < 0 || ra_sec > 300) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid input: starbook_set_pulse_speed(): ra_sec=%d", ra_sec);
-		return false;
-	}
-	if (dec_sec < 0 || dec_sec > 300) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid input: starbook_set_pulse_speed(): dec_sec=%d", dec_sec);
-		return false;
-	}
-	char path[1024];
-	sprintf(path, "/SETPULSESPEED?RA=%d&DEC=%d", ra_sec, dec_sec);
-	int error = 0;
-	if (!starbook_set(device, path, &error)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: %d", error);
-		return false;
-	}
-	return true;
-}
+//static bool starbook_set_pulse_speed(indigo_device *device, int ra_sec, int dec_sec) {
+//	if (ra_sec < 0 || ra_sec > 300) {
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid input: starbook_set_pulse_speed(): ra_sec=%d", ra_sec);
+//		return false;
+//	}
+//	if (dec_sec < 0 || dec_sec > 300) {
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid input: starbook_set_pulse_speed(): dec_sec=%d", dec_sec);
+//		return false;
+//	}
+//	char path[1024];
+//	sprintf(path, "/SETPULSESPEED?RA=%d&DEC=%d", ra_sec, dec_sec);
+//	int error = 0;
+//	if (!starbook_set(device, path, &error)) {
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: %d", error);
+//		return false;
+//	}
+//	return true;
+//}
 
 
 #define STARBOOK_RADEC_TYPE_NOW 0
 #define STARBOOK_RADEC_TYPE_J2000 1
 
-static bool starbook_set_radec_type(indigo_device *device, int type) {
-	bool ret = false;
-	int error = 0;
-	switch (type) {
-	case STARBOOK_RADEC_TYPE_NOW:
-		ret = starbook_set(device, "/SETRADECTYPE?TYPE=NOW", &error);
-		break;
-	case STARBOOK_RADEC_TYPE_J2000:
-		ret = starbook_set(device, "/SETRADECTYPE?TYPE=J2000", &error);
-		break;
-	default:
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: Invalid radec type: %d", type);
-		return false;
-	}
-	if (!ret) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: %d", error);
-		return false;
-	}
-	return true;
-}
+//static bool starbook_set_radec_type(indigo_device *device, int type) {
+//	bool ret = false;
+//	int error = 0;
+//	switch (type) {
+//	case STARBOOK_RADEC_TYPE_NOW:
+//		ret = starbook_set(device, "/SETRADECTYPE?TYPE=NOW", &error);
+//		break;
+//	case STARBOOK_RADEC_TYPE_J2000:
+//		ret = starbook_set(device, "/SETRADECTYPE?TYPE=J2000", &error);
+//		break;
+//	default:
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: Invalid radec type: %d", type);
+//		return false;
+//	}
+//	if (!ret) {
+//		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Error: %d", error);
+//		return false;
+//	}
+//	return true;
+//}
 
 
 //

@@ -355,7 +355,6 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_connection_handler(indigo_device *device) {
-	char response[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		wcv4ec_status_t wc_stat = {0};

@@ -267,49 +267,49 @@ typedef struct {
 
 } pentax_private_data;
 
-static uint8_t *set_uint16_le(uint16_t value, uint8_t *buffer) {
-	buffer[0] = value & 0xff;
-	value >>= 8;
-	buffer[1] = value & 0xff;
-	return buffer;
-}
+//static uint8_t *set_uint16_le(uint16_t value, uint8_t *buffer) {
+//	buffer[0] = value & 0xff;
+//	value >>= 8;
+//	buffer[1] = value & 0xff;
+//	return buffer;
+//}
 
-static uint8_t *set_uint16_be(uint16_t value, uint8_t *buffer) {
-	buffer[1] = value & 0xff;
-	value >>= 8;
-	buffer[0] = value & 0xff;
-	return buffer;
-}
+//static uint8_t *set_uint16_be(uint16_t value, uint8_t *buffer) {
+//	buffer[1] = value & 0xff;
+//	value >>= 8;
+//	buffer[0] = value & 0xff;
+//	return buffer;
+//}
 
-static uint8_t *set_uint16(indigo_device *device, uint16_t value, uint8_t *buffer) {
-	if (PRIVATE_DATA->flags & PENTAX_LITTLE_ENDIAN) {
-		return set_uint16_le(value, buffer);
-	} else {
-		return set_uint16_be(value, buffer);
-	}
-}
+//static uint8_t *set_uint16(indigo_device *device, uint16_t value, uint8_t *buffer) {
+//	if (PRIVATE_DATA->flags & PENTAX_LITTLE_ENDIAN) {
+//		return set_uint16_le(value, buffer);
+//	} else {
+//		return set_uint16_be(value, buffer);
+//	}
+//}
 
-static uint16_t get_uint16_le(uint8_t *buffer) {
-	return (buffer[1] << 8) | buffer[0];
-}
+//static uint16_t get_uint16_le(uint8_t *buffer) {
+//	return (buffer[1] << 8) | buffer[0];
+//}
 
-static uint16_t get_uint16_be(uint8_t *buffer) {
-	return (buffer[0] << 8) | buffer[1];
-}
+//static uint16_t get_uint16_be(uint8_t *buffer) {
+//	return (buffer[0] << 8) | buffer[1];
+//}
 
-static uint16_t get_uint16(indigo_device *device, uint8_t *buffer) {
-	if (PRIVATE_DATA->flags & PENTAX_LITTLE_ENDIAN) {
-		return get_uint16_le(buffer);
-	} else {
-		return get_uint16_be(buffer);
-	}
-}
+//static uint16_t get_uint16(indigo_device *device, uint8_t *buffer) {
+//	if (PRIVATE_DATA->flags & PENTAX_LITTLE_ENDIAN) {
+//		return get_uint16_le(buffer);
+//	} else {
+//		return get_uint16_be(buffer);
+//	}
+//}
 
-static char *uint16_to_hex(uint16_t value) {
-	static char s[5];
-	sprintf(s, "%04x", value);
-	return s;
-}
+//static char *uint16_to_hex(uint16_t value) {
+//	static char s[5];
+//	sprintf(s, "%04x", value);
+//	return s;
+//}
 
 static uint8_t *set_uint32_le(uint32_t value, uint8_t *buffer) {
 	buffer[0] = value & 0xff;
@@ -371,17 +371,17 @@ static uint32_t hex_to_uint32(char *s) {
 	return 0;
 }
 
-static char *uint32_to_fraction(uint32_t value) {
-	static char s[9];
-	double nom = (value >> 16) & 0xffff;
-	double denom = value & 0xffff;
-	if (denom == 1) {
-		sprintf(s, "%.0f", nom / denom);
-	} else {
-		sprintf(s, "%.1f", nom / denom);
-	}
-	return s;
-}
+//static char *uint32_to_fraction(uint32_t value) {
+//	static char s[9];
+//	double nom = (value >> 16) & 0xffff;
+//	double denom = value & 0xffff;
+//	if (denom == 1) {
+//		sprintf(s, "%.0f", nom / denom);
+//	} else {
+//		sprintf(s, "%.1f", nom / denom);
+//	}
+//	return s;
+//}
 
 static const char *to_hex(uint8_t *bytes, uint32_t count) {
 	static char buffer[3 * MAX_HEX_DUMP + 5];

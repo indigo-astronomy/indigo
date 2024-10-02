@@ -1407,7 +1407,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		}
 		adjust_preset_switches(device);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = POAGetConfig(PRIVATE_DATA->dev_id, POA_EGAIN, &value, POA_FALSE);
+		POABool is_auto = POA_FALSE;
+		res = POAGetConfig(PRIVATE_DATA->dev_id, POA_EGAIN, &value, &is_auto);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", PRIVATE_DATA->dev_id, res);
@@ -1475,7 +1476,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		CCD_OFFSET_ITEM->number.value = offset;
 
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-		res = POAGetConfig(PRIVATE_DATA->dev_id, POA_EGAIN, &value, POA_FALSE);
+		POABool is_auto = POA_FALSE;
+		res = POAGetConfig(PRIVATE_DATA->dev_id, POA_EGAIN, &value, &is_auto);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		if (res) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetConfig(%d, POA_EGAIN) > %d", PRIVATE_DATA->dev_id, res);

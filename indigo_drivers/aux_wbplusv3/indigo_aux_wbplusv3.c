@@ -459,7 +459,6 @@ static void aux_timer_callback(indigo_device *device) {
 }
 
 static void aux_connection_handler(indigo_device *device) {
-	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);

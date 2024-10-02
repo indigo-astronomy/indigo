@@ -69,7 +69,7 @@
 
 #define MAX_SLAVE_DEVICES 10
 
-extern pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
 	if (indigo_is_sandboxed)
@@ -383,7 +383,6 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		indigo_init_number_item(ADDITIONAL_INSTANCES_COUNT_ITEM, ADDITIONAL_INSTANCES_COUNT_ITEM_NAME, "Count", 0, MAX_ADDITIONAL_INSTANCES, 1, 0);
 		pthread_mutex_init(&DEVICE_CONTEXT->config_mutex, NULL);
 		pthread_mutex_init(&DEVICE_CONTEXT->multi_device_mutex, NULL);
-		indigo_device *master_device = device->master_device;
 		return INDIGO_OK;
 	}
 	return INDIGO_FAILED;

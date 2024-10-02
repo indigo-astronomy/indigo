@@ -44,7 +44,7 @@ static int median3(int a, int b, int c) {
 bool indigo_is_bayered_image(indigo_raw_header *header, size_t data_length) {
 	if (header->signature == INDIGO_RAW_MONO8 || header->signature == INDIGO_RAW_MONO16) {
 		size_t expected_length = sizeof(indigo_raw_header) + header->width * header->height * ((header->signature == INDIGO_RAW_MONO8) ? 1 : 2);
-		int extension_length = data_length - expected_length;
+		int extension_length = (int)(data_length - expected_length);
 		if (extension_length > 0) {
 			char *extension = (char *)header + expected_length;;
 			extension[extension_length - 1] = '\0'; /* Make sure it is null terminated */

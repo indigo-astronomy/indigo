@@ -195,7 +195,7 @@ static bool rotator_handle_position(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[64];
 	int result;
-	while (result = indigo_select(PRIVATE_DATA->handle, 100000) <= 0) {
+	while ((result = indigo_select(PRIVATE_DATA->handle, 100000) <= 0)) {
 		if (ROTATOR_ABORT_MOTION_ITEM->sw.value) {
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;

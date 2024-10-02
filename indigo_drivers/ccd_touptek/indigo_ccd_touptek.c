@@ -375,7 +375,7 @@ static void exposure_watchdog_callback(indigo_device *device) {
 
 /* dummy exposure callback - needed for a workaround */
 static void pull_callback_dummy(unsigned event, void* callbackCtx) {
-	SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
+	//SDK_TYPE(FrameInfoV2) frameInfo = { 0 };
 	HRESULT result;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s(%04x) called", __FUNCTION__, event);
 

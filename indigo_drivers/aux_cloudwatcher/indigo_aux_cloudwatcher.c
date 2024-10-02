@@ -337,7 +337,6 @@ typedef struct {
 static bool aag_command(indigo_device *device, const char *command, char *response, int block_count, int sleep) {
 	int max = block_count * BLOCK_SIZE;
 	char c;
-	char buff[MAX_LEN];
 	struct timeval tv;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 
@@ -481,10 +480,10 @@ static bool aag_get_serial_number(indigo_device *device, char *serial_number) {
 
 
 static bool aag_get_values(indigo_device *device, int *power_voltage, int *ambient_temperature, int *ldr_value, int *rain_sensor_temperature, int *raw_sky_quality) {
-	int zener_v;
+	int zener_v = 0;
 	int ambient_temp = NO_READING;
-	int ldr_r;
-	int rain_sensor_temp;
+	int ldr_r = 0;
+	int rain_sensor_temp = 0;
 	int raw_sq = NO_READING;
 
 	char buffer[BLOCK_SIZE * 6] = "";

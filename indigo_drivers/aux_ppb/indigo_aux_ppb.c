@@ -395,7 +395,6 @@ static void aux_connection_handler(indigo_device *device) {
 		if (PRIVATE_DATA->count++ == 0) {
 			PRIVATE_DATA->handle = indigo_open_serial(DEVICE_PORT_ITEM->text.value);
 			if (PRIVATE_DATA->handle > 0) {
-				bool connected = false;
 				int attempt = 0;
 				while (true) {
 					if (ppb_command(device, "P#", response, sizeof(response))) {

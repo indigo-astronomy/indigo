@@ -29,7 +29,7 @@
 
 static int raw_read_keyword_value(const uint8_t *ptr8, char *keyword, char *value) {
 	int i;
-	int length = strlen(ptr8);
+	int length = (int)strlen((const char *)ptr8);
 
 	for (i = 0; i < 8 && ptr8[i] != ' '; i++) {
 		keyword[i] = ptr8[i];
@@ -164,11 +164,11 @@ indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fit
 			extension_start += 9;
 			extension_length -= 9;
 			char *pos = NULL;
-			while(pos = strchr(extension_start, ';')) {
+			while ((pos = strchr(extension_start, ';'))) {
 				char keyword[80];
 				char value[80];
 				*pos = '\0';
-				raw_read_keyword_value(extension_start, keyword, value);
+				raw_read_keyword_value((const unsigned char *)extension_start, keyword, value);
 				extension_start = pos+1;
 				t = sprintf(p += 80, "%7s= %s", keyword, value);
 				p[t] = ' ';
