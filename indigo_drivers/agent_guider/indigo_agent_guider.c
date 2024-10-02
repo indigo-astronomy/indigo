@@ -2264,7 +2264,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_DITHERING_STRATEGY
 		indigo_property_copy_values(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, property, false);
 		AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->state = INDIGO_OK_STATE;
-		srand(time(NULL));
+		srand((unsigned int)time(NULL));
 		DEVICE_PRIVATE_DATA->dither_num = 0;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, NULL);
@@ -2278,7 +2278,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
 				indigo_set_timer(device, 0, do_dither, NULL);
 			} else if (AGENT_GUIDER_DITHER_RESET_ITEM->sw.value) {
-				srand(time(NULL));
+				srand((unsigned int)time(NULL));
 				DEVICE_PRIVATE_DATA->dither_num = 0;
 				AGENT_GUIDER_DITHER_TRIGGER_ITEM->sw.value = false;
 				AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
@@ -2358,7 +2358,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])) {
+	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (property->state == INDIGO_OK_STATE && !strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			if (strchr(property->device, '@'))
 				indigo_populate_http_blob_item(property->items);
