@@ -170,6 +170,8 @@ static bool lunatico_command_get_result(indigo_device *device, const char *comma
 	return false;
 }
 
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 static bool lunatico_keep_alive(indigo_device *device) {
 	int res;
@@ -178,6 +180,7 @@ static bool lunatico_keep_alive(indigo_device *device) {
 	return true;
 }
 
+#pragma GCC diagnostic pop
 
 static bool lunatico_authenticate(indigo_device *device, char* password, int *access) {
 	if (!access) return false;

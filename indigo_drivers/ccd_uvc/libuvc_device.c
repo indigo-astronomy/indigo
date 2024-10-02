@@ -533,53 +533,53 @@ void uvc_free_device_info(uvc_device_info_t *info) {
   UVC_EXIT_VOID();
 }
 
-static uvc_error_t get_device_descriptor(
-        uvc_device_handle_t *devh,
-        uvc_device_descriptor_t **desc) {
-  uvc_device_descriptor_t *desc_internal;
-  struct libusb_device_descriptor usb_desc;
-  struct libusb_device_handle *usb_devh = devh->usb_devh;
-  uvc_error_t ret;
-
-  UVC_ENTER();
-
-  ret = libusb_get_device_descriptor(devh->dev->usb_dev, &usb_desc);
-
-  if (ret != UVC_SUCCESS) {
-    UVC_EXIT(ret);
-    return ret;
-  }
-
-  desc_internal = calloc(1, sizeof(*desc_internal));
-  desc_internal->idVendor = usb_desc.idVendor;
-  desc_internal->idProduct = usb_desc.idProduct;
-
-  unsigned char buf[64];
-
-  int bytes = libusb_get_string_descriptor_ascii(
-          usb_devh, usb_desc.iSerialNumber, buf, sizeof(buf));
-
-  if (bytes > 0)
-    desc_internal->serialNumber = strdup((const char*) buf);
-
-  bytes = libusb_get_string_descriptor_ascii(
-          usb_devh, usb_desc.iManufacturer, buf, sizeof(buf));
-
-  if (bytes > 0)
-    desc_internal->manufacturer = strdup((const char*) buf);
-
-  bytes = libusb_get_string_descriptor_ascii(
-          usb_devh, usb_desc.iProduct, buf, sizeof(buf));
-
-  if (bytes > 0)
-    desc_internal->product = strdup((const char*) buf);
-
-  *desc = desc_internal;
-
-  UVC_EXIT(ret);
-  return ret;
-}
-
+//static uvc_error_t get_device_descriptor(
+//        uvc_device_handle_t *devh,
+//        uvc_device_descriptor_t **desc) {
+//  uvc_device_descriptor_t *desc_internal;
+//  struct libusb_device_descriptor usb_desc;
+//  struct libusb_device_handle *usb_devh = devh->usb_devh;
+//  uvc_error_t ret;
+//
+//  UVC_ENTER();
+//
+//  ret = libusb_get_device_descriptor(devh->dev->usb_dev, &usb_desc);
+//
+//  if (ret != UVC_SUCCESS) {
+//    UVC_EXIT(ret);
+//    return ret;
+//  }
+//
+//  desc_internal = calloc(1, sizeof(*desc_internal));
+//  desc_internal->idVendor = usb_desc.idVendor;
+//  desc_internal->idProduct = usb_desc.idProduct;
+//
+//  unsigned char buf[64];
+//
+//  int bytes = libusb_get_string_descriptor_ascii(
+//          usb_devh, usb_desc.iSerialNumber, buf, sizeof(buf));
+//
+//  if (bytes > 0)
+//    desc_internal->serialNumber = strdup((const char*) buf);
+//
+//  bytes = libusb_get_string_descriptor_ascii(
+//          usb_devh, usb_desc.iManufacturer, buf, sizeof(buf));
+//
+//  if (bytes > 0)
+//    desc_internal->manufacturer = strdup((const char*) buf);
+//
+//  bytes = libusb_get_string_descriptor_ascii(
+//          usb_devh, usb_desc.iProduct, buf, sizeof(buf));
+//
+//  if (bytes > 0)
+//    desc_internal->product = strdup((const char*) buf);
+//
+//  *desc = desc_internal;
+//
+//  UVC_EXIT(ret);
+//  return ret;
+//}
+//
 /**
  * @brief Get a descriptor that contains the general information about
  * a device

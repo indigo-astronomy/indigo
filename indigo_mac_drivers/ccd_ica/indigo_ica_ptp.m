@@ -1515,7 +1515,12 @@ NSObject *ptpReadValue(PTPDataTypeCode type, unsigned char **buf) {
 - (void)deviceDidBecomeReadyWithCompleteContentCatalog:(nonnull ICCameraDevice *)device {
 }
 
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didReceiveMetadata:(NSDictionary * _Nullable)metadata forItem:(nonnull ICCameraItem *)item error:(NSError * _Nullable)error { 
+}
 
+
+- (void)cameraDevice:(nonnull ICCameraDevice *)camera didReceiveThumbnail:(CGImageRef _Nullable)thumbnail forItem:(nonnull ICCameraItem *)item error:(NSError * _Nullable)error { 
+}
 
 @end
 
