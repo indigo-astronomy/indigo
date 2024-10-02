@@ -1119,56 +1119,56 @@ static void process_snooping(indigo_client *client, indigo_device *device, indig
 					}
 				}
 			}
-		}
-	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
-		for (int i = 0; i < property->count; i++) {
-			if (!strcmp(property->items[i].name, MOUNT_LST_TIME_ITEM_NAME)) {
-				double lst = property->items[i].number.value;
-				double ha = fmod(lst - CLIENT_PRIVATE_DATA->mount_ra + 24, 24);
-				time_t timer;
-				time(&timer);
-				struct tm *info = localtime(&timer);
-				double now = info->tm_hour + info->tm_min / 60.0 + info->tm_sec / 3600.0;
-				CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.value = ha;
-				CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.value = now;
-				indigo_update_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_limits_property, NULL);
-				if (property->state == INDIGO_OK_STATE) {
-					indigo_property *agent_park_property;
-					if (indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_PARK_PROPERTY_NAME, NULL, &agent_park_property) && agent_park_property->state == INDIGO_OK_STATE) {
-						for (int j = 0; j < agent_park_property->count; j++) {
-							if (!strcmp(agent_park_property->items[j].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
-								if (!agent_park_property->items[j].sw.value) {
-									bool park = false;
-									if (CLIENT_PRIVATE_DATA->agent_process_features_property->items[0].sw.value) {
-										double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target;
-										if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
-											park = true;
-											indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
+		} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
+			for (int i = 0; i < property->count; i++) {
+				if (!strcmp(property->items[i].name, MOUNT_LST_TIME_ITEM_NAME)) {
+					double lst = property->items[i].number.value;
+					double ha = fmod(lst - CLIENT_PRIVATE_DATA->mount_ra + 24, 24);
+					time_t timer;
+					time(&timer);
+					struct tm *info = localtime(&timer);
+					double now = info->tm_hour + info->tm_min / 60.0 + info->tm_sec / 3600.0;
+					CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.value = ha;
+					CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.value = now;
+					indigo_update_property(FILTER_CLIENT_CONTEXT->device, CLIENT_PRIVATE_DATA->agent_limits_property, NULL);
+					if (property->state == INDIGO_OK_STATE) {
+						indigo_property *agent_park_property;
+						if (indigo_filter_cached_property(FILTER_CLIENT_CONTEXT->device, INDIGO_FILTER_MOUNT_INDEX, MOUNT_PARK_PROPERTY_NAME, NULL, &agent_park_property) && agent_park_property->state == INDIGO_OK_STATE) {
+							for (int j = 0; j < agent_park_property->count; j++) {
+								if (!strcmp(agent_park_property->items[j].name, MOUNT_PARK_PARKED_ITEM_NAME)) {
+									if (!agent_park_property->items[j].sw.value) {
+										bool park = false;
+										if (CLIENT_PRIVATE_DATA->agent_process_features_property->items[0].sw.value) {
+											double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target;
+											if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
+												park = true;
+												indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Hour angle tracking limit reached");
+											}
 										}
-									}
-									if (CLIENT_PRIVATE_DATA->agent_process_features_property->items[1].sw.value) {
-										double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
-										if (now < 12 && target < 12 && now > target) {
-											park = true;
-											indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+										if (CLIENT_PRIVATE_DATA->agent_process_features_property->items[1].sw.value) {
+											double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
+											if (now < 12 && target < 12 && now > target) {
+												park = true;
+												indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+											}
+											if (now > 12 && target > 12 && now > target) {
+												park = true;
+												indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+											}
 										}
-										if (now > 12 && target > 12 && now > target) {
-											park = true;
-											indigo_send_message(FILTER_CLIENT_CONTEXT->device, "Time limit reached");
+										if (park) {
+											abort_capture(FILTER_CLIENT_CONTEXT->device);
+											abort_guiding(FILTER_CLIENT_CONTEXT->device);
+											indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 										}
+										break;
 									}
-									if (park) {
-										abort_capture(FILTER_CLIENT_CONTEXT->device);
-										abort_guiding(FILTER_CLIENT_CONTEXT->device);
-										indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
-									}
-									break;
 								}
 							}
 						}
 					}
+					break;
 				}
-				break;
 			}
 		}
 	} else if (*FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX] && !strcmp(property->device, FILTER_CLIENT_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])) {
