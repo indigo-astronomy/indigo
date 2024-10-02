@@ -54,6 +54,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		FILTER_AUX_2_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_3_LIST_PROPERTY->hidden = false;
 		FILTER_AUX_4_LIST_PROPERTY->hidden = false;
+		FILTER_RELATED_AGENT_LIST_PROPERTY->hidden = false;
 		// --------------------------------------------------------------------------------
 		CONFIG_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
