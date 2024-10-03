@@ -759,6 +759,10 @@
 		59B8A8C827ADAD8400A27609 /* indigo_align.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B8A8C627ADAD8400A27609 /* indigo_align.h */; };
 		59B95B882C6295450027AD80 /* libsbig.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59B95B872C6295450027AD80 /* libsbig.dylib */; };
 		59B95B892C6295450027AD80 /* libsbig.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59B95B872C6295450027AD80 /* libsbig.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59B973912CAEF635005C0135 /* indigo_usbserial_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B973902CAEF635005C0135 /* indigo_usbserial_utils.h */; };
+		59B973922CAEF635005C0135 /* indigo_usbserial_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B973902CAEF635005C0135 /* indigo_usbserial_utils.h */; };
+		59B973942CAEF660005C0135 /* indigo_usbserial_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B973932CAEF660005C0135 /* indigo_usbserial_utils.c */; };
+		59B973952CAEF660005C0135 /* indigo_usbserial_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B973932CAEF660005C0135 /* indigo_usbserial_utils.c */; };
 		59BBD186218236C4008199D6 /* indigo_ccd_altair.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD17321823693008199D6 /* indigo_ccd_altair.c */; };
 		59BBD18E218249CD008199D6 /* indigo_aux_rts.c in Sources */ = {isa = PBXBuildFile; fileRef = 59BBD18A2182472E008199D6 /* indigo_aux_rts.c */; };
 		59BBED25278493E400BA9CD6 /* indigo_agent_astap.h in Headers */ = {isa = PBXBuildFile; fileRef = 59BBED22278493E400BA9CD6 /* indigo_agent_astap.h */; };
@@ -2962,6 +2966,8 @@
 		59B8A8C627ADAD8400A27609 /* indigo_align.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_align.h; sourceTree = "<group>"; };
 		59B95B852C6291B80027AD80 /* libsbig.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libsbig.dylib; sourceTree = "<group>"; };
 		59B95B872C6295450027AD80 /* libsbig.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsbig.dylib; path = build/lib/libsbig.dylib; sourceTree = "<group>"; };
+		59B973902CAEF635005C0135 /* indigo_usbserial_utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_usbserial_utils.h; sourceTree = "<group>"; };
+		59B973932CAEF660005C0135 /* indigo_usbserial_utils.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_usbserial_utils.c; sourceTree = "<group>"; };
 		59B9751425F5600300A6C3E7 /* ioptron_2.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_2.0_simulator.ino; sourceTree = "<group>"; };
 		59B9751C25F5654400A6C3E7 /* ioptron_2.5_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_2.5_simulator.ino; sourceTree = "<group>"; };
 		59B9752425F568FE00A6C3E7 /* ioptron_3.0_simulator.ino */ = {isa = PBXFileReference; explicitFileType = sourcecode.c; path = ioptron_3.0_simulator.ino; sourceTree = "<group>"; };
@@ -10040,6 +10046,7 @@
 				59F8AE702BA605D100EEDCCF /* indigo_polynomial_fit.c */,
 				59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */,
 				59946C852AE9AFB400AA558D /* indigo_stretch.cpp */,
+				59B973932CAEF660005C0135 /* indigo_usbserial_utils.c */,
 			);
 			path = indigo_libs;
 			sourceTree = "<group>";
@@ -14154,6 +14161,7 @@
 				599F61902BB494EA009065BC /* indigo_polynomial_fit.h */,
 				59790B2C29B2796300F73B1D /* indigo_service_discovery.h */,
 				59946C882AE9AFCC00AA558D /* indigo_stretch.h */,
+				59B973902CAEF635005C0135 /* indigo_usbserial_utils.h */,
 			);
 			path = indigo;
 			sourceTree = "<group>";
@@ -14438,6 +14446,7 @@
 				596FCAB52BD0328000F5BACB /* indigo_rotator_wa.h in Headers */,
 				598A1C48259BA94A00C0B34C /* DDHidKeyboardBarcodeScanner.h in Headers */,
 				59111D06285F50A800E57194 /* indigocat_dso.h in Headers */,
+				59B973922CAEF635005C0135 /* indigo_usbserial_utils.h in Headers */,
 				59BBED26278493E400BA9CD6 /* indigo_agent_astap.h in Headers */,
 				595A8E5C2C9479E600E7998C /* indigo_ccd_pentax.h in Headers */,
 				598A1C49259BA94A00C0B34C /* libfcusb.h in Headers */,
@@ -14711,6 +14720,7 @@
 				5955CB6C2684BC9C00685071 /* indigo_dome_beaver.h in Headers */,
 				9DB918041DF8546800678721 /* indigo_mount_lx200.h in Headers */,
 				59413562232404D100ED5FF4 /* indigo_focuser_efa.h in Headers */,
+				59B973912CAEF635005C0135 /* indigo_usbserial_utils.h in Headers */,
 				9DA71D032A029BE500CFA533 /* indigo_ica_ptp_canon.h in Headers */,
 				593A8F0D285F615400F6CF1C /* indigocat_precession.h in Headers */,
 				591CD0C8298041F1003243AE /* indigo_ccd_ssg.h in Headers */,
@@ -15091,6 +15101,7 @@
 				598A1B80259BA94A00C0B34C /* indigo_agent_guider.c in Sources */,
 				598A1B81259BA94A00C0B34C /* indigo_aux_usbdp.c in Sources */,
 				598A1B83259BA94A00C0B34C /* indigo_bus.c in Sources */,
+				59B973942CAEF660005C0135 /* indigo_usbserial_utils.c in Sources */,
 				9D541EA92BBC0D260066DBB2 /* indigo_focuser_ioptron.c in Sources */,
 				598A1B84259BA94A00C0B34C /* indigo_ccd_altair.c in Sources */,
 				598A1B86259BA94A00C0B34C /* indigo_ccd_sbig.c in Sources */,
@@ -15322,6 +15333,7 @@
 				59C76F0E2378724D0091B966 /* nex_open.c in Sources */,
 				59D707701DC52C3E00DEF566 /* indigo_mount_simulator.c in Sources */,
 				591CD0E829805CB9003243AE /* indigo_ccd_rising.c in Sources */,
+				59B973952CAEF660005C0135 /* indigo_usbserial_utils.c in Sources */,
 				597DFE242804A880009E37CB /* indigo_rotator_optec.c in Sources */,
 				9D73E61E21FF37F9003CEC15 /* libuvc_stream.c in Sources */,
 				9DAD523121246EB5002FCC79 /* indigo_mount_ioptron.c in Sources */,
