@@ -28,7 +28,7 @@
 #include <IOKit/usb/IOUSBLib.h>
 #include <IOKit/serial/IOSerialKeys.h>
 #include <CoreFoundation/CoreFoundation.h>
-#elif defined(INDIGO_LNUX)
+#elif defined(INDIGO_LINUX)
 #include <libudev.h>
 #endif
 
