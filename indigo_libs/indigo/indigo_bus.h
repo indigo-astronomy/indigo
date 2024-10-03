@@ -827,6 +827,14 @@ static inline void indigo_safe_free(void *pointer) {
 		free(pointer);
 }
 
+static inline char *indigo_safe_strncpy(char *dst, const char *src, size_t size) {
+    if (size > 0) {
+		dst[size - 1] = '\0';
+        strncpy(dst, src, size - 1);
+    }
+	return dst;
+}
+
 #define INDIGO_BUFFER_SIZE (128 * 1024)
 
 extern void *indigo_alloc_large_buffer(void);

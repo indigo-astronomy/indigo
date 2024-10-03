@@ -32,6 +32,7 @@
 #include <libudev.h>
 #endif
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -53,7 +54,7 @@ indigo_result indigo_get_usb_path(libusb_device* handle, char *path) {
 	return INDIGO_OK;
 }
 
-int indigo_enumerate_usb_serial_devices(indigo_serial_info *serial_info, int num_serial_info) {
+int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info) {
 #if defined(INDIGO_MACOS)
 	CFMutableDictionaryRef matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
 	if (matchingDict == NULL) {
@@ -122,10 +123,10 @@ int indigo_enumerate_usb_serial_devices(indigo_serial_info *serial_info, int num
 					if (CFStringGetCString(bsdPathAsCFString, path, sizeof(path), kCFStringEncodingUTF8)) {
 						serial_info[count].vendor_id = vendor_id;
 						serial_info[count].pproduct_id = product_id;
-						strcpy(serial_info[count].vendor_string, vendor_str);
-						strcpy(serial_info[count].product_string, product_str);
-						strcpy(serial_info[count].serial_string, serial_str);
-						strcpy(serial_info[count].path, path);
+						indigo_safe_strncpy(serial_info[count].vendor_string, vendor_str, INFO_ITEM_SIZE);
+						indigo_safe_strncpy(serial_info[count].product_string, product_str, INFO_ITEM_SIZE);
+						indigo_safe_strncpy(serial_info[count].serial_string, serial_str, INFO_ITEM_SIZE);
+						indigo_safe_strncpy(serial_info[count].path, path, PATH_MAX);
 						count++;
 					}
 					CFRelease(bsdPathAsCFString);
@@ -185,10 +186,10 @@ int indigo_enumerate_usb_serial_devices(indigo_serial_info *serial_info, int num
 			if (dev_node && vendor && product) {
 				serial_info[count].vendor_id = strtol(vendor, NULL, 16);
 				serial_info[count].pproduct_id = strtol(product, NULL, 16);
-				strcpy(serial_info[count].vendor_string, manufacturer ? manufacturer : "");
-				strcpy(serial_info[count].product_string, product_name ? product_name : "");
-				strcpy(serial_info[count].serial_string, serial ? serial : "");
-				strcpy(serial_info[count].path, dev_node);
+				indigo_safe_strncpy(serial_info[count].vendor_string, manufacturer ? manufacturer : "", INFO_ITEM_SIZE);
+				indigo_safe_strncpy(serial_info[count].product_string, product_name ? product_name : "", INFO_ITEM_SIZE);
+				indigo_safe_strncpy(serial_info[count].serial_string, serial ? serial : "", INFO_ITEM_SIZE);
+				indigo_safe_strncpy(serial_info[count].path, dev_node, PATH_MAX);
 				count++;
 			}
 		}
@@ -200,4 +201,14 @@ int indigo_enumerate_usb_serial_devices(indigo_serial_info *serial_info, int num
 #else
 	return 0;
 #endif
+}
+
+void indigo_usbserial_label(indigo_serial_info *serial_info, const int num_serial_info, const char *device_path, char *label) {
+	for (int i = 0; i < num_serial_info; i++) {
+		if (!strncmp(serial_info[i].path, device_path, PATH_MAX)) {
+			snprintf(label, INDIGO_VALUE_SIZE, "%s (%s)", device_path, serial_info[i].product_string);
+			return;
+		}
+	}
+	snprintf(label, INDIGO_VALUE_SIZE, "%s", device_path);
 }
