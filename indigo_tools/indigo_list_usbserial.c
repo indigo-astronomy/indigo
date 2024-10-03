@@ -49,6 +49,8 @@ int main(int argc, const char * argv[]) {
         printf("No USB serial devices found\n");
         return 0;
     }
+    
+    printf("\n");
     for (int i = 0; i < count; i++) {
         printf("Device path      : %s\n", serial_info[i].path);
         printf("  Vendor ID      : 0x%04X\n", serial_info[i].vendor_id);
