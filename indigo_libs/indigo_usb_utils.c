@@ -53,7 +53,7 @@ indigo_result indigo_get_usb_path(libusb_device* handle, char *path) {
 	return INDIGO_OK;
 }
 
-int infigo_list_usb_serial_devices(indigo_serial_info_t *serial_info, int num_serial_info) {
+int indigo_enumerate_usb_serial_devices(indigo_serial_info *serial_info, int num_serial_info) {
 #if defined(INDIGO_MACOS)
 	CFMutableDictionaryRef matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
 	if (matchingDict == NULL) {

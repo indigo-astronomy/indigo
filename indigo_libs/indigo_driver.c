@@ -66,6 +66,7 @@
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_usb_utils.h>
 
 #define MAX_SLAVE_DEVICES 10
 
@@ -146,6 +147,8 @@ static int port_type(char *path) {
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
 	property->count = 1;
 	char name[PATH_MAX];
+	indigo_serial_info serial_info[MAX_DEVICE_PORTS];
+	int serial_count = indigo_enumerate_usb_serial_devices(serial_info, MAX_DEVICE_PORTS);
 #if defined(INDIGO_MACOS)
 	io_iterator_t iterator;
 	io_object_t serial_device;
@@ -159,7 +162,19 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 				CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
 				if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port") && strcmp(name, "/dev/cu.SSDC") && strcmp(name, "/dev/cu.debug-console") && strcmp(name, "/dev/cu.wlan-debug") && strstr(name, "-WirelessiAP") == NULL) {
 					int i = property->count++;
-					indigo_init_switch_item(property->items + i, name, name, false);
+					bool found = false;
+					for (int j = 0; j < serial_count; j++) {
+						if (strcmp(serial_info[j].path, name) == 0 && serial_info[j].product_string[0] != 0) {
+							char label[INDIGO_VALUE_SIZE];
+							snprintf(label, INDIGO_VALUE_SIZE, "%s (%s)", name, serial_info[j].product_string);
+							indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, label, false);
+							found = true;
+							break;
+						}
+					}
+					if (!found) {
+						indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+					}
 				}
 				CFRelease(cfs);
 			}
@@ -243,7 +258,19 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 		}
 		if (is_serial) {
 			int i = DEVICE_PORTS_PROPERTY->count++;
-			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+			bool found = false;
+			for (int j = 0; j < serial_count; j++) {
+				if (strcmp(serial_info[j].path, name) == 0 && serial_info[j].product_string[0] != 0) {
+					char label[INDIGO_VALUE_SIZE];
+					snprintf(label, INDIGO_VALUE_SIZE, "%s (%s)", name, serial_info[j].product_string);
+					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, label, false);
+					found = true;
+					break;
+				}
+			}
+			if (!found) {
+				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, name, false);
+			}
 			if (i == 0)
 				indigo_copy_value(DEVICE_PORT_ITEM->text.value, name);
 		}
