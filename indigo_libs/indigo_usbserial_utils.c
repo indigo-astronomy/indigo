@@ -47,14 +47,13 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 	}
 
 	io_iterator_t iter;
-	
-	
+
 #if defined(kIOMainPortDefault)
 	kern_return_t kr = IOServiceGetMatchingServices(kIOMainPortDefault, matchingDict, &iter);
 #else
 	kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &iter);
 #endif
-	
+
 	if (kr != KERN_SUCCESS) {
 		return -1;
 	}
