@@ -52,7 +52,7 @@ $(BUILD_BIN)/indigo_prop_tool: indigo_prop_tool.o
 	$(CC) $(CFLAGS)  -o $@ indigo_prop_tool.o $(LDFLAGS) $(INDIGO_LIBS)
 
 $(BUILD_BIN)/indigo_list_usbserial: indigo_list_usbserial.o
-	$(CC) $(CFLAGS)  -o $@ indigo_list_usbserial.o $(LDFLAGS) $(INDIGO_LIBS) -lusb-1.0
+	$(CC) $(CFLAGS)  -o $@ indigo_list_usbserial.o $(LDFLAGS) $(INDIGO_LIBS)
 
 $(BUILD_BIN)/indigo_raw_to_fits: indigo_raw_to_fits.o
 	$(CC) $(CFLAGS)  -o $@ indigo_raw_to_fits.o $(LDFLAGS) $(INDIGO_LIBS)

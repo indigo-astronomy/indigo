@@ -22,7 +22,7 @@
 #define TOOL_VERSION "0.1"
 
 #include <stdio.h>
-#include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_usbserial_utils.h>
 
 static void print_help(const char *name) {
 	printf("INDIGO tool to list USB-Serial devices v.%s built on %s %s.\n", TOOL_VERSION, __DATE__, __TIME__);
@@ -49,7 +49,7 @@ int main(int argc, const char * argv[]) {
         printf("No USB serial devices found\n");
         return 0;
     }
-    
+
     printf("\n");
     for (int i = 0; i < count; i++) {
         printf("Device path      : %s\n", serial_info[i].path);

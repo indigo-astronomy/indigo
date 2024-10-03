@@ -67,6 +67,7 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_usb_utils.h>
+#include <indigo/indigo_usbserial_utils.h>
 
 #define MAX_SLAVE_DEVICES 10
 

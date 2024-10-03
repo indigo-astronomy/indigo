@@ -1,4 +1,4 @@
-// Copyright (c) 2018 CloudMakers, s. r. o.
+// Copyright (c) 2024 Rumen G. Bogdanovski
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -17,35 +17,36 @@
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 // version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+// 2.0 by Rumen Bogdanovski <rumenastro@gmail.com>
 
-/** INDIGO USB Utilities
- \file indigo_usb_utils.h
+/** INDIGO USB-Serial Utilities
+ \file indigo_usbserial_utils.h
  */
 
-#ifndef indigo_usb_utils_h
-#define indigo_usb_utils_h
+#ifndef indigo_usbserial_utils_h
+#define indigo_usbserial_utils_h
 
-#include <stdio.h>
+#include <limits.h>
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
-#include <indigo/indigo_bus.h>
+#define INFO_ITEM_SIZE 256
+typedef struct {
+	int vendor_id;
+	int pproduct_id;
+	char vendor_string[INFO_ITEM_SIZE];
+	char product_string[INFO_ITEM_SIZE];
+	char serial_string[INFO_ITEM_SIZE];
+	char path[PATH_MAX];
+} indigo_serial_info;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
+extern int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info);
+extern void indigo_usbserial_label(indigo_serial_info *serial_info, const int num_serial_info, const char *device_path, char *label);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* indigo_usb_utils_h */
+#endif /* indigo_usbserial_utils_h */
