@@ -100,7 +100,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->rule = INDIGO_ANY_OF_MANY_RULE;
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_EPOCH
-		MOUNT_EPOCH_ITEM->number.value = 2000;
+		MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
 		// -------------------------------------------------------------------------------- MOUNT_SIDE_OF_PIER
 		MOUNT_SIDE_OF_PIER_PROPERTY->hidden = false;
 		MOUNT_SIDE_OF_PIER_PROPERTY->perm = INDIGO_RO_PERM;

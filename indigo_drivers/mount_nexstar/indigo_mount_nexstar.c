@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x001C
+#define DRIVER_VERSION 0x001D
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -150,6 +150,8 @@ static void position_timer_callback(indigo_device *device) {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 				}
 		res = tc_get_rade_p(dev_id, &ra, &dec);
+		ra = d2h(ra);
+		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 		if (res != RC_OK) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_get_rade_p(%d) = %d (%s)", dev_id, res, strerror(errno));
 		}
@@ -203,7 +205,7 @@ static void position_timer_callback(indigo_device *device) {
 			}
 		}
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = d2h(ra);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
 		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		indigo_update_coordinates(device, NULL);
 		MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
@@ -534,6 +536,9 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	int aligned = tc_check_align(PRIVATE_DATA->dev_id);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
+	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (aligned < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "tc_check_align(%d) = %d (%s)", PRIVATE_DATA->dev_id, res, strerror(errno));
 	} else if (aligned == 0) {
@@ -545,7 +550,7 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 	/* GOTO requested */
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+		res = tc_goto_rade_p(PRIVATE_DATA->dev_id, h2d(ra), dec);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res != RC_OK) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -555,7 +560,7 @@ static void mount_handle_eq_coordinates(indigo_device *device) {
 	/* SYNC requested */
 	else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target), MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+		res = tc_sync_rade_p(PRIVATE_DATA->dev_id, h2d(ra), dec);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		if (res != RC_OK) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;

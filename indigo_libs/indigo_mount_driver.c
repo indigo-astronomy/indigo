@@ -243,7 +243,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			sprintf(MOUNT_ALIGNMENT_RESET_ITEM->hints, "warn_on_set:\"Reset alignment data?\";");
 			MOUNT_ALIGNMENT_RESET_PROPERTY->hidden = MOUNT_ALIGNMENT_MODE_CONTROLLER_ITEM->sw.value;
 			// -------------------------------------------------------------------------------- MOUNT_EPOCH
-			MOUNT_EPOCH_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Current epoch", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
+			MOUNT_EPOCH_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Current epoch", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			if (MOUNT_EPOCH_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Epoch (0, 1900-2050)", 0, 2050, 0, 2000);
