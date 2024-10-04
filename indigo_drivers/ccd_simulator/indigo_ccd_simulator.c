@@ -783,7 +783,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				// deault is close to Vega
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 18.84);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 38.75);
-				indigo_init_number_item(GUIDER_IMAGE_EPOCH_ITEM, "J2000", "J2000 (1=J2000, 0=JNow)", 0, 1, 0, 1);
+				indigo_init_number_item(GUIDER_IMAGE_EPOCH_ITEM, "J2000", "J2000 (2000=J2k, 0=JNow)", 0, 2050, 0, 2000);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_ALT_ERROR_ITEM, "ALT_POLAR_ERROR", "Altitude polar error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_AZ_ERROR_ITEM, "AZ_POLAR_ERROR", "Azimuth polar error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_IMAGE_AGE_ITEM, "IMAGE_AGE", "Max image age (s)", 0, 3600, 0, 1.0 / 60.0);
@@ -1126,8 +1126,10 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (GUIDER_MODE_PROPERTY && indigo_property_match_defined(GUIDER_SETTINGS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_SETTINGS
 		indigo_property_copy_values(GUIDER_SETTINGS_PROPERTY, property, false);
-		if (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0)
-			GUIDER_IMAGE_EPOCH_ITEM->number.target = GUIDER_IMAGE_EPOCH_ITEM->number.value = 1;
+		if (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 && GUIDER_IMAGE_EPOCH_ITEM->number.target != 2000) {
+			GUIDER_IMAGE_EPOCH_ITEM->number.target = GUIDER_IMAGE_EPOCH_ITEM->number.value = 2000;
+			indigo_send_message(device, "Warning! Valid values are 0 or 2000 only, value adjusted to 2000");
+		}
 		PRIVATE_DATA->ra = PRIVATE_DATA->dec = 0;
 		GUIDER_IMAGE_HOTCOL_ITEM->number.max = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 		GUIDER_IMAGE_HOTROW_ITEM->number.max = GUIDER_IMAGE_WIDTH_ITEM->number.target;

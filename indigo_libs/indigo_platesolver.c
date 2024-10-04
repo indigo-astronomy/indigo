@@ -674,7 +674,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_RADIUS_ITEM, AGENT_PLATESOLVER_HINTS_RADIUS_ITEM_NAME, "Search radius (°)", 0, 360, 2, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_HINTS_RA_ITEM, AGENT_PLATESOLVER_HINTS_RA_ITEM_NAME, "RA (hours)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_HINTS_DEC_ITEM, AGENT_PLATESOLVER_HINTS_DEC_ITEM_NAME, "Dec (°)", -90, 90, 0, 0);
-		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_EPOCH_ITEM, AGENT_PLATESOLVER_HINTS_EPOCH_ITEM_NAME, "J2000 (1=J2000, 0=JNow)", 0, 1, 1, 1);
+		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_EPOCH_ITEM, AGENT_PLATESOLVER_HINTS_EPOCH_ITEM_NAME, "J2000 (2000=J2000, 0=JNow)", 0, 2050, 1, 2000);
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_SCALE_ITEM, AGENT_PLATESOLVER_HINTS_SCALE_ITEM_NAME, "Pixel scale ( < 0: camera scale) (°/pixel)", -1, 5, -1, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_PARITY_ITEM, AGENT_PLATESOLVER_HINTS_PARITY_ITEM_NAME, "Parity (-1,0,1)", -1, 1, 1, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM, AGENT_PLATESOLVER_HINTS_DOWNSAMPLE_ITEM_NAME, "Downsample", 1, 16, 1, 2);
@@ -691,7 +691,7 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		indigo_init_number_item(AGENT_PLATESOLVER_WCS_STATE_ITEM, AGENT_PLATESOLVER_WCS_STATE_ITEM_NAME, "WCS solution state", 0, 5, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_WCS_RA_ITEM, AGENT_PLATESOLVER_WCS_RA_ITEM_NAME, "Frame center RA (hours)", 0, 24, 0, 0);
 		indigo_init_sexagesimal_number_item(AGENT_PLATESOLVER_WCS_DEC_ITEM, AGENT_PLATESOLVER_WCS_DEC_ITEM_NAME, "Frame center Dec (°)", 0, 360, 0, 0);
-		indigo_init_number_item(AGENT_PLATESOLVER_WCS_EPOCH_ITEM, AGENT_PLATESOLVER_WCS_EPOCH_ITEM_NAME, "J2000 (1=J2000, 0=JNow)", 0, 1, 0, 0);
+		indigo_init_number_item(AGENT_PLATESOLVER_WCS_EPOCH_ITEM, AGENT_PLATESOLVER_WCS_EPOCH_ITEM_NAME, "J2000 (2000=J2000, 0=JNow)", 0, 2000, 0, 2000);
 		indigo_init_number_item(AGENT_PLATESOLVER_WCS_ANGLE_ITEM, AGENT_PLATESOLVER_WCS_ANGLE_ITEM_NAME, "Rotation angle (° E of N)", 0, 360, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_WCS_WIDTH_ITEM, AGENT_PLATESOLVER_WCS_WIDTH_ITEM_NAME, "Frame width (°)", 0, 360, 0, 0);
 		indigo_init_number_item(AGENT_PLATESOLVER_WCS_HEIGHT_ITEM, AGENT_PLATESOLVER_WCS_HEIGHT_ITEM_NAME, "Frame height (°)", 0, 360, 0, 0);
@@ -844,6 +844,10 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 	} else if (indigo_property_match(AGENT_PLATESOLVER_HINTS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_HINTS
 		indigo_property_copy_values(AGENT_PLATESOLVER_HINTS_PROPERTY, property, false);
+		if (AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target != 0 && AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target != 2000) {
+			AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.value = AGENT_PLATESOLVER_HINTS_EPOCH_ITEM->number.target = 2000;
+			indigo_send_message(device, "Warning! Valid values are 0 or 2000 only, value adjusted to 2000");
+		}
 		AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
 		INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->save_config(device);

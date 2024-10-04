@@ -221,7 +221,7 @@ Properties are implemented by focuser driver base class in [indigo_focuser_drive
 | MOUNT_ALIGNMENT_SELECT_POINTS | switch | no | no | point id | yes |  |
 | MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY | switch | no | no | point id | yes |  |
 | MOUNT_ALIGNMENT_RESET | switch | no | no | RESET | yes |  |
-| MOUNT_EPOCH | number | no | yes | EPOCH | yes |  |
+| MOUNT_EPOCH | number | no | yes | EPOCH | yes | Valid values are 0, 1900, 1950, 2000 and 2050 |
 | MOUNT_SIDE_OF_PIER | switch | no | no | EAST | yes |  |
 |  |  |  |  | WEST | yes |  |
 | MOUNT_PEC | switch | no | no | ENABLED | yes |  |

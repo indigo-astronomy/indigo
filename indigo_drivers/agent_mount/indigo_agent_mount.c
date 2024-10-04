@@ -335,7 +335,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_LX200_CONFIGURATION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_LX200_CONFIGURATION_PORT_ITEM, AGENT_LX200_CONFIGURATION_PORT_ITEM_NAME, "Server port", 0, 0xFFFF, 0, 4030);
-		indigo_init_number_item(AGENT_LX200_CONFIGURATION_EPOCH_ITEM, AGENT_LX200_CONFIGURATION_EPOCH_ITEM_NAME, "Epoch (0 = JNow)", 0, 2050, 0, 0);
+		indigo_init_number_item(AGENT_LX200_CONFIGURATION_EPOCH_ITEM, AGENT_LX200_CONFIGURATION_EPOCH_ITEM_NAME, "Epoch (0=JNow, 2000=J2k)", 0, 2050, 0, 0);
 		// -------------------------------------------------------------------------------- AGENT_LIMITS
 		AGENT_LIMITS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_LIMITS_PROPERTY_NAME, "Agent", "Limits", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_LIMITS_PROPERTY == NULL)
@@ -824,6 +824,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_LX200_CONFIGURATION
 		indigo_property_copy_values(AGENT_LX200_CONFIGURATION_PROPERTY, property, false);
+		if (AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.target != 0 && AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.target != 2000) {
+			AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.value = AGENT_LX200_CONFIGURATION_EPOCH_ITEM->number.target = 0;
+			indigo_send_message(device, "Warning! Valid values are 0 or 2000 only, value adjusted to 0");
+		}
 		AGENT_LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);

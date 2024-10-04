@@ -246,7 +246,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 			MOUNT_EPOCH_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_EPOCH_PROPERTY_NAME, MOUNT_ALIGNMENT_GROUP, "Current epoch", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 			if (MOUNT_EPOCH_PROPERTY == NULL)
 				return INDIGO_FAILED;
-			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Epoch (0, 1950-2050)", 0, 2050, 0, 2000);
+			indigo_init_number_item(MOUNT_EPOCH_ITEM, MOUNT_EPOCH_ITEM_NAME, "Epoch (0, 1900-2050)", 0, 2050, 0, 2000);
 			// -------------------------------------------------------------------------------- MOUNT_ALIGNMENT_MODE
 			MOUNT_SIDE_OF_PIER_PROPERTY = indigo_init_switch_property(NULL, device->name, MOUNT_SIDE_OF_PIER_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Side of pier", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 			if (MOUNT_SIDE_OF_PIER_PROPERTY == NULL)
@@ -820,6 +820,10 @@ indigo_result indigo_mount_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(MOUNT_EPOCH_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EPOCH
 		indigo_property_copy_values(MOUNT_EPOCH_PROPERTY, property, false);
+		if (MOUNT_EPOCH_ITEM->number.target != 0 && MOUNT_EPOCH_ITEM->number.target != 1900 && MOUNT_EPOCH_ITEM->number.target != 1950 && MOUNT_EPOCH_ITEM->number.target != 2000 && MOUNT_EPOCH_ITEM->number.target != 2050) {
+			MOUNT_EPOCH_ITEM->number.value = MOUNT_EPOCH_ITEM->number.target = 2000;
+			indigo_send_message(device, "Warning! Valid values are 0, 1900, 1950, 2000 or 2050 only, value adjusted to 2000");
+		}
 		MOUNT_EPOCH_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_EPOCH_PROPERTY, NULL);
 		return INDIGO_OK;
