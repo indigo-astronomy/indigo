@@ -204,7 +204,7 @@ void indigo_usbserial_label(indigo_serial_info *serial_info, char *label) {
 indigo_serial_info *indigo_usbserial_match(
 	indigo_serial_info *serial_info,
 	const int num_serial_info,
-	indigo_device_pattern *patterns,
+	indigo_device_match_pattern *patterns,
 	const int num_patterns
 ) {
 	if (num_serial_info == 0 || num_patterns == 0 || serial_info == NULL || patterns == NULL) {
@@ -212,7 +212,7 @@ indigo_serial_info *indigo_usbserial_match(
 	}
 
 	for (int i = 0; i < num_patterns; i++) {
-		indigo_device_pattern *pattern = &patterns[i];
+		indigo_device_match_pattern *pattern = &patterns[i];
 		for (int j = 0; j < num_serial_info; j++) {
 			indigo_serial_info *info = &serial_info[j];
 			bool match = true;

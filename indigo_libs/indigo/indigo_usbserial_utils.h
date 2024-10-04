@@ -39,7 +39,23 @@ typedef struct {
 	char path[PATH_MAX];
 } indigo_serial_info;
 
+/** Stucture used to match devices.
+ */
+#define MATCH_ITEM_SIZE 256
+typedef struct {
+	int vendor_id;
+	int product_id;
+	char vendor_string[MATCH_ITEM_SIZE];
+	char product_string[MATCH_ITEM_SIZE];
+	char serial_string[MATCH_ITEM_SIZE];
+	bool exact_match;
+} indigo_device_match_pattern;
+
 #define USBSERIAL_AUTO_PREFIX "auto://"
+
+#define INDIGO_REGISER_MATCH_PATTERNS(device, patterns, count) \
+	device.match_patterns = patterns; \
+	device.match_patterns_count = count;
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,7 +66,7 @@ extern void indigo_usbserial_label(indigo_serial_info *serial_info, char *label)
 extern indigo_serial_info *indigo_usbserial_match (
 	indigo_serial_info *serial_info,
 	const int num_serial_info,
-	indigo_device_pattern *patterns,
+	indigo_device_match_pattern *patterns,
 	const int num_patterns
 );
 

@@ -502,11 +502,10 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		gps_detach
 	);
 
-	static indigo_device_pattern patterns[2] = {0};
+	static indigo_device_match_pattern patterns[2] = {0};
 	strcpy(patterns[0].product_string, "GPS");
 	strcpy(patterns[1].product_string, "GNSS");
-	gps_template.patterns = patterns;
-	gps_template.patterns_count = 2;
+	INDIGO_REGISER_MATCH_PATTERNS(gps_template, patterns, 2);
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 

@@ -32,6 +32,7 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_timer.h>
+#include <indigo/indigo_usbserial_utils.h>
 
 #ifdef INDIGO_LINUX
 #include <malloc.h>
