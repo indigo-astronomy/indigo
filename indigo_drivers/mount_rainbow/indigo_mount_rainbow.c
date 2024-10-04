@@ -23,7 +23,7 @@
  \file indigo_mount_rainbow.c
  */
 
-#define DRIVER_VERSION 0x000C
+#define DRIVER_VERSION 0x000D
 #define DRIVER_NAME	"indigo_mount_rainbow"
 
 #include <stdlib.h>
@@ -42,6 +42,7 @@
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_align.h>
 
 #include "indigo_mount_rainbow.h"
 
@@ -162,17 +163,21 @@ static void rainbow_close(indigo_device *device) {
 static void rainbow_reader(indigo_device *device) {
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Reader started");
 	char response[128];
+	double ra, dec;
 	while (PRIVATE_DATA->handle > 0) {
 		rainbow_response(device, response, sizeof(response));
 		if (*response == 0) {
 			continue;
 		}
 		if (!strncmp(response, ":GR", 3)) {
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_stod(response + 3);
+			ra = indigo_stod(response + 3);
 			continue;
 		}
 		if (!strncmp(response, ":GD", 3)) {
-			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = indigo_stod(response + 3);
+			dec = indigo_stod(response + 3);
+			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 			continue;
 		}
 		if (!strcmp(response, ":CL0#")) {
@@ -419,6 +424,9 @@ static void mount_geographic_coordinates_callback(indigo_device *device) {
 
 static void mount_equatorial_coordinates_callback(indigo_device *device) {
 	char command[128];
+	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
 		if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value) {
 			rainbow_command(device, ":CtR#", MOUNT_TRACK_RATE_PROPERTY);
@@ -429,9 +437,9 @@ static void mount_equatorial_coordinates_callback(indigo_device *device) {
 		} else if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
 			rainbow_command(device, ":CtU#", MOUNT_TRACK_RATE_PROPERTY);
 		}
-		sprintf(command, ":CtA#:Sr%s#:Sd%s#:MS#", indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target, "%02d:%02d:%04.1f"), indigo_dtos(MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target, "%+03d*%02d:%04.1f"));
+		sprintf(command, ":CtA#:Sr%s#:Sd%s#:MS#", indigo_dtos(ra, "%02d:%02d:%04.1f"), indigo_dtos(dec, "%+03d*%02d:%04.1f"));
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
-		sprintf(command, ":Ck%07.3f%+7.3f#", MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target * 15, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target);
+		sprintf(command, ":Ck%07.3f%+7.3f#", ra * 15, dec);
 	}
 	rainbow_command(device, command, MOUNT_EQUATORIAL_COORDINATES_PROPERTY);
 	indigo_update_coordinates(device, NULL);

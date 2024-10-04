@@ -23,7 +23,7 @@
  \file indigo_mount_pmc8.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_mount_pmc8"
 
 #include <stdlib.h>
@@ -485,33 +485,37 @@ static void position_timer_callback(indigo_device *device) {
 			uint32_t dec_count = MODELS[PRIVATE_DATA->type].count[1];
 			double ha_angle = ((double)raw_ha / ra_count) * 24;
 			double dec_angle = ((double)raw_dec / dec_count) * 360;
-			double ha;
+			double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+			double ha, ra, dec;
 			if (MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value >= 0) {
 				if (raw_dec >= -1) {
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 - dec_angle;
+					dec = 90 - dec_angle;
 					ha = ha_angle - 6;
 					side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
 				} else {
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = 90 + dec_angle;
+					dec = 90 + dec_angle;
 					ha = ha_angle + 6;
 					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
 				}
 			} else {
 				if (raw_dec >= -1) {
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 + dec_angle;
+					dec = -90 + dec_angle;
 					ha = -(ha_angle - 6);
 					side_of_pier = MOUNT_SIDE_OF_PIER_EAST_ITEM;
 				} else {
-					MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = -90 - dec_angle;
+					dec = -90 - dec_angle;
 					ha = -(ha_angle + 6);
 					side_of_pier = MOUNT_SIDE_OF_PIER_WEST_ITEM;
 				}
 			}
-			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha;
-			if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value < 0)
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value += 24;
-			else if (MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value > 24)
-				MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value -= 24;
+			ra = lst - ha;
+			if (ra < 0)
+				ra += 24;
+			else if (ra > 24)
+				ra -= 24;
+			indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+			MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+			MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 			if (!side_of_pier->sw.value) {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, side_of_pier, true);
 				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
@@ -561,9 +565,11 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	pmc8_stop_tracking(device);
 	indigo_usleep(200000);
 	for (int i = 0; i < 3 && MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE; i++) {
-		double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-		double ha_angle = lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+		double ra_angle = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
 		double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+		indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra_angle, &dec_angle);
+		double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
+		double ha_angle = lst - ra_angle;
 		if (ha_angle < -12) {
 			ha_angle += 24;
 		} else if (ha_angle >= 12) {

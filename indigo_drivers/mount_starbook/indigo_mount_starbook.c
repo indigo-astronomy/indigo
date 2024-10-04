@@ -1229,6 +1229,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_PARK_POSITION_PROPERTY->hidden = false;
 		MOUNT_PARK_SET_PROPERTY->hidden = false;
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
+		MOUNT_EPOCH_PROPERTY->perm = INDIGO_RO_PERM;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		strcpy(DEVICE_PORT_ITEM->text.value, STARBOOK_DEFAULT_IP_ADDR);
 

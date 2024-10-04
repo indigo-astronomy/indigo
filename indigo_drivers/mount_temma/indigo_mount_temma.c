@@ -25,7 +25,7 @@
  \file indigo_mount_temma.c
  */
 
-#define DRIVER_VERSION 0x0007
+#define DRIVER_VERSION 0x0008
 #define DRIVER_NAME	"indigo_mount_temma"
 
 #include <stdlib.h>
@@ -234,6 +234,7 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				else if ( buffer[13] == 'F' ) {
 					// fulfilled
 				}
+				indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &PRIVATE_DATA->currentRA, &PRIVATE_DATA->currentDec);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Coords %c %g %g", PRIVATE_DATA->telescopeSide, PRIVATE_DATA->currentRA, PRIVATE_DATA->currentDec);
 				break;
 			}
@@ -505,13 +506,20 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
+		double currentRa = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value;
+		double currentDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value;
 		indigo_property_copy_values(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property, false);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = currentRa;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = currentDec;
+		double targetRa = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+		double targetDec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+		indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &targetRa, &targetDec);
 		char buffer[128];
-		int ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value * 3600;
+		int ra = targetRa * 3600;
 		int ra_h = ra / 3600;
 		int ra_m = (ra / 60) % 60;
 		int ra_s = ra % 60;
-		int dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value * 600;
+		int dec = targetDec * 600;
 		int dec_d = dec / 600;
 		int dec_m = abs((dec / 10) % 60);
 		int dec_s = abs(dec % 10);

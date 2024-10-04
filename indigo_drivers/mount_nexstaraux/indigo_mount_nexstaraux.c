@@ -23,7 +23,7 @@
  \file indigo_mount_nexstaraux.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_mount_nexstaraux"
 
 #include <stdlib.h>
@@ -321,10 +321,12 @@ static void position_timer_callback(indigo_device *device) {
 		raw_azm = reply[5] << 16 | reply[6] << 8 | reply[7];
 	}
 	if (raw_alt != -1 && raw_azm != -1) {
-		double ha_angle = fmod(((double)raw_azm / 0x1000000) * 24 + 12, 24);
-		double dec_angle = fmod(((double)raw_alt / 0x1000000) * 360, 360);
-		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha_angle + 24, 24);
-		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec_angle;
+		double ha = fmod(((double)raw_azm / 0x1000000) * 24 + 12, 24);
+		double ra = fmod(indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value) - ha + 24, 24);
+		double dec = fmod(((double)raw_alt / 0x1000000) * 360, 360);
+		indigo_eq_to_j2k(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
+		MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.value = ra;
+		MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.value = dec;
 		indigo_update_coordinates(device, NULL);
 		indigo_update_property(device, MOUNT_UTC_TIME_PROPERTY, NULL);
 	}
@@ -395,11 +397,13 @@ static void mount_tracking_handler(indigo_device *device) {
 
 static void mount_equatorial_coordinates_handler(indigo_device *device) {
 	unsigned char reply[16] = { 0 };
+	double ra = MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target;
+	double dec = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
+	indigo_j2k_to_eq(MOUNT_EPOCH_ITEM->number.value, &ra, &dec);
 	double lst = indigo_lst(NULL, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value);
-	double ha_angle = fmod(lst - MOUNT_EQUATORIAL_COORDINATES_RA_ITEM->number.target + 24, 24);
-	double dec_angle = MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM->number.target;
-	int32_t raw_azm = (int32_t)((fmod(ha_angle + 12, 24) / 24.0) * 0x1000000) % 0x1000000;
-	int32_t raw_alt = (int32_t)((dec_angle / 360.0) * 0x1000000) % 0x1000000;
+	double ha = fmod(lst - ra + 24, 24);
+	int32_t raw_azm = (int32_t)((fmod(ha + 12, 24) / 24.0) * 0x1000000) % 0x1000000;
+	int32_t raw_alt = (int32_t)((dec / 360.0) * 0x1000000) % 0x1000000;
 	if (!nexstaraux_command_24(device, APP, AZM, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_azm, reply) || !nexstaraux_command_24(device, APP, ALT, MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value ? MC_SET_POSITION : MC_GOTO_FAST, raw_alt, reply)) {
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 	} else if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
