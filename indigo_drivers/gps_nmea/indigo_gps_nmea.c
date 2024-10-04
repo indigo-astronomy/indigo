@@ -25,7 +25,7 @@
  \file indigo_gps_nmea.c
  */
 
-#define DRIVER_VERSION 0x000D
+#define DRIVER_VERSION 0x000E
 #define DRIVER_NAME	"indigo_gps_nmea"
 
 #include <stdlib.h>
@@ -501,6 +501,12 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 		NULL,
 		gps_detach
 	);
+
+	static indigo_device_pattern patterns[2] = {0};
+	strcpy(patterns[0].product_string, "GPS");
+	strcpy(patterns[1].product_string, "GNSS");
+	gps_template.patterns = patterns;
+	gps_template.patterns_count = 2;
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
