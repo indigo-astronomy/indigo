@@ -145,10 +145,39 @@ static int port_type(char *path) {
 
 #define MAX_DEVICE_PORTS	20
 
+static bool indigo_select_best_matching_usbserial_device(indigo_device *device, indigo_serial_info *serial_info, int num_serial_info) {
+	indigo_device_pattern *patterns = device->patterns;
+	int patterns_count = device->patterns_count;
+
+	if (serial_info == NULL || num_serial_info == 0) {
+		return false;
+	}
+
+	/* If the device port is not empty and is not prefixed with "auto://", do nothing */
+	if (DEVICE_PORT_ITEM->text.value[0] != '\0' && strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		return false;
+	}
+
+	indigo_serial_info *matching = indigo_usbserial_match(serial_info, num_serial_info, patterns, patterns_count);
+
+	/* if nothing is matched select first USB-Serial port */
+	if (matching == NULL) {
+		matching = &serial_info[0];
+	}
+
+	if (matching) {
+		char buffer[INDIGO_VALUE_SIZE] = {0};
+		snprintf(buffer, INDIGO_VALUE_SIZE-1, "%s%s", USBSERIAL_AUTO_PREFIX, matching->path);
+		indigo_copy_value(DEVICE_PORT_ITEM->text.value, buffer);
+		return true;
+	}
+	return false;
+}
+
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
 	property->count = 1;
 	char name[PATH_MAX];
-	indigo_serial_info serial_info[MAX_DEVICE_PORTS];
+	indigo_serial_info serial_info[MAX_DEVICE_PORTS] = {0};
 	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
 #if defined(INDIGO_MACOS)
 	io_iterator_t iterator;
@@ -166,7 +195,6 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 					char label[INDIGO_VALUE_SIZE];
 					indigo_usbserial_label(serial_info, serial_count, name, label);
 					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, label, false);
-
 				}
 				CFRelease(cfs);
 			}
@@ -250,17 +278,16 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 		}
 		if (is_serial) {
 			int i = DEVICE_PORTS_PROPERTY->count++;
-			char label[INDIGO_VALUE_SIZE];
+			char label[INDIGO_VALUE_SIZE] = {0};
 			indigo_usbserial_label(serial_info, serial_count, name, label);
 			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, label, false);
-			if (i == 0)
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, name);
 		}
 	}
 	closedir(dir);
 #else
 	/* freebsd */
 #endif
+	indigo_select_best_matching_usbserial_device(device, serial_info, serial_count);
 }
 
 int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive) {
@@ -355,6 +382,15 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 			sprintf(name, PROFILE_ITEM_NAME, i);
 			indigo_init_switch_item(PROFILE_ITEM + i, name, (PROFILE_NAME_ITEM + i)->text.value, i == 0);
 		}
+		// -------------------------------------------------------------------------------- DEVICE_PORT
+		DEVICE_PORT_PROPERTY = indigo_init_text_property(NULL, device->name, DEVICE_PORT_PROPERTY_NAME, MAIN_GROUP, "Serial port", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (DEVICE_PORT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		DEVICE_PORT_PROPERTY->hidden = true;
+		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or URL", USBSERIAL_AUTO_PREFIX);
+		if (*DEVICE_PORT_ITEM->text.value == '/' && access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY = indigo_init_switch_property(NULL, device->name, DEVICE_PORTS_PROPERTY_NAME, MAIN_GROUP, "Serial ports", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_DEVICE_PORTS);
 		if (DEVICE_PORTS_PROPERTY == NULL)
@@ -362,15 +398,6 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 		DEVICE_PORTS_PROPERTY->hidden = true;
 		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items, DEVICE_PORTS_REFRESH_ITEM_NAME, "Refresh", false);
 		indigo_enumerate_serial_ports(device, DEVICE_PORTS_PROPERTY);
-		// -------------------------------------------------------------------------------- DEVICE_PORT
-		DEVICE_PORT_PROPERTY = indigo_init_text_property(NULL, device->name, DEVICE_PORT_PROPERTY_NAME, MAIN_GROUP, "Serial port", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (DEVICE_PORT_PROPERTY == NULL)
-			return INDIGO_FAILED;
-		DEVICE_PORT_PROPERTY->hidden = true;
-		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or URL", DEVICE_PORTS_PROPERTY->count > 1 ? DEVICE_PORTS_PROPERTY->items[1].name : DEFAULT_TTY);
-		if (*DEVICE_PORT_ITEM->text.value == '/' && access(DEVICE_PORT_ITEM->text.value, R_OK)) {
-			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
-		}
 		// -------------------------------------------------------------------------------- DEVICE_BAUDRATE
 		DEVICE_BAUDRATE_PROPERTY = indigo_init_text_property(NULL, device->name, DEVICE_BAUDRATE_PROPERTY_NAME, MAIN_GROUP, "Serial port baud rate", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (DEVICE_BAUDRATE_PROPERTY == NULL)

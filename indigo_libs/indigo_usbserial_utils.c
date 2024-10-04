@@ -36,7 +36,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <indigo/indigo_bus.h>
 #include <indigo/indigo_usbserial_utils.h>
 
 int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info) {
@@ -113,7 +112,7 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 					char path[256];
 					if (CFStringGetCString(bsdPathAsCFString, path, sizeof(path), kCFStringEncodingUTF8)) {
 						serial_info[count].vendor_id = vendor_id;
-						serial_info[count].pproduct_id = product_id;
+						serial_info[count].product_id = product_id;
 						indigo_safe_strncpy(serial_info[count].vendor_string, vendor_str, INFO_ITEM_SIZE);
 						indigo_safe_strncpy(serial_info[count].product_string, product_str, INFO_ITEM_SIZE);
 						indigo_safe_strncpy(serial_info[count].serial_string, serial_str, INFO_ITEM_SIZE);
@@ -176,7 +175,7 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 
 			if (dev_node && vendor && product) {
 				serial_info[count].vendor_id = strtol(vendor, NULL, 16);
-				serial_info[count].pproduct_id = strtol(product, NULL, 16);
+				serial_info[count].product_id = strtol(product, NULL, 16);
 				indigo_safe_strncpy(serial_info[count].vendor_string, manufacturer ? manufacturer : "", INFO_ITEM_SIZE);
 				indigo_safe_strncpy(serial_info[count].product_string, product_name ? product_name : "", INFO_ITEM_SIZE);
 				indigo_safe_strncpy(serial_info[count].serial_string, serial ? serial : "", INFO_ITEM_SIZE);
@@ -202,4 +201,68 @@ void indigo_usbserial_label(indigo_serial_info *serial_info, const int num_seria
 		}
 	}
 	snprintf(label, INDIGO_VALUE_SIZE, "%s", device_path);
+}
+
+indigo_serial_info *indigo_usbserial_match(
+	indigo_serial_info *serial_info,
+	const int num_serial_info,
+	indigo_device_pattern *patterns,
+	const int num_patterns
+) {
+	if (num_serial_info == 0 || num_patterns == 0 || serial_info == NULL || patterns == NULL) {
+		return NULL;
+	}
+
+	for (int i = 0; i < num_patterns; i++) {
+		indigo_device_pattern *pattern = &patterns[i];
+		for (int j = 0; j < num_serial_info; j++) {
+			indigo_serial_info *info = &serial_info[j];
+			bool match = true;
+
+			if (pattern->vendor_id != 0 && pattern->vendor_id != info->vendor_id) {
+				match = false;
+			}
+			if (pattern->product_id != 0 && pattern->product_id != info->product_id) {
+				match = false;
+			}
+			if (pattern->vendor_string[0] != 0) {
+				if (pattern->exact_match) {
+					if (strcmp(pattern->vendor_string, info->vendor_string) != 0) {
+						match = false;
+					}
+				} else {
+					if (strstr(info->vendor_string, pattern->vendor_string) == NULL) {
+						match = false;
+					}
+				}
+			}
+			if (pattern->product_string[0] != 0) {
+				if (pattern->exact_match) {
+					if (strcmp(pattern->product_string, info->product_string) != 0) {
+						match = false;
+					}
+				} else {
+					if (strstr(info->product_string, pattern->product_string) == NULL) {
+						match = false;
+					}
+				}
+			}
+			if (pattern->serial_string[0] != 0) {
+				if (pattern->exact_match) {
+					if (strcmp(pattern->serial_string, info->serial_string) != 0) {
+						match = false;
+					}
+				} else {
+					if (strstr(info->serial_string, pattern->serial_string) == NULL) {
+						match = false;
+					}
+				}
+			}
+
+			if (match) {
+				return info;
+			}
+		}
+	}
+	return NULL;
 }

@@ -276,6 +276,18 @@ typedef struct {
 	indigo_item items[];                ///< property items
 } indigo_property;
 
+/** Stucture used to match devices.
+ */
+#define MATCH_ITEM_SIZE 256
+typedef struct {
+	int vendor_id;
+	int product_id;
+	char vendor_string[MATCH_ITEM_SIZE];
+	char product_string[MATCH_ITEM_SIZE];
+	char serial_string[MATCH_ITEM_SIZE];
+	bool exact_match;
+} indigo_device_pattern;
+
 /** Device structure definition
  */
 typedef struct indigo_device {
@@ -288,7 +300,9 @@ typedef struct indigo_device {
 	indigo_device *master_device;       ///< if the device provides many logical devices, this must point to one of the locical devices, otherwise is safe to be NULL
 	indigo_result last_result;          ///< result of last bus operation
 	indigo_version version;             ///< device version
-	indigo_token access_token;					///< allow change request with correct access token only
+	indigo_token access_token;			///< allow change request with correct access token only
+	indigo_device_pattern *patterns;    ///< device matching patterns
+	int patterns_count;                 ///< device matching patterns count
 
 	/** callback called when device is attached to bus
 	 */
@@ -318,6 +332,8 @@ typedef struct indigo_device {
 	INDIGO_OK, \
 	INDIGO_VERSION_LEGACY, \
 	0L, \
+	NULL, \
+	0, \
 	attach_cb, \
 	enumerate_properties_cb, \
 	change_property_cb, \

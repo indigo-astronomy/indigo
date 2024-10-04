@@ -194,11 +194,17 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 	return 0;
 }
 
-
 static int open_tty(const char *tty_name, const struct termios *options, struct termios *old_options) {
 	int tty_fd;
+	const char auto_prefix[] = "auto://";
+	const int auto_prefix_len = sizeof(auto_prefix)-1;
+	char *tty_name_buf = tty_name;
 
-	tty_fd = open(tty_name, O_RDWR | O_NOCTTY | O_SYNC);
+	if (!strncmp(tty_name_buf, auto_prefix, auto_prefix_len)) {
+		tty_name_buf += auto_prefix_len;
+    }
+
+	tty_fd = open(tty_name_buf, O_RDWR | O_NOCTTY | O_SYNC);
 	if (tty_fd == -1) {
 		return -1;
 	}

@@ -27,16 +27,19 @@
 #define indigo_usbserial_utils_h
 
 #include <limits.h>
+#include <indigo/indigo_bus.h>
 
 #define INFO_ITEM_SIZE 256
 typedef struct {
 	int vendor_id;
-	int pproduct_id;
+	int product_id;
 	char vendor_string[INFO_ITEM_SIZE];
 	char product_string[INFO_ITEM_SIZE];
 	char serial_string[INFO_ITEM_SIZE];
 	char path[PATH_MAX];
 } indigo_serial_info;
+
+#define USBSERIAL_AUTO_PREFIX "auto://"
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +47,12 @@ extern "C" {
 
 extern int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info);
 extern void indigo_usbserial_label(indigo_serial_info *serial_info, const int num_serial_info, const char *device_path, char *label);
+extern indigo_serial_info *indigo_usbserial_match (
+	indigo_serial_info *serial_info,
+	const int num_serial_info,
+	indigo_device_pattern *patterns,
+	const int num_patterns
+);
 
 #ifdef __cplusplus
 }

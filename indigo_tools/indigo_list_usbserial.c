@@ -54,7 +54,7 @@ int main(int argc, const char * argv[]) {
     for (int i = 0; i < count; i++) {
         printf("Device path      : %s\n", serial_info[i].path);
         printf("  Vendor ID      : 0x%04X\n", serial_info[i].vendor_id);
-        printf("  Product ID     : 0x%04X\n", serial_info[i].pproduct_id);
+        printf("  Product ID     : 0x%04X\n", serial_info[i].product_id);
         printf("  Vendor string  : \"%s\"\n", serial_info[i].vendor_string);
         printf("  Product string : \"%s\"\n", serial_info[i].product_string);
         printf("  Serial #       : %s\n", serial_info[i].serial_string);
