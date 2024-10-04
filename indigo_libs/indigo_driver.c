@@ -175,117 +175,37 @@ static bool indigo_select_best_matching_usbserial_device(indigo_device *device, 
 }
 
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
-	property->count = 1;
-	char name[PATH_MAX];
+	DEVICE_PORTS_PROPERTY->count = 1;
 	indigo_serial_info serial_info[MAX_DEVICE_PORTS] = {0};
 	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
-#if defined(INDIGO_MACOS)
-	io_iterator_t iterator;
-	io_object_t serial_device;
-	CFMutableDictionaryRef matching_dict = IOServiceMatching(kIOSerialBSDServiceValue);
-	CFDictionarySetValue(matching_dict, CFSTR(kIOSerialBSDTypeKey), CFSTR(kIOSerialBSDAllTypes));
-	kern_return_t kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matching_dict, &iterator);
-	if (kr == 0) {
-		while ((serial_device = IOIteratorNext(iterator)) && property->count < MAX_DEVICE_PORTS) {
-			CFTypeRef cfs = IORegistryEntryCreateCFProperty (serial_device, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault,0);
-			if (cfs) {
-				CFStringGetCString(cfs, name, INDIGO_VALUE_SIZE, kCFStringEncodingASCII);
-				if (strcmp(name, "/dev/cu.Bluetooth-Incoming-Port") && strcmp(name, "/dev/cu.SSDC") && strcmp(name, "/dev/cu.debug-console") && strcmp(name, "/dev/cu.wlan-debug") && strstr(name, "-WirelessiAP") == NULL) {
-					int i = property->count++;
-					char label[INDIGO_VALUE_SIZE];
-					indigo_usbserial_label(serial_info, serial_count, name, label);
-					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, label, false);
-				}
-				CFRelease(cfs);
-			}
-			IOObjectRelease(serial_device);
-		}
-		IOObjectRelease(iterator);
+	for (int i = 0; i < serial_count; i++) {
+		DEVICE_PORTS_PROPERTY->count++;
+		char label[INDIGO_VALUE_SIZE];
+		indigo_usbserial_label(serial_info + i, label);
+		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i + 1, serial_info[i].path, label, false);
 	}
-#elif defined(INDIGO_LINUX)
+#if defined(INDIGO_LINUX)
 	DIR *dir;
+	char path[PATH_MAX];
 	char target[PATH_MAX];
-	char serial_links_id[MAX_DEVICE_PORTS][PATH_MAX]={0};
-	char serial_links_path[MAX_DEVICE_PORTS][PATH_MAX]={0};
 	struct dirent *entry;
-	int link_num_id = 0;
-	/* Some serial devices seem to report PORT_UNKNOWN but they have simlinks
-	   in /dev/serial/by-id/ in that case we consider them real ports
-	*/
-	dir = opendir("/dev/serial/by-id");
-	if (dir) {
-		while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-			if (entry->d_name[0] != '.') {
-				snprintf(name, PATH_MAX, "/dev/serial/by-id/%s", entry->d_name);
-				if (realpath(name, target)) {
-						strncpy(serial_links_id[link_num_id], target, PATH_MAX);
-						link_num_id++;
-				}
-			}
-		}
-		closedir(dir);
-	}
-	int link_num_path = 0;
-	/* Some serial devices seem to report PORT_UNKNOWN but they have simlinks
-	   in /dev/serial/by-path/ in that case we consider them real ports
-	*/
-	dir = opendir("/dev/serial/by-path");
-	if (dir) {
-		while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-			if (entry->d_name[0] != '.') {
-				snprintf(name, PATH_MAX, "/dev/serial/by-path/%s", entry->d_name);
-				if (realpath(name, target)) {
-						strncpy(serial_links_path[link_num_path], target, PATH_MAX);
-						link_num_path++;
-				}
-			}
-		}
-		closedir(dir);
-	}
 
 	dir = opendir("/dev");
 	while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-		snprintf(name, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
-		if (!realpath(name, target)) continue;
+		snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
+		if (!realpath(path, target)) continue;
 		if (!strstr(target, "/tty")) continue;
-		int ser_type = port_type(name);
-		bool is_serial = false;
-		/* port is unknown -> will be considerd serial port if there is a link in /dev/serial/by-id */
-		if (ser_type <= PORT_UNKNOWN) {
-			for (int i = 0; i < link_num_id; i++) {
-				if (!strncmp(target, serial_links_id[i], PATH_MAX)) {
-					is_serial = true;
-					INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link by-id)", __FUNCTION__, name));
-					break;
-				}
-				/* INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links_id[i]));
-				 */
-			}
-			if(!is_serial) {
-				for (int i = 0; i < link_num_path; i++) {
-					if (!strncmp(target, serial_links_path[i], PATH_MAX)) {
-						is_serial = true;
-						INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (has link by-path)", __FUNCTION__, name));
-						break;
-					}
-					/* INDIGO_DEBUG(indigo_debug("%s(): target = %s link = %s,", __FUNCTION__, name, target, serial_links_path[i]));
-					 */
-				}
-			}
-		} else {
-			is_serial = true;
-			INDIGO_DEBUG(indigo_debug("%s(): path = %s, IS SERIAL (type = %d)", __FUNCTION__, name, ser_type));
-		}
-		if (is_serial) {
+		if ()
+		int ser_type = port_type(path);
+		if (ser_type > PORT_UNKNOWN) {
 			int i = DEVICE_PORTS_PROPERTY->count++;
 			char label[INDIGO_VALUE_SIZE] = {0};
-			indigo_usbserial_label(serial_info, serial_count, name, label);
-			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, name, label, false);
+			//indigo_usbserial_label(serial_info, serial_count, path, label);
+			indigo_copy_value(DEVICE_PORT_ITEM->text.value, buffer);
+			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, path, label, false);
 		}
 	}
 	closedir(dir);
-#else
-	/* freebsd */
 #endif
 	indigo_select_best_matching_usbserial_device(device, serial_info, serial_count);
 }

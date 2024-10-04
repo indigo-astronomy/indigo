@@ -193,14 +193,12 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 #endif
 }
 
-void indigo_usbserial_label(indigo_serial_info *serial_info, const int num_serial_info, const char *device_path, char *label) {
-	for (int i = 0; i < num_serial_info; i++) {
-		if (!strncmp(serial_info[i].path, device_path, PATH_MAX)) {
-			snprintf(label, INDIGO_VALUE_SIZE, "%s (%s)", device_path, serial_info[i].product_string);
-			return;
-		}
+void indigo_usbserial_label(indigo_serial_info *serial_info, char *label) {
+	if (strncmp(serial_info->path, "", PATH_MAX)) {
+		snprintf(label, INDIGO_VALUE_SIZE, "%s (%s)", serial_info->path, serial_info->product_string);
+	    return;
 	}
-	snprintf(label, INDIGO_VALUE_SIZE, "%s", device_path);
+	snprintf(label, INDIGO_VALUE_SIZE, "%s", serial_info->path);
 }
 
 indigo_serial_info *indigo_usbserial_match(

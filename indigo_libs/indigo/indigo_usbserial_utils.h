@@ -46,7 +46,7 @@ extern "C" {
 #endif
 
 extern int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info);
-extern void indigo_usbserial_label(indigo_serial_info *serial_info, const int num_serial_info, const char *device_path, char *label);
+extern void indigo_usbserial_label(indigo_serial_info *serial_info, char *label);
 extern indigo_serial_info *indigo_usbserial_match (
 	indigo_serial_info *serial_info,
 	const int num_serial_info,
