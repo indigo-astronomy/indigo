@@ -67,7 +67,6 @@
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_usb_utils.h>
-#include <indigo/indigo_usbserial_utils.h>
 
 #define MAX_SLAVE_DEVICES 10
 
@@ -146,8 +145,8 @@ static int port_type(char *path) {
 #define MAX_DEVICE_PORTS	20
 
 static bool indigo_select_best_matching_usbserial_device(indigo_device *device, indigo_serial_info *serial_info, int num_serial_info) {
-	indigo_device_pattern *patterns = device->patterns;
-	int patterns_count = device->patterns_count;
+	indigo_device_match_pattern *patterns = (indigo_device_match_pattern*)device->match_patterns;
+	int patterns_count = device->match_patterns_count;
 
 	if (serial_info == NULL || num_serial_info == 0) {
 		return false;
