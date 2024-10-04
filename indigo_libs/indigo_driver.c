@@ -155,6 +155,7 @@ static bool indigo_select_best_matching_usbserial_device(indigo_device *device, 
 
 	/* If the device port is not empty and is not prefixed with "auto://", do nothing */
 	if (DEVICE_PORT_ITEM->text.value[0] != '\0' && strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		INDIGO_DEBUG(indigo_debug("%s(): Port is not empty and is not prefixed with 'auto://', autoselection skipped for '%s'", __FUNCTION__, device->name));
 		return false;
 	}
 
@@ -162,12 +163,14 @@ static bool indigo_select_best_matching_usbserial_device(indigo_device *device, 
 
 	/* if nothing is matched select first USB-Serial port */
 	if (matching == NULL) {
+		INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', selecting first USB-Serial port", __FUNCTION__, device->name));
 		matching = &serial_info[0];
 	}
 
 	if (matching) {
 		char buffer[INDIGO_VALUE_SIZE] = {0};
 		snprintf(buffer, INDIGO_VALUE_SIZE-1, "%s%s", USBSERIAL_AUTO_PREFIX, matching->path);
+		INDIGO_DEBUG(indigo_debug("%s(): Selected port for '%s': %s", __FUNCTION__, device->name, buffer));
 		indigo_copy_value(DEVICE_PORT_ITEM->text.value, buffer);
 		return true;
 	}
@@ -175,6 +178,13 @@ static bool indigo_select_best_matching_usbserial_device(indigo_device *device, 
 }
 
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
+	assert(device != NULL);
+
+	int interface = atoi(INFO_DEVICE_INTERFACE_ITEM->text.value);
+	if (interface & INDIGO_INTERFACE_AGENT) {
+		INDIGO_DEBUG(indigo_debug("%s(): Skipping port enumeration for '%s'", __FUNCTION__, device->name));
+		return;
+	}
 	DEVICE_PORTS_PROPERTY->count = 1;
 	indigo_serial_info serial_info[MAX_DEVICE_PORTS] = {0};
 	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
@@ -183,26 +193,38 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 		char label[INDIGO_VALUE_SIZE];
 		indigo_usbserial_label(serial_info + i, label);
 		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i + 1, serial_info[i].path, label, false);
+		INDIGO_DEBUG(indigo_debug(
+			"%s(): Serial port #%d: %s %04X:%04X %s",
+			__FUNCTION__,
+			 i,
+			 serial_info[i].path,
+			 serial_info[i].vendor_id,
+			 serial_info[i].product_id,
+			 label
+		));
 	}
 #if defined(INDIGO_LINUX)
 	DIR *dir;
 	char path[PATH_MAX];
-	char target[PATH_MAX];
 	struct dirent *entry;
 
 	dir = opendir("/dev");
 	while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
 		snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
-		if (!realpath(path, target)) continue;
-		if (!strstr(target, "/tty")) continue;
-		if ()
-		int ser_type = port_type(path);
-		if (ser_type > PORT_UNKNOWN) {
-			int i = DEVICE_PORTS_PROPERTY->count++;
-			char label[INDIGO_VALUE_SIZE] = {0};
-			//indigo_usbserial_label(serial_info, serial_count, path, label);
-			indigo_copy_value(DEVICE_PORT_ITEM->text.value, buffer);
-			indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i, path, label, false);
+		bool found = false;
+		for (int i = 0; i < serial_count; i++) {
+			if (strcmp(serial_info[i].path, path) == 0) {
+				found = true;
+				break;
+			}
+		}
+		if (!found) {
+			int ser_type = port_type(path);
+			if (ser_type > PORT_UNKNOWN) {
+				int index = DEVICE_PORTS_PROPERTY->count++;
+				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, path, false);
+				INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s type = %d", __FUNCTION__, index, path, ser_type));
+			}
 		}
 	}
 	closedir(dir);
