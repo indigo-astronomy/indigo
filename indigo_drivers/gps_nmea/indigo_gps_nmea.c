@@ -397,6 +397,7 @@ static indigo_result gps_attach(indigo_device *device) {
 		indigo_init_switch_item(QZSS_SYSTEM_ITEM, QZSS_SYSTEM_ITEM_NAME, "QZSS", false);
 		// --------------------------------------------------------------------------------
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
+/*
 #ifdef INDIGO_LINUX
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "ttyGPS")) {
@@ -405,6 +406,7 @@ static indigo_result gps_attach(indigo_device *device) {
 			}
 		}
 #endif
+*/
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return gps_enumerate_properties(device, NULL, NULL);
 	}

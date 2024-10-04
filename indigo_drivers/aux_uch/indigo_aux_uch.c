@@ -23,7 +23,7 @@
  \file indigo_aux_uch.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_aux_uch"
 
 #include <stdlib.h>
@@ -161,6 +161,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
+/*
 #ifdef INDIGO_MACOS
 		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
 			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "usbserial")) {
@@ -172,6 +173,7 @@ static indigo_result aux_attach(indigo_device *device) {
 #ifdef INDIGO_LINUX
 		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/Pegasus_UCH");
 #endif
+*/
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -497,6 +499,11 @@ indigo_result indigo_aux_uch(indigo_driver_action action, indigo_driver_info *in
 		NULL,
 		aux_detach
 	);
+
+	static indigo_device_match_pattern patterns[1] = {0};
+	strcpy(patterns[0].vendor_string, "Pegasus Astro");
+	strcpy(patterns[0].product_string, "USB Control Hub");
+	INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
 
 	SET_DRIVER_INFO(info, "PegasusAstro USB Control Hub", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
