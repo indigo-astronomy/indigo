@@ -144,12 +144,22 @@ static int port_type(char *path) {
 
 #define MAX_DEVICE_PORTS	20
 
-static bool indigo_select_best_matching_usbserial_device(indigo_device *device, indigo_serial_info *serial_info, int num_serial_info) {
+static bool indigo_select_matching_usbserial_device(indigo_device *device, indigo_serial_info *serial_info, int num_serial_info) {
 	indigo_device_match_pattern *patterns = (indigo_device_match_pattern*)device->match_patterns;
 	int patterns_count = device->match_patterns_count;
 
 	if (serial_info == NULL || num_serial_info == 0) {
 		return false;
+	}
+
+	/* If the selected device port is prefixed with "auto://", but it matches the pattern do not change it */
+	if (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		char *path = DEVICE_PORT_ITEM->text.value + strlen(USBSERIAL_AUTO_PREFIX);
+		for (int i = 0; i < num_serial_info; i++) {
+			if (!strcmp(serial_info[i].path, path) && indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
+				return true;
+			}
+		}
 	}
 
 	/* If the device port is not empty and is not prefixed with "auto://", do nothing */
@@ -241,7 +251,7 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 	}
 	closedir(dir);
 #endif
-	indigo_select_best_matching_usbserial_device(device, serial_info, serial_count);
+	indigo_select_matching_usbserial_device(device, serial_info, serial_count);
 }
 
 int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive) {
