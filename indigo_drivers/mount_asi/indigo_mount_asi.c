@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x000E
+#define DRIVER_VERSION 0x000F
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -1167,7 +1167,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_ON_COORDINATES_SET_PROPERTY->count = 2;
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		DEVICE_PORT_PROPERTY->hidden = false;
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ZWO_Mount");
+		//strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ZWO_Mount");
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- ALIGNMENT_MODE
@@ -1529,6 +1529,12 @@ indigo_result indigo_mount_asi(indigo_driver_action action, indigo_driver_info *
 		NULL,
 		mount_detach
 	);
+
+	static indigo_device_match_pattern patterns[1] = {0};
+	patterns[0].vendor_id = 0x03C3;
+	patterns[0].product_id = 0x4001;
+	INDIGO_REGISER_MATCH_PATTERNS(mount_template, patterns, 1);
+
 	static indigo_device mount_guider_template = INDIGO_DEVICE_INITIALIZER(
 		MOUNT_ASI_GUIDER_NAME,
 		guider_attach,

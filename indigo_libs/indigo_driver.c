@@ -178,6 +178,7 @@ static bool indigo_select_best_matching_usbserial_device(indigo_device *device, 
 
 void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property) {
 	assert(device != NULL);
+	char label[INDIGO_VALUE_SIZE];
 
 	int interface = atoi(INFO_DEVICE_INTERFACE_ITEM->text.value);
 	if (interface & INDIGO_INTERFACE_AGENT) {
@@ -189,7 +190,6 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 	int serial_count = indigo_enumerate_usbserial_devices(serial_info, MAX_DEVICE_PORTS);
 	for (int i = 0; i < serial_count; i++) {
 		DEVICE_PORTS_PROPERTY->count++;
-		char label[INDIGO_VALUE_SIZE];
 		indigo_usbserial_label(serial_info + i, label);
 		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i + 1, serial_info[i].path, label, false);
 		INDIGO_DEBUG(indigo_debug(
@@ -204,25 +204,38 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 	}
 #if defined(INDIGO_LINUX)
 	DIR *dir;
+	char target[PATH_MAX];
 	char path[PATH_MAX];
 	struct dirent *entry;
 
 	dir = opendir("/dev");
 	while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
 		snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
+		if (!realpath(path, target)) continue;
 		bool found = false;
+		bool is_serial_link = false;
 		for (int i = 0; i < serial_count; i++) {
 			if (strcmp(serial_info[i].path, path) == 0) {
 				found = true;
 				break;
+			} else if (strcmp(serial_info[i].path, target) == 0) {
+				is_serial_link = true;
+				break;
 			}
 		}
 		if (!found) {
-			int ser_type = port_type(path);
-			if (ser_type > PORT_UNKNOWN) {
+			if (is_serial_link) {
 				int index = DEVICE_PORTS_PROPERTY->count++;
-				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, path, false);
-				INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s type = %d", __FUNCTION__, index, path, ser_type));
+				snprintf(label, INDIGO_VALUE_SIZE, "%s (link to %s)", path, target);
+				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, label, false);
+				INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s link = %s", __FUNCTION__, index, path, target));
+			} else {
+				int ser_type = port_type(path);
+				if (ser_type > PORT_UNKNOWN) {
+					int index = DEVICE_PORTS_PROPERTY->count++;
+					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, path, false);
+					INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s type = %d", __FUNCTION__, index, path, ser_type));
+				}
 			}
 		}
 	}
