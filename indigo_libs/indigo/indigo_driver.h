@@ -57,6 +57,14 @@ extern "C" {
  */
 #define MAIN_GROUP                    "Main"
 
+/** Advanced group name string.
+ */
+#define ADVANCED_GROUP            		"Advanced"
+
+/** Site group name string.
+ */
+#define SITE_GROUP            				"Site"
+
 /** Device context pointer.
  */
 #define DEVICE_CONTEXT                ((indigo_device_context *)device->device_context)

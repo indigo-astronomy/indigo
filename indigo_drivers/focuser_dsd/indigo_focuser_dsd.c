@@ -661,7 +661,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(DSD_MODEL_AF1_2_ITEM, DSD_MODEL_AF1_2_ITEM_NAME, "AF1/AF2", true);
 		indigo_init_switch_item(DSD_MODEL_AF3_ITEM, DSD_MODEL_AF3_ITEM_NAME, "AF3", false);
 		// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
-		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
+		DSD_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_STEP_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 9);
 		if (DSD_STEP_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DSD_STEP_MODE_PROPERTY->hidden = false;
@@ -676,7 +676,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(DSD_STEP_MODE_256TH_ITEM, DSD_STEP_MODE_256TH_ITEM_NAME, "1/256 step", false);
 
 		// -------------------------------------------------------------------------- COILS_MODE_PROPERTY
-		DSD_COILS_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_COILS_MODE_PROPERTY_NAME, "Advanced", "Coils Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
+		DSD_COILS_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, DSD_COILS_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Coils Power", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 3);
 		if (DSD_COILS_MODE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		DSD_COILS_MODE_PROPERTY->hidden = false;
@@ -684,13 +684,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(DSD_COILS_MODE_ALWAYS_ON_ITEM, DSD_COILS_MODE_ALWAYS_ON_ITEM_NAME, "Always ON", false);
 		indigo_init_switch_item(DSD_COILS_MODE_TIMEOUT_ITEM, DSD_COILS_MODE_TIMEOUT_ITEM_NAME, "OFF after timeout", false);
 		//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
-		DSD_CURRENT_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, DSD_CURRENT_CONTROL_PROPERTY_NAME, "Advanced", "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		DSD_CURRENT_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, DSD_CURRENT_CONTROL_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (DSD_CURRENT_CONTROL_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(DSD_CURRENT_CONTROL_MOVE_ITEM, DSD_CURRENT_CONTROL_MOVE_ITEM_NAME, "Move current (%)", 10, 100, 1, 50);
 		indigo_init_number_item(DSD_CURRENT_CONTROL_HOLD_ITEM, DSD_CURRENT_CONTROL_HOLD_ITEM_NAME, "Hold current (%)", 10, 100, 1, 50);
 		//--------------------------------------------------------------------------- TIMINGS_PROPERTY
-		DSD_TIMINGS_PROPERTY = indigo_init_number_property(NULL, device->name, DSD_TIMINGS_PROPERTY_NAME, "Advanced", "Timing settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+		DSD_TIMINGS_PROPERTY = indigo_init_number_property(NULL, device->name, DSD_TIMINGS_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Timing settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 		if (DSD_TIMINGS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(DSD_TIMINGS_SETTLE_ITEM, DSD_TIMINGS_SETTLE_ITEM_NAME, "Settle time (ms)", 0, 99999, 100, 0);

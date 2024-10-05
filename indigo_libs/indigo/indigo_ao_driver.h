@@ -37,6 +37,10 @@ extern "C" {
  */
 #define AO_MAIN_GROUP                	"Guider"
 
+/** Advanced group name string.
+ */
+#define AO_ADVANCED_GROUP            ADVANCED_GROUP
+
 /** Device context pointer.
  */
 #define AO_CONTEXT                		((indigo_ao_context *)device->device_context)

@@ -38,8 +38,8 @@
 
 #include "indigo_ptp.h"
 
-#define ADVANCED_GROUP
-//#define UNKNOWN_GROUP
+//#define SHOW_ADVANCED_GROUP
+//#define SHOW_UNKNOWN_GROUP
 
 char *ptp_type_code_label(uint16_t code) {
 	static char *scalar_type_label[] = { "int8", "uint8", "int16", "uint16", "int32", "uint32", "int64", "uint64", "int128", "uint128" };
@@ -1403,13 +1403,13 @@ bool ptp_update_property(indigo_device *device, ptp_property *property) {
 			} else if (!strncmp(name, "CCD_", 4)) {
 				strcpy(group, "Camera");
 			} else if (!strncmp(name, "ADV_", 4)) {
-#ifdef ADVANCED_GROUP
+#ifdef SHOW_ADVANCED_GROUP
 				strcpy(group, "Advanced");
 #else
 				property->count = -1;
 #endif
 			} else {
-#ifdef UNKNOWN_GROUP
+#ifdef SHOW_UNKNOWN_GROUP
 				strcpy(group, "Unknown");
 #else
 				property->count = -1;
@@ -1606,7 +1606,7 @@ bool ptp_initialise(indigo_device *device) {
 				continue;
 			if (!strncmp(name, "DSLR_", 5))
 				continue;
-#ifdef ADVANCED_GROUP
+#ifdef SHOW_ADVANCED_GROUP
 			if (!strncmp(name, "ADV_", 4))
 				continue;
 #endif

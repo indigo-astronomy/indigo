@@ -37,6 +37,11 @@ extern "C" {
  */
 #define WHEEL_MAIN_GROUP                "Filter Wheel"
 
+/** Advanced group name string.
+ */
+#define WHEEL_ADVANCED_GROUP            ADVANCED_GROUP
+
+
 /** Device context pointer.
  */
 #define WHEEL_CONTEXT                ((indigo_wheel_context *)device->device_context)

@@ -58,17 +58,17 @@ extern "C" {
  */
 #define CCD_MAIN_GROUP                    "Camera"
 
-/** CCD Image group name string.
+/** Image group name string.
  */
 #define CCD_IMAGE_GROUP                   "Image"
 
-/** CCD Cooler group name string.
+/** Cooler group name string.
  */
 #define CCD_COOLER_GROUP                  "Cooler"
 
-/** CCD Advanced group name string.
+/** Advanced group name string.
  */
-#define CCD_ADVANCED_GROUP                "Advanced"
+#define CCD_ADVANCED_GROUP                ADVANCED_GROUP
 
 /** Device context pointer.
  */

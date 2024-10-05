@@ -100,7 +100,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 	assert(device != NULL);
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_focuser_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
-		X_FOCUSER_APERTURE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_APERTURE", "Advanced", "Aperture", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		X_FOCUSER_APERTURE_PROPERTY = indigo_init_number_property(NULL, device->name, "X_FOCUSER_APERTURE", FOCUSER_ADVANCED_GROUP, "Aperture", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_FOCUSER_APERTURE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(X_FOCUSER_APERTURE_ITEM, "APERURE", "Aperture", 0, 50, 1, 0);

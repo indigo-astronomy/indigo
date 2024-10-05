@@ -37,6 +37,10 @@ extern "C" {
  */
 #define FOCUSER_MAIN_GROUP                "Focuser"
 
+/** Advanced group name string.
+ */
+#define FOCUSER_ADVANCED_GROUP            ADVANCED_GROUP
+
 /** Device context pointer.
  */
 #define FOCUSER_CONTEXT                ((indigo_focuser_context *)device->device_context)

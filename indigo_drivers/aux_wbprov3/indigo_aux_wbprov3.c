@@ -452,7 +452,7 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(AUX_INFO_VOLTAGE_ITEM, AUX_INFO_VOLTAGE_ITEM_NAME, "Voltage [V]", 0, 15, 0, 0);
 		indigo_init_number_item(AUX_INFO_CURRENT_ITEM, AUX_INFO_CURRENT_ITEM_NAME, "Current [A]", 0, 20, 0, 0);
 		// -------------------------------------------------------------------------------- X_AUX_CALIBRATE
-		X_AUX_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_CALIBRATE", "Advanced", "Calibrate sensors", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
+		X_AUX_CALIBRATE_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_AUX_CALIBRATE", AUX_ADVANCED_GROUP, "Calibrate sensors", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 1);
 		if (X_AUX_CALIBRATE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_AUX_CALIBRATE_ITEM, "CALIBRATE", "Calibrate", false);

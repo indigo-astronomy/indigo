@@ -788,7 +788,7 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_PORT_THIRD_AUX_POWERBOX_ITEM, LA_PORT_CONFIG_AUX_POWERBOX_ITEM_NAME, "Powerbox/GPIO", false);
 	if (get_port_index(device) != 0) LA_PORT_THIRD_CONFIG_PROPERTY->hidden = true;
 	// -------------------------------------------------------------------------- STEP_MODE_PROPERTY
-	LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, "Advanced", "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	LA_STEP_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_STEP_MODE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Step mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (LA_STEP_MODE_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	LA_STEP_MODE_PROPERTY->hidden = false;
@@ -796,28 +796,28 @@ static int lunatico_init_properties(indigo_device *device) {
 	indigo_init_switch_item(LA_STEP_MODE_HALF_ITEM, LA_STEP_MODE_HALF_ITEM_NAME, "1/2 step", false);
 	if (PORT_DATA.device_type == TYPE_AUX) LA_STEP_MODE_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- CURRENT_CONTROL_PROPERTY
-	LA_POWER_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, LA_POWER_CONTROL_PROPERTY_NAME, "Advanced", "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+	LA_POWER_CONTROL_PROPERTY = indigo_init_number_property(NULL, device->name, LA_POWER_CONTROL_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Coils current control", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
 	if (LA_POWER_CONTROL_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_number_item(LA_POWER_CONTROL_MOVE_ITEM, LA_POWER_CONTROL_MOVE_ITEM_NAME, "Move power (%)", 0, 100, 1, 100);
 	indigo_init_number_item(LA_POWER_CONTROL_STOP_ITEM, LA_POWER_CONTROL_STOP_ITEM_NAME, "Stop power (%)", 0, 100, 1, 0);
 	if (PORT_DATA.device_type == TYPE_AUX) LA_POWER_CONTROL_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- TEMPERATURE_SENSOR_PROPERTY
-	LA_TEMPERATURE_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_TEMPERATURE_SENSOR_PROPERTY_NAME, "Advanced", "Temperature Sensor in use", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	LA_TEMPERATURE_SENSOR_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_TEMPERATURE_SENSOR_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Temperature Sensor in use", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (LA_TEMPERATURE_SENSOR_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_INTERNAL_ITEM, LA_TEMPERATURE_SENSOR_INTERNAL_ITEM_NAME, "Internal sensor", true);
 	indigo_init_switch_item(LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM, LA_TEMPERATURE_SENSOR_EXTERNAL_ITEM_NAME, "External Sensor", false);
 	if (PORT_DATA.device_type != TYPE_FOCUSER) LA_TEMPERATURE_SENSOR_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- WIRING_PROPERTY
-	LA_WIRING_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_WIRING_PROPERTY_NAME, "Advanced", "Motor wiring", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+	LA_WIRING_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_WIRING_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Motor wiring", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 	if (LA_WIRING_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_WIRING_LUNATICO_ITEM, LA_WIRING_LUNATICO_ITEM_NAME, "Lunatico", true);
 	indigo_init_switch_item(LA_WIRING_MOONLITE_ITEM, LA_WIRING_MOONLITE_ITEM_NAME, "RF/Moonlite", false);
 	if (PORT_DATA.device_type == TYPE_AUX) LA_WIRING_PROPERTY->hidden = true;
 	//--------------------------------------------------------------------------- LA_MOTOR_TYPE_PROPERTY
-	LA_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MOTOR_TYPE_PROPERTY_NAME, "Advanced", "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
+	LA_MOTOR_TYPE_PROPERTY = indigo_init_switch_property(NULL, device->name, LA_MOTOR_TYPE_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Motor type", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 4);
 	if (LA_MOTOR_TYPE_PROPERTY == NULL)
 		return INDIGO_FAILED;
 	indigo_init_switch_item(LA_MOTOR_TYPE_UNIPOLAR_ITEM, LA_MOTOR_TYPE_UNIPOLAR_ITEM_NAME, "Unipolar", true);

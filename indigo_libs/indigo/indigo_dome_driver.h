@@ -40,7 +40,12 @@ extern "C" {
 
 /** Site group name string.
  */
-#define DOME_SITE_GROUP									"Site"
+#define DOME_SITE_GROUP									SITE_GROUP
+
+/** Advanced group name string.
+ */
+#define DOME_ADVANCED_GROUP            	ADVANCED_GROUP
+
 
 /** Device context pointer.
  */

@@ -290,14 +290,14 @@ static indigo_result focuser_attach(indigo_device *device) {
 		// -------------------------------------------------------------------------- FOCUSER_MODE
 		FOCUSER_MODE_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------- BEEP_PROPERTY
-		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, "Advanced", "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		EAF_BEEP_PROPERTY = indigo_init_switch_property(NULL, device->name, EAF_BEEP_PROPERTY_NAME, FOCUSER_ADVANCED_GROUP, "Beep on move", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (EAF_BEEP_PROPERTY == NULL)
 			return INDIGO_FAILED;
 
 		indigo_init_switch_item(EAF_BEEP_ON_ITEM, EAF_BEEP_ON_ITEM_NAME, "On", false);
 		indigo_init_switch_item(EAF_BEEP_OFF_ITEM, EAF_BEEP_OFF_ITEM_NAME, "Off", true);
 		// --------------------------------------------------------------------------------- EAF_CUSTOM_SUFFIX
-		EAF_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "EAF_CUSTOM_SUFFIX", "Advanced", "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		EAF_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "EAF_CUSTOM_SUFFIX", FOCUSER_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (EAF_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(EAF_CUSTOM_SUFFIX_ITEM, EAF_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);

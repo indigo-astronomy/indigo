@@ -35,8 +35,11 @@ extern "C" {
 
 /** Main site group name string.
  */
-#define GPS_SITE_GROUP															"Site"
-#define GPS_ADVANCED_GROUP														"Advanced"
+#define GPS_SITE_GROUP															SITE_GROUP
+
+/** Advanced group name string.
+ */
+#define GPS_ADVANCED_GROUP													ADVANCED_GROUP
 
 /** Device context pointer.
  */

@@ -37,6 +37,10 @@ extern "C" {
  */
 #define GUIDER_MAIN_GROUP                "Guider"
 
+/** Advanced group name string.
+ */
+#define GUIDER_ADVANCED_GROUP            ADVANCED_GROUP
+
 /** Device context pointer.
  */
 #define GUIDER_CONTEXT                ((indigo_guider_context *)device->device_context)

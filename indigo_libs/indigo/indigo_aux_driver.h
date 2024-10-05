@@ -37,6 +37,10 @@ extern "C" {
  */
 #define AUX_MAIN_GROUP                "AUX"
 
+/** Advanced group name string.
+ */
+#define AUX_ADVANCED_GROUP            ADVANCED_GROUP
+
 /** Attach callback function.
  */
 extern indigo_result indigo_aux_attach(indigo_device *device, const char* driver_name, unsigned version, int interface);

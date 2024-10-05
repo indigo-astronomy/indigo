@@ -37,6 +37,10 @@ extern "C" {
  */
 #define ROTATOR_MAIN_GROUP                "Rotator"
 
+/** Advanced group name string.
+ */
+#define ROTATOR_ADVANCED_GROUP            ADVANCED_GROUP
+
 /** Device context pointer.
  */
 #define ROTATOR_CONTEXT                ((indigo_rotator_context *)device->device_context)

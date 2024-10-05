@@ -41,9 +41,13 @@ extern "C" {
  */
 #define MOUNT_ALIGNMENT_GROUP													"Alignment"
 
-/** Main site group name string.
+/** Site group name string.
  */
-#define MOUNT_SITE_GROUP															"Site"
+#define MOUNT_SITE_GROUP															SITE_GROUP
+
+/** Advanced group name string.
+ */
+#define MOUNT_ADVANCED_GROUP           								ADVANCED_GROUP
 
 /** Device context pointer.
  */
