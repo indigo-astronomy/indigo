@@ -1,5 +1,5 @@
 # Guide to indigo_server and INDIGO Drivers
-Revision: 22.12.2023 (draft)
+Revision: 07.10.2024 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -208,3 +208,51 @@ On Linux most of the USB to serial devices will be named '/dev/ttyUSB0', '/dev/t
 Next time you have to make sure that all USB serial devices are connected to the same USB ports and powered up before booting the Linux machine.
 
 The same applies to MacOS. The only difference is the device name. On MacOS the USB to serial devices are usually called /dev/cu.usbserial.
+
+In INDIGO version 2.0-295 a new approach is introsuced which will hopefully make it ieasier for the users to identify the ports where the serial devices are connected. Serial ports property will list the devices with description (if available) like:
+```
+* /dev/ttyACM0 (u-blox 7 - GPS/GNSS Receiver)
+* /dev/ttyACM1 (Arduino Micro)
+* /dev/ttyS0
+* /dev/GPS (link to /dev/ttyACM1)
+```
+However many devices will not report their information but the converter chip info like:
+```
+* /dev/ttyUSB0 (USB-Serial Controller)
+```
+In this case the device can not be identified as the information is too generic.
+
+On the other hand for the devices that can be identified (and we know of them) a new auto-selection algorithm is introduced. We add patterns in the drivers that match the devices and the port will be auto-selected if prefixed with *auto://*. So, in the example above in *indigo_gps_nmea* driver, if the selected port is *auto:///dev/ttyACM1*, which is Arduino not a GPS, when *Rescan* is issued the selected device will change to *auto:///dev/ttyACM0* which is a GPS device. If the selected port is */dev/ttyACM1* it will not change upon *Resacn* because it is not prefixed with *auto://* and the old behavior will be preserved.
+
+Not all devices that can be identified are auto-selected. This is because we do not have a full list of these devices. To help us complete the list and make your devices auto selectable, we created a helper program that will tell us, if we can, and how we can match your devices. This program is called *indigo_list_usbserial*. Please run this program and send us the output. We will see what we can do to make the appropriate driver auto detect your device port.
+
+Here is an example output:
+
+```
+$ indigo_list_usbserial
+
+Device path      : /dev/ttyUSB0
+  Vendor ID      : 0x067B
+  Product ID     : 0x2303
+  Vendor string  : "Prolific Technology Inc."
+  Product string : "USB-Serial Controller"
+  Serial #       : 123456FC
+
+Device path      : /dev/ttyACM0
+  Vendor ID      : 0x1546
+  Product ID     : 0x01A7
+  Vendor string  : "u-blox AG - www.u-blox.com"
+  Product string : "u-blox 7 - GPS/GNSS Receiver"
+  Serial #       :
+
+Device path      : /dev/ttyACM1
+  Vendor ID      : 0x2341
+  Product ID     : 0x8037
+  Vendor string  : "Arduino LLC"
+  Product string : "Arduino Micro"
+  Serial #       :
+
+$
+```
+
+From this output above, we can see that */dev/ttyUSB0* is a generic USB-Serial Controller and we can not guess the device behind the converter. This device can not be made auto selectable. On the other hand */dev/ttyACM0* is a GPS/Gloanass receiver and the *indigo_gps_nmea* driver will recognize it and use it. The third device connected to */dev/ttyACM1* is Arduino Micro which is not an astronomical device.
