@@ -222,9 +222,9 @@ However many devices will not report their information but the converter chip in
 ```
 In this case the device can not be identified as the information is too generic.
 
-On the other hand for the devices that can be identified (and we know of them) a new auto-selection algorithm is introduced. We add patterns in the drivers that match the devices and the port will be auto-selected if prefixed with *auto://*. So, in the example above in *indigo_gps_nmea* driver, if the selected port is *auto:///dev/ttyACM1*, which is Arduino not a GPS, when *Rescan* is issued the selected device will change to *auto:///dev/ttyACM0* which is a GPS device. If the selected port is */dev/ttyACM1* it will not change upon *Resacn* because it is not prefixed with *auto://* and the old behavior will be preserved.
+For devices that can be identified, a new auto-selection algorithm has been introduced. This algorithm allows drivers to automatically select the appropriate port when it is prefixed with *auto://*. For example (see the list above), in the *indigo_gps_nmea* driver, if the selected port is *auto:///dev/ttyACM1* (which is an Arduino and not a GPS), issuing a *Rescan* will change the selected device to *auto:///dev/ttyACM0* (which is a GPS device). However, if the selected port is */dev/ttyACM1* (without the *auto://* prefix), it will not change upon *Rescan*, preserving the old behavior.
 
-Not all devices that can be identified are auto-selected. This is because we do not have a full list of these devices. To help us complete the list and make your devices auto selectable, we created a helper program that will tell us, if we can, and how we can match your devices. This program is called *indigo_list_usbserial*. Please run this program and send us the output. We will see what we can do to make the appropriate driver auto detect your device port.
+Not all identifiable devices are auto-selected because we do not have a comprehensive list of these devices. To help us complete this list and make your devices auto-selectable, we have created a helper program called *indigo_list_usbserial*. Please run this program and send us the output. This will enable us to determine if and how we can match your devices, and update corresponding drivers.
 
 Here is an example output:
 
