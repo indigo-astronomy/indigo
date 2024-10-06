@@ -152,34 +152,60 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 		return false;
 	}
 
+	bool port_exists = false;
 	/* If the selected device port is prefixed with "auto://", but it matches the pattern do not change it */
 	if (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
 		char *path = DEVICE_PORT_ITEM->text.value + strlen(USBSERIAL_AUTO_PREFIX);
 		for (int i = 0; i < num_serial_info; i++) {
-			if (!strcmp(serial_info[i].path, path) && indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
-				return true;
+			if (!strcmp(serial_info[i].path, path)) {
+				port_exists = true;
+				if (indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
+					INDIGO_DEBUG(indigo_debug(
+						"%s(): Selected port for '%s' matches the pattern, keeping selected: %s",
+						__FUNCTION__,
+						device->name,
+						DEVICE_PORT_ITEM->text.value
+					));
+					return true;
+				}
 			}
 		}
 	}
 
 	/* If the device port is not empty and is not prefixed with "auto://", do nothing */
 	if (DEVICE_PORT_ITEM->text.value[0] != '\0' && strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
-		INDIGO_DEBUG(indigo_debug("%s(): Port is not empty and is not prefixed with 'auto://', autoselection skipped for '%s'", __FUNCTION__, device->name));
-		return false;
+		INDIGO_DEBUG(indigo_debug(
+			"%s(): Selected port for '%s' is not empty and is not prefixed with 'auto://', keeping selected: %s",
+			__FUNCTION__,
+			device->name,
+			DEVICE_PORT_ITEM->text.value
+		));
+		return true;
 	}
 
 	indigo_serial_info *matching = indigo_usbserial_match(serial_info, num_serial_info, patterns, patterns_count);
 
 	/* if nothing is matched select first USB-Serial port */
 	if (matching == NULL) {
-		INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', selecting first USB-Serial port", __FUNCTION__, device->name));
+		if(port_exists) {
+			INDIGO_DEBUG(indigo_debug(
+				"%s(): No matching port found for '%s', keeping selected: %s",
+				__FUNCTION__,
+				device->name, DEVICE_PORT_ITEM->text.value
+			));
+			return true;
+		}
+		INDIGO_DEBUG(indigo_debug(
+			"%s(): Selected port does not exist and no matching port found for '%s', selecting first USB-Serial port",
+			__FUNCTION__,
+			device->name
+		));
 		matching = &serial_info[0];
 	}
-
 	if (matching) {
 		char buffer[INDIGO_VALUE_SIZE] = {0};
 		snprintf(buffer, INDIGO_VALUE_SIZE-1, "%s%s", USBSERIAL_AUTO_PREFIX, matching->path);
-		INDIGO_DEBUG(indigo_debug("%s(): Selected port for '%s': %s", __FUNCTION__, device->name, buffer));
+		INDIGO_DEBUG(indigo_debug("%s(): Selected new port for '%s': %s", __FUNCTION__, device->name, buffer));
 		indigo_copy_value(DEVICE_PORT_ITEM->text.value, buffer);
 		return true;
 	}
