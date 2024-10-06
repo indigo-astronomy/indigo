@@ -152,26 +152,6 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 		return false;
 	}
 
-	bool port_exists = false;
-	/* If the selected device port is prefixed with "auto://", but it matches the pattern do not change it */
-	if (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
-		char *path = DEVICE_PORT_ITEM->text.value + strlen(USBSERIAL_AUTO_PREFIX);
-		for (int i = 0; i < num_serial_info; i++) {
-			if (!strcmp(serial_info[i].path, path)) {
-				port_exists = true;
-				if (indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
-					INDIGO_DEBUG(indigo_debug(
-						"%s(): Selected port for '%s' matches the pattern, keeping selected: %s",
-						__FUNCTION__,
-						device->name,
-						DEVICE_PORT_ITEM->text.value
-					));
-					return true;
-				}
-			}
-		}
-	}
-
 	/* If the device port is not empty and is not prefixed with "auto://", do nothing */
 	if (DEVICE_PORT_ITEM->text.value[0] != '\0' && strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
 		INDIGO_DEBUG(indigo_debug(
@@ -181,6 +161,30 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 			DEVICE_PORT_ITEM->text.value
 		));
 		return true;
+	}
+
+	bool port_exists = false;
+	/* If the selected device port is prefixed with "auto://", but it matches the pattern do not change it */
+	if (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
+		char target[PATH_MAX] = {0};
+		char *path = DEVICE_PORT_ITEM->text.value + strlen(USBSERIAL_AUTO_PREFIX);
+		if(realpath(path, target)) {
+			INDIGO_DEBUG(indigo_debug("%s(): Selected port %s for '%s' resolves to %s", __FUNCTION__, path, device->name, target));
+			for (int i = 0; i < num_serial_info; i++) {
+				if (!strcmp(serial_info[i].path, target)) {
+					port_exists = true;
+					if (indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
+						INDIGO_DEBUG(indigo_debug(
+							"%s(): Selected port for '%s' matches the pattern, keeping selected: %s",
+							__FUNCTION__,
+							device->name,
+							DEVICE_PORT_ITEM->text.value
+						));
+						return true;
+					}
+				}
+			}
+		}
 	}
 
 	indigo_serial_info *matching = indigo_usbserial_match(serial_info, num_serial_info, patterns, patterns_count);
