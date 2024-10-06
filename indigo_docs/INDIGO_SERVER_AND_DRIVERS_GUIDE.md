@@ -209,14 +209,14 @@ Next time you have to make sure that all USB serial devices are connected to the
 
 The same applies to MacOS. The only difference is the device name. On MacOS the USB to serial devices are usually called /dev/cu.usbserial.
 
-In INDIGO version 2.0-295 a new approach is introsuced which will hopefully make it ieasier for the users to identify the ports where the serial devices are connected. Serial ports property will list the devices with description (if available) like:
+With INDIGO version 2.0-295, a new approach is introduced that will hopefully make it easier for users to identify the ports where serial devices are connected. The Serial Ports property will list the devices with descriptions (if available), such as:
 ```
 * /dev/ttyACM0 (u-blox 7 - GPS/GNSS Receiver)
 * /dev/ttyACM1 (Arduino Micro)
 * /dev/ttyS0
 * /dev/GPS (link to /dev/ttyACM1)
 ```
-However many devices will not report their information but the converter chip info like:
+However, many devices will not report their specific information but instead provide details about the converter chip, such as:
 ```
 * /dev/ttyUSB0 (USB-Serial Controller)
 ```
@@ -254,5 +254,4 @@ Device path      : /dev/ttyACM1
 
 $
 ```
-
-From this output above, we can see that */dev/ttyUSB0* is a generic USB-Serial Controller and we can not guess the device behind the converter. This device can not be made auto selectable. On the other hand */dev/ttyACM0* is a GPS/Gloanass receiver and the *indigo_gps_nmea* driver will recognize it and use it. The third device connected to */dev/ttyACM1* is Arduino Micro which is not an astronomical device.
+From the output above, we can see that */dev/ttyUSB0* is a generic USB-Serial Controller, and we cannot determine the specific device behind the converter. As a result, this device cannot be made auto-selectable. On the other hand, */dev/ttyACM0* is identified as a GPS/GLONASS receiver, and the *indigo_gps_nmea* driver will recognize and use it. The third device connected to */dev/ttyACM1* is an Arduino Micro, which is not an astronomical device.
