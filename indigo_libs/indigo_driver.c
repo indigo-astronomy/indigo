@@ -281,7 +281,21 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 	}
 	closedir(dir);
 #endif
-	indigo_select_matching_usbserial_device(device, serial_info, serial_count);
+	/* if there are no USB-Serial ports but there are regular serial ports and we waunt auto seleced port select the first one.
+	   Otherwise autoselect the matching port from the available USB-Serial ports.
+	*/
+	if (
+		DEVICE_PORTS_PROPERTY->count > 1 &&
+		serial_count == 0 && (
+			DEVICE_PORT_ITEM->text.value[0] == '\0' ||
+			!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))
+		)
+	) {
+		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, DEVICE_PORTS_PROPERTY->items[1].name);
+		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
+	} else {
+		indigo_select_matching_usbserial_device(device, serial_info, serial_count);
+	}
 }
 
 int indigo_compensate_backlash(int requested_position, int current_position, int backlash, bool *is_last_move_poitive) {
