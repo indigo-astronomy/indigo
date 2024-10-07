@@ -519,10 +519,13 @@ static void handle_mount_change(indigo_device *device) {
 	double latitude = AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value;
 	double elevation = AGENT_GEOGRAPHIC_COORDINATES_ELEVATION_ITEM->number.value;
 	double lst = indigo_lst(&utc, longitude);
+	double values[] = { ra, dec, DEVICE_PRIVATE_DATA->mount_side_of_pier };
+	// update target coordinates
 	AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
 	AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
 	AGENT_MOUNT_TARGET_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
 	indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
+	// update display coordinates
 	indigo_j2k_to_jnow(&ra, &dec);
 	AGENT_MOUNT_DISPLAY_COORDINATES_RA_JNOW_ITEM->number.value = ra;
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEC_JNOW_ITEM->number.value = dec;
@@ -538,29 +541,21 @@ static void handle_mount_change(indigo_device *device) {
 	// slave dome
 	if (INDIGO_FILTER_DOME_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_ALERT_STATE) {
 		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
-		double values[] = { DEVICE_PRIVATE_DATA->mount_ra, DEVICE_PRIVATE_DATA->mount_dec };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, DOME_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	}
 	// derotate field
-	if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
-		if (INDIGO_FILTER_ROTATOR_SELECTED) {
-			double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
-			if (target_rotator_position < 0) {
-				target_rotator_position += 360;
-			} else if(target_rotator_position >= 360) {
-				target_rotator_position -= 360;
-			}
-			double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
-			INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation: target_rotator_position = %g, rotator_position = %g, parallactic_angle = %g, rotation_diff = %g", target_rotator_position, DEVICE_PRIVATE_DATA->rotator_position, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value, rotation_diff);
-			if (rotation_diff >= 0.005 && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation: going to position %g", target_rotator_position);
-				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
-			}
-		} else {
-			indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
-			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "No rotator selected");
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "No rotator selected");
+	if (INDIGO_FILTER_ROTATOR_SELECTED && AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
+		double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
+		if (target_rotator_position < 0) {
+			target_rotator_position += 360;
+		} else if(target_rotator_position >= 360) {
+			target_rotator_position -= 360;
+		}
+		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));
+		INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation: target_rotator_position = %g, rotator_position = %g, parallactic_angle = %g, rotation_diff = %g", target_rotator_position, DEVICE_PRIVATE_DATA->rotator_position, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value, rotation_diff);
+		if (rotation_diff >= 0.005 && DEVICE_PRIVATE_DATA->rotator_position_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+			INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation: going to position %g", target_rotator_position);
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, ROTATOR_POSITION_PROPERTY_NAME, ROTATOR_POSITION_ITEM_NAME, target_rotator_position);
 		}
 	}
 	// set eq coordinates and airmass to FITS headers of related imager agent
@@ -578,7 +573,6 @@ static void handle_mount_change(indigo_device *device) {
 	related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
 		static const char *names[] = { AGENT_GUIDER_MOUNT_COORDINATES_RA_ITEM_NAME, AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM_NAME, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM_NAME };
-		double values[] = { DEVICE_PRIVATE_DATA->mount_ra, DEVICE_PRIVATE_DATA->mount_dec, DEVICE_PRIVATE_DATA->mount_side_of_pier };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, 3, names, values);
 	}
 }
@@ -635,7 +629,18 @@ static void handle_site_change(indigo_device *device) {
 }
 
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
-	if (!strcmp(property->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
+	if (!strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) {
+		if (FILTER_MOUNT_LIST_PROPERTY->items->sw.value) {
+			CLIENT_PRIVATE_DATA->mount_latitude = NAN;
+			CLIENT_PRIVATE_DATA->mount_longitude = NAN;
+			CLIENT_PRIVATE_DATA->mount_elevation = NAN;
+			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
+				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
+				AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "Mount disconnected - derotation disabled");
+			}
+		}
+	} else if (!strcmp(property->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
 			if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
@@ -738,6 +743,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
+	} else if (!strcmp(property->name, FILTER_DOME_LIST_PROPERTY_NAME)) {
+		if (FILTER_DOME_LIST_PROPERTY->items->sw.value) {
+			CLIENT_PRIVATE_DATA->dome_latitude = NAN;
+			CLIENT_PRIVATE_DATA->dome_longitude = NAN;
+			CLIENT_PRIVATE_DATA->dome_elevation = NAN;
+		}
 	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
@@ -769,6 +780,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
+	} else if (!strcmp(property->name, FILTER_GPS_LIST_PROPERTY_NAME)) {
+		if (FILTER_GPS_LIST_PROPERTY->items->sw.value) {
+			CLIENT_PRIVATE_DATA->gps_latitude = NAN;
+			CLIENT_PRIVATE_DATA->gps_longitude = NAN;
+			CLIENT_PRIVATE_DATA->gps_elevation = NAN;
+		}
 	} else if (!strcmp(property->name, "GPS_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
@@ -789,6 +806,14 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 		if (changed && AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value) {
 			handle_site_change(device);
+		}
+	} else if (!strcmp(property->name, FILTER_ROTATOR_LIST_PROPERTY_NAME)) {
+		if (FILTER_ROTATOR_LIST_PROPERTY->items->sw.value) {
+			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
+				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
+				AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "Rotator disconnected - derotation disabled");
+			}
 		}
 	} else if (!strcmp(property->name, ROTATOR_POSITION_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->rotator_position_state = property->state;
@@ -1194,28 +1219,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 }
 
 static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	if (device == FILTER_CLIENT_CONTEXT->device) {
-		if (!strcmp(property->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME) || !strcmp(property->name, "")) {
-			CLIENT_PRIVATE_DATA->mount_latitude = NAN;
-			CLIENT_PRIVATE_DATA->mount_longitude = NAN;
-			CLIENT_PRIVATE_DATA->mount_elevation = NAN;
-			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
-				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
-				AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
-				indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, "Mount disconnected - derotation disabled");
-			}
-		}
-		if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME) || !strcmp(property->name, "")) {
-			CLIENT_PRIVATE_DATA->dome_latitude = NAN;
-			CLIENT_PRIVATE_DATA->dome_longitude = NAN;
-			CLIENT_PRIVATE_DATA->dome_elevation = NAN;
-		}
-		if (!strcmp(property->name, "GPS_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME) || !strcmp(property->name, "")) {
-			CLIENT_PRIVATE_DATA->gps_latitude = NAN;
-			CLIENT_PRIVATE_DATA->gps_longitude = NAN;
-			CLIENT_PRIVATE_DATA->gps_elevation = NAN;
-		}
-	}
 	return indigo_filter_delete_property(client, device, property, message);
 }
 
