@@ -221,7 +221,7 @@ static indigo_alpaca_error alpaca_get_setccdtemperature(indigo_alpaca_device *de
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (device->ccd.ccdtemperature == NAN) {
+	if (isnan(device->ccd.ccdtemperature)) {
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotImplemented;
 	}
