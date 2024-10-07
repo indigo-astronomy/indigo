@@ -538,6 +538,41 @@ static void handle_mount_change(indigo_device *device) {
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value = indigo_derotation_rate(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value, latitude);
 	AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value = indigo_parallactic_angle( AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value * 15, dec, latitude);
 	indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
+	// check limits
+	double ha = fmod(lst - ra + 24, 24);
+	time_t timer;
+	time(&timer);
+	struct tm *info = localtime(&timer);
+	double now = info->tm_hour + info->tm_min / 60.0 + info->tm_sec / 3600.0;
+	AGENT_HA_TRACKING_LIMIT_ITEM->number.value = ha;
+	AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = now;
+	indigo_update_property(device, AGENT_LIMITS_PROPERTY, NULL);
+	if (INDIGO_FILTER_MOUNT_SELECTED && DEVICE_PRIVATE_DATA->mount_unparked) {
+		bool park = false;
+		if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
+			double target = AGENT_HA_TRACKING_LIMIT_ITEM->number.target;
+			if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
+				park = true;
+				indigo_send_message(device, "Hour angle tracking limit reached");
+			}
+		}
+		if (AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM->sw.value) {
+			double target = AGENT_LOCAL_TIME_LIMIT_ITEM->number.target;
+			if (now < 12 && target < 12 && now > target) {
+				park = true;
+				indigo_send_message(device, "Time limit reached");
+			}
+			if (now > 12 && target > 12 && now > target) {
+				park = true;
+				indigo_send_message(device, "Time limit reached");
+			}
+		}
+		if (park) {
+			abort_capture(device);
+			abort_guiding(device);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
+		}
+	}
 	// slave dome
 	if (INDIGO_FILTER_DOME_SELECTED && DEVICE_PRIVATE_DATA->dome_unparked && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_ALERT_STATE) {
 		static const char *names[] = { DOME_EQUATORIAL_COORDINATES_RA_ITEM_NAME, DOME_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
@@ -642,14 +677,15 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 	} else if (!strcmp(property->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
+		printf("**** %g %g %g\n", CLIENT_PRIVATE_DATA->mount_latitude, CLIENT_PRIVATE_DATA->mount_longitude, CLIENT_PRIVATE_DATA->mount_elevation);
 		for (int i = 0; i < property->count; i++) {
 			if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->mount_latitude == NAN || fabs(CLIENT_PRIVATE_DATA->mount_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+				changed = changed || isnan(CLIENT_PRIVATE_DATA->mount_latitude) || fabs(CLIENT_PRIVATE_DATA->mount_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->mount_latitude = property->items[i].number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->mount_longitude == NAN || fabs(CLIENT_PRIVATE_DATA->mount_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+				changed = changed || isnan(CLIENT_PRIVATE_DATA->mount_longitude) || fabs(CLIENT_PRIVATE_DATA->mount_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->mount_longitude = property->items[i].number.value;
 				}
@@ -702,47 +738,6 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
-	} else if (!strcmp(property->name, MOUNT_LST_TIME_PROPERTY_NAME)) {
-		if (CLIENT_PRIVATE_DATA->mount_unparked) {
-			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, MOUNT_LST_TIME_ITEM_NAME)) {
-					double lst = property->items[i].number.value;
-					double ha = fmod(lst - CLIENT_PRIVATE_DATA->mount_ra + 24, 24);
-					time_t timer;
-					time(&timer);
-					struct tm *info = localtime(&timer);
-					double now = info->tm_hour + info->tm_min / 60.0 + info->tm_sec / 3600.0;
-					CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.value = ha;
-					CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.value = now;
-					indigo_update_property(device, CLIENT_PRIVATE_DATA->agent_limits_property, NULL);
-					bool park = false;
-					if (AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM->sw.value) {
-						double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[0].number.target;
-						if ((target < 12 && ha < 12 && ha > target) || ((target > 12 && target < 24) && ((ha > 12 &&  ha > target) || (ha < 12 && ha + 24 > target)))) {
-							park = true;
-							indigo_send_message(device, "Hour angle tracking limit reached");
-						}
-					}
-					if (AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM->sw.value) {
-						double target = CLIENT_PRIVATE_DATA->agent_limits_property->items[1].number.target;
-						if (now < 12 && target < 12 && now > target) {
-							park = true;
-							indigo_send_message(device, "Time limit reached");
-						}
-						if (now > 12 && target > 12 && now > target) {
-							park = true;
-							indigo_send_message(device, "Time limit reached");
-						}
-					}
-					if (park) {
-						abort_capture(device);
-						abort_guiding(device);
-						indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
-					}
-					break;
-				}
-			}
-		}
 	} else if (!strcmp(property->name, FILTER_DOME_LIST_PROPERTY_NAME)) {
 		if (FILTER_DOME_LIST_PROPERTY->items->sw.value) {
 			CLIENT_PRIVATE_DATA->dome_latitude = NAN;
@@ -753,17 +748,17 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
 			if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->dome_latitude == NAN || fabs(CLIENT_PRIVATE_DATA->dome_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+				changed = changed || isnan(CLIENT_PRIVATE_DATA->dome_latitude) || fabs(CLIENT_PRIVATE_DATA->dome_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->dome_latitude = property->items[i].number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->dome_longitude == NAN || fabs(CLIENT_PRIVATE_DATA->dome_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+				changed = changed || isnan(CLIENT_PRIVATE_DATA->dome_longitude) || fabs(CLIENT_PRIVATE_DATA->dome_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->dome_longitude = property->items[i].number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->dome_elevation == NAN || CLIENT_PRIVATE_DATA->dome_elevation != property->items[i].number.value;
+				changed = changed || CLIENT_PRIVATE_DATA->dome_elevation != property->items[i].number.value;
 				CLIENT_PRIVATE_DATA->dome_elevation = property->items[i].number.value;
 			}
 		}
@@ -790,17 +785,17 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
 			if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->gps_latitude == NAN || fabs(CLIENT_PRIVATE_DATA->gps_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+				changed = changed || isnan(CLIENT_PRIVATE_DATA->gps_latitude) || fabs(CLIENT_PRIVATE_DATA->gps_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->gps_latitude = property->items[i].number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->gps_longitude == NAN || fabs(CLIENT_PRIVATE_DATA->gps_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+				changed = changed || isnan(CLIENT_PRIVATE_DATA->gps_longitude) || fabs(CLIENT_PRIVATE_DATA->gps_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->gps_longitude = property->items[i].number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->gps_elevation == NAN || CLIENT_PRIVATE_DATA->gps_elevation != property->items[i].number.value;
+				changed = changed || CLIENT_PRIVATE_DATA->gps_elevation != property->items[i].number.value;
 				CLIENT_PRIVATE_DATA->gps_elevation = property->items[i].number.value;
 			}
 		}
@@ -936,8 +931,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_switch_item(AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM, AGENT_IMAGER_ENABLE_DITHERING_FEATURE_ITEM_NAME, "Enable dithering", false);
-		indigo_init_switch_item(AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM, AGENT_IMAGER_PAUSE_AFTER_TRANSIT_FEATURE_ITEM_NAME, "Pause after transit", false);
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_HA_LIMIT_FEATURE_ITEM_NAME, "Enable HA limit", false);
+		indigo_init_switch_item(AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM, AGENT_MOUNT_ENABLE_TIME_LIMIT_FEATURE_ITEM_NAME, "Enable time limit", false);
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
