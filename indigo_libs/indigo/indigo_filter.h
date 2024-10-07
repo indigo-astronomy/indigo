@@ -230,6 +230,20 @@ typedef struct {
 	double fov_width, fov_height;
 } indigo_filter_context;
 
+#define INDIGO_FILTER_CCD_SELECTED 				(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX])
+#define INDIGO_FILTER_WHEEL_SELECTED 			(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_WHEEL_INDEX])
+#define INDIGO_FILTER_FOCUSER_SELECTED 		(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX])
+#define INDIGO_FILTER_ROTATOR_SELECTED 		(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_ROTATOR_INDEX])
+#define INDIGO_FILTER_MOUNT_SELECTED 			(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])
+#define INDIGO_FILTER_GUIDER_SELECTED 		(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX])
+#define INDIGO_FILTER_DOME_SELECTED 			(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])
+#define INDIGO_FILTER_GPS_SELECTED 				(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GPS_INDEX])
+#define INDIGO_FILTER_JOYSTICK_SELECTED 	(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_JOYSTICK_INDEX])
+#define INDIGO_FILTER_AUX1_SELECTED 			(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_AUX1_INDEX])
+#define INDIGO_FILTER_AUX2_SELECTED 			(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_AUX2_INDEX])
+#define INDIGO_FILTER_AUX3_SELECTED 			(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_AUX3_INDEX])
+#define INDIGO_FILTER_AUX4_SELECTED 			(*FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_AUX4_INDEX])
+
 /** Device attach callback function.
  */
 extern indigo_result indigo_filter_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface);
@@ -264,7 +278,7 @@ extern indigo_result indigo_filter_client_detach(indigo_client *client);
 extern bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property);
 /** Forward property change to a different device.
  */
-extern indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name);
+extern indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name, char *property_name);
 /** Find the full name of the first related agent starting with a given base name.
  */
 extern char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1);

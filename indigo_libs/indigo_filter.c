@@ -1036,9 +1036,14 @@ bool indigo_filter_cached_property(indigo_device *device, int index, char *name,
 	return false;
 }
 
-indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name) {
+indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name, char *property_name) {
 	indigo_property *copy = indigo_copy_property(NULL, property);
-	strcpy(copy->device, device_name);
+	if (device_name) {
+		strcpy(copy->device, device_name);
+	}
+	if (property_name) {
+		strcpy(copy->name, property_name);
+	}
 	copy->access_token = indigo_get_device_or_master_token(copy->device);
 	indigo_result result = indigo_change_property(client, copy);
 	indigo_release_property(copy);
