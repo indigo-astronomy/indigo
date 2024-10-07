@@ -724,30 +724,7 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 	if (property->type == INDIGO_BLOB_VECTOR) {
 		indigo_enable_blob(client, property, INDIGO_ENABLE_BLOB_URL);
 	}
-	if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
-		indigo_item *interface = indigo_get_item(property, INFO_DEVICE_INTERFACE_ITEM_NAME);
-		if (interface) {
-			int mask = atoi(interface->text.value);
-			indigo_property *tmp;
-			if ((mask & INDIGO_INTERFACE_AGENT) == INDIGO_INTERFACE_AGENT) {
-				tmp = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
-				if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_related_agent == NULL || FILTER_CLIENT_CONTEXT->validate_related_agent(FILTER_CLIENT_CONTEXT->device, property, mask)))
-					add_to_list(device, tmp, property->device);
-			} else {
-				for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
-					if ((mask & interface_mask[i]) == interface_mask[i]) {
-						tmp = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
-						if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_device == NULL || FILTER_CLIENT_CONTEXT->validate_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
-							add_to_list(device, tmp, property->device);
-						tmp = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i];
-						if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_related_device == NULL || FILTER_CLIENT_CONTEXT->validate_related_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
-							add_to_list(device, tmp, property->device);
-					}
-				}
-			}
-			return INDIGO_OK;
-		}
-	} else if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
+	if (!strcmp(property->name, CONNECTION_PROPERTY_NAME)) {
 		add_cached_connection_property(device, property);
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 			indigo_property *device_list = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
@@ -785,6 +762,29 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 			}
 		}
 	} else {
+		if (!strcmp(property->name, INFO_PROPERTY_NAME)) {
+			indigo_item *interface = indigo_get_item(property, INFO_DEVICE_INTERFACE_ITEM_NAME);
+			if (interface) {
+				int mask = atoi(interface->text.value);
+				indigo_property *tmp;
+				if ((mask & INDIGO_INTERFACE_AGENT) == INDIGO_INTERFACE_AGENT) {
+					tmp = FILTER_CLIENT_CONTEXT->filter_related_agent_list_property;
+					if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_related_agent == NULL || FILTER_CLIENT_CONTEXT->validate_related_agent(FILTER_CLIENT_CONTEXT->device, property, mask)))
+						add_to_list(device, tmp, property->device);
+				} else {
+					for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
+						if ((mask & interface_mask[i]) == interface_mask[i]) {
+							tmp = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
+							if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_device == NULL || FILTER_CLIENT_CONTEXT->validate_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
+								add_to_list(device, tmp, property->device);
+							tmp = FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i];
+							if (!tmp->hidden && !device_in_list(tmp, property->device) && (FILTER_CLIENT_CONTEXT->validate_related_device == NULL || FILTER_CLIENT_CONTEXT->validate_related_device(FILTER_CLIENT_CONTEXT->device, i, property, mask)))
+								add_to_list(device, tmp, property->device);
+						}
+					}
+				}
+			}
+		}
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 			char *name_prefix = property_name_prefix[i];
 			int name_prefix_length = property_name_prefix_len[i];
@@ -893,6 +893,17 @@ indigo_result indigo_filter_update_property(indigo_client *client, indigo_device
 						device_list->state = INDIGO_ALERT_STATE;
 						strcpy(FILTER_CLIENT_CONTEXT->device_name[i], "");
 						indigo_update_property(device, device_list, NULL);
+						for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
+							if (device_cache[i] && !strcmp(property->device, device_cache[i]->device)) {
+								indigo_safe_free(device_cache[i]);
+								device_cache[i] = NULL;
+								if (agent_cache[i]) {
+									indigo_delete_property(device, agent_cache[i], message);
+									indigo_release_property(agent_cache[i]);
+									agent_cache[i] = NULL;
+								}
+							}
+						}
 						return INDIGO_OK;
 					}
 				}
@@ -992,6 +1003,17 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 			remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_device_list_properties[i], 1, property->device, NULL);
 		}
 		remove_from_list(device, FILTER_CLIENT_CONTEXT->filter_related_agent_list_property, 0, property->device, NULL);
+		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
+			if (device_cache[i] && !strcmp(property->device, device_cache[i]->device)) {
+				indigo_safe_free(device_cache[i]);
+				device_cache[i] = NULL;
+				if (agent_cache[i]) {
+					indigo_delete_property(device, agent_cache[i], message);
+					indigo_release_property(agent_cache[i]);
+					agent_cache[i] = NULL;
+				}
+			}
+		}
 	}
 	return INDIGO_OK;
 }
