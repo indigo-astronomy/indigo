@@ -1213,10 +1213,6 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	return indigo_filter_update_property(client, device, property, message);
 }
 
-static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	return indigo_filter_delete_property(client, device, property, message);
-}
-
 // -------------------------------------------------------------------------------- Initialization
 
 static agent_private_data *private_data = NULL;
@@ -1239,7 +1235,7 @@ indigo_result indigo_agent_mount(indigo_driver_action action, indigo_driver_info
 		indigo_filter_client_attach,
 		agent_define_property,
 		agent_update_property,
-		agent_delete_property,
+		indigo_filter_delete_property,
 		NULL,
 		indigo_filter_client_detach
 	};
