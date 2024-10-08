@@ -462,7 +462,7 @@ static indigo_alpaca_error alpaca_slewtotarget(indigo_alpaca_device *device, int
 		return indigo_alpaca_error_InvalidWhileParked;
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
-	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	const double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
@@ -485,7 +485,7 @@ static indigo_alpaca_error alpaca_slewtotargetasync(indigo_alpaca_device *device
 		return indigo_alpaca_error_InvalidWhileParked;
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
-	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	const double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
@@ -508,7 +508,7 @@ static indigo_alpaca_error alpaca_synctotarget(indigo_alpaca_device *device, int
 		return indigo_alpaca_error_InvalidWhileParked;
 	}
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true);
-	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	const double values[] = { device->mount.targetrightascension, device->mount.targetdeclination };
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);
@@ -536,7 +536,7 @@ static indigo_alpaca_error alpaca_slewtocoordinates(indigo_alpaca_device *device
 	device->mount.targetrightascension = rightascension;
 	device->mount.targetdeclination = declination;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
-	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	const double values[] = { rightascension, declination };
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
@@ -565,7 +565,7 @@ static indigo_alpaca_error alpaca_slewtocoordinatesasync(indigo_alpaca_device *d
 	device->mount.targetrightascension = rightascension;
 	device->mount.targetdeclination = declination;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_TRACK_ITEM_NAME, true);
-	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	const double values[] = { rightascension, declination };
 	device->mount.slewing = true;
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
@@ -594,7 +594,7 @@ static indigo_alpaca_error alpaca_synctocoordinates(indigo_alpaca_device *device
 	device->mount.targetrightascension = rightascension;
 	device->mount.targetdeclination = declination;
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME, true);
-	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	const double values[] = { rightascension, declination };
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	pthread_mutex_unlock(&device->mutex);

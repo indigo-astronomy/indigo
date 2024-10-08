@@ -779,7 +779,7 @@ static indigo_alpaca_error alpaca_startexposure(indigo_alpaca_device *device, in
 	time(&timer);
 	tm_info = gmtime(&timer);
 	strftime(device->ccd.lastexposuretarttime, sizeof(device->ccd.lastexposuretarttime), "%Y-%m-%dT%H:%M:%S", tm_info);
-	const char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
+	static const char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 	const double values[] = { device->ccd.startx, device->ccd.starty, device->ccd.numx, device->ccd.numy };
 	indigo_change_number_property(indigo_agent_alpaca_client, device->indigo_device, CCD_FRAME_PROPERTY_NAME, 4, names, values);
 	indigo_change_switch_property_1(indigo_agent_alpaca_client, device->indigo_device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true);
