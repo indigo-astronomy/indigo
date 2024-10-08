@@ -184,8 +184,6 @@
 #include "ccd_qsi/indigo_ccd_qsi.h"
 #include "gps_nmea/indigo_gps_nmea.h"
 #ifdef INDIGO_MACOS
-#include "ccd_ica/indigo_ccd_ica.h"
-#include "guider_eqmac/indigo_guider_eqmac.h"
 #include "focuser_wemacro_bt/indigo_focuser_wemacro_bt.h"
 #include "focuser_mjkzz_bt/indigo_focuser_mjkzz_bt.h"
 #endif
@@ -193,7 +191,6 @@
 #include "ccd_gphoto2/indigo_ccd_gphoto2.h"
 #endif
 #include "agent_snoop/indigo_agent_snoop.h"
-#include "agent_lx200_server/indigo_agent_lx200_server.h"
 #include "agent_scripting/indigo_agent_scripting.h"
 #endif
 
@@ -208,7 +205,6 @@ driver_entry_point static_drivers[] = {
 	indigo_agent_auxiliary,
 	indigo_agent_guider,
 	indigo_agent_imager,
-	indigo_agent_lx200_server,
 	indigo_agent_config,
 	indigo_agent_scripting,
 	indigo_agent_mount,
@@ -245,9 +241,6 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_fli,
 #ifdef INDIGO_LINUX
 	indigo_ccd_gphoto2,
-#endif
-#ifdef INDIGO_MACOS
-	indigo_ccd_ica,
 #endif
 	indigo_ccd_iidc,
 	indigo_ccd_mi,
@@ -314,9 +307,6 @@ driver_entry_point static_drivers[] = {
 	indigo_gps_simulator,
 	indigo_guider_asi,
 	indigo_guider_cgusbst4,
-#ifdef INDIGO_MACOS
-	indigo_guider_eqmac,
-#endif
 	indigo_guider_gpusb,
 	indigo_mount_asi,
 	indigo_mount_ioptron,
