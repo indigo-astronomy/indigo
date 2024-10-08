@@ -41,9 +41,6 @@
 #include <indigo/indigo_io.h>
 #include "indigo_aux_wcv4ec.h"
 
-
-#define AUX_ADVANCED_GROUP "Advanced"
-
 #define PRIVATE_DATA												((wcv4ec_private_data *)device->private_data)
 
 #define AUX_LIGHT_SWITCH_PROPERTY          	(PRIVATE_DATA->light_switch_property)

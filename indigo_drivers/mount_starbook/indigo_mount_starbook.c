@@ -54,8 +54,6 @@
 
 #define STARBOOK_DEFAULT_IP_ADDR           "169.254.0.1"
 
-#define MOUNT_ADVANCED_GROUP         "Advanced"
-
 #define TIMEZONE_PROPERTY                  (PRIVATE_DATA->timezone_property)
 #define TIMEZONE_VALUE_ITEM                (TIMEZONE_PROPERTY->items+0)
 #define TIMEZONE_PROPERTY_NAME             "STARBOOK_TIMEZONE"

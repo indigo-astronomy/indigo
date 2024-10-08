@@ -198,7 +198,7 @@ static int open_tty(const char *tty_name, const struct termios *options, struct 
 	int tty_fd;
 	const char auto_prefix[] = "auto://";
 	const int auto_prefix_len = sizeof(auto_prefix)-1;
-	char *tty_name_buf = tty_name;
+	const char *tty_name_buf = tty_name;
 
 	if (!strncmp(tty_name_buf, auto_prefix, auto_prefix_len)) {
 		tty_name_buf += auto_prefix_len;
