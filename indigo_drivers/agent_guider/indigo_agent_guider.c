@@ -483,11 +483,11 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 			indigo_usleep(ONE_SECOND_DELAY);
 			continue;
 		}
-		double reported_exposure_time = DEVICE_PRIVATE_DATA->remaining_exposure_time;
+		double remaining_exposure_time = DEVICE_PRIVATE_DATA->remaining_exposure_time;
 		while ((state = DEVICE_PRIVATE_DATA->exposure_state) == INDIGO_BUSY_STATE) {
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 				return INDIGO_ALERT_STATE;
-			if (reported_exposure_time > 1) {
+			if (remaining_exposure_time > 1) {
 				indigo_usleep(200000);
 			} else {
 				indigo_usleep(10000);
@@ -560,8 +560,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 				star_count++;
 			}
 			/* In case the number of the stars found is less than AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM
-			   set ramaining selections to 0. Otherwise we will have leftover "ghost" stars from the
-			   previous search.
+			 set ramaining selections to 0. Otherwise we will have leftover "ghost" stars from the
+			 previous search.
 			 */
 			for (int i = star_count; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
@@ -745,8 +745,8 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 						avg_y += DEVICE_PRIVATE_DATA->stack_y[i];
 					}
 					/* Regardless if the stack is full we devide on stack size.
-					   This allows smooth error integration and proper I term operation at startup.
-					*/
+					 This allows smooth error integration and proper I term operation at startup.
+					 */
 					DEVICE_PRIVATE_DATA->avg_drift_x = avg_x / AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value;
 					DEVICE_PRIVATE_DATA->avg_drift_y = avg_y / AGENT_GUIDER_SETTINGS_STACK_ITEM->number.value;
 				}
@@ -768,26 +768,27 @@ static indigo_property_state capture_raw_frame(indigo_device *device) {
 		}
 		break;
 	}
+	if (state != INDIGO_OK_STATE) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
+	}
 	return state;
 }
 
 static void select_subframe(indigo_device *device) {
+	int selection_x = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
+	int selection_y = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
+	if (selection_x == 0 || selection_y == 0) {
+		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+		return;
+	}
 	if (AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] != 0 && DEVICE_PRIVATE_DATA->saved_frame[3]) {
-		if (capture_raw_frame(device) != INDIGO_OK_STATE) {
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-			return;
-		}
 		int bin_x = DEVICE_PRIVATE_DATA->bin_x;
 		int bin_y = DEVICE_PRIVATE_DATA->bin_y;
-		int selection_x = AGENT_GUIDER_SELECTION_X_ITEM->number.value;
-		int selection_y = AGENT_GUIDER_SELECTION_Y_ITEM->number.value;
-		if (selection_x == 0 || selection_y == 0) {
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-			return;
-		}
 		selection_x += DEVICE_PRIVATE_DATA->frame[0] / bin_x; // left
 		selection_y += DEVICE_PRIVATE_DATA->frame[1] / bin_y; // top
 		int window_size = AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.value * AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value;
+		if (window_size < GRID)
+			window_size = GRID;
 		int frame_left = rint((selection_x - window_size) / (double)GRID) * GRID;
 		int frame_top = rint((selection_y - window_size) / (double)GRID) * GRID;
 		if (selection_x - frame_left < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
@@ -1476,7 +1477,9 @@ static void abort_process(indigo_device *device) {
 
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
-		DEVICE_PRIVATE_DATA->exposure_state = INDIGO_IDLE_STATE;
+		if (FILTER_CCD_LIST_PROPERTY->items->sw.value) {
+			DEVICE_PRIVATE_DATA->exposure_state = INDIGO_IDLE_STATE;
+		}
 	} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
