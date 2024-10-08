@@ -198,7 +198,7 @@ static void mount_control(indigo_device *device, char *operation) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_UNPARKED_ITEM_NAME, true);
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_ON_COORDINATES_SET_PROPERTY_NAME, operation, true);
-	const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
+	static const char *names[] = { MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME };
 	double values[] = { AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target, AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target };
 	indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME, 2, names, values);
 	for (int i = 0; i < 3000; i++) {
@@ -616,19 +616,19 @@ static void handle_site_change(indigo_device *device) {
 	static const char *names[] = { GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME };
 	double latitude = 0, longitude = 0, elevation = 0;
 	// select coordinates source
-	if (AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value && DEVICE_PRIVATE_DATA->mount_latitude != NAN && DEVICE_PRIVATE_DATA->mount_longitude != NAN && DEVICE_PRIVATE_DATA->mount_elevation != NAN) {
+	if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value) {
 		latitude = DEVICE_PRIVATE_DATA->mount_latitude;
 		longitude = DEVICE_PRIVATE_DATA->mount_longitude;
 		elevation = DEVICE_PRIVATE_DATA->mount_elevation;
 		double values[] = { latitude, longitude, elevation };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
-	} else if (AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value && DEVICE_PRIVATE_DATA->dome_latitude != NAN && DEVICE_PRIVATE_DATA->dome_longitude != NAN && DEVICE_PRIVATE_DATA->dome_elevation != NAN) {
+	} else if (INDIGO_FILTER_DOME_SELECTED && AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value) {
 		latitude = DEVICE_PRIVATE_DATA->dome_latitude;
 		longitude = DEVICE_PRIVATE_DATA->dome_longitude;
 		elevation = DEVICE_PRIVATE_DATA->dome_elevation;
 		double values[] = { latitude, longitude, elevation };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME, 3, names, values);
-	} else if (AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value && DEVICE_PRIVATE_DATA->gps_latitude != NAN && DEVICE_PRIVATE_DATA->gps_longitude != NAN && DEVICE_PRIVATE_DATA->gps_elevation != NAN) {
+	} else if (INDIGO_FILTER_GPS_SELECTED && AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value) {
 		latitude = DEVICE_PRIVATE_DATA->gps_latitude;
 		longitude = DEVICE_PRIVATE_DATA->gps_longitude;
 		elevation = DEVICE_PRIVATE_DATA->gps_elevation;
@@ -666,9 +666,7 @@ static void handle_site_change(indigo_device *device) {
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (!strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) {
 		if (FILTER_MOUNT_LIST_PROPERTY->items->sw.value) {
-			CLIENT_PRIVATE_DATA->mount_latitude = NAN;
-			CLIENT_PRIVATE_DATA->mount_longitude = NAN;
-			CLIENT_PRIVATE_DATA->mount_elevation = NAN;
+			DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
 			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
 				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
 				AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -677,21 +675,21 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 	} else if (!strcmp(property->name, "MOUNT_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
-		printf("**** %g %g %g\n", CLIENT_PRIVATE_DATA->mount_latitude, CLIENT_PRIVATE_DATA->mount_longitude, CLIENT_PRIVATE_DATA->mount_elevation);
 		for (int i = 0; i < property->count; i++) {
-			if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || isnan(CLIENT_PRIVATE_DATA->mount_latitude) || fabs(CLIENT_PRIVATE_DATA->mount_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
 				if (changed) {
-					CLIENT_PRIVATE_DATA->mount_latitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->mount_latitude = item->number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || isnan(CLIENT_PRIVATE_DATA->mount_longitude) || fabs(CLIENT_PRIVATE_DATA->mount_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->mount_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
 				if (changed) {
-					CLIENT_PRIVATE_DATA->mount_longitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->mount_longitude = item->number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->mount_elevation != property->items[i].number.value;
-				CLIENT_PRIVATE_DATA->mount_elevation = property->items[i].number.value;
+				changed = changed || CLIENT_PRIVATE_DATA->mount_elevation != item->number.value;
+				CLIENT_PRIVATE_DATA->mount_elevation = item->number.value;
 			}
 		}
 		if (changed && AGENT_SITE_DATA_SOURCE_MOUNT_ITEM->sw.value) {
@@ -709,10 +707,11 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		handle_mount_change(device);
 	} else if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
 		for (int i = 0; i < property->count; i++) {
-			if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
-				CLIENT_PRIVATE_DATA->mount_ra = property->items[i].number.value;
-			} else if (!strcmp(property->items[i].name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
-				CLIENT_PRIVATE_DATA->mount_dec = property->items[i].number.value;
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
+				CLIENT_PRIVATE_DATA->mount_ra = item->number.value;
+			} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
+				CLIENT_PRIVATE_DATA->mount_dec = item->number.value;
 			}
 		}
 		CLIENT_PRIVATE_DATA->mount_eq_coordinates_state = property->state;
@@ -738,28 +737,23 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
-	} else if (!strcmp(property->name, FILTER_DOME_LIST_PROPERTY_NAME)) {
-		if (FILTER_DOME_LIST_PROPERTY->items->sw.value) {
-			CLIENT_PRIVATE_DATA->dome_latitude = NAN;
-			CLIENT_PRIVATE_DATA->dome_longitude = NAN;
-			CLIENT_PRIVATE_DATA->dome_elevation = NAN;
-		}
 	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
-			if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || isnan(CLIENT_PRIVATE_DATA->dome_latitude) || fabs(CLIENT_PRIVATE_DATA->dome_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->dome_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
 				if (changed) {
-					CLIENT_PRIVATE_DATA->dome_latitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->dome_latitude = item->number.value;
 				}
-			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || isnan(CLIENT_PRIVATE_DATA->dome_longitude) || fabs(CLIENT_PRIVATE_DATA->dome_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+			} else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->dome_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
 				if (changed) {
-					CLIENT_PRIVATE_DATA->dome_longitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->dome_longitude = item->number.value;
 				}
 			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->dome_elevation != property->items[i].number.value;
-				CLIENT_PRIVATE_DATA->dome_elevation = property->items[i].number.value;
+				changed = changed || CLIENT_PRIVATE_DATA->dome_elevation != item->number.value;
+				CLIENT_PRIVATE_DATA->dome_elevation = item->number.value;
 			}
 		}
 		if (changed && AGENT_SITE_DATA_SOURCE_DOME_ITEM->sw.value) {
@@ -769,34 +763,30 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		CLIENT_PRIVATE_DATA->dome_unparked = false;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, DOME_PARK_UNPARKED_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->dome_unparked = property->items[i].sw.value;
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, DOME_PARK_UNPARKED_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->dome_unparked = item->sw.value;
 					break;
 				}
 			}
 		}
-	} else if (!strcmp(property->name, FILTER_GPS_LIST_PROPERTY_NAME)) {
-		if (FILTER_GPS_LIST_PROPERTY->items->sw.value) {
-			CLIENT_PRIVATE_DATA->gps_latitude = NAN;
-			CLIENT_PRIVATE_DATA->gps_longitude = NAN;
-			CLIENT_PRIVATE_DATA->gps_elevation = NAN;
-		}
 	} else if (!strcmp(property->name, "GPS_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
-			if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-				changed = changed || isnan(CLIENT_PRIVATE_DATA->gps_latitude) || fabs(CLIENT_PRIVATE_DATA->gps_latitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+			indigo_item *item = property->items + i;
+			if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->gps_latitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
 				if (changed) {
 					CLIENT_PRIVATE_DATA->gps_latitude = property->items[i].number.value;
 				}
-			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-				changed = changed || isnan(CLIENT_PRIVATE_DATA->gps_longitude) || fabs(CLIENT_PRIVATE_DATA->gps_longitude - property->items[i].number.value) > CLIENT_PRIVATE_DATA->agent_limits_property->items[2].number.value;
+			} else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
+				changed = changed || fabs(CLIENT_PRIVATE_DATA->gps_longitude - item->number.value) > AGENT_COORDINATES_PROPAGATE_THESHOLD_ITEM->number.value;
 				if (changed) {
-					CLIENT_PRIVATE_DATA->gps_longitude = property->items[i].number.value;
+					CLIENT_PRIVATE_DATA->gps_longitude = item->number.value;
 				}
-			} else if (!strcmp(property->items[i].name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
-				changed = changed || CLIENT_PRIVATE_DATA->gps_elevation != property->items[i].number.value;
-				CLIENT_PRIVATE_DATA->gps_elevation = property->items[i].number.value;
+			} else if (!strcmp(item->name, GEOGRAPHIC_COORDINATES_ELEVATION_ITEM_NAME)) {
+				changed = changed || CLIENT_PRIVATE_DATA->gps_elevation != item->number.value;
+				CLIENT_PRIVATE_DATA->gps_elevation = item->number.value;
 			}
 		}
 		if (changed && AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value) {
@@ -804,6 +794,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		}
 	} else if (!strcmp(property->name, FILTER_ROTATOR_LIST_PROPERTY_NAME)) {
 		if (FILTER_ROTATOR_LIST_PROPERTY->items->sw.value) {
+			DEVICE_PRIVATE_DATA->rotator_position_state = INDIGO_IDLE_STATE;
 			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
 				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
 				AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -814,8 +805,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		CLIENT_PRIVATE_DATA->rotator_position_state = property->state;
 		if (property->state == INDIGO_OK_STATE) {
 			for (int i = 0; i < property->count; i++) {
-				if (!strcmp(property->items[i].name, ROTATOR_POSITION_ITEM_NAME)) {
-					CLIENT_PRIVATE_DATA->rotator_position = property->items[i].number.value;
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, ROTATOR_POSITION_ITEM_NAME)) {
+					CLIENT_PRIVATE_DATA->rotator_position = item->number.value;
 					break;
 				}
 			}
@@ -936,15 +928,6 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		// --------------------------------------------------------------------------------
 		CONNECTION_PROPERTY->hidden = true;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-		DEVICE_PRIVATE_DATA->mount_latitude = NAN;
-		DEVICE_PRIVATE_DATA->mount_longitude = NAN;
-		DEVICE_PRIVATE_DATA->mount_elevation = NAN;
-		DEVICE_PRIVATE_DATA->dome_latitude = NAN;
-		DEVICE_PRIVATE_DATA->dome_longitude = NAN;
-		DEVICE_PRIVATE_DATA->dome_elevation = NAN;
-		DEVICE_PRIVATE_DATA->gps_latitude = NAN;
-		DEVICE_PRIVATE_DATA->gps_longitude = NAN;
-		DEVICE_PRIVATE_DATA->gps_elevation = NAN;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -1254,7 +1237,6 @@ indigo_result indigo_agent_mount(indigo_driver_action action, indigo_driver_info
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
-
 			agent_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);
 			agent_client->client_context = agent_device->device_context;
 			indigo_attach_client(agent_client);
