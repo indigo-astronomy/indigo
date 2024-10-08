@@ -92,7 +92,7 @@ double indigo_polynomial_min_x(int coefficient_count, double* polynomial_coeffic
  * \param polynomial_coefficients An array of polynomial coefficients.
  * \param polynomial_string The buffer to store the string representation of the polynomial.
  */
-void indigo_polinomial_string(int coefficient_count, double *polynomial_coefficients, char *polynomial_string);
+void indigo_polynomial_string(int coefficient_count, double *polynomial_coefficients, char *polynomial_string);
 
 #ifdef __cplusplus
 }

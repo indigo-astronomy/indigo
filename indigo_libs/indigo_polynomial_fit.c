@@ -195,7 +195,7 @@ double indigo_polynomial_min_x(int coefficient_count, double* polynomial_coeffic
 /**
  Reprent polynomial as string
 */
-void indigo_polinomial_string(int coefficient_count, double *polynomial_coefficients, char *polynomial_string) {
+void indigo_polynomial_string(int coefficient_count, double *polynomial_coefficients, char *polynomial_string) {
 	char *p = polynomial_string;
 	if (coefficient_count > 0) {
 		p += sprintf(p, "y =");
