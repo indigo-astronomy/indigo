@@ -2951,7 +2951,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
+			if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_process, NULL);
@@ -2968,7 +2968,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, sequence_process, NULL);
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-				} else if (!FILTER_FOCUSER_LIST_PROPERTY->items->sw.value) {
+				} else if (INDIGO_FILTER_FOCUSER_SELECTED) {
 					if (AGENT_IMAGER_START_FOCUSING_ITEM->sw.value) {
 						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_set_timer(device, 0, autofocus_process, NULL);
@@ -3309,7 +3309,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) { // Snoop CCD ...
-		DEVICE_PRIVATE_DATA->steps_state = INDIGO_IDLE_STATE;
+		if (!INDIGO_FILTER_CCD_SELECTED) {
+			DEVICE_PRIVATE_DATA->steps_state = INDIGO_IDLE_STATE;
+		}
 	} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
 		if (!CLIENT_PRIVATE_DATA->use_aux_1) {
 			for (int i = 0; i < property->count; i++) {
@@ -3351,9 +3353,11 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		setup_download(FILTER_CLIENT_CONTEXT->device);
 	} else if (!strcmp(property->name, CCD_IMAGE_FILE_PROPERTY_NAME)) {
 		 setup_download(FILTER_CLIENT_CONTEXT->device);
-	} else if (!strcmp(property->name, FILTER_AUX_1_LIST_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->use_aux_1 = false;
-	} else if (!strcmp(property->name, "AUX_1_" CCD_EXPOSURE_PROPERTY_NAME)) { // Snoop AUX_1 ...
+	} else if (!strcmp(property->name, FILTER_AUX_1_LIST_PROPERTY_NAME)) { // Snoop AUX_1 ...
+		if (!INDIGO_FILTER_AUX_1_SELECTED) {
+			CLIENT_PRIVATE_DATA->use_aux_1 = false;
+		}
+	} else if (!strcmp(property->name, "AUX_1_" CCD_EXPOSURE_PROPERTY_NAME)) {
 		CLIENT_PRIVATE_DATA->use_aux_1 = true;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
@@ -3363,10 +3367,12 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		}
 	} else if (!strcmp(property->name, FILTER_FOCUSER_LIST_PROPERTY_NAME)) { // Snoop focuser ...
-		DEVICE_PRIVATE_DATA->steps_state = INDIGO_IDLE_STATE;
-		CLIENT_PRIVATE_DATA->focuser_position = NAN;
-		CLIENT_PRIVATE_DATA->focuser_temperature = NAN;
-		DEVICE_PRIVATE_DATA->focuser_has_backlash = false;
+		if (!INDIGO_FILTER_FOCUSER_SELECTED) {
+			DEVICE_PRIVATE_DATA->steps_state = INDIGO_IDLE_STATE;
+			CLIENT_PRIVATE_DATA->focuser_position = NAN;
+			CLIENT_PRIVATE_DATA->focuser_temperature = NAN;
+			DEVICE_PRIVATE_DATA->focuser_has_backlash = false;
+		}
 	} else if (!strcmp(property->name, FOCUSER_STEPS_PROPERTY_NAME)) {
 		DEVICE_PRIVATE_DATA->steps_state = property->state;
 	} else if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
@@ -3379,9 +3385,11 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value = AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.target = property->items[0].number.value;
 		indigo_update_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
 	} else if (!strcmp(property->name, FILTER_WHEEL_LIST_PROPERTY_NAME)) { // Snoop wheel ...
-		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
-		AGENT_WHEEL_FILTER_PROPERTY->count = 0;
-		indigo_define_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
+		if (!INDIGO_FILTER_WHEEL_SELECTED) {
+			indigo_delete_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
+			AGENT_WHEEL_FILTER_PROPERTY->count = 0;
+			indigo_define_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
+		}
 	} else if (!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME)) {
 		indigo_delete_property(FILTER_CLIENT_CONTEXT->device, AGENT_WHEEL_FILTER_PROPERTY, NULL);
 		AGENT_WHEEL_FILTER_PROPERTY->count = property->count;

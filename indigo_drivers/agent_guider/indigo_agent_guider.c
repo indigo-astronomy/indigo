@@ -1476,8 +1476,8 @@ static void abort_process(indigo_device *device) {
 }
 
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
-	if (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
-		if (FILTER_CCD_LIST_PROPERTY->items->sw.value) {
+	if (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) { // Snoop CCD
+		if (!INDIGO_FILTER_CCD_SELECTED) {
 			DEVICE_PRIVATE_DATA->exposure_state = INDIGO_IDLE_STATE;
 		}
 	} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
@@ -1489,8 +1489,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		}
 		DEVICE_PRIVATE_DATA->exposure_state = property->state;
-	} else if (!strcmp(property->name, FILTER_GUIDER_LIST_PROPERTY_NAME)) {
-		if (FILTER_ROTATOR_LIST_PROPERTY->items->sw.value) {
+	} else if (!strcmp(property->name, FILTER_GUIDER_LIST_PROPERTY_NAME)) { // Snoop guider
+		if (!INDIGO_FILTER_ROTATOR_SELECTED) {
 			DEVICE_PRIVATE_DATA->guide_ra_state = INDIGO_IDLE_STATE;
 			DEVICE_PRIVATE_DATA->guide_dec_state = INDIGO_IDLE_STATE;
 		}
@@ -1950,12 +1950,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_GUIDER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (!FILTER_CCD_LIST_PROPERTY->items->sw.value) {
+			if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_GUIDER_START_PREVIEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, preview_process, NULL);
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-				} else if (!FILTER_GUIDER_LIST_PROPERTY->items->sw.value) {
+				} else if (INDIGO_FILTER_GUIDER_SELECTED) {
 					if (AGENT_GUIDER_START_CALIBRATION_ITEM->sw.value) {
 						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 						indigo_set_timer(device, 0, calibrate_process, NULL);

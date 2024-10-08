@@ -329,7 +329,7 @@ static void lx200_server_worker_thread(handler_data *data) {
 				AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
 				AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
 				indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
-				if (!FILTER_MOUNT_LIST_PROPERTY->items->sw.value && AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+				if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 					AGENT_MOUNT_START_SLEW_ITEM->sw.value = true;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
@@ -343,7 +343,7 @@ static void lx200_server_worker_thread(handler_data *data) {
 				AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_RA_ITEM->number.value = ra;
 				AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.target = AGENT_MOUNT_TARGET_COORDINATES_DEC_ITEM->number.value = dec;
 				indigo_update_property(device, AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
-				if (!FILTER_MOUNT_LIST_PROPERTY->items->sw.value && AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
+				if (INDIGO_FILTER_MOUNT_SELECTED && AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 					AGENT_MOUNT_START_SLEW_ITEM->sw.value = true;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
@@ -664,8 +664,8 @@ static void handle_site_change(indigo_device *device) {
 }
 
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
-	if (!strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) {
-		if (FILTER_MOUNT_LIST_PROPERTY->items->sw.value) {
+	if (!strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) { // Snoop mount
+		if (!INDIGO_FILTER_MOUNT_SELECTED) {
 			DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
 			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
 				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
@@ -737,7 +737,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
-	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
+	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) { // Snoop dome
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
@@ -770,7 +770,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
-	} else if (!strcmp(property->name, "GPS_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
+	} else if (!strcmp(property->name, "GPS_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) { // Snoop gps
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
@@ -792,8 +792,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		if (changed && AGENT_SITE_DATA_SOURCE_GPS_ITEM->sw.value) {
 			handle_site_change(device);
 		}
-	} else if (!strcmp(property->name, FILTER_ROTATOR_LIST_PROPERTY_NAME)) {
-		if (FILTER_ROTATOR_LIST_PROPERTY->items->sw.value) {
+	} else if (!strcmp(property->name, FILTER_ROTATOR_LIST_PROPERTY_NAME)) { // Snoop rotator
+		if (!INDIGO_FILTER_ROTATOR_SELECTED) {
 			DEVICE_PRIVATE_DATA->rotator_position_state = INDIGO_IDLE_STATE;
 			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
 				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
@@ -1079,7 +1079,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (!FILTER_MOUNT_LIST_PROPERTY->items->sw.value) {
+			if (INDIGO_FILTER_MOUNT_SELECTED) {
 				if (AGENT_MOUNT_START_SLEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_set_timer(device, 0, slew_process, NULL);
