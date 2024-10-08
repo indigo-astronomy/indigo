@@ -946,30 +946,6 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	if (*property->name) {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (indigo_property_match(device_cache[i], property)) {
-				// this is the list of "fragile" properties used by various filter agents
-				// if any of them is removed, any background process should abort asap
-				FILTER_CLIENT_CONTEXT->property_removed =
-					!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_STREAMING_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_UPLOAD_MODE_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_TEMPERATURE_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_COOLER_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_MODE_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_GAIN_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_OFFSET_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_GAMMA_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_FRAME_TYPE_PROPERTY_NAME) ||
-					!strcmp(property->name, CCD_FRAME_PROPERTY_NAME) ||
-//					!strcmp(property->name, DSLR_APERTURE_PROPERTY_NAME) ||
-//					!strcmp(property->name, DSLR_SHUTTER_PROPERTY_NAME) ||
-//					!strcmp(property->name, DSLR_ISO_PROPERTY_NAME) ||
-					!strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME) ||
-					!strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME) ||
-					!strcmp(property->name, FOCUSER_DIRECTION_PROPERTY_NAME) ||
-					!strcmp(property->name, FOCUSER_STEPS_PROPERTY_NAME) ||
-					!strcmp(property->name, WHEEL_SLOT_NAME_PROPERTY_NAME);
 				indigo_safe_free(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
@@ -985,7 +961,6 @@ indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device
 	} else {
 		for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
 			if (device_cache[i] && !strcmp(device_cache[i]->device, property->device)) {
-				FILTER_CLIENT_CONTEXT->property_removed = true;
 				indigo_safe_free(device_cache[i]);
 				device_cache[i] = NULL;
 				if (agent_cache[i]) {
@@ -1040,7 +1015,7 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
-bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property) {
+__attribute__((deprecated)) bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property) {
 	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
 	char *device_name = FILTER_DEVICE_CONTEXT->device_name[index];
 	indigo_property *property;
