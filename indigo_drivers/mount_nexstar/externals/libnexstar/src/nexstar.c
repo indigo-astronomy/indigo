@@ -172,6 +172,10 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 		*caps |= CAN_SYNC;
 	}
 
+	if (guessed_vendor == VNDR_SKYWATCHER) {
+		*caps |= CAN_TRACK_WITH_PEC;
+	}
+
 	if ((guessed_vendor == VNDR_CELESTRON) && (firmware_version >= VER_3_1)) {
 		/* Not sure about this but recent mounts will work so 3.1 is fair */
 		*caps |= CAN_GET_SET_BACKLASH;
@@ -182,8 +186,7 @@ int get_mount_capabilities(int dev, uint32_t *caps, int *vendor) {
 		(mount_model == 14) || (mount_model == 17) || (mount_model == 20) || (mount_model == 23) || (mount_model == 24))) {
 		*caps |= TRUE_EQ_MOUNT;
 	}
-	if ((guessed_vendor == VNDR_SKYWATCHER) &&
-		(mount_model < 128)) {
+	if ((guessed_vendor == VNDR_SKYWATCHER) && (mount_model < 128)) {
 		*caps |= TRUE_EQ_MOUNT;
 	}
 
