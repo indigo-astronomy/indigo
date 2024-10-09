@@ -665,7 +665,9 @@ static void handle_site_change(indigo_device *device) {
 
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (!strcmp(property->name, FILTER_MOUNT_LIST_PROPERTY_NAME)) { // Snoop mount
-		if (!INDIGO_FILTER_MOUNT_SELECTED) {
+		if (INDIGO_FILTER_MOUNT_SELECTED) {
+			handle_site_change(device);
+		} else {
 			DEVICE_PRIVATE_DATA->mount_eq_coordinates_state = INDIGO_IDLE_STATE;
 			if (AGENT_FIELD_DEROTATION_ENABLED_ITEM->sw.value) {
 				indigo_set_switch(AGENT_FIELD_DEROTATION_PROPERTY, AGENT_FIELD_DEROTATION_DISABLED_ITEM, true);
@@ -737,7 +739,11 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 		}
-	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) { // Snoop dome
+	} else if (!strcmp(property->name, FILTER_DOME_LIST_PROPERTY_NAME)) { // Snoop dome
+		if (INDIGO_FILTER_DOME_SELECTED) {
+			handle_site_change(device);
+		}
+	} else if (!strcmp(property->name, "DOME_" GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
 		bool changed = false;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
