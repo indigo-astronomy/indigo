@@ -839,7 +839,6 @@ static bool exposure_batch(indigo_device *device) {
 				indigo_usleep(ONE_SECOND_DELAY);
 				continue;
 			}
-			break;
 			check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_CAPTURE_ITEM);
 			bool is_controlled_instance = false;
 			if (!AGENT_IMAGER_RESUME_CONDITION_BARRIER_ITEM->sw.value) {
@@ -897,12 +896,11 @@ static bool exposure_batch(indigo_device *device) {
 					check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_DELAY_ITEM);
 				}
 			}
+			break;
 		}
-		check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM);
-		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
-	return false;
+	check_breakpoint(device, AGENT_IMAGER_BREAKPOINT_POST_BATCH_ITEM);
+	return true;
 }
 
 static void exposure_batch_process(indigo_device *device) {
@@ -2536,7 +2534,6 @@ static inline int datetimesort(const struct dirent **a, const struct dirent **b)
 
 static void setup_download(indigo_device *device) {
 	if (*DEVICE_PRIVATE_DATA->current_folder) {
-		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 		indigo_delete_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
 		struct dirent **entries;
 		// TBD: This is not reetrant!
@@ -2566,7 +2563,6 @@ static void setup_download(indigo_device *device) {
 		}
 		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
-		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 	}
 }
 
@@ -3132,7 +3128,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property, false);
 		if (AGENT_IMAGER_DOWNLOAD_FILES_REFRESH_ITEM->sw.value) {
 			AGENT_IMAGER_DOWNLOAD_FILES_REFRESH_ITEM->sw.value = false;
+			pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 			setup_download(device);
+			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->mutex);
 		} else {
 			pthread_mutex_lock(&DEVICE_PRIVATE_DATA->mutex);
 			indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
