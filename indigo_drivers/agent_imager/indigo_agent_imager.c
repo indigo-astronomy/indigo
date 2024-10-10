@@ -311,6 +311,7 @@ static void restore_switch_state(indigo_device *device, char *name, int index) {
 					property = FILTER_DEVICE_CONTEXT->agent_property_cache[j];
 					if (index < property->count) {
 						indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, property->name, property->items[index].name, true);
+						indigo_update_property(device, property, NULL);
 						break;
 					}
 				}
