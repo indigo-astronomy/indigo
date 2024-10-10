@@ -281,7 +281,7 @@ static void save_config(indigo_device *device) {
 }
 
 static int save_switch_state(indigo_device *device, char *name, char *new_state) {
-	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
+	indigo_property **cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 	indigo_property *property;
 	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
 		if ((property = cache[j])) {
@@ -303,7 +303,7 @@ static int save_switch_state(indigo_device *device, char *name, char *new_state)
 
 static void restore_switch_state(indigo_device *device, char *name, int index) {
 	if (index >= 0) {
-		indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
+		indigo_property **cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
 		indigo_property *property;
 		for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
 			if ((property = cache[j])) {
