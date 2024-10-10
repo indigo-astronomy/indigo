@@ -991,10 +991,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
 		indigo_property_copy_values(AGENT_SET_HOST_TIME_PROPERTY, property, false);
-		if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value && *FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX])
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_MOUNT_INDEX], MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
-		if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value && *FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX])
-			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_DOME_INDEX], DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
+		if (AGENT_SET_HOST_TIME_MOUNT_ITEM->sw.value && INDIGO_FILTER_MOUNT_SELECTED)
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_SET_HOST_TIME_PROPERTY_NAME, MOUNT_SET_HOST_TIME_ITEM_NAME, true);
+		if (AGENT_SET_HOST_TIME_DOME_ITEM->sw.value && INDIGO_FILTER_DOME_SELECTED)
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, DOME_SET_HOST_TIME_PROPERTY_NAME, DOME_SET_HOST_TIME_ITEM_NAME, true);
 		AGENT_SET_HOST_TIME_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
