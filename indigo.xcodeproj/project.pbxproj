@@ -333,7 +333,6 @@
 		598A1B5B259BA94A00C0B34C /* indigo_raw_utils.c in Sources */ = {isa = PBXBuildFile; fileRef = 5911B6C922630FE900D6B9EC /* indigo_raw_utils.c */; };
 		598A1B5C259BA94A00C0B34C /* indigo_aux_dsusb.c in Sources */ = {isa = PBXBuildFile; fileRef = 59FE34622187B2F7004FB5D4 /* indigo_aux_dsusb.c */; };
 		598A1B5D259BA94A00C0B34C /* indigo_focuser_steeldrive2.c in Sources */ = {isa = PBXBuildFile; fileRef = 59A242F322A5B45E001C38F8 /* indigo_focuser_steeldrive2.c */; };
-		598A1B5F259BA94A00C0B34C /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
 		598A1B60259BA94A00C0B34C /* indigo_wheel_trutek.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DAD524A2126E88B002FCC79 /* indigo_wheel_trutek.c */; };
 		598A1B61259BA94A00C0B34C /* indigo_driver_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63AE1DEA2F4700ABC827 /* indigo_driver_json.c */; };
 		598A1B62259BA94A00C0B34C /* indigo_aux_mgbox.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C565012464A13A00344C0C /* indigo_aux_mgbox.c */; };
@@ -918,7 +917,6 @@
 		9D7FC61F2C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
 		9D7FC6202C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D7FC6132C4906B2004496F2 /* indigo_focuser_fc3.h */; };
 		9D85FAE421E38E3900ECDF82 /* indigo_agent_alignment.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D85FAE121E38E3900ECDF82 /* indigo_agent_alignment.h */; };
-		9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D85FAE321E38E3900ECDF82 /* indigo_agent_alignment.c */; };
 		9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
 		9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */; };
@@ -10042,7 +10040,6 @@
 		59D381AF1D95998300E87393 /* indigo_drivers */ = {
 			isa = PBXGroup;
 			children = (
-				9D85FAE021E38E3900ECDF82 /* agent_alignment */,
 				597BD149260137E500239274 /* agent_alpaca */,
 				59BBED21278493E400BA9CD6 /* agent_astap */,
 				597E79DB25A5DB6E009B0817 /* agent_astrometry */,
@@ -14234,6 +14231,7 @@
 		9DD11FE92CB56D8F00FC9855 /* obsoleted_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				9D85FAE021E38E3900ECDF82 /* agent_alignment */,
 				9D4D64AC20A9D946008ECE4B /* guider_eqmac */,
 				59C499E01EFADF9700E750AA /* ccd_ica */,
 				9D3BBBA421147E2700800FB0 /* agent_lx200_server */,
@@ -15017,7 +15015,6 @@
 				59111CEE285F504200E57194 /* indigocat_jupiter.c in Sources */,
 				598A1B5C259BA94A00C0B34C /* indigo_aux_dsusb.c in Sources */,
 				598A1B5D259BA94A00C0B34C /* indigo_focuser_steeldrive2.c in Sources */,
-				598A1B5F259BA94A00C0B34C /* indigo_agent_alignment.c in Sources */,
 				59B51351297066040075C8A1 /* indigo_wheel_indigo.c in Sources */,
 				598A1B60259BA94A00C0B34C /* indigo_wheel_trutek.c in Sources */,
 				598A1B61259BA94A00C0B34C /* indigo_driver_json.c in Sources */,
@@ -15281,7 +15278,6 @@
 				597C7225293CFC3A0016D45A /* indigo_ccd_asi.c in Sources */,
 				59FE34652187B2F8004FB5D4 /* indigo_aux_dsusb.c in Sources */,
 				59A242F622A5B45F001C38F8 /* indigo_focuser_steeldrive2.c in Sources */,
-				9D85FAE521E38E3900ECDF82 /* indigo_agent_alignment.c in Sources */,
 				9DAD524E2126E88B002FCC79 /* indigo_wheel_trutek.c in Sources */,
 				599A63B01DEA2F4700ABC827 /* indigo_driver_json.c in Sources */,
 				59958E2F25CC833C00BEFA1B /* indigo_aux_skyalert.c in Sources */,

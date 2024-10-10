@@ -107,7 +107,6 @@
 #include "focuser_lakeside/indigo_focuser_lakeside.h"
 #include "agent_imager/indigo_agent_imager.h"
 #include "focuser_asi/indigo_focuser_asi.h"
-#include "agent_alignment/indigo_agent_alignment.h"
 #include "agent_mount/indigo_agent_mount.h"
 #include "ao_sx/indigo_ao_sx.h"
 #include "ccd_uvc/indigo_ccd_uvc.h"
@@ -198,7 +197,6 @@
 
 driver_entry_point static_drivers[] = {
 #ifdef STATIC_DRIVERS
-	indigo_agent_alignment,
 	indigo_agent_alpaca,
 	indigo_agent_astrometry,
 	indigo_agent_astap,
