@@ -60,6 +60,7 @@
 #define CAN_GET_SIDE_OF_PIER   0x0040
 #define TRUE_EQ_MOUNT          0x0080
 #define CAN_PULSE_GUIDE        0x0100
+#define CAN_TRACK_WITH_PEC     0x0200
 
 /* return codes */
 #define RC_OK            0	/* success */
