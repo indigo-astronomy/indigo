@@ -213,7 +213,7 @@ static void mount_control(indigo_device *device, char *operation) {
 	if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 		indigo_debug("MOUNT_EQUATORIAL_COORDINATES didn't become BUSY in 3s");
 	}
-	for (int i = 0; i < 60000; i++) {
+	for (int i = 0; i < 180000; i++) {
 		if (DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE) {
 			break;
 		}
@@ -223,7 +223,7 @@ static void mount_control(indigo_device *device, char *operation) {
 		indigo_usleep(1000);
 	}
 	if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_OK_STATE) {
-		indigo_error("MOUNT_EQUATORIAL_COORDINATES didn't become OK in 60s");
+		indigo_error("MOUNT_EQUATORIAL_COORDINATES didn't become OK in 180s");
 	}
 	AGENT_MOUNT_START_SLEW_ITEM->sw.value = AGENT_MOUNT_START_SYNC_ITEM->sw.value = false;
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
