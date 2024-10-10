@@ -1363,7 +1363,6 @@ static double reduce_ucurve_best_focus(double *best_focuses, int count) {
 }
 
 static bool autofocus_ucurve(indigo_device *device) {
-	indigo_client *client = FILTER_DEVICE_CONTEXT->client;
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = AGENT_IMAGER_STATS_DELAY_ITEM->number.value = AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_STATS_FRAME_ITEM->number.value = AGENT_IMAGER_STATS_FWHM_ITEM->number.value = AGENT_IMAGER_STATS_PEAK_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	clear_hfd_stats(device);
 	AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
@@ -1484,7 +1483,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 				sample_index = 0;
 			}
 			/* Copy sample to the U-Curve data */
-			focus_pos[sample_index] = CLIENT_PRIVATE_DATA->focuser_position;
+			focus_pos[sample_index] = DEVICE_PRIVATE_DATA->focuser_position;
 			for (int i = 0; i < star_count; i++) {
 				hfds[i][sample_index] = AGENT_IMAGER_STATS_HFD_ITEM[i].number.value;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d][%d] = (%g, %f)", i, sample_index, focus_pos[sample_index], hfds[i][sample_index]);
@@ -1612,7 +1611,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Reducing best focus positions for %d of %d stars", stars_used, star_count);
 	double best_focus = reduce_ucurve_best_focus(best_focuses, stars_used);
 	/* Calculate the steps to best focus */
-	double steps_to_focus = fabs(CLIENT_PRIVATE_DATA->focuser_position - best_focus);
+	double steps_to_focus = fabs(DEVICE_PRIVATE_DATA->focuser_position - best_focus);
 	indigo_send_message(device, "U-Curve found best focus at position %.3f", best_focus);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
 	/* Apply backlash or overshoot if needed */
@@ -1705,8 +1704,6 @@ static bool autofocus_ucurve(indigo_device *device) {
 }
 
 static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask) {
-	char *ccd_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX];
-	char *focuser_name = FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_FOCUSER_INDEX];
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = AGENT_IMAGER_STATS_DELAY_ITEM->number.value = AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_STATS_FRAME_ITEM->number.value = AGENT_IMAGER_STATS_FWHM_ITEM->number.value = AGENT_IMAGER_STATS_PEAK_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	clear_hfd_stats(device);
 	AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
@@ -1723,8 +1720,8 @@ static bool autofocus_backlash(indigo_device *device, uint8_t **saturation_mask)
 		steps_todo = steps + AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value;
 	}
 	bool moving_out = true, first_move = true;
-	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, ccd_name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
-	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, focuser_name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
+	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
+	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 	bool repeat = true;
 	while (repeat) {
 		if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
