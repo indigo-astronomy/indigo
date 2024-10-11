@@ -24,7 +24,7 @@
  \file indigo_aux_ppb.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME "indigo_aux_ppb"
 
 #include <stdlib.h>
@@ -200,17 +200,6 @@ static indigo_result aux_attach(indigo_device *device) {
 		DEVICE_PORT_PROPERTY->hidden = false;
 		DEVICE_PORTS_PROPERTY->hidden = false;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
-#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "usbserial")) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-				break;
-			}
-		}
-#endif
-#ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/ttyPPB");
-#endif
 		// --------------------------------------------------------------------------------
 		pthread_mutex_init(&PRIVATE_DATA->mutex, NULL);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
@@ -765,6 +754,11 @@ indigo_result indigo_aux_ppb(indigo_driver_action action, indigo_driver_info *in
 		NULL,
 		aux_detach
 	);
+
+	static indigo_device_match_pattern patterns[1] = { 0 };
+	strcpy(patterns[0].vendor_string, "Pegasus Astro");
+	strcpy(patterns[0].product_string, "PPB");
+	INDIGO_REGISER_MATCH_PATTERNS(aux_template, patterns, 1);
 
 	SET_DRIVER_INFO(info, "PegasusAstro Pocket Powerbox", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
