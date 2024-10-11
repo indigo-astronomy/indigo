@@ -98,7 +98,7 @@
 #define AGENT_IMAGER_START_STREAMING_ITEM 		(AGENT_START_PROCESS_PROPERTY->items+2)
 #define AGENT_IMAGER_START_FOCUSING_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+3)
 #define AGENT_IMAGER_START_SEQUENCE_ITEM 			(AGENT_START_PROCESS_PROPERTY->items+4)
-#define AGENT_IMAGER_RESET_SELECTION_ITEM			(AGENT_START_PROCESS_PROPERTY->items+5)
+#define AGENT_IMAGER_CLEAR_SELECTION_ITEM			(AGENT_START_PROCESS_PROPERTY->items+5)
 
 #define AGENT_PAUSE_PROCESS_PROPERTY					(DEVICE_PRIVATE_DATA->agent_pause_process_property)
 #define AGENT_PAUSE_PROCESS_ITEM      				(AGENT_PAUSE_PROCESS_PROPERTY->items+0)
@@ -1972,7 +1972,7 @@ static void autofocus_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
-static void reset_selection_process(indigo_device *device) {
+static void clear_selection_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
 		indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
@@ -1985,7 +1985,7 @@ static void reset_selection_process(indigo_device *device) {
 		item->number.value = item->number.target = 0;
 	}
 	indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-	AGENT_IMAGER_RESET_SELECTION_ITEM->sw.value = false;
+	AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
@@ -2649,7 +2649,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_IMAGER_START_STREAMING_ITEM, AGENT_IMAGER_START_STREAMING_ITEM_NAME, "Start streaming batch", false);
 		indigo_init_switch_item(AGENT_IMAGER_START_FOCUSING_ITEM, AGENT_IMAGER_START_FOCUSING_ITEM_NAME, "Start focusing", false);
 		indigo_init_switch_item(AGENT_IMAGER_START_SEQUENCE_ITEM, AGENT_IMAGER_START_SEQUENCE_ITEM_NAME, "Start sequence", false);
-		indigo_init_switch_item(AGENT_IMAGER_RESET_SELECTION_ITEM, AGENT_IMAGER_RESET_SELECTION_ITEM_NAME, "Reset star selection", false);
+		indigo_init_switch_item(AGENT_IMAGER_CLEAR_SELECTION_ITEM, AGENT_IMAGER_CLEAR_SELECTION_ITEM_NAME, "Clear star selection", false);
 		AGENT_PAUSE_PROCESS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PAUSE_PROCESS_PROPERTY_NAME, "Agent", "Pause/Resume process", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_AT_MOST_ONE_RULE, 3);
 		if (AGENT_PAUSE_PROCESS_PROPERTY == NULL)
 			return INDIGO_FAILED;
@@ -2959,9 +2959,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			if (AGENT_IMAGER_RESET_SELECTION_ITEM->sw.value) {
+			if (AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value) {
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_set_timer(device, 0, reset_selection_process, NULL);
+				indigo_set_timer(device, 0, clear_selection_process, NULL);
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
@@ -2992,7 +2992,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					AGENT_IMAGER_START_STREAMING_ITEM->sw.value =
 					AGENT_IMAGER_START_FOCUSING_ITEM->sw.value =
 					AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value =
-					AGENT_IMAGER_RESET_SELECTION_ITEM->sw.value = false;
+					AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value = false;
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No focuser is selected");
 				}
@@ -3002,7 +3002,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_IMAGER_START_STREAMING_ITEM->sw.value =
 				AGENT_IMAGER_START_FOCUSING_ITEM->sw.value =
 				AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value =
-				AGENT_IMAGER_RESET_SELECTION_ITEM->sw.value = false;
+				AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value = false;
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No CCD is selected");
 			}

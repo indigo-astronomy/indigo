@@ -493,20 +493,20 @@ static void stop_lx200_server(indigo_device *device) {
 	}
 }
 
-static void abort_capture(indigo_device *device, char *reason) {
+static void abort_image_process(indigo_device *device, char *reason) {
 	if (!AGENT_ABORT_IMAGER_ITEM->sw.value)
 		return;
-	indigo_send_message(device, "Aborting caputre due to %s", reason);
+	indigo_send_message(device, "Aborting Imager agent process due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
 	}
 }
 
-static void abort_guiding(indigo_device *device, char *reason) {
+static void abort_guider_process(indigo_device *device, char *reason) {
 	if (!AGENT_ABORT_GUIDER_ITEM->sw.value)
 		return;
-	indigo_send_message(device, "Aborting guiding due to %s", reason);
+	indigo_send_message(device, "Aborting Guider agent process due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_ABORT_PROCESS_PROPERTY_NAME, AGENT_ABORT_PROCESS_ITEM_NAME, true);
@@ -514,14 +514,14 @@ static void abort_guiding(indigo_device *device, char *reason) {
 }
 
 static void reset_star_selection(indigo_device *device, char *reason) {
-	indigo_send_message(device, "Resetting star selection due to %s", reason);
+	// indigo_send_message(device, "Clearing star selection due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
 	if (related_agent_name) {
-		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_RESET_SELECTION_ITEM_NAME, true);
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_CLEAR_SELECTION_ITEM_NAME, true);
 	}
 	related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
-		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_RESET_SELECTION_ITEM_NAME, true);
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_CLEAR_SELECTION_ITEM_NAME, true);
 	}
 }
 
@@ -582,8 +582,8 @@ static void handle_mount_change(indigo_device *device) {
 			}
 		}
 		if (park) {
-			abort_capture(device, "hitting limits");
-			abort_guiding(device, "hitting limits");
+			abort_imager_process(device, "hitting limits");
+			abort_guider_process(device, "hitting limits");
 			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, MOUNT_PARK_PROPERTY_NAME, MOUNT_PARK_PARKED_ITEM_NAME, true);
 		}
 	}
@@ -731,8 +731,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		}
 		if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && property->state == INDIGO_BUSY_STATE) {
-			abort_capture(device, "slewing");
-			abort_guiding(device, "slewing");
+			abort_imager_project(device, "slewing");
+			abort_guider_process(device, "slewing");
 		}
 		if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE && property->state != INDIGO_BUSY_STATE) {
 			reset_star_selection(device, "slewing");
@@ -747,8 +747,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				if (!strcmp(item->name, MOUNT_PARK_PARKED_ITEM_NAME) && item->sw.value) {
 					indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_PARKED_ITEM_NAME, true);
 					indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_SHUTTER_PROPERTY_NAME, DOME_SHUTTER_CLOSED_ITEM_NAME, true);
-					abort_capture(device, "parking");
-					abort_guiding(device, "parking");
+					abort_imager_process(device, "parking");
+					abort_guider_process(device, "parking");
 				} else if (!strcmp(property->items[i].name, MOUNT_PARK_UNPARKED_ITEM_NAME) && item->sw.value) {
 					CLIENT_PRIVATE_DATA->mount_unparked = true;
 					indigo_change_switch_property_1(FILTER_CLIENT_CONTEXT->client, device->name, DOME_PARK_PROPERTY_NAME, DOME_PARK_UNPARKED_ITEM_NAME, true);
