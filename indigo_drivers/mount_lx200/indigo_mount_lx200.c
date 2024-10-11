@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x002B
+#define DRIVER_VERSION 0x002C
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -3719,6 +3719,11 @@ indigo_result indigo_mount_lx200(indigo_driver_action action, indigo_driver_info
 	 );
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	static indigo_device_match_pattern patterns[1] = { 0 };
+	strcpy(patterns[0].vendor_string, "Pegasus Astro");
+	strcpy(patterns[0].product_string, "NYX");
+	INDIGO_REGISER_MATCH_PATTERNS(mount_template, patterns, 1);
 
 	SET_DRIVER_INFO(info, "LX200 Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 

@@ -23,7 +23,7 @@
  \file indigo_focuser_wemacro.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_wemacro"
 
 #include <stdlib.h>
@@ -182,17 +182,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_POSITION_PROPERTY->hidden = true;
 		FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
 		FOCUSER_SPEED_ITEM->number.max = 2;
-#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (strstr(DEVICE_PORTS_PROPERTY->items[i].name, "CH341")) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-				break;
-			}
-		}
-#endif
-#ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/wemacro_rail");
-#endif
 		// -------------------------------------------------------------------------------- X_RAIL_CONFIG
 		X_RAIL_CONFIG_PROPERTY = indigo_init_switch_property(NULL, device->name, "X_RAIL_CONFIG", X_RAIL_BATCH, "Set configuration", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
 		if (X_RAIL_CONFIG_PROPERTY == NULL)
@@ -377,6 +366,12 @@ indigo_result indigo_focuser_wemacro(indigo_driver_action action, indigo_driver_
 		NULL,
 		focuser_detach
 		);
+
+	static indigo_device_match_pattern patterns[1] = { 0 };
+	patterns[0].vendor_id = 0x1A86;
+	patterns[0].product_id = 0x7523;
+	strcpy(patterns[0].product_string, "USB2.0-Serial");
+	INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
 
 	SET_DRIVER_INFO(info, FOCUSER_WEMACRO_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 

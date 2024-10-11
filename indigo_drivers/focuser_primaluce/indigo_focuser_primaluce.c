@@ -23,7 +23,7 @@
  \file indigo_focuser_primaluce.c
  */
 
-#define DRIVER_VERSION 0x0006
+#define DRIVER_VERSION 0x0007
 #define DRIVER_NAME "indigo_focuser_primaluce"
 
 #include <stdlib.h>
@@ -570,17 +570,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		FOCUSER_STEPS_ITEM->number.min = 0;
 		FOCUSER_STEPS_ITEM->number.max = 1000000;
 		strcpy(FOCUSER_STEPS_ITEM->number.format, "%.0f");
-#ifdef INDIGO_MACOS
-		for (int i = 0; i < DEVICE_PORTS_PROPERTY->count; i++) {
-			if (!strncmp(DEVICE_PORTS_PROPERTY->items[i].name, "/dev/cu.usbmodem", 16)) {
-				indigo_copy_value(DEVICE_PORT_ITEM->text.value, DEVICE_PORTS_PROPERTY->items[i].name);
-				break;
-			}
-		}
-#endif
-#ifdef INDIGO_LINUX
-		strcpy(DEVICE_PORT_ITEM->text.value, "/dev/usb_focuser");
-#endif
 		// --------------------------------------------------------------------------------
 		INFO_PROPERTY->count = 8;
 		FOCUSER_SPEED_ITEM->number.min = 0;
@@ -1585,6 +1574,11 @@ indigo_result indigo_focuser_primaluce(indigo_driver_action action, indigo_drive
 		rotator_detach
 		);
 	
+	static indigo_device_match_pattern patterns[1] = { 0 };
+	strcpy(patterns[0].product_string, "CP2102N");
+	INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 1);
+
+
 	SET_DRIVER_INFO(info, "PrimaluceLab Focuser/Rotator", __FUNCTION__, DRIVER_VERSION, false, last_action);
 	
 	if (action == last_action)

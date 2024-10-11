@@ -23,7 +23,7 @@
  \file indigo_rotator_falcon.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_rotator_falcon"
 
 #include <stdlib.h>
@@ -343,6 +343,11 @@ indigo_result indigo_rotator_falcon(indigo_driver_action action, indigo_driver_i
 	);
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	static indigo_device_match_pattern patterns[1] = { 0 };
+	strcpy(patterns[0].vendor_string, "Pegasus Astro");
+	strcpy(patterns[0].product_string, "FalconRotator");
+	INDIGO_REGISER_MATCH_PATTERNS(rotator_template, patterns, 1);
 
 	SET_DRIVER_INFO(info, "PegasusAstro Falcon rotator", __FUNCTION__, DRIVER_VERSION, true, last_action);
 

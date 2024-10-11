@@ -23,7 +23,7 @@
  \file indigo_guider_cgusbst4.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME	"indigo_guider_cgusbst4"
 
 #include <stdlib.h>
@@ -273,6 +273,11 @@ indigo_result indigo_guider_cgusbst4(indigo_driver_action action, indigo_driver_
 	);
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	static indigo_device_match_pattern patterns[1] = { 0 };
+	strcpy(patterns[0].vendor_string, "Astrogene1000");
+	strcpy(patterns[0].product_string, "USB to ST4");
+	INDIGO_REGISER_MATCH_PATTERNS(mount_guider_template, patterns, 1);
 
 	SET_DRIVER_INFO(info, "CG-USB-ST4 Adapter", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
