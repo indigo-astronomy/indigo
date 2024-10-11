@@ -544,8 +544,8 @@ indigo_result indigo_focuser_dmfc(indigo_driver_action action, indigo_driver_inf
 	static indigo_device_match_pattern patterns[2] = { 0 };
 	strcpy(patterns[0].vendor_string, "Pegasus Astro");
 	strcpy(patterns[0].product_string, "DMFC");
-	strcpy(patterns[0].vendor_string, "Pegasus Astro");
-	strcpy(patterns[0].product_string, "FocusCube");
+	strcpy(patterns[1].vendor_string, "Pegasus Astro");
+	strcpy(patterns[1].product_string, "FocusCube");
 	INDIGO_REGISER_MATCH_PATTERNS(focuser_template, patterns, 2);
 
 
