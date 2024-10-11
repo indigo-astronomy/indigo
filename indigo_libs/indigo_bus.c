@@ -182,13 +182,13 @@ void indigo_log_base(indigo_log_levels level, const char *format, va_list args) 
 	}
 	vsnprintf(indigo_last_message, LOG_MESSAGE_SIZE, format, args);
 	char *line = indigo_last_message;
-	char prefix[16] = { 0 };
+	char prefix[32] = { 0 };
 	char *arrow = strstr(line, " -> ");
-	if (arrow && arrow - line < 16) {
+	if (arrow && arrow - line < 28) {
 		strncpy(prefix, line, arrow - line + 4);
 	} else {
 		arrow = strstr(line, " <- ");
-		if (arrow && arrow - line < 16) {
+		if (arrow && arrow - line < 28) {
 			strncpy(prefix, line, arrow - line + 4);
 		}
 	}
