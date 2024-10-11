@@ -24,7 +24,7 @@
  \file indigo_mount_nexstar.c
  */
 
-#define DRIVER_VERSION 0x001D
+#define DRIVER_VERSION 0x001E
 #define DRIVER_NAME	"indigo_mount_nexstar"
 
 #include <stdlib.h>
@@ -1322,6 +1322,11 @@ indigo_result indigo_mount_nexstar(indigo_driver_action action, indigo_driver_in
 	);
 
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
+
+	static indigo_device_match_pattern patterns[1] = { 0 };
+	strcpy(patterns[0].vendor_string, "Prolific");
+	strcpy(patterns[0].product_string, "USB-Serial Controller D");
+	INDIGO_REGISER_MATCH_PATTERNS(mount_template, patterns, 1);
 
 	SET_DRIVER_INFO(info, "Nexstar Mount", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
