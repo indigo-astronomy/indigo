@@ -493,7 +493,7 @@ static void stop_lx200_server(indigo_device *device) {
 	}
 }
 
-static void abort_image_process(indigo_device *device, char *reason) {
+static void abort_imager_process(indigo_device *device, char *reason) {
 	if (!AGENT_ABORT_IMAGER_ITEM->sw.value)
 		return;
 	indigo_send_message(device, "Aborting Imager agent process due to %s", reason);
@@ -731,7 +731,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		}
 		if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state != INDIGO_BUSY_STATE && property->state == INDIGO_BUSY_STATE) {
-			abort_imager_project(device, "slewing");
+			abort_imager_process(device, "slewing");
 			abort_guider_process(device, "slewing");
 		}
 		if (CLIENT_PRIVATE_DATA->mount_eq_coordinates_state == INDIGO_BUSY_STATE && property->state != INDIGO_BUSY_STATE) {
