@@ -1646,12 +1646,79 @@ static void handle_guider_connection_property(indigo_device *device) {
 }
 
 
+static void handle_guide_dec(indigo_device *device) {
+	ASI_ERROR_CODE res;
+
+	indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
+	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+	if (duration > 0) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = ASIPulseGuideOn(PRIVATE_DATA->dev_id, ASI_GUIDE_NORTH);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", PRIVATE_DATA->dev_id, res);
+		indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
+		PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
+	} else {
+		int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+		if (duration > 0) {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			res = ASIPulseGuideOn(PRIVATE_DATA->dev_id, ASI_GUIDE_SOUTH);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", PRIVATE_DATA->dev_id, res);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
+			PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
+		}
+	}
+
+	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH]) {
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+}
+
+
+static void handle_guide_ra(indigo_device *device) {
+	ASI_ERROR_CODE res;
+
+	indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
+	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+	if (duration > 0) {
+		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+		res = ASIPulseGuideOn(PRIVATE_DATA->dev_id, ASI_GUIDE_EAST);
+		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", PRIVATE_DATA->dev_id, res);
+		indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
+		PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
+	} else {
+		int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+		if (duration > 0) {
+			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
+			res = ASIPulseGuideOn(PRIVATE_DATA->dev_id, ASI_GUIDE_WEST);
+			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
+
+			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", PRIVATE_DATA->dev_id, res);
+			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
+			PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
+		}
+	}
+
+	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST]) {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
+	} else {
+		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
+	}
+	indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+}
+
 static indigo_result guider_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
-	ASI_ERROR_CODE res;
-	int id = PRIVATE_DATA->dev_id;
 
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
@@ -1665,68 +1732,14 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_DEC_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_DEC
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
-		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = ASIPulseGuideOn(id, ASI_GUIDE_NORTH);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_NORTH) = %d", id, res);
-			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
-			PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] = true;
-		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
-			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = ASIPulseGuideOn(id, ASI_GUIDE_SOUTH);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_SOUTH) = %d", id, res);
-				indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
-				PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] = true;
-			}
-		}
-
-		if (PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH])
-			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
-			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-
-		indigo_update_property(device, GUIDER_GUIDE_DEC_PROPERTY, NULL);
+		indigo_set_timer(device, 0, handle_guide_dec, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GUIDER_GUIDE_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- GUIDER_GUIDE_RA
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
-		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
-		if (duration > 0) {
-			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-			res = ASIPulseGuideOn(id, ASI_GUIDE_EAST);
-			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 
-			if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_EAST) = %d", id, res);
-			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
-			PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] = true;
-		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
-			if (duration > 0) {
-				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
-				res = ASIPulseGuideOn(id, ASI_GUIDE_WEST);
-				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
-				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASIPulseGuideOn(%d, ASI_GUIDE_WEST) = %d", id, res);
-				indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
-				PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST] = true;
-			}
-		}
-
-		if (PRIVATE_DATA->guide_relays[ASI_GUIDE_EAST] || PRIVATE_DATA->guide_relays[ASI_GUIDE_WEST])
-			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
-		else
-			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-
-		indigo_update_property(device, GUIDER_GUIDE_RA_PROPERTY, NULL);
+		indigo_set_timer(device, 0, handle_guide_ra, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
