@@ -1,5 +1,5 @@
 # Basics of INDIGO Client Development
-Revision: 29.06.2024 (draft)
+Revision: 13.10.2024 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -351,6 +351,13 @@ INDIGO framework can operate in an environment without a server. In this case th
 2. [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c) - Example of serverless operation using dynamic INDIGO driver.
 
 The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, only the the remote server example shown below can work on all supported operating systems. The two examples above can work only on Linux and MacOSX. The reason for this is that INDIGO drivers can run only on Linux and MacOSX but not on Windows.
+
+It is important to note a key consideration regarding the dynamic or static driver linking by the client. Functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)). To facilitate this, several functions are provided:
+
+- *indigo_handle_property_async()* - Executes a callback in a new thread, receiving pointers to *indigo_device*, *indigo_client*, and *indigo_property* as parameters.
+- *indigo_async()* - Executes a callback in a new thread without parameters.
+- *indigo_set_timer()* - Executes a callback in a separate thread after a delay. The callback receives a pointer to *indigo_device*.
+- *indigo_set_timer_with_data()* - Executes a callback in a separate thread after a delay. The callback receives a pointer to *indigo_device* and a *void* pointer to the provided user data.
 
 ## INDIGO service Discovery
 INDIGO server provides automatic service discovery using mDNS/DNS-SD (known as Bonjour in Apple ecosystem, and Avahi on Linux). This makes it easy for the client to identify INDIGO services. The INDIGO services can by identified by **_indigo._tcp**.
