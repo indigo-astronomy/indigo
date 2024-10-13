@@ -180,6 +180,14 @@ Sequence.prototype.capture_stream = function(name_template, count, exposure) {
 	this.sequence.push({ execute: 'capture_stream()', step: this.step++ });
 };
 
+Sequence.prototype.set_manual_focuser_mode = function(exposure) {
+	this.sequence.push({ execute: 'set_focuser_mode("MANUAL")', step: this.step++ });
+}
+
+Sequence.prototype.set_automatic_focuser_mode = function(exposure) {
+	this.sequence.push({ execute: 'set_focuser_mode("AUTOMATIC")', step: this.step++ });
+}
+
 Sequence.prototype.focus = function(exposure) {
 	this.sequence.push({ execute: 'save_batch()', step: this.step });
 	this.sequence.push({ execute: 'set_batch(1,' + exposure + ', 0)', step: this.step });
@@ -1089,6 +1097,16 @@ var indigo_sequencer = {
 		}
 	},
 
+	set_focuser_mode: function(mode) {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].AGENT_START_PROCESS;
+		if (property != null) {
+			this.select_switch(agent, "FOCUSER_MODE", mode);
+		} else {
+			this.failure("Can't change focuser mode");
+		}
+	},
+	
 	focus: function() {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
