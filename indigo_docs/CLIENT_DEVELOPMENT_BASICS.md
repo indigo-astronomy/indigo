@@ -249,6 +249,42 @@ indigo_change_switch_property(
 
 The above code snippet requests the CCD driver to change the image format in to FITS by setting the fits switch item to true.
 
+### Handling Properties Asynchronously
+
+In some casess properties should be hangled asynchronoysly. In case of dynamic or static driver linking by the client and you need to send a change request. Functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)). To facilitate this, several functions are provided:
+
+In some cases, properties should be handled asynchronously. When dynamically or statically linking a driver by the client, and you need to send a change request, functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)). To facilitate this, several functions are provided:
+
+- *indigo_handle_property_async()* - Executes a callback in a new thread, receiving pointers to *indigo_device*, *indigo_client*, and *indigo_property* as parameters.
+- *indigo_async()* - Executes a callback in a new thread without parameters.
+- *indigo_set_timer()* - Executes a callback in a separate thread after a delay. The callback receives a pointer to *indigo_device*.
+- *indigo_set_timer_with_data()* - Executes a callback in a separate thread after a delay. The callback receives a pointer to *indigo_device* and a *void* pointer to the provided user data.
+
+Here is an example code:
+
+```C
+static void start_exposure(indigo_device *device, indigo_client *client, indigo_property *property) {
+	(void*)(device);
+	(void*)(property);
+	static const char * items[] = { CCD_EXPOSURE_ITEM_NAME };
+	static const double values[] = { 3.0 };
+	indigo_change_number_property(client, CCD_SIMULATOR, CCD_EXPOSURE_PROPERTY_NAME, 1, items, values);
+}
+
+static indigo_result client_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	...
+	if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+		if (property->state == INDIGO_OK_STATE) {
+			...
+			indigo_handle_property_async(start_exposure, device, client, NULL);
+		}
+	}
+	...
+	return INDIGO_OK;
+}
+```
+It is important to note that *client*, *device*, and *property* objects may be invalidated during the execution of *start_exposure()*. It is the developer's responsibility to ensure proper synchronization of threads to handle these potential invalidations.
+
 ### Value vs Target in the Numeric Properties
 The items of the numeric INDIGO properties have several fields like *min*, *max* etc. However the most used are *target* and *value*. If a client requests a value change, the update response from the driver will have the requested value stored in *target* and the *value* set to the current value (as read from the device). For example if the client requests CCD to be cooled to -20<sup>0</sup>C and the current CCD temperature is +10<sup>0</sup>C, the property update to the client will have *target* set to -20<sup>0</sup>C and *value* set to +10<sup>0</sup>C.
 
@@ -352,12 +388,7 @@ INDIGO framework can operate in an environment without a server. In this case th
 
 The main difference, in terms of code, between the examples above and the *INDIGO Imaging Client - Example*, shown below, is the *main()* function. In terms of supported platforms, only the the remote server example shown below can work on all supported operating systems. The two examples above can work only on Linux and MacOSX. The reason for this is that INDIGO drivers can run only on Linux and MacOSX but not on Windows.
 
-It is important to note a key consideration regarding the dynamic or static driver linking by the client. Functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)). To facilitate this, several functions are provided:
-
-- *indigo_handle_property_async()* - Executes a callback in a new thread, receiving pointers to *indigo_device*, *indigo_client*, and *indigo_property* as parameters.
-- *indigo_async()* - Executes a callback in a new thread without parameters.
-- *indigo_set_timer()* - Executes a callback in a separate thread after a delay. The callback receives a pointer to *indigo_device*.
-- *indigo_set_timer_with_data()* - Executes a callback in a separate thread after a delay. The callback receives a pointer to *indigo_device* and a *void* pointer to the provided user data.
+It is important to note a key consideration regarding the dynamic or static driver linking by the client. Functions that send property change requests, such as *indigo_change_number_property()*, cannot be called directly from the property handler callbacks. These functions must be called asynchronously as described in [Handling Properties Asynchronously](#handling-properties-asynchronously) (see [indigo_examples/dynamic_driver_client.c](https://github.com/indigo-astronomy/indigo/blob/master/indigo_examples/dynamic_driver_client.c)).
 
 ## INDIGO service Discovery
 INDIGO server provides automatic service discovery using mDNS/DNS-SD (known as Bonjour in Apple ecosystem, and Avahi on Linux). This makes it easy for the client to identify INDIGO services. The INDIGO services can by identified by **_indigo._tcp**.
