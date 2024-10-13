@@ -64,7 +64,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 		if (indigo_get_switch(property, CONNECTION_CONNECTED_ITEM_NAME)) {
 			connected = true;
 			indigo_log("already connected...");
-			indigo_handle_property_async(start_exposure, device, client, property);
+			indigo_handle_property_async(start_exposure, device, client, NULL);
 		} else {
 			indigo_device_connect(client, CCD_SIMULATOR);
 			return INDIGO_OK;
@@ -78,7 +78,7 @@ static indigo_result client_define_property(indigo_client *client, indigo_device
 	}
 	if (!strcmp(property->name, CCD_IMAGE_FORMAT_PROPERTY_NAME)) {
 		static const char * items[] = { CCD_IMAGE_FORMAT_FITS_ITEM_NAME };
-		indigo_handle_property_async(set_image_format, device, client, property);
+		indigo_handle_property_async(set_image_format, device, client, NULL);
 	}
 	return INDIGO_OK;
 }
@@ -92,7 +92,7 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 			if (!connected) {
 				connected = true;
 				indigo_log("connected...");
-				indigo_handle_property_async(start_exposure, device, client, property);
+				indigo_handle_property_async(start_exposure, device, client, NULL);
 			}
 		} else {
 			if (connected) {
@@ -128,7 +128,7 @@ static indigo_result client_update_property(indigo_client *client, indigo_device
 		} else if (property->state == INDIGO_OK_STATE) {
 			indigo_log("exposure done...");
 			if (--count > 0) {
-				indigo_handle_property_async(start_exposure, device, client, property);
+				indigo_handle_property_async(start_exposure, device, client, NULL);
 			} else {
 				indigo_device_disconnect(client, CCD_SIMULATOR);
 			}
