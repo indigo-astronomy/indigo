@@ -368,7 +368,7 @@ static void select_subframe(indigo_device *device) {
 		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		return;
 	}
-	if (AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] != 0 && DEVICE_PRIVATE_DATA->saved_frame[3]) {
+	if (AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] == 0 && DEVICE_PRIVATE_DATA->saved_frame[3] == 0) {
 		int bin_x = DEVICE_PRIVATE_DATA->bin_x;
 		int bin_y = DEVICE_PRIVATE_DATA->bin_y;
 		selection_x += DEVICE_PRIVATE_DATA->frame[0] / bin_x; // left
@@ -401,7 +401,7 @@ static void select_subframe(indigo_device *device) {
 }
 
 static void restore_subframe(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->saved_frame[2] != 0 && DEVICE_PRIVATE_DATA->saved_frame[3]) {
+	if (DEVICE_PRIVATE_DATA->saved_frame[2] != 0 && DEVICE_PRIVATE_DATA->saved_frame[3] != 0) {
 		static const char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, CCD_FRAME_PROPERTY_NAME, 4, (const char **)names, DEVICE_PRIVATE_DATA->saved_frame);
 		memset(DEVICE_PRIVATE_DATA->saved_frame, 0, 4 * sizeof(double));
@@ -3355,6 +3355,19 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			if (item->sw.value) {
 				DEVICE_PRIVATE_DATA->light_frame = strcmp(item->name, CCD_FRAME_TYPE_LIGHT_ITEM_NAME) == 0;
 				break;
+			}
+		}
+	} else if (!strcmp(property->name, CCD_FRAME_PROPERTY_NAME)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME) == 0) {
+				DEVICE_PRIVATE_DATA->frame[0] = item->number.value;
+			} else if (strcmp(item->name, CCD_FRAME_TOP_ITEM_NAME) == 0) {
+				DEVICE_PRIVATE_DATA->frame[1] = item->number.value;
+			} else if (strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME) == 0) {
+				DEVICE_PRIVATE_DATA->frame[2] = item->number.value;
+			} else if (strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME) == 0) {
+				DEVICE_PRIVATE_DATA->frame[3] = item->number.value;
 			}
 		}
 	} else if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
