@@ -490,12 +490,11 @@ static bool select_stars(indigo_device *device) {
 	return star_count > 0;
 }
 
-static void select_subframe(indigo_device *device) {
+static bool select_subframe(indigo_device *device) {
 	int selection_x = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
 	int selection_y = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
 	if (selection_x == 0 || selection_y == 0) {
-		AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-		return;
+		return false;
 	}
 	if (AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] == 0 && DEVICE_PRIVATE_DATA->saved_frame[3] == 0) {
 		int bin_x = DEVICE_PRIVATE_DATA->bin_x;
@@ -526,7 +525,9 @@ static void select_subframe(indigo_device *device) {
 		static const char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 		double values[] = { frame_left * bin_x, frame_top * bin_y,  frame_width * bin_x, frame_height * bin_y };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, CCD_FRAME_PROPERTY_NAME, 4, (const char **)names, values);
+		return true;
 	}
+	return false;
 }
 
 static void restore_subframe(indigo_device *device) {
@@ -1919,7 +1920,9 @@ static bool autofocus_repeat(indigo_device *device) {
 				}
 			}
 			if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
-				select_subframe(device);
+				if (!select_subframe(device)) {
+					indigo_send_message(device, "Warning: Failed to select subframe.");
+				}
 			}
 		}
 		result = autofocus(device);
