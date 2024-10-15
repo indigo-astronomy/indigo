@@ -1941,10 +1941,10 @@ static bool autofocus_repeat(indigo_device *device) {
 			repeat_delay *= 2;
 		}
 	}
+	restore_subframe(device);
 	restore_switch_state(device, FOCUSER_MODE_PROPERTY_NAME, focuser_mode);
 	restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
-	restore_subframe(device);
 	AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	return result;
