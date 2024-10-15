@@ -48,8 +48,8 @@
 
 #include "indigo_agent_mount.h"
 
-#define DEVICE_PRIVATE_DATA														((agent_private_data *)device->private_data)
-#define CLIENT_PRIVATE_DATA														((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
+#define DEVICE_PRIVATE_DATA														((mount_agent_private_data *)device->private_data)
+#define CLIENT_PRIVATE_DATA														((mount_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
 #define AGENT_GEOGRAPHIC_COORDINATES_PROPERTY					(DEVICE_PRIVATE_DATA->agent_geographic_property)
 #define AGENT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM  	(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY->items+0)
@@ -150,7 +150,7 @@ typedef struct {
 	bool mount_unparked;
 	bool dome_unparked;
 	pthread_mutex_t mutex;
-} agent_private_data;
+} mount_agent_private_data;
 
 typedef struct {
 	int client_socket;
@@ -1221,7 +1221,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 
 // -------------------------------------------------------------------------------- Initialization
 
-static agent_private_data *private_data = NULL;
+static mount_agent_private_data *private_data = NULL;
 
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
@@ -1256,7 +1256,7 @@ indigo_result indigo_agent_mount(indigo_driver_action action, indigo_driver_info
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(agent_private_data));
+			private_data = indigo_safe_malloc(sizeof(mount_agent_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);

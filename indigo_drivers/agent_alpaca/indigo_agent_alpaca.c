@@ -62,9 +62,9 @@ typedef struct {
 	indigo_property *devices_property;
 	indigo_timer *discovery_server_timer;
 	pthread_mutex_t mutex;
-} agent_private_data;
+} alpaca_agent_private_data;
 
-static agent_private_data *private_data = NULL;
+static alpaca_agent_private_data *private_data = NULL;
 
 static int discovery_server_socket = 0;
 static indigo_alpaca_device *alpaca_devices = NULL;
@@ -656,7 +656,7 @@ indigo_result indigo_agent_alpaca(indigo_driver_action action, indigo_driver_inf
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(agent_private_data));
+			private_data = indigo_safe_malloc(sizeof(alpaca_agent_private_data));
 			indigo_agent_alpaca_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			indigo_agent_alpaca_device->private_data = private_data;
 			indigo_agent_alpaca_client = indigo_safe_malloc_copy(sizeof(indigo_client), &agent_client_template);

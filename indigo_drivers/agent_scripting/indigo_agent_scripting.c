@@ -88,9 +88,9 @@ typedef struct {
 	indigo_timer *timers[MAX_TIMER_COUNT];
 	duk_context *ctx;
 	pthread_mutex_t mutex;
-} agent_private_data;
+} scripting_agent_private_data;
 
-static agent_private_data *private_data = NULL;
+static scripting_agent_private_data *private_data = NULL;
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
 
@@ -1352,7 +1352,7 @@ indigo_result indigo_agent_scripting(indigo_driver_action action, indigo_driver_
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(agent_private_data));
+			private_data = indigo_safe_malloc(sizeof(scripting_agent_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
