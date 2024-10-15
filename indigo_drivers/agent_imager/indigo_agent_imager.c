@@ -494,6 +494,7 @@ static bool select_subframe(indigo_device *device) {
 	int selection_x = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
 	int selection_y = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
 	if (selection_x == 0 || selection_y == 0) {
+		indigo_send_message(device, "Warning: Failed to select subframe.");
 		return false;
 	}
 	if (AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] == 0 && DEVICE_PRIVATE_DATA->saved_frame[3] == 0) {
@@ -1920,9 +1921,7 @@ static bool autofocus_repeat(indigo_device *device) {
 				}
 			}
 			if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
-				if (!select_subframe(device)) {
-					indigo_send_message(device, "Warning: Failed to select subframe.");
-				}
+				select_subframe(device);
 			}
 		}
 		result = autofocus(device);
