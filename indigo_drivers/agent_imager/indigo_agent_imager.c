@@ -1917,7 +1917,6 @@ static bool autofocus_repeat(indigo_device *device) {
 				}
 				if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 					result = select_stars(device);
-					AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
 			}
 			if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
