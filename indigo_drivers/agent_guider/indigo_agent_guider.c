@@ -54,8 +54,8 @@
 
 #define SAFE_RADIUS_FACTOR (0.9)   /* factor to multiply SELECTION_RADIUS in which the star will not be lost */
 
-#define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
-#define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
+#define DEVICE_PRIVATE_DATA										((guider_agent_private_data *)device->private_data)
+#define CLIENT_PRIVATE_DATA										((guider_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
 #define AGENT_GUIDER_DETECTION_MODE_PROPERTY	(DEVICE_PRIVATE_DATA->agent_guider_detection_mode_property)
 #define AGENT_GUIDER_DETECTION_SELECTION_ITEM 	(AGENT_GUIDER_DETECTION_MODE_PROPERTY->items+0)
@@ -224,7 +224,7 @@ typedef struct {
 	pthread_mutex_t mutex;
 	int log_file;
 	char log_file_name[PATH_MAX];
-} agent_private_data;
+} guider_agent_private_data;
 
 static char default_log_path[PATH_MAX] = { 0 };
 
@@ -2128,7 +2128,20 @@ static indigo_result agent_device_detach(indigo_device *device) {
 
 static indigo_result agent_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
 	if (device == FILTER_CLIENT_CONTEXT->device) {
-		snoop_changes(client, device, property);
+		if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
+						CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+					} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
+						CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+					}
+				}
+			}
+		} else {
+			snoop_changes(client, device, property);
+		}
 	}
 	return indigo_filter_define_property(client, device, property, message);
 }
@@ -2149,6 +2162,27 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					CLIENT_PRIVATE_DATA->last_image_size = 0;
 				}
 			}
+		} else if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
+			double ratio_x = 1, ratio_y = 1;
+			if (property->state == INDIGO_OK_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
+						ratio_x = CLIENT_PRIVATE_DATA->bin_x / item->number.target;
+						CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+					} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
+						ratio_y = CLIENT_PRIVATE_DATA->bin_y / item->number.target;
+						CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+					}
+				}
+				if (ratio_x == ratio_y) {
+					AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value = AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.target *= ratio_x;
+					AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.value = AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->number.target *= ratio_x;
+					indigo_update_property(FILTER_CLIENT_CONTEXT->device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+				} else {
+					indigo_send_message(device, "Automatic adjustment of '%s' and '%s' is not supported for asymmetric binning change", AGENT_GUIDER_SELECTION_RADIUS_ITEM->label, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->label);
+				}
+			}
 		} else {
 			snoop_changes(client, device, property);
 		}
@@ -2158,7 +2192,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 
 // -------------------------------------------------------------------------------- Initialization
 
-static agent_private_data *private_data = NULL;
+static guider_agent_private_data *private_data = NULL;
 
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
@@ -2193,7 +2227,7 @@ indigo_result indigo_agent_guider(indigo_driver_action action, indigo_driver_inf
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(agent_private_data));
+			private_data = indigo_safe_malloc(sizeof(guider_agent_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
