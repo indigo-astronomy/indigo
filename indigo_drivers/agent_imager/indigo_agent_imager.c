@@ -370,7 +370,7 @@ static bool capture_frame(indigo_device *device) {
 		while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			indigo_usleep(200000);
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-			return INDIGO_ALERT_STATE;
+			return false;
 		if (DEVICE_PRIVATE_DATA->use_aux_1) {
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0);
 			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, "AUX_1_" CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target);
@@ -388,7 +388,7 @@ static bool capture_frame(indigo_device *device) {
 			}
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-			return INDIGO_ALERT_STATE;
+			return false;
 		if (state != INDIGO_BUSY_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE didn't become busy in %d second(s)", BUSY_TIMEOUT);
 			indigo_usleep(ONE_SECOND_DELAY);
@@ -399,7 +399,7 @@ static bool capture_frame(indigo_device *device) {
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		while ((state = DEVICE_PRIVATE_DATA->exposure_state) == INDIGO_BUSY_STATE) {
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-				return INDIGO_ALERT_STATE;
+				return false;
 			if (remaining_exposure_time != DEVICE_PRIVATE_DATA->remaining_exposure_time) {
 				AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = remaining_exposure_time = DEVICE_PRIVATE_DATA->remaining_exposure_time;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
@@ -419,7 +419,7 @@ static bool capture_frame(indigo_device *device) {
 			}
 		}
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-			return INDIGO_ALERT_STATE;
+			return false;
 		if (state != INDIGO_OK_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 			indigo_usleep(ONE_SECOND_DELAY);
@@ -428,7 +428,7 @@ static bool capture_frame(indigo_device *device) {
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 			indigo_send_message(device, "RAW image not received");
-			return INDIGO_ALERT_STATE;
+			return false;
 		}
 		/* This is potentially bayered image, if so we need to equalize the channels */
 		if (indigo_is_bayered_image(header, DEVICE_PRIVATE_DATA->last_image_size)) {
@@ -644,7 +644,7 @@ static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
 
 static void preview_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
+	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = AGENT_IMAGER_STATS_DELAY_ITEM->number.value = AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_STATS_FRAME_ITEM->number.value = AGENT_IMAGER_STATS_FWHM_ITEM->number.value = AGENT_IMAGER_STATS_PEAK_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	clear_hfd_stats(device);
@@ -1903,7 +1903,7 @@ static bool autofocus(indigo_device *device) {
 
 static bool autofocus_repeat(indigo_device *device) {
 	int focuser_mode = save_switch_state(device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
-	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
+	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	DEVICE_PRIVATE_DATA->restore_initial_position = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value ? false : AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM->sw.value;
 	bool result = true;
@@ -2455,7 +2455,7 @@ static void sequence_process(indigo_device *device) {
 
 static void find_stars_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, NULL);
+	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 	disable_solver(device);
