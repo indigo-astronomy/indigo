@@ -544,7 +544,10 @@ static void restore_subframe(indigo_device *device) {
 		indigo_usleep(0.5 * ONE_SECOND_DELAY);
 		/* TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
 			 but selection property should not be updated. */
+		indigo_property_state state = AGENT_ABORT_PROCESS_PROPERTY->state;
+		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		capture_frame(device);
+		AGENT_ABORT_PROCESS_PROPERTY->state = state;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
 		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
