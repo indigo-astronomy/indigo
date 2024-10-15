@@ -48,8 +48,8 @@
 
 #include "indigo_agent_imager.h"
 
-#define DEVICE_PRIVATE_DATA										((agent_private_data *)device->private_data)
-#define CLIENT_PRIVATE_DATA										((agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
+#define DEVICE_PRIVATE_DATA										((imager_agent_private_data *)device->private_data)
+#define CLIENT_PRIVATE_DATA										((imager_agent_private_data *)FILTER_CLIENT_CONTEXT->device->private_data)
 
 #define AGENT_IMAGER_BATCH_PROPERTY						(DEVICE_PRIVATE_DATA->agent_imager_batch_property)
 #define AGENT_IMAGER_BATCH_COUNT_ITEM    			(AGENT_IMAGER_BATCH_PROPERTY->items+0)
@@ -246,7 +246,7 @@ typedef struct {
 	double solver_goto_ra;
 	double solver_goto_dec;
 	double ra, dec, latitude, longitude, time_to_transit;
-} agent_private_data;
+} imager_agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
 
@@ -3611,7 +3611,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 
 // -------------------------------------------------------------------------------- Initialization
 
-static agent_private_data *private_data = NULL;
+static imager_agent_private_data *private_data = NULL;
 
 static indigo_device *agent_device = NULL;
 static indigo_client *agent_client = NULL;
@@ -3646,7 +3646,7 @@ indigo_result indigo_agent_imager(indigo_driver_action action, indigo_driver_inf
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
-			private_data = indigo_safe_malloc(sizeof(agent_private_data));
+			private_data = indigo_safe_malloc(sizeof(imager_agent_private_data));
 			agent_device = indigo_safe_malloc_copy(sizeof(indigo_device), &agent_device_template);
 			agent_device->private_data = private_data;
 			indigo_attach_device(agent_device);
