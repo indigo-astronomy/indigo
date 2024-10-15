@@ -191,7 +191,14 @@ Sequence.prototype.set_automatic_focuser_mode = function(exposure) {
 Sequence.prototype.focus = function(exposure) {
 	this.sequence.push({ execute: 'save_batch()', step: this.step });
 	this.sequence.push({ execute: 'set_batch(1,' + exposure + ', 0)', step: this.step });
-	this.sequence.push({ execute: 'focus()', step: this.step });
+	this.sequence.push({ execute: 'focus(false)', step: this.step });
+	this.sequence.push({ execute: 'restore_batch()', step: this.step++ });
+};
+
+Sequence.prototype.focus_ignore_failure = function(exposure) {
+	this.sequence.push({ execute: 'save_batch()', step: this.step });
+	this.sequence.push({ execute: 'set_batch(1,' + exposure + ', 0)', step: this.step });
+	this.sequence.push({ execute: 'focus(true)', step: this.step });
 	this.sequence.push({ execute: 'restore_batch()', step: this.step++ });
 };
 
@@ -368,6 +375,7 @@ var indigo_sequencer = {
 	wait_for_item: null,
 	wait_for_value: null,
 	wait_for_timer: null,
+	ignore_failure: false,
 	use_solver: false,
 	
 	on_update: function(property) {
@@ -387,7 +395,8 @@ var indigo_sequencer = {
 				this.wait_for_name = null;
 				this.wait_for_item = null;
 				this.wait_for_value = null;
-				if (property.state == "Ok") {
+				if (property.state == "Ok" || this.ignore_failure) {
+					this.ignore_failure = true;
 					indigo_set_timer(indigo_sequencer_next_handler, 0);
 				} else if (property.state == "Alert") {
 					this.failure("Sequence failed");
@@ -1107,10 +1116,11 @@ var indigo_sequencer = {
 		}
 	},
 	
-	focus: function() {
+	focus: function(ignore_failure) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {
+			this.ignore_failure = ignore_failure;
 			this.select_switch(agent, "AGENT_START_PROCESS", "FOCUSING");
 		} else {
 			this.failure("Can't focus");
