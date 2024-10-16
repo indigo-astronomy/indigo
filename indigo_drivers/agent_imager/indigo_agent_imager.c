@@ -214,7 +214,8 @@ typedef struct {
 	int bin_x, bin_y;
 	double frame[4];
 	double saved_frame[4];
-	double saved_frame_left, saved_frame_top;
+	double saved_selection_x, saved_selection_y;
+	bool autosubframing;
 	bool light_frame;
 	indigo_property_state steps_state;
 	char current_folder[INDIGO_VALUE_SIZE];
@@ -498,6 +499,10 @@ static bool select_subframe(indigo_device *device) {
 		return false;
 	}
 	if (AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value && DEVICE_PRIVATE_DATA->saved_frame[2] == 0 && DEVICE_PRIVATE_DATA->saved_frame[3] == 0) {
+		DEVICE_PRIVATE_DATA->autosubframing = true;
+		DEVICE_PRIVATE_DATA->saved_selection_x = selection_x;
+		DEVICE_PRIVATE_DATA->saved_selection_y = selection_y;
+		memcpy(DEVICE_PRIVATE_DATA->saved_frame, DEVICE_PRIVATE_DATA->frame, 4 * sizeof(double));
 		int bin_x = DEVICE_PRIVATE_DATA->bin_x;
 		int bin_y = DEVICE_PRIVATE_DATA->bin_y;
 		selection_x += DEVICE_PRIVATE_DATA->frame[0] / bin_x; // left
@@ -513,8 +518,6 @@ static bool select_subframe(indigo_device *device) {
 			frame_top -= GRID;
 		int frame_width = (2 * window_size / GRID + 1) * GRID;
 		int frame_height = (2 * window_size / GRID + 1) * GRID;
-		DEVICE_PRIVATE_DATA->saved_frame_left = frame_left;
-		DEVICE_PRIVATE_DATA->saved_frame_top = frame_top;
 		AGENT_IMAGER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.value = selection_y -= frame_top;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
@@ -522,7 +525,6 @@ static bool select_subframe(indigo_device *device) {
 			frame_width += GRID;
 		if (frame_height - selection_y < AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value)
 			frame_height += GRID;
-		memcpy(DEVICE_PRIVATE_DATA->saved_frame, DEVICE_PRIVATE_DATA->frame, 4 * sizeof(double));
 		static const char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 		double values[] = { frame_left * bin_x, frame_top * bin_y,  frame_width * bin_x, frame_height * bin_y };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, CCD_FRAME_PROPERTY_NAME, 4, (const char **)names, values);
@@ -532,14 +534,12 @@ static bool select_subframe(indigo_device *device) {
 }
 
 static void restore_subframe(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->saved_frame[2] != 0 && DEVICE_PRIVATE_DATA->saved_frame[3] != 0) {
+	if (DEVICE_PRIVATE_DATA->autosubframing) {
 		static const char *names[] = { CCD_FRAME_LEFT_ITEM_NAME, CCD_FRAME_TOP_ITEM_NAME, CCD_FRAME_WIDTH_ITEM_NAME, CCD_FRAME_HEIGHT_ITEM_NAME };
 		indigo_change_number_property(FILTER_DEVICE_CONTEXT->client, device->name, CCD_FRAME_PROPERTY_NAME, 4, (const char **)names, DEVICE_PRIVATE_DATA->saved_frame);
 		memset(DEVICE_PRIVATE_DATA->saved_frame, 0, 4 * sizeof(double));
-		AGENT_IMAGER_SELECTION_X_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_left;
-		AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
-		AGENT_IMAGER_SELECTION_Y_ITEM->number.value += DEVICE_PRIVATE_DATA->saved_frame_top;
-		AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
+		AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_x;
+		AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_y;
 		/* TRICKY: No idea why but this prevents ensures frame to be restored correctly */
 		indigo_usleep(0.5 * ONE_SECOND_DELAY);
 		/* TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
@@ -549,8 +549,9 @@ static void restore_subframe(indigo_device *device) {
 		capture_frame(device);
 		AGENT_ABORT_PROCESS_PROPERTY->state = state;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-		DEVICE_PRIVATE_DATA->saved_frame_left = 0;
-		DEVICE_PRIVATE_DATA->saved_frame_top = 0;
+		DEVICE_PRIVATE_DATA->saved_selection_x = 0;
+		DEVICE_PRIVATE_DATA->saved_selection_y = 0;
+		DEVICE_PRIVATE_DATA->autosubframing = false;
 	}
 }
 
@@ -664,7 +665,6 @@ static void preview_process(indigo_device *device) {
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
 	}
-	restore_subframe(device);
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 	restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
@@ -1977,19 +1977,23 @@ static void autofocus_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = false;
 }
 
+static void clear_selection(indigo_device *device) {
+	if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
+	indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+	 AGENT_IMAGER_STARS_PROPERTY->count = 1;
+	 indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+ }
+ indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+ for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
+	 indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
+	 item->number.value = item->number.target = 0;
+ }
+ indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+}
+
 static void clear_selection_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
-		indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-		AGENT_IMAGER_STARS_PROPERTY->count = 1;
-		indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	}
-	indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
-		indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
-		item->number.value = item->number.target = 0;
-	}
-	indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+	clear_selection(device);
 	AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
@@ -3358,16 +3362,34 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			}
 		}
 	} else if (!strcmp(property->name, CCD_FRAME_PROPERTY_NAME)) {
-		for (int i = 0; i < property->count; i++) {
-			indigo_item *item = property->items + i;
-			if (strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME) == 0) {
-				DEVICE_PRIVATE_DATA->frame[0] = item->number.value;
-			} else if (strcmp(item->name, CCD_FRAME_TOP_ITEM_NAME) == 0) {
-				DEVICE_PRIVATE_DATA->frame[1] = item->number.value;
-			} else if (strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME) == 0) {
-				DEVICE_PRIVATE_DATA->frame[2] = item->number.value;
-			} else if (strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME) == 0) {
-				DEVICE_PRIVATE_DATA->frame[3] = item->number.value;
+		if (!DEVICE_PRIVATE_DATA->autosubframing) {
+			bool reset_selection = false;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (strcmp(item->name, CCD_FRAME_LEFT_ITEM_NAME) == 0) {
+					if (DEVICE_PRIVATE_DATA->frame[0] != item->number.value) {
+						DEVICE_PRIVATE_DATA->frame[0] = item->number.value;
+						reset_selection = true;
+					}
+				} else if (strcmp(item->name, CCD_FRAME_TOP_ITEM_NAME) == 0) {
+					if (DEVICE_PRIVATE_DATA->frame[1] != item->number.value) {
+						DEVICE_PRIVATE_DATA->frame[1] = item->number.value;
+						reset_selection = true;
+					}
+				} else if (strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME) == 0) {
+					if (DEVICE_PRIVATE_DATA->frame[2] != item->number.value) {
+						DEVICE_PRIVATE_DATA->frame[2] = item->number.value;
+						reset_selection = true;
+					}
+				} else if (strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME) == 0) {
+					if (DEVICE_PRIVATE_DATA->frame[3] != item->number.value) {
+						DEVICE_PRIVATE_DATA->frame[3] = item->number.value;
+						reset_selection = true;
+					}
+				}
+			}
+			if (reset_selection) {
+				clear_selection(device);
 			}
 		}
 	} else if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
