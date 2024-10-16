@@ -820,10 +820,7 @@ static void restore_subframe(indigo_device *device) {
 		memset(DEVICE_PRIVATE_DATA->saved_frame, 0, 4 * sizeof(double));
 		AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_x;
 		AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_y;
-		/* TRICKY: No idea why but this prevents ensures frame to be restored correctly */
-		indigo_usleep(0.5 * ONE_SECOND_DELAY);
-		/* TRICKY: capture_raw_frame() should be here in order to have the correct frame and correct selection
-			 so that HFD, FWHM etc are evaluated correctly, but selection property should not be updated. */
+		/* capture_frame() should be here in order to have the correct frame and correct selection */
 		indigo_property_state state = AGENT_ABORT_PROCESS_PROPERTY->state;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		capture_frame(device);
