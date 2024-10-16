@@ -366,7 +366,6 @@ static bool capture_frame(indigo_device *device) {
 		DEVICE_PRIVATE_DATA->last_image = NULL;
 		DEVICE_PRIVATE_DATA->last_image_size = 0;
 	}
-	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME, true);
 	for (int exposure_attempt = 0; exposure_attempt < 3; exposure_attempt++) {
 		while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			indigo_usleep(200000);
@@ -651,7 +650,7 @@ static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
 static void preview_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
-	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
+	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = AGENT_IMAGER_STATS_DELAY_ITEM->number.value = AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_STATS_FRAME_ITEM->number.value = AGENT_IMAGER_STATS_FWHM_ITEM->number.value = AGENT_IMAGER_STATS_PEAK_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	clear_hfd_stats(device);
 	AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
@@ -1908,7 +1907,7 @@ static bool autofocus(indigo_device *device) {
 static bool autofocus_repeat(indigo_device *device) {
 	int focuser_mode = save_switch_state(device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
 	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
-	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
+	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	DEVICE_PRIVATE_DATA->restore_initial_position = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value ? false : AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM->sw.value;
 	bool result = true;
 	int repeat_delay = AGENT_IMAGER_FOCUS_DELAY_ITEM->number.value;
@@ -2003,7 +2002,7 @@ static void clear_selection_process(indigo_device *device) {
 static void find_stars_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
-	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
+	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 	disable_solver(device);
 	if (!capture_frame(device) || !find_stars(device)) {
@@ -2529,7 +2528,6 @@ static void sequence_process(indigo_device *device) {
 			if (DEVICE_PRIVATE_DATA->focus_exposure > 0) {
 				AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_FOCUSING;
 				indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-				int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, NULL);
 				double exposure = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target;
 				AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = DEVICE_PRIVATE_DATA->focus_exposure;
 				indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
@@ -2544,7 +2542,6 @@ static void sequence_process(indigo_device *device) {
 						indigo_send_message(device, "Autofocus failed");
 					}
 				}
-				restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 				AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = exposure;
 				indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 				DEVICE_PRIVATE_DATA->focus_exposure = 0;
