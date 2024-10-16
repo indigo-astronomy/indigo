@@ -206,7 +206,6 @@ typedef struct {
 	double saved_frame[4];
 	double saved_selection_x, saved_selection_y;
 	bool autosubframing;
-	bool properties_defined;
 	indigo_star_detection stars[MAX_STAR_COUNT];
 	indigo_frame_digest reference[INDIGO_MAX_MULTISTAR_COUNT + 1];
 	double drift_x, drift_y, drift;
