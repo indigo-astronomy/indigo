@@ -283,6 +283,13 @@ extern char *indigo_filter_first_related_agent(indigo_device *device, char *base
 /** Find the full name of the first related agent starting with any of given base names.
  */
 extern char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2);
+/** Return index of selected item on given switch and select the new one (or none for NULL).
+ */
+extern int indigo_save_switch_state(indigo_device *device, char *name, char *new_state);
+/** Restore selected item on given switch to index.
+ */
+extern void indigo_restore_switch_state(indigo_device *device, char *name, int index);
+
 
 #ifdef __cplusplus
 }

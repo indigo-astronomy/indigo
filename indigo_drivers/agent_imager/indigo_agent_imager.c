@@ -278,46 +278,6 @@ static void save_config(indigo_device *device) {
 	}
 }
 
-static int save_switch_state(indigo_device *device, char *name, char *new_state) {
-	indigo_property **cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
-	indigo_property *property;
-	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-		if ((property = cache[j])) {
-			if (!strcmp(property->device, device->name) && !strcmp(property->name, name)) {
-				property = FILTER_DEVICE_CONTEXT->agent_property_cache[j];
-				for (int i = 0; i < property->count; i++) {
-					if (property->items[i].sw.value) {
-						if (new_state) {
-							indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, property->name, new_state, true);
-						}
-						return i;
-					}
-				}
-			}
-		}
-	}
-	return -1;
-}
-
-static void restore_switch_state(indigo_device *device, char *name, int index) {
-	if (index >= 0) {
-		indigo_property **cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
-		indigo_property *property;
-		for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
-			if ((property = cache[j])) {
-				if (!strcmp(property->device, device->name) && !strcmp(property->name, name)) {
-					property = FILTER_DEVICE_CONTEXT->agent_property_cache[j];
-					if (index < property->count) {
-						indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, property->name, property->items[index].name, true);
-						indigo_update_property(device, property, NULL);
-						break;
-					}
-				}
-			}
-		}
-	}
-}
-
 static void clear_hfd_stats(indigo_device *device) {
 	for (int i = 0; i < INDIGO_MAX_MULTISTAR_COUNT; i++) {
 		indigo_item *item = AGENT_IMAGER_STATS_HFD_ITEM + i;
@@ -649,8 +609,8 @@ static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
 
 static void preview_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
-	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
+	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
+	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	AGENT_IMAGER_STATS_EXPOSURE_ITEM->number.value = AGENT_IMAGER_STATS_DELAY_ITEM->number.value = AGENT_IMAGER_STATS_FRAMES_ITEM->number.value = AGENT_IMAGER_STATS_FRAME_ITEM->number.value = AGENT_IMAGER_STATS_FWHM_ITEM->number.value = AGENT_IMAGER_STATS_PEAK_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value = 0;
 	clear_hfd_stats(device);
 	AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value = 100;
@@ -666,8 +626,8 @@ static void preview_process(indigo_device *device) {
 	}
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
-	restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
-	restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
+	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
@@ -1905,9 +1865,9 @@ static bool autofocus(indigo_device *device) {
 }
 
 static bool autofocus_repeat(indigo_device *device) {
-	int focuser_mode = save_switch_state(device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
-	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
-	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
+	int focuser_mode = indigo_save_switch_state(device, FOCUSER_MODE_PROPERTY_NAME, FOCUSER_MODE_MANUAL_ITEM_NAME);
+	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
+	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	DEVICE_PRIVATE_DATA->restore_initial_position = AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value ? false : AGENT_IMAGER_FOCUS_FAILURE_RESTORE_ITEM->sw.value;
 	bool result = true;
 	int repeat_delay = AGENT_IMAGER_FOCUS_DELAY_ITEM->number.value;
@@ -1944,9 +1904,9 @@ static bool autofocus_repeat(indigo_device *device) {
 		}
 	}
 	restore_subframe(device);
-	restore_switch_state(device, FOCUSER_MODE_PROPERTY_NAME, focuser_mode);
-	restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
-	restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
+	indigo_restore_switch_state(device, FOCUSER_MODE_PROPERTY_NAME, focuser_mode);
+	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	return result;
@@ -2001,8 +1961,8 @@ static void clear_selection_process(indigo_device *device) {
 
 static void find_stars_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
-	int upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
-	int image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
+	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
+	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value = 0;
 	disable_solver(device);
 	if (!capture_frame(device) || !find_stars(device)) {
@@ -2011,8 +1971,8 @@ static void find_stars_process(indigo_device *device) {
 	}
 	AGENT_IMAGER_START_PREVIEW_ITEM->sw.value = AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value = AGENT_IMAGER_START_STREAMING_ITEM->sw.value = AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = AGENT_IMAGER_START_SEQUENCE_ITEM->sw.value = false;
 	AGENT_START_PROCESS_PROPERTY->state = AGENT_IMAGER_STATS_PROPERTY->state = INDIGO_OK_STATE;
-	restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
-	restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
+	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -2306,8 +2266,8 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 	} else if (!strcasecmp(name, "dec")) {
 		DEVICE_PRIVATE_DATA->solver_goto_dec = indigo_atod(value);
 	} else if (!strcasecmp(name, "goto")) {
-		upload_mode = save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
-		image_format = save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
+		upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
+		image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_SLEWING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		if (!strcmp(value, "precise")) {
@@ -2357,8 +2317,8 @@ static bool set_property(indigo_device *device, char *name, char *value) {
 			abort_solver(device);
 		}
 		disable_solver(device);
-		restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
-		restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
+		indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
+		indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 		return DEVICE_PRIVATE_DATA->related_solver_process_state == INDIGO_OK_STATE;
 	} else if (wait_for_guider) { // wait for guider
 		DEVICE_PRIVATE_DATA->guiding = false;

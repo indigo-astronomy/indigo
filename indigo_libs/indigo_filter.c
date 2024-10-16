@@ -1072,3 +1072,42 @@ char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name
 	return NULL;
 }
 
+int indigo_save_switch_state(indigo_device *device, char *name, char *new_state) {
+	indigo_property **cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
+	indigo_property *property;
+	for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
+		if ((property = cache[j])) {
+			if (!strcmp(property->device, device->name) && !strcmp(property->name, name)) {
+				property = FILTER_DEVICE_CONTEXT->agent_property_cache[j];
+				for (int i = 0; i < property->count; i++) {
+					if (property->items[i].sw.value) {
+						if (new_state) {
+							indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, property->name, new_state, true);
+						}
+						return i;
+					}
+				}
+			}
+		}
+	}
+	return -1;
+}
+
+void indigo_restore_switch_state(indigo_device *device, char *name, int index) {
+	if (index >= 0) {
+		indigo_property **cache = FILTER_DEVICE_CONTEXT->agent_property_cache;
+		indigo_property *property;
+		for (int j = 0; j < INDIGO_FILTER_MAX_CACHED_PROPERTIES; j++) {
+			if ((property = cache[j])) {
+				if (!strcmp(property->device, device->name) && !strcmp(property->name, name)) {
+					property = FILTER_DEVICE_CONTEXT->agent_property_cache[j];
+					if (index < property->count) {
+						indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, property->name, property->items[index].name, true);
+						indigo_update_property(device, property, NULL);
+						break;
+					}
+				}
+			}
+		}
+	}
+}
