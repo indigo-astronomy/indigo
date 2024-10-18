@@ -865,8 +865,10 @@ static void preview_process(indigo_device *device) {
 	allow_abort_by_mount_agent(device, false);
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
-	while (capture_and_process_frame(device) == INDIGO_OK_STATE)
-		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+	if (check_selection(device)) {
+		while (capture_and_process_frame(device) == INDIGO_OK_STATE)
+			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+	}
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
