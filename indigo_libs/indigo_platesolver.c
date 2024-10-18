@@ -956,70 +956,63 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO agent client implementation
 
 static void indigo_platesolver_handle_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	{
-		char *device_name = property->device;
+	char *related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Mount Agent");
+	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		if (!strcmp(property->name, MOUNT_EQUATORIAL_COORDINATES_PROPERTY_NAME)) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name) {
-					bool update = false;
-					double ra = NAN, dec = NAN;
-					if (property->state == INDIGO_BUSY_STATE) {
-						/* if mount is moved and polar alignment is in progress stop polar alignment and invalidate values */
-						reset_pa_state(device, false);
-					}
-				if (property->state == INDIGO_OK_STATE || property->state == INDIGO_BUSY_STATE) {
-					for (int i = 0; i < property->count; i++) {
-						indigo_item *item = property->items + i;
-						if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
-							ra = item->number.value;
-							INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.a = 15 * DEG2RAD * ra;
-							if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value != ra) {
-								AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.target = ra;
-								update = true;
-							}
-						} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
-							dec = item->number.value;
-							INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.d = DEG2RAD * dec;
-							if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value != dec) {
-								AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.target = dec;
-								update = true;
-							}
+			bool update = false;
+			double ra = NAN, dec = NAN;
+			if (property->state == INDIGO_BUSY_STATE) {
+				/* if mount is moved and polar alignment is in progress stop polar alignment and invalidate values */
+				reset_pa_state(device, false);
+			}
+			if (property->state == INDIGO_OK_STATE || property->state == INDIGO_BUSY_STATE) {
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_RA_ITEM_NAME)) {
+						ra = item->number.value;
+						INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.a = 15 * DEG2RAD * ra;
+						if (AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value != ra) {
+							AGENT_PLATESOLVER_HINTS_RA_ITEM->number.value = AGENT_PLATESOLVER_HINTS_RA_ITEM->number.target = ra;
+							update = true;
+						}
+					} else if (!strcmp(item->name, MOUNT_EQUATORIAL_COORDINATES_DEC_ITEM_NAME)) {
+						dec = item->number.value;
+						INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->eq_coordinates.d = DEG2RAD * dec;
+						if (AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value != dec) {
+							AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.value = AGENT_PLATESOLVER_HINTS_DEC_ITEM->number.target = dec;
+							update = true;
 						}
 					}
-					//indigo_debug("'%s'.'MOUNT_EQUATORIAL_COORDINATES' state %s, RA=%g, DEC=%g", device_name, indigo_property_state_text[property->state], ra, dec);
-					if (update) {
-						AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
-					}
+				}
+				if (update) {
+					AGENT_PLATESOLVER_HINTS_PROPERTY->state = INDIGO_OK_STATE;
+					indigo_update_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
 				}
 			}
 		} else if (!strcmp(property->name, MOUNT_GEOGRAPHIC_COORDINATES_PROPERTY_NAME)) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name) {
-				//INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates_state = property->state;
-				INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.r = 1;
-				double lat = NAN, lon = NAN;
-				for (int i = 0; i < property->count; i++) {
-					indigo_item *item = property->items + i;
-					if (!strcmp(item->name, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
-						lat = item->number.value;
-						INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.d = DEG2RAD * lat;
-					} else if (!strcmp(item->name, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
-						lon = item->number.value;
-						INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.a = DEG2RAD * lon;
-					}
+			//INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates_state = property->state;
+			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.r = 1;
+			double lat = NAN, lon = NAN;
+			for (int i = 0; i < property->count; i++) {
+				indigo_item *item = property->items + i;
+				if (!strcmp(item->name, MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM_NAME)) {
+					lat = item->number.value;
+					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.d = DEG2RAD * lat;
+				} else if (!strcmp(item->name, MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM_NAME)) {
+					lon = item->number.value;
+					INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->geo_coordinates.a = DEG2RAD * lon;
 				}
-				//indigo_debug("'%s'.'MOUNT_GEOGRAPHIC_COORDINATES' state %s, LAT=%g, LONG=%g", device_name, indigo_property_state_text[property->state], lat, lon);
 			}
 		} else if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, "Mount Agent");
-			if (related_agent_name && !strcmp(property->device, related_agent_name)) {
-				INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_process_state = property->state;
-			}
-		} else if (property->state == INDIGO_OK_STATE && !strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name) {
+			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_process_state = property->state;
+		}
+	}
+	related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
+	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
+		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
+		if (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
+			if (property->state == INDIGO_OK_STATE) {
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (item->sw.value) {
@@ -1029,31 +1022,24 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 				}
 			}
 		} else if (!strcmp(property->name, CCD_LENS_FOV_PROPERTY_NAME)) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name) {
-				indigo_debug("%s(): %s.%s: state %d", __FUNCTION__, device_name, property->name, property->state);
-				if (property->state == INDIGO_OK_STATE) {
-					indigo_item *item = indigo_get_item(property, CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM_NAME);
-					if (item) {
-						INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = item->number.value;
-						indigo_debug("%s(): %s.%s: pixel_scale = %f", __FUNCTION__, device_name, property->name, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale);
-					}
-				} else {
-					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = 0;
-					indigo_debug("%s(): %s.%s not in OK state, pixel_scale = %f", __FUNCTION__, device_name, property->name, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale);
+			INDIGO_DRIVER_DEBUG("SOLVER", "%s.%s: state %d", property->device, property->name, property->state);
+			if (property->state == INDIGO_OK_STATE) {
+				indigo_item *item = indigo_get_item(property, CCD_LENS_FOV_PIXEL_SCALE_HEIGHT_ITEM_NAME);
+				if (item) {
+					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = item->number.value;
+					INDIGO_DRIVER_DEBUG("SOLVER", "%s.%s: pixel_scale = %f", property->device, property->name, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale);
 				}
+			} else {
+				INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = 0;
+				INDIGO_DRIVER_DEBUG("SOLVER", "%s.%s not in OK state, pixel_scale = %f", property->device, property->name, INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale);
 			}
 		}
 	}
 }
 
 void handle_polar_align_failure(indigo_device *device) {
-	if (
-		(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) &&
-		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != INDIGO_POLAR_ALIGN_IDLE &&
-		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != INDIGO_POLAR_ALIGN_IN_PROGRESS
-	) {
-		indigo_debug("%s(): Exposure failed in AGENT_PLATESOLVER_PA_STATE = %d", __FUNCTION__, (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value);
+	if ((AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) && AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != INDIGO_POLAR_ALIGN_IDLE && AGENT_PLATESOLVER_PA_STATE_ITEM->number.value != INDIGO_POLAR_ALIGN_IN_PROGRESS) {
+		INDIGO_DRIVER_DEBUG("SOLVER", "Exposure failed in AGENT_PLATESOLVER_PA_STATE = %d", (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value);
 		AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
 		AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_IDLE;
 		indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
@@ -1064,18 +1050,11 @@ void handle_polar_align_failure(indigo_device *device) {
 }
 
 indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	{   //we change context of the device
-		char *device_name = property->device;
+	char *related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
+	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-		if (
-			!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME) &&
-			(
-				AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE ||
-				AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM->sw.value
-			)
-		) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name) {
+		if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
+			if ((AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM->sw.value)) {
 				if (property->state == INDIGO_OK_STATE) {
 					for (int i = 0; i < property->count; i++) {
 						indigo_item *item = property->items + i;
@@ -1087,50 +1066,43 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						}
 					}
 				} else if (property->state == INDIGO_BUSY_STATE) {
-					if (
-							(AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) &&
-							(AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS)
-							) {
-								if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
-									if (
-											AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE ||
-											AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS
-											) {
-												indigo_debug("%s(): state INDIGO_POLAR_ALIGN_IDLE -> INDIGO_POLAR_ALIGN_REFERENCE_1", __FUNCTION__);
-												AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-												AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_REFERENCE_1;
-												indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-											}
-								} else if (AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
-									if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
-										indigo_debug("%s(): state INDIGO_POLAR_ALIGN_IN_PROGRESS -> INDIGO_POLAR_ALIGN_RECALCULATE", __FUNCTION__);
-										AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
-										AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_RECALCULATE;
-										indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-									} else {
-										indigo_debug("%s(): can not transit to INDIGO_POLAR_ALIGN_RECALCULATE from the current state (%d)", __FUNCTION__, (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value);
-										AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
-										AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_IDLE;
-										indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-										abort_exposure(device);
-										process_failed(device, "Polar alignment is not in progress");
-									}
-								}
-							} else if (AGENT_PLATESOLVER_WCS_PROPERTY->state != INDIGO_BUSY_STATE) {
-								AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
-								AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_WAITING_FOR_IMAGE;
-								indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+					if ((AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value || AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) && (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS)) {
+						if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
+							if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IDLE || AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
+								INDIGO_DRIVER_DEBUG("SOLVER", "state INDIGO_POLAR_ALIGN_IDLE -> INDIGO_POLAR_ALIGN_REFERENCE_1");
+								AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+								AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_REFERENCE_1;
+								indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
 							}
+						} else if (AGENT_PLATESOLVER_SYNC_RECALCULATE_PA_ERROR_ITEM->sw.value) {
+							if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_IN_PROGRESS) {
+								INDIGO_DRIVER_DEBUG("SOLVER", "state INDIGO_POLAR_ALIGN_IN_PROGRESS -> INDIGO_POLAR_ALIGN_RECALCULATE");
+								AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
+								AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_RECALCULATE;
+								indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+							} else {
+								INDIGO_DRIVER_DEBUG("SOLVER", "can not transit to INDIGO_POLAR_ALIGN_RECALCULATE from the current state (%d)", (int)AGENT_PLATESOLVER_PA_STATE_ITEM->number.value);
+								AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_ALERT_STATE;
+								AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_IDLE;
+								indigo_update_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
+								abort_exposure(device);
+								process_failed(device, "Polar alignment is not in progress");
+							}
+						}
+					} else if (AGENT_PLATESOLVER_WCS_PROPERTY->state != INDIGO_BUSY_STATE) {
+						AGENT_PLATESOLVER_WCS_PROPERTY->state = INDIGO_BUSY_STATE;
+						AGENT_PLATESOLVER_WCS_STATE_ITEM->number.value = INDIGO_SOLVER_STATE_WAITING_FOR_IMAGE;
+						indigo_update_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
+					}
 				} else if (property->state == INDIGO_ALERT_STATE) {
-					handle_polar_align_failure(FILTER_CLIENT_CONTEXT->device);
+					handle_polar_align_failure(device);
 				}
 			}
-		} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) && AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM->sw.value) {
-			char *related_agent_name = indigo_filter_first_related_agent(device, device_name);
-			if (related_agent_name) {
-				indigo_debug("%s(): %s.%s: state %d", __FUNCTION__, device_name, property->name, property->state);
+		} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+			if (AGENT_PLATESOLVER_SOLVE_IMAGES_ENABLED_ITEM->sw.value) {
+				INDIGO_DRIVER_DEBUG("SOLVER", "%s.%s: state %d", related_agent_name, property->name, property->state);
 				if (property->state == INDIGO_ALERT_STATE) {
-					handle_polar_align_failure(FILTER_CLIENT_CONTEXT->device);
+					handle_polar_align_failure(device);
 				}
 			}
 		}
