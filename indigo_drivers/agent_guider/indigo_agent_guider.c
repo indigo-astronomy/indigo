@@ -224,6 +224,7 @@ typedef struct {
 	pthread_mutex_t mutex;
 	int log_file;
 	char log_file_name[PATH_MAX];
+	bool no_guiding_star;
 } guider_agent_private_data;
 
 static char default_log_path[PATH_MAX] = { 0 };
@@ -517,6 +518,20 @@ static bool capture_frame(indigo_device *device) {
 	return false;
 }
 
+static void clear_selection(indigo_device *device) {
+	if (AGENT_GUIDER_STARS_PROPERTY->count > 1) {
+		indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+		AGENT_GUIDER_STARS_PROPERTY->count = 1;
+		indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+	}
+	indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+	for (int i = (int)(AGENT_GUIDER_SELECTION_X_ITEM - AGENT_GUIDER_SELECTION_PROPERTY->items); i < AGENT_GUIDER_SELECTION_PROPERTY->count; i++) {
+		indigo_item *item = AGENT_GUIDER_SELECTION_PROPERTY->items + i;
+		item->number.value = item->number.target = 0;
+	}
+	indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+}
+
 static bool find_stars(indigo_device *device) {
 	int star_count;
 	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
@@ -650,6 +665,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else {
 					indigo_send_message(device, "Warning: No stars detected");
+					DEVICE_PRIVATE_DATA->no_guiding_star = true;
 					continue;
 				}
 			} else {
@@ -712,6 +728,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else {
 					indigo_send_message(device, "Warning: No stars detected");
+					DEVICE_PRIVATE_DATA->no_guiding_star = true;
 					continue;
 				}
 			} else {
@@ -1273,7 +1290,18 @@ static bool guide(indigo_device *device) {
 			write_log_record(device);
 		}
 		while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			DEVICE_PRIVATE_DATA->no_guiding_star = false;
 			if (!capture_and_process_frame(device)) {
+				if (DEVICE_PRIVATE_DATA->no_guiding_star) {
+					indigo_send_message(device, "No guiding stars - attempting to reselect");
+					clear_selection(device);
+					if (check_selection(device)) {
+						if (!capture_and_process_frame(device)) {
+							AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+							break;
+						}
+					}
+				}
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				break;
 			}
@@ -1509,20 +1537,6 @@ static void find_stars_process(indigo_device *device) {
 	}
 	indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
-}
-
-static void clear_selection(indigo_device *device) {
-	if (AGENT_GUIDER_STARS_PROPERTY->count > 1) {
-		indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-		AGENT_GUIDER_STARS_PROPERTY->count = 1;
-		indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-	}
-	indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-	for (int i = (int)(AGENT_GUIDER_SELECTION_X_ITEM - AGENT_GUIDER_SELECTION_PROPERTY->items); i < AGENT_GUIDER_SELECTION_PROPERTY->count; i++) {
-		indigo_item *item = AGENT_GUIDER_SELECTION_PROPERTY->items + i;
-		item->number.value = item->number.target = 0;
-	}
-	indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 }
 
 static void clear_selection_process(indigo_device *device) {
