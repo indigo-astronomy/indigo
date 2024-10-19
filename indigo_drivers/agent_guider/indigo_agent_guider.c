@@ -728,7 +728,6 @@ static bool capture_and_process_frame(indigo_device *device) {
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else {
 					indigo_send_message(device, "Warning: No stars detected");
-					DEVICE_PRIVATE_DATA->no_guiding_star = true;
 					continue;
 				}
 			} else {
@@ -1262,12 +1261,29 @@ static bool guide(indigo_device *device) {
 	bool result = false;
 	if (check_selection(device)) {
 		indigo_send_message(device, "Guiding started");
+		AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = 0;
+		DEVICE_PRIVATE_DATA->no_guiding_star = false;
+		if (capture_and_process_frame(device)) {
+			result = true;
+		} else {
+			if (DEVICE_PRIVATE_DATA->no_guiding_star) {
+				indigo_send_message(device, "No guiding stars - attempting to reselect");
+				clear_selection(device);
+				if (check_selection(device)) {
+					if (capture_and_process_frame(device)) {
+						result = true;
+					} else {
+						AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+					}
+				}
+			} else {
+				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
+			}
+		}
+	}
+	if (result) {
 		double prev_correction_dec = 0;
 		double saved_exposure_time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
-		AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = 0;
-		if (!capture_and_process_frame(device)) {
-			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-		}
 		AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = saved_exposure_time;
 		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_GUIDING;
@@ -1290,18 +1306,7 @@ static bool guide(indigo_device *device) {
 			write_log_record(device);
 		}
 		while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-			DEVICE_PRIVATE_DATA->no_guiding_star = false;
 			if (!capture_and_process_frame(device)) {
-				if (DEVICE_PRIVATE_DATA->no_guiding_star) {
-					indigo_send_message(device, "No guiding stars - attempting to reselect");
-					clear_selection(device);
-					if (check_selection(device)) {
-						if (!capture_and_process_frame(device)) {
-							AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-							break;
-						}
-					}
-				}
 				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 				break;
 			}
@@ -1489,6 +1494,7 @@ static bool guide(indigo_device *device) {
 		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_FAILED;
 		AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_send_message(device, "Guiding failed");
+		result = false;
 	}
 	AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
