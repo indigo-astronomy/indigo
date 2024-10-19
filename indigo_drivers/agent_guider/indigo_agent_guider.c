@@ -230,6 +230,7 @@ typedef struct {
 	int log_file;
 	char log_file_name[PATH_MAX];
 	bool no_guiding_star;
+	bool has_camera;
 } guider_agent_private_data;
 
 static char default_log_path[PATH_MAX] = { 0 };
@@ -1571,14 +1572,16 @@ static void abort_process(indigo_device *device) {
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
 }
 
-// TODO: invalidate selection when camera is reselected
-
 static void snoop_changes(indigo_client *client, indigo_device *device, indigo_property *property) {
 	if (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) { // Snoop CCD
 		if (!INDIGO_FILTER_CCD_SELECTED) {
 			DEVICE_PRIVATE_DATA->exposure_state = INDIGO_IDLE_STATE;
 		}
 	} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+		if (!DEVICE_PRIVATE_DATA->has_camera) {
+			DEVICE_PRIVATE_DATA->has_camera = true;
+			clear_selection(device);
+		}
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, CCD_EXPOSURE_ITEM_NAME)) {
@@ -2307,6 +2310,15 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	return indigo_filter_update_property(client, device, property, message);
 }
 
+static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (device == FILTER_CLIENT_CONTEXT->device) {
+		if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) || *property->name == 0) {
+			DEVICE_PRIVATE_DATA->has_camera = false;
+		}
+	}
+	return indigo_filter_delete_property(client, device, property, message);
+}
+
 // -------------------------------------------------------------------------------- Initialization
 
 static guider_agent_private_data *private_data = NULL;
@@ -2329,7 +2341,7 @@ indigo_result indigo_agent_guider(indigo_driver_action action, indigo_driver_inf
 		indigo_filter_client_attach,
 		agent_define_property,
 		agent_update_property,
-		indigo_filter_delete_property,
+		agent_delete_property,
 		NULL,
 		indigo_filter_client_detach
 	};
