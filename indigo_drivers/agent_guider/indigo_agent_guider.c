@@ -772,7 +772,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 		return true;
 	}
-	return true;
+	return false;
 }
 
 static void select_subframe(indigo_device *device) {
@@ -825,6 +825,7 @@ static void restore_subframe(indigo_device *device) {
 		/* capture_frame() should be here in order to have the correct frame and correct selection */
 		indigo_property_state state = AGENT_ABORT_PROCESS_PROPERTY->state;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_usleep(0.5 * ONE_SECOND_DELAY);
 		capture_frame(device);
 		AGENT_ABORT_PROCESS_PROPERTY->state = state;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
