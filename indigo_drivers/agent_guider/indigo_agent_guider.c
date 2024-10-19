@@ -661,6 +661,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->centroid_y + AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value;
 			}
 			AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 			return true;
 		} else if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value > 0) {
 			indigo_frame_digest digest = { 0 };
@@ -768,6 +769,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 			indigo_delete_frame_digest(&digest);
 		}
 		AGENT_GUIDER_STATS_FRAME_ITEM->number.value++;
+		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 		return true;
 	}
 	return true;
@@ -957,6 +959,7 @@ static bool calibrate(indigo_device *device) {
 						break;
 					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (!capture_and_process_frame(device)) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
@@ -988,6 +991,7 @@ static bool calibrate(indigo_device *device) {
 						break;
 					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (!capture_and_process_frame(device)) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
@@ -1017,6 +1021,7 @@ static bool calibrate(indigo_device *device) {
 						break;
 					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (!capture_and_process_frame(device)) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
@@ -1056,6 +1061,7 @@ static bool calibrate(indigo_device *device) {
 				}
 				case INDIGO_GUIDER_PHASE_MOVING_SOUTH: {
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (!capture_and_process_frame(device)) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
@@ -1088,6 +1094,7 @@ static bool calibrate(indigo_device *device) {
 				}
 				case INDIGO_GUIDER_PHASE_MOVING_WEST: {
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (!capture_and_process_frame(device)) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
@@ -1135,6 +1142,7 @@ static bool calibrate(indigo_device *device) {
 				}
 				case INDIGO_GUIDER_PHASE_MOVING_EAST: {
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
+					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					if (!capture_and_process_frame(device)) {
 						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 						break;
@@ -1228,6 +1236,7 @@ static bool guide(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_IGNORE;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
+	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	DEVICE_PRIVATE_DATA->rmse_ra_threshold = DEVICE_PRIVATE_DATA->rmse_dec_threshold = 0;
 	allow_abort_by_mount_agent(device, true);
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
