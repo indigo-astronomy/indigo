@@ -1293,14 +1293,21 @@ static bool guide(indigo_device *device) {
 		write_log_header(device, "guiding");
 		write_log_record(device);
 	}
+	bool first_frame = true;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			break;
 		}
 		if (!capture_and_process_frame(device)) {
 			if (DEVICE_PRIVATE_DATA->no_guiding_star) {
+				if (first_frame) {
+					clear_selection(device);
+					check_selection(device);
+					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
+					first_frame = false;
+					continue;
+				}
 				if (AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM->sw.value) {
-					indigo_send_message(device, "No guiding stars - failed");
 					break;
 				} else if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
 					indigo_send_message(device, "No guiding stars - attempting to continue");
@@ -1327,6 +1334,7 @@ static bool guide(indigo_device *device) {
 				}
 			}
 		}
+		first_frame = false;
 		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
 			double angle = -PI * get_rotation_angle(device) / 180;
 			double sin_angle = sin(angle);
