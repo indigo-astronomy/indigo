@@ -1310,7 +1310,7 @@ static bool guide(indigo_device *device) {
 				if (AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM->sw.value) {
 					break;
 				} else if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
-					indigo_send_message(device, "No guiding stars - attempting to continue");
+					indigo_send_message(device, "No guiding stars - waiting for them to reappear");
 					indigo_usleep(1000000);
 					continue;
 				} else if (AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM->sw.value) {
