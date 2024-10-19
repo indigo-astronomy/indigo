@@ -975,10 +975,21 @@ static bool calibrate(indigo_device *device) {
 					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = 0;
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
+
+					DEVICE_PRIVATE_DATA->no_guiding_star = false;
 					if (!capture_and_process_frame(device)) {
-						DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
-						break;
+						if (DEVICE_PRIVATE_DATA->no_guiding_star) {
+							indigo_send_message(device, "No guiding stars - attempting to reselect");
+							clear_selection(device);
+							if (check_selection(device)) {
+								if (!capture_and_process_frame(device)) {
+									DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
+									break;
+								}
+							}
+						}
 					}
+
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, "Clearing DEC backlash");
 					for (int i = 0; i < AGENT_GUIDER_SETTINGS_BL_STEPS_ITEM->number.value; i++) {
 						if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
