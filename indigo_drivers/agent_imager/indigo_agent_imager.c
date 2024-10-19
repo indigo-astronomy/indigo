@@ -247,6 +247,7 @@ typedef struct {
 	double solver_goto_ra;
 	double solver_goto_dec;
 	double ra, dec, latitude, longitude, time_to_transit;
+	bool has_camera;
 } imager_agent_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO agent common code
@@ -3256,6 +3257,10 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			DEVICE_PRIVATE_DATA->steps_state = INDIGO_IDLE_STATE;
 		}
 	} else if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME)) {
+		if (!DEVICE_PRIVATE_DATA->has_camera) {
+			DEVICE_PRIVATE_DATA->has_camera = true;
+			clear_selection(device);
+		}
 		if (!CLIENT_PRIVATE_DATA->use_aux_1) {
 			for (int i = 0; i < property->count; i++) {
 				indigo_item *item = property->items + i;
@@ -3557,6 +3562,16 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	return indigo_filter_update_property(client, device, property, message);
 }
 
+static indigo_result agent_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
+	if (device == FILTER_CLIENT_CONTEXT->device) {
+		if (!strcmp(property->name, CCD_EXPOSURE_PROPERTY_NAME) || *property->name == 0) {
+			DEVICE_PRIVATE_DATA->has_camera = false;
+		}
+	}
+	return indigo_filter_delete_property(client, device, property, message);
+}
+
+
 // -------------------------------------------------------------------------------- Initialization
 
 static imager_agent_private_data *private_data = NULL;
@@ -3579,7 +3594,7 @@ indigo_result indigo_agent_imager(indigo_driver_action action, indigo_driver_inf
 		indigo_filter_client_attach,
 		agent_define_property,
 		agent_update_property,
-		indigo_filter_delete_property,
+		agent_delete_property,
 		NULL,
 		indigo_filter_client_detach
 	};
