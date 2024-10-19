@@ -1872,8 +1872,9 @@ static bool autofocus_repeat(indigo_device *device) {
 	for (int repeat_count = AGENT_IMAGER_FOCUS_REPEAT_ITEM->number.value; result && repeat_count >= 0; repeat_count--) {
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator || DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 			if (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0) {
-				if (AGENT_IMAGER_STARS_PROPERTY->count == 1) {
-					result = capture_frame(device) && find_stars(device);
+				if ((result = capture_frame(device)) && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+					AGENT_IMAGER_STARS_PROPERTY->count = 1;
+					result = find_stars(device);
 				}
 				if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 					result = select_stars(device);
