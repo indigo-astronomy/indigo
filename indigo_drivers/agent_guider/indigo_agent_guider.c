@@ -595,7 +595,7 @@ static bool check_selection(indigo_device *device) {
 		}
 	}
 	bool result;
-	if ((result = capture_frame(device))) {
+	if ((result = capture_frame(device)) && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
 		AGENT_GUIDER_STARS_PROPERTY->count = 1;
 		result = find_stars(device);
 	}
@@ -1282,41 +1282,6 @@ static bool guide(indigo_device *device) {
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	check_selection(device);
-	//		indigo_send_message(device, "Guiding started");
-	//		//AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = 0;
-	//		if (capture_and_process_frame(device)) {
-	//			result = true;
-	//		} else {
-	//			if (DEVICE_PRIVATE_DATA->no_guiding_star) {
-	//				indigo_send_message(device, "No guiding stars - attempting to reselect");
-	//				clear_selection(device);
-	//				if (check_selection(device)) {
-	//					if (capture_and_process_frame(device)) {
-	//						result = true;
-	//					} else {
-	//						AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	//					}
-	//				}
-	//			} else {
-	//				AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	//			}
-	//		}
-	//	}
-	//	if (result) {
-	//		double prev_correction_dec = 0;
-	//		//double saved_exposure_time = AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value;
-	//		//AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM->number.value = saved_exposure_time;
-	//		indigo_update_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-	//		AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_GUIDING;
-	//		if (!capture_and_process_frame(device)) {
-	//			AGENT_START_PROCESS_PROPERTY->state = AGENT_START_PROCESS_PROPERTY->state == INDIGO_OK_STATE ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
-	//		}
-	//		if ((AGENT_GUIDER_DETECTION_SELECTION_ITEM->sw.value || AGENT_GUIDER_DETECTION_WEIGHTED_SELECTION_ITEM->sw.value) && AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
-	//			AGENT_GUIDER_STATS_FRAME_ITEM->number.value = -1;
-	//			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	//			select_subframe(device);
-	//			AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
-	//		}
 	double prev_correction_dec = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
