@@ -231,6 +231,7 @@ typedef struct {
 	char log_file_name[PATH_MAX];
 	bool no_guiding_star;
 	bool has_camera;
+	bool silence_warnings;
 } guider_agent_private_data;
 
 static char default_log_path[PATH_MAX] = { 0 };
@@ -554,7 +555,9 @@ static bool find_stars(indigo_device *device) {
 	AGENT_GUIDER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
 	if (star_count == 0) {
-		indigo_send_message(device, "No stars detected");
+		if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+			indigo_send_message(device, "No stars detected");
+		}
 		return false;
 	}
 	return true;
@@ -627,20 +630,26 @@ static bool capture_and_process_frame(indigo_device *device) {
 		if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 			indigo_result result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, (int)AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value, DEVICE_PRIVATE_DATA->reference);
 			if (result != INDIGO_OK) {
-				indigo_send_message(device, "Warning: Failed to compute DONUTS digest");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: Failed to compute DONUTS digest");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
 			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < 9) {
-				indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
 		} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
 			indigo_result result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, DEVICE_PRIVATE_DATA->reference);
 			if (result != INDIGO_OK) {
-				indigo_send_message(device, "Warning: Failed to compute centroid digest");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: Failed to compute centroid digest");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
@@ -674,7 +683,9 @@ static bool capture_and_process_frame(indigo_device *device) {
 			if (result == INDIGO_OK) {
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			} else {
-				indigo_send_message(device, "Warning: No stars detected");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: No stars detected");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
@@ -694,20 +705,26 @@ static bool capture_and_process_frame(indigo_device *device) {
 		if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 			indigo_result result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, (int)AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value, &digest);
 			if (result != INDIGO_OK) {
-				indigo_send_message(device, "Warning: Failed to compute DONUTS digest");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: Failed to compute DONUTS digest");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
 			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < 9) {
-				indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
 		} else if (AGENT_GUIDER_DETECTION_CENTROID_ITEM->sw.value) {
 			indigo_result result = indigo_centroid_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &digest) == INDIGO_OK;
 			if (result != INDIGO_OK) {
-				indigo_send_message(device, "Warning: Failed to compute centroid digest");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: Failed to compute centroid digest");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
@@ -740,7 +757,9 @@ static bool capture_and_process_frame(indigo_device *device) {
 			if (result == INDIGO_OK) {
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			} else {
-				indigo_send_message(device, "Warning: No stars detected");
+				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+					indigo_send_message(device, "Warning: No stars detected");
+				}
 				DEVICE_PRIVATE_DATA->no_guiding_star = true;
 				return false;
 			}
@@ -1274,6 +1293,7 @@ static bool guide(indigo_device *device) {
 		}
 		return false;
 	}
+	indigo_send_message(device, "Guiding started");
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_IGNORE;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
@@ -1310,14 +1330,20 @@ static bool guide(indigo_device *device) {
 				if (AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM->sw.value) {
 					break;
 				} else if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
-					indigo_send_message(device, "No guiding stars - waiting for them to reappear");
+					if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+						indigo_send_message(device, "Warning: Waiting for stars to reappear");
+					}
 					indigo_usleep(1000000);
+					DEVICE_PRIVATE_DATA->silence_warnings = true;
 					continue;
 				} else if (AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM->sw.value) {
 					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-					indigo_send_message(device, "No guiding stars - attempting to reset");
+					if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+						indigo_send_message(device, "Warning: Resetting and waiting for stars to reappear");
+					}
 					restore_subframe(device);
 					clear_selection(device);
+					DEVICE_PRIVATE_DATA->silence_warnings = true;
 					while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
 						indigo_usleep(1000000);
 					}
@@ -1335,6 +1361,10 @@ static bool guide(indigo_device *device) {
 			}
 		}
 		first_frame = false;
+		if (DEVICE_PRIVATE_DATA->silence_warnings) {
+			indigo_send_message(device, "Warning: Guiding recovered");
+			DEVICE_PRIVATE_DATA->silence_warnings = false;
+		}
 		if (DEVICE_PRIVATE_DATA->drift_x || DEVICE_PRIVATE_DATA->drift_y) {
 			double angle = -PI * get_rotation_angle(device) / 180;
 			double sin_angle = sin(angle);
@@ -1499,6 +1529,7 @@ static bool guide(indigo_device *device) {
 		indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 		write_log_record(device);
 	}
+	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	close_log(device);
 	allow_abort_by_mount_agent(device, false);
 	restore_subframe(device);
