@@ -766,21 +766,24 @@ static bool exposure_batch(indigo_device *device) {
 					allow_abort_by_mount_agent(device, false);
 				}
 			}
-			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_usleep(200000);
+			}
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				return false;
+			}
 			if (pausedOnTTT) {
 				allow_abort_by_mount_agent(device, true);
 			}
-			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
-				return false;
 			if (DEVICE_PRIVATE_DATA->use_aux_1) {
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0);
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, "AUX_1_" CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
 			} else {
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure_time);
 			}
-			for (int i = 0; i < BUSY_TIMEOUT * 1000 && (state = DEVICE_PRIVATE_DATA->exposure_state) != INDIGO_BUSY_STATE && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_PAUSE_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE; i++)
+			for (int i = 0; i < BUSY_TIMEOUT * 1000 && DEVICE_PRIVATE_DATA->exposure_state != INDIGO_BUSY_STATE && DEVICE_PRIVATE_DATA->exposure_state != INDIGO_ALERT_STATE; i++) {
 				indigo_usleep(1000);
+			}
 			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 					indigo_usleep(200000);
@@ -789,9 +792,10 @@ static bool exposure_batch(indigo_device *device) {
 					continue;
 				}
 			}
-			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				return false;
-			if (state != INDIGO_BUSY_STATE) {
+			}
+			if (DEVICE_PRIVATE_DATA->exposure_state != INDIGO_BUSY_STATE) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become busy in %d second(s)", BUSY_TIMEOUT);
 				indigo_usleep(ONE_SECOND_DELAY);
 				continue;
@@ -818,8 +822,9 @@ static bool exposure_batch(indigo_device *device) {
 					continue;
 				}
 			}
-			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				return false;
+			}
 			if (state != INDIGO_OK_STATE) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 				indigo_usleep(ONE_SECOND_DELAY);
@@ -858,10 +863,12 @@ static bool exposure_batch(indigo_device *device) {
 					AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_WAITING;
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 					while (remaining_delay_time > 0) {
-						while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+						while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 							indigo_usleep(200000);
-						if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
+						}
+						if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 							return false;
+						}
 						if (remaining_delay_time < floor(AGENT_IMAGER_STATS_DELAY_ITEM->number.value)) {
 							double c = ceil(remaining_delay_time);
 							if (AGENT_IMAGER_STATS_DELAY_ITEM->number.value > c) {
