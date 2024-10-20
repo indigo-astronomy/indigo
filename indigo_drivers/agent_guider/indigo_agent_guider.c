@@ -1343,7 +1343,7 @@ static bool guide(indigo_device *device) {
 					break;
 				} else if (AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM->sw.value) {
 					if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-						indigo_send_message(device, "Warning: Waiting for stars to reappear");
+						indigo_send_message(device, "Warning: Pausing and waiting for stars to reappear");
 					}
 					indigo_usleep(1000000);
 					DEVICE_PRIVATE_DATA->silence_warnings = true;
