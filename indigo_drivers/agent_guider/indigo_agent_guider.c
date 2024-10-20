@@ -230,6 +230,7 @@ typedef struct {
 	int log_file;
 	char log_file_name[PATH_MAX];
 	bool no_guiding_star;
+	bool first_frame;
 	bool has_camera;
 	bool silence_warnings;
 } guider_agent_private_data;
@@ -963,12 +964,18 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 	}
 	if (!capture_and_process_frame(device)) {
 		if (DEVICE_PRIVATE_DATA->no_guiding_star) {
-			if (AGENT_GUIDER_FAIL_ON_CALIBRATION_ERROR_ITEM->sw.value) {
+			if (DEVICE_PRIVATE_DATA->first_frame) {
+				clear_selection(device);
+				if (check_selection(device)) {
+					indigo_send_message(device, "Warning: Selection changed");
+				}
+				AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
+				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
+			} else if (AGENT_GUIDER_FAIL_ON_CALIBRATION_ERROR_ITEM->sw.value) {
 				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
-				indigo_send_message(device, "No guiding stars - failed");
 			} else if (AGENT_GUIDER_RESET_ON_CALIBRATION_ERROR_ITEM->sw.value) {
 				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-				indigo_send_message(device, "No guiding stars - attempting to reset");
+				indigo_send_message(device, "Warning: Resetting and waiting for stars to reappear");
 				clear_selection(device);
 				while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
 					indigo_usleep(1000000);
@@ -977,8 +984,10 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 		} else {
 			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
 		}
+		DEVICE_PRIVATE_DATA->first_frame = false;
 		return false;
 	}
+	DEVICE_PRIVATE_DATA->first_frame = false;
 	return true;
 }
 
@@ -1000,6 +1009,7 @@ static bool calibrate(indigo_device *device) {
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	check_selection(device);
+	DEVICE_PRIVATE_DATA->first_frame = true;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_FAILED;
@@ -1313,18 +1323,20 @@ static bool guide(indigo_device *device) {
 		write_log_header(device, "guiding");
 		write_log_record(device);
 	}
-	bool first_frame = true;
+	DEVICE_PRIVATE_DATA->first_frame = true;
 	while (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 			break;
 		}
 		if (!capture_and_process_frame(device)) {
 			if (DEVICE_PRIVATE_DATA->no_guiding_star) {
-				if (first_frame) {
+				if (DEVICE_PRIVATE_DATA->first_frame) {
 					clear_selection(device);
-					check_selection(device);
+					if (check_selection(device)) {
+						indigo_send_message(device, "Warning: Selection changed");
+					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
-					first_frame = false;
+					DEVICE_PRIVATE_DATA->first_frame = false;
 					continue;
 				}
 				if (AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM->sw.value) {
@@ -1360,7 +1372,7 @@ static bool guide(indigo_device *device) {
 				}
 			}
 		}
-		first_frame = false;
+		DEVICE_PRIVATE_DATA->first_frame = false;
 		if (DEVICE_PRIVATE_DATA->silence_warnings) {
 			indigo_send_message(device, "Warning: Guiding recovered");
 			DEVICE_PRIVATE_DATA->silence_warnings = false;
