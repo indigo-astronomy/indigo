@@ -247,6 +247,8 @@ typedef struct {
 	double solver_goto_ra;
 	double solver_goto_dec;
 	double ra, dec, latitude, longitude, time_to_transit;
+	bool no_selected_star;
+	bool first_frame;
 	bool has_camera;
 } imager_agent_private_data;
 
@@ -451,6 +453,23 @@ static bool select_stars(indigo_device *device) {
 	return star_count > 0;
 }
 
+static bool check_selection(indigo_device *device) {
+	for (int i = 0; i < AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
+		if ((AGENT_IMAGER_SELECTION_X_ITEM + i)->number.value != 0 && (AGENT_IMAGER_SELECTION_Y_ITEM + i)->number.value != 0) {
+			return true;
+		}
+	}
+	bool result;
+	if ((result = capture_frame(device)) && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+		AGENT_IMAGER_STARS_PROPERTY->count = 1;
+		result = find_stars(device);
+	}
+	if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
+		result = select_stars(device);
+	}
+	return result;
+}
+
 static bool select_subframe(indigo_device *device) {
 	int selection_x = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
 	int selection_y = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
@@ -522,6 +541,7 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 	}
 	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
+	DEVICE_PRIVATE_DATA->no_selected_star = false;
 	if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 		if (saturation_mask) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_saturation_mask = 0x%p", *saturation_mask);
@@ -559,31 +579,35 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 			indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
 			indigo_item *item_hfd = AGENT_IMAGER_STATS_HFD_ITEM + i;
 			if (item_x->number.value != 0 && item_y->number.value != 0) {
-				used++;
-				indigo_selection_frame_digest_iterative(header->signature, (void*)header + sizeof(indigo_raw_header), &item_x->number.value, &item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &reference, DIGEST_CONVERGE_ITERATIONS);
-				double fwhm = 0, peak = 0;
-				result = indigo_selection_psf(header->signature, (void*)header + sizeof(indigo_raw_header), item_x->number.value, item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &fwhm, &item_hfd->number.value, &peak);
-				if (item_hfd->number.value > AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value * 2) {
-					item_hfd->number.value = 0;
-				} else if (i == 0) {
-					AGENT_IMAGER_STATS_FWHM_ITEM->number.value = fwhm;
-					AGENT_IMAGER_STATS_PEAK_ITEM->number.value = peak;
-					if (AGENT_IMAGER_STATS_FRAME_ITEM->number.value == 0) {
-						memcpy(&DEVICE_PRIVATE_DATA->reference, &reference, sizeof(reference));
-					} else if (indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &reference, &DEVICE_PRIVATE_DATA->drift_x, &DEVICE_PRIVATE_DATA->drift_y) == INDIGO_OK) {
-						AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_x) / 1000;
-						AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
-						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx, %.4gpx", DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
-					}
-				}
+				result = indigo_selection_frame_digest_iterative(header->signature, (void*)header + sizeof(indigo_raw_header), &item_x->number.value, &item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &reference, DIGEST_CONVERGE_ITERATIONS);
 				if (result == INDIGO_OK) {
+					double fwhm = 0, peak = 0;
+					result = indigo_selection_psf(header->signature, (void*)header + sizeof(indigo_raw_header), item_x->number.value, item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &fwhm, &item_hfd->number.value, &peak);
+					if (result == INDIGO_OK) {
+						if (item_hfd->number.value > AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value * 2) {
+							item_hfd->number.value = 0;
+						} else if (i == 0) {
+							AGENT_IMAGER_STATS_FWHM_ITEM->number.value = fwhm;
+							AGENT_IMAGER_STATS_PEAK_ITEM->number.value = peak;
+							if (AGENT_IMAGER_STATS_FRAME_ITEM->number.value == 0) {
+								memcpy(&DEVICE_PRIVATE_DATA->reference, &reference, sizeof(reference));
+							} else if (indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &reference, &DEVICE_PRIVATE_DATA->drift_x, &DEVICE_PRIVATE_DATA->drift_y) == INDIGO_OK) {
+								AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_x) / 1000;
+								AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
+								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx, %.4gpx", DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
+							}
+						}
+						used++;
+					}
 					indigo_delete_frame_digest(&reference);
 				}
 			}
 		}
-		if (result == INDIGO_OK) {
-			indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+		if (used == 0) {
+			DEVICE_PRIVATE_DATA->no_selected_star = true;
+			return true;
 		}
+		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	}
 	if (!DEVICE_PRIVATE_DATA->frame_saturated) {
 		AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
@@ -1872,15 +1896,7 @@ static bool autofocus_repeat(indigo_device *device) {
 	int repeat_delay = AGENT_IMAGER_FOCUS_DELAY_ITEM->number.value;
 	for (int repeat_count = AGENT_IMAGER_FOCUS_REPEAT_ITEM->number.value; result && repeat_count >= 0; repeat_count--) {
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator || DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
-			if (AGENT_IMAGER_SELECTION_X_ITEM->number.value == 0 && AGENT_IMAGER_SELECTION_Y_ITEM->number.value == 0) {
-				if ((result = capture_frame(device)) && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
-					AGENT_IMAGER_STARS_PROPERTY->count = 1;
-					result = find_stars(device);
-				}
-				if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
-					result = select_stars(device);
-				}
-			}
+			result = check_selection(device);
 			if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
 				select_subframe(device);
 			}
