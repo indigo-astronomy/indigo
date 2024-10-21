@@ -1871,9 +1871,8 @@ int main(int argc, const char * argv[]) {
 				server_main();
 				return EXIT_SUCCESS;
 			} else {
-				if (waitpid(server_pid, NULL, 0) == -1 ) {
-					INDIGO_ERROR(indigo_error("waitpid() failed with error: %s", strerror(errno)));
-					return EXIT_FAILURE;
+				while (waitpid(server_pid, NULL, 0) == -1 && keep_server_running) {
+					INDIGO_ERROR(indigo_error("waitpid(%d) interrupted: %s", server_pid, strerror(errno)));
 				}
 				use_sigkill = false;
 				if (keep_server_running) {
