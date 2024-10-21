@@ -247,8 +247,6 @@ typedef struct {
 	double solver_goto_ra;
 	double solver_goto_dec;
 	double ra, dec, latitude, longitude, time_to_transit;
-	bool no_selected_star;
-	bool first_frame;
 	bool has_camera;
 } imager_agent_private_data;
 
@@ -541,7 +539,6 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 	}
 	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 	/* if frame changes, contrast changes too, so do not change AGENT_IMAGER_STATS_RMS_CONTRAST item if this frame is to restore the full frame */
-	DEVICE_PRIVATE_DATA->no_selected_star = false;
 	if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
 		if (saturation_mask) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focus_saturation_mask = 0x%p", *saturation_mask);
@@ -564,7 +561,6 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator || DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
 		int count = AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
-		int used = 0;
 		int result = INDIGO_OK;
 		if (AGENT_IMAGER_STATS_FRAME_ITEM->number.value == 0) {
 			indigo_delete_frame_digest(&DEVICE_PRIVATE_DATA->reference);
@@ -579,33 +575,31 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 			indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
 			indigo_item *item_hfd = AGENT_IMAGER_STATS_HFD_ITEM + i;
 			if (item_x->number.value != 0 && item_y->number.value != 0) {
-				result = indigo_selection_frame_digest_iterative(header->signature, (void*)header + sizeof(indigo_raw_header), &item_x->number.value, &item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &reference, DIGEST_CONVERGE_ITERATIONS);
-				if (result == INDIGO_OK) {
-					double fwhm = 0, peak = 0;
-					result = indigo_selection_psf(header->signature, (void*)header + sizeof(indigo_raw_header), item_x->number.value, item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &fwhm, &item_hfd->number.value, &peak);
-					if (result == INDIGO_OK) {
-						if (item_hfd->number.value > AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value * 2) {
-							item_hfd->number.value = 0;
-						} else if (i == 0) {
-							AGENT_IMAGER_STATS_FWHM_ITEM->number.value = fwhm;
-							AGENT_IMAGER_STATS_PEAK_ITEM->number.value = peak;
-							if (AGENT_IMAGER_STATS_FRAME_ITEM->number.value == 0) {
-								memcpy(&DEVICE_PRIVATE_DATA->reference, &reference, sizeof(reference));
-							} else if (indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &reference, &DEVICE_PRIVATE_DATA->drift_x, &DEVICE_PRIVATE_DATA->drift_y) == INDIGO_OK) {
-								AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_x) / 1000;
-								AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
-								INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx, %.4gpx", DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
-							}
-						}
-						used++;
+				/* It is normal indigo_selection_frame_digest_iterative() to fail during the AF process when the stars are too out of focus.
+				   We can still use the previos selection to calculaate the the PSF of the stars. Even with the selection a bit off we still
+				   need all PSFs calculated for the current focuser position, otherwise we will mix PSF measurements for the previous focuser
+				   position and PSF measurements of the new focuser position and the focus accuracy will be compromised. This is why we do not
+				   check the result here.
+				 */
+				indigo_selection_frame_digest_iterative(header->signature, (void*)header + sizeof(indigo_raw_header), &item_x->number.value, &item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &reference, DIGEST_CONVERGE_ITERATIONS);
+				double fwhm = 0, peak = 0;
+				/* here it is the same - we need to continue even if the result is not OK. */
+				indigo_selection_psf(header->signature, (void*)header + sizeof(indigo_raw_header), item_x->number.value, item_y->number.value, AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, &fwhm, &item_hfd->number.value, &peak);
+				if (item_hfd->number.value > AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value * 2) {
+					item_hfd->number.value = 0;
+				} else if (i == 0) {
+					AGENT_IMAGER_STATS_FWHM_ITEM->number.value = fwhm;
+					AGENT_IMAGER_STATS_PEAK_ITEM->number.value = peak;
+					if (AGENT_IMAGER_STATS_FRAME_ITEM->number.value == 0) {
+						memcpy(&DEVICE_PRIVATE_DATA->reference, &reference, sizeof(reference));
+					} else if (indigo_calculate_drift(&DEVICE_PRIVATE_DATA->reference, &reference, &DEVICE_PRIVATE_DATA->drift_x, &DEVICE_PRIVATE_DATA->drift_y) == INDIGO_OK) {
+						AGENT_IMAGER_STATS_DRIFT_X_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_x) / 1000;
+						AGENT_IMAGER_STATS_DRIFT_Y_ITEM->number.value = round(1000 * DEVICE_PRIVATE_DATA->drift_y) / 1000;
+						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Drift %.4gpx, %.4gpx", DEVICE_PRIVATE_DATA->drift_x, DEVICE_PRIVATE_DATA->drift_y);
 					}
-					indigo_delete_frame_digest(&reference);
 				}
+				indigo_delete_frame_digest(&reference);
 			}
-		}
-		if (used == 0) {
-			DEVICE_PRIVATE_DATA->no_selected_star = true;
-			return true;
 		}
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	}
