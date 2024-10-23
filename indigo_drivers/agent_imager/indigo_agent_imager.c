@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x002C
+#define DRIVER_VERSION 0x002D
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -1047,20 +1047,20 @@ static bool move_focuser_with_overshoot_if_needed(indigo_device *device, bool mo
 
 	if (apply_backlash && (!DEVICE_PRIVATE_DATA->focuser_has_backlash || backlash_overshoot > 1.0)) {
 		steps_todo = steps + approx_backlash * backlash_overshoot;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Moving %s %d steps (%d base + %d approx_backlash * %.2f overshoot)", move_out ? "OUT":"IN", (int)steps_todo, (int)steps, (int)approx_backlash, backlash_overshoot);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving %s %d steps (%d base + %d approx_backlash * %.2f overshoot)", move_out ? "OUT":"IN", (int)steps_todo, (int)steps, (int)approx_backlash, backlash_overshoot);
 		if (!move_focuser(device, move_out, steps_todo)) {
 			return false;
 		}
 		if (approx_backlash > 0 && backlash_overshoot > 1) {
 			steps_todo = approx_backlash * backlash_overshoot;
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Overshot by %d steps, compensating", (int)steps_todo);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Overshot by %d steps, compensating", (int)steps_todo);
 			if (!move_focuser(device, !move_out, steps_todo)) {
 				return false;
 			}
 		}
 	} else {
 		steps_todo = steps;
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Moving %s %d steps", move_out ? "OUT":"IN", (int)steps_todo);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Moving %s %d steps", move_out ? "OUT":"IN", (int)steps_todo);
 		if (!move_focuser(device, move_out, steps_todo)) {
 			return false;
 		}
@@ -1079,7 +1079,9 @@ static bool autofocus_hfd_rms(indigo_device *device, uint8_t **saturation_mask) 
 	double steps_todo;
 	int current_offset = 0;
 	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator ? AF_MOVE_LIMIT_HFD * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value : AF_MOVE_LIMIT_RMS * AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value;
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
+
 	bool moving_out = true, first_move = true;
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
@@ -1166,11 +1168,11 @@ static bool autofocus_hfd_rms(indigo_device *device, uint8_t **saturation_mask) 
 			} else {
 				moving_out = !moving_out;
 				if (moving_out) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Switching and moving OUT %d steps to final position", (int)steps);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving OUT %d steps to final position", (int)steps);
 					current_offset += steps;
 				} else {
 					steps_todo = steps;
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Switching and moving IN %d steps to final position", (int)steps);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving IN %d steps to final position", (int)steps);
 					current_offset -= steps;
 				}
 				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_todo, DEVICE_PRIVATE_DATA->saved_backlash, moving_out)) break;
@@ -1185,10 +1187,10 @@ static bool autofocus_hfd_rms(indigo_device *device, uint8_t **saturation_mask) 
 			}
 			first_move = false;
 			if (moving_out) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Switching and moving OUT %d steps", (int)steps);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving OUT %d steps", (int)steps);
 				current_offset += steps;
 			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Switching and moving IN %d steps", (int)steps);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Switching and moving IN %d steps", (int)steps);
 				current_offset -= steps;
 			}
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_todo, DEVICE_PRIVATE_DATA->saved_backlash, moving_out)) break;
@@ -1234,6 +1236,8 @@ static bool autofocus_hfd_rms(indigo_device *device, uint8_t **saturation_mask) 
 		indigo_send_message(device, "Focus does not meet the quality criteria");
 		focus_failed = true;
 	}
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus deviation = %g %%", AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value);
+
 	if (focus_failed) {
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		if (DEVICE_PRIVATE_DATA->restore_initial_position) {
@@ -1361,7 +1365,9 @@ static bool autofocus_ucurve(indigo_device *device) {
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 	set_backlash_if_overshoot(device, 0);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
+
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
+
 	bool repeat = true;
 	bool focus_failed = false;
 	double hfds[INDIGO_MAX_MULTISTAR_COUNT][MAX_UCURVE_SAMPLES] = {0};
@@ -1391,34 +1397,30 @@ static bool autofocus_ucurve(indigo_device *device) {
 				}
 			}
 			indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-			if (DEVICE_PRIVATE_DATA->use_ucurve_estimator) {
-				if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
-					INDIGO_DRIVER_DEBUG(
-						DRIVER_NAME,
-						"UC: Peak = %g, HFD = %g, FWHM = %g",
-						AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
-						AGENT_IMAGER_STATS_HFD_ITEM->number.value,
-						AGENT_IMAGER_STATS_FWHM_ITEM->number.value
-					);
-					continue;
-				}
-				double current_quality[INDIGO_MAX_MULTISTAR_COUNT] = {0};
-				for (int n = 0; n < star_count; n++) {
-					if (AGENT_IMAGER_STATS_HFD_ITEM[n].number.value == 0) {
-						current_quality[n] = 0;
-					} else {
-						current_quality[n] = 1 / AGENT_IMAGER_STATS_HFD_ITEM[n].number.value;
-					}
-				}
-				if (quality_comparator(quality, current_quality, star_count) < 0) {
-					memcpy(quality, current_quality, sizeof(double) * star_count);
-				}
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Peak = %g, HFD = %g, FWHM = %g, current_quality = %g, best_quality = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value, current_quality[0], quality[0]);
-			} else {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "BUG: This should not happen - Only U-CURVE estimator is supported for this function");
-				set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
-				return false;
+
+			if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
+				INDIGO_DRIVER_DEBUG(
+					DRIVER_NAME,
+					"UC: Peak = %g, HFD = %g, FWHM = %g",
+					AGENT_IMAGER_STATS_PEAK_ITEM->number.value,
+					AGENT_IMAGER_STATS_HFD_ITEM->number.value,
+					AGENT_IMAGER_STATS_FWHM_ITEM->number.value
+				);
+				continue;
 			}
+			double current_quality[INDIGO_MAX_MULTISTAR_COUNT] = {0};
+			for (int n = 0; n < star_count; n++) {
+				if (AGENT_IMAGER_STATS_HFD_ITEM[n].number.value == 0) {
+					current_quality[n] = 0;
+				} else {
+					current_quality[n] = 1 / AGENT_IMAGER_STATS_HFD_ITEM[n].number.value;
+				}
+			}
+			if (quality_comparator(quality, current_quality, star_count) < 0) {
+				memcpy(quality, current_quality, sizeof(double) * star_count);
+			}
+
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Peak = %g, HFD = %g, FWHM = %g, current_quality = %g, best_quality = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value, current_quality[0], quality[0]);
 			frame_count++;
 		}
 		/* Check if there is at least one star with measured HFD (qiality), if not fail */
@@ -1431,7 +1433,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		min_est = (min_est > AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : min_est;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: sample = %d : Focus Quality = %g (Previous %g)", sample, quality[0], prev_quality[0]);
 		if (sample == 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving OUT to detect best focus direction");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving OUT to detect best focus direction");
 			moving_out = true;
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 			current_offset += steps;
@@ -1440,20 +1442,20 @@ static bool autofocus_ucurve(indigo_device *device) {
 			if (quality_comparator(prev_quality, quality, star_count) >= 0) {
 				steps_to_move = steps * (mid_index + 1);
 				moving_out = true;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving OUT %g steps to defocus sufficiently", steps_to_move);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving OUT %g steps to defocus sufficiently", steps_to_move);
 				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 				current_offset += steps_to_move;
 			} else {
 				steps_to_move = steps * (mid_index + 2);
 				moving_out = false;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving IN %g steps to defocus sufficiently", steps_to_move);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving IN %g steps to defocus sufficiently", steps_to_move);
 				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
 				current_offset -= steps_to_move;
 			}
 			moving_out = !moving_out;
 		} else {
 			if (sample == 2) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Starting to collect samples");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Starting to collect samples");
 				sample_index = 0;
 			}
 			/* Copy sample to the U-Curve data */
@@ -1480,7 +1482,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 			// Calculate the mode of the best indices
 			best_index = calculate_mode(best_indices, star_count);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: The best sample focus is at position %d (mode), %d for star #0", best_index, best_indices[0]);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: The best sample focus is at position %d (mode), %d for star #0", best_index, best_indices[0]);
 
 			if (sample_index >= ucurve_samples - 1 && best_index > mid_index) {
 				/* The best focus is above the middle of the U-Curve.
@@ -1580,7 +1582,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	/* Calculate the steps to best focus */
 	double steps_to_focus = fabs(DEVICE_PRIVATE_DATA->focuser_position - best_focus);
 	indigo_send_message(device, "U-Curve found best focus at position %.3f", best_focus);
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
 	if (!move_focuser_with_overshoot_if_needed(device, !moving_out, steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash, true)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move to best focus position");
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
@@ -1618,8 +1620,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		indigo_send_message(device, "Focus does not meet the quality criteria");
 		focus_failed = true;
 	}
-
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Focus deviation = %g", AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Focus deviation = %g %%", AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value);
 
 	ucurve_finish:
 	if (focus_failed) {
@@ -1850,7 +1851,7 @@ static void setup_download(indigo_device *device) {
 				snprintf(file_name, sizeof(file_name), "%s%s", DEVICE_PRIVATE_DATA->current_folder, entries[i]->d_name);
 				if (stat(file_name, &file_stat) >= 0 && file_stat.st_size > 0) {
 					if (file_stat.st_size < 1024) {
-						snprintf(label, sizeof(label), "%s (%lldB)", entries[i]->d_name, file_stat.st_size);
+						snprintf(label, sizeof(label), "%s (%ldB)", entries[i]->d_name, file_stat.st_size);
 					} else if (file_stat.st_size < 1048576) {
 						snprintf(label, sizeof(label), "%s (%.1fKB)", entries[i]->d_name, file_stat.st_size / 1024.0);
 					} else {
