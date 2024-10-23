@@ -1503,12 +1503,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Collected all %d samples", ucurve_samples);
 				break;
 			}
-			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
+			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, moving_out)) break;
 			if(moving_out) {
 				current_offset += steps;
 			} else {
 				current_offset -= steps;
 			}
+			moving_out = !moving_out;
 		}
 		sample++;
 		sample_index++;
@@ -1585,13 +1586,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 	double steps_to_focus = fabs(DEVICE_PRIVATE_DATA->focuser_position - best_focus);
 	indigo_send_message(device, "U-Curve found best focus at position %.3f", best_focus);
 	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
-	if (!move_focuser_with_overshoot_if_needed(device, !moving_out, steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash, true)) {
+	if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash, moving_out)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move to best focus position");
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
 	}
 
-	if (!moving_out) {
+	if (moving_out) {
 		current_offset += steps_to_focus;
 	} else {
 		current_offset -= steps_to_focus;
