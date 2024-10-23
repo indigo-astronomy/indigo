@@ -1453,7 +1453,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			if (sample == 2) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Starting to collect samples");
 				sample_index = 0;
-				if (moving_out) {
+				if (!moving_out) {
 					apply_backlash = true;
 				}
 			} else {
