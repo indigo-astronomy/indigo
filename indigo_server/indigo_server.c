@@ -1872,7 +1872,12 @@ int main(int argc, const char * argv[]) {
 				return EXIT_SUCCESS;
 			} else {
 				while (waitpid(server_pid, NULL, 0) == -1 && keep_server_running) {
-					INDIGO_ERROR(indigo_error("waitpid(%d) interrupted: %s", server_pid, strerror(errno)));
+					if (errno == EINTR) {
+						INDIGO_ERROR(indigo_error("waitpid(%d) interrupted: %s", server_pid, strerror(errno)));
+					} else {
+						INDIGO_ERROR(indigo_error("waitpid(%d) failed: %s", server_pid, strerror(errno)));
+						return EXIT_FAILURE;
+					}
 				}
 				use_sigkill = false;
 				if (keep_server_running) {
