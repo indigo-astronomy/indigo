@@ -1354,6 +1354,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	int sample_index = 0;
 	double best_value = 0;
 	int best_index = 0;
+
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
 	set_backlash_if_overshoot(device, 0);
@@ -1437,13 +1438,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 				steps_to_move = steps * (mid_index + 1);
 				moving_out = true;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving OUT %g steps to defocus sufficiently", steps_to_move);
-				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
+				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 				current_offset += steps_to_move;
 			} else {
 				steps_to_move = steps * (mid_index + 2);
 				moving_out = false;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving IN %g steps to defocus sufficiently", steps_to_move);
-				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
+				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
 				current_offset -= steps_to_move;
 			}
 			moving_out = !moving_out;
