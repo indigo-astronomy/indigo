@@ -1353,6 +1353,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	int sample = 0;
 	int sample_index = 0;
 	double best_value = 0;
+	double sample0_hfd = 0;
 	int best_index = 0;
 
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
@@ -1429,6 +1430,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: sample = %d : Focus Quality = %g (Previous %g)", sample, quality[0], prev_quality[0]);
 		if (sample == 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving OUT to detect best focus direction");
+			sample0_hfd = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
 			moving_out = true;
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 			current_offset += steps;
@@ -1479,14 +1481,14 @@ static bool autofocus_ucurve(indigo_device *device) {
 			// Calculate the mode of the best indices
 			best_index = calculate_mode(best_indices, star_count);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: The best sample focus is at position %d (mode), %d for star #0", best_index, best_indices[0]);
-			if (sample_index > mid_index && best_index < mid_index) {
+			//if (sample_index > mid_index && best_index < mid_index) {
 				/* The best focus is below the middle of the U-Curve.
 				   We did not defocus enough, so we fail. This should not happen.
 				 */
-				focus_failed = true;
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: The best focus is below the middle of the U-Curve: best=%d mid=%d sample=%d", best_index, mid_index, sample_index);
-				goto ucurve_finish;
-			}
+			//	focus_failed = true;
+			//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: The best focus is below the middle of the U-Curve: best=%d mid=%d sample=%d", best_index, mid_index, sample_index);
+			//	goto ucurve_finish;
+			//}
 			if (sample_index >= ucurve_samples - 1 && best_index > mid_index) {
 				/* The best focus is above the middle of the U-Curve.
 				   We move all samples to the left and continue collecting.
