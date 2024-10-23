@@ -1449,13 +1449,13 @@ static bool autofocus_ucurve(indigo_device *device) {
 			}
 			moving_out = !moving_out;
 		} else {
-			bool apply_backlash = false;
+			//bool apply_backlash = false;
 			if (sample == 2) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Starting to collect samples");
 				sample_index = 0;
-				apply_backlash = true;
+			//	apply_backlash = true;
 			} else {
-				apply_backlash = false;
+			//	apply_backlash = false;
 			}
 			/* Copy sample to the U-Curve data */
 			focus_pos[sample_index] = DEVICE_PRIVATE_DATA->focuser_position;
@@ -1507,7 +1507,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Collected all %d samples", ucurve_samples);
 				break;
 			}
-			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, apply_backlash)) break;
+			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
 			if(moving_out) {
 				current_offset += steps;
 			} else {
