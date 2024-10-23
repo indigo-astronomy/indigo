@@ -1235,21 +1235,24 @@ static bool autofocus_hfd_rms(indigo_device *device, uint8_t **saturation_mask) 
 		focus_failed = true;
 	}
 	if (focus_failed) {
+		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 			indigo_send_message(device, "Focus failed, restoring initial position");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
 			if (current_offset > 0) {
-				moving_out = false;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus failed, moving IN to initial position %d steps", (int)current_offset);
-				move_focuser_with_overshoot_if_needed(device, moving_out, current_offset, DEVICE_PRIVATE_DATA->saved_backlash, moving_out);
+				if (moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
+					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
+				}
+				move_focuser(device, false, current_offset);
 			} else if (current_offset < 0) {
-				moving_out = true;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus failed, moving OUT to initial position %d steps", -(int)current_offset);
 				current_offset = -current_offset;
-				move_focuser_with_overshoot_if_needed(device, moving_out, current_offset, DEVICE_PRIVATE_DATA->saved_backlash, moving_out);
+				if (!moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
+					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
+				}
+				move_focuser(device, true, current_offset);
 			}
 			current_offset = 0;
 		}
-		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
 	} else {
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
@@ -1353,7 +1356,6 @@ static bool autofocus_ucurve(indigo_device *device) {
 	int sample = 0;
 	int sample_index = 0;
 	double best_value = 0;
-	double sample0_hfd = 0;
 	int best_index = 0;
 
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME, true);
@@ -1430,7 +1432,6 @@ static bool autofocus_ucurve(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: sample = %d : Focus Quality = %g (Previous %g)", sample, quality[0], prev_quality[0]);
 		if (sample == 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving OUT to detect best focus direction");
-			sample0_hfd = AGENT_IMAGER_STATS_HFD_ITEM->number.value;
 			moving_out = true;
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 			current_offset += steps;
@@ -1447,7 +1448,6 @@ static bool autofocus_ucurve(indigo_device *device) {
 				moving_out = false;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving IN %g steps to defocus sufficiently", steps_to_move);
 				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
-				//if (!move_focuser_with_overshoot_if_needed(device, !moving_out, 0, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 				current_offset -= steps_to_move;
 			}
 			moving_out = !moving_out;
@@ -1481,14 +1481,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			// Calculate the mode of the best indices
 			best_index = calculate_mode(best_indices, star_count);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: The best sample focus is at position %d (mode), %d for star #0", best_index, best_indices[0]);
-			//if (sample_index > mid_index && best_index < mid_index) {
-				/* The best focus is below the middle of the U-Curve.
-				   We did not defocus enough, so we fail. This should not happen.
-				 */
-			//	focus_failed = true;
-			//	INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: The best focus is below the middle of the U-Curve: best=%d mid=%d sample=%d", best_index, mid_index, sample_index);
-			//	goto ucurve_finish;
-			//}
+
 			if (sample_index >= ucurve_samples - 1 && best_index > mid_index) {
 				/* The best focus is above the middle of the U-Curve.
 				   We move all samples to the left and continue collecting.
@@ -1621,9 +1614,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	if (AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		indigo_send_message(device, "No focus reached, did not converge");
 		focus_failed = true;
-	} else if (
-		(DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 25) /* for HFD 25% deviation is ok - tested on realsky */
-	) {
+	} else if (AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 15) { /* for HFD 15% deviation is ok - tested on realsky */
 		indigo_send_message(device, "Focus does not meet the quality criteria");
 		focus_failed = true;
 	}
@@ -1632,24 +1623,24 @@ static bool autofocus_ucurve(indigo_device *device) {
 
 	ucurve_finish:
 	if (focus_failed) {
+		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		if (DEVICE_PRIVATE_DATA->restore_initial_position) {
 			indigo_send_message(device, "Focus failed, restoring initial position");
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to reach focus, moving to initial position %d steps", (int)current_offset);
 			if (current_offset > 0) {
 				if (moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
-					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_OUT_ITEM->number.value;
+					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 				}
 				move_focuser(device, false, current_offset);
 			} else if (current_offset < 0) {
 				current_offset = -current_offset;
 				if (!moving_out && !DEVICE_PRIVATE_DATA->focuser_has_backlash) {
-					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value + AGENT_IMAGER_FOCUS_BACKLASH_IN_ITEM->number.value;
+					current_offset += AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value;
 				}
 				move_focuser(device, true, current_offset);
 			}
 			current_offset = 0;
 		}
-		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
 	} else {
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
