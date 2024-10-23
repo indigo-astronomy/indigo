@@ -1448,6 +1448,8 @@ static bool autofocus_ucurve(indigo_device *device) {
 				current_offset -= steps_to_move;
 			}
 			moving_out = !moving_out;
+			// just clear the backlash to collect the data
+			if (!move_focuser_with_overshoot_if_needed(device, moving_out, 0, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 		} else {
 			if (sample == 2) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Starting to collect samples");
