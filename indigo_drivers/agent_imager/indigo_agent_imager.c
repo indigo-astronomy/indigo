@@ -1445,7 +1445,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 				moving_out = false;
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Moving IN %g steps to defocus sufficiently", steps_to_move);
 				if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps_to_move, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
-				if (!move_focuser_with_overshoot_if_needed(device, !moving_out, 0, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
+				//if (!move_focuser_with_overshoot_if_needed(device, !moving_out, 0, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 				current_offset -= steps_to_move;
 			}
 			moving_out = !moving_out;
