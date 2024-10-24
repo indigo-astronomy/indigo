@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Suzhou Astroasis Vision Technology, Inc. All Rights Reserved.
+ * Copyright 2024 Suzhou Astroasis Vision Technology, Inc. All Rights Reserved.
  *
  * This is header file for Astroasis Oasis Focuser.
  *
@@ -31,6 +31,7 @@
  *        AOFocuserMove(int id, int step);
  *        AOFocuserMoveTo(int id, int position);
  *        AOFocuserStopMove(int id);
+ *        AOFocuserClearStall(int id);
  *        AOFocuserFirmwareUpgrade(int id, unsigned char *data, int len);
  *        AOFocuserGetSDKVersion(char *version);
  *
@@ -50,11 +51,21 @@ extern "C" {
 #define AOAPI
 #endif
 
+#define VERSION_INVALID					0
+
+#define PROTOCAL_VERSION_16_0_3			0x10000300
+#define PROTOCAL_VERSION_16_1_0			0x10010000
+
 #define AO_FOCUSER_MAX_NUM				32		/* Maximum focuser numbers supported by this SDK */
 #define AO_FOCUSER_VERSION_LEN			32		/* Buffer length for version strings */
 #define AO_FOCUSER_NAME_LEN				32		/* Buffer length for name strings */
 
 #define TEMPERATURE_INVALID				0x80000000	/* This value indicates the invalid value of ambient temperature */
+
+#define AO_LOG_LEVEL_QUIET					0
+#define AO_LOG_LEVEL_ERROR					1
+#define AO_LOG_LEVEL_INFO					2
+#define AO_LOG_LEVEL_DEBUG					3
 
 typedef enum _AOReturn {
 	AO_SUCCESS = 0,						/* Success */
@@ -85,6 +96,10 @@ typedef enum _AOReturn {
 #define MASK_BEEP_ON_MOVE			0x00000020
 #define MASK_BEEP_ON_STARTUP		0x00000040
 #define MASK_BLUETOOTH				0x00000080
+#define MASK_STALL_DETECTION		0x00000100
+#define MASK_HEATING_TEMPERATURE	0x00000200
+#define MASK_HEATING_ON				0x00000400
+#define MASK_USB_POWER_CAPACITY		0x00000800
 #define MASK_ALL					0xFFFFFFFF
 
 typedef struct _AOFocuserVersion
@@ -105,6 +120,10 @@ typedef struct _AOFocuserConfig {
 	int beepOnMove;					/* 0 - Turn off beep for move, others - Turn on beep for move */
 	int beepOnStartup;				/* 0 - Turn off beep for device startup, others - Turn on beep for device startup */
 	int bluetoothOn;				/* 0 - Turn off Bluetooth, others - Turn on Bluetooth */
+	int stallDetection;				/* 0 - Turn off motor stall detection, others - Turn on motor stall detection */
+	int heatingTemperature;			/* Target heating temperature in 0.01 degree unit */
+	int heatingOn;					/* 0 - Turn off heating, others - Turn on heating */
+	int usbPowerCapacity;			/* 0 - 500mA, 1 - 1000mA or higher */
 } AOFocuserConfig;
 
 /*
@@ -117,7 +136,12 @@ typedef struct _AOFocuserStatus {
 	int temperatureExt;				/* External (ambient) temperature in 0.01 degree unit */
 	int temperatureDetection;		/* 0 - ambient temperature probe is not inserted, others - ambient temperature probe is inserted */
 	int position;					/* Current motor position */
-	int moving;						/* 0 - Motor is not moving, others - Motor is moving */
+	int moving;						/* 0 - motor is not moving, others - Motor is moving */
+	int stallDetection;				/* 0 - motor stall is not detected, others - motor stall detected */
+	int heatingOn;					/* 0 - heating is disabled, others - heating is enabled */
+	int heatingPower;				/* Current heating power in 1% unit */
+	int dcPower;					/* Current DC power in 0.1V unit */
+	int reserved[20];
 } AOFocuserStatus;
 
 /*
@@ -170,9 +194,11 @@ AOAPI AOReturn AOFocuserSyncPosition(int id, int position);
 AOAPI AOReturn AOFocuserMove(int id, int step);
 AOAPI AOReturn AOFocuserMoveTo(int id, int position);
 AOAPI AOReturn AOFocuserStopMove(int id);
+AOAPI AOReturn AOFocuserClearStall(int id);
 AOAPI AOReturn AOFocuserUpgrade(int id);
 AOAPI AOReturn AOFocuserFirmwareUpgrade(int id, unsigned char *data, int len);
 AOAPI AOReturn AOFocuserGetSDKVersion(char *version);
+AOAPI AOReturn AOFocuserSetLogLevel(int level);
 
 #ifdef __cplusplus
 }
