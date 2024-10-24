@@ -23,7 +23,7 @@
  \file indigo_focuser_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_focuser_astroasis"
 
 #include <stdlib.h>
@@ -1019,6 +1019,8 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 
 		AOFocuserGetSDKVersion(sdk_version);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Oasis Focuser SDK version: %s", sdk_version);
+
+		AOFocuserSetLogLevel(AO_LOG_LEVEL_ERROR);
 
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASTROASIS_VENDOR_ID, ASTROASIS_PRODUCT_FOCUSER_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
