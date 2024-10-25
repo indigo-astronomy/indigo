@@ -130,9 +130,10 @@
 #define AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM     		(AGENT_IMAGER_STATS_PROPERTY->items+12)
 #define AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM			(AGENT_IMAGER_STATS_PROPERTY->items+13)
 #define AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM (AGENT_IMAGER_STATS_PROPERTY->items+14)
-#define AGENT_IMAGER_STATS_PEAK_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+15)
-#define AGENT_IMAGER_STATS_FWHM_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+16)
-#define AGENT_IMAGER_STATS_HFD_ITEM      			(AGENT_IMAGER_STATS_PROPERTY->items+17)
+#define AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+15)
+#define AGENT_IMAGER_STATS_PEAK_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+16)
+#define AGENT_IMAGER_STATS_FWHM_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+17)
+#define AGENT_IMAGER_STATS_HFD_ITEM      			(AGENT_IMAGER_STATS_PROPERTY->items+18)
 
 #define MAX_STAR_COUNT												50
 #define AGENT_IMAGER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
@@ -2445,7 +2446,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_IMAGER_SELECTION_PROPERTY->count = 5;
 
 		// -------------------------------------------------------------------------------- Focusing stats
-		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 18 + INDIGO_MAX_MULTISTAR_COUNT - 1);
+		AGENT_IMAGER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 19 + INDIGO_MAX_MULTISTAR_COUNT - 1);
 		if (AGENT_IMAGER_STATS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_STATS_EXPOSURE_ITEM, AGENT_IMAGER_STATS_EXPOSURE_ITEM_NAME, "Exposure remaining (s)", 0, 3600, 0, 0);
@@ -2463,6 +2464,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM, AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM_NAME, "RMS contrast", 0, 1, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM, AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM_NAME, "Best focus deviation (%)", -100, 100, 0, 100);
 		indigo_init_number_item(AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM, AGENT_IMAGER_STATS_FRAMES_TO_DITHERING_ITEM_NAME, "Frames to dithering", 0, 0xFFFFFFFF, 0, 0);
+		indigo_init_number_item(AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM, AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM_NAME, "Maximum number of stars to use", 0, 0xFFFFFFFF, 0, AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value);
 		indigo_init_number_item(AGENT_IMAGER_STATS_PEAK_ITEM, AGENT_IMAGER_STATS_PEAK_ITEM_NAME, "Peak", 0, 0xFFFF, 0, 0);
 		indigo_init_number_item(AGENT_IMAGER_STATS_FWHM_ITEM, AGENT_IMAGER_STATS_FWHM_ITEM_NAME, "FWHM", 0, 0xFFFF, 0, 0);
 		// initialize HFD stats
@@ -2568,6 +2570,16 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
+void adjust_stats_max_stars_to_use(indigo_device *device) {
+	if (AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
+		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
+	} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) {
+		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = 1;
+	} else {
+		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = 0;
+	}
+}
+
 static indigo_result agent_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -2623,7 +2635,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS_ESTIMATOR
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property, false);
 		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->state = INDIGO_OK_STATE;
+		adjust_stats_max_stars_to_use(device);
 		save_config(device);
+		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_IMAGER_STARS_PROPERTY, property)) {
@@ -2668,6 +2682,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				item_x->number.value = item_x->number.target = 0;
 				item_y->number.value = item_y->number.target = 0;
 			}
+			adjust_stats_max_stars_to_use(device);
 			clear_hfd_stats(device);
 			AGENT_IMAGER_STATS_PROPERTY->count = (AGENT_IMAGER_STATS_HFD_ITEM - AGENT_IMAGER_STATS_PROPERTY->items) + AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
 			indigo_define_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
