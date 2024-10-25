@@ -1020,7 +1020,11 @@ indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_drive
 		AOFocuserGetSDKVersion(sdk_version);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Oasis Focuser SDK version: %s", sdk_version);
 
-		AOFocuserSetLogLevel(AO_LOG_LEVEL_ERROR);
+		if (indigo_get_log_level() >= INDIGO_LOG_DEBUG) {
+			AOFocuserSetLogLevel(AO_LOG_LEVEL_DEBUG);
+		} else {
+			AOFocuserSetLogLevel(AO_LOG_LEVEL_QUIET);
+		}
 
 		indigo_start_usb_event_handler();
 		int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, ASTROASIS_VENDOR_ID, ASTROASIS_PRODUCT_FOCUSER_ID, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
