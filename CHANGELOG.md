@@ -200,7 +200,8 @@ All notable changes to INDIGO framework will be documented in this file.
 
 ## Obsolated drivers:
 
-- agent_lx200_server
+- indigo_agent_lx200_server
+- indigo_agent_alignment
 - indigo_ccd_gphoto2
 - indigo_ccd_ica
 - indigo_guider_eqmac
