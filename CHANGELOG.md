@@ -48,6 +48,8 @@ All notable changes to INDIGO framework will be documented in this file.
 	- dynamic_driver_client.c enhanced
 	- fix executable_driver_client.c
 
+- indigo_list_usbserial: new utility program to list usbserial devices with VID, PID, Vendor and Prduct names
+
 ## New Drivers:
 - indigo_focuser_lacerta:
 	- Lacerta focusers driver added
