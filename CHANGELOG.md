@@ -2,6 +2,206 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-296] - 26 Oct Sat 2024 [This is a huge release]
+## Overall:
+- INDIGO Licence is simplified and made it GPL compatible
+
+- indigo_raw_utils:
+	- add indigo_find_stars_precise_filtered()
+	- fix wrong threshold for HFD calculation
+
+- indigo_docs:
+	- update DRIVER_DEVELOPMENT_BASICS.md
+	- update INDIGO_SERVER_AND_DRIVERS_GUIDE.md to reflect the new serial port autoselection mechanism
+	- CLIENT_DEVELOPMENT_BASICS.md - explain how to handle property change asynchronously
+	- clarify some points in POLAR_ALIGNMENT.md
+
+- ccd_driver:
+	- more format specifiers added to image name (like %G for gain etc)
+
+- multi instance support fixed for non hitplug drivers
+
+- filter_agents:
+	- main groups of selected devices are mapped to the agent namespace
+
+- Forced consistent usage of SIMULATION property
+
+- double to hexagesimal conversion corner case fixed
+
+- BAYERPAT for X-Trans masks fixed
+
+- indigo_usbserial_utils:
+	- add indigo_enumerate_usb_serial_devices()
+	- usbserial devices are labeled with device name for better identification
+	- auto:// prefix added to let INDIGO select the best serial port for the device
+
+- mount drivers:
+	- EPOCH handling unified
+
+- proeprty snooping refactored and fixed
+
+- property_removed removed from indigo_filter_context, indigo_filter_cached_property() marked as deprecated
+
+- indigo_bus: crash in logging fixed
+
+- indigo_examples:
+	- dynamic_driver_client.c enhanced
+	- fix executable_driver_client.c
+
+## New Drivers:
+- indigo_focuser_lacerta:
+	- Lacerta focusers driver added
+
+- indigo_ccd_pentax:
+	- Pentax camera driver added
+
+## Driver fixes:
+- indigo_agent_scripting:
+	- Sequencer.js: compensation mode control added
+
+- indigo_agent_guider:
+	- reengineer star selection
+	- last guiding log is mapped to /guiding URL on tcp server
+	- star selection reset when mount is slewed
+	- proeper handling of camera change
+	- add CLEAR_SELECTION process
+	- configurable behaviour on lost guiding stars added
+	- refactored to use snooping instead of cached properties
+	- overall rengineereing and cleanup
+
+- indigo_agent_imager:
+    - reengineer star selection
+	- better samplle collection for U-Curve focusing
+	- miltistar U-Curve focusing added
+	- fix peak and FWHM item population
+	- add MAX_STARS_TO_USE item to AGENT_IMAGER_STATS property
+	- apply the delay for all types of frames
+	- abort batch race fixed
+	- proeper handling of camera change
+	- focuser temperature added to FITS metadata
+	- star selection reset when mount is slewed
+	- remove unused BACKLASH_IN and OUT items
+	- add CLEAR_SELECTION process
+	- autofocus redesign
+	- refactored to use snooping instead of cached properties
+	- overall reengineering and cleanup
+
+- indigo_agent_mount:
+	- limits handling fixed
+	- indigo_agent_mount: increase slew timeout to hadle speeds >= 1 deg/s
+	- overall reengineering and cleanup
+
+- indigo_agent_alpaca:
+	- item name arrays made static
+
+- indigo_ccd_touptek & OEMs:
+	- update SDK 57.26598.20240928
+	- remove old message
+
+- indigo_ccd_playerone:
+	- update SDK v3.7.0
+
+- indigo_ccd_asi:
+	- make property handling non blocking
+
+- indigo_mount_nexstar:
+	- safer guiding isolation
+	- port autoselection added
+
+- agent_auxiliary:
+	- related agents switch added
+
+- indigo_ccd_sbig:
+	- show message at camera plug to reload the dirver - SDK lists devices only once
+	- remove double AO attch log
+	- fixed stale devices on change
+	- fix device slot alocation
+	- remove use of environment variables - AO and wheel can be selected
+	- README.md updated
+
+- indigo_ccd_simulator:
+	- temperature fluctuation added
+
+- indigo_ccd_andor:
+	- add install target to Makefile
+
+- indigo_ccd_ptp:
+	- crash on uknown camera fixed
+	- filtering of vendor properties fixed
+
+- indigo_mount_rainbow:
+	- implement handshake at open to identiify if it is a Rainbow Astro mount
+
+- indigo_focuser_asi:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+	- typo fix
+
+- indigo_focuser_astroasis:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+	- update SDK
+	- SDK messages mapped to indigo debug level
+
+- indigo_guider_asi:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+
+- indigo_guider_gpusb:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+
+- indigo_wheel_asi:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+
+- indigo_wheel_fli:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+
+- indigo_wheel_mi:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+
+- indigo_wheel_playerone:
+	- use global indigo_device_enumeration_mutex to avoid driver locks
+	- typo fixed
+
+- indigo_gps_nmea:
+	- autoselect devices that contain GPS / GNSS in their product strings
+
+- indigo_aux_uch:
+	- make port auto selectable
+
+- indigo_mount_asi:
+	- make port auto selectable
+
+- indigo_mount_pmc8:
+	- typo fixed
+
+- indigo_aux_ppb:
+	- make port auto selectable
+
+- indigo_focuser_dmfc:
+	- make port auto selectable
+
+- indigo_focuser_primaluce:
+	- make port auto selectable
+
+- indigo_focuser_wemacro:
+	- make port auto selectable
+
+- indigo_focuser_usbv3:
+	- make port auto selectable
+
+- indigo_rotator_falcon:
+	- port autoselection added
+
+- indigo_guider_cgusbst4:
+	- make port auto selectable
+
+- indigo_mount_lx200:
+	- make port auto selectable
+
+## Obsolated drivers:
+	- agent_lx200_server
+	- indigo_ccd_gphoto2
+	- indigo_ccd_ica
+	- indigo_guider_eqmac
+
 # [2.0-294] - 11 Aug Sun 2024
 ## Overall:
 - CCD_UPLOAD_MODE_NONE_ITEM added to CCD_UPLOAD_MODE_PROPERTY, hidden by default
