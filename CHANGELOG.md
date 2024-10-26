@@ -199,10 +199,11 @@ All notable changes to INDIGO framework will be documented in this file.
 	- make port auto selectable
 
 ## Obsolated drivers:
-	- agent_lx200_server
-	- indigo_ccd_gphoto2
-	- indigo_ccd_ica
-	- indigo_guider_eqmac
+
+- agent_lx200_server
+- indigo_ccd_gphoto2
+- indigo_ccd_ica
+- indigo_guider_eqmac
 
 # [2.0-294] - 11 Aug Sun 2024
 ## Overall:
