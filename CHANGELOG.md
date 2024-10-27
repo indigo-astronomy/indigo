@@ -19,7 +19,7 @@ All notable changes to INDIGO framework will be documented in this file.
 - ccd_driver:
 	- more format specifiers added to image name (like %G for gain etc)
 
-- multi instance support fixed for non hitplug drivers
+- multi instance support fixed for non-hotplug drivers
 
 - filter_agents:
 	- main groups of selected devices are mapped to the agent namespace
@@ -48,7 +48,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- dynamic_driver_client.c enhanced
 	- fix executable_driver_client.c
 
-- indigo_list_usbserial: new utility program to list usbserial devices with VID, PID, Vendor and Prduct names
+- indigo_list_usbserial: new utility program to list usbserial devices with VID, PID, Vendor and Product names
 
 ## New Drivers:
 - indigo_focuser_lacerta:
@@ -62,19 +62,19 @@ All notable changes to INDIGO framework will be documented in this file.
 	- Sequencer.js: compensation mode control added
 
 - indigo_agent_guider:
-	- reengineer star selection
+	- reengineered star selection
 	- last guiding log is mapped to /guiding URL on tcp server
 	- star selection reset when mount is slewed
-	- proeper handling of camera change
+	- proper handling of camera change
 	- add CLEAR_SELECTION process
 	- configurable behaviour on lost guiding stars added
 	- refactored to use snooping instead of cached properties
 	- overall rengineereing and cleanup
 
 - indigo_agent_imager:
-    - reengineer star selection
-	- better samplle collection for U-Curve focusing
-	- miltistar U-Curve focusing added
+	- reengineered star selection
+	- better sample collection for U-Curve focusing
+	- multistar U-Curve focusing added
 	- fix peak and FWHM item population
 	- add MAX_STARS_TO_USE item to AGENT_IMAGER_STATS property
 	- apply the delay for all types of frames
