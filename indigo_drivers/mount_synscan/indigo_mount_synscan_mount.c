@@ -645,6 +645,8 @@ static void manual_slew_ra_stop_timer_callback(indigo_device* device) {
 	}
 
 	//  Update property to OK
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	MOUNT_MOTION_RA_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
@@ -657,6 +659,8 @@ static void manual_slew_dec_stop_timer_callback(indigo_device* device) {
 	PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 
 	//  Update property to OK
+	MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 	MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
@@ -666,10 +670,14 @@ void mount_handle_motion_ra(indigo_device *device) {
 	if (MOUNT_MOTION_WEST_ITEM->sw.value) {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, manual_slew_west_timer_callback, NULL);
 	} else if (MOUNT_MOTION_EAST_ITEM->sw.value) {
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, manual_slew_east_timer_callback, NULL);
 	} else {
 		indigo_set_timer(device, 0, manual_slew_ra_stop_timer_callback, NULL);
@@ -680,10 +688,14 @@ void mount_handle_motion_dec(indigo_device *device) {
 	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, manual_slew_north_timer_callback, NULL);
 	} else if (MOUNT_MOTION_SOUTH_ITEM->sw.value) {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		indigo_set_timer(device, 0, manual_slew_south_timer_callback, NULL);
 	} else {
 		indigo_set_timer(device, 0, manual_slew_dec_stop_timer_callback, NULL);
@@ -747,6 +759,7 @@ static void mount_park_timer_callback(indigo_device* device) {
 		synscan_save_position(device);
 		MOUNT_PARK_PARKED_ITEM->sw.value = true;
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
 	}
@@ -758,8 +771,9 @@ void mount_handle_park(indigo_device* device) {
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			PRIVATE_DATA->globalMode = kGlobalModeParking;
 			indigo_set_timer(device, 0, mount_park_timer_callback, NULL);
 		} else {
@@ -780,6 +794,8 @@ void mount_handle_home(indigo_device* device) {
 		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_HOME_PROPERTY, "Going home...");
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 			PRIVATE_DATA->globalMode = kGlobalModeGoingHome;
 			indigo_set_timer(device, 0, mount_park_timer_callback, NULL);
 		} else {
