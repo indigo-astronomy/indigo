@@ -86,6 +86,8 @@
 #define JOYSTICK_MAPPING_RATE_CENTERING_ITEM					(JOYSTICK_MAPPING_PROPERTY->items+9)
 #define JOYSTICK_MAPPING_RATE_FIND_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+10)
 #define JOYSTICK_MAPPING_RATE_MAX_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+11)
+#define JOYSTICK_MAPPING_FOCUS_IN_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+12)
+#define JOYSTICK_MAPPING_FOCUS_OUT_ITEM								(JOYSTICK_MAPPING_PROPERTY->items+13)
 
 #define JOYSTICK_OPTIONS_PROPERTY											(PRIVATE_DATA->joystick_options_property)
 #define JOYSTICK_OPTIONS_ANALOG_STICK_ITEM						(JOYSTICK_OPTIONS_PROPERTY->items+0)
@@ -120,6 +122,10 @@
 #define MOUNT_TRACKING_ON_ITEM												(MOUNT_TRACKING_PROPERTY->items+0)
 #define MOUNT_TRACKING_OFF_ITEM												(MOUNT_TRACKING_PROPERTY->items+1)
 
+#define FOCUSER_CONTROL_PROPERTY											(PRIVATE_DATA->focuser_control_property)
+#define FOCUSER_FOCUS_IN_ITEM													(FOCUSER_CONTROL_PROPERTY->items+0)
+#define FOCUSER_FOCUS_OUT_ITEM												(FOCUSER_CONTROL_PROPERTY->items+1)
+
 typedef struct {
 	long index;
 	int button_count;
@@ -138,6 +144,7 @@ typedef struct {
 	indigo_property *mount_motion_ra_property;
 	indigo_property *mount_abort_motion_property;
 	indigo_property *mount_tracking_property;
+	indigo_property *focuser_control_property;
 #ifdef INDIGO_LINUX
 	int fd;
 	pthread_t thread;
@@ -180,7 +187,7 @@ static indigo_result aux_attach(indigo_device *device) {
 			indigo_init_number_item(JOYSTICK_AXES_PROPERTY->items + i, name, label, -65536, 65536, 0, 0);
 		}
 		// -------------------------------------------------------------------------------- JOYSTICK_MAPPING
-		JOYSTICK_MAPPING_PROPERTY = indigo_init_number_property(NULL, device->name, JOYSTICK_MAPPING_PROPERTY_NAME, JOYSTICK_MAIN_GROUP, "Buttons and axes mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
+		JOYSTICK_MAPPING_PROPERTY = indigo_init_number_property(NULL, device->name, JOYSTICK_MAPPING_PROPERTY_NAME, JOYSTICK_MAIN_GROUP, "Buttons and axes mapping", INDIGO_OK_STATE, INDIGO_RW_PERM, 14);
 		if (JOYSTICK_MAPPING_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(JOYSTICK_MAPPING_PARKED_ITEM, JOYSTICK_MAPPING_PARKED_ITEM_NAME, "Park mount button", 0, PRIVATE_DATA->button_count, 1, 6);
@@ -195,6 +202,8 @@ static indigo_result aux_attach(indigo_device *device) {
 		indigo_init_number_item(JOYSTICK_MAPPING_RATE_CENTERING_ITEM, JOYSTICK_MAPPING_RATE_CENTERING_ITEM_NAME, "Centering rate button", 0, PRIVATE_DATA->button_count, 1, 2);
 		indigo_init_number_item(JOYSTICK_MAPPING_RATE_FIND_ITEM, JOYSTICK_MAPPING_RATE_FIND_ITEM_NAME, "Find rate button", 0, PRIVATE_DATA->button_count, 1, 3);
 		indigo_init_number_item(JOYSTICK_MAPPING_RATE_MAX_ITEM, JOYSTICK_MAPPING_RATE_MAX_ITEM_NAME, "Max rate button", 0, PRIVATE_DATA->button_count, 1, 4);
+		indigo_init_number_item(JOYSTICK_MAPPING_FOCUS_IN_ITEM, JOYSTICK_MAPPING_FOCUS_IN_ITEM_NAME, "Focus in button", 0, PRIVATE_DATA->button_count, 1, 11);
+		indigo_init_number_item(JOYSTICK_MAPPING_FOCUS_OUT_ITEM, JOYSTICK_MAPPING_FOCUS_OUT_ITEM_NAME, "Focus out button", 0, PRIVATE_DATA->button_count, 1, 12);
 		// -------------------------------------------------------------------------------- MOUNT_PARK
 		JOYSTICK_OPTIONS_PROPERTY = indigo_init_switch_property(NULL, device->name, JOYSTICK_OPTIONS_PROPERTY_NAME, JOYSTICK_MAIN_GROUP, "Options", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 3);
 		if (JOYSTICK_OPTIONS_PROPERTY == NULL)
@@ -244,6 +253,12 @@ static indigo_result aux_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(MOUNT_TRACKING_ON_ITEM, MOUNT_TRACKING_ON_ITEM_NAME, "Tracking", false);
 		indigo_init_switch_item(MOUNT_TRACKING_OFF_ITEM, MOUNT_TRACKING_OFF_ITEM_NAME, "Stopped" , false);
+		// -------------------------------------------------------------------------------- FOCUSER_CONTROL
+		FOCUSER_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, FOCUSER_CONTROL_PROPERTY_NAME, JOYSTICK_MAPPING_GROUP, "Focuser control", INDIGO_OK_STATE, INDIGO_RO_PERM, INDIGO_AT_MOST_ONE_RULE, 2);
+		if (FOCUSER_CONTROL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(FOCUSER_FOCUS_IN_ITEM, FOCUSER_FOCUS_IN_ITEM_NAME, "Focus in", false);
+		indigo_init_switch_item(FOCUSER_FOCUS_OUT_ITEM, FOCUSER_FOCUS_OUT_ITEM_NAME, "Focus out" , false);
 
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return aux_enumerate_properties(device, NULL, NULL);
@@ -276,6 +291,8 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 			indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 		if (indigo_property_match(MOUNT_ABORT_MOTION_PROPERTY, property))
 			indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+		if (indigo_property_match(FOCUSER_CONTROL_PROPERTY, property))
+			indigo_define_property(device, FOCUSER_CONTROL_PROPERTY, NULL);
 	}
 	return indigo_aux_enumerate_properties(device, client, property);
 }
@@ -305,6 +322,8 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				MOUNT_ABORT_MOTION_ITEM->sw.value = false;
 				MOUNT_TRACKING_ON_ITEM->sw.value = false;
 				MOUNT_TRACKING_OFF_ITEM->sw.value = false;
+				FOCUSER_FOCUS_IN_ITEM->sw.value = false;
+				FOCUSER_FOCUS_OUT_ITEM->sw.value = false;
 				indigo_define_property(device, JOYSTICK_AXES_PROPERTY, NULL);
 				indigo_define_property(device, JOYSTICK_BUTTONS_PROPERTY, NULL);
 				indigo_define_property(device, JOYSTICK_MAPPING_PROPERTY, NULL);
@@ -316,6 +335,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 				indigo_define_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 				indigo_define_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 				indigo_define_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+				indigo_define_property(device, FOCUSER_CONTROL_PROPERTY, NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 			} else {
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -334,6 +354,7 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 			indigo_delete_property(device, MOUNT_MOTION_RA_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 			indigo_delete_property(device, MOUNT_ABORT_MOTION_PROPERTY, NULL);
+			indigo_delete_property(device, FOCUSER_CONTROL_PROPERTY, NULL);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 		}
 	} else if (indigo_property_match_changeable(JOYSTICK_MAPPING_PROPERTY, property)) {
@@ -374,6 +395,7 @@ static indigo_result aux_detach(indigo_device *device) {
 	indigo_release_property(MOUNT_MOTION_RA_PROPERTY);
 	indigo_release_property(MOUNT_TRACKING_PROPERTY);
 	indigo_release_property(MOUNT_ABORT_MOTION_PROPERTY);
+	indigo_release_property(FOCUSER_CONTROL_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }
@@ -577,6 +599,14 @@ static void event_button(indigo_device *device, int button, bool value) {
 		indigo_set_switch(MOUNT_SLEW_RATE_PROPERTY, MOUNT_SLEW_RATE_MAX_ITEM, true);
 		MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_SLEW_RATE_PROPERTY, NULL);
+	} else  if (JOYSTICK_MAPPING_FOCUS_IN_ITEM->number.value == button) {
+		indigo_set_switch(FOCUSER_CONTROL_PROPERTY, FOCUSER_FOCUS_IN_ITEM, value);
+		FOCUSER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_CONTROL_PROPERTY, NULL);
+	} else  if (JOYSTICK_MAPPING_FOCUS_OUT_ITEM->number.value == button) {
+		indigo_set_switch(FOCUSER_CONTROL_PROPERTY, FOCUSER_FOCUS_OUT_ITEM, value);
+		FOCUSER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, FOCUSER_CONTROL_PROPERTY, NULL);
 	}
 }
 

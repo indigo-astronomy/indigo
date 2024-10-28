@@ -1212,6 +1212,21 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					}
 				}
 			}
+		} else if (!strcmp(property->name, "JOYSTICK_" FOCUSER_CONTROL_PROPERTY_NAME)) {
+			char *related_imager_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
+			if (related_imager_agent_name) {
+				static const char *names[] = { FOCUSER_FOCUS_IN_ITEM_NAME, FOCUSER_FOCUS_OUT_ITEM_NAME };
+				bool values[] = { false, false };
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = property->items + i;
+					if (!strcmp(item->name, FOCUSER_FOCUS_IN_ITEM_NAME)) {
+						values[0] = item->sw.value;
+					} else if (!strcmp(item->name, FOCUSER_FOCUS_OUT_ITEM_NAME)) {
+						values[1] = item->sw.value;
+					}
+				}
+				indigo_change_switch_property(client, related_imager_agent_name, "AGENT_" FOCUSER_CONTROL_PROPERTY_NAME, 2, names, values);
+			}
 		} else {
 			snoop_changes(client, device, property);
 		}

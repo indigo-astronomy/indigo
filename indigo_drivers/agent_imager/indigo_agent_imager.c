@@ -114,6 +114,10 @@
 #define AGENT_WHEEL_FILTER_PROPERTY						(DEVICE_PRIVATE_DATA->agent_wheel_filter_property)
 #define FILTER_SLOT_COUNT											24
 
+#define AGENT_FOCUSER_CONTROL_PROPERTY				(DEVICE_PRIVATE_DATA->agent_focuse_control_property)
+#define AGENT_FOCUSER_FOCUS_IN_ITEM      			(AGENT_FOCUSER_CONTROL_PROPERTY->items+0)
+#define AGENT_FOCUSER_FOCUS_OUT_ITEM      		(AGENT_FOCUSER_CONTROL_PROPERTY->items+1)
+
 #define AGENT_IMAGER_STATS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stats_property)
 #define AGENT_IMAGER_STATS_EXPOSURE_ITEM      (AGENT_IMAGER_STATS_PROPERTY->items+0)
 #define AGENT_IMAGER_STATS_DELAY_ITEM      		(AGENT_IMAGER_STATS_PROPERTY->items+1)
@@ -197,6 +201,7 @@ typedef struct {
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_process_features_property;
 	indigo_property *agent_wheel_filter_property;
+	indigo_property *agent_focuse_control_property;
 	indigo_property *agent_stars_property;
 	indigo_property *agent_selection_property;
 	indigo_property *agent_stats_property;
@@ -2419,6 +2424,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			indigo_init_switch_item(AGENT_WHEEL_FILTER_PROPERTY->items + i, name, label, false);
 		}
 		AGENT_WHEEL_FILTER_PROPERTY->count = 0;
+		// -------------------------------------------------------------------------------- Focuser helpers
+		AGENT_FOCUSER_CONTROL_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_FOCUSER_CONTROL_PROPERTY_NAME, "Agent", "Focus", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 2);
+		if (AGENT_FOCUSER_CONTROL_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(AGENT_FOCUSER_FOCUS_IN_ITEM, AGENT_FOCUSER_FOCUS_IN_ITEM_NAME, "Focus in", false);
+		indigo_init_switch_item(AGENT_FOCUSER_FOCUS_OUT_ITEM, AGENT_FOCUSER_FOCUS_OUT_ITEM_NAME, "Focus out", false);
 		// -------------------------------------------------------------------------------- Detected stars
 		AGENT_IMAGER_STARS_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_IMAGER_STARS_PROPERTY_NAME, "Agent", "Stars", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, MAX_STAR_COUNT + 1);
 		if (AGENT_IMAGER_STARS_PROPERTY == NULL)
@@ -2567,6 +2578,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_IMAGER_RESUME_CONDITION_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_IMAGER_BARRIER_STATE_PROPERTY, property))
 		indigo_define_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_FOCUSER_CONTROL_PROPERTY, property))
+		indigo_define_property(device, AGENT_FOCUSER_CONTROL_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -2907,6 +2920,23 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_WHEEL_FILTER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_WHEEL_FILTER_PROPERTY,NULL);
 		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- AGENT_FOCUSER_CONTROL
+	} else if (indigo_property_match(AGENT_FOCUSER_CONTROL_PROPERTY, property)) {
+		indigo_property_copy_values(AGENT_FOCUSER_CONTROL_PROPERTY, property, false);
+		if (AGENT_FOCUSER_FOCUS_IN_ITEM->sw.value) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_INWARD_ITEM_NAME, true);
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 65535);
+			AGENT_FOCUSER_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else if (AGENT_FOCUSER_FOCUS_OUT_ITEM->sw.value) {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_DIRECTION_PROPERTY_NAME, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM_NAME, true);
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_STEPS_PROPERTY_NAME, FOCUSER_STEPS_ITEM_NAME, 65535);
+			AGENT_FOCUSER_CONTROL_PROPERTY->state = INDIGO_BUSY_STATE;
+		} else {
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true);
+			AGENT_FOCUSER_CONTROL_PROPERTY->state = INDIGO_OK_STATE;
+		}
+		indigo_update_property(device, AGENT_FOCUSER_CONTROL_PROPERTY,NULL);
+		return INDIGO_OK;
 	// -------------------------------------------------------------------------------- AGENT_IMAGER_SEQUENCE_SIZE
 	} else if (indigo_property_match(AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY, property)) {
 		indigo_property_copy_values(AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY, property, false);
@@ -3042,6 +3072,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_IMAGER_RESUME_CONDITION_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_BARRIER_STATE_PROPERTY);
 	indigo_release_property(AGENT_WHEEL_FILTER_PROPERTY);
+	indigo_release_property(AGENT_IMAGER_FOCUS_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
 	DEVICE_PRIVATE_DATA->image_buffer_size = 0;
