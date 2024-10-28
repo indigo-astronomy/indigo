@@ -753,6 +753,8 @@ static void mount_park_timer_callback(indigo_device* device) {
 
 	//  Update state
 	if (PRIVATE_DATA->globalMode == kGlobalModeGoingHome) {
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, NULL);
 		MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount at home.");
 	} else {
