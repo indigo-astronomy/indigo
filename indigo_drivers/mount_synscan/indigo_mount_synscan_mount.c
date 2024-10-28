@@ -746,6 +746,7 @@ static void mount_park_timer_callback(indigo_device* device) {
 	} else {
 		synscan_save_position(device);
 		MOUNT_PARK_PARKED_ITEM->sw.value = true;
+		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
 		MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_PARK_PROPERTY, "Mount parked.");
 	}
@@ -757,8 +758,8 @@ void mount_handle_park(indigo_device* device) {
 	if (MOUNT_PARK_PARKED_ITEM->sw.value) {
 		if (PRIVATE_DATA->globalMode == kGlobalModeIdle) {
 			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, MOUNT_PARK_PROPERTY, "Parking...");
-
 			PRIVATE_DATA->globalMode = kGlobalModeParking;
 			indigo_set_timer(device, 0, mount_park_timer_callback, NULL);
 		} else {
