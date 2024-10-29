@@ -69,8 +69,13 @@
 
 #define X_BLUETOOTH_NAME_PROPERTY			(PRIVATE_DATA->bluetooth_name_property)
 #define X_BLUETOOTH_NAME_ITEM			(X_BLUETOOTH_NAME_PROPERTY->items+0)
-#define X_BLUETOOTH_NAME_PROPERTY_NAME		"x_BLUETOOTH_NAME_PROPERTY"
+#define X_BLUETOOTH_NAME_PROPERTY_NAME		"X_BLUETOOTH_NAME_PROPERTY"
 #define X_BLUETOOTH_NAME_NAME			"BLUETOOTH_NAME"
+
+#define X_FACTORY_RESET_PROPERTY			(PRIVATE_DATA->factory_reset_property)
+#define X_FACTORY_RESET_ITEM				(X_FACTORY_RESET_PROPERTY->items+0)
+#define X_FACTORY_RESET_PROPERTY_NAME		"X_FACTORY_RESET"
+#define X_FACTORY_RESET_ITEM_NAME			"RESET"
 
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
@@ -96,12 +101,12 @@ typedef struct {
 	indigo_property *custom_suffix_property;
 	indigo_property *bluetooth_property;
 	indigo_property *bluetooth_name_property;
+	indigo_property *factory_reset_property;
 } astroasis_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
-static bool wheel_config(indigo_device *device, unsigned int mask, int value)
-{
+static bool wheel_config(indigo_device *device, unsigned int mask, int value) {
 	OFWConfig *config = &PRIVATE_DATA->config;
 
 	config->mask = mask;
@@ -211,6 +216,12 @@ static indigo_result wheel_attach(indigo_device *device) {
 		if (X_BLUETOOTH_NAME_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(X_BLUETOOTH_NAME_ITEM, X_BLUETOOTH_NAME_NAME, "Bluetooth name", PRIVATE_DATA->bluetooth_name);
+		// ---------------------------------------------------------------------------------- X_FACTORY_RESET
+		X_FACTORY_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, X_FACTORY_RESET_PROPERTY_NAME, "Advanced", "Factory reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (X_FACTORY_RESET_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(X_FACTORY_RESET_ITEM, X_FACTORY_RESET_ITEM_NAME, "Reset", false);
+		sprintf(X_FACTORY_RESET_ITEM->hints, "warn_on_set:\"Clear all alignment points?\";");
 		// --------------------------------------------------------------------------
 
 		return wheel_enumerate_properties(device, NULL, NULL);
@@ -229,6 +240,8 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, X_BLUETOOTH_PROPERTY, NULL);
 		if (indigo_property_match(X_BLUETOOTH_NAME_PROPERTY, property));
 			indigo_define_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
+		if (indigo_property_match(X_FACTORY_RESET_PROPERTY, property));
+			indigo_define_property(device, X_FACTORY_RESET_PROPERTY, NULL);
 	}
 	return indigo_wheel_enumerate_properties(device, client, property);
 }
@@ -272,6 +285,7 @@ static void wheel_connect_callback(indigo_device *device) {
 					indigo_define_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 					indigo_define_property(device, X_BLUETOOTH_PROPERTY, NULL);
 					indigo_define_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
+					indigo_define_property(device, X_FACTORY_RESET_PROPERTY, NULL);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
@@ -293,6 +307,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
 			indigo_delete_property(device, X_BLUETOOTH_PROPERTY, NULL);
 			indigo_delete_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
+			indigo_delete_property(device, X_FACTORY_RESET_PROPERTY, NULL);
 			indigo_global_unlock(device);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -355,7 +370,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 		strcpy(PRIVATE_DATA->custom_suffix, X_CUSTOM_SUFFIX_ITEM->text.value);
 
-		AOReturn res = OFWSetFriendlyName(PRIVATE_DATA->dev_id, PRIVATE_DATA->custom_suffix);
+		int res = OFWSetFriendlyName(PRIVATE_DATA->dev_id, PRIVATE_DATA->custom_suffix);
 
 		if (res != AO_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, X_CUSTOM_SUFFIX_ITEM->text.value, res);
@@ -370,7 +385,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
 			}
 		}
-		// -------------------------------------------------------------------------------- BLUETOOTH
+		// -------------------------------------------------------------------------------- X_BLUETOOTH
 	} else if (indigo_property_match_changeable(X_BLUETOOTH_PROPERTY, property)) {
 		indigo_property_copy_values(X_BLUETOOTH_PROPERTY, property, false);
 		if (wheel_config(device, MASK_BLUETOOTH, X_BLUETOOTH_ON_ITEM->sw.value))
@@ -392,10 +407,27 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 		if (ret == AO_SUCCESS) {
 			X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser bluetooth name, ret = %d\n", ret);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set the Bluetooth name for the Oasis Filter Wheel, ret = %d\n", ret);
 			X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_update_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- X_FACTORY_RESET
+	} else if (indigo_property_match_changeable(X_FACTORY_RESET_PROPERTY, property)) {
+		indigo_property_copy_values(X_FACTORY_RESET_PROPERTY, property, false);
+		if (X_FACTORY_RESET_ITEM->sw.value) {
+			X_FACTORY_RESET_ITEM->sw.value = false;
+			X_FACTORY_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
+			int res = OFWFactoryReset(PRIVATE_DATA->dev_id);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWFactoryReset(%d) = %d", PRIVATE_DATA->dev_id, res);
+			if (res == AO_SUCCESS) {
+				X_FACTORY_RESET_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, X_FACTORY_RESET_PROPERTY, "Factory reset completed");
+			} else {
+				X_FACTORY_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, X_FACTORY_RESET_PROPERTY, "Factory reset failed");
+			}
+		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -412,6 +444,7 @@ static indigo_result wheel_detach(indigo_device *device) {
 	indigo_release_property(X_CUSTOM_SUFFIX_PROPERTY);
 	indigo_release_property(X_BLUETOOTH_PROPERTY);
 	indigo_release_property(X_BLUETOOTH_NAME_PROPERTY);
+	indigo_release_property(X_FACTORY_RESET_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
