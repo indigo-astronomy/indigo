@@ -23,7 +23,7 @@
  \file indigo_focuser_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0004
+#define DRIVER_VERSION 0x0005
 #define DRIVER_NAME "indigo_focuser_astroasis"
 
 #include <stdlib.h>
@@ -60,14 +60,14 @@ typedef struct {
 	char sdk_version[AO_FOCUSER_VERSION_LEN + 1];
 	char firmware_version[AO_FOCUSER_VERSION_LEN + 1];
 	char model[AO_FOCUSER_NAME_LEN + 1];
-	char friendly_name[AO_FOCUSER_NAME_LEN + 1];
+	char custom_suffix[AO_FOCUSER_NAME_LEN + 1];
 	char bluetooth_name[AO_FOCUSER_NAME_LEN + 1];
 	double compensation_last_temp;
 	indigo_timer *focuser_timer, *temperature_timer;
 	indigo_property *beep_on_power_up_property;
 	indigo_property *beep_on_move_property;
 	indigo_property *backlash_direction_property;
-	indigo_property *friendly_name_property;
+	indigo_property *custom_suffix_property;
 	indigo_property *bluetooth_property;
 	indigo_property *bluetooth_name_property;
 	indigo_property *board_temperature_property;
@@ -94,10 +94,10 @@ typedef struct {
 #define BACKLASH_DIRECTION_IN_ITEM_NAME		"INWARD"
 #define BACKLASH_DIRECTION_OUT_ITEM_NAME	"OUTWARD"
 
-#define FRIENDLY_NAME_PROPERTY			(PRIVATE_DATA->friendly_name_property)
-#define FRIENDLY_NAME_ITEM			(FRIENDLY_NAME_PROPERTY->items+0)
-#define FRIENDLY_NAME_PROPERTY_NAME		"FRIENDLY_NAME_PROPERTY"
-#define FRIENDLY_NAME_NAME			"FRIENDLY_NAME"
+#define CUSTOM_SUFFIX_PROPERTY     (PRIVATE_DATA->custom_suffix_property)
+#define CUSTOM_SUFFIX_ITEM         (CUSTOM_SUFFIX_PROPERTY->items+0)
+#define CUSTOM_SUFFIX_PROPERTY_NAME   "CUSTOM_SUFFIX"
+#define CUSTOM_SUFFIX_NAME         "SUFFIX"
 
 #define BLUETOOTH_PROPERTY			(PRIVATE_DATA->bluetooth_property)
 #define BLUETOOTH_ON_ITEM			(BLUETOOTH_PROPERTY->items+0)
@@ -278,8 +278,8 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
 		if (indigo_property_match(BACKLASH_DIRECTION_PROPERTY, property))
 			indigo_define_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
-		if (indigo_property_match(FRIENDLY_NAME_PROPERTY, property))
-			indigo_define_property(device, FRIENDLY_NAME_PROPERTY, NULL);
+		if (indigo_property_match(CUSTOM_SUFFIX_PROPERTY, property))
+			indigo_define_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
 		if (indigo_property_match(BLUETOOTH_PROPERTY, property))
 			indigo_define_property(device, BLUETOOTH_PROPERTY, NULL);
 		if (indigo_property_match(BLUETOOTH_NAME_PROPERTY, property))
@@ -363,11 +363,11 @@ static indigo_result focuser_attach(indigo_device *device) {
 		indigo_init_switch_item(BACKLASH_DIRECTION_IN_ITEM, BACKLASH_DIRECTION_IN_ITEM_NAME, "Inward", false);
 		indigo_init_switch_item(BACKLASH_DIRECTION_OUT_ITEM, BACKLASH_DIRECTION_OUT_ITEM_NAME, "Outward", true);
 
-		// FRIENDLY_NAME_PROPERTY
-		FRIENDLY_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, FRIENDLY_NAME_PROPERTY_NAME, "Advanced", "Friendly name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
-		if (FRIENDLY_NAME_PROPERTY == NULL)
+		// CUSTOM_SUFFIX_PROPERTY
+		CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, CUSTOM_SUFFIX_PROPERTY_NAME, "Advanced", "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(FRIENDLY_NAME_ITEM, FRIENDLY_NAME_NAME, "Friendly name", PRIVATE_DATA->friendly_name);
+		indigo_init_text_item(CUSTOM_SUFFIX_ITEM, CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 
 		// BLUETOOTH_PROPERTY
 		BLUETOOTH_PROPERTY = indigo_init_switch_property(NULL, device->name, BLUETOOTH_PROPERTY_NAME, "Advanced", "Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
@@ -438,7 +438,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				indigo_define_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
 				indigo_define_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
 				indigo_define_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
-				indigo_define_property(device, FRIENDLY_NAME_PROPERTY, NULL);
+				indigo_define_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
 				indigo_define_property(device, BLUETOOTH_PROPERTY, NULL);
 				indigo_define_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
@@ -459,7 +459,7 @@ static void focuser_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
 		indigo_delete_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
 		indigo_delete_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
-		indigo_delete_property(device, FRIENDLY_NAME_PROPERTY, NULL);
+		indigo_delete_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
 		indigo_delete_property(device, BLUETOOTH_PROPERTY, NULL);
 		indigo_delete_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
 		indigo_delete_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
@@ -693,28 +693,28 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, BACKLASH_DIRECTION_PROPERTY, NULL);
 
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(FRIENDLY_NAME_PROPERTY, property)) {
-		// FRIENDLY_NAME_PROPERTY
-		indigo_property_copy_values(FRIENDLY_NAME_PROPERTY, property, false);
+	} else if (indigo_property_match_changeable(CUSTOM_SUFFIX_PROPERTY, property)) {
+		// CUSTOM_SUFFIX_PROPERTY
+		indigo_property_copy_values(CUSTOM_SUFFIX_PROPERTY, property, false);
 
-		if (strlen(FRIENDLY_NAME_ITEM->text.value) > AO_FOCUSER_VERSION_LEN) {
-			FRIENDLY_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_update_property(device, FRIENDLY_NAME_PROPERTY, "Friendly name is too long");
+		if (strlen(CUSTOM_SUFFIX_ITEM->text.value) > AO_FOCUSER_VERSION_LEN) {
+			CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, CUSTOM_SUFFIX_PROPERTY, "Custom suffix is too long");
 			return INDIGO_OK;
 		}
 
-		strcpy(PRIVATE_DATA->friendly_name, FRIENDLY_NAME_ITEM->text.value);
+		strcpy(PRIVATE_DATA->custom_suffix, CUSTOM_SUFFIX_ITEM->text.value);
 
-		AOReturn ret = AOFocuserSetFriendlyName(PRIVATE_DATA->dev_id, PRIVATE_DATA->friendly_name);
+		AOReturn ret = AOFocuserSetFriendlyName(PRIVATE_DATA->dev_id, PRIVATE_DATA->custom_suffix);
 
 		if (ret == AO_SUCCESS) {
-			FRIENDLY_NAME_PROPERTY->state = INDIGO_OK_STATE;
+			CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser friendly name, ret = %d\n", ret);
-			FRIENDLY_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser custom suffix, ret = %d\n", ret);
+			CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 
-		indigo_update_property(device, FRIENDLY_NAME_PROPERTY, NULL);
+		indigo_update_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(BLUETOOTH_PROPERTY, property)) {
@@ -800,7 +800,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(BEEP_ON_POWER_UP_PROPERTY);
 	indigo_release_property(BEEP_ON_MOVE_PROPERTY);
 	indigo_release_property(BACKLASH_DIRECTION_PROPERTY);
-	indigo_release_property(FRIENDLY_NAME_PROPERTY);
+	indigo_release_property(CUSTOM_SUFFIX_PROPERTY);
 	indigo_release_property(BLUETOOTH_PROPERTY);
 	indigo_release_property(BLUETOOTH_NAME_PROPERTY);
 	indigo_release_property(FOCUSER_TEMPERATURE_BOARD_PROPERTY);
@@ -834,7 +834,7 @@ static indigo_device *focuser_create(int id) {
 	AOFocuserVersion version;
 	AOFocuserConfig config;
 	char model[AO_FOCUSER_NAME_LEN + 1];
-	char friendly_name[AO_FOCUSER_NAME_LEN + 1];
+	char custom_suffix[AO_FOCUSER_NAME_LEN + 1];
 	char bluetooth_name[AO_FOCUSER_NAME_LEN + 1];
 	indigo_device *device = NULL;
 
@@ -865,7 +865,7 @@ static indigo_device *focuser_create(int id) {
 		goto out;
 	}
 
-	ret = AOFocuserGetFriendlyName(id, friendly_name);
+	ret = AOFocuserGetFriendlyName(id, custom_suffix);
 	if (ret != AO_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetFriendlyName() failed, ret = %d", ret);
 		goto out;
@@ -894,11 +894,11 @@ static indigo_device *focuser_create(int id) {
 	sprintf(private_data->firmware_version, "%d.%d.%d", version.firmware >> 24, (version.firmware & 0x00FF0000) >> 16, (version.firmware & 0x0000FF00) >> 8);
 
 	strcpy(private_data->model, model);
-	strcpy(private_data->friendly_name, friendly_name);
+	strcpy(private_data->custom_suffix, custom_suffix);
 	strcpy(private_data->bluetooth_name, bluetooth_name);
 
-	if (strlen(private_data->friendly_name) > 0)
-		sprintf(device->name, "%s (%s)", "Oasis Focuser", private_data->friendly_name);
+	if (strlen(private_data->custom_suffix) > 0)
+		sprintf(device->name, "%s #%s", "Oasis Focuser", private_data->custom_suffix);
 	else
 		sprintf(device->name, "%s", "Oasis Focuser");
 
