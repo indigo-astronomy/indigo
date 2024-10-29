@@ -70,6 +70,7 @@ typedef struct {
 	indigo_property *custom_suffix_property;
 	indigo_property *bluetooth_property;
 	indigo_property *bluetooth_name_property;
+	indigo_property *factory_reset_property;
 	indigo_property *board_temperature_property;
 } astroasis_private_data;
 
@@ -110,6 +111,11 @@ typedef struct {
 #define BLUETOOTH_NAME_ITEM			(BLUETOOTH_NAME_PROPERTY->items+0)
 #define BLUETOOTH_NAME_PROPERTY_NAME		"BLUETOOTH_NAME_PROPERTY"
 #define BLUETOOTH_NAME_NAME			"BLUETOOTH_NAME"
+
+#define FACTORY_RESET_PROPERTY			(PRIVATE_DATA->factory_reset_property)
+#define FACTORY_RESET_ITEM			(FACTORY_RESET_PROPERTY->items+0)
+#define FACTORY_RESET_PROPERTY_NAME		"FACTORY_RESET_PROPERTY"
+#define FACTORY_RESET_ITEM_NAME			"RESET"
 
 #define FOCUSER_TEMPERATURE_BOARD_PROPERTY	(PRIVATE_DATA->board_temperature_property)
 #define FOCUSER_TEMPERATURE_BOARD_ITEM		(FOCUSER_TEMPERATURE_BOARD_PROPERTY->items+0)
@@ -283,6 +289,8 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 			indigo_define_property(device, BLUETOOTH_PROPERTY, NULL);
 		if (indigo_property_match(BLUETOOTH_NAME_PROPERTY, property))
 			indigo_define_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
+		if (indigo_property_match(FACTORY_RESET_PROPERTY, property))
+			indigo_define_property(device, FACTORY_RESET_PROPERTY, NULL);
 		if (indigo_property_match(FOCUSER_TEMPERATURE_BOARD_PROPERTY, property))
 			indigo_define_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
 	}
@@ -382,6 +390,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_text_item(BLUETOOTH_NAME_ITEM, BLUETOOTH_NAME_NAME, "Bluetooth name", PRIVATE_DATA->bluetooth_name);
 
+		// FACTORY_RESET_PROPERTY
+		FACTORY_RESET_PROPERTY = indigo_init_switch_property(NULL, device->name, FACTORY_RESET_PROPERTY_NAME, "Advanced", "Factory reset", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 1);
+		if (FACTORY_RESET_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_switch_item(FACTORY_RESET_ITEM, FACTORY_RESET_ITEM_NAME, "Reset", false);
+		sprintf(FACTORY_RESET_ITEM->hints, "warn_on_set:\"Confirm focuser factory reset?\";");
+
 		// FOCUSER_TEMPERATURE and FOCUSER_TEMPERATURE_BOARD
 		FOCUSER_TEMPERATURE_BOARD_PROPERTY = indigo_init_number_property(NULL, device->name, FOCUSER_TEMPERATURE_BOARD_PROPERTY_NAME, FOCUSER_MAIN_GROUP, "Temperature 1 (Board)", INDIGO_OK_STATE, INDIGO_RO_PERM, 1);
 		FOCUSER_TEMPERATURE_BOARD_PROPERTY->hidden = false;
@@ -444,6 +459,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				indigo_define_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
 				indigo_define_property(device, BLUETOOTH_PROPERTY, NULL);
 				indigo_define_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
+				indigo_define_property(device, FACTORY_RESET_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
 
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -467,6 +483,7 @@ static void focuser_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, CUSTOM_SUFFIX_PROPERTY, NULL);
 		indigo_delete_property(device, BLUETOOTH_PROPERTY, NULL);
 		indigo_delete_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
+		indigo_delete_property(device, FACTORY_RESET_PROPERTY, NULL);
 		indigo_delete_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
 
 		AOReturn ret = AOFocuserStopMove(PRIVATE_DATA->dev_id);
@@ -758,6 +775,23 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_update_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
 		
 		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(FACTORY_RESET_PROPERTY, property)) {
+		// FACTORY_RESET_PROPERTY
+		indigo_property_copy_values(FACTORY_RESET_PROPERTY, property, false);
+		if (FACTORY_RESET_ITEM->sw.value) {
+			FACTORY_RESET_ITEM->sw.value = false;
+			FACTORY_RESET_PROPERTY->state = INDIGO_BUSY_STATE;
+			int res = AOFocuserFactoryReset(PRIVATE_DATA->dev_id);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserFactoryReset(%d) = %d", PRIVATE_DATA->dev_id, res);
+			if (res == AO_SUCCESS) {
+				FACTORY_RESET_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_update_property(device, FACTORY_RESET_PROPERTY, "Factory reset completed");
+			} else {
+				FACTORY_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, FACTORY_RESET_PROPERTY, "Factory reset failed");
+			}
+		}
+		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FOCUSER_MODE_PROPERTY, property)) {
 		// FOCUSER_MODE
 		indigo_property_copy_values(FOCUSER_MODE_PROPERTY, property, false);
@@ -808,6 +842,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 	indigo_release_property(CUSTOM_SUFFIX_PROPERTY);
 	indigo_release_property(BLUETOOTH_PROPERTY);
 	indigo_release_property(BLUETOOTH_NAME_PROPERTY);
+	indigo_release_property(FACTORY_RESET_PROPERTY);
 	indigo_release_property(FOCUSER_TEMPERATURE_BOARD_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_focuser_detach(device);
