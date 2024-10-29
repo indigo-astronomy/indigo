@@ -221,7 +221,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		if (X_FACTORY_RESET_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(X_FACTORY_RESET_ITEM, X_FACTORY_RESET_ITEM_NAME, "Reset", false);
-		sprintf(X_FACTORY_RESET_ITEM->hints, "warn_on_set:\"Clear all alignment points?\";");
+		sprintf(X_FACTORY_RESET_ITEM->hints, "warn_on_set:\"Confirm filter wheel factory reset?\";");
 		// --------------------------------------------------------------------------
 
 		return wheel_enumerate_properties(device, NULL, NULL);
