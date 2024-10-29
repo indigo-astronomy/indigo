@@ -114,7 +114,7 @@
 #define AGENT_WHEEL_FILTER_PROPERTY						(DEVICE_PRIVATE_DATA->agent_wheel_filter_property)
 #define FILTER_SLOT_COUNT											24
 
-#define AGENT_FOCUSER_CONTROL_PROPERTY				(DEVICE_PRIVATE_DATA->agent_focuse_control_property)
+#define AGENT_FOCUSER_CONTROL_PROPERTY				(DEVICE_PRIVATE_DATA->agent_focuser_control_property)
 #define AGENT_FOCUSER_FOCUS_IN_ITEM      			(AGENT_FOCUSER_CONTROL_PROPERTY->items+0)
 #define AGENT_FOCUSER_FOCUS_OUT_ITEM      		(AGENT_FOCUSER_CONTROL_PROPERTY->items+1)
 
@@ -201,7 +201,7 @@ typedef struct {
 	indigo_property *agent_abort_process_property;
 	indigo_property *agent_process_features_property;
 	indigo_property *agent_wheel_filter_property;
-	indigo_property *agent_focuse_control_property;
+	indigo_property *agent_focuser_control_property;
 	indigo_property *agent_stars_property;
 	indigo_property *agent_selection_property;
 	indigo_property *agent_stats_property;
@@ -3072,7 +3072,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_IMAGER_RESUME_CONDITION_PROPERTY);
 	indigo_release_property(AGENT_IMAGER_BARRIER_STATE_PROPERTY);
 	indigo_release_property(AGENT_WHEEL_FILTER_PROPERTY);
-	indigo_release_property(AGENT_IMAGER_FOCUS_PROPERTY);
+	indigo_release_property(AGENT_FOCUSER_CONTROL_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
 	DEVICE_PRIVATE_DATA->image_buffer_size = 0;
