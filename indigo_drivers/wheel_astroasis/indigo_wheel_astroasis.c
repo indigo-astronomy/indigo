@@ -23,7 +23,7 @@
  \file indigo_wheel_astroasis.c
  */
 
-#define DRIVER_VERSION 0x0001
+#define DRIVER_VERSION 0x0002
 #define DRIVER_NAME "indigo_wheel_astroasis"
 
 #include <stdlib.h>
@@ -60,6 +60,18 @@
 #define X_CUSTOM_SUFFIX_PROPERTY_NAME   "X_CUSTOM_SUFFIX"
 #define X_CUSTOM_SUFFIX_NAME         "SUFFIX"
 
+#define X_BLUETOOTH_PROPERTY			(PRIVATE_DATA->bluetooth_property)
+#define X_BLUETOOTH_ON_ITEM			(X_BLUETOOTH_PROPERTY->items+0)
+#define X_BLUETOOTH_OFF_ITEM			(X_BLUETOOTH_PROPERTY->items+1)
+#define X_BLUETOOTH_PROPERTY_NAME			"X_BLUETOOTH_PROPERTY"
+#define X_BLUETOOTH_ON_ITEM_NAME			"ENABLED"
+#define X_BLUETOOTH_OFF_ITEM_NAME			"DISABLED"
+
+#define X_BLUETOOTH_NAME_PROPERTY			(PRIVATE_DATA->bluetooth_name_property)
+#define X_BLUETOOTH_NAME_ITEM			(X_BLUETOOTH_NAME_PROPERTY->items+0)
+#define X_BLUETOOTH_NAME_PROPERTY_NAME		"x_BLUETOOTH_NAME_PROPERTY"
+#define X_BLUETOOTH_NAME_NAME			"BLUETOOTH_NAME"
+
 // gp_bits is used as boolean
 #define is_connected                    gp_bits
 
@@ -87,6 +99,34 @@ typedef struct {
 } astroasis_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
+
+static bool wheel_config(indigo_device *device, unsigned int mask, int value)
+{
+	OFWConfig *config = &PRIVATE_DATA->config;
+
+	config->mask = mask;
+
+	switch (mask) {
+	case MASK_SPEED:
+		config->speed = value;
+		break;
+	case MASK_BLUETOOTH:
+		config->bluetoothOn = value;
+		break;
+	default:
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid Oasis wheel configuration mask %08X\n", mask);
+		return false;
+	}
+
+	int ret = OFWSetConfig(PRIVATE_DATA->dev_id, config);
+
+	if (ret != AO_SUCCESS) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis wheel configuration, ret = %d\n", ret);
+		return false;
+	}
+
+	return true;
+}
 
 
 static void wheel_timer_callback(indigo_device *device) {
@@ -159,6 +199,18 @@ static indigo_result wheel_attach(indigo_device *device) {
 		if (X_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_text_item(X_CUSTOM_SUFFIX_ITEM, X_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
+		// --------------------------------------------------------------------------------- BLUETOOTH
+		X_BLUETOOTH_PROPERTY = indigo_init_switch_property(NULL, device->name, X_BLUETOOTH_PROPERTY_NAME, "Advanced", "Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
+		if (X_BLUETOOTH_PROPERTY == NULL)
+			return INDIGO_FAILED;
+
+		indigo_init_switch_item(X_BLUETOOTH_ON_ITEM, X_BLUETOOTH_ON_ITEM_NAME, "Enabled", false);
+		indigo_init_switch_item(X_BLUETOOTH_OFF_ITEM, X_BLUETOOTH_OFF_ITEM_NAME, "Disabled", true);
+		// ---------------------------------------------------------------------------------- X_BLUETOOTH_NAME
+		X_BLUETOOTH_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, X_BLUETOOTH_NAME_PROPERTY_NAME, "Advanced", "Bluetooth name", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
+		if (X_BLUETOOTH_NAME_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_text_item(X_BLUETOOTH_NAME_ITEM, X_BLUETOOTH_NAME_NAME, "Bluetooth name", PRIVATE_DATA->bluetooth_name);
 		// --------------------------------------------------------------------------
 
 		return wheel_enumerate_properties(device, NULL, NULL);
@@ -173,6 +225,10 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
 		if (indigo_property_match(X_CUSTOM_SUFFIX_PROPERTY, property))
 			indigo_define_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+		if (indigo_property_match(X_BLUETOOTH_PROPERTY, property));
+			indigo_define_property(device, X_BLUETOOTH_PROPERTY, NULL);
+		if (indigo_property_match(X_BLUETOOTH_NAME_PROPERTY, property));
+			indigo_define_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
 	}
 	return indigo_wheel_enumerate_properties(device, client, property);
 }
@@ -203,8 +259,19 @@ static void wheel_connect_callback(indigo_device *device) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWGetStatus(%d, -> .filterPosition = %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot, res);
 					WHEEL_SLOT_ITEM->number.target = PRIVATE_DATA->target_slot;
 
+					res = OFWGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
+					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWGetConfig(%d, -> .speed = %d .bluetoothOn = %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->config.speed, PRIVATE_DATA->config.bluetoothOn, res);
+					X_BLUETOOTH_ON_ITEM->sw.value = PRIVATE_DATA->config.bluetoothOn ? true : false;;
+					X_BLUETOOTH_OFF_ITEM->sw.value = !X_BLUETOOTH_ON_ITEM->sw.value;
+
+					res = OFWGetBluetoothName(PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name);
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "OFWGetBluetoothName(%d, -> \"%s\") = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name, res);
+					indigo_set_text_item_value(X_BLUETOOTH_NAME_ITEM, PRIVATE_DATA->bluetooth_name);
+
 					indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
 					indigo_define_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+					indigo_define_property(device, X_BLUETOOTH_PROPERTY, NULL);
+					indigo_define_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
 
 					CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 					device->is_connected = true;
@@ -224,6 +291,8 @@ static void wheel_connect_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWClose(%d) = %d", PRIVATE_DATA->dev_id, res);
 			indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
 			indigo_delete_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+			indigo_delete_property(device, X_BLUETOOTH_PROPERTY, NULL);
+			indigo_delete_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
 			indigo_global_unlock(device);
 			device->is_connected = false;
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -301,6 +370,32 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Filter wheel name suffix cleared, will be used on replug");
 			}
 		}
+		// -------------------------------------------------------------------------------- BLUETOOTH
+	} else if (indigo_property_match_changeable(X_BLUETOOTH_PROPERTY, property)) {
+		indigo_property_copy_values(X_BLUETOOTH_PROPERTY, property, false);
+		if (wheel_config(device, MASK_BLUETOOTH, X_BLUETOOTH_ON_ITEM->sw.value))
+			X_BLUETOOTH_PROPERTY->state = INDIGO_OK_STATE;
+		else
+			X_BLUETOOTH_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, X_BLUETOOTH_PROPERTY, NULL);
+		return INDIGO_OK;
+		// -------------------------------------------------------------------------------- X_BLUETOOTH_NAME
+	} else if (indigo_property_match_changeable(X_BLUETOOTH_NAME_PROPERTY, property)) {
+		indigo_property_copy_values(X_BLUETOOTH_NAME_PROPERTY, property, false);
+		if (strlen(X_BLUETOOTH_NAME_ITEM->text.value) > OFW_VERSION_LEN) {
+			X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+			indigo_update_property(device, X_BLUETOOTH_NAME_PROPERTY, "Bluetooth name is too long");
+			return INDIGO_OK;
+		}
+		strcpy(PRIVATE_DATA->bluetooth_name, X_BLUETOOTH_NAME_ITEM->text.value);
+		int ret = OFWSetBluetoothName(PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name);
+		if (ret == AO_SUCCESS) {
+			X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser bluetooth name, ret = %d\n", ret);
+			X_BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+		indigo_update_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -315,6 +410,8 @@ static indigo_result wheel_detach(indigo_device *device) {
 	}
 	indigo_release_property(X_CALIBRATE_PROPERTY);
 	indigo_release_property(X_CUSTOM_SUFFIX_PROPERTY);
+	indigo_release_property(X_BLUETOOTH_PROPERTY);
+	indigo_release_property(X_BLUETOOTH_NAME_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
