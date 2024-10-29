@@ -430,10 +430,14 @@ static void focuser_connect_callback(indigo_device *device) {
 				BACKLASH_DIRECTION_IN_ITEM->sw.value = PRIVATE_DATA->config.backlashDirection ? false : true;;
 				BACKLASH_DIRECTION_OUT_ITEM->sw.value = !BACKLASH_DIRECTION_IN_ITEM->sw.value;
 
+				int res = AOFocuserGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserGetConfig(%d, -> .speed = %d .bluetoothOn = %d) = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->config.speed, PRIVATE_DATA->config.bluetoothOn, res);
 				BLUETOOTH_ON_ITEM->sw.value = PRIVATE_DATA->config.bluetoothOn ? true : false;;
 				BLUETOOTH_OFF_ITEM->sw.value = !BLUETOOTH_ON_ITEM->sw.value;
 
-				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				res = AOFocuserGetBluetoothName(PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name);
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetBluetoothName(%d, -> \"%s\") = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name, res);
+				indigo_set_text_item_value(BLUETOOTH_NAME_ITEM, PRIVATE_DATA->bluetooth_name);
 
 				indigo_define_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
 				indigo_define_property(device, BEEP_ON_MOVE_PROPERTY, NULL);
@@ -442,6 +446,8 @@ static void focuser_connect_callback(indigo_device *device) {
 				indigo_define_property(device, BLUETOOTH_PROPERTY, NULL);
 				indigo_define_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
 				indigo_define_property(device, FOCUSER_TEMPERATURE_BOARD_PROPERTY, NULL);
+
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 
 				PRIVATE_DATA->compensation_last_temp = -273.15;  /* we do not have previous temperature reading */
 				indigo_set_timer(device, 0.5, focuser_timer_callback, &PRIVATE_DATA->focuser_timer);
