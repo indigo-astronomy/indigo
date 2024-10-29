@@ -1,0 +1,3 @@
+# Astroasis FILTER WHEELS
+ACTION=="add", ATTRS{idVendor}=="338f", ATTRS{idProduct}=="0fe0", GROUP="users", MODE="0666"
+

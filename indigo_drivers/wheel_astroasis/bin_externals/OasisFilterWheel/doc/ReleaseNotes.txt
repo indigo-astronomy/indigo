@@ -1,0 +1,20 @@
+Copyright 2023 Astroasis Vision Technology, Inc. All Rights Reserved.
+
+
+Change history
+Ver 1.2.0
+Release date: 2023-12-20
+1. Support speed selection
+2. Support turbo mode
+3. Updated calibration data format
+
+Ver 1.0.1
+Release date: 2023-12-11
+1. Fix conflicts when multiple applications using filter wheel
+2. Support more Windows versions
+
+Ver 1.0.0
+Release date: 2023-09-22
+1. Initial version
+
+
