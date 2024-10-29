@@ -75,14 +75,13 @@ typedef struct {
 	char sdk_version[OFW_VERSION_LEN + 1];
 	char firmware_version[OFW_VERSION_LEN + 1];
 	char model[OFW_NAME_LEN + 1];
-	char friendly_name[OFW_NAME_LEN + 1];
+	char custom_suffix[OFW_NAME_LEN + 1];
 	char bluetooth_name[OFW_NAME_LEN + 1];
 	int current_slot, target_slot;
 	int count;
 	indigo_timer *wheel_timer;
 	indigo_property *calibrate_property;
 	indigo_property *custom_suffix_property;
-	indigo_property *friendly_name_property;
 	indigo_property *bluetooth_property;
 	indigo_property *bluetooth_name_property;
 } astroasis_private_data;
@@ -159,7 +158,7 @@ static indigo_result wheel_attach(indigo_device *device) {
 		X_CUSTOM_SUFFIX_PROPERTY = indigo_init_text_property(NULL, device->name, "X_CUSTOM_SUFFIX", WHEEL_ADVANCED_GROUP, "Device name custom suffix", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 		if (X_CUSTOM_SUFFIX_PROPERTY == NULL)
 			return INDIGO_FAILED;
-		indigo_init_text_item(X_CUSTOM_SUFFIX_ITEM, X_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->friendly_name);
+		indigo_init_text_item(X_CUSTOM_SUFFIX_ITEM, X_CUSTOM_SUFFIX_NAME, "Suffix", PRIVATE_DATA->custom_suffix);
 		// --------------------------------------------------------------------------
 
 		return wheel_enumerate_properties(device, NULL, NULL);
@@ -285,9 +284,9 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			return INDIGO_OK;
 		}
 
-		strcpy(PRIVATE_DATA->friendly_name, X_CUSTOM_SUFFIX_ITEM->text.value);
+		strcpy(PRIVATE_DATA->custom_suffix, X_CUSTOM_SUFFIX_ITEM->text.value);
 
-		AOReturn res = OFWSetFriendlyName(PRIVATE_DATA->dev_id, PRIVATE_DATA->friendly_name);
+		AOReturn res = OFWSetFriendlyName(PRIVATE_DATA->dev_id, PRIVATE_DATA->custom_suffix);
 
 		if (res != AO_SUCCESS) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "EFWSetID(%d, \"%s\") = %d", PRIVATE_DATA->dev_id, X_CUSTOM_SUFFIX_ITEM->text.value, res);
@@ -345,7 +344,7 @@ static indigo_device *wheel_create(int id) {
 	OFWVersion version;
 	OFWConfig config;
 	char model[OFW_NAME_LEN + 1];
-	char friendly_name[OFW_NAME_LEN + 1];
+	char custom_suffix[OFW_NAME_LEN + 1];
 	char bluetooth_name[OFW_NAME_LEN + 1];
 	indigo_device *device = NULL;
 
@@ -376,7 +375,7 @@ static indigo_device *wheel_create(int id) {
 		goto out;
 	}
 
-	ret = OFWGetFriendlyName(id, friendly_name);
+	ret = OFWGetFriendlyName(id, custom_suffix);
 	if (ret != AO_SUCCESS) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "OFWGetFriendlyName() failed, ret = %d", ret);
 		goto out;
@@ -405,11 +404,11 @@ static indigo_device *wheel_create(int id) {
 	sprintf(private_data->firmware_version, "%d.%d.%d", version.firmware >> 24, (version.firmware & 0x00FF0000) >> 16, (version.firmware & 0x0000FF00) >> 8);
 
 	strcpy(private_data->model, model);
-	strcpy(private_data->friendly_name, friendly_name);
+	strcpy(private_data->custom_suffix, custom_suffix);
 	strcpy(private_data->bluetooth_name, bluetooth_name);
 
-	if (strlen(private_data->friendly_name) > 0)
-		sprintf(device->name, "%s #%s", "Oasis Filter Wheel", private_data->friendly_name);
+	if (strlen(private_data->custom_suffix) > 0)
+		sprintf(device->name, "%s #%s", "Oasis Filter Wheel", private_data->custom_suffix);
 	else
 		sprintf(device->name, "%s", "Oasis Filter Wheel");
 
