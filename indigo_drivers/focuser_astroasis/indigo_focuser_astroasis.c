@@ -117,8 +117,7 @@ typedef struct {
 #define FOCUSER_TEMPERATURE_BOARD_ITEM_NAME	"BOARD_TEMPERATURE"
 
 // INDIGO focuser device implementation
-static bool focuser_config(indigo_device *device, unsigned int mask, int value)
-{
+static bool focuser_config(indigo_device *device, unsigned int mask, int value) {
 	AOFocuserConfig *config = &PRIVATE_DATA->config;
 
 	config->mask = mask;
@@ -752,7 +751,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (ret == AO_SUCCESS) {
 			BLUETOOTH_NAME_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set Oasis Focuser bluetooth name, ret = %d\n", ret);
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to set the Bluetooth name for the Oasis Focuser, ret = %d\n", ret);
 			BLUETOOTH_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 
