@@ -1235,7 +1235,7 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	add_key(&next_key, false, "DATE-OBS= '%s' / UTC date that FITS file was created", date_time_end);
 	add_key(&next_key, false, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 	add_key(&next_key, false, "ROWORDER= 'TOP-DOWN'           / Image row order");
-	add_key(&next_key, false, "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_BUILD);
+	add_key(&next_key, false, "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_BUILD);
 	if (keywords) {
 		while (keywords->type && (next_key - fits_header) < (FITS_HEADER_SIZE - 80)) {
 			switch (keywords->type) {
