@@ -380,7 +380,6 @@ static indigo_result focuser_attach(indigo_device *device) {
 		BLUETOOTH_PROPERTY = indigo_init_switch_property(NULL, device->name, BLUETOOTH_PROPERTY_NAME, "Advanced", "Bluetooth", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 2);
 		if (BLUETOOTH_PROPERTY == NULL)
 			return INDIGO_FAILED;
-
 		indigo_init_switch_item(BLUETOOTH_ON_ITEM, BLUETOOTH_ON_ITEM_NAME, "Enabled", false);
 		indigo_init_switch_item(BLUETOOTH_OFF_ITEM, BLUETOOTH_OFF_ITEM_NAME, "Disabled", true);
 
@@ -450,7 +449,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				BLUETOOTH_OFF_ITEM->sw.value = !BLUETOOTH_ON_ITEM->sw.value;
 
 				res = AOFocuserGetBluetoothName(PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name);
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetBluetoothName(%d, -> \"%s\") = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name, res);
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "AOFocuserGetBluetoothName(%d, -> \"%s\") = %d", PRIVATE_DATA->dev_id, PRIVATE_DATA->bluetooth_name, res);
 				indigo_set_text_item_value(BLUETOOTH_NAME_ITEM, PRIVATE_DATA->bluetooth_name);
 
 				indigo_define_property(device, BEEP_ON_POWER_UP_PROPERTY, NULL);
@@ -963,10 +962,9 @@ static void focuser_refresh(void) {
 	int number, ids[AO_FOCUSER_MAX_NUM];
 	int i;
 
-	AOFocuserScan(&number, ids);
-
 	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 
+	AOFocuserScan(&number, ids);
 	for (i = 0; i < number; i++) {
 		int pos = focuser_get_index(ids[i]);
 
