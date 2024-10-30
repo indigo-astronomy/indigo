@@ -392,12 +392,40 @@ Date:2023-12-28
 
 ##########################################################
 版本:v1.12.4
-日期:2023-02-24
+日期:2024-02-24
 1. 优化SC432M相机软件
 2. 解决相机从长曝光切换为短曝光后制冷短暂停止的问题
 
 Version:v1.12.4
-Date:2023-02-24
+Date:2024-02-24
 1. Optimize SC432M camera software
 2. Solve the problem of cooling stopping briefly after the camera switches from long exposure to short exposure.
 
+
+##########################################################
+版本:v1.12.6
+日期:2024-04-16
+1. 修正SV905C小分辩率偏移不生效的问题
+2. 修正在MONO16且锐度大于0时亮度翻转的问题
+3. 修正BIN3和BIN4时图像全黑的问题
+
+Version: v1.12.6
+Date:2024-04-16
+1. Fixed the problem that SV905C small resolution offset does not take effect
+2. Fixed the problem of brightness flipping when MONO16 and sharpness is greater than 0
+3. Fixed the problem that the image is completely black in BIN3 and BIN4
+
+
+##########################################################
+版本:v1.12.7
+日期:2024-05-06
+1. 修正macOS下程序偶尔异常退出的问题
+2. 修正关闭制冷时获取的制冷功率值大于0的问题
+3. SVB_CAMERA_PROPERTY中的MaxBitDepth返回sensor实际的位宽
+
+################################################ ########
+Version: v1.12.7
+Date:2024-05-06
+1. Fixed the problem that the program occasionally exits abnormally under macOS
+2. Fixed the issue where the cooling power value obtained when cooling is turned off is greater than 0
+3. MaxBitDepth in SVB_CAMERA_PROPERTY returns the actual bit width of the sensor
