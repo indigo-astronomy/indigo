@@ -32,3 +32,30 @@ unsigned short indigo_ccd_simulator_raw_image[] = {
 unsigned char indigo_ccd_simulator_rgb_image[] = {
 #include "indigo_ccd_simulator_rgb.h"
 };
+
+unsigned char indigo_ccd_simulator_bahtinov_image[][3 * 460 * 460] = { {
+#include "indigo_ccd_simulator_bahtinov_0.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_1.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_2.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_3.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_4.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_5.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_6.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_7.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_8.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_9.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_10.h"
+}
+};
+
+

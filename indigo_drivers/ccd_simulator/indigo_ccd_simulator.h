@@ -45,6 +45,8 @@ extern "C" {
 #define CCD_SIMULATOR_GUIDER_NAME					"CCD Guider Simulator (guider)"
 #define CCD_SIMULATOR_AO_NAME							"CCD Guider Simulator (AO)"
 
+#define CCD_SIMULATOR_BAHTINOV_CAMERA_NAME	"CCD Bahtinov Mask Simulator"
+
 #define CCD_SIMULATOR_DSLR_NAME						"DSLR Simulator"
 
 #define CCD_SIMULATOR_FILE_NAME						"CCD File Simulator"
