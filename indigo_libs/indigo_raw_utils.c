@@ -2764,27 +2764,24 @@ static double focus_error(double rho1, double theta1, double rho2, double theta2
 	return sqrt((x2 - x_m) * (x2 - x_m) + (y2 - y_m) * (y2 - y_m));
 }
 
-static void save_pgm(const char* filename, const uint8_t* mono, int width, int height) {
-	FILE* file = fopen(filename, "wb");
-	fprintf(file, "P5\n%d %d\n255\n", width, height);
-	fwrite(mono, 1, width * height, file);
-	fclose(file);
-}
-
-static void save_ppm(const char* filename, const uint8_t* rgb, int width, int height) {
-	FILE* file = fopen(filename, "wb");
-	fprintf(file, "P6\n%d %d\n255\n", width, height);
-	fwrite(rgb, 1, width * height * 3, file);
-	fclose(file);
-}
+//static void save_pgm(const char* filename, const uint8_t* mono, int width, int height) {
+//	FILE* file = fopen(filename, "wb");
+//	fprintf(file, "P5\n%d %d\n255\n", width, height);
+//	fwrite(mono, 1, width * height, file);
+//	fclose(file);
+//}
+//
+//static void save_ppm(const char* filename, const uint8_t* rgb, int width, int height) {
+//	FILE* file = fopen(filename, "wb");
+//	fprintf(file, "P6\n%d %d\n255\n", width, height);
+//	fwrite(rgb, 1, width * height * 3, file);
+//	fclose(file);
+//}
 
 double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
 	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
-	save_ppm("data.ppm", data, width, height);
 	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 0.25);
-	save_pgm("indigo_binarize.pgm", mono, width, height);
 	indigo_skeletonize(mono, width, height);
-	save_pgm("indigo_skeletonize.pgm", mono, width, height);
 	hough_transform(mono, width, height, hough);
 	double rhos[MAX_LINES] = { 0.0 };
 	double thetas[MAX_LINES] = { 0.0 };
