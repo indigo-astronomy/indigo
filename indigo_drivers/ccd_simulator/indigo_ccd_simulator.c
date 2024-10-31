@@ -817,6 +817,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = BAHTINOV_HEIGHT;
 			CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = CCD_BIN_HORIZONTAL_ITEM->number.max = 1;
 			CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.max = 1;
+			CCD_INFO_PIXEL_SIZE_ITEM->number.value = CCD_INFO_PIXEL_WIDTH_ITEM->number.value = CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = 3.75;
 			CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 			CCD_OFFSET_PROPERTY->hidden = true;
 			CCD_GAMMA_PROPERTY->hidden = true;
