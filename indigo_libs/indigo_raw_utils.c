@@ -2760,7 +2760,7 @@ static double focus_error(double rho1, double theta1, double rho2, double theta2
 
 double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
 	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
-	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 0.3);
+	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 0.25);
 	indigo_skeletonize(mono, width, height);
 	hough_transform(mono, width, height, hough);
 	double rhos[MAX_LINES] = { 0.0 };
@@ -2821,5 +2821,11 @@ double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const i
 		*theta3 = thetas[line3];
 		return error_px;
 	}
+	*rho1 = 0;
+	*rho2 = 0;
+	*rho3 = 0;
+	*theta1 = 0;
+	*theta2 = 0;
+	*theta3 = 0;
 	return -1;
 }
