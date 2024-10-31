@@ -2609,34 +2609,34 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 		}
 		case INDIGO_RAW_RGB24: {
 			uint8_t *source_pixels = (uint8_t *)data;
-			int t = threshold * 255;
+			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = ((source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) / 3 > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2] > t ? 255 : 0);
 			}
 		}
 		case INDIGO_RAW_RGBA32: {
 			uint8_t *source_pixels = (uint8_t *)data;
-			int t = threshold * 255;
+			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = ((source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) / 3 > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2] > t ? 255 : 0);
 			}
 		}
 		case INDIGO_RAW_ABGR32: {
 			uint8_t *source_pixels = (uint8_t *)data;
-			int t = threshold * 255;
+			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = ((source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) / 3 > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3] > t ? 255 : 0);
 			}
 		}
 		case INDIGO_RAW_RGB48: {
 			uint16_t *source_pixels = (uint16_t *)data;
-			int t = threshold * 65535;
+			int t = threshold * 65535 * 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = ((source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) / 3 > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2] > t ? 255 : 0);
 			}
 		}
 	}
@@ -2760,14 +2760,14 @@ static double focus_error(double rho1, double theta1, double rho2, double theta2
 
 double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
 	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
-	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 64);
+	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 0.3);
 	indigo_skeletonize(mono, width, height);
 	hough_transform(mono, width, height, hough);
 	double rhos[MAX_LINES] = { 0.0 };
 	double thetas[MAX_LINES] = { 0.0 };
 	for (int line = 0; line < MAX_LINES; line++) {
 		int max = find_hough_max(hough, width, height, rhos + line, thetas + line);
-		indigo_debug("%s: %3d. %9.3f %9.3f -> %4d\n", __FUNCTION__, line, rhos[line], thetas[line] / M_PI * 180, max);
+		indigo_debug("%s: %3d. %9.3f %9.3f -> %4d", __FUNCTION__, line, rhos[line], thetas[line] / M_PI * 180, max);
 	}
 	int line1 = -1, line2 = -1, line3 = -1;
 	for (int index1 = 0; index1 < MAX_LINES && line1 == -1; index1++) {
@@ -2807,12 +2807,12 @@ double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const i
 		}
 	}
 	if (line1 != -1) {
-		indigo_debug("%s: selected spikes:\n", __FUNCTION__);
-		indigo_debug("%s: %3d. %9.3f %9.3f\n", __FUNCTION__, line1, rhos[line1], thetas[line1] / M_PI * 180);
-		indigo_debug("%s: %3d. %9.3f %9.3f\n", __FUNCTION__, line2, rhos[line2], thetas[line2] / M_PI * 180);
-		indigo_debug("%s: %3d. %9.3f %9.3f\n", __FUNCTION__, line3, rhos[line3], thetas[line3] / M_PI * 180);
+		indigo_debug("%s: selected spikes:", __FUNCTION__);
+		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line1, rhos[line1], thetas[line1] / M_PI * 180);
+		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line2, rhos[line2], thetas[line2] / M_PI * 180);
+		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line3, rhos[line3], thetas[line3] / M_PI * 180);
 		double error_px = focus_error(rhos[line1], thetas[line1], rhos[line2], thetas[line2], rhos[line3], thetas[line3]);
-		indigo_debug("%s: focus error = %.2fpx / %.1fµm (CFZ = %.0fµm @ %.0fnm)\n", __FUNCTION__, error_px);
+		indigo_debug("%s: focus error = %.2fpx", __FUNCTION__, error_px);
 		*rho1 = rhos[line1];
 		*rho2 = rhos[line2];
 		*rho3 = rhos[line3];

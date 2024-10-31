@@ -622,7 +622,13 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 		}
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	} else if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator) {
-		// TBD
+		double error, rho1, theta1, rho2, theta2, rho3, theta3;
+		error = indigo_bahtinov_error(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &rho1, &theta1, &rho2, &theta2, &rho3, &theta3);
+		if (error >= 0) {
+			AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = error;
+		} else {
+			AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = -1;
+		}
 	}
 	if (!DEVICE_PRIVATE_DATA->frame_saturated) {
 		AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
@@ -2379,7 +2385,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		if (AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM_NAME, "U-Curve with HFD", true);
-		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM_NAME, "Iterative with HFD peak", false);
+		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM_NAME, "Iterative with HFD/peak", false);
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM_NAME, "Iterative with RMS contrast", false);
 		indigo_init_switch_item(AGENT_IMAGER_FOCUS_ESTIMATOR_BAHTINOV_ITEM, AGENT_IMAGER_FOCUS_ESTIMATOR_BAHTINOV_ITEM_NAME, "Bahtinov mask", false);
 		// -------------------------------------------------------------------------------- Process properties

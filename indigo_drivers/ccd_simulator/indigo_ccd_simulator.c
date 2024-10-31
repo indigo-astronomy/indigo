@@ -431,7 +431,7 @@ static void create_frame(indigo_device *device) {
 			focus = -10;
 		}
 		if (focus < 0) {
-			angle = angle + 180;
+			angle = angle + M_PI;
 		}
 		uint8_t (*source_pixels)[BAHTINOV_WIDTH][3] = (uint8_t (*)[BAHTINOV_HEIGHT][3]) indigo_ccd_simulator_bahtinov_image[abs(focus)];
 		uint8_t (*target_pixels)[BAHTINOV_WIDTH][3] = (uint8_t (*)[BAHTINOV_HEIGHT][3]) (PRIVATE_DATA->bahtinov_image + FITS_HEADER_SIZE);
