@@ -2597,47 +2597,53 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 			uint8_t *source_pixels = (uint8_t *)data;
 			int t = threshold * 255;
 			for (int i = 0; i < size; i++) {
-				target_pixels[i] = (source_pixels[i] > t ? 255 : 0);
+				target_pixels[i] = source_pixels[i] > t ? 255 : 0;
 			}
+			break;
 		}
 		case INDIGO_RAW_MONO16: {
 			uint16_t *source_pixels = (uint16_t *)data;
 			int t = threshold * 65535;
 			for (int i = 0; i < size; i++) {
-				target_pixels[i] = (source_pixels[i] > t ? 255 : 0);
+				target_pixels[i] = source_pixels[i] > t ? 255 : 0;
 			}
+			break;
 		}
 		case INDIGO_RAW_RGB24: {
 			uint8_t *source_pixels = (uint8_t *)data;
 			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2] > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > t ? 255 : 0;
 			}
+			break;
 		}
 		case INDIGO_RAW_RGBA32: {
 			uint8_t *source_pixels = (uint8_t *)data;
 			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2] > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) > t ? 255 : 0;
 			}
+			break;
 		}
 		case INDIGO_RAW_ABGR32: {
 			uint8_t *source_pixels = (uint8_t *)data;
 			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3] > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) > t ? 255 : 0;
 			}
+			break;
 		}
 		case INDIGO_RAW_RGB48: {
 			uint16_t *source_pixels = (uint16_t *)data;
 			int t = threshold * 65535 * 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2] > t ? 255 : 0);
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > t ? 255 : 0;
 			}
+			break;
 		}
 	}
 	return target_pixels;
@@ -2758,10 +2764,27 @@ static double focus_error(double rho1, double theta1, double rho2, double theta2
 	return sqrt((x2 - x_m) * (x2 - x_m) + (y2 - y_m) * (y2 - y_m));
 }
 
+static void save_pgm(const char* filename, const uint8_t* mono, int width, int height) {
+	FILE* file = fopen(filename, "wb");
+	fprintf(file, "P5\n%d %d\n255\n", width, height);
+	fwrite(mono, 1, width * height, file);
+	fclose(file);
+}
+
+static void save_ppm(const char* filename, const uint8_t* rgb, int width, int height) {
+	FILE* file = fopen(filename, "wb");
+	fprintf(file, "P6\n%d %d\n255\n", width, height);
+	fwrite(rgb, 1, width * height * 3, file);
+	fclose(file);
+}
+
 double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
 	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
+	save_ppm("data.ppm", data, width, height);
 	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 0.25);
+	save_pgm("indigo_binarize.pgm", mono, width, height);
 	indigo_skeletonize(mono, width, height);
+	save_pgm("indigo_skeletonize.pgm", mono, width, height);
 	hough_transform(mono, width, height, hough);
 	double rhos[MAX_LINES] = { 0.0 };
 	double thetas[MAX_LINES] = { 0.0 };
@@ -2806,6 +2829,7 @@ double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const i
 			}
 		}
 	}
+	indigo_safe_free(hough);
 	if (line1 != -1) {
 		indigo_debug("%s: selected spikes:", __FUNCTION__);
 		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line1, rhos[line1], thetas[line1] / M_PI * 180);

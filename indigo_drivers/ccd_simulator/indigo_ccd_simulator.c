@@ -438,9 +438,9 @@ static void create_frame(indigo_device *device) {
 		if (angle == 0) {
 			for (int y = 0; y < BAHTINOV_HEIGHT; y++) {
 				for (int x = 0; x < BAHTINOV_WIDTH; x++) {
-					target_pixels[y][x][0] = (source_pixels[y][x][0] & 0xF8) | (rand() & 0x07);
-					target_pixels[y][x][1] = (source_pixels[y][x][1] & 0xF8) | (rand() & 0x07);
-					target_pixels[y][x][2] = (source_pixels[y][x][2] & 0xF8) | (rand() & 0x07);
+					target_pixels[y][x][0] = (source_pixels[y][x][0] & 0xFC) | (rand() & 0x03);
+					target_pixels[y][x][1] = (source_pixels[y][x][1] & 0xFC) | (rand() & 0x03);
+					target_pixels[y][x][2] = (source_pixels[y][x][2] & 0xFC) | (rand() & 0x03);
 				}
 			}
 		} else {
@@ -448,7 +448,9 @@ static void create_frame(indigo_device *device) {
 			int cy = BAHTINOV_HEIGHT / 2;
 			for (int j = 0; j < BAHTINOV_WIDTH; j++) {
 				for (int i = 0; i < BAHTINOV_HEIGHT; i++) {
-					target_pixels[j][i][0] = target_pixels[j][i][1] = target_pixels[j][i][2] = rand() & 0x07;
+					target_pixels[j][i][0] = rand() & 0x03;
+					target_pixels[j][i][1] = rand() & 0x03;
+					target_pixels[j][i][2] = rand() & 0x03;
 				}
 			}
 			double c = cos(angle);
@@ -458,9 +460,9 @@ static void create_frame(indigo_device *device) {
 					int src_x = (int)((x - cx) * c + (y - cy) * s + cx);
 					int src_y = (int)(-(x - cx) * s + (y - cy) * c + cy);
 					if (src_x >= 0 && src_x < BAHTINOV_WIDTH && src_y >= 0 && src_y < BAHTINOV_HEIGHT) {
-						target_pixels[y][x][0] = (source_pixels[src_y][src_x][0] & 0xF8) | (rand() & 0x07);
-						target_pixels[y][x][1] = (source_pixels[src_y][src_x][1] & 0xF8) | (rand() & 0x07);
-						target_pixels[y][x][2] = (source_pixels[src_y][src_x][2] & 0xF8) | (rand() & 0x07);
+						target_pixels[y][x][0] = (source_pixels[src_y][src_x][0] & 0xFC) | (rand() & 0x03);
+						target_pixels[y][x][1] = (source_pixels[src_y][src_x][1] & 0xFC) | (rand() & 0x03);
+						target_pixels[y][x][2] = (source_pixels[src_y][src_x][2] & 0xFC) | (rand() & 0x03);
 					}
 				}
 			}
