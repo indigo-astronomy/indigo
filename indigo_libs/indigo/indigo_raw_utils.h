@@ -100,6 +100,11 @@ extern indigo_result indigo_update_saturation_mask(indigo_raw_type raw_type, con
 
 extern indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *image_data, const uint16_t radius, const int image_width, const int image_height, const int stars_max, indigo_raw_type map_raw_type, indigo_psf_param map_type, int map_width, int map_height, unsigned char *map_data, double *psf_min, double *psf_max);
 
+// Bahtinov images analysis related
+extern uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int width, const int height, const double threshold);
+extern void indigo_skeletonize(uint8_t* data, int width, int height);
+extern double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3);
+
 #ifdef __cplusplus
 }
 #endif
