@@ -416,7 +416,7 @@ static bool capture_frame(indigo_device *device) {
 		}
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
-			indigo_send_message(device, "RAW image not received");
+			indigo_send_message(device, "Error: RAW image not received");
 			return false;
 		}
 		/* This is potentially bayered image, if so we need to equalize the channels */
@@ -446,7 +446,7 @@ static bool find_stars(indigo_device *device) {
 	AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
 	if (star_count == 0) {
-		indigo_send_message(device, "No stars detected");
+		indigo_send_message(device, "Error: No stars detected");
 		return false;
 	}
 	return true;
@@ -711,7 +711,7 @@ static bool do_dither(indigo_device *device) {
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (!related_agent_name) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed, no guider agent selected");
-		indigo_send_message(device, "Dithering failed, no guider agent selected");
+		indigo_send_message(device, "Error: Dithering failed, no guider agent selected");
 		return true; // do not fail batch if dithering fails - let us keep it for a while
 	}
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_DITHER_PROPERTY_NAME, AGENT_GUIDER_DITHER_TRIGGER_ITEM_NAME, true);
@@ -743,7 +743,7 @@ static bool do_dither(indigo_device *device) {
 		}
 		if (!DEVICE_PRIVATE_DATA->dithering_finished) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed to settle down");
-			indigo_send_message(device, "Dithering failed to settle down");
+			indigo_send_message(device, "Error: Dithering failed to settle down");
 			indigo_usleep(200000);
 		}
 	}
@@ -1439,7 +1439,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		}
 		/* Check if there is at least one star with measured HFD (qiality), if not fail */
 		if (quality_is_zero(quality, star_count)){
-			indigo_send_message(device, "No stars detected, maybe focus is too far");
+			indigo_send_message(device, "Error: No stars detected, maybe focus is too far");
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: No stars detected, maybe focus is too far (frame_count = %d)", frame_count);
 			focus_failed = true;
 			goto ucurve_finish;
@@ -1628,10 +1628,10 @@ static bool autofocus_ucurve(indigo_device *device) {
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 
 	if (AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) {
-		indigo_send_message(device, "No focus reached, did not converge");
+		indigo_send_message(device, "Error: No focus reached, did not converge");
 		focus_failed = true;
 	} else if (AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 20) { /* for HFD 20% deviation is ok - tested on realsky */
-		indigo_send_message(device, "Focus does not meet the quality criteria");
+		indigo_send_message(device, "Error: Focus does not meet the quality criteria");
 		focus_failed = true;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Focus deviation = %g %%", AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value);
@@ -1671,13 +1671,13 @@ static bool autofocus(indigo_device *device) {
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 			result = autofocus_ucurve(device);
 		} else {
-			indigo_send_message(device, "Unsupported estimator and focusing algorithm combination");
+			indigo_send_message(device, "Error: Unsupported estimator and focusing algorithm combination");
 		}
 	} else if (DEVICE_PRIVATE_DATA->use_iterative_focusing) {
 		if (DEVICE_PRIVATE_DATA->use_hfd_estimator || DEVICE_PRIVATE_DATA->use_rms_estimator || DEVICE_PRIVATE_DATA->use_bahtinov_estimator) {
 			result = autofocus_iterative(device, &saturation_mask);
 		} else {
-			indigo_send_message(device, "Unsupported estimator and focusing algorithm combination");
+			indigo_send_message(device, "Error: Unsupported estimator and focusing algorithm combination");
 		}
 	}
 	indigo_safe_free(saturation_mask);
