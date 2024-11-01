@@ -1298,10 +1298,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_release_property(GUIDER_MODE_PROPERTY);
 		indigo_release_property(GUIDER_SETTINGS_PROPERTY);
 	} else if (device == PRIVATE_DATA->bahtinov) {
-		indigo_safe_free(PRIVATE_DATA->bahtinov_image);
 		indigo_release_property(BAHTINOV_SETTINGS_PROPERTY);
 	} else if (device == PRIVATE_DATA->imager) {
-		indigo_safe_free(PRIVATE_DATA->imager_image);
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
