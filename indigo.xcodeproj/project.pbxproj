@@ -989,28 +989,6 @@
 		9DF312C12C255D3900A35CE3 /* indigo_focuser_optecfl.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF312B92C255D3800A35CE3 /* indigo_focuser_optecfl.h */; };
 		9DF7E6511F6AA17900156652 /* indigo_ccd_qsi.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DF7E64E1F6AA17900156652 /* indigo_ccd_qsi.h */; };
 		9DFA598B2361D94B00326A74 /* indigo_aux_flatmaster.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFA59852361D92600326A74 /* indigo_aux_flatmaster.c */; };
-		9DFBF4CD2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C52CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_3.h */; };
-		9DFBF4CE2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_2.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C42CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_2.h */; };
-		9DFBF4CF2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_5.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C72CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_5.h */; };
-		9DFBF4D02CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_0.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C22CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_0.h */; };
-		9DFBF4D12CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_6.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C82CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_6.h */; };
-		9DFBF4D22CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_8.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4CA2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_8.h */; };
-		9DFBF4D32CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_4.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C62CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_4.h */; };
-		9DFBF4D42CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_9.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4CB2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_9.h */; };
-		9DFBF4D52CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_10.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4CC2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_10.h */; };
-		9DFBF4D62CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_1.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C32CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_1.h */; };
-		9DFBF4D72CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_7.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C92CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_7.h */; };
-		9DFBF4D82CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_3.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C52CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_3.h */; };
-		9DFBF4D92CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_2.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C42CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_2.h */; };
-		9DFBF4DA2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_5.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C72CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_5.h */; };
-		9DFBF4DB2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_0.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C22CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_0.h */; };
-		9DFBF4DC2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_6.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C82CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_6.h */; };
-		9DFBF4DD2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_8.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4CA2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_8.h */; };
-		9DFBF4DE2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_4.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C62CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_4.h */; };
-		9DFBF4DF2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_9.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4CB2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_9.h */; };
-		9DFBF4E02CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_10.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4CC2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_10.h */; };
-		9DFBF4E12CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_1.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C32CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_1.h */; };
-		9DFBF4E22CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_7.h in Headers */ = {isa = PBXBuildFile; fileRef = 9DFBF4C92CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_7.h */; };
 		9DFC61A723854DD0003977C7 /* indigo_aux_flipflat.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFC61A5238530FF003977C7 /* indigo_aux_flipflat.c */; };
 		9DFE1869213586B100149BDE /* indigo_focuser_dmfc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9DFE1865213586AB00149BDE /* indigo_focuser_dmfc.c */; };
 /* End PBXBuildFile section */
@@ -2910,8 +2888,6 @@
 		59A68E3F277DFF4C000439CC /* libSVBCameraSDK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libSVBCameraSDK.a; sourceTree = "<group>"; };
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AA603D25AB10E80065905E /* solver_test_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = solver_test_image.c; sourceTree = "<group>"; };
-		59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_mono.h; sourceTree = "<group>"; };
-		59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_rgb.h; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
 		59AF31F621F25E7A0008CC52 /* d3.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.min.js; sourceTree = "<group>"; };
 		59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.geo.projection.min.js; sourceTree = "<group>"; };
@@ -5002,17 +4978,6 @@
 		9DFA59872361D92600326A74 /* indigo_aux_flatmaster_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flatmaster_main.c; sourceTree = "<group>"; };
 		9DFA59882361D92600326A74 /* indigo_aux_flatmaster.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_flatmaster.h; sourceTree = "<group>"; };
 		9DFA598A2361D92600326A74 /* flatmaster_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = flatmaster_simulator.ino; sourceTree = "<group>"; };
-		9DFBF4C22CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_0.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_0.h; sourceTree = "<group>"; };
-		9DFBF4C32CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_1.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_1.h; sourceTree = "<group>"; };
-		9DFBF4C42CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_2.h; sourceTree = "<group>"; };
-		9DFBF4C52CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_3.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_3.h; sourceTree = "<group>"; };
-		9DFBF4C62CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_4.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_4.h; sourceTree = "<group>"; };
-		9DFBF4C72CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_5.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_5.h; sourceTree = "<group>"; };
-		9DFBF4C82CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_6.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_6.h; sourceTree = "<group>"; };
-		9DFBF4C92CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_7.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_7.h; sourceTree = "<group>"; };
-		9DFBF4CA2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_8.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_8.h; sourceTree = "<group>"; };
-		9DFBF4CB2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_9.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_9.h; sourceTree = "<group>"; };
-		9DFBF4CC2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_10.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_simulator_bahtinov_10.h; sourceTree = "<group>"; };
 		9DFC61A0238530FF003977C7 /* indigo_aux_flipflat.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_aux_flipflat.h; sourceTree = "<group>"; };
 		9DFC61A1238530FF003977C7 /* indigo_aux_flipflat_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_flipflat_main.c; sourceTree = "<group>"; };
 		9DFC61A3238530FF003977C7 /* flipflat_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = flipflat_simulator.ino; sourceTree = "<group>"; };
@@ -10064,19 +10029,6 @@
 				59D381AB1D95996100E87393 /* indigo_ccd_simulator.c */,
 				599C9A561DA026C5008BBCC1 /* indigo_ccd_simulator_main.c */,
 				59F0FE2C2083EA47001B34E9 /* indigo_ccd_simulator_data.c */,
-				59AABBFF1F3EEB6600492A2B /* indigo_ccd_simulator_mono.h */,
-				59AABC041F3F197600492A2B /* indigo_ccd_simulator_rgb.h */,
-				9DFBF4C22CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_0.h */,
-				9DFBF4C32CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_1.h */,
-				9DFBF4C42CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_2.h */,
-				9DFBF4C52CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_3.h */,
-				9DFBF4C62CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_4.h */,
-				9DFBF4C72CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_5.h */,
-				9DFBF4C82CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_6.h */,
-				9DFBF4C92CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_7.h */,
-				9DFBF4CA2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_8.h */,
-				9DFBF4CB2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_9.h */,
-				9DFBF4CC2CD36CA0006718B1 /* indigo_ccd_simulator_bahtinov_10.h */,
 			);
 			path = ccd_simulator;
 			sourceTree = "<group>";
@@ -14418,17 +14370,6 @@
 				59111D0D285F53D100E57194 /* indigocat_nutation.h in Headers */,
 				598A1C23259BA94A00C0B34C /* indigo_ser.h in Headers */,
 				59A68E21277DC3D0000439CC /* SVBCameraSDK.h in Headers */,
-				9DFBF4CD2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_3.h in Headers */,
-				9DFBF4CE2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_2.h in Headers */,
-				9DFBF4CF2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_5.h in Headers */,
-				9DFBF4D02CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_0.h in Headers */,
-				9DFBF4D12CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_6.h in Headers */,
-				9DFBF4D22CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_8.h in Headers */,
-				9DFBF4D32CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_4.h in Headers */,
-				9DFBF4D42CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_9.h in Headers */,
-				9DFBF4D52CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_10.h in Headers */,
-				9DFBF4D62CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_1.h in Headers */,
-				9DFBF4D72CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_7.h in Headers */,
 				598A1C24259BA94A00C0B34C /* indigo_focuser_driver.h in Headers */,
 				598A1C25259BA94A00C0B34C /* indigo_rotator_driver.h in Headers */,
 				598A1C26259BA94A00C0B34C /* indigo_focuser_wemacro_bt.h in Headers */,
@@ -14750,17 +14691,6 @@
 				591CD0EA29805CBE003243AE /* nncam.h in Headers */,
 				595F2931211E211200380EF4 /* NSXReturnThrowError.h in Headers */,
 				9D3BBBA921147EB500800FB0 /* indigo_agent_lx200_server.h in Headers */,
-				9DFBF4D82CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_3.h in Headers */,
-				9DFBF4D92CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_2.h in Headers */,
-				9DFBF4DA2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_5.h in Headers */,
-				9DFBF4DB2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_0.h in Headers */,
-				9DFBF4DC2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_6.h in Headers */,
-				9DFBF4DD2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_8.h in Headers */,
-				9DFBF4DE2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_4.h in Headers */,
-				9DFBF4DF2CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_9.h in Headers */,
-				9DFBF4E02CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_10.h in Headers */,
-				9DFBF4E12CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_1.h in Headers */,
-				9DFBF4E22CD36CA1006718B1 /* indigo_ccd_simulator_bahtinov_7.h in Headers */,
 				59019E0C1DE0AC7400CCB3ED /* indigo_client.h in Headers */,
 				59487D6E221B3C19007027AE /* indigocat_star.h in Headers */,
 				9DF312C02C255D3900A35CE3 /* indigo_focuser_optecfl.h in Headers */,

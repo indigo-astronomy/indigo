@@ -33,7 +33,37 @@ unsigned char indigo_ccd_simulator_rgb_image[] = {
 #include "indigo_ccd_simulator_rgb.h"
 };
 
-unsigned char indigo_ccd_simulator_bahtinov_image[][3 * 460 * 460] = { {
+unsigned char indigo_ccd_simulator_bahtinov_image[][500 * 500] = { {
+#include "indigo_ccd_simulator_bahtinov_-15.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-14.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-13.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-12.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-11.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-10.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-9.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-8.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-7.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-6.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-5.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-4.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-3.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-2.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_-1.h"
+}, {
 #include "indigo_ccd_simulator_bahtinov_0.h"
 }, {
 #include "indigo_ccd_simulator_bahtinov_1.h"
@@ -55,6 +85,16 @@ unsigned char indigo_ccd_simulator_bahtinov_image[][3 * 460 * 460] = { {
 #include "indigo_ccd_simulator_bahtinov_9.h"
 }, {
 #include "indigo_ccd_simulator_bahtinov_10.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_11.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_12.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_13.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_14.h"
+}, {
+#include "indigo_ccd_simulator_bahtinov_15.h"
 }
 };
 
