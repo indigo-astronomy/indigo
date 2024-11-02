@@ -785,6 +785,8 @@
 		59C8E7FB1DBBDF7A00AA3F0A /* indigo_wheel_sx.c in Sources */ = {isa = PBXBuildFile; fileRef = 59C8E7F91DBBDF7400AA3F0A /* indigo_wheel_sx.c */; };
 		59CBD47F1FAF6C93000DAFDB /* indigo_gps_simulator.c in Sources */ = {isa = PBXBuildFile; fileRef = 59CBD47B1FAF6C80000DAFDB /* indigo_gps_simulator.c */; };
 		59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */ = {isa = PBXBuildFile; fileRef = 59CBD4781FAF6C19000DAFDB /* indigo_gps_driver.c */; };
+		59CC444D2CD64E3C00F21E17 /* libqhyccd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */; };
+		59CC444E2CD64E3C00F21E17 /* libqhyccd.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59D138A2283E5A8700FCC514 /* libraw.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D138A1283E5A6C00FCC514 /* libraw.a */; };
 		59D138A3283E5A9C00FCC514 /* libraw.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D138A1283E5A6C00FCC514 /* libraw.a */; };
 		59D138A5283E6BAA00FCC514 /* indigo_dslr_raw.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D138A4283E6BAA00FCC514 /* indigo_dslr_raw.c */; };
@@ -1068,6 +1070,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				59CC444E2CD64E3C00F21E17 /* libqhyccd.dylib in Embed Libraries */,
 				59118C442996EDA30004BEC8 /* libogmacam.dylib in Embed Libraries */,
 				59B348AD29E85F8A0062C2EA /* libomegonprocam.dylib in Embed Libraries */,
 				599150D429EF2AC900E63C3B /* libstarshootg.dylib in Embed Libraries */,
@@ -3000,6 +3003,7 @@
 		59CBD47C1FAF6C80000DAFDB /* indigo_gps_simulator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_gps_simulator.h; sourceTree = "<group>"; };
 		59CBD47D1FAF6C80000DAFDB /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		59CBD47E1FAF6C80000DAFDB /* indigo_gps_simulator_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_gps_simulator_main.c; sourceTree = "<group>"; };
+		59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libqhyccd.dylib; path = build/lib/libqhyccd.dylib; sourceTree = "<group>"; };
 		59CC779B1F27BCF2003AD2DB /* indigo_ica_ptp_sony.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ica_ptp_sony.h; sourceTree = "<group>"; };
 		59CC779C1F27BCF2003AD2DB /* indigo_ica_ptp_sony.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = indigo_ica_ptp_sony.m; sourceTree = "<group>"; };
 		59CD69CC23EEFFC6004B12C0 /* indigo_ccd_qhy.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_qhy.h; sourceTree = "<group>"; };
@@ -5012,6 +5016,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59CC444D2CD64E3C00F21E17 /* libqhyccd.dylib in Frameworks */,
 				5947BB902990270000040E99 /* libPlayerOneCamera.dylib in Frameworks */,
 				5947BB912990270000040E99 /* libPlayerOnePW.dylib in Frameworks */,
 				59B348B129E85FA80062C2EA /* libSVBCameraSDK.dylib in Frameworks */,
@@ -13983,6 +13988,7 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */,
 				59B95B872C6295450027AD80 /* libsbig.dylib */,
 				59B348AE29E85F8B0062C2EA /* libmallincam.dylib */,
 				59118C3F2996ED950004BEC8 /* libogmacam.dylib */,
