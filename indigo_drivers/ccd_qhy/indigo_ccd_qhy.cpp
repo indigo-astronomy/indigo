@@ -44,7 +44,7 @@
 #include "indigo_ccd_qhy.h"
 #endif
 
-#if !(defined(__APPLE__) && defined(__arm64__))
+#if !(defined(__APPLE__) && defined(__arm64__)) || defined(QHY2)
 
 #if defined(INDIGO_MACOS)
 #include <libusb-1.0/libusb.h>
