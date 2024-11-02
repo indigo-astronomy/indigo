@@ -458,7 +458,7 @@ static bool select_stars(indigo_device *device) {
 		indigo_item *item_x = AGENT_IMAGER_SELECTION_X_ITEM + 2 * i;
 		indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
 		if (i == AGENT_IMAGER_STARS_PROPERTY->count - 1) {
-			if(AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
+			if(DEVICE_PRIVATE_DATA->use_ucurve_focusing) {
 				indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value);
 			}
 			break;
