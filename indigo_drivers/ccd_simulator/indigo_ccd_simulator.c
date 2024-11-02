@@ -335,12 +335,12 @@ static void box_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 }
 
 static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
-	double ideal = sqrt((3 * r * r / 3) + 1);
+	double ideal = sqrt((12 * r * r / 3) + 1);
 	int wl = floor(ideal);
 	if (wl % 2 == 0)
 		wl--;
 	int wu = wl + 2;
-	ideal = (3 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
+	ideal = (12 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
 	int m = round(ideal);
 	int sizes[3];
 	for (int i = 0; i < 3; i++)
