@@ -1,7 +1,7 @@
 /*
- * Copyright 2023 Suzhou Astroasis Vision Technology, Inc. All Rights Reserved.
+ * Copyright 2024 Suzhou Astroasis Vision Technology, Inc. All Rights Reserved.
  *
- * This is header file for Astroasis Oasis Filter Wheel .
+ * This is header file for Astroasis Oasis Filter Wheel.
  *
  * Note:
  * 1. OFWScan() should be called before any other APIs (except for
@@ -40,6 +40,7 @@
  *        OFWGetCalibrateData(int id, AOCalibrateData* calibrate);
  *        OFWFirmwareUpgrade(int id, unsigned char *data, int len);
  *        OFWGetSDKVersion(char *version);
+ *        OFWSetLogLevel(int level);
  *
  * Refer to SDK demo application for the details of the API usage.
  */
@@ -57,10 +58,20 @@ extern "C" {
 #define AOAPI
 #endif
 
+#define VERSION_INVALID				0
+
+#define PROTOCAL_VERSION_1_1_0		0x01010000
+#define PROTOCAL_VERSION_1_2_0		0x01020000
+
 #define OFW_MAX_NUM					32		/* Maximum filter wheel numbers supported by this SDK */
 #define OFW_VERSION_LEN				32		/* Buffer length for version strings */
 #define OFW_NAME_LEN				32		/* Buffer length for name strings */
 #define OFW_SLOT_NAME_LEN			16		/* Buffer length for slot name strings */
+
+#define AO_LOG_LEVEL_QUIET			0
+#define AO_LOG_LEVEL_ERROR			1
+#define AO_LOG_LEVEL_INFO			2
+#define AO_LOG_LEVEL_DEBUG			3
 
 typedef enum _AOReturn {
 	AO_SUCCESS = 0,					/* Success */
@@ -122,6 +133,7 @@ typedef struct _OFWStatus {
 	int temperature;				/* Internal (on board) temperature in 0.01 degree unit */
 	int filterStatus;				/* Current motor position */
 	int filterPosition;				/* Current motor position, zero - unknown position */
+	int seq;						/* Sequence number for debug purpose */
 } OFWStatus;
 
 /*
@@ -198,6 +210,7 @@ AOAPI AOReturn OFWGetCalibrateData(int id, OFWCalibrateData *calibrate);
 AOAPI AOReturn OFWUpgrade(int id);
 AOAPI AOReturn OFWFirmwareUpgrade(int id, unsigned char *data, int len);
 AOAPI AOReturn OFWGetSDKVersion(char *version);
+AOAPI AOReturn OFWSetLogLevel(int level);
 
 #ifdef __cplusplus
 }
