@@ -1,4 +1,4 @@
-# ZWO Astroasis wheel driver
+# Astroasis wheel driver
 
 https://www.astroasis.com
 
@@ -23,4 +23,5 @@ indigo_server indigo_wheel_astroasis
 ## Status: Stable
 
 Driver is developed and tested with:
-* 7x36 Astroasis filter wheel 
+* 7x36 Astroasis filter wheel
+* 7x2" Astroasis filter wheel
