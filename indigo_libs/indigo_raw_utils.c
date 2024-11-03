@@ -2586,3 +2586,267 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 	indigo_safe_free(stars);
 	return INDIGO_OK;
 }
+
+// creates INDIGO_RAW_MONO8 with 0 or 255 values only for threshold of 0 to 1 as ratio of 255 or 65536
+
+uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int width, const int height, const double threshold) {
+	int size = width * height;
+	uint8_t *target_pixels = (uint8_t *)indigo_safe_malloc(size);
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			int t = threshold * 255;
+			for (int i = 0; i < size; i++) {
+				target_pixels[i] = source_pixels[i] > t ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_MONO16: {
+			uint16_t *source_pixels = (uint16_t *)data;
+			int t = threshold * 65535;
+			for (int i = 0; i < size; i++) {
+				target_pixels[i] = source_pixels[i] > t ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			int t = threshold * 255 * 3;
+			for (int i = 0; i < size; i++) {
+				int i3 = 3 * i;
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > t ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGBA32: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			int t = threshold * 255 * 3;
+			for (int i = 0; i < size; i++) {
+				int i4 = 4 * i;
+				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) > t ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_ABGR32: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			int t = threshold * 255 * 3;
+			for (int i = 0; i < size; i++) {
+				int i4 = 4 * i;
+				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) > t ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			uint16_t *source_pixels = (uint16_t *)data;
+			int t = threshold * 65535 * 3;
+			for (int i = 0; i < size; i++) {
+				int i3 = 3 * i;
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > t ? 255 : 0;
+			}
+			break;
+		}
+	}
+	return target_pixels;
+}
+
+// expects INDIGO_RAW_MONO8 data
+
+void indigo_skeletonize(uint8_t* data, int width, int height) {
+	uint8_t (*pixels)[width] = (uint8_t (*)[width]) data;
+	uint8_t (*temp)[width] = (uint8_t (*)[width]) (uint8_t*)malloc(width * height);
+	memcpy(temp, pixels, width * height);
+	int change = 1;
+	while (change) {
+		change = 0;
+		for (int y = 1; y < height - 1; y++) {
+			for (int x = 1; x < width - 1; x++) {
+				if (pixels[y][x] == 255) {
+					int neighbors = 0;
+					for (int i = -1; i <= 1; i++) {
+						for (int j = -1; j <= 1; j++) {
+							if (!(i == 0 && j == 0) && pixels[y + i][x + j] == 255) {
+								neighbors++;
+							}
+						}
+					}
+					if (neighbors >= 4 && neighbors <= 5) {
+						temp[y][x] = 0;
+						change = 1;
+					}
+				}
+			}
+		}
+		memcpy(pixels, temp, width * height);
+	}
+	free(temp);
+}
+
+#define RHO_RES			3000
+#define THETA_RES 	3000
+#define MAX_LINES 	15
+
+static void hough_transform(uint8_t* data, int width, int height, int *hough) {
+	uint8_t (*pixels)[width] = (uint8_t (*)[width]) data;
+	int (*acc)[THETA_RES] = (int (*)[THETA_RES]) hough;
+	double theta_step = M_PI / THETA_RES;
+	double rho_step = 2 * sqrt(width * width + height * height) / RHO_RES;
+	for (int y = 0; y < height; y++) {
+		for (int x = 0; x < width; x++) {
+			if (pixels[y][x] > 0) {
+				for (int theta_index = 0; theta_index < THETA_RES; theta_index++) {
+					double theta = theta_index * theta_step;
+					double rho = x * cos(theta) + y * sin(theta);
+					int rho_index = (int)(rho / rho_step) + RHO_RES / 2;
+					acc[rho_index][theta_index]++;
+				}
+			}
+		}
+	}
+}
+
+static int find_hough_max(int *hough, int width, int height, double *rho, double *theta) {
+	int (*acc)[THETA_RES] = (int (*)[THETA_RES]) hough;
+	int max = 0;
+	int max_rho_index = 0;
+	int max_theta_index = 0;
+	double theta_step = M_PI / THETA_RES;
+	double rho_step = 2 * sqrt(width * width + height * height) / RHO_RES;
+	for (int theta_index = 0; theta_index < THETA_RES; theta_index++) {
+		for (int rho_index = 0; rho_index < RHO_RES; rho_index++) {
+			int count = acc[rho_index][theta_index];
+			if (count > max) {
+				max = count;
+				max_rho_index = rho_index;
+				max_theta_index = theta_index;
+			}
+		}
+	}
+	int DIFF = M_PI / 180 / theta_step;
+	for (int diff = -DIFF; diff < DIFF; diff++) {
+		int theta_index = max_theta_index + diff;
+		if (theta_index < 0) {
+			continue;
+		}
+		if (theta_index >= THETA_RES) {
+			break;
+		}
+		for (int rho_index = 0; rho_index < RHO_RES; rho_index++) {
+			acc[rho_index][theta_index] = 0;
+		}
+	}
+	*rho = (max_rho_index - RHO_RES / 2) * rho_step;
+	*theta = max_theta_index * theta_step;
+	return max;
+}
+
+static void hough_to_cartesian(double rho, double theta, double* m, double* b) {
+	*m = -1 / tan(theta);
+	*b = rho / sin(theta);
+}
+
+static void line_intersection(double m1, double b1, double m2, double b2, double* x, double* y) {
+	*x = (b2 - b1) / (m1 - m2);
+	*y = m1 * (*x) + b1;
+}
+
+static double focus_error(double rho1, double theta1, double rho2, double theta2, double rho3, double theta3) {
+	double m1, b1, m2, b2, m3, b3;
+	hough_to_cartesian(rho1, theta1, &m1, &b1);
+	hough_to_cartesian(rho2, theta2, &m2, &b2);
+	hough_to_cartesian(rho3, theta3, &m3, &b3);
+	double x12, y12, x23, y23;
+	line_intersection(m1, b1, m2, b2, &x12, &y12);
+	line_intersection(m2, b2, m3, b3, &x23, &y23);
+	double x_m = (x12 + x23) / 2;
+	double y_m = (y12 + y23) / 2;
+	double x2, y2;
+	line_intersection(m1, b1, m3, b3, &x2, &y2);
+	return sqrt((x2 - x_m) * (x2 - x_m) + (y2 - y_m) * (y2 - y_m));
+}
+
+//static void save_pgm(const char* filename, const uint8_t* mono, int width, int height) {
+//	FILE* file = fopen(filename, "wb");
+//	fprintf(file, "P5\n%d %d\n255\n", width, height);
+//	fwrite(mono, 1, width * height, file);
+//	fclose(file);
+//}
+//
+//static void save_ppm(const char* filename, const uint8_t* rgb, int width, int height) {
+//	FILE* file = fopen(filename, "wb");
+//	fprintf(file, "P6\n%d %d\n255\n", width, height);
+//	fwrite(rgb, 1, width * height * 3, file);
+//	fclose(file);
+//}
+
+double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
+	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
+	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 0.25);
+	indigo_skeletonize(mono, width, height);
+	hough_transform(mono, width, height, hough);
+	double rhos[MAX_LINES] = { 0.0 };
+	double thetas[MAX_LINES] = { 0.0 };
+	for (int line = 0; line < MAX_LINES; line++) {
+		int max = find_hough_max(hough, width, height, rhos + line, thetas + line);
+		indigo_debug("%s: %3d. %9.3f %9.3f -> %4d", __FUNCTION__, line, rhos[line], thetas[line] / M_PI * 180, max);
+	}
+	int line1 = -1, line2 = -1, line3 = -1;
+	for (int index1 = 0; index1 < MAX_LINES && line1 == -1; index1++) {
+		double angle1 = thetas[index1] / M_PI * 180;
+		for (int index2 = 0; index2 < MAX_LINES && line2 == -1; index2++) {
+			if (index2 == index1) {
+				continue;
+			}
+			double angle2 = thetas[index2] / M_PI * 180;
+			if (fabs(angle2 - angle1) > 90) {
+				angle2 += (angle2 > 90 ? -180 : 180);
+			}
+			for (int index3 = 0; index3 < MAX_LINES && line3 == -1; index3++) {
+				if (index3 == index1 || index3 == index2) {
+					continue;
+				}
+				double angle3 = thetas[index3] / M_PI * 180;
+				if (fabs(angle3 - angle1) > 90) {
+					angle3 += (angle3 > 90 ? -180 : 180);
+				}
+				if (fabs(fabs(angle1 - angle2) - fabs(angle1 - angle3)) > 1) {
+					continue;
+				}
+				if (fabs(angle1 - angle2) < 15 || fabs(angle1 - angle3) < 15 || fabs(angle2 - angle3) < 30) {
+					continue;
+				}
+				if (fabs(angle1 - angle2) > 40 || fabs(angle1 - angle3) > 40 || fabs(angle2 - angle3) > 80) {
+					continue;
+				}
+				if (!(angle2 < angle1 && angle1 < angle3)) {
+					continue;
+				}
+				line1 = index1;
+				line2 = index2;
+				line3 = index3;
+			}
+		}
+	}
+	indigo_safe_free(hough);
+	if (line1 != -1) {
+		indigo_debug("%s: selected spikes:", __FUNCTION__);
+		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line1, rhos[line1], thetas[line1] / M_PI * 180);
+		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line2, rhos[line2], thetas[line2] / M_PI * 180);
+		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line3, rhos[line3], thetas[line3] / M_PI * 180);
+		double error_px = focus_error(rhos[line1], thetas[line1], rhos[line2], thetas[line2], rhos[line3], thetas[line3]);
+		indigo_debug("%s: focus error = %.2fpx", __FUNCTION__, error_px);
+		*rho1 = rhos[line1];
+		*rho2 = rhos[line2];
+		*rho3 = rhos[line3];
+		*theta1 = thetas[line1];
+		*theta2 = thetas[line2];
+		*theta3 = thetas[line3];
+		return error_px;
+	}
+	*rho1 = 0;
+	*rho2 = 0;
+	*rho3 = 0;
+	*theta1 = 0;
+	*theta2 = 0;
+	*theta3 = 0;
+	return -1;
+}
