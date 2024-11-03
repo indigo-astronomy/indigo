@@ -2,6 +2,44 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-298] - 3 Nov Sun 2024
+
+## Overall:
+
+- indigo_agent_imager:
+	- experimental bahtinov focusing added
+	- estimator property items labels changed
+	- focus routines refactoring
+
+- indigo_ccd_simulator
+	- CCD Bahtinov Mask Simulator device added
+
+- indigo_ccd_qhy2
+	- SDK updated
+	- native ARM support added to macOS build
+	
+- indigo_ccd_svb
+	- SDK updated
+	
+## Driver fixes:
+
+- ccd_driver:
+	- TIFF generation fixed
+	
+- indigo_mount_synscan
+	- equatorial coordinates state transition fixed
+
+- indigo_ccd_ptp
+	- Fuji control priority bug fixed
+	
+## New Drivers:
+
+- indigo_wheel_astroasis
+	- Astroasis wheel driver
+
+- indigo_focuser_astroasis
+	- Astroasis focuser driver
+
 # [2.0-296] - 26 Oct Sat 2024 [This is a huge release]
 ## Overall:
 - INDIGO Licence is simplified and made it GPL compatible
