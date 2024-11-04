@@ -17,6 +17,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- do not show warning if stars are less than requested if U-Curve is not used
 	- focuser movement can be controlled by joystick buttons
 	- remove the flat bottom of gaus_blur() - better for iterative focusing simulation but U-Curve simulation deteriorated a bit.
+	- single frame preview process added
 
 - indigo_ccd_simulator
 	- CCD Bahtinov Mask Simulator device added
