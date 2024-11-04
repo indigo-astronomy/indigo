@@ -2698,12 +2698,19 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS
 		double initial_step = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value; // temporary solution
 		double final_step = AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value;
+		double iterative_initial_step = AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value;
+		double iterative_final_step = AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.value;
+		double ucurve_step = AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value;
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_PROPERTY, property, false);
-		if (AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value != initial_step) {
+		if ( AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value != iterative_initial_step || AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value != ucurve_step) {
+			// ignore
+		} else if (AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value != initial_step) {
 			AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.target = AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.target;
 			AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.target = AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.target;
 		}
-		if (AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value != final_step) {
+		if (AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.value != iterative_final_step) {
+			// ignore
+		} else if (AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value != final_step) {
 			AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.target = AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.value = AGENT_IMAGER_FOCUS_FINAL_ITEM->number.target;
 		}
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value);
