@@ -19,10 +19,10 @@ All notable changes to INDIGO framework will be documented in this file.
 	- remove the flat bottom of gaus_blur() - better for iterative focusing simulation but U-Curve simulation deteriorated a bit.
 
 - indigo_ccd_simulator
-	- CCD Bahtinov Mask Simulator device added (disabled by default)
+	- CCD Bahtinov Mask Simulator device added
 
 - indigo_ccd_qhy2
-	- SDK updated
+	- updated SDK V2024.10.30
 	- native ARM support added to macOS build
 	
 - indigo_ccd_svb

@@ -25,6 +25,7 @@
 
 #define DRIVER_VERSION 0x0018
 #define DRIVER_NAME	"indigo_ccd_simulator"
+//#define ENABLE_BACKLASH_PROPERTY
 
 #include <stdlib.h>
 #include <string.h>
@@ -43,19 +44,6 @@
 
 #include "indigo_ccd_simulator.h"
 
-// related to embedded image size, don't touch!
-#define IMAGER_WIDTH        		1600
-#define IMAGER_HEIGHT       		1200
-
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
-#define BAHTINOV_WIDTH        	500
-#define BAHTINOV_HEIGHT       	500
-#define BAHTINOV_MAX_STEPS      15
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
-
-#define DSLR_WIDTH        			1600
-#define DSLR_HEIGHT       			1200
-
 // can be changed
 #define GUIDER_MAX_MAG					8
 #define GUIDER_MAX_STARS				400
@@ -64,6 +52,11 @@
 
 #define ECLIPSE									360
 #define TEMP_UPDATE         		5.0
+
+
+// USE_DISK_BLUR is used to simulate disk blur effect
+// if not defined then gaussian blur is used
+// #define USE_DISK_BLUR
 
 // gp_bits is used as boolean
 #define is_connected                gp_bits
@@ -107,6 +100,9 @@
 #define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
 #define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 21)
 
+#define BAHTINOV_SETTINGS_PROPERTY	PRIVATE_DATA->bahtinov_settings_property
+#define BAHTINOV_ROTATION_ITEM			(BAHTINOV_SETTINGS_PROPERTY->items + 0)
+
 #define FILE_NAME_PROPERTY					PRIVATE_DATA->file_name_property
 #define FILE_NAME_ITEM							(FILE_NAME_PROPERTY->items + 0)
 
@@ -117,15 +113,7 @@
 #define FOCUSER_SETTINGS_FOCUS_ITEM	(FOCUSER_SETTINGS_PROPERTY->items + 0)
 #define FOCUSER_SETTINGS_BL_ITEM		(FOCUSER_SETTINGS_PROPERTY->items + 1)
 
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
-#define BAHTINOV_SETTINGS_PROPERTY	PRIVATE_DATA->bahtinov_settings_property
-#define BAHTINOV_ROTATION_ITEM			(BAHTINOV_SETTINGS_PROPERTY->items + 0)
 
-extern unsigned char indigo_ccd_simulator_bahtinov_image[][BAHTINOV_WIDTH * BAHTINOV_HEIGHT];
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
-
-extern unsigned short indigo_ccd_simulator_raw_image[];
-extern unsigned char indigo_ccd_simulator_rgb_image[];
 extern struct _cat { float ra, dec; unsigned char mag; } indigo_ccd_simulator_cat[];
 extern int indigo_ccd_simulator_cat_size;
 
@@ -140,6 +128,7 @@ typedef struct {
 	indigo_property *dslr_battery_level_property;
 	indigo_property *guider_mode_property;
 	indigo_property *guider_settings_property;
+	indigo_property *bahtinov_settings_property;
 	indigo_property *file_name_property;
 	indigo_property *bayerpat_property;
 	indigo_property *focuser_settings_property;
@@ -150,6 +139,7 @@ typedef struct {
 	int star_count, star_x[GUIDER_MAX_STARS], star_y[GUIDER_MAX_STARS], star_a[GUIDER_MAX_STARS], hotpixel_x[GUIDER_MAX_HOTPIXELS + 1], hotpixel_y[GUIDER_MAX_HOTPIXELS + 1];
 	char imager_image[FITS_HEADER_SIZE + 2 * IMAGER_WIDTH * IMAGER_HEIGHT + 2880];
 	char *guider_image;
+	char bahtinov_image[FITS_HEADER_SIZE + BAHTINOV_WIDTH * BAHTINOV_HEIGHT + 2280];
 	char dslr_image[FITS_HEADER_SIZE + 3 * DSLR_WIDTH * DSLR_HEIGHT + 2880];
 	char *file_image, *raw_file_image;
 	indigo_raw_header file_image_header;
@@ -157,15 +147,10 @@ typedef struct {
 	double target_temperature, current_temperature;
 	int current_slot;
 	int target_position, current_position, backlash_in, backlash_out;
-	indigo_timer *imager_exposure_timer, *guider_exposure_timer, *dslr_exposure_timer, *file_exposure_timer, *temperature_timer, *ra_guider_timer, *dec_guider_timer;
+	indigo_timer *imager_exposure_timer, *guider_exposure_timer, *bahtinov_exposure_timer, *dslr_exposure_timer, *file_exposure_timer, *temperature_timer, *ra_guider_timer, *dec_guider_timer;
 	double ao_ra_offset, ao_dec_offset;
 	int eclipse;
 	double guide_rate;
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
-	indigo_property *bahtinov_settings_property;
-	char bahtinov_image[FITS_HEADER_SIZE + BAHTINOV_WIDTH * BAHTINOV_HEIGHT + 2280];
-	indigo_timer *bahtinov_exposure_timer;
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 } simulator_private_data;
 
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
@@ -426,7 +411,6 @@ static void create_frame(indigo_device *device) {
 		} else {
 			indigo_process_image(device, PRIVATE_DATA->file_image, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, bpp, true, true, strlen(BAYERPAT_ITEM->text.value) == 4 ? keywords : NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 		}
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 	} else if (device == PRIVATE_DATA->bahtinov) {
 		double angle = BAHTINOV_ROTATION_ITEM->number.value * M_PI / 180.0;
 		int focus = PRIVATE_DATA->current_position;
@@ -435,7 +419,15 @@ static void create_frame(indigo_device *device) {
 		} else if (focus < -BAHTINOV_MAX_STEPS) {
 			focus = -BAHTINOV_MAX_STEPS;
 		}
-		uint8_t (*source_pixels)[BAHTINOV_WIDTH] = (uint8_t (*)[BAHTINOV_HEIGHT]) indigo_ccd_simulator_bahtinov_image[abs(focus + BAHTINOV_MAX_STEPS)];
+#ifdef BAHTINOV_ASYMETRIC
+		uint8_t (*source_pixels)[BAHTINOV_WIDTH] = (uint8_t (*)[BAHTINOV_HEIGHT]) indigo_ccd_simulator_bahtinov_image[focus + BAHTINOV_MAX_STEPS];
+#else
+		if (focus < 0) {
+			focus = -focus;
+			angle += M_PI;
+		}
+		uint8_t (*source_pixels)[BAHTINOV_WIDTH] = (uint8_t (*)[BAHTINOV_HEIGHT]) indigo_ccd_simulator_bahtinov_image[focus];
+#endif
 		uint8_t (*target_pixels)[BAHTINOV_WIDTH] = (uint8_t (*)[BAHTINOV_HEIGHT]) (PRIVATE_DATA->bahtinov_image + FITS_HEADER_SIZE);
 		if (angle == 0) {
 			for (int y = 0; y < BAHTINOV_HEIGHT; y++) {
@@ -466,7 +458,6 @@ static void create_frame(indigo_device *device) {
 		if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE || CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_process_image(device, PRIVATE_DATA->bahtinov_image, BAHTINOV_WIDTH, BAHTINOV_HEIGHT, 8, true, true, NULL, CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE);
 		}
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 	} else {
 		uint16_t *raw = (uint16_t *)((device == PRIVATE_DATA->guider ? PRIVATE_DATA->guider_image : PRIVATE_DATA->imager_image) + FITS_HEADER_SIZE);
 		int horizontal_bin = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
@@ -742,10 +733,8 @@ static indigo_result ccd_attach(indigo_device *device) {
 			PRIVATE_DATA->imager = device;
 		} else if (!strncmp(device->name, CCD_SIMULATOR_GUIDER_CAMERA_NAME, strlen(CCD_SIMULATOR_GUIDER_CAMERA_NAME))) {
 			PRIVATE_DATA->guider = device;
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 		} else if (!strncmp(device->name, CCD_SIMULATOR_BAHTINOV_CAMERA_NAME, strlen(CCD_SIMULATOR_BAHTINOV_CAMERA_NAME))) {
 			PRIVATE_DATA->bahtinov = device;
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 		} else if (!strncmp(device->name, CCD_SIMULATOR_DSLR_NAME, strlen(CCD_SIMULATOR_DSLR_NAME))) {
 			PRIVATE_DATA->dslr = device;
 		} else if (!strncmp(device->name, CCD_SIMULATOR_FILE_NAME, strlen(CCD_SIMULATOR_FILE_NAME))) {
@@ -809,7 +798,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_BIN_PROPERTY->hidden = true;
 			CCD_INFO_PROPERTY->hidden = true;
 			CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 		} else if (device == PRIVATE_DATA->bahtinov) {
 			BAHTINOV_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "BAHTINOV_SETTINGS", MAIN_GROUP, "Bahtinov mask settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 			indigo_init_number_item(BAHTINOV_ROTATION_ITEM, "ROTATION", "Angle", 0, 180, 1, 35);
@@ -828,7 +816,6 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_COOLER_PROPERTY->hidden = true;
 			CCD_COOLER_POWER_PROPERTY->hidden = true;
 			CCD_TEMPERATURE_PROPERTY->hidden = true;
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 		} else {
 			CCD_IMAGE_FORMAT_PROPERTY->count = 7;
 			if (device == PRIVATE_DATA->guider) {
@@ -962,12 +949,10 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 		if (indigo_property_match(GUIDER_SETTINGS_PROPERTY, property))
 			indigo_define_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 	}
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 	if (device == PRIVATE_DATA->bahtinov) {
 		if (indigo_property_match(BAHTINOV_SETTINGS_PROPERTY, property))
 			indigo_define_property(device, BAHTINOV_SETTINGS_PROPERTY, NULL);
 	}
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 	return indigo_ccd_enumerate_properties(device, client, property);
 }
 
@@ -1038,11 +1023,9 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 			} else if (device == PRIVATE_DATA->guider) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_exposure_timer);
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 			} else if (device == PRIVATE_DATA->bahtinov) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->bahtinov_exposure_timer);
 				indigo_delete_property(device, BAHTINOV_SETTINGS_PROPERTY, NULL);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 			} else if (device == PRIVATE_DATA->dslr) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->dslr_exposure_timer);
 				indigo_delete_property(device, DSLR_PROGRAM_PROPERTY, NULL);
@@ -1115,10 +1098,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->imager_exposure_timer);
 		else if (device == PRIVATE_DATA->guider)
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->guider_exposure_timer);
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 		else if (device == PRIVATE_DATA->bahtinov)
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->bahtinov_exposure_timer);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 		else if (device == PRIVATE_DATA->dslr)
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.value > 0 ? CCD_EXPOSURE_ITEM->number.value : 0.1, exposure_timer_callback, &PRIVATE_DATA->dslr_exposure_timer);
 		else if (device == PRIVATE_DATA->file)
@@ -1141,10 +1122,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_cancel_timer(device, &PRIVATE_DATA->imager_exposure_timer);
 		else if (device == PRIVATE_DATA->guider)
 			indigo_cancel_timer(device, &PRIVATE_DATA->guider_exposure_timer);
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 		else if (device == PRIVATE_DATA->bahtinov)
 			indigo_cancel_timer(device, &PRIVATE_DATA->bahtinov_exposure_timer);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 		else if (device == PRIVATE_DATA->dslr)
 			indigo_cancel_timer(device, &PRIVATE_DATA->dslr_exposure_timer);
 		else if (device == PRIVATE_DATA->file)
@@ -1272,22 +1251,18 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			if (update)
 				indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		}
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 		// -------------------------------------------------------------------------------- BAHTINOV_SETTINGS
 	} else if (BAHTINOV_SETTINGS_PROPERTY && indigo_property_match_changeable(BAHTINOV_SETTINGS_PROPERTY, property)) {
 		indigo_property_copy_values(BAHTINOV_SETTINGS_PROPERTY, property, false);
 		BAHTINOV_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, BAHTINOV_SETTINGS_PROPERTY, NULL);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 		// -------------------------------------------------------------------------------- CONFIG
 	} else if (indigo_property_match_changeable(CONFIG_PROPERTY, property)) {
 		if (indigo_switch_match(CONFIG_SAVE_ITEM, property)) {
 			if (device == PRIVATE_DATA->guider) {
 				indigo_save_property(device, NULL, GUIDER_SETTINGS_PROPERTY);
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 			} else if (device == PRIVATE_DATA->bahtinov) {
 				indigo_save_property(device, NULL, BAHTINOV_SETTINGS_PROPERTY);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 			} else if (device == PRIVATE_DATA->file) {
 				indigo_save_property(device, NULL, FILE_NAME_PROPERTY);
 				indigo_save_property(device, NULL, BAYERPAT_PROPERTY);
@@ -1318,10 +1293,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_safe_free(PRIVATE_DATA->guider_image);
 		indigo_release_property(GUIDER_MODE_PROPERTY);
 		indigo_release_property(GUIDER_SETTINGS_PROPERTY);
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 	} else if (device == PRIVATE_DATA->bahtinov) {
 		indigo_release_property(BAHTINOV_SETTINGS_PROPERTY);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 	} else if (device == PRIVATE_DATA->imager) {
 	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
@@ -1855,9 +1828,7 @@ static indigo_device *guider_ccd = NULL;
 static indigo_device *guider_guider = NULL;
 static indigo_device *guider_ao = NULL;
 
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 static indigo_device *bahtinov_ccd = NULL;
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 
 static indigo_device *dslr = NULL;
 
@@ -1912,7 +1883,6 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		NULL,
 		ao_detach
 	);
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 	static indigo_device bahtinov_camera_template = INDIGO_DEVICE_INITIALIZER(
 		CCD_SIMULATOR_BAHTINOV_CAMERA_NAME,
 		ccd_attach,
@@ -1921,7 +1891,6 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 		NULL,
 		ccd_detach
 	);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 	static indigo_device dslr_template = INDIGO_DEVICE_INITIALIZER(
 		CCD_SIMULATOR_DSLR_NAME,
 		ccd_attach,
@@ -1975,12 +1944,10 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			guider_ao->master_device = imager_ccd;
 			indigo_attach_device(guider_ao);
 
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 			bahtinov_ccd = indigo_safe_malloc_copy(sizeof(indigo_device), &bahtinov_camera_template);
 			bahtinov_ccd->private_data = private_data;
 			bahtinov_ccd->master_device = imager_ccd;
 			indigo_attach_device(bahtinov_ccd);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 
 			dslr = indigo_safe_malloc_copy(sizeof(indigo_device), &dslr_template);
 			dslr->private_data = private_data;
@@ -2000,9 +1967,7 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 			VERIFY_NOT_CONNECTED(guider_ccd);
 			VERIFY_NOT_CONNECTED(guider_guider);
 			VERIFY_NOT_CONNECTED(guider_ao);
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 			VERIFY_NOT_CONNECTED(bahtinov_ccd);
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 			VERIFY_NOT_CONNECTED(dslr);
 			last_action = action;
 			if (imager_ccd != NULL) {
@@ -2035,13 +2000,11 @@ indigo_result indigo_ccd_simulator(indigo_driver_action action, indigo_driver_in
 				free(guider_ao);
 				guider_ao = NULL;
 			}
-#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 			if (bahtinov_ccd != NULL) {
 				indigo_detach_device(bahtinov_ccd);
 				free(bahtinov_ccd);
 				bahtinov_ccd = NULL;
 			}
-#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 			if (dslr != NULL) {
 				indigo_detach_device(dslr);
 				free(dslr);
