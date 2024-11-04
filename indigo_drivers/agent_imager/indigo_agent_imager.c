@@ -1270,11 +1270,16 @@ static bool autofocus_iterative(indigo_device *device, uint8_t **saturation_mask
 	if (abs(current_offset) >= limit) {
 		indigo_send_message(device, "No focus reached within maximum travel limit per AF run");
 		focus_failed = true;
-	} else if (AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
+		if (AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value) {
+			indigo_send_message(device, "No focus reached, did not converge");
+			focus_failed = true;
+		} else if (AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 20 /* for HFD 20% deviation is ok - tested on realsky */ || AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 25 /* for RMS 25% deviation is ok - tested on realsky */) {
+			indigo_send_message(device, "Focus does not meet the quality criteria");
+			focus_failed = true;
+		}
+	} else if (isnan(estimator(device))) {
 		indigo_send_message(device, "No focus reached, did not converge");
-		focus_failed = true;
-	} else if ((DEVICE_PRIVATE_DATA->use_hfd_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 20) /* for HFD 20% deviation is ok - tested on realsky */ || (DEVICE_PRIVATE_DATA->use_rms_estimator && AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value > 25) /* for RMS 25% deviation is ok - tested on realsky */) {
-		indigo_send_message(device, "Focus does not meet the quality criteria");
 		focus_failed = true;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Focus deviation = %g %%", AGENT_IMAGER_STATS_FOCUS_DEVIATION_ITEM->number.value);
