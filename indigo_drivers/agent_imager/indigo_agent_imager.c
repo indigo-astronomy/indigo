@@ -639,9 +639,7 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 		AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = indigo_bahtinov_error(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &AGENT_IMAGER_SPIKE_1_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_THETA_ITEM->number.value);
 		indigo_update_property(device, AGENT_IMAGER_SPIKES_PROPERTY, NULL);
 	}
-	if (!DEVICE_PRIVATE_DATA->frame_saturated) {
-		AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
-	}
+	AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
 	indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 	return true;
 }
