@@ -1210,7 +1210,7 @@ static bool autofocus_iterative(indigo_device *device, uint8_t **saturation_mask
 			} else {
 				current_offset -= steps;
 			}
-		} else if (steps <= AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value || abs(current_offset) >= limit) {
+		} else if (steps <= AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.value || abs(current_offset) >= limit) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Current_offset %d steps", (int)current_offset);
 			if (
 				(AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) ||
