@@ -58,17 +58,18 @@
 #define AGENT_IMAGER_BATCH_FRAMES_TO_SKIP_BEFORE_DITHER_ITEM	(AGENT_IMAGER_BATCH_PROPERTY->items+3)
 #define AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM     	(AGENT_IMAGER_BATCH_PROPERTY->items+4)
 
-#define AGENT_IMAGER_FOCUS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_imager_focus_property)
-#define AGENT_IMAGER_FOCUS_INITIAL_ITEM    		(AGENT_IMAGER_FOCUS_PROPERTY->items+0) // obsolete
-#define AGENT_IMAGER_FOCUS_STARTING_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+1)
-#define AGENT_IMAGER_FOCUS_FINAL_ITEM  				(AGENT_IMAGER_FOCUS_PROPERTY->items+2)
-#define AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM  				(AGENT_IMAGER_FOCUS_PROPERTY->items+3)
-#define AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM  	(AGENT_IMAGER_FOCUS_PROPERTY->items+4)
-#define AGENT_IMAGER_FOCUS_BACKLASH_ITEM     	(AGENT_IMAGER_FOCUS_PROPERTY->items+5)
-#define AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM  (AGENT_IMAGER_FOCUS_PROPERTY->items+6)
-#define AGENT_IMAGER_FOCUS_STACK_ITEM					(AGENT_IMAGER_FOCUS_PROPERTY->items+7)
-#define AGENT_IMAGER_FOCUS_REPEAT_ITEM				(AGENT_IMAGER_FOCUS_PROPERTY->items+8)
-#define AGENT_IMAGER_FOCUS_DELAY_ITEM					(AGENT_IMAGER_FOCUS_PROPERTY->items+9)
+#define AGENT_IMAGER_FOCUS_PROPERTY									(DEVICE_PRIVATE_DATA->agent_imager_focus_property)
+#define AGENT_IMAGER_FOCUS_INITIAL_ITEM    					(AGENT_IMAGER_FOCUS_PROPERTY->items+0) // obsolete
+#define AGENT_IMAGER_FOCUS_FINAL_ITEM  							(AGENT_IMAGER_FOCUS_PROPERTY->items+1) // obsolete
+#define AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM 	(AGENT_IMAGER_FOCUS_PROPERTY->items+2)
+#define AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+3)
+#define AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+4)
+#define AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM  				(AGENT_IMAGER_FOCUS_PROPERTY->items+5)
+#define AGENT_IMAGER_FOCUS_BACKLASH_ITEM     				(AGENT_IMAGER_FOCUS_PROPERTY->items+6)
+#define AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM  (AGENT_IMAGER_FOCUS_PROPERTY->items+7)
+#define AGENT_IMAGER_FOCUS_STACK_ITEM								(AGENT_IMAGER_FOCUS_PROPERTY->items+8)
+#define AGENT_IMAGER_FOCUS_REPEAT_ITEM							(AGENT_IMAGER_FOCUS_PROPERTY->items+9)
+#define AGENT_IMAGER_FOCUS_DELAY_ITEM								(AGENT_IMAGER_FOCUS_PROPERTY->items+10)
 
 #define AGENT_IMAGER_FOCUS_FAILURE_PROPERTY		(DEVICE_PRIVATE_DATA->agent_imager_focus_failure_property)
 #define AGENT_IMAGER_FOCUS_FAILURE_STOP_ITEM  (AGENT_IMAGER_FOCUS_FAILURE_PROPERTY->items+0)
@@ -1151,9 +1152,9 @@ static bool autofocus_iterative(indigo_device *device, uint8_t **saturation_mask
 	bool repeat = true;
 	double min_est = 1e10, max_est = 0;
 	double last_quality = 0;
-	double steps = AGENT_IMAGER_FOCUS_STARTING_ITEM->number.value;
+	double steps = AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value;
 	int current_offset = 0;
-	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator ? AF_MOVE_LIMIT_HFD * AGENT_IMAGER_FOCUS_STARTING_ITEM->number.value : AF_MOVE_LIMIT_RMS * AGENT_IMAGER_FOCUS_STARTING_ITEM->number.value;
+	int limit = DEVICE_PRIVATE_DATA->use_hfd_estimator ? AF_MOVE_LIMIT_HFD * AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value : AF_MOVE_LIMIT_RMS * AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value;
 
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "focuser_has_backlash = %d", DEVICE_PRIVATE_DATA->focuser_has_backlash);
 
@@ -1211,7 +1212,7 @@ static bool autofocus_iterative(indigo_device *device, uint8_t **saturation_mask
 			} else {
 				current_offset -= steps;
 			}
-		} else if (steps <= AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value || abs(current_offset) >= limit) {
+		} else if (steps <= AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value || abs(current_offset) >= limit) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Current_offset %d steps", (int)current_offset);
 			if (
 				(AGENT_IMAGER_STATS_HFD_ITEM->number.value > 1.2 * AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value && DEVICE_PRIVATE_DATA->use_hfd_estimator) ||
@@ -2392,12 +2393,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM, AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM_NAME, "Pause after transit (h)", -2, 2, 1, 0);
 		strcpy(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.format, "%12.3m");
 		// -------------------------------------------------------------------------------- Focus properties
-		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 10);
+		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 11);
 		if (AGENT_IMAGER_FOCUS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_INITIAL_ITEM, AGENT_IMAGER_FOCUS_INITIAL_ITEM_NAME, "Initial / U-Curve step (obsolete)", 1, 0xFFFF, 1, 20); // obsolete
-		indigo_init_number_item(AGENT_IMAGER_FOCUS_STARTING_ITEM, AGENT_IMAGER_FOCUS_STARTING_ITEM_NAME, "Initial step", 1, 0xFFFF, 1, 20);
-		indigo_init_number_item(AGENT_IMAGER_FOCUS_FINAL_ITEM, AGENT_IMAGER_FOCUS_FINAL_ITEM_NAME, "Final step", 1, 0xFFFF, 1, 5);
+		indigo_init_number_item(AGENT_IMAGER_FOCUS_FINAL_ITEM, AGENT_IMAGER_FOCUS_FINAL_ITEM_NAME, "Final step (obsolete)", 1, 0xFFFF, 1, 5);
+		indigo_init_number_item(AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM, AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM_NAME, "Iterative initial step", 1, 0xFFFF, 1, 20);
+		indigo_init_number_item(AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM, AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM_NAME, "Iterative final step", 1, 0xFFFF, 1, 5);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM, AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM_NAME, "U-Curve fitting samples", 6, MAX_UCURVE_SAMPLES, 1, 10);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM, AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM_NAME, "U-Curve sample step", 1, 0xFFFF, 1, 20);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_ITEM_NAME, "Backlash", 0, 0xFFFF, 1, 0);
@@ -2697,10 +2699,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_IMAGER_FOCUS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS
 		double initial_step = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value; // temporary solution
+		double final_step = AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value;
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_PROPERTY, property, false);
-		if (AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value != initial_step) { // temporary solution
-			AGENT_IMAGER_FOCUS_STARTING_ITEM->number.target = AGENT_IMAGER_FOCUS_STARTING_ITEM->number.value = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.target;
+		if (AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value != initial_step) {
+			AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.target = AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.target;
 			AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.target = AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.target;
+		}
+		if (AGENT_IMAGER_FOCUS_FINAL_ITEM->number.value != final_step) {
+			AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.target = AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.value = AGENT_IMAGER_FOCUS_FINAL_ITEM->number.target;
 		}
 		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_BACKLASH_PROPERTY_NAME, FOCUSER_BACKLASH_ITEM_NAME, AGENT_IMAGER_FOCUS_BACKLASH_ITEM->number.value);
 		AGENT_IMAGER_FOCUS_PROPERTY->state = INDIGO_OK_STATE;

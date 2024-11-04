@@ -18,7 +18,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- focuser movement can be controlled by joystick buttons
 	- remove the flat bottom of gaus_blur() - better for iterative focusing simulation but U-Curve simulation deteriorated a bit.
 	- single frame preview process added
-	- separation of AGENT_IMAGER_FOCUS_INITIAL_ITEM to AGENT_IMAGER_FOCUS_STARTING_ITEM and AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM
+	- separation of AGENT_IMAGER_FOCUS_INITIAL_ITEM to AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM and synchronization from AGENT_IMAGER_FOCUS_FINAL_ITEM to AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM. New clients should prefer AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM, AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM if present over AGENT_IMAGER_FOCUS_INITIAL_ITEM and AGENT_IMAGER_FOCUS_FINAL_ITEM retained for backward compatibility only.
 
 - indigo_agent_guider:
 	- single frame preview process added
