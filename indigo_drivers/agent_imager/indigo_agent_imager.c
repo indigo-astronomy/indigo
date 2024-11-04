@@ -1150,17 +1150,13 @@ static bool autofocus_iterative(indigo_device *device, uint8_t **saturation_mask
 		int frame_count = 0;
 		double quality = 0;
 		for (int i = 0; i < 20 && frame_count < AGENT_IMAGER_FOCUS_STACK_ITEM->number.value; i++) {
-			if (!capture_and_process_frame(device, saturation_mask)) {
-				if (DEVICE_PRIVATE_DATA->use_rms_estimator) {
-					if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-						set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
-						return false;
-					} else {
-						continue;
-					}
-				} else {
+			// capture_and_process_frame can fail either because of driver error or because abort, we should repeat also if frame is saturated
+			if (!capture_and_process_frame(device, saturation_mask) || DEVICE_PRIVATE_DATA->frame_saturated) {
+				if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 					set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 					return false;
+				} else {
+					continue;
 				}
 			}
 			double current_quality = estimator(device);
@@ -1172,7 +1168,7 @@ static bool autofocus_iterative(indigo_device *device, uint8_t **saturation_mask
 		}
 		if (frame_count == 0 || quality == 0) {
 			indigo_send_message(device, "Failed to evaluate quality");
-			continue;
+			break;
 		}
 		min_est = (min_est > quality) ? quality : min_est;
 		if (DEVICE_PRIVATE_DATA->frame_saturated) {
