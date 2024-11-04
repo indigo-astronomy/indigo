@@ -24,6 +24,7 @@
  */
 
 #include <stdio.h>
+#include "indigo_ccd_simulator.h"
 
 unsigned short indigo_ccd_simulator_raw_image[] = {
 #include "indigo_ccd_simulator_mono.h"
@@ -33,6 +34,7 @@ unsigned char indigo_ccd_simulator_rgb_image[] = {
 #include "indigo_ccd_simulator_rgb.h"
 };
 
+#ifdef CCD_SIMULATOR_BAHTINOV_IMAGE
 unsigned char indigo_ccd_simulator_bahtinov_image[][500 * 500] = { {
 #include "indigo_ccd_simulator_bahtinov_-15.h"
 }, {
@@ -97,5 +99,5 @@ unsigned char indigo_ccd_simulator_bahtinov_image[][500 * 500] = { {
 #include "indigo_ccd_simulator_bahtinov_15.h"
 }
 };
-
+#endif /* CCD_SIMULATOR_BAHTINOV_IMAGE */
 

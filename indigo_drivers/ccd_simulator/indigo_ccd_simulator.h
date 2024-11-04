@@ -51,6 +51,13 @@ extern "C" {
 
 #define CCD_SIMULATOR_FILE_NAME						"CCD File Simulator"
 
+//#define CCD_SIMULATOR_BAHTINOV_IMAGE
+
+//#define ENABLE_BACKLASH_PROPERTY
+
+// USE_DISK_BLUR is used to simulate disk blur effect
+// if not defined then gaussian blur is used
+//#define USE_DISK_BLUR
 
 /** Create CCD Simulator device instance
  */
