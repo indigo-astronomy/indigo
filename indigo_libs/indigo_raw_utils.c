@@ -2897,13 +2897,15 @@ double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const i
 		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line3, rhos[line3], thetas[line3] / M_PI * 180);
 		double error_px = focus_error(rhos[line1], thetas[line1], rhos[line2], thetas[line2], rhos[line3], thetas[line3]);
 		indigo_debug("%s: focus error = %.2fpx", __FUNCTION__, error_px);
-		*rho1 = rhos[line1];
-		*rho2 = rhos[line2];
-		*rho3 = rhos[line3];
-		*theta1 = thetas[line1];
-		*theta2 = thetas[line2];
-		*theta3 = thetas[line3];
-		return error_px;
+		if (error_px < 100) {
+			*rho1 = rhos[line1];
+			*rho2 = rhos[line2];
+			*rho3 = rhos[line3];
+			*theta1 = thetas[line1];
+			*theta2 = thetas[line2];
+			*theta3 = thetas[line3];
+			return error_px;
+		}
 	}
 	*rho1 = 0;
 	*rho2 = 0;
