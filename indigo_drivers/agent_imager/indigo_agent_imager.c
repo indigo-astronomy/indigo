@@ -2731,6 +2731,10 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS_ESTIMATOR
+		if (FILTER_DEVICE_CONTEXT->running_process) {
+			indigo_update_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, "Warning: Focus estimator can not be changed while process is running!");
+			return INDIGO_OK;
+		}
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property, false);
 		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->state = INDIGO_OK_STATE;
 		adjust_stats_max_stars_to_use(device);
