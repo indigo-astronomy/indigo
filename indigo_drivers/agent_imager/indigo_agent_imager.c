@@ -2741,6 +2741,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property, false);
 		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->state = INDIGO_OK_STATE;
 		adjust_stats_max_stars_to_use(device);
+		clear_stats(device);
 		save_config(device);
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		indigo_update_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, NULL);
