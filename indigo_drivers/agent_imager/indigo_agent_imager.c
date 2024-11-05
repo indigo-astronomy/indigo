@@ -1133,14 +1133,16 @@ static double estimator(indigo_device *device) {
 		return AGENT_IMAGER_STATS_RMS_CONTRAST_ITEM->number.value;
 	} else if (DEVICE_PRIVATE_DATA->use_hfd_estimator) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Peak = %g, HFD = %g, FWHM = %g", AGENT_IMAGER_STATS_PEAK_ITEM->number.value, AGENT_IMAGER_STATS_HFD_ITEM->number.value, AGENT_IMAGER_STATS_FWHM_ITEM->number.value);
-		if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0 || AGENT_IMAGER_STATS_FWHM_ITEM->number.value == 0) {
+		if (AGENT_IMAGER_STATS_HFD_ITEM->number.value == 0) {
 			return NAN;
 		}
 		return AGENT_IMAGER_STATS_PEAK_ITEM->number.value / AGENT_IMAGER_STATS_HFD_ITEM->number.value;
 	} else if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bahtinov focus error = %g", AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value);
-		if (AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value == -1) {
+		if (AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value < 0) {
 			return NAN;
+		} else if (AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value == 0) {
+			return 1e16;
 		}
 		return 1 / AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value;
 	}
