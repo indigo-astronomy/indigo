@@ -2587,61 +2587,138 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 	return INDIGO_OK;
 }
 
-// creates INDIGO_RAW_MONO8 with 0 or 255 values only for threshold of 0 to 1 as ratio of 255 or 65536
+//static void save_pgm(const char* filename, const uint8_t* mono, int width, int height) {
+//	FILE* file = fopen(filename, "wb");
+//	fprintf(file, "P5\n%d %d\n255\n", width, height);
+//	fwrite(mono, 1, width * height, file);
+//	fclose(file);
+//}
+//
+//static void save_ppm(const char* filename, const uint8_t* rgb, int width, int height) {
+//	FILE* file = fopen(filename, "wb");
+//	fprintf(file, "P6\n%d %d\n255\n", width, height);
+//	fwrite(rgb, 1, width * height * 3, file);
+//	fclose(file);
+//}
 
-uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int width, const int height, const double threshold) {
+// creates INDIGO_RAW_MONO8 with 0 or 255 values only
+
+uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int width, const int height, double sigma) {
 	int size = width * height;
-	uint8_t *target_pixels = (uint8_t *)indigo_safe_malloc(size);
+	long sum = 0;
+	long sum_sq = 0;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			uint8_t *source_pixels = (uint8_t *)data;
-			int t = threshold * 255;
 			for (int i = 0; i < size; i++) {
-				target_pixels[i] = source_pixels[i] > t ? 255 : 0;
+				int value = source_pixels[i];
+				sum += value;
+				sum_sq += value * value;
 			}
 			break;
 		}
 		case INDIGO_RAW_MONO16: {
 			uint16_t *source_pixels = (uint16_t *)data;
-			int t = threshold * 65535;
 			for (int i = 0; i < size; i++) {
-				target_pixels[i] = source_pixels[i] > t ? 255 : 0;
+				int value = source_pixels[i];
+				sum += value;
+				sum_sq += value * value;
 			}
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
 			uint8_t *source_pixels = (uint8_t *)data;
-			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > t ? 255 : 0;
+				int value = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) / 3;
+				sum += value;
+				sum_sq += value * value;
 			}
 			break;
 		}
 		case INDIGO_RAW_RGBA32: {
 			uint8_t *source_pixels = (uint8_t *)data;
-			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) > t ? 255 : 0;
+				int value = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) / 3;
+				sum += value;
+				sum_sq += value * value;
 			}
 			break;
 		}
 		case INDIGO_RAW_ABGR32: {
 			uint8_t *source_pixels = (uint8_t *)data;
-			int t = threshold * 255 * 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) > t ? 255 : 0;
+				int value = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) / 3;
+				sum += value;
+				sum_sq += value * value;
 			}
 			break;
 		}
 		case INDIGO_RAW_RGB48: {
 			uint16_t *source_pixels = (uint16_t *)data;
-			int t = threshold * 65535 * 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > t ? 255 : 0;
+				int value = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) / 3;
+				sum += value;
+				sum_sq += value * value;
+			}
+			break;
+		}
+	}
+	double mean = (double)sum / size;
+	double stddev = sqrt((double)sum_sq / size - mean * mean);
+	int threshold = mean + (sigma * stddev);
+	uint8_t *target_pixels = (uint8_t *)indigo_safe_malloc(size);
+	switch (raw_type) {
+		case INDIGO_RAW_MONO8: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			for (int i = 0; i < size; i++) {
+				target_pixels[i] = source_pixels[i] > threshold ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_MONO16: {
+			uint16_t *source_pixels = (uint16_t *)data;
+			for (int i = 0; i < size; i++) {
+				target_pixels[i] = source_pixels[i] > threshold ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB24: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			threshold *= 3;
+			for (int i = 0; i < size; i++) {
+				int i3 = 3 * i;
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > threshold ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGBA32: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			threshold *= 3;
+			for (int i = 0; i < size; i++) {
+				int i4 = 4 * i;
+				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) > threshold ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_ABGR32: {
+			uint8_t *source_pixels = (uint8_t *)data;
+			threshold *= 3;
+			for (int i = 0; i < size; i++) {
+				int i4 = 4 * i;
+				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) > threshold ? 255 : 0;
+			}
+			break;
+		}
+		case INDIGO_RAW_RGB48: {
+			uint16_t *source_pixels = (uint16_t *)data;
+			threshold *= 3;
+			for (int i = 0; i < size; i++) {
+				int i3 = 3 * i;
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > threshold ? 255 : 0;
 			}
 			break;
 		}
@@ -2764,23 +2841,9 @@ static double focus_error(double rho1, double theta1, double rho2, double theta2
 	return sqrt((x2 - x_m) * (x2 - x_m) + (y2 - y_m) * (y2 - y_m));
 }
 
-//static void save_pgm(const char* filename, const uint8_t* mono, int width, int height) {
-//	FILE* file = fopen(filename, "wb");
-//	fprintf(file, "P5\n%d %d\n255\n", width, height);
-//	fwrite(mono, 1, width * height, file);
-//	fclose(file);
-//}
-//
-//static void save_ppm(const char* filename, const uint8_t* rgb, int width, int height) {
-//	FILE* file = fopen(filename, "wb");
-//	fprintf(file, "P6\n%d %d\n255\n", width, height);
-//	fwrite(rgb, 1, width * height * 3, file);
-//	fclose(file);
-//}
-
-double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
+double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double sigma, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
 	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
-	uint8_t *mono = indigo_binarize(raw_type, data, width, height, 0.25);
+	uint8_t *mono = indigo_binarize(raw_type, data, width, height, sigma);
 	indigo_skeletonize(mono, width, height);
 	hough_transform(mono, width, height, hough);
 	double rhos[MAX_LINES] = { 0.0 };

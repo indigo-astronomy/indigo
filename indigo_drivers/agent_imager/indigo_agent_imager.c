@@ -65,11 +65,12 @@
 #define AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+3)
 #define AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+4)
 #define AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM  				(AGENT_IMAGER_FOCUS_PROPERTY->items+5)
-#define AGENT_IMAGER_FOCUS_BACKLASH_ITEM     				(AGENT_IMAGER_FOCUS_PROPERTY->items+6)
-#define AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM  (AGENT_IMAGER_FOCUS_PROPERTY->items+7)
-#define AGENT_IMAGER_FOCUS_STACK_ITEM								(AGENT_IMAGER_FOCUS_PROPERTY->items+8)
-#define AGENT_IMAGER_FOCUS_REPEAT_ITEM							(AGENT_IMAGER_FOCUS_PROPERTY->items+9)
-#define AGENT_IMAGER_FOCUS_DELAY_ITEM								(AGENT_IMAGER_FOCUS_PROPERTY->items+10)
+#define AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM  		(AGENT_IMAGER_FOCUS_PROPERTY->items+6)
+#define AGENT_IMAGER_FOCUS_BACKLASH_ITEM     				(AGENT_IMAGER_FOCUS_PROPERTY->items+7)
+#define AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM  (AGENT_IMAGER_FOCUS_PROPERTY->items+8)
+#define AGENT_IMAGER_FOCUS_STACK_ITEM								(AGENT_IMAGER_FOCUS_PROPERTY->items+9)
+#define AGENT_IMAGER_FOCUS_REPEAT_ITEM							(AGENT_IMAGER_FOCUS_PROPERTY->items+10)
+#define AGENT_IMAGER_FOCUS_DELAY_ITEM								(AGENT_IMAGER_FOCUS_PROPERTY->items+11)
 
 #define AGENT_IMAGER_FOCUS_FAILURE_PROPERTY		(DEVICE_PRIVATE_DATA->agent_imager_focus_failure_property)
 #define AGENT_IMAGER_FOCUS_FAILURE_STOP_ITEM  (AGENT_IMAGER_FOCUS_FAILURE_PROPERTY->items+0)
@@ -636,7 +637,7 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 		}
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	} else if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator) {
-		AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = indigo_bahtinov_error(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, &AGENT_IMAGER_SPIKE_1_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_THETA_ITEM->number.value);
+		AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = indigo_bahtinov_error(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_THETA_ITEM->number.value);
 		indigo_update_property(device, AGENT_IMAGER_SPIKES_PROPERTY, NULL);
 	}
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
@@ -2391,7 +2392,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM, AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM_NAME, "Pause after transit (h)", -2, 2, 1, 0);
 		strcpy(AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.format, "%12.3m");
 		// -------------------------------------------------------------------------------- Focus properties
-		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 11);
+		AGENT_IMAGER_FOCUS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_FOCUS_PROPERTY_NAME, "Agent", "Autofocus settings", INDIGO_OK_STATE, INDIGO_RW_PERM, 12);
 		if (AGENT_IMAGER_FOCUS_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_INITIAL_ITEM, AGENT_IMAGER_FOCUS_INITIAL_ITEM_NAME, "Initial / U-Curve step (obsolete)", 1, 0xFFFF, 1, 20); // obsolete
@@ -2400,6 +2401,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM, AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM_NAME, "Iterative final step", 1, 0xFFFF, 1, 5);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM, AGENT_IMAGER_FOCUS_UCURVE_SAMPLES_ITEM_NAME, "U-Curve fitting samples", 6, MAX_UCURVE_SAMPLES, 1, 10);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM, AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM_NAME, "U-Curve sample step", 1, 0xFFFF, 1, 20);
+		indigo_init_number_item(AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM, AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM_NAME, "Bahtinov sigma", 0, 3, 0, 0.15);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_ITEM_NAME, "Backlash", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM, AGENT_IMAGER_FOCUS_BACKLASH_OVERSHOOT_ITEM_NAME, "Backlash overshoot factor (1 disabled)", 1, 3, 0.5, 1);
 		indigo_init_number_item(AGENT_IMAGER_FOCUS_STACK_ITEM, AGENT_IMAGER_FOCUS_STACK_ITEM_NAME, "Stacking", 1, 5, 1, 3);
