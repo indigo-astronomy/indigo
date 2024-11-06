@@ -2826,8 +2826,10 @@ static void line_intersection(double m1, double b1, double m2, double b2, double
 	*y = m1 * (*x) + b1;
 }
 
-static double focus_error(double rho1, double theta1, double rho2, double theta2, double rho3, double theta3) {
+static double focus_error(const int width, const int height, double rho1, double theta1, double rho2, double theta2, double rho3, double theta3) {
 	double m1, b1, m2, b2, m3, b3;
+	int w10 = width / 10, w90 = width - w10;
+	int h10 = height / 10, h90 = height - h10;
 	hough_to_cartesian(rho1, theta1, &m1, &b1);
 	hough_to_cartesian(rho2, theta2, &m2, &b2);
 	hough_to_cartesian(rho3, theta3, &m3, &b3);
@@ -2836,6 +2838,8 @@ static double focus_error(double rho1, double theta1, double rho2, double theta2
 	line_intersection(m2, b2, m3, b3, &x23, &y23);
 	double x_m = (x12 + x23) / 2;
 	double y_m = (y12 + y23) / 2;
+	if (x_m < w10 || x_m > w90 || y_m < h10 || y_m > h90)
+		return INFINITY;
 	double x2, y2;
 	line_intersection(m1, b1, m3, b3, &x2, &y2);
 	return sqrt((x2 - x_m) * (x2 - x_m) + (y2 - y_m) * (y2 - y_m));
@@ -2895,7 +2899,7 @@ double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const i
 		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line1, rhos[line1], thetas[line1] / M_PI * 180);
 		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line2, rhos[line2], thetas[line2] / M_PI * 180);
 		indigo_debug("%s: %3d. %9.3f %9.3f", __FUNCTION__, line3, rhos[line3], thetas[line3] / M_PI * 180);
-		double error_px = focus_error(rhos[line1], thetas[line1], rhos[line2], thetas[line2], rhos[line3], thetas[line3]);
+		double error_px = focus_error(width, height, rhos[line1], thetas[line1], rhos[line2], thetas[line2], rhos[line3], thetas[line3]);
 		indigo_debug("%s: focus error = %.2fpx", __FUNCTION__, error_px);
 		if (error_px < 100) {
 			*rho1 = rhos[line1];
