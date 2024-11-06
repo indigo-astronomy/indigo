@@ -2744,11 +2744,29 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_FOCUS_ESTIMATOR
-		if (FILTER_DEVICE_CONTEXT->running_process) {
+		if (FILTER_DEVICE_CONTEXT->running_process && !AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
 			indigo_update_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, "Warning: Focus estimator can not be changed while process is running!");
 			return INDIGO_OK;
 		}
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property, false);
+		DEVICE_PRIVATE_DATA->use_hfd_estimator = false;
+		DEVICE_PRIVATE_DATA->use_rms_estimator = false;
+		DEVICE_PRIVATE_DATA->use_bahtinov_estimator = false;
+		DEVICE_PRIVATE_DATA->use_ucurve_focusing = false;
+		DEVICE_PRIVATE_DATA->use_iterative_focusing = false;
+		if (AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
+			DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
+			DEVICE_PRIVATE_DATA->use_ucurve_focusing = true;
+		} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) {
+			DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
+			DEVICE_PRIVATE_DATA->use_iterative_focusing = true;
+		} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value) {
+			DEVICE_PRIVATE_DATA->use_rms_estimator = true;
+			DEVICE_PRIVATE_DATA->use_iterative_focusing = true;
+		} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_BAHTINOV_ITEM->sw.value) {
+			DEVICE_PRIVATE_DATA->use_bahtinov_estimator = true;
+			DEVICE_PRIVATE_DATA->use_iterative_focusing = true;
+		}
 		AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY->state = INDIGO_OK_STATE;
 		adjust_stats_max_stars_to_use(device);
 		clear_stats(device);
@@ -2758,30 +2776,32 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_IMAGER_STARS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_STARS
-		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
-			indigo_property_copy_values(AGENT_IMAGER_STARS_PROPERTY, property, false);
-			if (AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value) {
-				AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value = false;
-				AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_BUSY_STATE;
-				indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-				indigo_set_timer(device, 0, find_stars_process, NULL);
-			} else {
-				for (int i = 1; i < AGENT_IMAGER_STARS_PROPERTY->count; i++) {
-					if (AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value) {
-						int j = atoi(AGENT_IMAGER_STARS_PROPERTY->items[i].name);
-						AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
-						AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].y;
-						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-						AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value = false;
-					}
+		if (FILTER_DEVICE_CONTEXT->running_process || AGENT_IMAGER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
+			indigo_update_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, "Warning: Star list can not be changed while process is running!");
+			return INDIGO_OK;
+		}
+		indigo_property_copy_values(AGENT_IMAGER_STARS_PROPERTY, property, false);
+		if (AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value) {
+			AGENT_IMAGER_STARS_REFRESH_ITEM->sw.value = false;
+			AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_BUSY_STATE;
+			indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+			indigo_set_timer(device, 0, find_stars_process, NULL);
+		} else {
+			for (int i = 1; i < AGENT_IMAGER_STARS_PROPERTY->count; i++) {
+				if (AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value) {
+					int j = atoi(AGENT_IMAGER_STARS_PROPERTY->items[i].name);
+					AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].x;
+					AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->stars[j].y;
+					indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+					AGENT_IMAGER_STARS_PROPERTY->items[i].sw.value = false;
 				}
-				AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 			}
+			AGENT_IMAGER_STARS_PROPERTY->state = INDIGO_OK_STATE;
 		}
 		indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
 	} else if (indigo_property_match(AGENT_IMAGER_SELECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_IMAGER_SELECTION
-		if (FILTER_DEVICE_CONTEXT->running_process) {
+		if (FILTER_DEVICE_CONTEXT->running_process && !AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
 			indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, "Warning: Selection can not be changed while process is running!");
 			return INDIGO_OK;
 		}
@@ -2806,6 +2826,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_define_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 			indigo_define_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 		}
+		clear_stats(device);
 		save_config(device);
 		AGENT_IMAGER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
@@ -2813,24 +2834,6 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_IMAGER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
 			indigo_property_copy_values(AGENT_START_PROCESS_PROPERTY, property, false);
-			DEVICE_PRIVATE_DATA->use_hfd_estimator = false;
-			DEVICE_PRIVATE_DATA->use_rms_estimator = false;
-			DEVICE_PRIVATE_DATA->use_bahtinov_estimator = false;
-			DEVICE_PRIVATE_DATA->use_ucurve_focusing = false;
-			DEVICE_PRIVATE_DATA->use_iterative_focusing = false;
-			if (AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
-				DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
-				DEVICE_PRIVATE_DATA->use_ucurve_focusing = true;
-			} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) {
-				DEVICE_PRIVATE_DATA->use_hfd_estimator = true;
-				DEVICE_PRIVATE_DATA->use_iterative_focusing = true;
-			} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_RMS_CONTRAST_ITEM->sw.value) {
-				DEVICE_PRIVATE_DATA->use_rms_estimator = true;
-				DEVICE_PRIVATE_DATA->use_iterative_focusing = true;
-			} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_BAHTINOV_ITEM->sw.value) {
-				DEVICE_PRIVATE_DATA->use_bahtinov_estimator = true;
-				DEVICE_PRIVATE_DATA->use_iterative_focusing = true;
-			}
 			if (AGENT_IMAGER_CLEAR_SELECTION_ITEM->sw.value) {
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, 0, clear_selection_process, NULL);
