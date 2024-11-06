@@ -1509,24 +1509,34 @@ static bool autofocus_ucurve(indigo_device *device) {
 				hfds[i][sample_index] = AGENT_IMAGER_STATS_HFD_ITEM[i].number.value;
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: pos[%d][%d] = (%g, %f)", i, sample_index, focus_pos[sample_index], hfds[i][sample_index]);
 			}
+
 			/* Find best sample index and value */
-			best_value = hfds[0][0];
-			best_index = 0;
 			int best_indices[INDIGO_MAX_MULTISTAR_COUNT] = { 0 };
-			// Find the best index for each star
+			/* Find the best index for each star */
+			int used_stars = 0;
 			for (int star = 0; star < star_count; star++) {
-				best_value = hfds[star][0];
-				best_index = 0;
+				best_value = 0xFFFF;
+				best_index = -1;
 				for (int i = 0; i <= sample_index; i++) {
-					if (hfds[star][i] < best_value) {
+					if (hfds[star][i] < best_value && hfds[star][i] > 0) {
 						best_value = hfds[star][i];
 						best_index = i;
 					}
 				}
-				best_indices[star] = best_index;
+				if (best_index >= 0) {
+					best_indices[used_stars++] = best_index;
+				}
 			}
-			// Calculate the mode of the best indices
-			best_index = calculate_mode(best_indices, star_count);
+
+			if (used_stars == 0) {  /* This should not happen, but just in case */
+				indigo_send_message(device, "Error: No usable stars, maybe focus is too far");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: No usable stars, maybe focus is too far (frame_count = %d)", frame_count);
+				focus_failed = true;
+				goto ucurve_finish;
+			}
+
+			/* Calculate the mode of the best indices */
+			best_index = calculate_mode(best_indices, used_stars);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: The best sample focus is at position %d (mode), %d for star #0", best_index, best_indices[0]);
 
 			if (sample_index >= ucurve_samples - 1 && best_index > mid_index) {
