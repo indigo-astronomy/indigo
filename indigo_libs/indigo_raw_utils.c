@@ -2670,19 +2670,20 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 	double mean = (double)sum / size;
 	double stddev = sqrt((double)sum_sq / size - mean * mean);
 	int threshold = mean + (sigma * stddev);
+	sum = 0;
 	uint8_t *target_pixels = (uint8_t *)indigo_safe_malloc(size);
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			uint8_t *source_pixels = (uint8_t *)data;
 			for (int i = 0; i < size; i++) {
-				target_pixels[i] = source_pixels[i] > threshold ? 255 : 0;
+				target_pixels[i] = source_pixels[i] > threshold ? (void)(sum++), 255 : 0;
 			}
 			break;
 		}
 		case INDIGO_RAW_MONO16: {
 			uint16_t *source_pixels = (uint16_t *)data;
 			for (int i = 0; i < size; i++) {
-				target_pixels[i] = source_pixels[i] > threshold ? 255 : 0;
+				target_pixels[i] = source_pixels[i] > threshold ? (void)(sum++), 255 : 0;
 			}
 			break;
 		}
@@ -2691,7 +2692,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 			threshold *= 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > threshold ? 255 : 0;
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > threshold ? (void)(sum++), 255 : 0;
 			}
 			break;
 		}
@@ -2700,7 +2701,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 			threshold *= 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) > threshold ? 255 : 0;
+				target_pixels[i] = (source_pixels[i4] + source_pixels[i4 + 1] + source_pixels[i4 + 2]) > threshold ? (void)(sum++), 255 : 0;
 			}
 			break;
 		}
@@ -2709,7 +2710,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 			threshold *= 3;
 			for (int i = 0; i < size; i++) {
 				int i4 = 4 * i;
-				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) > threshold ? 255 : 0;
+				target_pixels[i] = (source_pixels[i4 + 1] + source_pixels[i4 + 2] + source_pixels[i4 + 3]) > threshold ? (void)(sum++), 255 : 0;
 			}
 			break;
 		}
@@ -2718,10 +2719,15 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 			threshold *= 3;
 			for (int i = 0; i < size; i++) {
 				int i3 = 3 * i;
-				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > threshold ? 255 : 0;
+				target_pixels[i] = (source_pixels[i3] + source_pixels[i3 + 1] + source_pixels[i3 + 2]) > threshold ? (void)(sum++), 255 : 0;
 			}
 			break;
 		}
+	}
+	if (sum > size * 0.1) {
+		indigo_error("Too many (%d%%) bright pixels", (int)((double)sum / size));
+		indigo_safe_free(target_pixels);
+		return NULL;
 	}
 	return target_pixels;
 }

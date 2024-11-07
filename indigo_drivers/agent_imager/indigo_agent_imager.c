@@ -201,6 +201,8 @@
 
 #define GRID	32
 
+#define MAX_BAHTINOV_FRAME_SIZE 500
+
 #define MAX(X, Y) (((X) > (Y)) ? (X) : (Y))
 
 typedef struct {
@@ -640,8 +642,12 @@ static bool capture_and_process_frame(indigo_device *device, uint8_t **saturatio
 		}
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 	} else if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator) {
-		AGENT_IMAGER_STATS_FOCUS_POSITION_ITEM->number.value = DEVICE_PRIVATE_DATA->focuser_position;
-		AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = indigo_bahtinov_error(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_THETA_ITEM->number.value);
+		if (header->width <= MAX_BAHTINOV_FRAME_SIZE && header->height <= MAX_BAHTINOV_FRAME_SIZE) {
+			AGENT_IMAGER_STATS_FOCUS_POSITION_ITEM->number.value = DEVICE_PRIVATE_DATA->focuser_position;
+			AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = indigo_bahtinov_error(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, AGENT_IMAGER_FOCUS_BAHTINOV_SIGMA_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_1_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_2_THETA_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_RHO_ITEM->number.value, &AGENT_IMAGER_SPIKE_3_THETA_ITEM->number.value);
+		} else {
+			AGENT_IMAGER_STATS_BAHTINOV_ITEM->number.value = -1;
+		}
 		indigo_update_property(device, AGENT_IMAGER_SPIKES_PROPERTY, NULL);
 	}
 	AGENT_IMAGER_STATS_FRAME_ITEM->number.value++;
@@ -1940,6 +1946,16 @@ static bool validate_device(indigo_device *device, int index, indigo_property *i
 	return true;
 }
 
+static void adjust_stats_max_stars_to_use(indigo_device *device) {
+	if (AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
+		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
+	} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) {
+		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = 1;
+	} else {
+		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = 0;
+	}
+}
+
 // ------- Sequencer is deprecated ------------------------------------------------ begin
 
 #pragma GCC diagnostic push
@@ -2665,16 +2681,6 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
-void adjust_stats_max_stars_to_use(indigo_device *device) {
-	if (AGENT_IMAGER_FOCUS_ESTIMATOR_UCURVE_ITEM->sw.value) {
-		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
-	} else if (AGENT_IMAGER_FOCUS_ESTIMATOR_HFD_PEAK_ITEM->sw.value) {
-		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = 1;
-	} else {
-		AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.target = AGENT_IMAGER_STATS_MAX_STARS_TO_USE_ITEM->number.value = 0;
-	}
-}
-
 static indigo_result agent_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
@@ -2841,10 +2847,16 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			} else if (INDIGO_FILTER_CCD_SELECTED) {
 				if (AGENT_IMAGER_START_PREVIEW_1_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+					if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
+						indigo_send_message(device, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
+					}
 					indigo_set_timer(device, 0, preview_1_process, NULL);
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				} else if (AGENT_IMAGER_START_PREVIEW_ITEM->sw.value) {
 					AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+					if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
+						indigo_send_message(device, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
+					}
 					indigo_set_timer(device, 0, preview_process, NULL);
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
 				} else if (AGENT_IMAGER_START_EXPOSURE_ITEM->sw.value) {
@@ -2862,6 +2874,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				} else if (INDIGO_FILTER_FOCUSER_SELECTED) {
 					if (AGENT_IMAGER_START_FOCUSING_ITEM->sw.value) {
 						AGENT_START_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
+						if (DEVICE_PRIVATE_DATA->use_bahtinov_estimator && (DEVICE_PRIVATE_DATA->frame[2] > MAX_BAHTINOV_FRAME_SIZE || DEVICE_PRIVATE_DATA->frame[3] > MAX_BAHTINOV_FRAME_SIZE)) {
+							indigo_send_message(device, "Warning: Bahtinov focus estimator can't process frames larger than %d x %d pixels", MAX_BAHTINOV_FRAME_SIZE, MAX_BAHTINOV_FRAME_SIZE);
+						}
 						indigo_set_timer(device, 0, autofocus_process, NULL);
 					}
 					indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
