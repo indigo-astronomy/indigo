@@ -998,13 +998,13 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	assert(DEVICE_CONTEXT != NULL);
 	assert(property != NULL);
 	if (indigo_property_match(AGENT_SITE_DATA_SOURCE_PROPERTY, property)) {
-			// -------------------------------------------------------------------------------- AGENT_SITE_DATA_SOURCE
-			indigo_property_copy_values(AGENT_SITE_DATA_SOURCE_PROPERTY, property, false);
-			handle_site_change(device);
-			AGENT_SITE_DATA_SOURCE_PROPERTY->state = INDIGO_OK_STATE;
-			save_config(device);
-			indigo_update_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
-			return INDIGO_OK;
+		// -------------------------------------------------------------------------------- AGENT_SITE_DATA_SOURCE
+		indigo_property_copy_values(AGENT_SITE_DATA_SOURCE_PROPERTY, property, false);
+		handle_site_change(device);
+		AGENT_SITE_DATA_SOURCE_PROPERTY->state = INDIGO_OK_STATE;
+		save_config(device);
+		indigo_update_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_SET_HOST_TIME
 		indigo_property_copy_values(AGENT_SET_HOST_TIME_PROPERTY, property, false);
@@ -1116,8 +1116,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No mount is selected");
 			}
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		}
-		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS

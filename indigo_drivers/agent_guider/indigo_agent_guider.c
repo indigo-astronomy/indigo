@@ -1974,6 +1974,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_GUIDER_DETECTION_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_DEC_MODE_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DEC_MODE
 		bool is_current_dec_guiding_both = AGENT_GUIDER_DEC_MODE_BOTH_ITEM->sw.value;
@@ -1990,12 +1991,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		} else {
 			indigo_update_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, "Warning: Can not change declination guiding method to/from 'North and South' while guiding!");
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_APPLY_DEC_BACKLASH
 		indigo_property_copy_values(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property, false);
 		AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_MOUNT_COORDINATES
 		double dec = AGENT_GUIDER_MOUNT_COORDINATES_DEC_ITEM->number.value;
@@ -2013,6 +2016,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target = copysign(1.0, AGENT_GUIDER_MOUNT_COORDINATES_SOP_ITEM->number.target);
 		}
 		indigo_update_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_DITHERING_OFFSETS
 		double dith_x = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target;
@@ -2103,6 +2107,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY->state = INDIGO_OK_STATE;
 		save_config(device);
 		indigo_update_property(device, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_STARS_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- AGENT_GUIDER_STARS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_GUIDER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -2126,6 +2131,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 		}
 		indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SELECTION
 		if (FILTER_DEVICE_CONTEXT->running_process) {
@@ -2157,6 +2163,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		save_config(device);
 		AGENT_GUIDER_SELECTION_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_START_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && AGENT_GUIDER_STARS_PROPERTY->state != INDIGO_BUSY_STATE) {
@@ -2204,6 +2211,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No CCD is selected");
 			}
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_ABORT_PROCESS
 		if (AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE || AGENT_GUIDER_STARS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -2262,6 +2270,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_update_property(device, AGENT_GUIDER_LOG_PROPERTY, NULL);
 			save_config(device);
 		}
+		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_PROCESS_FEATURES
 		bool fail_on_calibration_error = AGENT_GUIDER_FAIL_ON_CALIBRATION_ERROR_ITEM->sw.value;
@@ -2288,6 +2297,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		AGENT_PROCESS_FEATURES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
 		save_config(device);
+		return INDIGO_OK;
 	} else if (indigo_property_match(ADDITIONAL_INSTANCES_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		if (indigo_filter_change_property(device, client, property) == INDIGO_OK) {

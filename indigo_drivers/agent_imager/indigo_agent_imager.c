@@ -823,17 +823,17 @@ static bool exposure_batch(indigo_device *device) {
 					} else {
 						indigo_send_message(device, "Batch paused, transit %s ago", indigo_dtos(-time_to_transit, NULL));
 					}
-					allow_abort_by_mount_agent(device, false);
 				}
 			}
-			while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
-				indigo_usleep(200000);
+			if (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				allow_abort_by_mount_agent(device, false);
+				while (AGENT_PAUSE_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+					indigo_usleep(200000);
+				}
+				allow_abort_by_mount_agent(device, true);
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				return false;
-			}
-			if (pausedOnTTT) {
-				allow_abort_by_mount_agent(device, true);
 			}
 			if (DEVICE_PRIVATE_DATA->use_aux_1) {
 				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, device->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, 0);
@@ -2890,14 +2890,14 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				AGENT_START_PROCESS_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, "No CCD is selected");
 			}
+			AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false;
+			AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
+			AGENT_ABORT_PROCESS_ITEM->sw.value = false;
+			AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
+			indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
+			indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		}
-		AGENT_PAUSE_PROCESS_ITEM->sw.value = AGENT_PAUSE_PROCESS_WAIT_ITEM->sw.value = AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false;
-		AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
-		AGENT_ABORT_PROCESS_ITEM->sw.value = false;
-		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-		indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_PAUSE_PROCESS_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- AGENT_PAUSE_PROCESS
