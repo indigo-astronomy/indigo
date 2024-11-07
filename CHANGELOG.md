@@ -18,13 +18,28 @@ All notable changes to INDIGO framework will be documented in this file.
 	- focuser movement can be controlled by joystick buttons
 	- remove the flat bottom of gaus_blur() - better for iterative focusing simulation but U-Curve simulation deteriorated a bit.
 	- single frame preview process added
-	- separation of AGENT_IMAGER_FOCUS_INITIAL_ITEM to AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM and synchronization from AGENT_IMAGER_FOCUS_FINAL_ITEM to AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM. New clients should prefer AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM, AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM if present over AGENT_IMAGER_FOCUS_INITIAL_ITEM and AGENT_IMAGER_FOCUS_FINAL_ITEM retained for backward compatibility only.
+	- separation of AGENT_IMAGER_FOCUS_INITIAL_ITEM to AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and  
+	  AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM and synchronization from AGENT_IMAGER_FOCUS_FINAL_ITEM to
+	  AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM. New clients should prefer AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM,
+	  AGENT_IMAGER_FOCUS_ITERATVE_INITIAL_ITEM and AGENT_IMAGER_FOCUS_ITERATVE_FINAL_ITEM if present over
+	  AGENT_IMAGER_FOCUS_INITIAL_ITEM and AGENT_IMAGER_FOCUS_FINAL_ITEM retained for backward compatibility only.
+	- final estimator evaluated in iterative focusing to guess process result
+	- avoid estimator change while process is running
+	- AGENT_IMAGER_STATS_FOCUS_POSITION added to AGENT_IMAGER_STATS
+	- focus estimator change resets stats
+	- fix U-Curve midpoint detection
+
+- indigo_agent_mount
+	- meridian flip fixed
 
 - indigo_agent_guider:
 	- single frame preview process added
+	- subframing disabled for multistar
 
 - indigo_ccd_simulator
 	- CCD Bahtinov Mask Simulator device added
+	- bad free() fixed
+	- remove some useless debug messages
 
 - indigo_ccd_qhy2
 	- updated SDK V2024.10.30
