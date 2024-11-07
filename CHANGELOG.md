@@ -2,7 +2,7 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-298] - - Nov - 2024
+# [2.0-298] - 7 Nov Thu 2024
 
 ## Overall:
 - ccd_driver:
