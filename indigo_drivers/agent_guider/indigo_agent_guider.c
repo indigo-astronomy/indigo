@@ -1389,7 +1389,7 @@ static bool guide(indigo_device *device) {
 				break;
 			}
 		} else {
-			if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 1 && !DEVICE_PRIVATE_DATA->autosubframing) {
+			if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 1 && !DEVICE_PRIVATE_DATA->autosubframing && AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
 				if (select_subframe(device)) {
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
 				}
