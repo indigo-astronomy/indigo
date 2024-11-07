@@ -2725,7 +2725,7 @@ uint8_t* indigo_binarize(indigo_raw_type raw_type, const void *data, const int w
 		}
 	}
 	if (sum > size * 0.1) {
-		indigo_error("Too many (%d%%) bright pixels", (int)((double)sum / size));
+		indigo_error("Too many (%d%%) bright pixels", (int)((100 * sum) / size));
 		indigo_safe_free(target_pixels);
 		return NULL;
 	}
@@ -2852,9 +2852,12 @@ static double focus_error(const int width, const int height, double rho1, double
 }
 
 double indigo_bahtinov_error(indigo_raw_type raw_type, const void *data, const int width, const int height, double sigma, double *rho1, double *theta1, double *rho2, double *theta2, double *rho3, double *theta3) {
-	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
 	uint8_t *mono = indigo_binarize(raw_type, data, width, height, sigma);
+	if (mono == NULL) {
+		return -1;
+	}
 	indigo_skeletonize(mono, width, height);
+	int *hough = indigo_safe_malloc(RHO_RES * THETA_RES * sizeof(int));
 	hough_transform(mono, width, height, hough);
 	double rhos[MAX_LINES] = { 0.0 };
 	double thetas[MAX_LINES] = { 0.0 };
