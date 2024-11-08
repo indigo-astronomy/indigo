@@ -689,7 +689,7 @@ indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_
 }
 
 #else
-indigo_result indigo_focuser_astroasis(indigo_driver_action action, indigo_driver_info *info) {
+indigo_result indigo_wheel_astroasis(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
 
 	SET_DRIVER_INFO(info, "Astroasis Oasis Wheel", __FUNCTION__, DRIVER_VERSION, false, last_action);
