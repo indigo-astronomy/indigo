@@ -702,6 +702,7 @@ bool ptp_fuji_liveview(indigo_device *device) {
 					ptp_transaction_1_0(device, ptp_operation_TerminateOpenCapture, FUJI_LIVEVIEW_HANDLE);
 					return false;
 				}
+				indigo_usleep(100000);  // 100ms
 				continue;
 			}
 			source = ptp_decode_uint32(source, &handle);
