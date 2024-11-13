@@ -151,12 +151,20 @@
 #define AGENT_IMAGER_STARS_PROPERTY						(DEVICE_PRIVATE_DATA->agent_stars_property)
 #define AGENT_IMAGER_STARS_REFRESH_ITEM  			(AGENT_IMAGER_STARS_PROPERTY->items+0)
 
-#define AGENT_IMAGER_SELECTION_PROPERTY				(DEVICE_PRIVATE_DATA->agent_selection_property)
-#define AGENT_IMAGER_SELECTION_RADIUS_ITEM  	(AGENT_IMAGER_SELECTION_PROPERTY->items+0)
-#define AGENT_IMAGER_SELECTION_SUBFRAME_ITEM	(AGENT_IMAGER_SELECTION_PROPERTY->items+1)
-#define AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM (AGENT_IMAGER_SELECTION_PROPERTY->items+2)
-#define AGENT_IMAGER_SELECTION_X_ITEM  				(AGENT_IMAGER_SELECTION_PROPERTY->items+3)
-#define AGENT_IMAGER_SELECTION_Y_ITEM  				(AGENT_IMAGER_SELECTION_PROPERTY->items+4)
+#define AGENT_IMAGER_SELECTION_PROPERTY							(DEVICE_PRIVATE_DATA->agent_selection_property)
+#define AGENT_IMAGER_SELECTION_RADIUS_ITEM  				(AGENT_IMAGER_SELECTION_PROPERTY->items+0)
+#define AGENT_IMAGER_SELECTION_SUBFRAME_ITEM				(AGENT_IMAGER_SELECTION_PROPERTY->items+1)
+#define AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM		(AGENT_IMAGER_SELECTION_PROPERTY->items+2)
+#define AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM			(AGENT_IMAGER_SELECTION_PROPERTY->items+3)
+#define AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM		(AGENT_IMAGER_SELECTION_PROPERTY->items+4)
+#define AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM	(AGENT_IMAGER_SELECTION_PROPERTY->items+5)
+#define AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM		(AGENT_IMAGER_SELECTION_PROPERTY->items+6)
+#define AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM			(AGENT_IMAGER_SELECTION_PROPERTY->items+7)
+#define AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM		(AGENT_IMAGER_SELECTION_PROPERTY->items+8)
+#define AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM	(AGENT_IMAGER_SELECTION_PROPERTY->items+9)
+#define AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM 			(AGENT_IMAGER_SELECTION_PROPERTY->items+10)
+#define AGENT_IMAGER_SELECTION_X_ITEM  							(AGENT_IMAGER_SELECTION_PROPERTY->items+11)
+#define AGENT_IMAGER_SELECTION_Y_ITEM  							(AGENT_IMAGER_SELECTION_PROPERTY->items+12)
 
 #define AGENT_IMAGER_SPIKES_PROPERTY					(DEVICE_PRIVATE_DATA->agent_spikes_property)
 #define AGENT_IMAGER_SPIKE_1_RHO_ITEM  				(AGENT_IMAGER_SPIKES_PROPERTY->items+0)
@@ -442,7 +450,7 @@ static bool find_stars(indigo_device *device) {
 	int star_count;
 	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 	indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	indigo_find_stars_precise_filtered(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, MAX_STAR_COUNT, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
+	indigo_find_stars_precise_filtered(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, MAX_STAR_COUNT, AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
 	AGENT_IMAGER_STARS_PROPERTY->count = star_count + 1;
 	for (int i = 0; i < star_count; i++) {
 		char name[8];
@@ -1799,16 +1807,16 @@ static void autofocus_process(indigo_device *device) {
 
 static void clear_selection(indigo_device *device) {
 	if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
-	indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	 AGENT_IMAGER_STARS_PROPERTY->count = 1;
-	 indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
- }
- indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
- for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
-	 indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
-	 item->number.value = item->number.target = 0;
- }
- indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+		indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+		AGENT_IMAGER_STARS_PROPERTY->count = 1;
+		indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+	}
+	indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+	for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
+		indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
+		item->number.value = item->number.target = 0;
+	}
+	indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 }
 
 static void clear_selection_process(indigo_device *device) {
@@ -2520,11 +2528,19 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_IMAGER_STARS_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_IMAGER_STARS_REFRESH_ITEM, AGENT_IMAGER_STARS_REFRESH_ITEM_NAME, "Refresh", false);
 		// -------------------------------------------------------------------------------- Selected star
-		AGENT_IMAGER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 3 + 2 * INDIGO_MAX_MULTISTAR_COUNT);
+		AGENT_IMAGER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 11 + 2 * INDIGO_MAX_MULTISTAR_COUNT);
 		if (AGENT_IMAGER_SELECTION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_RADIUS_ITEM, AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 75, 1, 12);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_SUBFRAME_ITEM, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 10, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM, AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM_NAME, "Include left (px)", 0, 0xFFFF, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM, AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM_NAME, "Include top (px)", 0, 0xFFFF, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM, AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM_NAME, "Include width (px)", 0, 0xFFFF, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM, AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM_NAME, "Include height (px)", 0, 0xFFFF, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM, AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM_NAME, "Exclude left (px)", 0, 0xFFFF, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM, AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM_NAME, "Exclude top (px)", 0, 0xFFFF, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM, AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM_NAME, "Exclude width (px)", 0, 0xFFFF, 1, 0);
+		indigo_init_number_item(AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM, AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM_NAME, "Exclude height (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM, AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM_NAME, "Maximum number of stars", 1, INDIGO_MAX_MULTISTAR_COUNT, 1, 1);
 		for (int i = 0; i < INDIGO_MAX_MULTISTAR_COUNT; i++) {
 			indigo_item *item_x = AGENT_IMAGER_SELECTION_X_ITEM + 2 * i;
@@ -2537,7 +2553,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			sprintf(label, i ? "Selection #%d Y (px)" : "Selection Y (px)", i + 1);
 			indigo_init_number_item(item_y, name, label, 0, 0xFFFF, 1, 0);
 		}
-		AGENT_IMAGER_SELECTION_PROPERTY->count = 5;
+		AGENT_IMAGER_SELECTION_PROPERTY->count = 13;
 
 		// -------------------------------------------------------------------------------- Spikes generated by bahtinov mask
 		AGENT_IMAGER_SPIKES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_IMAGER_SPIKES_PROPERTY_NAME, "Agent", "Bahtinov spikes", INDIGO_OK_STATE, INDIGO_RO_PERM, 6);
@@ -2812,7 +2828,27 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			return INDIGO_OK;
 		}
 		int count = AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value;
+		double include_left = AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value;
+		double include_top = AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value;
+		double include_width = AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value;
+		double include_height = AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value;
+		double exclude_left = AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value;
+		double exclude_top = AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value;
+		double exclude_width = AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value;
+		double exclude_height = AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
 		indigo_property_copy_values(AGENT_IMAGER_SELECTION_PROPERTY, property, false);
+		if (include_left != AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value || include_top != AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value || include_width != AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value || include_height != AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value || exclude_left != AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value|| exclude_top != AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value || exclude_width != AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value || exclude_height != AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value) {
+			if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
+				indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+				AGENT_IMAGER_STARS_PROPERTY->count = 1;
+				indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+			}
+			indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+			for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
+				indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
+				item->number.value = item->number.target = 0;
+			}
+		}
 		AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value = AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.target = (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.target;
 		if (count != AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value) {
 			indigo_delete_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
