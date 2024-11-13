@@ -1363,11 +1363,10 @@ static bool guide(indigo_device *device) {
 			if (DEVICE_PRIVATE_DATA->no_guiding_star) {
 				if (DEVICE_PRIVATE_DATA->first_frame) {
 					clear_selection(device);
-					if (check_selection(device)) {
-						indigo_send_message(device, "Warning: Selection changed");
-					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
 					DEVICE_PRIVATE_DATA->first_frame = false;
+					indigo_send_message(device, "Error: No guide stars found");
+					break;
 				} else if (AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM->sw.value) {
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					break;
