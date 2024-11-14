@@ -553,7 +553,7 @@ static bool find_stars(indigo_device *device) {
 	int star_count;
 	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 	indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-	indigo_find_stars_precise_filtered(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, MAX_STAR_COUNT, AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
+	indigo_find_stars_precise_clipped(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, MAX_STAR_COUNT, AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value, AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
 	AGENT_GUIDER_STARS_PROPERTY->count = star_count + 1;
 	for (int i = 0; i < star_count; i++) {
 		char name[8];
@@ -571,6 +571,62 @@ static bool find_stars(indigo_device *device) {
 		return false;
 	}
 	return true;
+}
+
+static bool validate_include_region(indigo_device *device, bool force) {
+	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
+	if (header) {
+		int safety_margin = header->width < header->height ? header->width * 0.05 : header->height * 0.05;
+		int safety_limit_left = safety_margin;
+		int safety_limit_top = safety_margin;
+		int safety_limit_right = header->width - safety_margin;
+		int safety_limit_bottom = header->height - safety_margin;
+		int include_left = AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value;
+		int include_top = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value;
+		int include_width = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value;
+		int include_height = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value;
+		bool update = false;
+		if (include_width > 0 && include_height > 0) {
+			if (include_left < safety_limit_left) {
+				AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = include_left = safety_limit_left;
+				update = true;
+			}
+			int include_right = include_left + include_width;
+			if (include_right > safety_limit_right) {
+				AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = include_width = safety_limit_right - include_left;
+				update = true;
+			}
+			if (include_top < safety_limit_top) {
+				AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = include_top = safety_limit_top;
+				update = true;
+			}
+			int include_bottom = include_top + include_height;
+			if (include_bottom > safety_limit_bottom) {
+				AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = include_height = safety_limit_bottom - include_top;
+				update = true;
+			}
+		} else {
+			AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = safety_limit_left;
+			AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = safety_limit_top;
+			AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = safety_limit_right - safety_limit_left;
+			AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = safety_limit_bottom - safety_limit_top;
+			update = true;
+		}
+		if (update || force) {
+			if (AGENT_GUIDER_STARS_PROPERTY->count > 1) {
+				indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+				AGENT_GUIDER_STARS_PROPERTY->count = 1;
+				indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+			}
+			indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
+			for (int i = (int)(AGENT_GUIDER_SELECTION_X_ITEM - AGENT_GUIDER_SELECTION_PROPERTY->items); i < AGENT_GUIDER_SELECTION_PROPERTY->count; i++) {
+				indigo_item *item = AGENT_GUIDER_SELECTION_PROPERTY->items + i;
+				item->number.value = item->number.target = 0;
+			}
+		}
+		return update;
+	}
+	return false;
 }
 
 static bool select_stars(indigo_device *device) {
@@ -1699,7 +1755,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 			if (reset_selection) {
-				clear_selection(device);
+				validate_include_region(device, false);
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			}
 		}
 	} else if (!strcmp(property->name, FILTER_GUIDER_LIST_PROPERTY_NAME)) { // Snoop guider
@@ -2171,19 +2228,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		double exclude_width = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value;
 		double exclude_height = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
 		indigo_property_copy_values(AGENT_GUIDER_SELECTION_PROPERTY, property, false);
-		AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target = (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target;
-		if (include_left != AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value || include_top != AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value || include_width != AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value || include_height != AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value || exclude_left != AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value|| exclude_top != AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value || exclude_width != AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value || exclude_height != AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value) {
-			if (AGENT_GUIDER_STARS_PROPERTY->count > 1) {
-				indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-				AGENT_GUIDER_STARS_PROPERTY->count = 1;
-				indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-			}
-			indigo_update_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-			for (int i = (int)(AGENT_GUIDER_SELECTION_X_ITEM - AGENT_GUIDER_SELECTION_PROPERTY->items); i < AGENT_GUIDER_SELECTION_PROPERTY->count; i++) {
-				indigo_item *item = AGENT_GUIDER_SELECTION_PROPERTY->items + i;
-				item->number.value = item->number.target = 0;
-			}
-		}
+		bool force = include_left != AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value || include_top != AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value || include_width != AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value || include_height != AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value || exclude_left != AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value|| exclude_top != AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value || exclude_width != AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value || exclude_height != AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
+		validate_include_region(device, force);
 		AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target = (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.target;
 		if (count != AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value) {
 			indigo_delete_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
@@ -2377,13 +2423,24 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
+				bool reset_selection = false;
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
-						CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_x != item->number.value) {
+							CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+							reset_selection = true;
+						}
 					} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
-						CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_y != item->number.value) {
+							CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+							reset_selection = true;
+						}
 					}
+				}
+				if (reset_selection) {
+					validate_include_region(device, false);
+					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				}
 			}
 		} else {
@@ -2403,6 +2460,9 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					CLIENT_PRIVATE_DATA->last_image = indigo_safe_realloc(CLIENT_PRIVATE_DATA->last_image, property->items->blob.size);
 					memcpy(CLIENT_PRIVATE_DATA->last_image, property->items->blob.value, property->items->blob.size);
 					CLIENT_PRIVATE_DATA->last_image_size = property->items->blob.size;
+					if (validate_include_region(device, false)) {
+						indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+					}
 				} else if (CLIENT_PRIVATE_DATA->last_image) {
 					free(CLIENT_PRIVATE_DATA->last_image);
 					CLIENT_PRIVATE_DATA->last_image = NULL;
@@ -2410,16 +2470,23 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				}
 			}
 		} else if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
-			double ratio_x = 1, ratio_y = 1;
 			if (property->state == INDIGO_OK_STATE) {
+				double ratio_x = 1, ratio_y = 1;
+				bool reset_selection = false;
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
-						ratio_x = CLIENT_PRIVATE_DATA->bin_x / item->number.target;
-						CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_x != item->number.value) {
+							ratio_x = CLIENT_PRIVATE_DATA->bin_x / item->number.target;
+							CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+							reset_selection = true;
+						}
 					} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
-						ratio_y = CLIENT_PRIVATE_DATA->bin_y / item->number.target;
-						CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_y != item->number.value) {
+							ratio_y = CLIENT_PRIVATE_DATA->bin_y / item->number.target;
+							CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+							reset_selection = true;
+						}
 					}
 				}
 				if (ratio_x == ratio_y) {
@@ -2428,6 +2495,10 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					indigo_update_property(FILTER_CLIENT_CONTEXT->device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				} else {
 					indigo_send_message(device, "Automatic adjustment of '%s' and '%s' is not supported for asymmetric binning change", AGENT_GUIDER_SELECTION_RADIUS_ITEM->label, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->label);
+				}
+				if (reset_selection) {
+					validate_include_region(device, false);
+					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				}
 			}
 		} else {

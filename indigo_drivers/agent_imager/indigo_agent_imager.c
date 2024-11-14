@@ -450,7 +450,7 @@ static bool find_stars(indigo_device *device) {
 	int star_count;
 	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 	indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	indigo_find_stars_precise_filtered(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, MAX_STAR_COUNT, AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
+	indigo_find_stars_precise_clipped(header->signature, (void*)header + sizeof(indigo_raw_header), AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value, header->width, header->height, MAX_STAR_COUNT, AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value, AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value, AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value, (indigo_star_detection *)&DEVICE_PRIVATE_DATA->stars, &star_count);
 	AGENT_IMAGER_STARS_PROPERTY->count = star_count + 1;
 	for (int i = 0; i < star_count; i++) {
 		char name[8];
@@ -1819,6 +1819,62 @@ static void clear_selection(indigo_device *device) {
 	indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 }
 
+static bool validate_include_region(indigo_device *device, bool force) {
+	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
+	if (header) {
+		int safety_margin = header->width < header->height ? header->width * 0.05 : header->height * 0.05;
+		int safety_limit_left = safety_margin;
+		int safety_limit_top = safety_margin;
+		int safety_limit_right = header->width - safety_margin;
+		int safety_limit_bottom = header->height - safety_margin;
+		int include_left = AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value;
+		int include_top = AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value;
+		int include_width = AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value;
+		int include_height = AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value;
+		bool update = false;
+		if (include_width > 0 && include_height > 0) {
+			if (include_left < safety_limit_left) {
+				AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value = include_left = safety_limit_left;
+				update = true;
+			}
+			int include_right = include_left + include_width;
+			if (include_right > safety_limit_right) {
+				AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = include_width = safety_limit_right - include_left;
+				update = true;
+			}
+			if (include_top < safety_limit_top) {
+				AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value = include_top = safety_limit_top;
+				update = true;
+			}
+			int include_bottom = include_top + include_height;
+			if (include_bottom > safety_limit_bottom) {
+				AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = include_height = safety_limit_bottom - include_top;
+				update = true;
+			}
+		} else {
+			AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value = safety_limit_left;
+			AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value = safety_limit_top;
+			AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = safety_limit_right - safety_limit_left;
+			AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = safety_limit_bottom - safety_limit_top;
+			update = true;
+		}
+		if (update || force) {
+			if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
+				indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+				AGENT_IMAGER_STARS_PROPERTY->count = 1;
+				indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+			}
+			indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+			for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
+				indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
+				item->number.value = item->number.target = 0;
+			}
+		}
+		return update;
+	}
+	return false;
+}
+
 static void clear_selection_process(indigo_device *device) {
 	FILTER_DEVICE_CONTEXT->running_process = true;
 	clear_selection(device);
@@ -2837,18 +2893,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		double exclude_width = AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value;
 		double exclude_height = AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
 		indigo_property_copy_values(AGENT_IMAGER_SELECTION_PROPERTY, property, false);
-		if (include_left != AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value || include_top != AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value || include_width != AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value || include_height != AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value || exclude_left != AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value|| exclude_top != AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value || exclude_width != AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value || exclude_height != AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value) {
-			if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
-				indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-				AGENT_IMAGER_STARS_PROPERTY->count = 1;
-				indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-			}
-			indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-			for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
-				indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
-				item->number.value = item->number.target = 0;
-			}
-		}
+		bool force = include_left != AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value || include_top != AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value || include_width != AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value || include_height != AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value || exclude_left != AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value|| exclude_top != AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value || exclude_width != AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value || exclude_height != AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
+		validate_include_region(device, force);
 		AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value = AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.target = (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.target;
 		if (count != AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value) {
 			indigo_delete_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
@@ -3328,7 +3374,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 			if (reset_selection) {
-				clear_selection(device);
+				if (validate_include_region(device, false)) {
+					indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+				}
 			}
 		}
 	} else if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
@@ -3505,12 +3553,24 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
+				bool reset_selection = false;
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
-						CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_x != item->number.value) {
+							CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+							reset_selection = true;
+						}
 					} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
-						CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_y != item->number.value) {
+							CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+							reset_selection = true;
+						}
+					}
+				}
+				if (reset_selection) {
+					if (validate_include_region(device, false)) {
+						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 					}
 				}
 			}
@@ -3535,6 +3595,9 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					CLIENT_PRIVATE_DATA->last_image = indigo_safe_realloc(CLIENT_PRIVATE_DATA->last_image, property->items->blob.size);
 					memcpy(CLIENT_PRIVATE_DATA->last_image, property->items->blob.value, property->items->blob.size);
 					CLIENT_PRIVATE_DATA->last_image_size = property->items->blob.size;
+					if (validate_include_region(device, false)) {
+						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+					}
 				} else if (CLIENT_PRIVATE_DATA->last_image) {
 					free(CLIENT_PRIVATE_DATA->last_image);
 					CLIENT_PRIVATE_DATA->last_image_size = 0;
@@ -3542,16 +3605,23 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				}
 			}
 		} else if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
-			double ratio_x = 1, ratio_y = 1;
 			if (property->state == INDIGO_OK_STATE) {
+				double ratio_x = 1, ratio_y = 1;
+				bool reset_selection = false;
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
-						ratio_x = CLIENT_PRIVATE_DATA->bin_x / item->number.target;
-						CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_x != item->number.value) {
+							ratio_x = CLIENT_PRIVATE_DATA->bin_x / item->number.target;
+							CLIENT_PRIVATE_DATA->bin_x = item->number.value;
+							reset_selection = true;
+						}
 					} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
-						ratio_y = CLIENT_PRIVATE_DATA->bin_y / item->number.target;
-						CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+						if (CLIENT_PRIVATE_DATA->bin_y != item->number.value) {
+							ratio_y = CLIENT_PRIVATE_DATA->bin_y / item->number.target;
+							CLIENT_PRIVATE_DATA->bin_y = item->number.value;
+							reset_selection = true;
+						}
 					}
 				}
 				if (ratio_x == ratio_y) {
@@ -3560,6 +3630,11 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					indigo_update_property(FILTER_CLIENT_CONTEXT->device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 				} else {
 					indigo_send_message(device, "Automatic adjustment of '%s' and '%s' is not supported for asymmetric binning change", AGENT_IMAGER_SELECTION_RADIUS_ITEM->label, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->label);
+				}
+				if (reset_selection) {
+					if (validate_include_region(device, false)) {
+						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+					}
 				}
 			}
 		} else {

@@ -2421,31 +2421,33 @@ indigo_result indigo_find_stars(indigo_raw_type raw_type, const void *data, cons
 	return indigo_find_stars_precise(raw_type, data, 0, width, height, stars_max, star_list, stars_found);
 }
 
-indigo_result indigo_find_stars_precise_filtered(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, const int include_left, const int include_top, const int include_width, const int include_height, const int exclude_left, const int exclude_top, const int exclude_width, const int exclude_height, indigo_star_detection star_list[], int *stars_found) {
+indigo_result indigo_find_stars_precise_filtered(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
+	int safety_margin = width < height ? width * 0.05 : height * 0.05;
+	return indigo_find_stars_precise_clipped(raw_type, data, radius, width, height, stars_max, safety_margin, safety_margin, width - 2 * safety_margin, height - 2 * safety_margin, 0, 0, 0, 0, star_list, stars_found);
+}
+
+indigo_result indigo_find_stars_precise_clipped(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, const int include_left, const int include_top, const int include_width, const int include_height, const int exclude_left, const int exclude_top, const int exclude_width, const int exclude_height, indigo_star_detection star_list[], int *stars_found) {
 	indigo_result res = indigo_find_stars_precise(raw_type, data, radius, width, height, stars_max, star_list, stars_found);
 	if (res != INDIGO_OK) {
 		return res;
 	}
 	/* Filter out stars that are too close to the edges or are oversaturated */
-	bool clip_not_included = include_width > 0 && include_height > 0;
-	int top_left_x = clip_not_included ? include_left : width * 0.05;
-	int bottom_right_x = clip_not_included ? top_left_x + include_width : width * 0.95;
-	int top_left_y = clip_not_included ? include_top : height * 0.05;
-	int bottom_right_y = clip_not_included ? top_left_y + include_height : height * 0.95;
+	int include_right = include_left + include_width;
+	int include_bottom = include_top + include_height;
 	bool clip_excluded = exclude_width > 0 && exclude_height > 0;
-	int exclude_right = clip_excluded ? exclude_left + exclude_width : exclude_left;
-	int exclude_bottom = clip_excluded ? exclude_top + exclude_height : exclude_top;
+	int exclude_right = exclude_left + exclude_width;
+	int exclude_bottom = exclude_top + exclude_height;
 	int usable = 0;
 	for (int i = 0; i < *stars_found; i++) {
 		if (star_list[i].oversaturated || star_list[i].close_to_other) {
 			indigo_debug("%s: SKIP star #%d (%lf, %lf), oversaturated = %d close_to_other = %d", __FUNCTION__, i+1, star_list[i].x, star_list[i].y, star_list[i].oversaturated, star_list[i].close_to_other);
 			continue;
 		}
-		if (star_list[i].x < top_left_x || bottom_right_x < star_list[i].x || star_list[i].y < top_left_y || bottom_right_y < star_list[i].y) {
+		if (star_list[i].x < include_left || include_right < star_list[i].x || star_list[i].y < include_top || include_bottom < star_list[i].y) {
 			indigo_debug("%s: NOT INCLUDED star #%d (%lf, %lf)", __FUNCTION__, i+1, star_list[i].x, star_list[i].y);
 			continue;
 		}
-		if ((exclude_left < star_list[i].x && star_list[i].x < exclude_right) || (exclude_top < star_list[i].y && star_list[i].y < exclude_bottom)) {
+		if (clip_excluded && ((exclude_left < star_list[i].x && star_list[i].x < exclude_right) || (exclude_top < star_list[i].y && star_list[i].y < exclude_bottom))) {
 			indigo_debug("%s: EXCLUDED star #%d (%lf, %lf)", __FUNCTION__, i+1, star_list[i].x, star_list[i].y);
 			continue;
 		}
