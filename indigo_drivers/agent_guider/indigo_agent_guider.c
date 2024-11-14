@@ -1101,13 +1101,13 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 			} else if (AGENT_GUIDER_RESET_ON_CALIBRATION_ERROR_ITEM->sw.value) {
 				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 				indigo_send_message(device, "Warning: Resetting and waiting for stars to reappear");
+				DEVICE_PRIVATE_DATA->silence_warnings = true;
+				clear_selection(device);
 				if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-					DEVICE_PRIVATE_DATA->silence_warnings = true;
-					while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) && DEVICE_PRIVATE_DATA->no_guiding_star)) {
+					while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_and_process_frame(device) || DEVICE_PRIVATE_DATA->no_guiding_star)) {
 						indigo_usleep(1000000);
 					}
 				} else {
-					clear_selection(device);
 					while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
 						indigo_usleep(1000000);
 					}
@@ -1128,6 +1128,7 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 static bool calibrate(indigo_device *device) {
 	double last_drift = 0, dec_angle = 0;
 	int last_count = 0;
+	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_X_ITEM->number.target = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.value = AGENT_GUIDER_DITHERING_OFFSETS_Y_ITEM->number.target = 0;
@@ -1142,9 +1143,8 @@ static bool calibrate(indigo_device *device) {
 	}
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
-	if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-		clear_selection(device);
-	} else {
+	clear_selection(device);
+	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 		check_selection(device);
 	}
 	DEVICE_PRIVATE_DATA->first_frame = true;
@@ -1437,6 +1437,7 @@ static bool guide(indigo_device *device) {
 	}
 	indigo_send_message(device, "Guiding started");
 	FILTER_DEVICE_CONTEXT->running_process = true;
+	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	AGENT_GUIDER_STATS_PHASE_ITEM->number.value = INDIGO_GUIDER_PHASE_GUIDING;
 	AGENT_GUIDER_STATS_FRAME_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value = AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value = AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value = AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value = AGENT_GUIDER_STATS_SNR_ITEM->number.value = AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -1444,9 +1445,8 @@ static bool guide(indigo_device *device) {
 	allow_abort_by_mount_agent(device, true);
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
-	if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
-		clear_selection(device);
-	} else {
+	clear_selection(device);
+	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 		check_selection(device);
 	}
 	double prev_correction_dec = 0;
@@ -1488,7 +1488,7 @@ static bool guide(indigo_device *device) {
 					}
 					if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 						DEVICE_PRIVATE_DATA->silence_warnings = true;
-						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) && DEVICE_PRIVATE_DATA->no_guiding_star)) {
+						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_and_process_frame(device) || DEVICE_PRIVATE_DATA->no_guiding_star)) {
 							indigo_usleep(1000000);
 						}
 					} else {
