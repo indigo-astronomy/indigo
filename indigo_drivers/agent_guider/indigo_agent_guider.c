@@ -125,17 +125,18 @@
 #define AGENT_GUIDER_SELECTION_PROPERTY							(DEVICE_PRIVATE_DATA->agent_selection_property)
 #define AGENT_GUIDER_SELECTION_RADIUS_ITEM  				(AGENT_GUIDER_SELECTION_PROPERTY->items+0)
 #define AGENT_GUIDER_SELECTION_SUBFRAME_ITEM				(AGENT_GUIDER_SELECTION_PROPERTY->items+1)
-#define AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+2)
-#define AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM			(AGENT_GUIDER_SELECTION_PROPERTY->items+3)
-#define AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+4)
-#define AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM	(AGENT_GUIDER_SELECTION_PROPERTY->items+5)
-#define AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+6)
-#define AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM			(AGENT_GUIDER_SELECTION_PROPERTY->items+7)
-#define AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+8)
-#define AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM	(AGENT_GUIDER_SELECTION_PROPERTY->items+9)
-#define AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM 			(AGENT_GUIDER_SELECTION_PROPERTY->items+10)
-#define AGENT_GUIDER_SELECTION_X_ITEM  							(AGENT_GUIDER_SELECTION_PROPERTY->items+11)
-#define AGENT_GUIDER_SELECTION_Y_ITEM  							(AGENT_GUIDER_SELECTION_PROPERTY->items+12)
+#define AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+2)
+#define AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+3)
+#define AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM			(AGENT_GUIDER_SELECTION_PROPERTY->items+4)
+#define AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+5)
+#define AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM	(AGENT_GUIDER_SELECTION_PROPERTY->items+6)
+#define AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+7)
+#define AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM			(AGENT_GUIDER_SELECTION_PROPERTY->items+8)
+#define AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM		(AGENT_GUIDER_SELECTION_PROPERTY->items+9)
+#define AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM	(AGENT_GUIDER_SELECTION_PROPERTY->items+10)
+#define AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM 			(AGENT_GUIDER_SELECTION_PROPERTY->items+11)
+#define AGENT_GUIDER_SELECTION_X_ITEM  							(AGENT_GUIDER_SELECTION_PROPERTY->items+12)
+#define AGENT_GUIDER_SELECTION_Y_ITEM  							(AGENT_GUIDER_SELECTION_PROPERTY->items+13)
 
 #define MAX_STACK															20
 
@@ -1914,11 +1915,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		AGENT_GUIDER_STARS_PROPERTY->count = 1;
 		indigo_init_switch_item(AGENT_GUIDER_STARS_REFRESH_ITEM, AGENT_GUIDER_STARS_REFRESH_ITEM_NAME, "Refresh", false);
 		// -------------------------------------------------------------------------------- Selected star
-		AGENT_GUIDER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 11 + 2 * INDIGO_MAX_MULTISTAR_COUNT);
+		AGENT_GUIDER_SELECTION_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_SELECTION_PROPERTY_NAME, "Agent", "Selection", INDIGO_OK_STATE, INDIGO_RW_PERM, 12 + 2 * INDIGO_MAX_MULTISTAR_COUNT);
 		if (AGENT_GUIDER_SELECTION_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_RADIUS_ITEM, AGENT_GUIDER_SELECTION_RADIUS_ITEM_NAME, "Radius (px)", 1, 50, 1, 8);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_SUBFRAME_ITEM, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM_NAME, "Subframe", 0, 20, 1, 0);
+		indigo_init_number_item(AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME, "Edge Clipping (px)", 0, 500, 1, 8);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM, AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM_NAME, "Include left (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM, AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM_NAME, "Include top (px)", 0, 0xFFFF, 1, 0);
 		indigo_init_number_item(AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM, AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM_NAME, "Include width (px)", 0, 0xFFFF, 1, 0);
@@ -1939,7 +1941,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			sprintf(label, i ? "Selection #%d Y (px)" : "Selection Y (px)", i + 1);
 			indigo_init_number_item(item_y, name, label, 0, 0xFFFF, 1, 0);
 		}
-		AGENT_GUIDER_SELECTION_PROPERTY->count = 13;
+		AGENT_GUIDER_SELECTION_PROPERTY->count = 14;
 		// -------------------------------------------------------------------------------- Guiding stats
 		AGENT_GUIDER_STATS_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_STATS_PROPERTY_NAME, "Agent", "Statistics", INDIGO_OK_STATE, INDIGO_RO_PERM, 19);
 		if (AGENT_GUIDER_STATS_PROPERTY == NULL)
@@ -2237,11 +2239,44 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property)) {
 // -------------------------------------------------------------------------------- AGENT_GUIDER_SELECTION
+		indigo_item *item = indigo_get_item(property, AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM_NAME);
 		if (FILTER_DEVICE_CONTEXT->running_process) {
-			indigo_item *item = indigo_get_item(property, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME);
+			if (item && AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value != item->number.value) {
+				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Edge clipping can not be changed while process is running!");
+				return INDIGO_OK;
+			}
+			item = indigo_get_item(property, AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM_NAME);
 			if (item && AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value != item->number.value) {
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, "Warning: Star count can not be changed while process is running!");
 				return INDIGO_OK;
+			}
+		} else {
+			if (item && AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value != item->number.value) {
+				int clipping = item->number.value;
+				item = indigo_get_item(property, AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM_NAME);
+				if (item) {
+					item->number.value = clipping;
+				} else {
+					AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.target = clipping;
+				}
+				item = indigo_get_item(property, AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM_NAME);
+				if (item) {
+					item->number.value = clipping;
+				} else {
+					AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.target = clipping;
+				}
+				item = indigo_get_item(property, AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM_NAME);
+				if (item) {
+					item->number.value = DEVICE_PRIVATE_DATA->last_width - 2 * clipping;
+				} else {
+					AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.target = DEVICE_PRIVATE_DATA->last_width - 2 * clipping;
+				}
+				item = indigo_get_item(property, AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM_NAME);
+				if (item) {
+					item->number.value = DEVICE_PRIVATE_DATA->last_height - 2 * clipping;
+				} else {
+					AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.target = DEVICE_PRIVATE_DATA->last_width - 2 * clipping;
+				}
 			}
 		}
 		int count = AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value;
