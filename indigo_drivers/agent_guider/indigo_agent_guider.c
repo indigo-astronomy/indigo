@@ -781,9 +781,9 @@ static bool capture_and_process_frame(indigo_device *device) {
 		if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 			indigo_result result;
 			if (AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM->sw.value) {
-				result = indigo_donuts_frame_digest_clipped(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value, DEVICE_PRIVATE_DATA->reference);
+				result = indigo_donuts_frame_digest_clipped(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value, AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value, &digest);
 			} else {
-				result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, (int)AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value, DEVICE_PRIVATE_DATA->reference);
+				result = indigo_donuts_frame_digest(header->signature, (void*)header + sizeof(indigo_raw_header), header->width, header->height, (int)AGENT_GUIDER_SELECTION_EDGE_CLIPPING_ITEM->number.value, &digest);
 			}
 			if (result != INDIGO_OK) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
@@ -1101,9 +1101,16 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 			} else if (AGENT_GUIDER_RESET_ON_CALIBRATION_ERROR_ITEM->sw.value) {
 				DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
 				indigo_send_message(device, "Warning: Resetting and waiting for stars to reappear");
-				clear_selection(device);
-				while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
-					indigo_usleep(1000000);
+				if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+					DEVICE_PRIVATE_DATA->silence_warnings = true;
+					while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) && DEVICE_PRIVATE_DATA->no_guiding_star)) {
+						indigo_usleep(1000000);
+					}
+				} else {
+					clear_selection(device);
+					while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
+						indigo_usleep(1000000);
+					}
 				}
 			}
 		} else {
@@ -1479,11 +1486,18 @@ static bool guide(indigo_device *device) {
 					if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 						indigo_send_message(device, "Warning: Resetting and waiting for stars to reappear");
 					}
-					restore_subframe(device);
-					clear_selection(device);
-					DEVICE_PRIVATE_DATA->silence_warnings = true;
-					while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
-						indigo_usleep(1000000);
+					if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+						DEVICE_PRIVATE_DATA->silence_warnings = true;
+						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) && DEVICE_PRIVATE_DATA->no_guiding_star)) {
+							indigo_usleep(1000000);
+						}
+					} else {
+						restore_subframe(device);
+						clear_selection(device);
+						DEVICE_PRIVATE_DATA->silence_warnings = true;
+						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
+							indigo_usleep(1000000);
+						}
 					}
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
 				}
@@ -1495,8 +1509,10 @@ static bool guide(indigo_device *device) {
 			}
 		} else {
 			if (AGENT_GUIDER_STATS_FRAME_ITEM->number.value == 1 && !DEVICE_PRIVATE_DATA->autosubframing && AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value == 1) {
-				if (select_subframe(device)) {
-					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
+				if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+					if (select_subframe(device)) {
+						AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
+					}
 				}
 			}
 		}
@@ -1672,7 +1688,9 @@ static bool guide(indigo_device *device) {
 	DEVICE_PRIVATE_DATA->silence_warnings = false;
 	close_log(device);
 	allow_abort_by_mount_agent(device, false);
-	restore_subframe(device);
+	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+		restore_subframe(device);
+	}
 	indigo_restore_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, upload_mode);
 	indigo_restore_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, image_format);
 	bool result;
@@ -1878,7 +1896,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM, AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM_NAME, "Fail on guiding error", false);
 		indigo_init_switch_item(AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM, AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM_NAME, "Continue on guiding error", false);
 		indigo_init_switch_item(AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM, AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM_NAME, "Reset selection on guiding error", true);
-		indigo_init_switch_item(AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM, AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM_NAME, "Use include region for DONUTS", false);
+		indigo_init_switch_item(AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM, AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM_NAME, "Use include region for DONUTS", false);
 		//------------------------------------------------------------------------------- Mount orientation
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 		if (AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY == NULL)
