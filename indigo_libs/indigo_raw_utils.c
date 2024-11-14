@@ -1066,12 +1066,13 @@ static double calibrate_re(double (*vector)[2], int size) {
 }
 
 indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *data, const int width, const int height, const int edge_clipping, indigo_frame_digest *digest) {
-	const int xx = edge_clipping;
-	const int yy = edge_clipping;
+	return indigo_donuts_frame_digest_clipped(raw_type, data, width, height, edge_clipping, edge_clipping, width - 2 * edge_clipping, height - 2 * edge_clipping, digest);
+}
 
-	if (width <= 2 * xx)
+indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest) {
+	if (width <= 0)
 		return INDIGO_FAILED;
-	if (height <= 2 * yy)
+	if (height <= 0)
 		return INDIGO_FAILED;
 	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
@@ -1080,8 +1081,8 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	uint16_t *data16 = (uint16_t *)data;
 
 	double sum = 0, max = 0;
-	const int ce = width - xx, le = height - yy;
-	const int cs = xx, ls = yy;
+	const int cs = include_left, ls = include_top;
+	const int ce = include_left + include_width, le = include_top + include_height;
 	double value;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
@@ -1154,18 +1155,16 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		}
 	}
 
-	int sub_width = width - 2 * xx;
-	int sub_height = height - 2 * yy;
 	/* Set threshold 15% above average value */
-	double threshold = 1.15 * sum / (sub_width * sub_height);
+	double threshold = 1.15 * sum / (include_width * include_height);
 
-	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f, edge_clipping = %dpx", threshold, max, edge_clipping));
+	INDIGO_DEBUG(indigo_debug("Donuts: threshold = %.3f, max = %.3f", threshold, max));
 
 	/* If max is below the thresold no guiding is possible */
 	if (max <= threshold) return INDIGO_GUIDE_ERROR;
 
-	digest->width = next_power_2(sub_width);
-	digest->height = next_power_2(sub_height);
+	digest->width = next_power_2(include_width);
+	digest->height = next_power_2(include_height);
 	double (*col_x)[2] = calloc(2 * digest->width * sizeof(double), 1);
 	double (*col_y)[2] = calloc(2 * digest->height * sizeof(double), 1);
 	double (*fcol_x)[2] = calloc(2 * digest->width * sizeof(double), 1);
@@ -1182,7 +1181,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i-xx][RE] += value;
+					col_x[i - cs][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1196,7 +1195,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i-xx][RE] += value;
+					col_x[i - cs][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1211,7 +1210,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i-xx][RE] += value;
+					col_x[i - cs][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1226,7 +1225,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i-xx][RE] += value;
+					col_x[i - cs][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1241,7 +1240,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i-xx][RE] += value;
+					col_x[i - cs][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1256,7 +1255,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i-xx][RE] += value;
+					col_x[i - cs][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1267,7 +1266,7 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8:
 		case INDIGO_RAW_MONO16: {
-			digest->snr = (calibrate_re(col_x, sub_width) + calibrate_re(col_y, sub_height)) / 2;
+			digest->snr = (calibrate_re(col_x, include_width) + calibrate_re(col_y, include_height)) / 2;
 
 			fft(digest->width, col_x, digest->fft_x);
 			fft(digest->height, col_y, digest->fft_y);
@@ -1276,18 +1275,18 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 		default: {
 			/* Remove hot from the digest */
 			fcol_x[0][RE] = median3(0, col_x[0][RE], col_x[1][RE]);
-			for (int i = 1; i < sub_width-1; i++) {
+			for (int i = 1; i < include_width - 1; i++) {
 				fcol_x[i][RE] = median3(col_x[i - 1][RE], col_x[i][RE], col_x[i + 1][RE]);
 			}
-			fcol_x[sub_width - 1][RE] = median3(col_x[sub_width - 2][RE], col_x[sub_width - 1][RE], 0);
+			fcol_x[include_width - 1][RE] = median3(col_x[include_width - 2][RE], col_x[include_width - 1][RE], 0);
 
 			fcol_y[0][RE] = median3(0, col_y[0][RE], col_y[1][RE]);
-			for (int i = 1; i < sub_height-1; i++) {
+			for (int i = 1; i < include_height - 1; i++) {
 				fcol_y[i][RE] = median3(col_y[i - 1][RE], col_y[i][RE], col_y[i + 1][RE]);
 			}
-			fcol_y[sub_height - 1][RE] = median3(col_y[sub_height - 2][RE], col_y[sub_height - 1][RE], 0);
+			fcol_y[include_height - 1][RE] = median3(col_y[include_height - 2][RE], col_y[include_height - 1][RE], 0);
 
-			digest->snr = (calibrate_re(fcol_x, sub_width) + calibrate_re(fcol_y, sub_height)) / 2;
+			digest->snr = (calibrate_re(fcol_x, include_width) + calibrate_re(fcol_y, include_height)) / 2;
 
 			fft(digest->width, fcol_x, digest->fft_x);
 			fft(digest->height, fcol_y, digest->fft_y);
