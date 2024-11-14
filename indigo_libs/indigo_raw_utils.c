@@ -1015,10 +1015,29 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 
 #define BG_RADIUS	5
 
+//static void remove_gradient(double (*vector)[2], int size) {
+//	double x_mean = size / 2.0;
+//	double y_mean = 0;
+//	for (int i = 0; i < size; i++) {
+//		y_mean += vector[i][RE];
+//	}
+//	y_mean /= size;
+//	double numerator = 0.0, denominator = 0.0;
+//	for (int i = 0; i < size; i++) {
+//		numerator += (i - x_mean) * (vector[i][RE] - y_mean);
+//		denominator += (i - x_mean) * (i - x_mean);
+//	}
+//	double slope = numerator / denominator;
+//	for (int i = 0; i < size; i++) {
+//		vector[i][RE] -= i * slope;
+//	}
+//}
+
 static double calibrate_re(double (*vector)[2], int size) {
 	int first = BG_RADIUS + 1, last = size - BG_RADIUS - 1;
 	double avg = 0;
 	double mins[size];
+//	remove_gradient(vector, size);
 	for (int i = first; i <= last; i++) {
 		double min = vector[i - BG_RADIUS][RE];
 		for (int j = -BG_RADIUS + 1; j <= BG_RADIUS; j++) {
