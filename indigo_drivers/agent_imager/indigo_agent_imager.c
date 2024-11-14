@@ -245,6 +245,7 @@ typedef struct {
 	int bin_x, bin_y;
 	double frame[4];
 	double saved_frame[4];
+	double saved_include_region[4], saved_exclude_region[4];
 	double saved_selection_x, saved_selection_y;
 	bool autosubframing;
 	bool light_frame;
@@ -261,6 +262,8 @@ typedef struct {
 	double drift_x, drift_y;
 	void *last_image;
 	size_t last_image_size;
+	int last_width;
+	int last_height;
 	pthread_mutex_t mutex;
 	double focus_exposure;
 	bool dithering_started, dithering_finished, guiding;
@@ -431,6 +434,8 @@ static bool capture_frame(indigo_device *device) {
 			continue;
 		}
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
+		DEVICE_PRIVATE_DATA->last_width = header->width;
+		DEVICE_PRIVATE_DATA->last_height = header->height;
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 			indigo_send_message(device, "Error: RAW image not received");
 			return false;
@@ -543,6 +548,15 @@ static bool select_subframe(indigo_device *device) {
 		int frame_height = (2 * window_size / GRID + 1) * GRID;
 		AGENT_IMAGER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.value = selection_y -= frame_top;
+		DEVICE_PRIVATE_DATA->saved_include_region[0] = AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_include_region[1] = AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_include_region[2] = AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_include_region[3] = AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[0] = AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[1] = AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[2] = AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[3] = AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
+		AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
 		indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 		if (frame_width - selection_x < AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value)
 			frame_width += GRID;
@@ -563,6 +577,14 @@ static void restore_subframe(indigo_device *device) {
 		memset(DEVICE_PRIVATE_DATA->saved_frame, 0, 4 * sizeof(double));
 		AGENT_IMAGER_SELECTION_X_ITEM->number.target = AGENT_IMAGER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_x;
 		AGENT_IMAGER_SELECTION_Y_ITEM->number.target = AGENT_IMAGER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_y;
+		AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[0];
+		AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[1];
+		AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[2];
+		AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[3];
+		AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[0];
+		AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[1];
+		AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[2];
+		AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[3];
 		indigo_property_state state = AGENT_ABORT_PROCESS_PROPERTY->state;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
 		/* capture_frame() should be here in order to have the correct frame and correct selection */
@@ -1820,13 +1842,12 @@ static void clear_selection(indigo_device *device) {
 }
 
 static bool validate_include_region(indigo_device *device, bool force) {
-	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
-	if (header) {
-		int safety_margin = header->width < header->height ? header->width * 0.05 : header->height * 0.05;
+	if (!DEVICE_PRIVATE_DATA->autosubframing && DEVICE_PRIVATE_DATA->last_width > 0 && DEVICE_PRIVATE_DATA->last_height > 0) {
+		int safety_margin = DEVICE_PRIVATE_DATA->last_width < DEVICE_PRIVATE_DATA->last_height ? DEVICE_PRIVATE_DATA->last_width * 0.05 : DEVICE_PRIVATE_DATA->last_height * 0.05;
 		int safety_limit_left = safety_margin;
 		int safety_limit_top = safety_margin;
-		int safety_limit_right = header->width - safety_margin;
-		int safety_limit_bottom = header->height - safety_margin;
+		int safety_limit_right = DEVICE_PRIVATE_DATA->last_width - safety_margin;
+		int safety_limit_bottom = DEVICE_PRIVATE_DATA->last_height - safety_margin;
 		int include_left = AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value;
 		int include_top = AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value;
 		int include_width = AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value;
@@ -3374,13 +3395,15 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 			if (reset_selection) {
+				DEVICE_PRIVATE_DATA->last_width = DEVICE_PRIVATE_DATA->frame[2] / DEVICE_PRIVATE_DATA->bin_x;
+				DEVICE_PRIVATE_DATA->last_height = DEVICE_PRIVATE_DATA->frame[3] / DEVICE_PRIVATE_DATA->bin_y;
 				if (validate_include_region(device, false)) {
 					indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 				}
 			}
 		}
 	} else if (!strcmp(property->name, CCD_LOCAL_MODE_PROPERTY_NAME)) {
-		*CLIENT_PRIVATE_DATA->current_folder = 0;
+		*DEVICE_PRIVATE_DATA->current_folder = 0;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (strcmp(item->name, CCD_LOCAL_MODE_DIR_ITEM_NAME) == 0) {
@@ -3393,10 +3416,10 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 		 setup_download(FILTER_CLIENT_CONTEXT->device);
 	} else if (!strcmp(property->name, FILTER_AUX_1_LIST_PROPERTY_NAME)) { // Snoop AUX_1 ...
 		if (!INDIGO_FILTER_AUX_1_SELECTED) {
-			CLIENT_PRIVATE_DATA->use_aux_1 = false;
+			DEVICE_PRIVATE_DATA->use_aux_1 = false;
 		}
 	} else if (!strcmp(property->name, "AUX_1_" CCD_EXPOSURE_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->use_aux_1 = true;
+		DEVICE_PRIVATE_DATA->use_aux_1 = true;
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, CCD_EXPOSURE_ITEM_NAME)) {
@@ -3407,16 +3430,16 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 	} else if (!strcmp(property->name, FILTER_FOCUSER_LIST_PROPERTY_NAME)) { // Snoop focuser ...
 		if (!INDIGO_FILTER_FOCUSER_SELECTED) {
 			DEVICE_PRIVATE_DATA->steps_state = INDIGO_IDLE_STATE;
-			CLIENT_PRIVATE_DATA->focuser_position = NAN;
-			CLIENT_PRIVATE_DATA->focuser_temperature = NAN;
+			DEVICE_PRIVATE_DATA->focuser_position = NAN;
+			DEVICE_PRIVATE_DATA->focuser_temperature = NAN;
 			DEVICE_PRIVATE_DATA->focuser_has_backlash = false;
 		}
 	} else if (!strcmp(property->name, FOCUSER_STEPS_PROPERTY_NAME)) {
 		DEVICE_PRIVATE_DATA->steps_state = property->state;
 	} else if (!strcmp(property->name, FOCUSER_POSITION_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->focuser_position = property->items[0].number.value;
+		DEVICE_PRIVATE_DATA->focuser_position = property->items[0].number.value;
 	} else if (!strcmp(property->name, FOCUSER_TEMPERATURE_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->focuser_temperature = property->items[0].number.value;
+		DEVICE_PRIVATE_DATA->focuser_temperature = property->items[0].number.value;
 	} else if (!strcmp(property->name, FOCUSER_BACKLASH_PROPERTY_NAME)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		DEVICE_PRIVATE_DATA->focuser_has_backlash = true;
@@ -3569,6 +3592,8 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 					}
 				}
 				if (reset_selection) {
+					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
+					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
 					if (validate_include_region(device, false)) {
 						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 					}
@@ -3632,6 +3657,8 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					indigo_send_message(device, "Automatic adjustment of '%s' and '%s' is not supported for asymmetric binning change", AGENT_IMAGER_SELECTION_RADIUS_ITEM->label, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->label);
 				}
 				if (reset_selection) {
+					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
+					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
 					if (validate_include_region(device, false)) {
 						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 					}

@@ -218,6 +218,7 @@ typedef struct {
 	int bin_x, bin_y;
 	double frame[4];
 	double saved_frame[4];
+	double saved_include_region[4], saved_exclude_region[4];
 	double saved_selection_x, saved_selection_y;
 	bool autosubframing;
 	indigo_star_detection stars[MAX_STAR_COUNT];
@@ -231,6 +232,8 @@ typedef struct {
 	unsigned long rmse_count;
 	void *last_image;
 	size_t last_image_size;
+	int last_width;
+	int last_height;
 	int phase;
 	double stack_x[MAX_STACK], stack_y[MAX_STACK];
 	int stack_size;
@@ -520,6 +523,8 @@ static bool capture_frame(indigo_device *device) {
 			continue;
 		}
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
+		DEVICE_PRIVATE_DATA->last_width = header->width;
+		DEVICE_PRIVATE_DATA->last_height = header->height;
 		if (header == NULL || (header->signature != INDIGO_RAW_MONO8 && header->signature != INDIGO_RAW_MONO16 && header->signature != INDIGO_RAW_RGB24 && header->signature != INDIGO_RAW_RGB48)) {
 			indigo_send_message(device, "RAW image not received");
 			return false;
@@ -574,13 +579,12 @@ static bool find_stars(indigo_device *device) {
 }
 
 static bool validate_include_region(indigo_device *device, bool force) {
-	indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
-	if (header) {
-		int safety_margin = header->width < header->height ? header->width * 0.05 : header->height * 0.05;
+	if (!DEVICE_PRIVATE_DATA->autosubframing && DEVICE_PRIVATE_DATA->last_width > 0 && DEVICE_PRIVATE_DATA->last_height > 0) {
+		int safety_margin = DEVICE_PRIVATE_DATA->last_width < DEVICE_PRIVATE_DATA->last_height ? DEVICE_PRIVATE_DATA->last_width * 0.05 : DEVICE_PRIVATE_DATA->last_height * 0.05;
 		int safety_limit_left = safety_margin;
 		int safety_limit_top = safety_margin;
-		int safety_limit_right = header->width - safety_margin;
-		int safety_limit_bottom = header->height - safety_margin;
+		int safety_limit_right = DEVICE_PRIVATE_DATA->last_width - safety_margin;
+		int safety_limit_bottom = DEVICE_PRIVATE_DATA->last_height - safety_margin;
 		int include_left = AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value;
 		int include_top = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value;
 		int include_width = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value;
@@ -917,6 +921,15 @@ static bool select_subframe(indigo_device *device) {
 		int frame_height = (2 * window_size / GRID + 1) * GRID;
 		AGENT_GUIDER_SELECTION_X_ITEM->number.value = selection_x -= frame_left;
 		AGENT_GUIDER_SELECTION_Y_ITEM->number.value = selection_y -= frame_top;
+		DEVICE_PRIVATE_DATA->saved_include_region[0] = AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_include_region[1] = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_include_region[2] = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_include_region[3] = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[0] = AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[1] = AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[2] = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value;
+		DEVICE_PRIVATE_DATA->saved_exclude_region[3] = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value;
+		AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 		if (frame_width - selection_x < AGENT_GUIDER_SELECTION_RADIUS_ITEM->number.value)
 			frame_width += GRID;
@@ -937,6 +950,14 @@ static void restore_subframe(indigo_device *device) {
 		memset(DEVICE_PRIVATE_DATA->saved_frame, 0, 4 * sizeof(double));
 		AGENT_GUIDER_SELECTION_X_ITEM->number.target = AGENT_GUIDER_SELECTION_X_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_x;
 		AGENT_GUIDER_SELECTION_Y_ITEM->number.target = AGENT_GUIDER_SELECTION_Y_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_selection_y;
+		AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[0];
+		AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[1];
+		AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[2];
+		AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_include_region[3];
+		AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[0];
+		AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[1];
+		AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[2];
+		AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = DEVICE_PRIVATE_DATA->saved_exclude_region[3];
 		/* capture_frame() should be here in order to have the correct frame and correct selection */
 		indigo_property_state state = AGENT_ABORT_PROCESS_PROPERTY->state;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
@@ -1755,6 +1776,8 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 				}
 			}
 			if (reset_selection) {
+				DEVICE_PRIVATE_DATA->last_width = DEVICE_PRIVATE_DATA->frame[2] / DEVICE_PRIVATE_DATA->bin_x;
+				DEVICE_PRIVATE_DATA->last_height = DEVICE_PRIVATE_DATA->frame[3] / DEVICE_PRIVATE_DATA->bin_y;
 				validate_include_region(device, false);
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			}
@@ -1765,9 +1788,9 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			DEVICE_PRIVATE_DATA->guide_dec_state = INDIGO_IDLE_STATE;
 		}
 	} else if (!strcmp(property->name, GUIDER_GUIDE_RA_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->guide_ra_state = property->state;
+		DEVICE_PRIVATE_DATA->guide_ra_state = property->state;
 	} else if (!strcmp(property->name, GUIDER_GUIDE_DEC_PROPERTY_NAME)) {
-		CLIENT_PRIVATE_DATA->guide_dec_state = property->state;
+		DEVICE_PRIVATE_DATA->guide_dec_state = property->state;
 	}
 }
 
@@ -2439,6 +2462,8 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 					}
 				}
 				if (reset_selection) {
+					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
+					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
 					validate_include_region(device, false);
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				}
@@ -2497,6 +2522,8 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					indigo_send_message(device, "Automatic adjustment of '%s' and '%s' is not supported for asymmetric binning change", AGENT_GUIDER_SELECTION_RADIUS_ITEM->label, AGENT_GUIDER_SELECTION_SUBFRAME_ITEM->label);
 				}
 				if (reset_selection) {
+					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
+					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
 					validate_include_region(device, false);
 					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 				}
