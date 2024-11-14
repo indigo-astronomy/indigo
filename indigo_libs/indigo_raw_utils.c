@@ -1070,9 +1070,9 @@ indigo_result indigo_donuts_frame_digest(indigo_raw_type raw_type, const void *d
 }
 
 indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const void *data, const int width, const int height, const int include_left, const int include_top, const int include_width, const int include_height, indigo_frame_digest *digest) {
-	if (width <= 0)
+	if (include_width <= 0)
 		return INDIGO_FAILED;
-	if (height <= 0)
+	if (include_height <= 0)
 		return INDIGO_FAILED;
 	if ((data == NULL) || (digest == NULL))
 		return INDIGO_FAILED;
@@ -1081,8 +1081,8 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 	uint16_t *data16 = (uint16_t *)data;
 
 	double sum = 0, max = 0;
-	const int cs = include_left, ls = include_top;
 	const int ce = include_left + include_width, le = include_top + include_height;
+	const int cs = include_left, ls = include_top;
 	double value;
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
@@ -1181,7 +1181,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i - cs][RE] += value;
+					col_x[i - include_left][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1195,7 +1195,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i - cs][RE] += value;
+					col_x[i - include_left][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1210,7 +1210,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i - cs][RE] += value;
+					col_x[i - include_left][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1225,7 +1225,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i - cs][RE] += value;
+					col_x[i - include_left][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1240,7 +1240,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i - cs][RE] += value;
+					col_x[i - include_left][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
@@ -1255,7 +1255,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					/* Set all values below the threshold to 0 */
 					if (value < 0) value = 0;
 
-					col_x[i - cs][RE] += value;
+					col_x[i - include_left][RE] += value;
 					col_y[y][RE] += value;
 				}
 			}
