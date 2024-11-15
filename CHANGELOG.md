@@ -2,7 +2,21 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-298] - 7 Nov Thu 2024
+# [2.0-300] - 16 Nov Sat 2024
+
+## Driver fixes:
+- indigo_agent_imager:
+	- optional include/exclude regions added to selection property
+
+- indigo_agent_guider:
+	- optional include/exclude regions added to selection property
+	- better error handling for DONUTS guiding
+	- fix SNR calculation for DONUTS guiding
+
+- indigo_ccd_ptp:
+	- fix retry sequence for FUJIFILM X-Pro3
+
+# [2.0-298] - 07 Nov Thu 2024
 
 ## Overall:
 - ccd_driver:
