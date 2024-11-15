@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0023
+#define DRIVER_VERSION 0x0024
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -49,6 +49,8 @@
 
 #define PI (3.14159265358979)
 #define PI2 (PI/2)
+
+#define DONUTS_MIN_SNR (4.0)      /* Minimum SNR for donuts detection */
 
 #define MIN_COS_DEC (0.017)       /* DEC = ~89 degrees */
 
@@ -713,7 +715,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
-			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < 9) {
+			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 					indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}
@@ -793,7 +795,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
-			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < 9) {
+			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 					indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}
