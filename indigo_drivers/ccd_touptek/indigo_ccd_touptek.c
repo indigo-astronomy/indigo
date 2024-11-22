@@ -24,7 +24,7 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0025
+#define DRIVER_VERSION 0x0026
 
 #include <stdlib.h>
 #include <string.h>
@@ -848,14 +848,14 @@ static void ccd_connect_callback(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_BINNING, ->%d) -> %08x", binning, result);
 			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_MONO)) {
 				sprintf(name, "MON%02d_%d", bitDepth ? 16 : 8, binning);
-				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = bitDepth;
+				CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = bitDepth ? 16 : 8;
 			} else {
 				int rawMode = 0;
 				result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_RAW), &rawMode);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_RAW, ->%d) -> %08x", rawMode, result);
 				if (rawMode) {
 					sprintf(name, "RAW%02d_%d", bitDepth ? 16 : 8, binning);
-					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = bitDepth;
+					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = bitDepth ? 16 : 8;
 				} else {
 					sprintf(name, "RGB08_%d", binning);
 					CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.target = 8;
