@@ -1172,7 +1172,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (!strcmp(property->name, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY_NAME)) {
 			if (property->count > 0) {
-				indigo_send_message(FILTER_CLIENT_CONTEXT->device, "There are active saved alignment points. Make sure you you want to use them.");
+				indigo_send_message(FILTER_CLIENT_CONTEXT->device, "There are active saved alignment points. Make sure you want to use them.");
 			}
 		} else {
 			snoop_changes(client, device, property);
