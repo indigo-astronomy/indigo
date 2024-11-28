@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x002D
+#define DRIVER_VERSION 0x002E
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -3662,6 +3662,7 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 					if (validate_include_region(device, false)) {
 						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 					}
+					clear_selection(device);
 				}
 			}
 		} else {
