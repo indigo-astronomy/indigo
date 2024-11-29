@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0024
+#define DRIVER_VERSION 0x0025
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -2506,8 +2506,9 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				if (reset_selection) {
 					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
 					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
+					AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
 					validate_include_region(device, false);
-					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+					clear_selection(device);
 				}
 			}
 		} else {
@@ -2566,8 +2567,9 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				if (reset_selection) {
 					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
 					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
+					AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
 					validate_include_region(device, false);
-					indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+					clear_selection(device);
 				}
 			}
 		} else {
