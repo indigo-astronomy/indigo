@@ -3631,30 +3631,20 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 			}
 		} else if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
-				double ratio_x = 1, ratio_y = 1;
 				bool reset_selection = false;
 				for (int i = 0; i < property->count; i++) {
 					indigo_item *item = property->items + i;
 					if (strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME) == 0) {
 						if (CLIENT_PRIVATE_DATA->bin_x != item->number.value) {
-							ratio_x = CLIENT_PRIVATE_DATA->bin_x / item->number.target;
 							CLIENT_PRIVATE_DATA->bin_x = item->number.value;
 							reset_selection = true;
 						}
 					} else if (strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME) == 0) {
 						if (CLIENT_PRIVATE_DATA->bin_y != item->number.value) {
-							ratio_y = CLIENT_PRIVATE_DATA->bin_y / item->number.target;
 							CLIENT_PRIVATE_DATA->bin_y = item->number.value;
 							reset_selection = true;
 						}
 					}
-				}
-				if (ratio_x == ratio_y) {
-					AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.value = AGENT_IMAGER_SELECTION_RADIUS_ITEM->number.target *= ratio_x;
-					AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.value = AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->number.target *= ratio_x;
-					indigo_update_property(FILTER_CLIENT_CONTEXT->device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-				} else {
-					indigo_send_message(device, "Automatic adjustment of '%s' and '%s' is not supported for asymmetric binning change", AGENT_IMAGER_SELECTION_RADIUS_ITEM->label, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM->label);
 				}
 				if (reset_selection) {
 					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
