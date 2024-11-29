@@ -3594,9 +3594,9 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 				if (reset_selection) {
 					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
 					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
-					if (validate_include_region(device, false)) {
-						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-					}
+					AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
+					validate_include_region(device, false);
+					clear_selection(device);
 				}
 			}
 		} else {
@@ -3659,9 +3659,8 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 				if (reset_selection) {
 					CLIENT_PRIVATE_DATA->last_width = CLIENT_PRIVATE_DATA->frame[2] / CLIENT_PRIVATE_DATA->bin_x;
 					CLIENT_PRIVATE_DATA->last_height = CLIENT_PRIVATE_DATA->frame[3] / CLIENT_PRIVATE_DATA->bin_y;
-					if (validate_include_region(device, false)) {
-						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-					}
+					AGENT_IMAGER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_IMAGER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_IMAGER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
+					validate_include_region(device, false);
 					clear_selection(device);
 				}
 			}
