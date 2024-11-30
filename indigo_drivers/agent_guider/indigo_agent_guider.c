@@ -1471,7 +1471,7 @@ static bool guide(indigo_device *device) {
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
 					DEVICE_PRIVATE_DATA->first_frame = false;
 					DEVICE_PRIVATE_DATA->silence_warnings = true;
-					if (!capture_frame(device) || !find_stars(device) || !select_stars(device)) {
+					if (!find_stars(device) || !select_stars(device)) {
 						indigo_send_message(device, "Error: No guide stars found");
 						break;
 					}
