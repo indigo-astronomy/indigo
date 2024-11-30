@@ -1145,7 +1145,6 @@ static bool calibrate(indigo_device *device) {
 	}
 	int upload_mode = indigo_save_switch_state(device, CCD_UPLOAD_MODE_PROPERTY_NAME, CCD_UPLOAD_MODE_CLIENT_ITEM_NAME);
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
-	clear_selection(device);
 	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 		check_selection(device);
 	}
