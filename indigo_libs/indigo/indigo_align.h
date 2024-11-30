@@ -47,11 +47,14 @@ extern const double TWO_PI;
 extern const double DEG2RAD;
 extern const double RAD2DEG;
 
-#define DELTA_T				(34 + 32.184 + 0.477677)
-#define DELTA_UTC_UT1	( -0.477677 / 86400.0)
-#define UT2JD(t) 			((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
-#define JDNOW 				UT2JD(time(NULL))
-#define JD2000    		2451545.0
+//#define DELTA_T          (34 + 32.184 + 0.477677)
+#define JD2000           2451545.0
+
+#ifndef UT2JD
+#define DELTA_UTC_UT1    (-0.477677 / 86400.0)
+#define UT2JD(t)         ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
+#define JDNOW            UT2JD(time(NULL))
+#endif /* UT2JD */
 
 /** Cartesian point
  */
