@@ -1471,8 +1471,11 @@ static bool guide(indigo_device *device) {
 					clear_selection(device);
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
 					DEVICE_PRIVATE_DATA->first_frame = false;
-					indigo_send_message(device, "Error: No guide stars found");
-					break;
+					DEVICE_PRIVATE_DATA->silence_warnings = true;
+					if (!capture_frame(device) || !find_stars(device) || !select_stars(device)) {
+						indigo_send_message(device, "Error: No guide stars found");
+						break;
+					}
 				} else if (AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM->sw.value) {
 					indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 					break;
