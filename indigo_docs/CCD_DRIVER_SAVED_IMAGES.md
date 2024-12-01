@@ -55,6 +55,16 @@ INDIGO file name templates support a number of placeholders starting with "%" ch
 
 * **%nS** - expands to the sequential number of the file with the same name. Where 'n' is the number of digits used to represent the number and can be in the range [1, 5].
 
+* **%G** - expands to gain
+
+* **%O** - expands to offset
+
+* **%R** - expands to resolution
+
+* **%B** - expands to binning
+
+* **%P** - expands to focuser position
+
 ### Examples
 
 1. FITS file with **PREFIX** = "m31_%-D_%.H_MDSum_%M" can expand to "m31_2022-10-29_22:38:45_MDSum_71f920fa275127a7b60fa4d4d41432a3.fits"
