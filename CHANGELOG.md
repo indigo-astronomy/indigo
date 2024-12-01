@@ -2,6 +2,17 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-302] - 1 Dec Sun 2024
+
+## Overall:
+- ccd_driver:
+	- %R for resolution and %B for binning support added to image file name templates
+
+## New Drivers:
+
+- indigo_cdd_atik2
+	- Legacy Atik driver - CCD/USB2.0 and macOS only (to handle missing Apple Silicon support in Atik SDK)
+
 # [2.0-300] - 16 Nov Sat 2024
 
 ## Driver fixes:
