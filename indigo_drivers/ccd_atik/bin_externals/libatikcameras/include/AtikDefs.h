@@ -191,6 +191,7 @@ extern "C"
 		ID_BitSendMode = 15, //ACIS specific
 		ID_16BitMode = 18, //ChemiMOS specific
 		ID_ReadoutModeTE = 20, // TE series specific
+		ID_ADC1OffsetTE = 88,
 		ID_FX3Version = 200,
 		ID_FPGAVersion = 201,
 	};

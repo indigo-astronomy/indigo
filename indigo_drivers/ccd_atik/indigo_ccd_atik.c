@@ -36,6 +36,7 @@
 
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_client.h>
 
 #include "indigo_ccd_atik.h"
 
@@ -995,6 +996,11 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
+			if (indigo_driver_initialized((char *)"indigo_ccd_atik2")) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver indigo_ccd_atik2 is already loaded");
+				last_action = INDIGO_DRIVER_SHUTDOWN;
+				return INDIGO_FAILED;
+			}
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				devices[i] = NULL;
 			}
