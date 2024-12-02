@@ -756,6 +756,8 @@ static bool capture_and_process_frame(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->reference->centroid_x /= used;
 				DEVICE_PRIVATE_DATA->reference->centroid_y /= used;
 				DEVICE_PRIVATE_DATA->reference->snr = DEVICE_PRIVATE_DATA->reference[1].snr;
+			} else {
+				result = INDIGO_FAILED;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
 			if (result == INDIGO_OK) {
@@ -1089,7 +1091,7 @@ static bool guide_and_capture_frame(indigo_device *device, double ra, double dec
 	}
 	if (!capture_and_process_frame(device)) {
 		if (DEVICE_PRIVATE_DATA->no_guiding_star) {
-			if (  DEVICE_PRIVATE_DATA->first_frame) {
+			if (DEVICE_PRIVATE_DATA->first_frame) {
 				if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 					clear_selection(device);
 					if (check_selection(device)) {
@@ -1467,12 +1469,16 @@ static bool guide(indigo_device *device) {
 		if (!capture_and_process_frame(device)) {
 			if (DEVICE_PRIVATE_DATA->no_guiding_star) {
 				if (DEVICE_PRIVATE_DATA->first_frame) {
-					clear_selection(device);
 					AGENT_GUIDER_STATS_FRAME_ITEM->number.value = 0;
 					DEVICE_PRIVATE_DATA->first_frame = false;
 					DEVICE_PRIVATE_DATA->silence_warnings = true;
-					if (!find_stars(device) || !select_stars(device)) {
-						indigo_send_message(device, "Error: No guide stars found");
+					if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+						clear_selection(device);
+						if (!find_stars(device) || !select_stars(device)) {
+							indigo_send_message(device, "Error: No guide stars found");
+							break;
+						}
+					} else {
 						break;
 					}
 				} else if (AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM->sw.value) {
