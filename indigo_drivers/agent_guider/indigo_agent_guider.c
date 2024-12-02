@@ -715,7 +715,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = DEVICE_PRIVATE_DATA->reference->snr;
-			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->donuts_snr < DONUTS_MIN_SNR) {
+			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && DEVICE_PRIVATE_DATA->reference->snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 					indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}
@@ -742,7 +742,6 @@ static bool capture_and_process_frame(indigo_device *device) {
 			DEVICE_PRIVATE_DATA->reference->centroid_x = 0;
 			DEVICE_PRIVATE_DATA->reference->centroid_y = 0;
 			DEVICE_PRIVATE_DATA->reference->snr = 0;
-			DEVICE_PRIVATE_DATA->reference->donuts_snr = 0;
 			for (int i = 0; i < count && result == INDIGO_OK; i++) {
 				indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 				indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
@@ -798,7 +797,7 @@ static bool capture_and_process_frame(indigo_device *device) {
 				return false;
 			}
 			AGENT_GUIDER_STATS_SNR_ITEM->number.value = digest.snr;
-			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.donuts_snr < DONUTS_MIN_SNR) {
+			if (AGENT_GUIDER_STATS_PHASE_ITEM->number.value >= INDIGO_GUIDER_PHASE_GUIDING && digest.snr < DONUTS_MIN_SNR) {
 				if (!DEVICE_PRIVATE_DATA->silence_warnings) {
 					indigo_send_message(device, "Warning: Signal to noise ratio is poor, increase exposure time or use different star detection mode");
 				}

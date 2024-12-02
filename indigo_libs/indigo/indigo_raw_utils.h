@@ -54,7 +54,6 @@ typedef struct {
 	int width;
 	int height;
 	double snr;
-	double donuts_snr;
 	union {
 		double (*fft_x)[2];
 		double centroid_x;

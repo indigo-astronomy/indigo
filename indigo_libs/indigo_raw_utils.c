@@ -827,7 +827,6 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	digest->centroid_x = *x = cs + m10 / m00 - 0.5;
 	digest->centroid_y = *y = ls + m01 / m00 - 0.5;
 	digest->snr = sqrt(m00);
-	digest->donuts_snr = 0;
 	digest->algorithm = centroid;
 	INDIGO_DEBUG(indigo_debug("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f], signal = %.3f, stddev_noise = %.3f, SNR = %3f", digest->centroid_x, digest->centroid_y, m00, stddev, digest->snr));
 	return INDIGO_OK;
@@ -1009,7 +1008,6 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	digest->centroid_x = m10 / m00 - 0.5;
 	digest->centroid_y = m01 / m00 - 0.5;
 	digest->snr = sqrt(m00);
-	digest->donuts_snr = 0;
 	digest->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
@@ -1295,7 +1293,6 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					col_y[y][RE] += value;
 				}
 			}
-			digest->snr = calculate_snr_8(data8, width * height);
 			break;
 		}
 		case INDIGO_RAW_MONO16: {
@@ -1310,7 +1307,6 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					col_y[y][RE] += value;
 				}
 			}
-			digest->snr = calculate_snr_16(data16, width * height);
 			break;
 		}
 		case INDIGO_RAW_RGB24: {
@@ -1326,7 +1322,6 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					col_y[y][RE] += value;
 				}
 			}
-			digest->snr = calculate_snr_8(data8, width * height * 3);
 			break;
 		}
 		case INDIGO_RAW_RGBA32: {
@@ -1342,7 +1337,6 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					col_y[y][RE] += value;
 				}
 			}
-			digest->snr = calculate_snr_8(data8, width * height * 4);
 			break;
 		}
 		case INDIGO_RAW_ABGR32: {
@@ -1374,7 +1368,6 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 					col_y[y][RE] += value;
 				}
 			}
-			digest->snr = calculate_snr_16(data16, width * height * 3);
 			break;
 		}
 	}
@@ -1411,9 +1404,8 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 		}
 	}
 
-	digest->donuts_snr = (calculate_donuts_snr(digest->fft_x, digest->width) + calculate_donuts_snr(digest->fft_y, digest->height)) / 2.0;
-
-	INDIGO_DEBUG(indigo_debug("Donuts: Frame SNR = %g, FFT SNR = %g", digest->snr, digest->donuts_snr));
+	digest->snr = (calculate_donuts_snr(digest->fft_x, digest->width) + calculate_donuts_snr(digest->fft_y, digest->height)) / 2.0;
+	INDIGO_DEBUG(indigo_debug("Donuts: FFT SNR = %g", digest->snr));
 
 	digest->algorithm = donuts;
 	free(col_x);
