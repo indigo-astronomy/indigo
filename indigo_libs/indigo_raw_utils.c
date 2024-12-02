@@ -827,6 +827,7 @@ indigo_result indigo_selection_frame_digest(indigo_raw_type raw_type, const void
 	digest->centroid_x = *x = cs + m10 / m00 - 0.5;
 	digest->centroid_y = *y = ls + m01 / m00 - 0.5;
 	digest->snr = sqrt(m00);
+	digest->donuts_snr = 0;
 	digest->algorithm = centroid;
 	INDIGO_DEBUG(indigo_debug("indigo_selection_frame_digest: centroid = [%5.2f, %5.2f], signal = %.3f, stddev_noise = %.3f, SNR = %3f", digest->centroid_x, digest->centroid_y, m00, stddev, digest->snr));
 	return INDIGO_OK;
@@ -1008,6 +1009,7 @@ indigo_result indigo_centroid_frame_digest(indigo_raw_type raw_type, const void 
 	digest->centroid_x = m10 / m00 - 0.5;
 	digest->centroid_y = m01 / m00 - 0.5;
 	digest->snr = sqrt(m00);
+	digest->donuts_snr = 0;
 	digest->algorithm = centroid;
 	//INDIGO_DEBUG(indigo_debug("indigo_centroid_frame_digest: centroid = [%5.2f, %5.2f]", digest->centroid_x, digest->centroid_y));
 	return INDIGO_OK;
@@ -1097,6 +1099,45 @@ double calculate_snr_16(uint16_t *array, int size) {
 			signal_count++;
 		} else {
 			noise += array[i];
+			noise_count++;
+		}
+	}
+
+	double avg_signal = signal_count > 0 ? signal / signal_count : 0;
+	double avg_noise = noise_count > 0 ? noise / noise_count : 0;
+
+	double snr =  avg_noise > 0 ? avg_signal * avg_signal / (avg_noise * avg_noise) : 0;
+	return snr;
+}
+
+static double calculate_donuts_snr(double (*array)[2], int size) {
+	double sum = 0;
+	for (int i = 0; i < size; i++) {
+		sum += array[i][RE];
+	}
+	double mean = sum / size;
+
+	sum = 0;
+	for (int i = 0; i < size; i++) {
+		double amplitude = sqrt(array[i][RE] * array[i][RE] + array[i][IM] * array[i][IM]);
+		sum += (amplitude - mean) * (amplitude - mean);
+	}
+	double stddev = sqrt(sum / size);
+
+	double threshold = mean + stddev;
+
+	double signal = 0;
+	double noise = 0;
+	int signal_count = 0;
+	int noise_count = 0;
+
+	for (int i = 0; i < size; i++) {
+		double amplitude = sqrt(array[i][RE] * array[i][RE] + array[i][IM] * array[i][IM]);
+		if (amplitude >= threshold) {
+			signal += amplitude;
+			signal_count++;
+		} else {
+			noise += amplitude;
 			noise_count++;
 		}
 	}
@@ -1338,8 +1379,6 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 		}
 	}
 
-	INDIGO_DEBUG(indigo_debug("Donuts: SNR = %g", digest->snr));
-
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8:
 		case INDIGO_RAW_MONO16: {
@@ -1371,6 +1410,10 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 			fft(digest->height, fcol_y, digest->fft_y);
 		}
 	}
+
+	digest->donuts_snr = (calculate_donuts_snr(digest->fft_x, digest->width) + calculate_donuts_snr(digest->fft_y, digest->height)) / 2.0;
+
+	INDIGO_ERROR(indigo_error("Donuts: Frame SNR = %g, FFT SNR = %g", digest->snr, digest->donuts_snr));
 
 	digest->algorithm = donuts;
 	free(col_x);
