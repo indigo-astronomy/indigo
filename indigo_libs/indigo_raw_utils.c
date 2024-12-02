@@ -1413,7 +1413,7 @@ indigo_result indigo_donuts_frame_digest_clipped(indigo_raw_type raw_type, const
 
 	digest->donuts_snr = (calculate_donuts_snr(digest->fft_x, digest->width) + calculate_donuts_snr(digest->fft_y, digest->height)) / 2.0;
 
-	INDIGO_ERROR(indigo_error("Donuts: Frame SNR = %g, FFT SNR = %g", digest->snr, digest->donuts_snr));
+	INDIGO_DEBUG(indigo_debug("Donuts: Frame SNR = %g, FFT SNR = %g", digest->snr, digest->donuts_snr));
 
 	digest->algorithm = donuts;
 	free(col_x);
