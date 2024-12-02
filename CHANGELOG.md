@@ -2,16 +2,45 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
-# [2.0-302] - 1 Dec Sun 2024
+# [2.0-302] - 2 Dec Mon 2024
 
 ## Overall:
-- ccd_driver:
+- indigo_ccd_driver:
 	- %R for resolution and %B for binning support added to image file name templates
+	- indigo_ccd_driver: add JD to the fits header
+
+- "Conflicting driver XXX is already loaded" lossage moved to INDIGO_ERROR
 
 ## New Drivers:
-
 - indigo_cdd_atik2
 	- Legacy Atik driver - CCD/USB2.0 and macOS only (to handle missing Apple Silicon support in Atik SDK)
+
+## Driver fixes:
+- indigo_agent_guider:
+	- label text unification
+	- remove selection resizing according to binning as it causes problems
+	- binning change resets selection, include and exclude regions
+	- reset the selection if the selection contains no stars at start
+	- fix regression in calibration introduced in 2.0-300
+	- fix unhandled case when no stars are detected
+	- better quality estimator for DONUTS guiding (more tests needed)
+
+- indigo_agent_imager:
+	- clear star selection on binning change
+	- remove selection resizing according to binning as it causes problems
+	- binning change resets selection, include and exclude regions
+
+- indigo_agent_mount:
+	- typo fix
+
+- indigo_agent_scripting:
+	- ducktape engine upgraded to version 2.7
+
+- indigo_ccd_touptek & OEM:
+	- fix CCD_FRAME_BITS_PER_PIXEL
+
+- indigo_ccd_atik:
+	- SDK updated to 2024.11.26.2038
 
 # [2.0-300] - 16 Nov Sat 2024
 
