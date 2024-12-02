@@ -722,6 +722,10 @@
 		59A68E33277DE627000439CC /* indigo_ccd_asi.h in Headers */ = {isa = PBXBuildFile; fileRef = 590A86411DB80A04002F12FB /* indigo_ccd_asi.h */; };
 		59AA603E25AB10E80065905E /* solver_test_image.c in Sources */ = {isa = PBXBuildFile; fileRef = 59AA603D25AB10E80065905E /* solver_test_image.c */; };
 		59AAF37D21A744DB00EFBB61 /* NSDictionary+DDHidExtras.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F290C211E211100380EF4 /* NSDictionary+DDHidExtras.m */; };
+		59AEF5302CFC7111002C6347 /* indigo_ccd_atik2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59AEF52F2CFC7102002C6347 /* indigo_ccd_atik2.h */; };
+		59AEF5312CFC7111002C6347 /* indigo_ccd_atik2.h in Headers */ = {isa = PBXBuildFile; fileRef = 59AEF52F2CFC7102002C6347 /* indigo_ccd_atik2.h */; };
+		59AEF5332CFC7128002C6347 /* indigo_ccd_atik2.c in Sources */ = {isa = PBXBuildFile; fileRef = 59AEF5322CFC7128002C6347 /* indigo_ccd_atik2.c */; };
+		59AEF5342CFC7128002C6347 /* indigo_ccd_atik2.c in Sources */ = {isa = PBXBuildFile; fileRef = 59AEF5322CFC7128002C6347 /* indigo_ccd_atik2.c */; };
 		59B348A029E854080062C2EA /* indigo_focuser_primaluce.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B3489D29E854070062C2EA /* indigo_focuser_primaluce.h */; };
 		59B348A229E854080062C2EA /* indigo_focuser_primaluce.c in Sources */ = {isa = PBXBuildFile; fileRef = 59B3489F29E854080062C2EA /* indigo_focuser_primaluce.c */; };
 		59B348A529E85E2F0062C2EA /* jsmn.h in Headers */ = {isa = PBXBuildFile; fileRef = 59B348A329E85E2F0062C2EA /* jsmn.h */; };
@@ -2892,6 +2896,10 @@
 		59A886EB225A85E20027680B /* 99-indigo_focuser_dmfc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-indigo_focuser_dmfc.rules"; sourceTree = "<group>"; };
 		59AA603D25AB10E80065905E /* solver_test_image.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = solver_test_image.c; sourceTree = "<group>"; };
 		59AD798F24AA6AE700F52563 /* RainbowAstro_200629.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = RainbowAstro_200629.pdf; sourceTree = "<group>"; };
+		59AEF52E2CFC705A002C6347 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		59AEF52F2CFC7102002C6347 /* indigo_ccd_atik2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_atik2.h; sourceTree = "<group>"; };
+		59AEF5322CFC7128002C6347 /* indigo_ccd_atik2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_atik2.c; sourceTree = "<group>"; };
+		59AEF5392CFC80DE002C6347 /* TE Series Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE Series Programmers Guide.pdf"; sourceTree = "<group>"; };
 		59AF31F621F25E7A0008CC52 /* d3.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.min.js; sourceTree = "<group>"; };
 		59AF31FF21F25E8A0008CC52 /* d3.geo.projection.min.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; path = d3.geo.projection.min.js; sourceTree = "<group>"; };
 		59AF320721F262280008CC52 /* constellations.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = constellations.json; sourceTree = "<group>"; wrapsLines = 1; };
@@ -4611,8 +4619,6 @@
 		9D285A5E2B61453F00B2642A /* Sequencer_screenshot_2.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sequencer_screenshot_2.jpg; sourceTree = "<group>"; };
 		9D285A5F2B61453F00B2642A /* Sequencer_screenshot_1.jpg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = Sequencer_screenshot_1.jpg; sourceTree = "<group>"; };
 		9D335BB0288036E6004D9F30 /* Apx60 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "Apx60 Programmers Guide.pdf"; sourceTree = "<group>"; };
-		9D335BB1288036E7004D9F30 /* TE-77 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-77 Programmers Guide.pdf"; sourceTree = "<group>"; };
-		9D335BB2288036E7004D9F30 /* TE-47 Programmers Guide.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = "TE-47 Programmers Guide.pdf"; sourceTree = "<group>"; };
 		9D335BB328803C34004D9F30 /* QHY5III200.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III200.img; sourceTree = "<group>"; };
 		9D335BB428803C34004D9F30 /* QHY5III334.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = QHY5III334.img; sourceTree = "<group>"; };
 		9D335BB528803C5E004D9F30 /* QHY600-9267-1203.img */ = {isa = PBXFileReference; lastKnownFileType = file; path = "QHY600-9267-1203.img"; sourceTree = "<group>"; };
@@ -5481,8 +5487,7 @@
 			isa = PBXGroup;
 			children = (
 				9D335BB0288036E6004D9F30 /* Apx60 Programmers Guide.pdf */,
-				9D335BB2288036E7004D9F30 /* TE-47 Programmers Guide.pdf */,
-				9D335BB1288036E7004D9F30 /* TE-77 Programmers Guide.pdf */,
+				59AEF5392CFC80DE002C6347 /* TE Series Programmers Guide.pdf */,
 				5989C385246C47F80005282C /* CMOS Camera Specific Options.pdf */,
 				591B015121A48F47006A1CD8 /* AtikCameras.dll Guide.pdf */,
 			);
@@ -9600,6 +9605,24 @@
 			path = ioptron_2.0_simulator;
 			sourceTree = "<group>";
 		};
+		59AEF5202CFC6F6B002C6347 /* ccd_atik2 */ = {
+			isa = PBXGroup;
+			children = (
+				59AEF52E2CFC705A002C6347 /* README.md */,
+				59AEF52F2CFC7102002C6347 /* indigo_ccd_atik2.h */,
+				59AEF5322CFC7128002C6347 /* indigo_ccd_atik2.c */,
+				59AEF5352CFC7B21002C6347 /* bin_externals */,
+			);
+			path = ccd_atik2;
+			sourceTree = "<group>";
+		};
+		59AEF5352CFC7B21002C6347 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
 		59AF320321F262280008CC52 /* data */ = {
 			isa = PBXGroup;
 			children = (
@@ -9860,6 +9883,7 @@
 		59C499DF1EFADF7600E750AA /* indigo_mac_drivers */ = {
 			isa = PBXGroup;
 			children = (
+				59AEF5202CFC6F6B002C6347 /* ccd_atik2 */,
 				9D61B9DA216DE62B000DE7E8 /* focuser_mjkzz_bt */,
 				59463C1420DE6781004950F2 /* focuser_wemacro_bt */,
 			);
@@ -14475,6 +14499,7 @@
 				598A1C6C259BA94A00C0B34C /* dc1394.h in Headers */,
 				598A1C6D259BA94A00C0B34C /* indigo_ccd_mi.h in Headers */,
 				598A1C6E259BA94A00C0B34C /* indigo_gps_gpsd.h in Headers */,
+				59AEF5312CFC7111002C6347 /* indigo_ccd_atik2.h in Headers */,
 				598A1C6F259BA94A00C0B34C /* indigo_focuser_fcusb.h in Headers */,
 				598A1C70259BA94A00C0B34C /* indigo_focuser_wemacro.h in Headers */,
 				598A1C71259BA94A00C0B34C /* indigo_mount_nexstaraux.h in Headers */,
@@ -14707,6 +14732,7 @@
 				59B5135F297077920075C8A1 /* indigo_rotator_falcon.h in Headers */,
 				596FCAB42BD0328000F5BACB /* indigo_rotator_wa.h in Headers */,
 				59C76F12237872570091B966 /* deg2str.h in Headers */,
+				59AEF5302CFC7111002C6347 /* indigo_ccd_atik2.h in Headers */,
 				9D73E62121FF3996003CEC15 /* utlist.h in Headers */,
 				9D73E60A21FF37DB003CEC15 /* libuvc.h in Headers */,
 				59BBED25278493E400BA9CD6 /* indigo_agent_astap.h in Headers */,
@@ -14865,10 +14891,12 @@
 				TargetAttributes = {
 					598A1B51259BA94A00C0B34C = {
 						DevelopmentTeam = AG8BXW65A2;
+						LastSwiftMigration = 1610;
 					};
 					599C9A471DA022C0008BBCC1 = {
 						CreatedOnToolsVersion = 8.0;
 						DevelopmentTeam = AG8BXW65A2;
+						LastSwiftMigration = 1610;
 						ProvisioningStyle = Automatic;
 					};
 					9D1880A71E534B5E002F75D7 = {
@@ -15133,6 +15161,7 @@
 				59FFB068288D3D5C00F172AC /* indigo_ccd_playerone.c in Sources */,
 				59958E1025CB0E0300BEFA1B /* indigo_dome_skyroof.c in Sources */,
 				598A1BB3259BA94A00C0B34C /* indigo_dome_nexdome.c in Sources */,
+				59AEF5342CFC7128002C6347 /* indigo_ccd_atik2.c in Sources */,
 				598A1BB4259BA94A00C0B34C /* indigo_aux_rts.c in Sources */,
 				598A1BB5259BA94A00C0B34C /* duktape.c in Sources */,
 				598A1BB6259BA94A00C0B34C /* DDHidQueue.m in Sources */,
@@ -15468,6 +15497,7 @@
 				9DB918031DF8546800678721 /* indigo_mount_lx200.c in Sources */,
 				593CFE441DFC8A12003B63D4 /* indigo_wheel_atik.c in Sources */,
 				595F2930211E211200380EF4 /* DDHidDevice.m in Sources */,
+				59AEF5332CFC7128002C6347 /* indigo_ccd_atik2.c in Sources */,
 				593AD1051EF8399F00C059BC /* indigo_guider_asi.c in Sources */,
 				59B348A229E854080062C2EA /* indigo_focuser_primaluce.c in Sources */,
 				9D3E90762899679A0093C9EB /* indigo_focuser_prodigy.c in Sources */,
@@ -15772,6 +15802,7 @@
 		598A1C9B259BA94A00C0B34C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -15831,11 +15862,14 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_mac_drivers/ccd_atik2/bin_externals/atiksdk/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					indigo_drivers/ccd_iidc/externals/libdc1394,
 					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,
@@ -15855,6 +15889,7 @@
 		598A1C9C259BA94A00C0B34C /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
@@ -15914,10 +15949,12 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/Linux/x86",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
+					"$(PROJECT_DIR)/indigo_mac_drivers/ccd_atik2/bin_externals/atiksdk/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					indigo_drivers/ccd_iidc/externals/libdc1394,
 					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,
@@ -16016,6 +16053,7 @@
 		599C9A4A1DA022C0008BBCC1 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
@@ -16066,12 +16104,15 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_sbig/bin_externals/sbigudrv/lib/macOS",
+					"$(PROJECT_DIR)/indigo_mac_drivers/ccd_atik2/bin_externals/atiksdk/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-w";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					indigo_drivers/ccd_iidc/externals/libdc1394,
 					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,
@@ -16091,6 +16132,7 @@
 		599C9A4B1DA022C0008BBCC1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = AG8BXW65A2;
 				EXECUTABLE_PREFIX = lib;
@@ -16141,11 +16183,13 @@
 					"$(PROJECT_DIR)/indigo_drivers/wheel_mi/bin_externals/libgxccd/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_bresser/bin_externals/libbressercam/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/ccd_sbig/bin_externals/sbigudrv/lib/macOS",
+					"$(PROJECT_DIR)/indigo_mac_drivers/ccd_atik2/bin_externals/atiksdk/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
 				OTHER_LDFLAGS = "-w";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
 					indigo_drivers/ccd_iidc/externals/libdc1394,
 					indigo_drivers/ccd_qhy2/bin_externals/qhyccd/include,

@@ -1461,6 +1461,24 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcat(tmp, buffer);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
+		} else if (fs[1] == 'R') { // %R - resolution
+			char buffer[15];
+			sprintf(buffer, "%.0fx%.0f", CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value);
+			strncpy(tmp, format, fs - format);
+			strcat(tmp, buffer);
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
+		} else if (fs[1] == 'B') { // %B - binning
+			char buffer[15];
+			if (CCD_BIN_HORIZONTAL_ITEM->number.value == CCD_BIN_HORIZONTAL_ITEM->number.value) {
+				sprintf(buffer, "BIN%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value);
+			} else {
+				sprintf(buffer, "BIN%.0fx%.0f", CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value);
+			}
+			strncpy(tmp, format, fs - format);
+			strcat(tmp, buffer);
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
 		} else if (isdigit(fs[1]) && fs[2] == 'S') { // %nS - sequence number in %0nd format
 			char *next = strchr(fs + 1, '%');
 			if (next) { // make sure %nS is processed as the last one

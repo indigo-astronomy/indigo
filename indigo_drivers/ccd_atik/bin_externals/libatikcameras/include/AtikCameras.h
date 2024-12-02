@@ -198,6 +198,15 @@ extern "C" {
 	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure
 	artfn int ArtemisCameraConnectionState(ArtemisHandle handle, enum ARTEMISCONNECTIONSTATE * state);
 
+	/// @brief Reset the camera. The handle becomes invalid after a reset and will need to
+	/// be reconnected to again in order to interact with it.
+	/// @see ARTEMISERROR
+	/// @return ARTEMIS_OK on success, or ARTEMISERROR enumeration on failure
+	artfn int ArtemisCameraReset(ArtemisHandle handle);
+
+	artfn int ArtemisCameraResetAll(void);
+
+
 	// ------------------- Exposure Settings -----------------------------------
 
 	/// @brief Sets the binning for the device.
@@ -509,6 +518,14 @@ extern "C" {
 	/// @param handle the connected Atik device handle.
 	/// @return TRUE if the image is ready, FALSE on failure
 	artfn BOOL  ArtemisImageReady(				 ArtemisHandle handle);
+
+	/// @brief Returns whether the image has failed.
+	/// Call this function after ArtemisImageReady returns TRUE to check
+	/// that the image capture succeeded. Only call ArtemisGetImageData()
+	/// or ArtemisImageBuffer() if the ArtemisImageFailed() returns FALSE.
+	/// @param handle the connected Atik device handle.
+	/// @return TRUE if the image download failed, FALSE on success.
+	artfn BOOL  ArtemisImageFailed(ArtemisHandle handle);
 
 	/// @brief Returns the device's state as an ARTEMISCAMERASTATE enumeration.
 	/// @param handle the connected device handle.
