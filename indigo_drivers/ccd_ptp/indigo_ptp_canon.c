@@ -1409,14 +1409,16 @@ bool ptp_canon_exposure(indigo_device *device) {
 	if (ptp_operation_supported(device, ptp_operation_canon_RemoteReleaseOn)) {
 		int delay = 0;
 		if (DSLR_MIRROR_LOCKUP_LOCK_ITEM->sw.value) {
-			if (ptp_property_supported(device, ptp_property_canon_MirrorUpSetting))
+			if (ptp_property_supported(device, ptp_property_canon_MirrorUpSetting)) {
 				set_number_property(device, ptp_property_canon_MirrorUpSetting, 1);
-			else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup)) {
+				set_number_property(device, ptp_property_canon_DriveMode, 0x11); // 2s self timer
+				delay = 2;
+			} else if (ptp_property_supported(device, ptp_property_canon_ExMirrorLockup)) {
 				set_number_property(device, ptp_property_canon_ExMirrorLockup, 1);
+				set_number_property(device, ptp_property_canon_DriveMode, 0x11); // 2s self timer
+				delay = 2;
 			}
-			set_number_property(device, ptp_property_canon_DriveMode, 0x11); // 2s self timer
 			ptp_canon_get_event(device);
-			delay = 2;
 		} else {
 			if (ptp_property_supported(device, ptp_property_canon_MirrorUpSetting))
 				set_number_property(device, ptp_property_canon_MirrorUpSetting, 0);
