@@ -2,6 +2,26 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-304] - 5 Dec Thu 2024
+
+## Overall:
+- indigo_docs:
+	- update IMAGING_AF_TUNING.md
+
+## Driver fixes:
+- indigo_focuser_fc3:
+	- fix device identification
+
+- indigo_ccd_atik:
+	- read temperature flag handling fixed
+
+- indigo_ccd_atik2:
+	- pre-exposure handling fixed
+
+- indigo_ccd_ptp:
+	- item labels changed
+	- Canon - 2s delay used only if some kind of mirror lockup is supported
+
 # [2.0-302] - 2 Dec Mon 2024
 
 ## Overall:
