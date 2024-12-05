@@ -19,8 +19,8 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Atik CCD driver
- \file indigo_ccd_atik.h
+/** INDIGO Atik (legacy) CCD driver
+ \file indigo_ccd_atik2.h
  */
 
 #ifndef ccd_atik2_h

@@ -19,12 +19,12 @@
 // version history
 // 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
 
-/** INDIGO Atik CCD driver
- \file indigo_ccd_atik.c
+/** INDIGO Atik (legacy) CCD driver
+ \file indigo_ccd_atik2.c
  */
 
-#define DRIVER_VERSION 0x0006
-#define DRIVER_NAME "indigo_ccd_atik"
+#define DRIVER_VERSION 0x0007
+#define DRIVER_NAME "indigo_ccd_atik2"
 
 #include <stdlib.h>
 #include <string.h>
@@ -50,7 +50,7 @@ typedef struct {
 	libatik_device_context *device_context;
 	libusb_device *dev;
 	int device_count;
-	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
+	indigo_timer *pre_exposure_timer, *exposure_timer, *temperature_timer, *guider_timer;
 	double cooler_power, target_temperature, current_temperature;
 	int target_slot, current_slot;
 	unsigned short relay_mask;
@@ -63,7 +63,6 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->exposure_timer = NULL;
 	if (!IS_CONNECTED)
 		return;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -91,8 +90,6 @@ static void pre_exposure_timer_callback(indigo_device *device) {
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		indigo_set_timer(device, 2, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
-	} else {
-		PRIVATE_DATA->exposure_timer = NULL;
 	}
 }
 
@@ -248,7 +245,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		} else {
 			libatik_start_exposure(PRIVATE_DATA->device_context, CCD_FRAME_TYPE_DARK_ITEM->sw.value);
 			if (CCD_EXPOSURE_ITEM->number.target > 2)
-				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 2, pre_exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
+				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target - 2, pre_exposure_timer_callback, &PRIVATE_DATA->pre_exposure_timer);
 			else {
 				PRIVATE_DATA->can_check_temperature = false;
 				indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
@@ -315,9 +312,8 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
-	PRIVATE_DATA->guider_timer = NULL;
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-
+	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+		return;
 	libatik_guide_relays(PRIVATE_DATA->device_context, 0);
 	if (PRIVATE_DATA->relay_mask & (ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
