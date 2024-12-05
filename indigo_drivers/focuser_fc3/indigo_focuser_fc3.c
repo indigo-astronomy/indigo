@@ -181,7 +181,7 @@ static void focuser_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 115200);
 		if (PRIVATE_DATA->handle > 0) {
-			if (focuscube_command(device, "##", response, sizeof(response)) && !strncmp(response, "F3C_", 4)) {
+			if (focuscube_command(device, "##", response, sizeof(response)) && !strncmp(response, "FC3_", 4)) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "FocusCube v3");
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "%s OK", response + 4);
 			} else {

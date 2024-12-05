@@ -72,7 +72,7 @@ def sim_protocol():
 	while True:
 		command = sim_read()
 		if command == "##" or command == "P#":
-			sim_write("F3C_AA000000_A")
+			sim_write("FC3_AA000000_A")
 		elif command == "FA":
 			sim_write("FC3:%d:%d:23.8:%d:%d" % (position, 0 if target == position else 1, direction, backlash))
 		elif command == "FH":
