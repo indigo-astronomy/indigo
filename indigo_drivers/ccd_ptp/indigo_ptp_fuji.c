@@ -72,7 +72,7 @@ char *ptp_property_fuji_code_name(uint16_t code) {
 		case ptp_property_fuji_ControlPriority: return "DSLR_ControlPriority";
 		case ptp_property_fuji_AutoFocus: return "ADV_AutoFocus";
 		case ptp_property_fuji_AutoFocusState: return "ADV_AutoFocusState";
-		case ptp_property_fuji_CardSave: return "ADV_CardSave";
+		case ptp_property_fuji_CardSave: return "DSLR_CardSave";
 	}
 	return ptp_property_code_name(code);
 }
@@ -543,14 +543,12 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 static bool ptp_set_switch_property(indigo_device *device, ptp_property *property, uint16_t value) {
 	bool result = true;
 	if (property->value.sw.value != value) {
-		if (property->property) {
-			for (int i=0; i < property->property->count; i++) {
-				property->property->items[i].sw.value = property->value.sw.values[i] == value;
-			}
-			indigo_update_property(device, property->property, NULL);
+		for (int i=0; i < property->property->count; i++) {
+			property->property->items[i].sw.value = property->value.sw.values[i] == value;
 		}
 		property->value.sw.value = value;
 		result = ptp_set_property(device, property);
+		indigo_update_property(device, property->property, NULL);
 	}
 	return result;
 }
