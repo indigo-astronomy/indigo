@@ -543,12 +543,14 @@ bool ptp_fuji_fix_property(indigo_device *device, ptp_property *property) {
 static bool ptp_set_switch_property(indigo_device *device, ptp_property *property, uint16_t value) {
 	bool result = true;
 	if (property->value.sw.value != value) {
-		for (int i=0; i < property->property->count; i++) {
-			property->property->items[i].sw.value = property->value.sw.values[i] == value;
+		if (property->property) {
+			for (int i=0; i < property->property->count; i++) {
+				property->property->items[i].sw.value = property->value.sw.values[i] == value;
+			}
+			indigo_update_property(device, property->property, NULL);
 		}
 		property->value.sw.value = value;
 		result = ptp_set_property(device, property);
-		indigo_update_property(device, property->property, NULL);
 	}
 	return result;
 }
