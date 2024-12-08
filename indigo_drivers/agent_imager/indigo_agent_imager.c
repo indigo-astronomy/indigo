@@ -23,7 +23,7 @@
  \file indigo_agent_imager.c
  */
 
-#define DRIVER_VERSION 0x002E
+#define DRIVER_VERSION 0x002F
 #define DRIVER_NAME	"indigo_agent_imager"
 
 #include <stdio.h>
@@ -519,6 +519,20 @@ static bool check_selection(indigo_device *device) {
 	return result;
 }
 
+static void clear_selection(indigo_device *device) {
+	if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
+		indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+		AGENT_IMAGER_STARS_PROPERTY->count = 1;
+		indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+	}
+	indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
+	for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
+		indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
+		item->number.value = item->number.target = 0;
+	}
+	indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+}
+
 static bool select_subframe(indigo_device *device) {
 	int selection_x = AGENT_IMAGER_SELECTION_X_ITEM->number.value;
 	int selection_y = AGENT_IMAGER_SELECTION_Y_ITEM->number.value;
@@ -845,6 +859,7 @@ static bool exposure_batch(indigo_device *device) {
 					time_to_transit = time_to_transit - 24;
 				if (time_to_transit <= exposure_time / 3600 - AGENT_IMAGER_BATCH_PAUSE_AFTER_TRANSIT_ITEM->number.target) {
 					pauseOnTTT = false; // pause only once per batch
+					clear_selection(device);
 					AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = pausedOnTTT = true;
 					AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
 					indigo_update_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
@@ -1825,20 +1840,6 @@ static void autofocus_process(indigo_device *device) {
 	AGENT_IMAGER_START_FOCUSING_ITEM->sw.value = false;
 	indigo_update_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
 	FILTER_DEVICE_CONTEXT->running_process = false;
-}
-
-static void clear_selection(indigo_device *device) {
-	if (AGENT_IMAGER_STARS_PROPERTY->count > 1) {
-		indigo_delete_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-		AGENT_IMAGER_STARS_PROPERTY->count = 1;
-		indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	}
-	indigo_update_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	for (int i = (int)(AGENT_IMAGER_SELECTION_X_ITEM - AGENT_IMAGER_SELECTION_PROPERTY->items); i < AGENT_IMAGER_SELECTION_PROPERTY->count; i++) {
-		indigo_item *item = AGENT_IMAGER_SELECTION_PROPERTY->items + i;
-		item->number.value = item->number.target = 0;
-	}
-	indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
 }
 
 static bool validate_include_region(indigo_device *device, bool force) {
