@@ -147,7 +147,7 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 		int result = entry_point(INDIGO_DRIVER_INIT, NULL);
 		indigo_available_drivers[empty_slot].initialized = result == INDIGO_OK;
 		if (result != INDIGO_OK)
-			indigo_error("Failed to initialise driver");
+			indigo_error("Driver %s failed to initialise", info.name);
 		return result;
 	}
 	return INDIGO_OK;
