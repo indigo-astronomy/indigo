@@ -79,17 +79,17 @@ char *ptp_property_fuji_code_name(uint16_t code) {
 
 char *ptp_property_fuji_code_label(uint16_t code) {
 	switch (code) {
-		case ptp_property_fuji_FilmSimulation: return "FilmSimulation";
-		case ptp_property_fuji_DynamicRange: return "DynamicRange";
-		case ptp_property_fuji_ColorSpace: return "ColorSpace";
+		case ptp_property_fuji_FilmSimulation: return "Film Simulation";
+		case ptp_property_fuji_DynamicRange: return "Dynamic Range";
+		case ptp_property_fuji_ColorSpace: return "Color Space";
 		case ptp_property_fuji_CompressionSetting: return "Compression";
 		case ptp_property_fuji_Zoom: return "Zoom";
-		case ptp_property_fuji_NoiseReduction: return "NoiseReduction";
-		case ptp_property_fuji_LockSetting: return "LockSetting";
+		case ptp_property_fuji_NoiseReduction: return "Noise Reduction";
+		case ptp_property_fuji_LockSetting: return "Lock Setting";
 		case ptp_property_fuji_ControlPriority: return "Control Priority";
 		case ptp_property_fuji_AutoFocus: return "AutoFocus";
-		case ptp_property_fuji_AutoFocusState: return "AutoFocusState";
-		case ptp_property_fuji_CardSave: return "CardSave";
+		case ptp_property_fuji_AutoFocusState: return "AutoFocus State";
+		case ptp_property_fuji_CardSave: return "Card Save";
 	}
 	return ptp_property_code_label(code);
 }
@@ -592,7 +592,7 @@ bool ptp_fuji_exposure(indigo_device *device) {
 	result = ptp_fuji_set_control_priority(device, true);
 	ptp_property *card_save = ptp_property_supported(device, ptp_property_fuji_CardSave);
 	if (result && card_save) {
-		if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value) {
+		if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value || PRIVATE_DATA->model.product == 703) { // Temporary fix, switching to FUJI_CARD_SAVE_ON_RAW_JPEG leads to random failures with X-T1
 			result = result && ptp_set_switch_property(device, card_save, FUJI_CARD_SAVE_OFF);
 		} else {
 			result = result && ptp_set_switch_property(device, card_save, FUJI_CARD_SAVE_ON_RAW_JPEG);
