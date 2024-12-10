@@ -1,3 +1,6 @@
+2024.11.29(3.7.1)
+- Fixed a bug that on some hosts with Ubuntu24.04(e.g. PI5), the first exposure failed after opening the camera.
+
 2024.09.05(3.7.0)
 - Add support for Apollo 428M MAX and Apollo 428M MAX PRO
 
