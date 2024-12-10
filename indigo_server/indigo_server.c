@@ -42,6 +42,28 @@
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
+#if defined(__APPLE__) || defined(__MACH__)
+  #define OS_NAME "macOS"
+#elif defined(__linux__)
+  #define OS_NAME "Linux"
+#elif defined(__unix__)
+  #define OS_NAME "Unix"
+#else
+  #define OS_NAME "Unknown OS"
+#endif
+
+#if defined(__x86_64__) || defined(_M_X64)
+  #define ARCH_NAME "x86_64"
+#elif defined(__i386) || defined(_M_IX86)
+  #define ARCH_NAME "x86"
+#elif defined(__aarch64__)
+  #define ARCH_NAME "arm64"
+#elif defined(__arm__) || defined(_M_ARM)
+  #define ARCH_NAME "armhf"
+#else
+  #define ARCH_NAME "unknown arch"
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_server_tcp.h>
@@ -1495,7 +1517,7 @@ static void add_drivers(const char *folder) {
 static void server_main() {
 	indigo_start_usb_event_handler();
 	indigo_start();
-	indigo_log("INDIGO server %d.%d-%s built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, INDIGO_BUILD_TIME, INDIGO_BUILD_COMMIT);
+	indigo_log("INDIGO server %d.%d-%s %s/%s built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, OS_NAME, ARCH_NAME, INDIGO_BUILD_TIME, INDIGO_BUILD_COMMIT);
 
 	indigo_use_blob_caching = true;
 
@@ -1810,7 +1832,7 @@ int main(int argc, const char * argv[]) {
 		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use-syslog")) {
 			indigo_use_syslog = true;
 		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
-			printf("INDIGO server v.%d.%d-%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, __DATE__, __TIME__);
+			printf("INDIGO server v.%d.%d-%s %s/%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, OS_NAME, ARCH_NAME, __DATE__, __TIME__);
 			printf("usage: %s [-h | --help]\n", argv[0]);
 			printf("       %s [options] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			printf("options:\n"
