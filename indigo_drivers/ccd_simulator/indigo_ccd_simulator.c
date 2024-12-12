@@ -783,7 +783,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 			CCD_OFFSET_PROPERTY->hidden = true;
 			CCD_GAMMA_PROPERTY->hidden = true;
 			CCD_GAIN_PROPERTY->hidden = true;
-			CCD_FRAME_PROPERTY->hidden = true;
+			CCD_FRAME_PROPERTY->perm = INDIGO_RO_PERM;
 			CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 24;
 			CCD_BIN_PROPERTY->hidden = true;
 			CCD_COOLER_PROPERTY->hidden = true;
