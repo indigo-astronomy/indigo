@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0025
+#define DRIVER_VERSION 0x0026
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -1826,6 +1826,7 @@ static void snoop_changes(indigo_client *client, indigo_device *device, indigo_p
 			if (reset_selection) {
 				DEVICE_PRIVATE_DATA->last_width = DEVICE_PRIVATE_DATA->frame[2] / DEVICE_PRIVATE_DATA->bin_x;
 				DEVICE_PRIVATE_DATA->last_height = DEVICE_PRIVATE_DATA->frame[3] / DEVICE_PRIVATE_DATA->bin_y;
+				AGENT_GUIDER_SELECTION_INCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_INCLUDE_HEIGHT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_LEFT_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_TOP_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_WIDTH_ITEM->number.value = AGENT_GUIDER_SELECTION_EXCLUDE_HEIGHT_ITEM->number.value = 0;
 				validate_include_region(device, false);
 				indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
 			}
