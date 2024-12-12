@@ -382,9 +382,9 @@ static indigo_alpaca_error alpaca_get_bayeroffsetx(indigo_alpaca_device *device,
 		return indigo_alpaca_error_NotConnected;
 	}
 	*value = 0;
-	get_bayer_RGGB_offsets(device->ccd.bayer_matrix->text.value, value, NULL);
+	bool is_bayered = get_bayer_RGGB_offsets(device->ccd.bayer_matrix->text.value, value, NULL);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return is_bayered ? indigo_alpaca_error_OK : indigo_alpaca_error_NotImplemented;
 }
 
 static indigo_alpaca_error alpaca_get_bayeroffsety(indigo_alpaca_device *device, int version, int *value) {
@@ -394,9 +394,9 @@ static indigo_alpaca_error alpaca_get_bayeroffsety(indigo_alpaca_device *device,
 		return indigo_alpaca_error_NotConnected;
 	}
 	*value = 0;
-	get_bayer_RGGB_offsets(device->ccd.bayer_matrix->text.value, NULL, value);
+	bool is_bayered = get_bayer_RGGB_offsets(device->ccd.bayer_matrix->text.value, NULL, value);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_OK;
+	return is_bayered ? indigo_alpaca_error_OK : indigo_alpaca_error_NotImplemented;
 }
 
 static indigo_alpaca_error alpaca_get_exposuremin(indigo_alpaca_device *device, int version, double *value) {

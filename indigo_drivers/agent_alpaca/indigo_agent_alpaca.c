@@ -23,7 +23,7 @@
  \file indigo_agent_alpaca.c
  */
 
-#define DRIVER_VERSION 0x0002
+#define DRIVER_VERSION 0x0003
 #define DRIVER_NAME	"indigo_agent_alpaca"
 
 #include <stdlib.h>
@@ -478,7 +478,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match(AGENT_CAMERA_BAYERPAT_PROPERTY, property)) {
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			if (!get_bayer_RGGB_offsets(item->text.value, NULL, NULL)) {
+			if (!get_bayer_RGGB_offsets(item->text.value, NULL, NULL) && item->text.value[0] != '\0') {
 				AGENT_CAMERA_BAYERPAT_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, AGENT_CAMERA_BAYERPAT_PROPERTY, "Bayer pattern '%s' is not supported", item->text.value);
 				return INDIGO_OK;

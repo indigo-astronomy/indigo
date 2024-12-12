@@ -32,20 +32,20 @@ bool get_bayer_RGGB_offsets(const char *pattern, int *x_offset, int *y_offset) {
 		return false;
 	}
 
-	indigo_debug("get_bayer_RGGB_offsets(%s)", pattern);
-
-	if (strcmp(pattern, "RGGB") == 0 || pattern[0] == '\0') {
-		if (x_offset) *x_offset = 0;
-		if (y_offset) *y_offset = 0;
-	} else if (strcmp(pattern, "GRBG") == 0) {
-		if (x_offset) *x_offset = 1;
-		if (y_offset) *y_offset = 0;
-	} else if (strcmp(pattern, "GBRG") == 0) {
+	// ASCOM Alpaca uses BUTTOM-UP orientation therefore Y offsets are mirorred.
+	// RGGB should have X=0, Y=0 but it is X=0, Y=1 in ASCOM Alpaca.
+	if (!strcasecmp(pattern, "RGGB")) {
 		if (x_offset) *x_offset = 0;
 		if (y_offset) *y_offset = 1;
-	} else if (strcmp(pattern, "BGGR") == 0) {
+	} else if (!strcasecmp(pattern, "GRBG")) {
 		if (x_offset) *x_offset = 1;
 		if (y_offset) *y_offset = 1;
+	} else if (!strcasecmp(pattern, "GBRG")) {
+		if (x_offset) *x_offset = 0;
+		if (y_offset) *y_offset = 0;
+	} else if (!strcasecmp(pattern, "BGGR")) {
+		if (x_offset) *x_offset = 1;
+		if (y_offset) *y_offset = 0;
 	} else {
 		return false;
 	}
