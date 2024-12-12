@@ -100,6 +100,7 @@ typedef struct indigo_alpaca_device_struct {
 			char *readoutmodes_names[ALPACA_MAX_ITEMS];
 			char *readoutmodes_labels[ALPACA_MAX_ITEMS];
 			int readoutmode;
+			indigo_item *bayer_matrix;
 		} ccd;
 		struct {
 			uint32_t count;
@@ -236,6 +237,8 @@ typedef struct {
 	int32_t dimension2; // Bytes 36..39 - Length of image array second dimension
 	int32_t dimension3; // Bytes 40..43 - Length of image array third dimension (0 for 2D array)
 } indigo_alpaca_metadata;
+
+extern bool get_bayer_RGGB_offsets(const char *pattern, int *x_offset, int *y_offset);
 
 extern char *indigo_alpaca_error_string(int code);
 extern long indigo_alpaca_append_error(char *buffer, long buffer_length, indigo_alpaca_error result);

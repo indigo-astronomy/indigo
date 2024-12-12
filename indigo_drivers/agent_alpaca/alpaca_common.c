@@ -27,6 +27,32 @@
 
 #include "alpaca_common.h"
 
+bool get_bayer_RGGB_offsets(const char *pattern, int *x_offset, int *y_offset) {
+	if (pattern == NULL) {
+		return false;
+	}
+
+	indigo_debug("get_bayer_RGGB_offsets(%s)", pattern);
+
+	if (strcmp(pattern, "RGGB") == 0 || pattern[0] == '\0') {
+		if (x_offset) *x_offset = 0;
+		if (y_offset) *y_offset = 0;
+	} else if (strcmp(pattern, "GRBG") == 0) {
+		if (x_offset) *x_offset = 1;
+		if (y_offset) *y_offset = 0;
+	} else if (strcmp(pattern, "GBRG") == 0) {
+		if (x_offset) *x_offset = 0;
+		if (y_offset) *y_offset = 1;
+	} else if (strcmp(pattern, "BGGR") == 0) {
+		if (x_offset) *x_offset = 1;
+		if (y_offset) *y_offset = 1;
+	} else {
+		return false;
+	}
+
+	return true;
+}
+
 char *indigo_alpaca_error_string(int code) {
 	switch (code) {
 		case indigo_alpaca_error_OK:

@@ -52,6 +52,8 @@
 #define AGENT_DISCOVERY_PROPERTY							(PRIVATE_DATA->discovery_property)
 #define AGENT_DISCOVERY_PORT_ITEM							(AGENT_DISCOVERY_PROPERTY->items+0)
 
+#define AGENT_CAMERA_BAYERPAT_PROPERTY						(PRIVATE_DATA->camera_bayerpat_property)
+
 #define AGENT_DEVICES_PROPERTY								(PRIVATE_DATA->devices_property)
 
 #define DISCOVERY_REQUEST											"alpacadiscovery1"
@@ -60,6 +62,7 @@
 typedef struct {
 	indigo_property *discovery_property;
 	indigo_property *devices_property;
+	indigo_property *camera_bayerpat_property;
 	indigo_timer *discovery_server_timer;
 	pthread_mutex_t mutex;
 } alpaca_agent_private_data;
@@ -78,6 +81,7 @@ static void save_config(indigo_device *device) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		pthread_mutex_lock(&private_data->mutex);
 		indigo_save_property(device, NULL, AGENT_DEVICES_PROPERTY);
+		indigo_save_property(device, NULL, AGENT_CAMERA_BAYERPAT_PROPERTY);
 		if (DEVICE_CONTEXT->property_save_file_handle) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			close(DEVICE_CONTEXT->property_save_file_handle);
@@ -399,6 +403,16 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			sprintf(AGENT_DEVICES_PROPERTY->items[i].label, "Device #%d", i);
 		}
 		AGENT_DEVICES_PROPERTY->count = 0;
+
+		AGENT_CAMERA_BAYERPAT_PROPERTY = indigo_init_text_property(NULL, device->name, "AGENT_ALPACA_CAMERA_BAYERPAT", MAIN_GROUP, "Camera Bayer pattern", INDIGO_OK_STATE, INDIGO_RW_PERM, ALPACA_MAX_ITEMS);
+		if (AGENT_CAMERA_BAYERPAT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		for (int i = 0; i < ALPACA_MAX_ITEMS; i++) {
+			AGENT_CAMERA_BAYERPAT_PROPERTY->items[i].name[0] = '\0';
+			AGENT_CAMERA_BAYERPAT_PROPERTY->items[i].label[0] = '\0';
+			AGENT_CAMERA_BAYERPAT_PROPERTY->items[i].text.value[0] = '\0';
+		}
+		AGENT_CAMERA_BAYERPAT_PROPERTY->count = 0;
 		// --------------------------------------------------------------------------------
 		srand((unsigned)time(0));
 		indigo_set_timer(device, 0, start_discovery_server, &private_data->discovery_server_timer);
@@ -424,6 +438,8 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		indigo_define_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_DEVICES_PROPERTY, property))
 		indigo_define_property(device, AGENT_DEVICES_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_CAMERA_BAYERPAT_PROPERTY, property))
+		indigo_define_property(device, AGENT_CAMERA_BAYERPAT_PROPERTY, NULL);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
@@ -459,6 +475,20 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		}
 		save_config(device);
 		return INDIGO_OK;
+	} else if (indigo_property_match(AGENT_CAMERA_BAYERPAT_PROPERTY, property)) {
+		for (int i = 0; i < property->count; i++) {
+			indigo_item *item = property->items + i;
+			if (!get_bayer_RGGB_offsets(item->text.value, NULL, NULL)) {
+				AGENT_CAMERA_BAYERPAT_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, AGENT_CAMERA_BAYERPAT_PROPERTY, "Bayer pattern '%s' is not supported", item->text.value);
+				return INDIGO_OK;
+			}
+		}
+		indigo_property_copy_values(AGENT_CAMERA_BAYERPAT_PROPERTY, property, false);
+		AGENT_CAMERA_BAYERPAT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_CAMERA_BAYERPAT_PROPERTY, NULL);
+		save_config(device);
+		return INDIGO_OK;
 	}
 	return indigo_device_change_property(device, client, property);
 }
@@ -474,6 +504,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_cancel_timer_sync(device, &private_data->discovery_server_timer);
 	indigo_release_property(AGENT_DISCOVERY_PROPERTY);
 	indigo_release_property(AGENT_DEVICES_PROPERTY);
+	indigo_release_property(AGENT_CAMERA_BAYERPAT_PROPERTY);
 	pthread_mutex_destroy(&PRIVATE_DATA->mutex);
 	return indigo_device_detach(device);
 }
@@ -557,6 +588,7 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 							indigo_item *item = AGENT_DEVICES_PROPERTY->items + device_number;
 							strcpy(item->text.value, property->device);
 							alpaca_device->device_number = device_number;
+							indigo_debug("Device %s mapped to #%d", property->device, device_number);
 							indigo_delete_property(indigo_agent_alpaca_device, AGENT_DEVICES_PROPERTY, NULL);
 							if (device_number == AGENT_DEVICES_PROPERTY->count)
 								AGENT_DEVICES_PROPERTY->count++;
@@ -564,6 +596,27 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 							save_config(indigo_agent_alpaca_device);
 						} else {
 							indigo_send_message(indigo_agent_alpaca_device, "Too many Alpaca devices configured");
+						}
+					}
+					if (IS_DEVICE_TYPE(alpaca_device, INDIGO_INTERFACE_CCD)) {
+						int cam_number;
+						for (cam_number = 0; cam_number < AGENT_CAMERA_BAYERPAT_PROPERTY->count; cam_number++) {
+							indigo_item *item = AGENT_CAMERA_BAYERPAT_PROPERTY->items + cam_number;
+							if (!strcmp(property->device, item->label)) {
+								indigo_debug("=== Camera %s already mapped to #%d", property->device, cam_number);
+								break;
+							}
+						}
+						if (cam_number == AGENT_CAMERA_BAYERPAT_PROPERTY->count) {
+							indigo_debug("+++ Mapping camera %s to #%d", property->device, cam_number);
+							indigo_item *item = AGENT_CAMERA_BAYERPAT_PROPERTY->items + cam_number;
+							strcpy(item->label, property->device);
+							sprintf(item->name, "%d", alpaca_device->device_number);
+							alpaca_device->ccd.bayer_matrix = item;
+							indigo_delete_property(indigo_agent_alpaca_device, AGENT_CAMERA_BAYERPAT_PROPERTY, NULL);
+							AGENT_CAMERA_BAYERPAT_PROPERTY->count ++;
+							indigo_define_property(indigo_agent_alpaca_device, AGENT_CAMERA_BAYERPAT_PROPERTY, NULL);
+							indigo_load_properties(indigo_agent_alpaca_device, false);
 						}
 					}
 				}

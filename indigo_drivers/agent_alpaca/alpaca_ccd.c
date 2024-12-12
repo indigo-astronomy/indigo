@@ -354,10 +354,12 @@ static indigo_alpaca_error alpaca_get_sensortype(indigo_alpaca_device *device, i
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
-	if (!strcmp(device->driver_info, "indigo_ccd_ptp") || !strncasecmp(device->ccd.readoutmodes_names[device->ccd.readoutmode], "rgb", 3))
+	if (!strncasecmp(device->ccd.readoutmodes_names[device->ccd.readoutmode], "rgb", 3)) {
 		*value = 1;
-	else
-		*value = 0;
+	} else {
+		bool is_bayered = get_bayer_RGGB_offsets(device->ccd.bayer_matrix->text.value, NULL, NULL);
+		*value = is_bayered ? 2 : 0;
+	}
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
@@ -379,8 +381,10 @@ static indigo_alpaca_error alpaca_get_bayeroffsetx(indigo_alpaca_device *device,
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
+	*value = 0;
+	get_bayer_RGGB_offsets(device->ccd.bayer_matrix->text.value, value, NULL);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_NotImplemented;
+	return indigo_alpaca_error_OK;
 }
 
 static indigo_alpaca_error alpaca_get_bayeroffsety(indigo_alpaca_device *device, int version, int *value) {
@@ -389,8 +393,10 @@ static indigo_alpaca_error alpaca_get_bayeroffsety(indigo_alpaca_device *device,
 		pthread_mutex_unlock(&device->mutex);
 		return indigo_alpaca_error_NotConnected;
 	}
+	*value = 0;
+	get_bayer_RGGB_offsets(device->ccd.bayer_matrix->text.value, NULL, value);
 	pthread_mutex_unlock(&device->mutex);
-	return indigo_alpaca_error_NotImplemented;
+	return indigo_alpaca_error_OK;
 }
 
 static indigo_alpaca_error alpaca_get_exposuremin(indigo_alpaca_device *device, int version, double *value) {
@@ -567,8 +573,6 @@ static indigo_alpaca_error alpaca_get_readoutmodes(indigo_alpaca_device *device,
 	pthread_mutex_unlock(&device->mutex);
 	return indigo_alpaca_error_OK;
 }
-
-
 
 static indigo_alpaca_error alpaca_set_binx(indigo_alpaca_device *device, int version, int value) {
 	pthread_mutex_lock(&device->mutex);
