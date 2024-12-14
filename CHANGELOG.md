@@ -2,6 +2,47 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-306] - 14 Dec Sat 2024
+
+## Overall:
+- indigo_client:
+	- show driver name when initialization fails
+
+- indigo_server:
+	- add OS and arch to the welcome message
+
+## Driver fixes:
+- indigo_agent_imager:
+	- selection cleared during pause on transit
+	- clear include and exclude regions when CCD_FRAME changes
+
+- indigo_agent_guider:
+	- clear include and exclude regions when CCD_FRAME changes
+
+- indigo_agent_mount:
+	- AGENT_COORDINATES_PROPAGATE_THESHOLD label changet to a more descriptive one
+
+- indigo_agent_alpaca:
+	- support for bayered images added
+
+- indigo_ccd_playerone:
+	- updated SDK to v.3.7.1
+
+- indigo_ccd_asi:
+	- updated SDK to 1.37
+	- add macOS on arm64 support
+
+- indigo_fcuser_asi:
+	- add macOS on arm64 support
+
+- indigo_ccd_ptp:
+	- fix crash with Fuji camera in a specific configurtion
+	- DSLR_DELETE_IMAGE_OFF ignored for Fuji X-T1
+
+- indigo_ccd_simulator:
+	- CCD_FRAME added
+
+
 # [2.0-304] - 5 Dec Thu 2024
 
 ## Overall:
