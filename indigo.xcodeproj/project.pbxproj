@@ -286,6 +286,7 @@
 		596FCAB32BD0328000F5BACB /* indigo_rotator_wa.c in Sources */ = {isa = PBXBuildFile; fileRef = 596FCAA72BD0328000F5BACB /* indigo_rotator_wa.c */; };
 		596FCAB42BD0328000F5BACB /* indigo_rotator_wa.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCAA82BD0328000F5BACB /* indigo_rotator_wa.h */; };
 		596FCAB52BD0328000F5BACB /* indigo_rotator_wa.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCAA82BD0328000F5BACB /* indigo_rotator_wa.h */; };
+		597320552D13468A0048BC5C /* libEFWFilter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D9682A21A2FE580069A64C /* libEFWFilter.a */; };
 		5973456F256704D6001741D4 /* indigo_focuser_mypro2.c in Sources */ = {isa = PBXBuildFile; fileRef = 5973456B256704CB001741D4 /* indigo_focuser_mypro2.c */; };
 		59790B2D29B2796300F73B1D /* indigo_service_discovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 59790B2C29B2796300F73B1D /* indigo_service_discovery.h */; };
 		59790B2E29B2796300F73B1D /* indigo_service_discovery.h in Headers */ = {isa = PBXBuildFile; fileRef = 59790B2C29B2796300F73B1D /* indigo_service_discovery.h */; };
@@ -650,6 +651,8 @@
 		59989A7A2A1BCEA200665AB7 /* libnncam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F129805E30003243AE /* libnncam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		59989A7B2A1BCEB200665AB7 /* libmallincam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; };
 		59989A7C2A1BCEB200665AB7 /* libmallincam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59B348AE29E85F8B0062C2EA /* libmallincam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		59998B3A2D0DC42100EE237D /* libASICamera2.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59D967FE21A2FDE70069A64C /* libASICamera2.a */; };
+		59998B3B2D0DC43400EE237D /* libEAFFocuser.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A3218021D52C6100EC0F4A /* libEAFFocuser.a */; };
 		5999FBCB1DB01F960084BBF8 /* indigo_base64.c in Sources */ = {isa = PBXBuildFile; fileRef = 5999FBC71DB01F950084BBF8 /* indigo_base64.c */; };
 		599A63A71DE8BD1700ABC827 /* indigo_json.c in Sources */ = {isa = PBXBuildFile; fileRef = 599A63A51DE8BD1700ABC827 /* indigo_json.c */; };
 		599A63A81DE8BD1700ABC827 /* indigo_json.h in Headers */ = {isa = PBXBuildFile; fileRef = 599A63A61DE8BD1700ABC827 /* indigo_json.h */; };
@@ -5022,6 +5025,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				59998B3B2D0DC43400EE237D /* libEAFFocuser.a in Frameworks */,
 				59CC444D2CD64E3C00F21E17 /* libqhyccd.dylib in Frameworks */,
 				5947BB902990270000040E99 /* libPlayerOneCamera.dylib in Frameworks */,
 				5947BB912990270000040E99 /* libPlayerOnePW.dylib in Frameworks */,
@@ -5037,6 +5041,7 @@
 				598A1C05259BA94A00C0B34C /* libtiff.a in Frameworks */,
 				596FCA962BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */,
+				597320552D13468A0048BC5C /* libEFWFilter.a in Frameworks */,
 				59B348A729E85F8A0062C2EA /* libaltaircam.dylib in Frameworks */,
 				598A1C07259BA94A00C0B34C /* libfcusb.a in Frameworks */,
 				9D08294B2C198614002166E1 /* libbressercam.dylib in Frameworks */,
@@ -5050,6 +5055,7 @@
 				598A1C0F259BA94A00C0B34C /* libhidapi.a in Frameworks */,
 				598A1C11259BA94A00C0B34C /* libapogee.a in Frameworks */,
 				596FCA9A2BD0320E00F5BACB /* libgxccd.a in Frameworks */,
+				59998B3A2D0DC42100EE237D /* libASICamera2.a in Frameworks */,
 				598A1C13259BA94A00C0B34C /* libdc1394.dylib in Frameworks */,
 				598A1C17259BA94A00C0B34C /* libcurl.tbd in Frameworks */,
 				598A1C18259BA94A00C0B34C /* libc++.tbd in Frameworks */,
