@@ -23,7 +23,7 @@
  \file indigo_ccd_simulator.c
  */
 
-#define DRIVER_VERSION 0x0018
+#define DRIVER_VERSION 0x0019
 #define DRIVER_NAME	"indigo_ccd_simulator"
 //#define ENABLE_BACKLASH_PROPERTY
 
@@ -45,7 +45,7 @@
 #include "indigo_ccd_simulator.h"
 
 // can be changed
-#define GUIDER_MAX_MAG					8
+#define GUIDER_MAG_LIMIT					8
 #define GUIDER_MAX_STARS				400
 #define GUIDER_FOV							7
 #define GUIDER_MAX_HOTPIXELS		1500
@@ -96,9 +96,10 @@
 #define GUIDER_IMAGE_RA_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 16)
 #define GUIDER_IMAGE_DEC_ITEM				(GUIDER_SETTINGS_PROPERTY->items + 17)
 #define GUIDER_IMAGE_EPOCH_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 18)
-#define GUIDER_IMAGE_ALT_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 19)
-#define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
-#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 21)
+#define GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM			(GUIDER_SETTINGS_PROPERTY->items + 19)
+#define GUIDER_IMAGE_ALT_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 20)
+#define GUIDER_IMAGE_AZ_ERROR_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 21)
+#define GUIDER_IMAGE_IMAGE_AGE_ITEM	(GUIDER_SETTINGS_PROPERTY->items + 22)
 
 #define BAHTINOV_SETTINGS_PROPERTY	PRIVATE_DATA->bahtinov_settings_property
 #define BAHTINOV_ROTATION_ITEM			(BAHTINOV_SETTINGS_PROPERTY->items + 0)
@@ -179,7 +180,7 @@ static void search_stars(indigo_device *device) {
 		double ppr_sin = ppr * sin(angle);
 		PRIVATE_DATA->star_count = 0;
 		for (indigocat_star_entry *star_data = indigocat_get_star_data(); star_data->hip; star_data++) {
-			if (star_data->mag > GUIDER_MAX_MAG)
+			if (star_data->mag > GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM->number.value)
 				continue;
 			double ra = (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 ? star_data->ra : star_data->ra_now) * h2r;
 			double dec = (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 ? star_data->dec : star_data->dec_now) * d2r;
@@ -825,7 +826,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_switch_item(GUIDER_MODE_SUN_ITEM, "SUN", "Sun", false);
 				indigo_init_switch_item(GUIDER_MODE_ECLIPSE_ITEM, "ECLIPSE", "Eclipse", false);
 				PRIVATE_DATA->eclipse = -ECLIPSE;
-				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 22);
+				GUIDER_SETTINGS_PROPERTY = indigo_init_number_property(NULL, device->name, "SIMULATION_SETUP", MAIN_GROUP, "Simulation Setup", INDIGO_OK_STATE, INDIGO_RW_PERM, 23);
 				indigo_init_number_item(GUIDER_IMAGE_WIDTH_ITEM, "IMAGE_WIDTH", "Image width (px)", 400, 16000, 0, 1600);
 				indigo_init_number_item(GUIDER_IMAGE_HEIGHT_ITEM, "IMAGE_HEIGHT", "Image height (px)", 300, 12000, 0, 1200);
 				indigo_init_number_item(GUIDER_IMAGE_NOISE_FIX_ITEM, "IMAGE_NOISE_FIX", "Image noise offset", 0, 5000, 0, 500);
@@ -846,6 +847,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_RA_ITEM, "RA", "RA (h)", 0, +24, 0, 18.84);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_DEC_ITEM, "DEC", "Dec (°)", -90, +90, 0, 38.75);
 				indigo_init_number_item(GUIDER_IMAGE_EPOCH_ITEM, "J2000", "J2000 (2000=J2k, 0=JNow)", 0, 2050, 0, 2000);
+				indigo_init_number_item(GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM, "MAGNITUDE_LIMIT", "Magnitude limit (m)", -2, 12, 1, GUIDER_MAG_LIMIT);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_ALT_ERROR_ITEM, "ALT_POLAR_ERROR", "Altitude polar error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_AZ_ERROR_ITEM, "AZ_POLAR_ERROR", "Azimuth polar error (°)", -30, +30, 0, 0);
 				indigo_init_sexagesimal_number_item(GUIDER_IMAGE_IMAGE_AGE_ITEM, "IMAGE_AGE", "Max image age (s)", 0, 3600, 0, 1.0 / 60.0);
