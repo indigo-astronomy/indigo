@@ -654,7 +654,9 @@ static int select_stars(indigo_device *device) {
 		indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
 		indigo_item *item_y = AGENT_GUIDER_SELECTION_Y_ITEM + 2 * i;
 		if (i == AGENT_GUIDER_STARS_PROPERTY->count - 1) {
-			indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
+			if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+				indigo_send_message(device, "Warning: Only %d suitable %s found (%d requested).", star_count, star_count == 1 ? "star" : "stars", (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value);
+			}
 			break;
 		}
 		item_x->number.target = item_x->number.value = DEVICE_PRIVATE_DATA->stars[i].x;
@@ -672,6 +674,7 @@ static int select_stars(indigo_device *device) {
 		item_y->number.target = item_y->number.value = 0;
 	}
 	indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selected %d of %d stars (needed %d)", star_count, (int)AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value, DEVICE_PRIVATE_DATA->stars_used_at_start);
 	return star_count;
 }
 
@@ -1525,7 +1528,7 @@ static bool guide(indigo_device *device) {
 						restore_subframe(device);
 						clear_selection(device);
 						DEVICE_PRIVATE_DATA->silence_warnings = true;
-						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || min_usable_stars < select_stars(device))) {
+						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || min_usable_stars > select_stars(device))) {
 							indigo_usleep(1000000);
 						}
 					}
