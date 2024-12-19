@@ -23,7 +23,7 @@
  \file indigo_agent_guider.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0027
 #define DRIVER_NAME	"indigo_agent_guider"
 
 #include <stdlib.h>
@@ -187,7 +187,8 @@
 #define AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM				(AGENT_PROCESS_FEATURES_PROPERTY->items+3)
 #define AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM		(AGENT_PROCESS_FEATURES_PROPERTY->items+4)
 #define AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+5)
-#define AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+6)
+#define AGENT_GUIDER_RESET_ON_GUIDING_ERROR_WAIT_ALL_STARS_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+6)
+#define AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM			(AGENT_PROCESS_FEATURES_PROPERTY->items+7)
 
 #define IS_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value != 0)
 #define NOT_DITHERING (AGENT_GUIDER_STATS_DITHERING_ITEM->number.value == 0)
@@ -244,6 +245,7 @@ typedef struct {
 	pthread_mutex_t mutex;
 	int log_file;
 	char log_file_name[PATH_MAX];
+	int stars_used_at_start;
 	bool no_guiding_star;
 	bool first_frame;
 	bool has_camera;
@@ -543,6 +545,16 @@ static bool capture_frame(indigo_device *device) {
 	return false;
 }
 
+static int usable_star_count(indigo_device *device) {
+	int star_count = 0;
+	for (star_count = 0; star_count < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; star_count++) {
+		if ((AGENT_GUIDER_SELECTION_X_ITEM + star_count)->number.value == 0 && (AGENT_GUIDER_SELECTION_Y_ITEM + star_count)->number.value == 0) {
+			return star_count;
+		}
+	}
+	return star_count;
+}
+
 static void clear_selection(indigo_device *device) {
 	if (AGENT_GUIDER_STARS_PROPERTY->count > 1) {
 		indigo_delete_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
@@ -636,7 +648,7 @@ static bool validate_include_region(indigo_device *device, bool force) {
 	return false;
 }
 
-static bool select_stars(indigo_device *device) {
+static int select_stars(indigo_device *device) {
 	int star_count = 0;
 	for (int i = 0; i < AGENT_GUIDER_SELECTION_STAR_COUNT_ITEM->number.value; i++) {
 		indigo_item *item_x = AGENT_GUIDER_SELECTION_X_ITEM + 2 * i;
@@ -660,7 +672,7 @@ static bool select_stars(indigo_device *device) {
 		item_y->number.target = item_y->number.value = 0;
 	}
 	indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-	return star_count > 0;
+	return star_count;
 }
 
 static bool check_selection(indigo_device *device) {
@@ -677,7 +689,7 @@ static bool check_selection(indigo_device *device) {
 		result = find_stars(device);
 	}
 	if (result && AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE) {
-		result = select_stars(device);
+		result = select_stars(device) > 0;
 	}
 	return result;
 }
@@ -1450,6 +1462,7 @@ static bool guide(indigo_device *device) {
 	int image_format = indigo_save_switch_state(device, CCD_IMAGE_FORMAT_PROPERTY_NAME, CCD_IMAGE_FORMAT_RAW_ITEM_NAME);
 	if (!AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
 		check_selection(device);
+		DEVICE_PRIVATE_DATA->stars_used_at_start = usable_star_count(device);
 	}
 	double prev_correction_dec = 0;
 	indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
@@ -1478,6 +1491,7 @@ static bool guide(indigo_device *device) {
 							indigo_send_message(device, "Error: No guide stars found");
 							break;
 						}
+						DEVICE_PRIVATE_DATA->stars_used_at_start = usable_star_count(device);
 					} else {
 						break;
 					}
@@ -1492,19 +1506,26 @@ static bool guide(indigo_device *device) {
 					DEVICE_PRIVATE_DATA->silence_warnings = true;
 				} else if (AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM->sw.value) {
 					DEVICE_PRIVATE_DATA->phase = INDIGO_GUIDER_PHASE_INITIALIZING;
-					if (!DEVICE_PRIVATE_DATA->silence_warnings) {
-						indigo_send_message(device, "Warning: Resetting and waiting for stars to reappear");
-					}
 					if (AGENT_GUIDER_DETECTION_DONUTS_ITEM->sw.value) {
+						if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+							indigo_send_message(device, "Warning: Resetting and waiting for stars to reappear");
+						}
 						DEVICE_PRIVATE_DATA->silence_warnings = true;
 						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_and_process_frame(device) || DEVICE_PRIVATE_DATA->no_guiding_star)) {
 							indigo_usleep(1000000);
 						}
 					} else {
+						int min_usable_stars = 1;
+						if (AGENT_GUIDER_RESET_ON_GUIDING_ERROR_WAIT_ALL_STARS_ITEM->sw.value) {
+							min_usable_stars = DEVICE_PRIVATE_DATA->stars_used_at_start;
+						}
+						if (!DEVICE_PRIVATE_DATA->silence_warnings) {
+							indigo_send_message(device, "Warning: Resetting and waiting for %d %s to reappear", min_usable_stars, min_usable_stars == 1 ? "star" : "stars");
+						}
 						restore_subframe(device);
 						clear_selection(device);
 						DEVICE_PRIVATE_DATA->silence_warnings = true;
-						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || !select_stars(device))) {
+						while (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE && (!capture_frame(device) || !find_stars(device) || min_usable_stars < select_stars(device))) {
 							indigo_usleep(1000000);
 						}
 					}
@@ -1897,7 +1918,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_ABORT_PROCESS_ITEM, AGENT_ABORT_PROCESS_ITEM_NAME, "Abort", false);
 		
-		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 7);
+		AGENT_PROCESS_FEATURES_PROPERTY = indigo_init_switch_property(NULL, device->name, AGENT_PROCESS_FEATURES_PROPERTY_NAME, "Agent", "Process features", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, 8);
 		if (AGENT_PROCESS_FEATURES_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM, AGENT_GUIDER_ENABLE_LOGGING_FEATURE_ITEM_NAME, "Enable logging", false);
@@ -1906,6 +1927,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		indigo_init_switch_item(AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM, AGENT_GUIDER_FAIL_ON_GUIDING_ERROR_ITEM_NAME, "Fail on guiding error", false);
 		indigo_init_switch_item(AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM, AGENT_GUIDER_CONTINUE_ON_GUIDING_ERROR_ITEM_NAME, "Continue on guiding error", false);
 		indigo_init_switch_item(AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM, AGENT_GUIDER_RESET_ON_GUIDING_ERROR_ITEM_NAME, "Reset selection on guiding error", true);
+		indigo_init_switch_item(AGENT_GUIDER_RESET_ON_GUIDING_ERROR_WAIT_ALL_STARS_ITEM, AGENT_GUIDER_RESET_ON_GUIDING_ERROR_WAIT_ALL_STARS_ITEM_NAME, "Reset selection should wait for all stars before resuming", true);
 		indigo_init_switch_item(AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM, AGENT_GUIDER_USE_INCLUDE_FOR_DONUTS_ITEM_NAME, "Use include region for DONUTS", false);
 		//------------------------------------------------------------------------------- Mount orientation
 		AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY = indigo_init_number_property(NULL, device->name, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY_NAME, "Agent", "Telescope coordinates", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
