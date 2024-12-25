@@ -1,7 +1,7 @@
 #ifndef __altaircam_h__
 #define __altaircam_h__
 
-/* Version: 57.26598.20240928 */
+/* Version: 57.27348.20241224 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -29,6 +29,12 @@
     doc:
        (1) en.html, English
        (2) hans.html, Simplified Chinese
+*/
+
+/*
+    Please distinguish between camera ID (camId) and camera SN:
+        (a) SN is unique and persistent, fixed inside the camera and remains unchanged, and does not change with connection or system restart.
+        (b) Camera ID (camId) may change due to connection or system restart. Enumerate the cameras to get the camera ID, and then call the Open function to pass in the camId parameter to open the camera.
 */
 
 #if defined(_WIN32)
@@ -288,7 +294,7 @@ typedef struct {
 } AltaircamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.26598.20240928
+    get the version of this dll/so/dylib, which is: 57.27348.20241224
 */
 #if defined(_WIN32)
 ALTAIRCAM_API(const wchar_t*)   Altaircam_Version();
@@ -365,16 +371,17 @@ ALTAIRCAM_API(HRESULT)  Altaircam_StartPullModeWithWndMsg(HAltaircam h, HWND hWn
 typedef void (__stdcall* PALTAIRCAM_EVENT_CALLBACK)(unsigned nEvent, void* ctxEvent);
 ALTAIRCAM_API(HRESULT)  Altaircam_StartPullModeWithCallback(HAltaircam h, PALTAIRCAM_EVENT_CALLBACK funEvent, void* ctxEvent);
 
-#define ALTAIRCAM_FRAMEINFO_FLAG_SEQ          0x00000001 /* frame sequence number */
-#define ALTAIRCAM_FRAMEINFO_FLAG_TIMESTAMP    0x00000002 /* timestamp */
-#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOTIME     0x00000004 /* exposure time */
-#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOGAIN     0x00000008 /* exposure gain */
-#define ALTAIRCAM_FRAMEINFO_FLAG_BLACKLEVEL   0x00000010 /* black level */
-#define ALTAIRCAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x00000020 /* sequence shutter counter */
-#define ALTAIRCAM_FRAMEINFO_FLAG_GPS          0x00000040 /* GPS */
-#define ALTAIRCAM_FRAMEINFO_FLAG_AUTOFOCUS    0x00000080 /* auto focus: uLum & uFV */
-#define ALTAIRCAM_FRAMEINFO_FLAG_COUNT        0x00000100 /* timecount, framecount, tricount */
-#define ALTAIRCAM_FRAMEINFO_FLAG_STILL        0x00008000 /* still image */
+#define ALTAIRCAM_FRAMEINFO_FLAG_SEQ                0x00000001 /* frame sequence number */
+#define ALTAIRCAM_FRAMEINFO_FLAG_TIMESTAMP          0x00000002 /* timestamp */
+#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOTIME           0x00000004 /* exposure time */
+#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOGAIN           0x00000008 /* exposure gain */
+#define ALTAIRCAM_FRAMEINFO_FLAG_BLACKLEVEL         0x00000010 /* black level */
+#define ALTAIRCAM_FRAMEINFO_FLAG_SHUTTERSEQ         0x00000020 /* sequence shutter counter */
+#define ALTAIRCAM_FRAMEINFO_FLAG_GPS                0x00000040 /* GPS */
+#define ALTAIRCAM_FRAMEINFO_FLAG_AUTOFOCUS          0x00000080 /* auto focus: uLum & uFV */
+#define ALTAIRCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
+#define ALTAIRCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
+#define ALTAIRCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
 
 typedef struct {
     unsigned            width;
@@ -500,7 +507,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_SnapR(HAltaircam h, unsigned nResolutionIndex,
 /*
     soft trigger:
     nNumber:    0xffff:     trigger continuously
-                0:          cancel trigger
+                0:          cancel trigger, see ALTAIRCAM_OPTION_TRIGGER_CANCEL_MODE
                 others:     number of images to be triggered
 */
 ALTAIRCAM_API(HRESULT)  Altaircam_Trigger(HAltaircam h, unsigned short nNumber);
@@ -1018,7 +1025,7 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
                                                                 1~99: peak percent average
                                                                 0 or 100: full roi average, means "disabled"
                                                          */
-#define ALTAIRCAM_OPTION_ANTI_SHUTTER_EFFECT    0x4b       /* anti shutter effect: 1 => disable, 0 => disable; default: 0 */
+#define ALTAIRCAM_OPTION_ANTI_SHUTTER_EFFECT    0x4b       /* anti shutter effect: 1 => enable, 0 => disable; default: 0 */
 #define ALTAIRCAM_OPTION_CHAMBER_HT             0x4c       /* get chamber humidity & temperature:
                                                                 high 16 bits: humidity, in 0.1%, such as: 325 means humidity is 32.5%
                                                                 low 16 bits: temperature, in 0.1 degrees Celsius, such as: 32 means 3.2 degrees Celsius
@@ -1116,7 +1123,9 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
                                                             Policy 1 avoids the black screen, but the convergence speed is slower.
                                                             Default: 0
                                                          */
-#define ALTAIRCAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read) */
+#define ALTAIRCAM_OPTION_READOUT_MODE           0x69       /* Readout mode: 0 = IWR (Integrate While Read), 1 = ITR (Integrate Then Read)
+                                                              The working modes of the detector readout circuit can be divided into two types: ITR and IWR. Using the IWR readout mode can greatly increase the frame rate. In the ITR mode, the integration of the (n+1)th frame starts after all the data of the nth frame are read out, while in the IWR mode, the data of the nth frame is read out at the same time when the (n+1)th frame is integrated
+                                                         */
 #define ALTAIRCAM_OPTION_TAILLIGHT              0x6a       /* Turn on/off tail Led light: 0 => off, 1 => on; default: on */
 #define ALTAIRCAM_OPTION_LENSSTATE              0x6b       /* Load/Save lens state to EEPROM: 0 => load, 1 => save */
 #define ALTAIRCAM_OPTION_AWB_CONTINUOUS         0x6c       /* Auto White Balance: continuous mode
@@ -1134,6 +1143,14 @@ ALTAIRCAM_API(HRESULT)  Altaircam_feed_Pipe(HAltaircam h, unsigned pipeId);
 #define ALTAIRCAM_OPTION_GVCP_RETRY             0x72       /* GVCP Retry: range = [2, 8], default: 4
                                                               Unless in very special circumstances, generally no modification is required, just use the default value
                                                          */
+#define ALTAIRCAM_OPTION_GVSP_WAIT_PERCENT      0x73       /* GVSP wait percent: range = [0, 100], default = (trigger mode: 100, realtime: 0, other: 1) */
+#define ALTAIRCAM_OPTION_RESET_SEQ_TIMESTAMP    0x74       /* Reset to 0: 1 => seq; 2 => timestamp; 3 => both */
+#define ALTAIRCAM_OPTION_TRIGGER_CANCEL_MODE    0x75       /* Trigger cancel mode: 0 => no frame, 1 => output frame; default: 0 */
+#define ALTAIRCAM_OPTION_MECHANICALSHUTTER      0x76       /* Mechanical shutter: 0 => open, 1 => close; default: 0 */
+#define ALTAIRCAM_OPTION_LINE_TIME              0x77       /* Line-time of sensor in nanosecond */
+#define ALTAIRCAM_OPTION_ZERO_PADDING           0x78       /* Zero padding: 0 => high, 1 => low; default: 0 */
+#define ALTAIRCAM_OPTION_UPTIME                 0x79       /* device uptime in millisecond */
+#define ALTAIRCAM_OPTION_BITRANGE               0x7a       /* Bit range: [0, 8] */
 
 /* pixel format */
 #define ALTAIRCAM_PIXELFORMAT_RAW8              0x00
@@ -1219,11 +1236,11 @@ ALTAIRCAM_API(HRESULT)  Altaircam_put_XY(HAltaircam h, int x, int y);
 #define ALTAIRCAM_IOCONTROLTYPE_GET_COUNTERVALUE             0x15 /* Counter Value, range: [1 ~ 65535] */
 #define ALTAIRCAM_IOCONTROLTYPE_SET_COUNTERVALUE             0x16
 #define ALTAIRCAM_IOCONTROLTYPE_SET_RESETCOUNTER             0x18
-#define ALTAIRCAM_IOCONTROLTYPE_GET_PWM_FREQ                 0x19
+#define ALTAIRCAM_IOCONTROLTYPE_GET_PWM_FREQ                 0x19 /* PWM Frequency */
 #define ALTAIRCAM_IOCONTROLTYPE_SET_PWM_FREQ                 0x1a
-#define ALTAIRCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO            0x1b
+#define ALTAIRCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO            0x1b /* PWM Duty Ratio */
 #define ALTAIRCAM_IOCONTROLTYPE_SET_PWM_DUTYRATIO            0x1c
-#define ALTAIRCAM_IOCONTROLTYPE_GET_PWMSOURCE                0x1d /* 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
+#define ALTAIRCAM_IOCONTROLTYPE_GET_PWMSOURCE                0x1d /* PWM Source: 0x00 => Opto-isolated input, 0x01 => GPIO0, 0x02 => GPIO1 */
 #define ALTAIRCAM_IOCONTROLTYPE_SET_PWMSOURCE                0x1e
 #define ALTAIRCAM_IOCONTROLTYPE_GET_OUTPUTMODE               0x1f /*
                                                                    0x00 => Frame Trigger Wait
@@ -1460,7 +1477,8 @@ ALTAIRCAM_API(HRESULT)  Altaircam_put_ColorMatrix(HAltaircam h, const double v[9
 ALTAIRCAM_API(HRESULT)  Altaircam_put_InitWBGain(HAltaircam h, const unsigned short v[3]); /* null => revert to model default */
 
 /*
-    get the frame rate: framerate (fps) = Frame * 1000.0 / nTime
+    get the actual frame rate of the camera at the most recent time (about a few seconds):
+    framerate (fps) = nFrame * 1000.0 / nTime
 */
 ALTAIRCAM_API(HRESULT)  Altaircam_get_FrameRate(HAltaircam h, unsigned* nFrame, unsigned* nTime, unsigned* nTotalFrame);
 

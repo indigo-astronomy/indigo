@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Altaircam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 57.26598.20240928</li></ul>
+<hr/><ul><li>Version: 57.27348.20241224</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -63,8 +63,8 @@ The SDK zip file contains all of the necessary resources and information:</p>
 		 <li>It is recommended to use DPInst.exe to automatically install the driver. If you use NSIS to make the installation file, you can use a statement similar to the following:
 			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>ExecWait '"$INSTDIR\drivers\x64\DPInst.exe" /SA /SW /PATH "$INSTDIR\drivers\x64"'</pre></td></tr></table></li>
 		</ol></blockquote></blockquote>
-		<blockquote>GigE: GigE Performance Driver, is optional for gigabit cameras, must be installed and enabled for 10G cameras. Please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd):<blockquote>
-			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv</pre></td></tr></table>
+		<blockquote>GigE: GigE Performance Driver (Win7 or above), is optional for gigabit cameras, must be installed and enabled for 10G cameras. Please use the command line (<b>Administrator mode</b>), cd to the directory where the .inf file is located, and execute the following statement to install (install.cmd). If there is an old version, need to uninstall the old version first, and then install the new version:<blockquote>
+			<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>Install:   netcfg.exe -v -l gigepdrv.inf -c s -i gigepdrv<br/>Uninstall: netcfg.exe -u gigepdrv</pre></td></tr></table>
 		</blockquote></blockquote>
 		</li></ul></li>
 </ul><ul><li>linux: For Linux
@@ -99,7 +99,11 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 		<li>imagepro: liveedf, live stitch, live stack</li>
 </ul></li></ul>
 <hr/><h1><font color="#0000FF">3. Concepts &amp; Terminology</font></h1><hr/>
-<h2><font color="#0000FF">a. Modes for accessing image data: "Pull" Mode vs "Push" Mode</font></h2>
+<h2><font color="#0000FF"><a id="camidsn">a. Camera ID (camId) vs Camera SN (Serial Number)</a></font></h2>
+<p>Please distinguish between camera ID (camId) and camera SN:<br/>
+(a) SN is unique and persistent, fixed inside the camera and remains unchanged, and does not change with connection or system restart.<br/>
+(b) Camera ID (camId) may change due to connection or system restart. Enumerate the cameras to get the camera ID, and then call the Open function to pass in the camId parameter to open the camera.</p>
+<h2><font color="#0000FF">b. Modes for accessing image data: "Pull" Mode vs "Push" Mode</font></h2>
 <p>Altaircam offers two modes to obtain image data: Pull Mode and Push Mode. The former is recommended since it's simpler and the application seldom gets stuck in multithreading conditions, especially when using windows message to notify the events.</p>
 <ul><li>In Pull Mode, altaircam plays a passive role and the application 'PULL' image data from altaircam. The internal thread of altaircam obtains image data from the camera hardware and saves them to the internal buffers, then notify the application (see below). The application then call functions Altaircam_PullImageV4(V3) or Altaircam_PullImage(WithRowPitch)(V2), Altaircam_PullStillImage(WithRowPitch)(V2) to access image data.</li>
 </ul><blockquote>
@@ -191,19 +195,19 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
  </tr></table></div></blockquote>
 <ul>
   <li>In Push Mode, altaircam plays an active role. Once the video data is obtained from camera by internal thread, altaircam will 'PUSH' the image data to the application through PALTAIRCAM_DATA_CALLBACK. Call the function Altaircam_StartPushMode to start push mode. Push mode is more complex. There are some special precautions, such as multithread issues, being impossible to call Altaircam_Close and Altaircam_Stop in callback function PALTAIRCAM_DATA_CALLBACK_V4/V3, etc.</li>
-</ul><h2><font color="#0000FF">b. <a id="stillcapture">Still Capture (Still Image)</a></font></h2>
+</ul><h2><font color="#0000FF">c. <a id="stillcapture">Still Capture (Still Image)</a></font></h2>
 <p>Most cameras support the so-called still capture capability. This function switches the camera to another resolution temporarily when the camera is in preview mode, after a "still" image in the new resolution is captured and then switch back to the original resolution and resume preview mode.</p>
 <p>For example, UCMOS05100KPA support 3 resolutions and the current one in preview mode is 1280 * 960. Call Altaircam_Snap(h, 0) to "still capture" an image in 2592 * 1944 resolution. To realize this function, the camera will temporarily switch to 2592 * 1944 firstly, get an image in 2592 * 1944 resolution and then switch back to 1280 * 960 and resume preview.</p>
 <blockquote>a) In pull mode operation, after the still capture, ALTAIRCAM_EVENT_STILLIMAGE will be sent out for external acknowledgement. The external application should call Altaircam_PullImageV4(V3) or Altaircam_PullStillImage(V2) to get the still captured image.</blockquote>
 <blockquote>b) In push mode operation, after the still capture, the callback function PALTAIRCAM_DATA_CALLBACK_V4/V3 will be called with bSnap parameter setting TRUE. The image information including the resolution information will be obtained via the parameter pHeader.</blockquote>
 <p>To check whether the camera have the still capture capability, call Altaircam_get_StillResolutionNumber function or check the still field of the struct AltaircamModelV2.</p>
-<h2><font color="#0000FF"><a id="raw">c. Data format: RGB vs RAW</a></font></h2>
+<h2><font color="#0000FF"><a id="raw">d. Data format: RGB vs RAW</a></font></h2>
 <p>Altaircam supports two data formats: RGB format (default) and RAW format. RAW format could be enabled by assigning ALTAIRCAM_OPTION_RAW parameter to 1 when calling Altaircam_put_Option function.</p>
 <ul><li>RGB format: The output of every pixel contains 3 componants which stand for R/G/B value respectively. This output is a processed output from the internal color processing engine.</li></ul>
 <ul><li>RAW format: In this format, the output is the raw data directly output from the sensor. The RAW format is for the users that want to skip the internal color processing and obtain the raw data for user-specific purpose. With the raw format output enabled, the functions that are related to the internal color processing will not work, such as Altaircam_put_Hue or Altaircam_AwbOnce function and so on.</li></ul>
 <p>Users could switch these two format by calling Altaircam_put_Option function with different value setting to <a href="#rawo">ALTAIRCAM_OPTION_RAW</a>. You change this option only when camera is NOT running.</p>
 <p>Users could change RGB bits by calling Altaircam_put_Option with different value setting to <a href="#rgb">ALTAIRCAM_OPTION_RGB</a>. You change this option only when camera is NOT running.</p>
-<h2><font color="#0000FF"><a id="wb">d. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
+<h2><font color="#0000FF"><a id="wb">e. White Balance and Auto White Balance: Temp/Tint mode vs RGB Gain mode</a></font></h2>
 <p>1. Altaircam sdk supports two independent modes for white balance: a) Temp/Tint Mode; b) RGB Gain Mode</p>
 <blockquote>
 <p>a) Temp/Tint mode is the default white balance mode. In this mode, temp and tint are the parameters that could be used to control the white balance. Altaircam_get_TempTint function is used to acquire the temp and tint values and Altaircam_put_TempTint is used to set the temp and tint values. Function Altaircam_AwbOnce is used to execute the auto white balance. When the white balance parameters change, ALTAIRCAM_EVENT_TEMPTINT event will be notified for external use.</p>
@@ -217,7 +221,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 </blockquote>
 <p>2. There are two auto white balance mechanisms available in this field: one is continuous auto white balance and the other is a "once" auto white balance. The white balance parameters will be always calculated and updated for the continuous auto white balance mechanism. For "once" auto white balance mechanism, the white balance parameters will be calculated and updated only when triggered. Altaircam cameras support "once" auto white balance mechanism since it is more accurate and propriate for the microscope application, especially when the background is in pure color. Continuous white balance mechanism will encounter some problem in some cases.</p>
 <p>3. Monochromatic camera does not support white balance. The functions metioned above always return E_NOTIMPL.</p>
-<h2><font color="#0000FF">e. <a id="trigger">Trigger Mode</a></font></h2>
+<h2><font color="#0000FF">f. <a id="trigger">Trigger Mode</a></font></h2>
 <p>1. What is Trigger Mode</p>
 	<blockquote>
 		Altaircam camera has two working modes: video mode and trigger mode. When in trigger mode, no images will be available until the trigger conditions are met. Cameras have 2 types for triggering according to the types of trigger source, including software trigger mode, external trigger mode and simulated trigger mode.
@@ -268,7 +272,7 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 	<blockquote>
 	The timeout is recommended for not less than (Exposure Time * 102% + 4 Seconds).
 	</blockquote>
-<h2><font color="#0000FF">f. Thread safe</font></h2>
+<h2><font color="#0000FF">g. Thread safe</font></h2>
 <p>We use a "neutral" policy (similar to C++ standard library), which means:</p>
 <blockquote>
 <p>a) A camera object is thread-safe for reading from multiple threads. For example, given a camera object A, it is safe to read A from thread 1 and from thread 2 simultaneously.</p>
@@ -276,13 +280,13 @@ Another example, which can be seen to belong to x64:<table width="100%" border="
 <p>c) It's safe to read and write to one camera object even if another thread is reading or writing to a different camera object. For example, given camera objects A and B, it's safe when A is being written in thread 1 and B is being read or write in thread 2.</p>
 <p>d) It's safe to pull image from multi threads</p>
 </blockquote>
-<h2><font color="#0000FF">g. Log file</font></h2>
+<h2><font color="#0000FF">h. Log file</font></h2>
 <p>The SDK does not output logs by default. If there is a file with the same name and extension *.log in the directory where the SDK library file is located and it has <strong>write permission</strong>, the log will be enabled and recorded in this file:</p>
 <blockquote>
 <p>a) The log file name is exactly the same as the library file, and the extension is changed to *.log (e.g. altaircam.dll corresponds to the log file altaircam.log; xyz.dll to xyz.log; libxyz.so to libxyz.log)</p>
 <p>b) The log file time uses relative time by default, and the SDK startup time is recorded as [00:00:00.000]. If you want to use local time (e.g. [0923 17:11:01.491]), add the letter "l" to *.log (i.e. *.llog)</p>
 <p>c) By default, the log file content is automatically cleared every time SDK is started, and the log is written from the beginning. Adding the letter "a" to *.log means that the append mode is used, and the log file content is not cleared when SDK is restarted</p>
-<p>d) <strong>Please make sure that the program has write permission to the log file</strong></p>
+<p>d) <strong>Please make sure that the program has write permission to the log file</strong>(For example, if the program is installed in the Program Files directory, it often happens that the log file cannot be written in non-administrator mode. It is recommended to run the program in administrator mode or modify the permission of the log file.)</p>
 </blockquote>
 <hr/><h1><font color="#0000FF">4. Functions</font></h1><hr/>
 <ul><li><h2><font color="#0000FF"><a id="hresult">HRESULT return value</a></font></h2>
@@ -417,10 +421,10 @@ for (unsigned i = 0; i &lt; cnt; ++i)
 typedef struct {
 #if defined(_WIN32)
     wchar_t  displayname[64];    /* display name: model name or user-defined name (if any and Altaircam_EnumWithName, Altaircam_EnumV2 always returns model name) */
-    wchar_t  id[64];             /* unique and opaque id of a connected camera, for Altaircam_Open */
+    wchar_t  id[64];             /* camId */
 #else
     char     displayname[64];    /* display name: model name or user-defined name (if any and Altaircam_EnumWithName, Altaircam_EnumV2 always returns model name) */
-    char     id[64];             /* unique and opaque id of a connected camera, for Altaircam_Open */
+    char     id[64];             /* camId */
 #endif
     const AltaircamModelV2* model;
 } AltaircamDeviceV2; /* device instance for enumerating */
@@ -634,6 +638,7 @@ typedef struct {
   <li>On Android, please refer <a href="https://developer.android.com/guide/topics/connectivity/usb/host" target="_blank">here</a></li>
   <li>On Linux/macOS, please call this function to register the callback function. When the device is inserted or pulled out, you will be notified by the callback funcion, and then call Altaircam_EnumV2(...) again to enum the cameras.</li>
   <li>On macOS, IONotificationPortCreate series APIs can also be used as an alternative.</li>
+  <li>This function <strong>is not applicable to GigE devices</strong>. For notifications about GigE devices, please see <a href="#apigige">here</a>.</li>
 </ul></blockquote>
 </li></ul><ul><li><h2><font color="#0000FF"><a id="apigige">Altaircam_GigeEnable</a></font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -647,7 +652,7 @@ typedef struct {
   <p><strong>Return value: </strong> HAltaircam handle. Return NULL when fails (Such as the device has been pulled out).</p>
   <p><strong>Parameters:</strong></p>
   	<blockquote>
-  		<p>camId: Altaircam camera instance, enumerated by Altaircam_EnumV2. <strong>If camId is NULL, Altaircam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Altaircam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
+  		<p><a href="#camidsn">camId</a>: Altaircam camera ID, enumerated by Altaircam_EnumV2. <strong>If camId is NULL, Altaircam_Open will open the first enumerated camera which connects to the computer. So, if we don't care about that multiple cameras connect to the computer simultaneously, Altaircam_EnumV2 is optional, we can simply use NULL as the parameter.</strong></p>
   	</blockquote>
   <p><strong>Remarks:</strong> open the camera instance.</p>
   <p>(1) Supports attaching some additional parameters after camId parameter (<strong>Use semicolon (;) to split, case sensitive</strong>), such as:</p>
@@ -748,16 +753,17 @@ for (UsbDevice usbDevice : deviceList.values()) {
     <p>unsigned* pnWidth, unsigned* pnHeight: out parameter. width and height of image.</p>
 	<p>AltaircamFrameInfoV4/V3/V2* pInfo: out parameter, frame info:</p>
 	<table width="100%" border="0" bgcolor="#B0D0B0"><tr><td><pre>
-#define ALTAIRCAM_FRAMEINFO_FLAG_SEQ          0x0001 /* frame sequence number */
-#define ALTAIRCAM_FRAMEINFO_FLAG_TIMESTAMP    0x0002 /* timestamp */
-#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOTIME     0x0004 /* exposure time */
-#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOGAIN     0x0008 /* exposure gain */
-#define ALTAIRCAM_FRAMEINFO_FLAG_BLACKLEVEL   0x0010 /* black level */
-#define ALTAIRCAM_FRAMEINFO_FLAG_SHUTTERSEQ   0x0020 /* sequence shutter counter */
-#define ALTAIRCAM_FRAMEINFO_FLAG_GPS          0x0040 /* GPS */
-#define ALTAIRCAM_FRAMEINFO_FLAG_AUTOFOCUS    0x0080 /* auto focus: uLum &amp; uFV */
-#define ALTAIRCAM_FRAMEINFO_FLAG_COUNT        0x0100 /* timecount, framecount, tricount */
-#define ALTAIRCAM_FRAMEINFO_FLAG_STILL        0x8000 /* still image */
+#define ALTAIRCAM_FRAMEINFO_FLAG_SEQ                0x00000001 /* frame sequence number */
+#define ALTAIRCAM_FRAMEINFO_FLAG_TIMESTAMP          0x00000002 /* timestamp */
+#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOTIME           0x00000004 /* exposure time */
+#define ALTAIRCAM_FRAMEINFO_FLAG_EXPOGAIN           0x00000008 /* exposure gain */
+#define ALTAIRCAM_FRAMEINFO_FLAG_BLACKLEVEL         0x00000010 /* black level */
+#define ALTAIRCAM_FRAMEINFO_FLAG_SHUTTERSEQ         0x00000020 /* sequence shutter counter */
+#define ALTAIRCAM_FRAMEINFO_FLAG_GPS                0x00000040 /* GPS */
+#define ALTAIRCAM_FRAMEINFO_FLAG_AUTOFOCUS          0x00000080 /* auto focus: uLum &amp; uFV */
+#define ALTAIRCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
+#define ALTAIRCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
+#define ALTAIRCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
 
 typedef struct {
     unsigned            width;      /* image width, always available */
@@ -965,7 +971,6 @@ typedef struct {
   <blockquote>
 	<p><strong>Important: It is forbidden to call Altaircam_put_Roi in the callback context of PALTAIRCAM_EVENT_CALLBACK and PALTAIRCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</strong></p>
   	<p><strong>Pay attention to that the coordinate is always relative to the original resolution</strong>, see <a href="#cord">here</a>.</p>
-	<p>The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support ROI, so the return value is E_NOTIMPL.</p>
   </blockquote>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_get_ResolutionNumber<br/>Altaircam_get_Resolution<br/>Altaircam_get_ResolutionRatio</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -1062,6 +1067,13 @@ typedef struct {
 			Please distinguish it from Altaircam_put_VFlip, which requires the CPU to perform data moving work on each frame of data</td>
       	<td>Win: 1<br/>Linux/MacOS/Android: 0</td>
       	<td><b>No</b><br/>(The return value is E_UNEXPECTED when set this option while camera is running)</td>
+      </tr><tr>
+      	<td>ALTAIRCAM_OPTION_ZERO_PADDING</td><td>RW</td>
+      	<td>Zero padding method when bitdepth is greater than 8 and less than 16:<br/>
+		0: high-odrder<br/>
+		1: low-order</td>
+      	<td>0</td>
+      	<td>Yes</td>
       </tr><tr>
       	<td>ALTAIRCAM_OPTION_FAN</td><td>RW</td>
       	<td>Some cameras support the cooling fan.<br/>
@@ -1401,7 +1413,7 @@ ALTAIRCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</
 		<td>disable<br/>(t1=10, t2=0)</td><td>Yes</td>
       </tr><tr>
         <td>ALTAIRCAM_OPTION_ANTI_SHUTTER_EFFECT</td><td>RW</td>
-        <td>anti shutter effect: 1 =&gt; disable, 0 =&gt; disable</td>
+        <td>anti shutter effect: 1 =&gt; enable, 0 =&gt; disable</td>
 		<td>disable (0)</td><td>Yes</td>
       </tr><tr>
         <td>ALTAIRCAM_OPTION_OVERCLOCK_MAX</td><td>RO</td>
@@ -1414,6 +1426,13 @@ ALTAIRCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</
       </tr><tr>
         <td>ALTAIRCAM_OPTION_RESET_SENSOR</td><td>WO</td>
         <td>reset sensor</td>
+		<td>NA</td><td>Yes</td>
+      </tr><tr>
+        <td>ALTAIRCAM_OPTION_RESET_SEQ_TIMESTAMP</td><td>WO</td>
+        <td>Reset seq, timestamp:<br/>
+		1: seq<br/>
+		2: timestamp<br/>
+		3: both</td>
 		<td>NA</td><td>Yes</td>
       </tr><tr>
         <td>ALTAIRCAM_OPTION_CHAMBER_HT</td><td>RO</td>
@@ -1537,7 +1556,8 @@ ALTAIRCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</
       	<td>ALTAIRCAM_OPTION_READOUT_MODE</td><td>RW</td>
       	<td>Readout mode:<br/>
 		0 = IWR (Integrate While Read)<br/>
-		1 = ITR (Integrate Then Read)</td>
+		1 = ITR (Integrate Then Read)<br/>
+		The working modes of the detector readout circuit can be divided into two types: ITR and IWR. Using the IWR readout mode can greatly increase the frame rate. In the ITR mode, the integration of the (n+1)th frame starts after all the data of the nth frame are read out, while in the IWR mode, the data of the nth frame is read out at the same time when the (n+1)th frame is integrated</td>
       	<td>NA</td><td>YES</td>
       </tr><tr>
       	<td>ALTAIRCAM_OPTION_TAILLIGHT</td><td>RW</td>
@@ -1615,6 +1635,10 @@ ALTAIRCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</
       	<td>GVCP Retry, range: [2, 8]<br/>Unless in very special circumstances, generally no modification is required, just use the default value</td>
       	<td>4</td><td>Yes</td>
       </tr><tr>
+      	<td>ALTAIRCAM_OPTION_GVSP_WAIT_PERCENT</td><td>RW</td>
+      	<td>GVSP wait percent: range = [0, 100]</td>
+      	<td>trigger mode: 100, realtime: 0, other: 1</td><td>Yes</td>
+      </tr><tr>
       	<td>ALTAIRCAM_OPTION_GIGETIMEOUT</td><td>RW</td>
       	<td>For GigE cameras, the application periodically sends heartbeat signals to the camera to keep the connection to the camera alive. If the camera doesn't receive heartbeat signals within the time period specified by the heartbeat timeout counter, the camera resets the connection. When the application is stopped by the debugger, the application cannot create the heartbeat signals.<br/>
 		0 =&gt; auto: when the camera is opened, disable if debugger is present or enable if no debugger is present<br/>
@@ -1636,13 +1660,34 @@ ALTAIRCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)</
                         <blockquote>-1: in motion<br/>
                         val: position arrived</blockquote>
         </td>
-      	<td>NA</td><td>Yes</td>
-</tr></table></div></blockquote><blockquote>
+      	<td>NA</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_TRIGGER_CANCEL_MODE</td><td>RW</td>
+      	<td>Trigger cancel mode:<br/>
+		0: no frame<br/>
+		1: output frame</td>
+      	<td>0</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_MECHANICALSHUTTER</td><td>RW</td>
+      	<td>Mechanical shutter:<br/>
+		0: open<br/>
+		1: close</td>
+      	<td>0</td><td>Yes</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_LINE_TIME</td><td>RO</td>
+      	<td>Line-time of sensor in nanosecond</td>
+      	<td>NA</td><td>NA</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_UPTIME</td><td>RO</td>
+      	<td>device uptime in millisecond</td>
+      	<td>NA</td><td>NA</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_LINE_TIME</td><td>RO</td>
+      	<td>Line-time of sensor in nanosecond</td>
+      	<td>NA</td><td>NA</td></tr><tr>
+      	<td>ALTAIRCAM_OPTION_BITRANGE</td><td>RO</td>
+      	<td>Bit range: [0, 8], see: <a href="./images/bitrange.png">snapshot</a></td>
+      	<td>0</td><td>Yes</td></tr>
+</table></div></blockquote><blockquote>
 <p><strong>Important:</strong></p>
 <p>a. RW = <strong>R</strong>ead/<strong>W</strong>rite; RO = <strong>R</strong>ead <strong>O</strong>nly; WO = <strong>W</strong>rite <strong>O</strong>nly</p>
 <p><strong>b. Some options cannot be changed while the camera is running.</strong></p>
 <p><strong>c. <a id="wrongthread3">It is forbidden to call Altaircam_put_Option with ALTAIRCAM_OPTION_TRIGGER, ALTAIRCAM_OPTION_BITDEPTH, ALTAIRCAM_OPTION_PIXEL_FORMAT, ALTAIRCAM_OPTION_BINNING, ALTAIRCAM_OPTION_ROTATE in the callback context of PALTAIRCAM_EVENT_CALLBACK and PALTAIRCAM_DATA_CALLBACK_V4/V3, the return value is E_WRONG_THREAD.</a></strong></p>
-<p>d. The second resolution of UHCCD03100KPB, UHCCD05000KPA, UHCCD05100KPA don't support RAW mode.</p>
 </blockquote></li></ul><ul><li><h2><font color="#0000FF"><a id="realtime">Altaircam_put_RealTime<br/>Altaircam_get_RealTime</a></font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
@@ -1720,6 +1765,19 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
     </blockquote>
     <p><strong>Remarks:</strong> the minimum frame rate level is "0", the maximum one can be achieved through Function "Altaircam_get_MaxSpeed" which equals to maxspeed in AltaircamModelV2.<br/>
 	For some cameras that support the so-called <a href="#precise">precise frame rate</a>, it is recommended to use precise frame rate control. In order to maintain compatibility, Speed is still valid, and the mapping mechanism is: MaxSpeed is 9 (10 levels in total), corresponding to the maximum frame rate when Bandwidth is from 10% to 100%. For example, set the speed to 8, which is equivalent to: The precise frame rate is set to the maximum frame rate with bandwith is set to 90%.</p>
+</li></ul><ul><li><h2><font color="#0000FF">Altaircam_get_FrameRate</font></h2>
+    <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
+    <p><strong>Parameters:</strong></p>
+    <blockquote>
+      <p>HAltaircam h: camera handle</p>
+    <p>unsigned* nFrame: The number of frames in the most recent time</p>
+	<p>unsigned* nTime: milliseconds</p>
+	<p>unsigned* nTotalFrame: The total number of frames since the camera was started</p>
+    </blockquote>
+    <p><strong>Remarks:</strong> Get the actual frame rate of the camera at the most recent time (about a few seconds). Calculate using the following formula:</p>
+    <blockquote><table width="100%" border="0" bgcolor="#B0D0B0">
+	<tr><td><div align="center">FrameRate(fps) = nFrame * 1000.0 / nTime</div></td></tr>
+	</table></blockquote>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_put_HZ<br/>Altaircam_get_HZ</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
@@ -1834,7 +1892,7 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
     <p>char pdate[10]: buffer to the production date, such as: 20150327</p>
 	<p>unsigned short pRevision: revision</p>
   </blockquote>
-  <p><strong>Remarks:</strong> each camera has a unique serial number with 31 letters.</p>
+  <p><strong>Remarks:</strong> each camera has a unique serial number, <a href="#camidsn">here</a></p>
 </li></ul><ul><li>
     <h2><font color="#0000FF">Altaircam_get_PixelSize</font></h2>
       <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
@@ -1880,8 +1938,8 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
     <p>int outVal: output control value</p>
 	<p>int* inVal: input control value</p>
 <div align="center"><table width="100%" border="1" cellpadding="0" cellspacing="0" bgcolor="#B0D0B0"><tr>
-        <td width="28%">ALTAIRCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
-        <td width="72%">get the supported mode:<br/>0x01 =&gt; Input<br/>0x02 =&gt; Output<br/>(0x01 | 0x02) =&gt; support both Input and Output</td>
+        <td width="40%">ALTAIRCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE</td>
+        <td width="60%">get the supported mode:<br/>0x01 =&gt; Input<br/>0x02 =&gt; Output<br/>(0x01 | 0x02) =&gt; support both Input and Output</td>
       </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_GET_GPIODIR</td>
         <td rowspan="2">0x00 =&gt; Input, 0x01 =&gt; Output</td>
       </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_SET_GPIODIR</td>
@@ -1919,6 +1977,12 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
    <td rowspan="2">Counter Value, range: [1 ~ 65535]</td>
  </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_SET_COUNTERVALUE</td>
  </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_SET_RESETCOUNTER</td><td></td>
+ </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_GET_PWM_FREQ</td>
+   <td rowspan="2">PWM Frequency</td>
+ </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_SET_PWM_FREQ</td>
+ </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_GET_PWM_DUTYRATIO</td>
+   <td rowspan="2">PWM Duty Ratio</td>
+ </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_SET_PWM_DUTYRATIO</td>
  </tr><tr><td>ALTAIRCAM_IOCONTROLTYPE_GET_PWMSOURCE</td>
    <td rowspan="2">0x00 =&gt; Opto-isolated input<br/>
 		0x01 =&gt; GPIO0<br/>
@@ -2058,7 +2122,7 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
     <p><strong>Parameters:</strong></p>
     <blockquote>
       <p>camId: camera ID</p>
-      <p>filePath: ufw file full path</p>
+      <p>filePath: *.ufw file full path</p>
       <p>pFun, ctxProgress: progress percent callback</p>
     </blockquote>
     <p><strong>Remarks:</strong> firmware update. Please do not unplug the camera or lost power during the upgrade process, this is very very important. Once an unplugging or power outage occurs during the upgrade process, the camera will no longer be available and can only be returned to the factory for repair.</p>
@@ -2205,7 +2269,7 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
 </tr></table></div></li></ul>
 <hr/><h1><font color="#0000FF"><a id="dotnet">5. .NET (C# &amp; VB.NET)</a></font></h1><hr/>
 <p>Altaircam does support .NET development environment (C# and VB.NET).</p>
-<p>altaircam.cs use P/Invoke to call into altaircam.dll. Copy altaircam.cs to your C# project, please reference samples.</p>
+<p>altaircam.cs use P/Invoke to call into altaircam.dll. Copy altaircam.cs to your C# project, please reference <a href="#dotnetsample">samples</a>.</p>
 <p>Please pay attation to that <strong>the object of the C# class Altaircam. Altaircam must be obtained by static mothod Open or OpenByIndex, it cannot be obtained by obj = new Altaircam</strong> (The constructor is private on purpose).</p>
 <p>Most properties and methods of the Altaircam class P/Invoke into the corresponding Altaircam_xxxx functions of altaircam.dll/so. So, the descriptions of the Altaircam_xxxx function are also applicable for the corresponding C# properties or methods. For example, the C# Snap method call the function Altaircam_Snap, the descriptions of the Altaircam_Snap function is applicable for C# Snap method:</p>
 <table width="100%" border="0" bgcolor="#B0D0B0">
@@ -2220,7 +2284,7 @@ public bool Snap(uint nResolutionIndex)
 }</pre></td></tr></table>
 <p>VB.NET is similar with C#, not otherwise specified.</p>
 <hr/><h1><font color="#0000FF"><a id="python">6. Python</a></font></h1><hr/>
-<p>Altaircam does support Python (version 3.0 or above), please import altaircam to use altaircam.py and reference the sample code simplest.py and qt.py.</p>
+<p>Altaircam does support Python (version 3.0 or above), please import altaircam to use altaircam.py and <a href="#demopython">reference the sample code simplest.py, qt5.py, qt6.py</a>.</p>
 <p>Please pay attation to that <strong>the object of the python class altaircam.Altaircam must be obtained by classmethod Open or OpenByIndex, it cannot be obtained by obj = altaircam.Altaircam()</strong></p>
 <p>Most methods of the Altaircam class use ctypes to call into the corresponding Altaircam_xxxx functions of altaircam.dll/so/dylib. So, the descriptions of the Altaircam_xxxx function are also applicable for the corresponding python methods.</p>
 <p>Please reference __errcheck in altaircam.py, the original HRESULT return code is mapped to HRESULTException exception (in win32 it's inherited from OSError).</p>
@@ -2261,7 +2325,7 @@ public bool Snap(uint nResolutionIndex)
 	  </tr><tr>
 		<td colspan="2">demotriggersync</td>
 		<td>simplest sample to demo soft trigger synchronously (TriggerSync), about 80 lines of code</td>
-	  </tr>><tr>
+	  </tr><tr>
 		<td colspan="2"><a id="democfg">democfg</a></td>
 		<td>simplest sample to demo configuration (see <a href="#cfg">here</a>), about 80 lines of code</td>
 	  </tr><tr>
@@ -2311,7 +2375,7 @@ public bool Snap(uint nResolutionIndex)
 		<td colspan="2">autotest</td>
 		<td><a href="./images/autotest.png">snapshot</a>. auto test tool used to automatically test, such as open/close the camera, change the resolution, snap, ROI, bitdepth, etc</td>
 	  </tr><tr>
-		<td colspan="2">demowpf</td>
+		<td colspan="2"><a id="dotnetsample">demowpf</a></td>
 		<td rowspan="4">.NET</td><td rowspan="3">C#</td><td>WPF</td>
 		<td>WPF sample, <a href="./images/demowpf.png">snapshot</a>.<br/>Enum camera, open camera, preview video, captuare (still) image, save image to file, auto exposure, white balance, calculate fps (frame per second), etc. This sample use Pull Mode, StartPullModeWithCallback</td>
 	  </tr><tr>
@@ -2350,7 +2414,7 @@ public bool Snap(uint nResolutionIndex)
 		<td>simplest</td><td rowspan="2">Python</td><td></td><td>console</td>
 		<td>simplest python sample</td>
 	  </tr><tr>
-		<td>qt</td><td>PyQt</td><td rowspan="11">GUI</td>
+		<td>qt5<br/>qt6</td><td>PyQt</td><td rowspan="11">GUI</td>
 		<td>PyQt sample, <a href="./images/pyqt.png">snapshot</a>.</td>
 	  </tr><tr>
 		<td colspan="2"><a id="demodshow">demodshow</a></td>
@@ -2394,7 +2458,13 @@ public bool Snap(uint nResolutionIndex)
 		<td>Qt sample</td>
 	  </tr>
 </table></div>
-<hr/><h1><font color="#0000FF">9. Changelog</font></h1><hr/>
+<hr/><h1><font color="#0000FF">10. Misc</font></h1><hr/>
+<h2><font color="#0000FF">a. <a id="mtu">Enable "Jumbo Frame" on Windows</a></font></h2>
+(1) start "Device Manager", then expand Network adapters. <a href="./images/devmgr.png">snapshot</a><br/>
+(2) Right click the network interface card and select "Properties"<br/>
+(3) Select the Advanced tab. Next, select "Jumbo Packet" in the Property box, and then select "9014 Bytes" (Different network card models may have slightly different value) for Value to the right. Click OK to save the change. <a href="./images/mtu.png">snapshot</a><br/>
+(4) Run the following command to view the network card MTU: <a href="./images/mtushow.png">snapshot</a><br/><table width="100%" border="0" bgcolor="#B0D0B0"><tr><td align="center"><pre>netsh interface ipv4 show subinterface</pre></td></tr></table>
+<hr/><h1><font color="#0000FF">10. Changelog</font></h1><hr/>
 <p>v57: Add Altaircam_PullImageV4, AltaircamFrameInfoV4, GPS</p>
 <p>v56: Performance improvements: reduced frame data copy in RAW mode</p>
 <p>v55: Add Support to HDR Pixel Format</p>
