@@ -4,7 +4,7 @@ https://player-one-astronomy.com
 
 ## Supported devices
 
-All cameras supported by SDK
+All cameras supported by SDK (Plyer One and iOptron cameras)
 
 This driver supports hot-plug (multiple devices).
 
