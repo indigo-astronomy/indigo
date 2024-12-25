@@ -1,7 +1,7 @@
 #ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 57.27250.20241216 */
+/* Version: 57.27348.20241224 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -294,7 +294,7 @@ typedef struct {
 } MallincamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.27250.20241216
+    get the version of this dll/so/dylib, which is: 57.27348.20241224
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -1150,6 +1150,7 @@ MALLINCAM_API(HRESULT)  Mallincam_feed_Pipe(HMallincam h, unsigned pipeId);
 #define MALLINCAM_OPTION_LINE_TIME              0x77       /* Line-time of sensor in nanosecond */
 #define MALLINCAM_OPTION_ZERO_PADDING           0x78       /* Zero padding: 0 => high, 1 => low; default: 0 */
 #define MALLINCAM_OPTION_UPTIME                 0x79       /* device uptime in millisecond */
+#define MALLINCAM_OPTION_BITRANGE               0x7a       /* Bit range: [0, 8] */
 
 /* pixel format */
 #define MALLINCAM_PIXELFORMAT_RAW8              0x00
