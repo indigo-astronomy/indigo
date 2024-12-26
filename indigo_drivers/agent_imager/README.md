@@ -91,3 +91,15 @@ Server side images are stored by the camera driver therefore they will be saved 
 1. Provide a common storage for the driver and the agent.
 2. Run another Imager agent on the driver host and use it only for image download.
 3. Generally it is not a good idea to use agents with remote drivers. Try to avoid this setup if possible. If you need multiserver setup try to run coresponding agents and drivers on the same host when posible.
+
+## Notes on macro photography use
+
+To capture a batch using "macro mode" (=focus bracketing), follow these steps:
+
+1. Select the Camera and Focuser: Ensure the correct camera and focuser are chosen for the operation.
+2. Define the Focuser Step Size: Set the BRACKETING_STEP parameter under AGENT_IMAGER_FOCUS to specify the number of focuser steps between each frame.
+3. Set Exposure Details: Configure AGENT_IMAGER_BATCH with the desired batch settings.
+4. Set MACRO_MODE under AGENT_PROCESS_FEATURES
+5. Start the capture batch process: Set EXPOSURE under AGENT_START_PROCESS to initiate focus bracketing.
+
+Once the process is complete, the focuser will automatically return to its initial position.
