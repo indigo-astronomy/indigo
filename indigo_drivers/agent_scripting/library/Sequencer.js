@@ -190,16 +190,20 @@ Sequence.prototype.set_automatic_focuser_mode = function(exposure) {
 
 Sequence.prototype.focus = function(exposure) {
 	this.sequence.push({ execute: 'save_batch()', step: this.step });
-	this.sequence.push({ execute: 'set_batch(1,' + exposure + ', 0)', step: this.step });
+	this.sequence.push({ execute: 'set_batch(1, ' + exposure + ', 0)', step: this.step });
 	this.sequence.push({ execute: 'focus(false)', step: this.step });
 	this.sequence.push({ execute: 'restore_batch()', step: this.step++ });
 };
 
 Sequence.prototype.focus_ignore_failure = function(exposure) {
 	this.sequence.push({ execute: 'save_batch()', step: this.step });
-	this.sequence.push({ execute: 'set_batch(1,' + exposure + ', 0)', step: this.step });
+	this.sequence.push({ execute: 'set_batch(1, ' + exposure + ', 0)', step: this.step });
 	this.sequence.push({ execute: 'focus(true)', step: this.step });
 	this.sequence.push({ execute: 'restore_batch()', step: this.step++ });
+};
+
+Sequence.prototype.clear_focuser_selection = function() {
+	this.sequence.push({ execute: 'clear_focuser_selection()', step: this.step++ });
 };
 
 Sequence.prototype.park = function() {
@@ -226,13 +230,28 @@ Sequence.prototype.calibrate_guiding = function() {
 	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++ });
 };
 
+Sequence.prototype.calibrate_guiding_exposure = function(exposure) {
+	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step });
+	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++ });
+};
+
 Sequence.prototype.start_guiding = function() {
+	this.sequence.push({ execute: 'start_guiding()', step: this.step++ });
+};
+
+Sequence.prototype.start_guiding_exposure = function(exposure) {
+	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step });
 	this.sequence.push({ execute: 'start_guiding()', step: this.step++ });
 };
 
 Sequence.prototype.stop_guiding = function() {
 	this.sequence.push({ execute: 'stop_guiding()', step: this.step++ });
 };
+
+Sequence.prototype.clear_guider_selection = function() {
+	this.sequence.push({ execute: 'clear_guider_selection()', step: this.step++ });
+};
+
 
 Sequence.prototype.sync_center = function(exposure) {
 	this.sequence.push({ execute: 'set_solver_exposure(' + exposure + ')', step: this.step });
@@ -1127,6 +1146,17 @@ var indigo_sequencer = {
 		}
 	},
 
+	clear_focuser_selection: function() {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].AGENT_START_PROCESS;
+		if (property != null) {
+			this.select_switch(agent, "AGENT_START_PROCESS", "CLEAR_SELECTION");
+		} else {
+			this.failure("Can't clear selection");
+		}
+	},
+	
+
 	unpark: function() {
 		var agent = this.devices[3];
 		var property = indigo_devices[agent].MOUNT_PARK;
@@ -1193,7 +1223,17 @@ var indigo_sequencer = {
 		}
 	},
 	
-	calibrate_guiding: function(exposure) {
+	set_guider_exposure: function(exposure) {
+		var agent = this.devices[4];
+		var property = indigo_devices[agent].AGENT_GUIDER_SETTINGS;
+		if (property != null) {
+			this.change_numbers(agent, "AGENT_GUIDER_SETTINGS", { EXPOSURE: exposure });
+		} else {
+			this.failure("Can't set guider exposure");
+		}
+	},
+
+	calibrate_guiding: function() {
 		var agent = this.devices[4];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {
@@ -1203,7 +1243,7 @@ var indigo_sequencer = {
 		}
 	},
 
-	start_guiding: function(exposure) {
+	start_guiding: function() {
 		var agent = this.devices[4];
 		var property = indigo_devices[agent].AGENT_START_PROCESS;
 		if (property != null) {
@@ -1214,7 +1254,7 @@ var indigo_sequencer = {
 		}
 	},
 
-	stop_guiding: function(exposure) {
+	stop_guiding: function() {
 		var agent = this.devices[4];
 		var property = indigo_devices[agent].AGENT_ABORT_PROCESS;
 		if (property != null) {
@@ -1224,6 +1264,16 @@ var indigo_sequencer = {
 		}
 	},
 
+	clear_guider_selection: function() {
+		var agent = this.devices[4];
+		var property = indigo_devices[agent].AGENT_START_PROCESS;
+		if (property != null) {
+			this.select_switch(agent, "AGENT_START_PROCESS", "CLEAR_SELECTION");
+		} else {
+			this.failure("Can't clear selection");
+		}
+	},
+	
 	set_solver_exposure: function(exposure) {
 		var agent = this.devices[5];
 		var property = indigo_devices[agent].AGENT_PLATESOLVER_EXPOSURE;
