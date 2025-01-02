@@ -2,6 +2,52 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-308] - 02 Jan Thu 2025
+## Overall:
+
+## Driver fixes:
+- indigo_agent_scripting:
+	- seqiencer.js: clear_focuser_selection(), calibrate_guiding_exposure(exposure), start_guiding_exposure(exposure) and clear_guider_selection() functions added
+
+- indigo_agent_guider:
+	- make possible to wait for all stars to reapear before resume guiding via RESET_ON_GUIDING_ERROR_WAIT_ALL_STARS
+
+- indigo_agent_imager:
+	- macro photography mode added to process features (focus bracketing during batch capture)
+
+- indigo_ccd_playerone:
+	- update README.md with iOptrin camera support
+
+- indigo_ccd_simulator:
+	- MAGNITUDE_LIMIT added to GUIDER_SETTINGS
+
+- indigo_ccd_altair:
+	- sdk updated v.57.27348.20241224
+
+- indigo_ccd_bresser:
+	- sdk updated v.57.27250.20241216
+
+- indigo_ccd_mallin:
+	- sdk updated v.57.27348.20241224
+
+- indigo_ccd_ogma:
+	- sdk updated v.57.27348.20241224
+
+- indigo_ccd_rising:
+	- sdk updated v.57.27348.20241224
+
+- indigo_ccd_omegonpro:
+	- sdk updated v.57.27348.20241224
+
+- indigo_ccd_ssg:
+	- sdk updated v.57.27348.20241224
+
+- indigo_ccd_touptek:
+	- sdk updated v.57.27348.20241224
+
+- indigo_wheel_asi:
+	- add macOS arm64 SDK
+
 # [2.0-306] - 14 Dec Sat 2024
 
 ## Overall:
