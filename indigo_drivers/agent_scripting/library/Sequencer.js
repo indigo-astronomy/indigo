@@ -1,4 +1,5 @@
-function Sequence() {
+function Sequence(name) {
+	this.name = name == undefined ? "" : name;
 	this.step = 0;
 	this.sequence = [];
 }
@@ -134,7 +135,7 @@ Sequence.prototype.enable_cooler = function(temperature) {
 	this.sequence.push({ execute: 'set_temperature(' + temperature + ')', step: this.step++ });
 };
 
-Sequence.prototype.disable_cooler = function(temperature) {
+Sequence.prototype.disable_cooler = function() {
 	this.sequence.push({ execute: 'select_cooler("OFF")', step: this.step });
 };
 
@@ -268,7 +269,7 @@ Sequence.prototype.start = function(imager_agent, mount_agent, guider_agent) {
 	indigo_sequencer.devices[2] = imager_agent == undefined ? "Imager Agent" : imager_agent;
 	indigo_sequencer.devices[3] = mount_agent == undefined ? "Mount Agent" : mount_agent;
 	indigo_sequencer.devices[4] = guider_agent == undefined ? "Guider Agent" : guider_agent;
-	indigo_sequencer.start(this.sequence);
+	indigo_sequencer.start(this.sequence, this.name);
 };
 
 var indigo_flipper = {
@@ -384,6 +385,7 @@ var indigo_sequencer = {
 		"Server"
 	],
 
+	name: "",
 	state: "Ok",
 	step: -1,
 	index: -1,
@@ -426,6 +428,9 @@ var indigo_sequencer = {
 	
 	on_enumerate_properties: function(property) {
 		if (property.device == null || property.device == this.devices[0]) {
+			if (property.name == null || property.name == "SEQUENCE_NAME") {
+				indigo_define_text_property(this.devices[0], "SEQUENCE_NAME", "Sequencer", "Name", { NAME: this.name }, { NAME: { label: "Sequence name" }}, this.state, "RO");
+			}
 			if (property.name == null || property.name == "SEQUENCE_STATE") {
 				indigo_define_number_property(this.devices[0], "SEQUENCE_STATE", "Sequencer", "State", { STEP: this.step }, { STEP: { label: "Executing step", format: "%g", min: -1, max: 10000, step: 1 }}, this.state, "RO");
 			}
@@ -472,11 +477,14 @@ var indigo_sequencer = {
 		indigo_update_switch_property(this.devices[0], "AGENT_ABORT_PROCESS", { ABORT: false }, "Ok");
 	},
 	
-	start: function(sequence) {
+	start: function(sequence, name) {
 		if (this.sequence != null) {
 			indigo_send_message("Other sequence is executed");
 		} else {
 			this.index = -1;
+			this.name = name;
+			indigo_send_message("name:" + name);
+			indigo_update_text_property(this.devices[0], "SEQUENCE_NAME", { NAME: this.name }, "Ok");
 			while (this.loop_level >= 0) {
 				indigo_delete_property(this.devices[0], "LOOP_" + this.loop_level--);
 			}
@@ -497,6 +505,8 @@ var indigo_sequencer = {
 			this.step = -1;
 			this.state = "Ok";
 			this.sequence = null;
+			this.name = "";
+			indigo_update_text_property(this.devices[0], "SEQUENCE_NAME", { NAME: this.name }, "Ok");
 			indigo_send_message("Sequence finished");
 		}
 		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step }, this.state);

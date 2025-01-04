@@ -15,7 +15,7 @@ Before the first sequence is created, content of [Sequencer.js](Sequencer.js) fi
 To create sequence, create Sequence instance like this
 
 ```
-var sequence = new Sequence(); 
+var sequence = new Sequence("Sequence name"); 
 ```
 
 Then add sequence steps by calling helper methods like this
@@ -77,7 +77,11 @@ sequence.start();
 
 Once sequence is started, it creates three properties on "Sequencer agent" device:
 
+Read only text vector SEQUENCE\_NAME with NAME item containing the name of currently executed sequence (set in Sequence construnctor) or empty if no sequence executed or name not set.
+
 Read only number vector SEQUENCE\_STATE with STEP item containing the currently executed step (zero based index). State of this property represents state of the executed sequence (Ok = finished, Busy = executed, Alert = failed). If the property is in Alert state, STEP item contains the index of failed step. In GUI all steps with index lower than STEP item value can be marked as done, all steps with index higher as STEP item value as idle and step with index equal to STEP item value either as executed (if property is in Busy state) or failed (if property is in Alert state).
+
+Read only number vectors LOOP\_x for currently executed loops where x is zero based nesting level with items STEP which contains index of the loop command and COUNT containing the count of passed execution of the loop.
 
 Read-write switch vector SEQUENCE\_RESET with RESET item. This resets the state of SEQUENCE\_STATE property, e.g. if the sequence is being edited by GUI code.
 
