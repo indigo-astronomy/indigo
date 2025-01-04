@@ -1,0 +1,3 @@
+# ZWO ROTATOR
+ACTION=="add", ATTRS{idVendor}=="03c3", ATTRS{idProduct}=="1f20", GROUP="plugdev", MODE="0666"
+
