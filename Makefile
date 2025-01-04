@@ -21,7 +21,7 @@
 #---------------------------------------------------------------------
 
 INDIGO_VERSION = 2.0
-INDIGO_BUILD = 308
+INDIGO_BUILD = 309
 
 # Keep the suffix empty for official releases
 INDIGO_BUILD_SUFFIX =
