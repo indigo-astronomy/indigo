@@ -771,7 +771,11 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			strncpy(CCD_LOCAL_MODE_DIR_ITEM->text.value, default_image_path, INDIGO_VALUE_SIZE);
 		else if (CCD_LOCAL_MODE_DIR_ITEM->text.value[len - 1] != '/')
 			strcat(CCD_LOCAL_MODE_DIR_ITEM->text.value, "/");
-		CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		if (access(CCD_LOCAL_MODE_DIR_ITEM->text.value, W_OK) == 0) {
+			CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			CCD_LOCAL_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
+		}		
 		indigo_update_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_SET_FITS_HEADER_PROPERTY, property)) {
