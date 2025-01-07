@@ -2,12 +2,37 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-310] - 07 Jan Tue 2025
+## Overall:
+- indigo_ccd driver: setting CCD_LOCAL_MODE with non-existent or non-writable folder raises alert
+
+## Driver fixes:
+- indigo_agent_scripting:
+	- Sequencer.js: optional name added to Sequence constructor, to let the user know which sequence is running
+	- progress in steps added
+	- total sequence exposure time added to SEQUENCE_STATE
+	- ignore alert handling fixed
+
+- indigo_agent_imager:
+	- frame capture on remote servers fixed
+
+- indigo_agent_guider:
+	- frame capture on remote servers fixed
+
+- indigo_agent_astrometry:
+	- frame capture on remote servers fixed
+	- better handling of the imager agent process state
+
+- indigo_agent_astap:
+	- frame capture on remote servers fixed
+	- better handling of the imager agent process state
+
 # [2.0-308] - 02 Jan Thu 2025
 ## Overall:
 
 ## Driver fixes:
 - indigo_agent_scripting:
-	- seqiencer.js: clear_focuser_selection(), calibrate_guiding_exposure(exposure), start_guiding_exposure(exposure) and clear_guider_selection() functions added
+	- Sequencer.js: clear_focuser_selection(), calibrate_guiding_exposure(exposure), start_guiding_exposure(exposure) and clear_guider_selection() functions added
 
 - indigo_agent_guider:
 	- make possible to wait for all stars to reapear before resume guiding via RESET_ON_GUIDING_ERROR_WAIT_ALL_STARS
