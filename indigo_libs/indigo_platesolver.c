@@ -1023,6 +1023,7 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 		if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
 			if (property->state == INDIGO_ALERT_STATE && AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				if (!INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
+					INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = true;
 					indigo_async((void *(*)(void *))abort_process, device);
 				}
 			}
