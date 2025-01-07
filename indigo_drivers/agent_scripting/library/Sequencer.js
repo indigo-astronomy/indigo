@@ -437,7 +437,7 @@ var indigo_sequencer = {
 	on_enumerate_properties: function(property) {
 		if (property.device == null || property.device == this.devices[0]) {
 			if (property.name == null || property.name == "SEQUENCE_NAME") {
-				indigo_define_text_property(this.devices[0], "SEQUENCE_NAME", "Sequencer", "Name", { NAME: this.name }, { NAME: { label: "Sequence name" }}, this.state, "RO");
+				indigo_define_text_property(this.devices[0], "SEQUENCE_NAME", "Sequencer", "Sequence name", { NAME: this.name }, { NAME: { label: "Name" }}, this.state, "RO");
 			}
 			if (property.name == null || property.name == "SEQUENCE_STATE") {
 				indigo_define_number_property(this.devices[0], "SEQUENCE_STATE", "Sequencer", "State", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, { STEP: { label: "Executing step", format: "%g", min: -1, max: 1000000, step: 1 }, PROGRESS: { label: "Progress", format: "%g", min: 0, max: 1000000, step: 1 }, PROGRESS_TOTAL: { label: "Progress total", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE: { label: "Exposured", format: "%g", min: 0, max: 1000000, step: 1 }, EXPOSURE_TOTAL: { label: "Exposured total", format: "%g", min: 0, max: 1000000, step: 1 }}, this.state, "RO");
