@@ -263,7 +263,9 @@ typedef struct {
 	indigo_frame_digest reference;
 	double drift_x, drift_y;
 	void *last_image;
-	size_t last_image_size;
+	long last_image_size;
+	char last_image_url[INDIGO_VALUE_SIZE];
+	pthread_mutex_t last_image_mutex;
 	int last_width;
 	int last_height;
 	pthread_mutex_t mutex;
@@ -435,6 +437,15 @@ static bool capture_frame(indigo_device *device) {
 			indigo_usleep(ONE_SECOND_DELAY);
 			continue;
 		}
+		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->last_image_mutex);
+		if (DEVICE_PRIVATE_DATA->last_image == NULL) {
+			if (!indigo_download_blob(DEVICE_PRIVATE_DATA->last_image_url, &DEVICE_PRIVATE_DATA->last_image, &DEVICE_PRIVATE_DATA->last_image_size, NULL)) {
+				indigo_send_message(device, "Image download failed");
+				pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->last_image_mutex);
+				return false;
+			}
+		}
+		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->last_image_mutex);
 		indigo_raw_header *header = (indigo_raw_header *)(DEVICE_PRIVATE_DATA->last_image);
 		DEVICE_PRIVATE_DATA->last_width = header->width;
 		DEVICE_PRIVATE_DATA->last_height = header->height;
@@ -2858,6 +2869,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 		CONNECTION_PROPERTY->hidden = true;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		pthread_mutex_init(&DEVICE_PRIVATE_DATA->mutex, NULL);
+		pthread_mutex_init(&DEVICE_PRIVATE_DATA->last_image_mutex, NULL);
 		indigo_load_properties(device, false);
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return agent_enumerate_properties(device, NULL, NULL);
@@ -3465,6 +3477,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_WHEEL_FILTER_PROPERTY);
 	indigo_release_property(AGENT_FOCUSER_CONTROL_PROPERTY);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->mutex);
+	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->last_image_mutex);
 	indigo_safe_free(DEVICE_PRIVATE_DATA->image_buffer);
 	DEVICE_PRIVATE_DATA->image_buffer_size = 0;
 	indigo_safe_free(DEVICE_PRIVATE_DATA->last_image);
@@ -3760,19 +3773,22 @@ static indigo_result agent_update_property(indigo_client *client, indigo_device 
 	if (device == FILTER_CLIENT_CONTEXT->device) {
 		if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
 			if (property->state == INDIGO_OK_STATE) {
-				if (strchr(property->device, '@'))
-					indigo_populate_http_blob_item(property->items);
-				if (property->items->blob.value) {
-					CLIENT_PRIVATE_DATA->last_image = indigo_safe_realloc(CLIENT_PRIVATE_DATA->last_image, property->items->blob.size);
-					memcpy(CLIENT_PRIVATE_DATA->last_image, property->items->blob.value, property->items->blob.size);
-					CLIENT_PRIVATE_DATA->last_image_size = property->items->blob.size;
-					if (validate_include_region(device, false)) {
-						indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+				indigo_item *item = property->items;
+				indigo_copy_value(CLIENT_PRIVATE_DATA->last_image_url, item->blob.url);
+				if (pthread_mutex_trylock(&DEVICE_PRIVATE_DATA->last_image_mutex) == 0) {
+					if (item->blob.value) {
+						CLIENT_PRIVATE_DATA->last_image = indigo_safe_realloc(CLIENT_PRIVATE_DATA->last_image, item->blob.size);
+						memcpy(CLIENT_PRIVATE_DATA->last_image, item->blob.value, item->blob.size);
+						CLIENT_PRIVATE_DATA->last_image_size = item->blob.size;
+						if (validate_include_region(device, false)) {
+							indigo_update_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
+						}
+					} else if (CLIENT_PRIVATE_DATA->last_image) {
+						free(CLIENT_PRIVATE_DATA->last_image);
+						CLIENT_PRIVATE_DATA->last_image_size = 0;
+						CLIENT_PRIVATE_DATA->last_image = NULL;
 					}
-				} else if (CLIENT_PRIVATE_DATA->last_image) {
-					free(CLIENT_PRIVATE_DATA->last_image);
-					CLIENT_PRIVATE_DATA->last_image_size = 0;
-					CLIENT_PRIVATE_DATA->last_image = NULL;
+					pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->last_image_mutex);
 				}
 			}
 		} else if (!strcmp(property->name, CCD_BIN_PROPERTY_NAME)) {

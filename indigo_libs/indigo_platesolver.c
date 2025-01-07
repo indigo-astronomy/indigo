@@ -374,6 +374,14 @@ static void solve(indigo_platesolver_task *task) {
 	}
 
 	// Solve with a particular plate solver
+
+	if (task->image == NULL) {
+		indigo_send_message(device, "Downloading image");
+		if (!indigo_download_blob(task->image_url, &task->image, &task->size, NULL)) {
+			process_failed(device, "Image download failed");
+			return;
+		}
+	}
 	bool success = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size);
 	indigo_safe_free(task->image);
 	indigo_safe_free(task);
@@ -912,7 +920,12 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 		if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.size > 0 && AGENT_PLATESOLVER_IMAGE_ITEM->blob.value) {
 			indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 			task->device = device;
-			task->image = indigo_safe_malloc_copy(task->size = AGENT_PLATESOLVER_IMAGE_ITEM->blob.size, AGENT_PLATESOLVER_IMAGE_ITEM->blob.value);
+			indigo_copy_value(task->image_url, AGENT_PLATESOLVER_IMAGE_ITEM->blob.url);
+			if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.value != NULL) {
+				task->image = indigo_safe_malloc_copy(task->size = AGENT_PLATESOLVER_IMAGE_ITEM->blob.size, AGENT_PLATESOLVER_IMAGE_ITEM->blob.value);
+			} else {
+				task->image = NULL;
+			}
 			// uploaded files should not use camera pixel scale
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->pixel_scale = 0;
 			indigo_async((void *(*)(void *))solve, task);
@@ -1061,7 +1074,12 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 						if (!strcmp(item->name, CCD_IMAGE_ITEM_NAME)) {
 							indigo_platesolver_task *task = indigo_safe_malloc(sizeof(indigo_platesolver_task));
 							task->device = FILTER_CLIENT_CONTEXT->device;
-							task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
+							indigo_copy_value(task->image_url, item->blob.url);
+							if (item->blob.value != NULL) {
+								task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
+							} else {
+								task->image = NULL;
+							}
 							indigo_async((void *(*)(void *))solve, task);
 						}
 					}

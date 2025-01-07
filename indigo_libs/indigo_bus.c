@@ -1104,7 +1104,7 @@ void *indigo_alloc_blob_buffer(long size) {
 	return indigo_safe_malloc(size);
 }
 
-bool indigo_populate_http_blob_item(indigo_item *blob_item) {
+bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	char *host = indigo_safe_malloc(BUFFER_SIZE);
 	int port = 80;
 	char *file = indigo_safe_malloc(BUFFER_SIZE);
@@ -1118,12 +1118,7 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 	int socket = -1;
 	int res = false;
 
-	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
-		indigo_error("%s: url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME);
-		goto clean_return;
-	}
-
-	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
+	sscanf(url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
 	socket = indigo_open_tcp(host, port);
 	if (socket < 0)
 		goto clean_return;
@@ -1182,30 +1177,30 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 
 	if (content_len) {
 		image_type = strrchr(file, '.');
-		if (image_type)
-			indigo_copy_name(blob_item->blob.format, image_type);
+		if (image_type && format != NULL)
+			indigo_copy_name(format, image_type);
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (use_gzip) {
-			blob_item->blob.size = uncompressed_content_len;
-			blob_item->blob.value = indigo_safe_realloc(blob_item->blob.value, blob_item->blob.size);
+			*size = uncompressed_content_len;
+			*value = indigo_safe_realloc(*value, *size);
 			char *compressed_buffer = indigo_safe_malloc(content_len);
 			res = (indigo_read(socket, compressed_buffer, content_len) >= 0) ? true : false;
 			if (res) {
 				unsigned out_size = (unsigned)uncompressed_content_len;
-				indigo_decompress(compressed_buffer, (unsigned)content_len, blob_item->blob.value, &out_size);
+				indigo_decompress(compressed_buffer, (unsigned)content_len, *value, &out_size);
 			}
 			free(compressed_buffer);
 		} else {
-			blob_item->blob.size = content_len;
-			blob_item->blob.value = indigo_safe_realloc(blob_item->blob.value, blob_item->blob.size);
-			INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, blob_item->blob.size));
-			res = (indigo_read(socket, blob_item->blob.value, blob_item->blob.size) >= 0) ? true : false;
+			*size = content_len;
+			*value = indigo_safe_realloc(*value, *size);
+			INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, *size));
+			res = (indigo_read(socket, *value, *size) >= 0) ? true : false;
 		}
 #else
-		blob_item->blob.size = content_len;
-		blob_item->blob.value = indigo_safe_realloc(blob_item->blob.value, blob_item->blob.size);
-		INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, blob_item->blob.size));
-		res = (indigo_read(socket, blob_item->blob.value, blob_item->blob.size) >= 0) ? true : false;
+		*size = content_len;
+		*value = indigo_safe_realloc(*value, *size);
+		INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, *size));
+		res = (indigo_read(socket, *value, *size) >= 0) ? true : false;
 #endif
 	} else {
 		res = false;
@@ -1230,6 +1225,14 @@ clean_return:
 	indigo_safe_free(http_line);
 	indigo_safe_free(http_response);
 	return res;
+}
+
+bool indigo_populate_http_blob_item(indigo_item *blob_item) {
+	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
+		indigo_error("%s: url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME);
+		return false;
+	}
+	return indigo_download_blob(blob_item->blob.url, &blob_item->blob.value, &blob_item->blob.size, blob_item->blob.format);
 }
 
 bool indigo_upload_http_blob_item(indigo_item *blob_item) {

@@ -121,7 +121,8 @@ extern "C" {
 typedef struct {
 	indigo_device *device;
 	void *image;
-	unsigned long size;
+	long size;
+	char image_url[INDIGO_VALUE_SIZE];
 } indigo_platesolver_task;
 
 /** Platesolver private data structure.

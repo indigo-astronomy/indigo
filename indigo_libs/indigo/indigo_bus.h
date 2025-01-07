@@ -557,6 +557,10 @@ extern void indigo_init_light_item(indigo_item *item, const char *name, const ch
  */
 extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
 
+/** download BLOB for given url.
+ */
+extern bool indigo_download_blob(char *url, void **value, long *size, char *format);
+
 /** populate BLOB item if url is given.
  */
 extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
