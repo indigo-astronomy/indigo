@@ -161,7 +161,6 @@ typedef struct {
 	bool failed;
 	bool abort_process_requested;
 	int saved_sync_mode;
-	bool can_start_exposure;
 } platesolver_private_data;
 
 extern bool indigo_platesolver_validate_executable(const char *executable);

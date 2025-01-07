@@ -167,14 +167,9 @@ static bool start_exposure(indigo_device *device, double exposure) {
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
 		if (item->sw.value && (!strncmp(item->name, "Imager Agent", 12))) {
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->can_start_exposure) {
-				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, exposure);
-				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_START_PREVIEW_1_ITEM_NAME, true);
-				return true;
-			} else {
-				indigo_send_message(device, "Failed to start exposure - no camera selected");
-				return false;
-			}
+			indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, exposure);
+			indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_START_PREVIEW_1_ITEM_NAME, true);
+			return true;
 		}
 	}
 	indigo_send_message(device, "Failed to start exposure - no image source agent selected");
@@ -1025,14 +1020,10 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 	related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
 	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
-		if (!strcmp(property->name, FILTER_CCD_LIST_PROPERTY_NAME)) {
-			if (property->state == INDIGO_OK_STATE) {
-				for (int i = 0; i < property->count; i++) {
-					indigo_item *item = property->items + i;
-					if (item->sw.value) {
-						INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->can_start_exposure = i > 0;
-						break;
-					}
+		if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
+			if (property->state == INDIGO_ALERT_STATE && AGENT_START_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
+				if (!INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested) {
+					indigo_async((void *(*)(void *))abort_process, device);
 				}
 			}
 		} else if (!strcmp(property->name, CCD_LENS_FOV_PROPERTY_NAME)) {
