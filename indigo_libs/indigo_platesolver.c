@@ -166,9 +166,10 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 static bool start_exposure(indigo_device *device, double exposure) {
 	for (int i = 0; i < FILTER_RELATED_AGENT_LIST_PROPERTY->count; i++) {
 		indigo_item *item = FILTER_RELATED_AGENT_LIST_PROPERTY->items + i;
-		if (item->sw.value && (!strncmp(item->name, "Imager Agent", 12) || !strncmp(item->name, "Guider Agent", 12))) {
+		if (item->sw.value && (!strncmp(item->name, "Imager Agent", 12))) {
 			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->can_start_exposure) {
-				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, CCD_EXPOSURE_PROPERTY_NAME, CCD_EXPOSURE_ITEM_NAME, exposure);
+				indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_IMAGER_BATCH_PROPERTY_NAME, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, exposure);
+				indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, item->name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_START_PREVIEW_1_ITEM_NAME, true);
 				return true;
 			} else {
 				indigo_send_message(device, "Failed to start exposure - no camera selected");
