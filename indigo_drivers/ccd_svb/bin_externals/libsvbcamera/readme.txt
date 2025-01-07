@@ -423,9 +423,42 @@ Date:2024-04-16
 2. 修正关闭制冷时获取的制冷功率值大于0的问题
 3. SVB_CAMERA_PROPERTY中的MaxBitDepth返回sensor实际的位宽
 
-################################################ ########
 Version: v1.12.7
 Date:2024-05-06
 1. Fixed the problem that the program occasionally exits abnormally under macOS
 2. Fixed the issue where the cooling power value obtained when cooling is turned off is greater than 0
 3. MaxBitDepth in SVB_CAMERA_PROPERTY returns the actual bit width of the sensor
+
+
+##########################################################
+版本:v1.13.0
+日期:2024-09-29
+1. 支持新相机SV905C2
+2. 支持新相机SV305C Pro
+
+Version: v1.13.0
+Date:2024-05-06
+1. Support new camera SV905C2
+2. Support new camera SV305C Pro
+ 
+
+##########################################################
+版本:v1.13.1
+日期:2024-10-29
+1. 修正ASCOM软件支持SV905C2和SV305C Pro相机
+2. 修正SV905C2的曝光时间
+
+Version: v1.13.1
+Date: 2024-10-29
+1. Fixup ASCOM software to support SV905C2 and SV305C Pro cameras
+2. Fixup exposure time of SV905C2
+
+
+##########################################################
+版本:v1.13.2
+日期:2024-11-28
+1. 优化SV905C2的增益设置
+
+Version: v1.13.2
+Date: 2024-11-28
+1. Optimize gain settings of SV905C2
