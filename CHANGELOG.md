@@ -27,6 +27,9 @@ All notable changes to INDIGO framework will be documented in this file.
 	- frame capture on remote servers fixed
 	- better handling of the imager agent process state
 
+- indigo_ccd_svb:
+	- update SDK v.1.13.2
+
 # [2.0-308] - 02 Jan Thu 2025
 ## Overall:
 
