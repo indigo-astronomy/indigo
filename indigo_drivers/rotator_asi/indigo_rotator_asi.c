@@ -38,7 +38,7 @@
 #include <indigo/indigo_driver_xml.h>
 #include "indigo_rotator_asi.h"
 
-#if !(defined(__APPLE__) && defined(__arm64__)) && !(defined(__linux__) && defined(__i386__)) && !(defined(__linux__) && defined(__aarch64__))
+#if !(defined(__APPLE__) && defined(__arm64__))
 
 #if defined(INDIGO_FREEBSD)
 #include <libusb.h>

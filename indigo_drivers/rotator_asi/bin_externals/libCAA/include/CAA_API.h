@@ -23,22 +23,22 @@ typedef struct _CAA_INFO
 
 
 typedef enum _CAA_ERROR_CODE{
-    CAA_SUCCESS = 0,            // Success
-    CAA_ERROR_INVALID_INDEX,    // Invalid USB ID
-    CAA_ERROR_INVALID_ID,       // Invalid connection ID
-    CAA_ERROR_INVALID_VALUE,    // Invalid parameter
-    CAA_ERROR_REMOVED,          // CAA device not found, possibly removed
-    CAA_ERROR_MOVING,           // CAA is currently moving
-    CAA_ERROR_ERROR_STATE,      // CAA is in an invalid state
-    CAA_ERROR_GENERAL_ERROR,    // General error
-    CAA_ERROR_NOT_SUPPORTED,    // Interface not supported in the current version
-    CAA_ERROR_CLOSED,           // Failed to close
-    CAA_ERROR_OUT_RANGE,        // Out of 0-360 range
-    CAA_ERROR_OVER_LIMIT,       // Exceeded limit
-    CAA_ERROR_STALL,            // Stall condition
-    CAA_ERROR_TIMEOUT,          // Timeout occurred
-    CAA_ERROR_END = -1          // End of errors
-} CAA_ERROR_CODE;
+	CAA_SUCCESS = 0,
+	CAA_ERROR_INVALID_INDEX,
+	CAA_ERROR_INVALID_ID,
+	CAA_ERROR_INVALID_VALUE,
+	CAA_ERROR_REMOVED, //failed to find the caa, maybe the caa has been removed
+	CAA_ERROR_MOVING,//caa is moving
+	CAA_ERROR_ERROR_STATE,//caa is in error state
+	CAA_ERROR_GENERAL_ERROR,//other error
+	CAA_ERROR_NOT_SUPPORTED,
+	CAA_ERROR_CLOSED,
+	CAA_ERROR_OUT_RANGE, // 超过 0- 360范围
+	CAA_ERROR_OVER_LIMIT, // 超过限位
+	CAA_ERROR_STALL,	// 堵转
+	CAA_ERROR_TIMEOUT, // 超时
+	CAA_ERROR_END = -1
+}CAA_ERROR_CODE;
 
 typedef struct _CAA_ID{
 	unsigned char id[8];
