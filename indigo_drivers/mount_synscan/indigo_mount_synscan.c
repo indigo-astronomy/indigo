@@ -76,6 +76,22 @@ static indigo_result mount_attach(indigo_device *device) {
 		MOUNT_HOME_SET_PROPERTY->hidden = false;
 		// -------------------------------------------------------------------------------- MOUNT_HOME_POSITION
 		MOUNT_HOME_POSITION_PROPERTY->hidden = false;
+        // -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
+		// note that MOUNT_TRACK_RATE_CUSTOM_ITEM has been overwrited in indigo_mount_synscan_private.h since King tracking rate is not implemented
+        indigo_init_switch_item(MOUNT_TRACK_RATE_CUSTOM_ITEM, MOUNT_TRACK_RATE_CUSTOM_ITEM_NAME, "Custom rate", false);
+        MOUNT_TRACK_RATE_PROPERTY->count = 4;
+        // -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
+		// overwrited existing MOUNT_CUSTOM_TRACKING_RATE_PROPERTY to include two custom rates (one for RA and one for DEC)
+        MOUNT_CUSTOM_TRACKING_RATE_PROPERTY = indigo_init_number_property(NULL, device->name, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY_NAME, MOUNT_MAIN_GROUP, "Custom tracking rate", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+        if (MOUNT_CUSTOM_TRACKING_RATE_PROPERTY == NULL)
+            return INDIGO_FAILED;
+        indigo_init_number_item(MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM, MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM_NAME, "Custom RA tracking rate (arcsec/min)", 0, 0, 0, 0);
+        indigo_init_number_item(MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM, MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM_NAME, "Custom DEC tracking rate (arcsec/min)", 0, 0, 0, 0);
+		// limits for custom rates are set to FIND slew rate (see mount_manual_slew_rate function)
+		MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM->number.min = -raRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
+		MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM->number.max = raRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
+		MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM->number.min = -decRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
+		MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM->number.max = decRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		MOUNT_TRACKING_ON_ITEM->sw.value = false;
 		MOUNT_TRACKING_OFF_ITEM->sw.value = true;
@@ -262,6 +278,11 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_TRACK_RATE
 		indigo_property_copy_values(MOUNT_TRACK_RATE_PROPERTY, property, false);
 		mount_handle_tracking_rate(device);
+		return INDIGO_OK;
+	} else if (indigo_property_match_changeable(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property)) {
+		// -------------------------------------------------------------------------------- MOUNT_CUSTOM_TRACKING_RATE
+		indigo_property_copy_values(MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, property, false);
+		mount_handle_custom_tracking_rate(device);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING (on/off)
