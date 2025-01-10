@@ -106,6 +106,9 @@ extern "C" {
 #define AGENT_PLATESOLVER_GOTO_SETTINGS_RA_ITEM		(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY->items+0)
 #define AGENT_PLATESOLVER_GOTO_SETTINGS_DEC_ITEM	(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY->items+1)
 
+#define AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY	(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_settle_time_property)
+#define AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_ITEM		(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY->items+0)
+
 #define AGENT_PLATESOLVER_ABORT_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_property)
 #define AGENT_PLATESOLVER_ABORT_ITEM					(AGENT_PLATESOLVER_ABORT_PROPERTY->items+0)
 
@@ -139,6 +142,7 @@ typedef struct {
 	indigo_property *polar_alignment_state_property;
 	indigo_property *polar_alignment_settings_property;
 	indigo_property *precise_goto_settings_property;
+	indigo_property *mount_settle_time_property;
 	indigo_property *solve_images_property;
 	indigo_property_state mount_process_state;
 	indigo_spherical_point_t eq_coordinates;
