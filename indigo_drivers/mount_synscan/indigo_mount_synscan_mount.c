@@ -41,24 +41,24 @@
 const double raRates[] = { 1.25, 2, 8, 16, 32, 70, 100, 625, 725, 825 };
 const double decRates[] = { 0.5, 1, 8, 16, 32, 70, 100, 625, 725, 825 };
 
-const int SLEW_RATE_GUIDE = 1;
-const int SLEW_RATE_CENTERING = 4;
-const int SLEW_RATE_FIND = 6;
-const int SLEW_RATE_MAX = 9;
+const int MANUAL_SLEW_RATE_GUIDE = 1;
+const int MANUAL_SLEW_RATE_CENTERING = 4;
+const int MANUAL_SLEW_RATE_FIND = 6;
+const int MANUAL_SLEW_RATE_MAX = 9;
 
 #define REFRESH_SECONDS (0.5)
 
 static int mount_manual_slew_rate(indigo_device* device) {
 	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
-		return SLEW_RATE_GUIDE;
+		return MANUAL_SLEW_RATE_GUIDE;
 	else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
-		return SLEW_RATE_CENTERING;
+		return MANUAL_SLEW_RATE_CENTERING;
 	else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value)
-		return SLEW_RATE_FIND;
+		return MANUAL_SLEW_RATE_FIND;
 	else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value)
-		return SLEW_RATE_MAX;
+		return MANUAL_SLEW_RATE_MAX;
 	else
-		return SLEW_RATE_GUIDE;
+		return MANUAL_SLEW_RATE_GUIDE;
 }
 
 double synscan_tracking_rate_ra(indigo_device* device) {

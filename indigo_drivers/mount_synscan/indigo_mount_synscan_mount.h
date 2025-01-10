@@ -50,9 +50,9 @@ extern const double raRates[];
 extern const double decRates[];
 
 // Slew rates
-extern const int SLEW_RATE_GUIDE;
-extern const int SLEW_RATE_CENTERING;
-extern const int SLEW_RATE_FIND;
-extern const int SLEW_RATE_MAX;
+extern const int MANUAL_SLEW_RATE_GUIDE;
+extern const int MANUAL_SLEW_RATE_CENTERING;
+extern const int MANUAL_SLEW_RATE_FIND;
+extern const int MANUAL_SLEW_RATE_MAX;
 
 #endif /* indigo_mount_synscan_mount_h */

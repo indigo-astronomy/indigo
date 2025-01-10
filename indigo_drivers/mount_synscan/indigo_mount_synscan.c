@@ -88,10 +88,10 @@ static indigo_result mount_attach(indigo_device *device) {
         indigo_init_number_item(MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM, MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM_NAME, "Custom RA tracking rate (arcsec/min)", 0, 0, 0, 0);
         indigo_init_number_item(MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM, MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM_NAME, "Custom DEC tracking rate (arcsec/min)", 0, 0, 0, 0);
 		// limits for custom rates are set to FIND slew rate (see mount_manual_slew_rate function)
-		MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM->number.min = -raRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
-		MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM->number.max = raRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
-		MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM->number.min = -decRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
-		MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM->number.max = decRates[SLEW_RATE_FIND] * SIDEREAL_RATE;
+		MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM->number.min = -raRates[MANUAL_SLEW_RATE_FIND] * SIDEREAL_RATE;
+		MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM->number.max = raRates[MANUAL_SLEW_RATE_FIND] * SIDEREAL_RATE;
+		MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM->number.min = -decRates[MANUAL_SLEW_RATE_FIND] * SIDEREAL_RATE;
+		MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM->number.max = decRates[MANUAL_SLEW_RATE_FIND] * SIDEREAL_RATE;
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
 		MOUNT_TRACKING_ON_ITEM->sw.value = false;
 		MOUNT_TRACKING_OFF_ITEM->sw.value = true;
