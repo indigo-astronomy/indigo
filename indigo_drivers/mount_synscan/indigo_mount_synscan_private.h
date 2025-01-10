@@ -11,8 +11,10 @@
 
 #include <pthread.h>
 #include <stdbool.h>
+
 #include <indigo/indigo_driver.h>
 //#include "indigo_timer.h"
+
 #include "indigo_mount_synscan_driver.h"
 
 #define DRIVER_VERSION			0x0012

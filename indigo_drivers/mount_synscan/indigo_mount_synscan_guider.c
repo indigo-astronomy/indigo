@@ -9,7 +9,9 @@
 #include <sys/time.h>
 #include <string.h>
 #include <unistd.h>
+
 #include <indigo/indigo_mount_driver.h>
+
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_driver.h"
 #include "indigo_mount_synscan_guider.h"

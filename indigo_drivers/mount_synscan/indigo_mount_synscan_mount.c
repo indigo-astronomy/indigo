@@ -30,8 +30,9 @@
 #include <unistd.h>
 
 #include <indigo/indigo_align.h>
-#include "indigo_mount_synscan_mount.h"
+
 #include "indigo_mount_synscan_private.h"
+#include "indigo_mount_synscan_mount.h"
 
 
 #define h2d(h) (h * 15.0)
