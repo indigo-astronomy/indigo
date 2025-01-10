@@ -37,7 +37,6 @@
 #include <indigo/indigo_align.h>
 
 #include "indigo_mount_synscan.h"
-#include "indigo_mount_synscan.h"
 #include "indigo_mount_synscan_private.h"
 #include "indigo_mount_synscan_mount.h"
 #include "indigo_mount_synscan_guider.h"
