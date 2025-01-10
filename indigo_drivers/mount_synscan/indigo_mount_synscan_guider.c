@@ -34,7 +34,7 @@
 //		//  This is not ideal as we are busy-waiting here and just consuming CPU cycles doing nothing,
 //		//  but if we actually sleep, then the OS might not give control back for much longer than we
 //		//  wanted to sleep for.
-//		
+//
 //		//  Return if we've reached the end time
 //		if (tnow >= tend)
 //			return;
@@ -86,7 +86,7 @@ void guider_timer_callback_ra(indigo_device *device) {
 		PRIVATE_DATA->raAxisMode = kAxisModeTracking;
 #endif
 		synscan_guide_axis_at_rate(device->master_device, kAxisRA, guideRate, pulse_length_ms, axisRate);
-		
+
 		//  Complete the guiding property updates
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 		GUIDER_GUIDE_WEST_ITEM->number.value = 0;
@@ -107,7 +107,7 @@ void guider_timer_callback_dec(indigo_device *device) {
 		pulse_length_ms = PRIVATE_DATA->dec_pulse_ms;
 		PRIVATE_DATA->dec_pulse_ms = 0;
 		pthread_mutex_unlock(&PRIVATE_DATA->dec_mutex);
-		
+
 		//  Exit if requested
 		if (PRIVATE_DATA->guiding_thread_exit) {
 			PRIVATE_DATA->timer_count--;
@@ -131,7 +131,7 @@ void guider_timer_callback_dec(indigo_device *device) {
 
 		//  Wait for the required duration
 		//guider_delay_ms(pulse_length_ms);
-		
+
 		//  Stop the slew
 		synscan_stop_axis(device->master_device, kAxisDEC);
 		synscan_wait_for_axis_stopped(device->master_device, kAxisDEC, NULL);

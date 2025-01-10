@@ -110,7 +110,7 @@ typedef struct {
 	bool guiding_thread_exit;
 	int ha_pulse_ms;
 	int dec_pulse_ms;
-	
+
 } synscan_private_data;
 
 //-----------------------------------------------

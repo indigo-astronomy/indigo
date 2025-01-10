@@ -145,7 +145,7 @@ static indigo_result mount_attach(indigo_device *device) {
 		PRIVATE_DATA->mountConfigured = false;
 		ADDITIONAL_INSTANCES_PROPERTY->hidden = DEVICE_CONTEXT->base_device != NULL;
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
-		
+
 		return mount_enumerate_properties(device, NULL, NULL);
 	}
 	return INDIGO_FAILED;
@@ -450,7 +450,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_device* device = d->master_device;
 			tracking_enabled = MOUNT_TRACKING_ON_ITEM->sw.value;
 		}
-		
+
 		//  Start a pulse if the mount is tracking
 		if (duration != 0 && tracking_enabled) {
 			pthread_mutex_lock(&PRIVATE_DATA->ha_mutex);
