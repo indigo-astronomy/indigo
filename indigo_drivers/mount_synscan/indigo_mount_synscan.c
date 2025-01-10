@@ -273,9 +273,9 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 			mount_handle_tracking(device);
 		}
 		return INDIGO_OK;
-	} else if (indigo_property_match_changeable(MOUNT_SLEW_RATE_PROPERTY, property)) {
+	// } else if (indigo_property_match_changeable(MOUNT_SLEW_RATE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_SLEW_RATE
-		//  We dont even need to do thsi - just let common code handle it
+		//  We dont even need to do this - just let common code handle it
 		//indigo_property_copy_values(MOUNT_SLEW_RATE_PROPERTY, property, false);
 		//MOUNT_SLEW_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
