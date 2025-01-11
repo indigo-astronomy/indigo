@@ -30,38 +30,53 @@
 #include <unistd.h>
 
 #include <indigo/indigo_align.h>
-#include "indigo_mount_synscan_mount.h"
+
 #include "indigo_mount_synscan_private.h"
+#include "indigo_mount_synscan_mount.h"
 
 
 #define h2d(h) (h * 15.0)
 #define d2h(d) (d / 15.0)
-static const double raRates[] = { 1.25, 2, 8, 16, 32, 70, 100, 625, 725, 825 };
-static const double decRates[] = { 0.5, 1, 8, 16, 32, 70, 100, 625, 725, 825 };
 
+const double raRates[] = { 1.25, 2, 8, 16, 32, 70, 100, 625, 725, 825 };
+const double decRates[] = { 0.5, 1, 8, 16, 32, 70, 100, 625, 725, 825 };
+
+const int MANUAL_SLEW_RATE_GUIDE = 1;
+const int MANUAL_SLEW_RATE_CENTERING = 4;
+const int MANUAL_SLEW_RATE_FIND = 6;
+const int MANUAL_SLEW_RATE_MAX = 9;
 
 #define REFRESH_SECONDS (0.5)
 
 static int mount_manual_slew_rate(indigo_device* device) {
 	if (MOUNT_SLEW_RATE_GUIDE_ITEM->sw.value)
-		return 1;
+		return MANUAL_SLEW_RATE_GUIDE;
 	else if (MOUNT_SLEW_RATE_CENTERING_ITEM->sw.value)
-		return 4;
+		return MANUAL_SLEW_RATE_CENTERING;
 	else if (MOUNT_SLEW_RATE_FIND_ITEM->sw.value)
-		return 6;
+		return MANUAL_SLEW_RATE_FIND;
 	else if (MOUNT_SLEW_RATE_MAX_ITEM->sw.value)
-		return 9;
+		return MANUAL_SLEW_RATE_MAX;
 	else
-		return 1;
+		return MANUAL_SLEW_RATE_GUIDE;
 }
 
-double synscan_tracking_rate(indigo_device* device) {
+double synscan_tracking_rate_ra(indigo_device* device) {
 	if (MOUNT_TRACK_RATE_SIDEREAL_ITEM->sw.value)
 		return SIDEREAL_RATE;
 	else if (MOUNT_TRACK_RATE_SOLAR_ITEM->sw.value)
 		return SOLAR_RATE;
 	else if (MOUNT_TRACK_RATE_LUNAR_ITEM->sw.value)
 		return LUNAR_RATE;
+	else if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value)
+		return MOUNT_CUSTOM_TRACKING_RA_RATE_ITEM->number.value / 60.0; // custom rate is in arcsec/min and needs to be converted in arcsec/sec
+	else
+		return 0.0;
+}
+
+double synscan_tracking_rate_dec(indigo_device* device) {
+	if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value)
+		return MOUNT_CUSTOM_TRACKING_DEC_RATE_ITEM->number.value / 60.0; // custom rate is in arcsec/min and needs to be converted in arcsec/sec
 	else
 		return 0.0;
 }
@@ -333,8 +348,15 @@ static void mount_slew_timer_callback(indigo_device* device) {
 		if (lst >= target_lst && (lst - target_lst <= 5/3600.0)) {
 			//    Start tracking if we need to
 			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-				synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate(device));
-				PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+				if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
+					synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+					PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+					synscan_slew_axis_at_rate(device, kAxisDEC, synscan_tracking_rate_dec(device));
+					PRIVATE_DATA->decAxisMode = kAxisModeTracking;
+				} else {
+					synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+					PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+				}
 
 				//  Update the tracking property to be ON if not already so it is reflected in UI
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
@@ -467,8 +489,15 @@ static void mount_slew_aa_timer_callback(indigo_device* device) {
 //		if (lst >= target_lst && (lst - target_lst <= 5/3600.0)) {
 //			//    Start tracking if we need to
 //			if (MOUNT_ON_COORDINATES_SET_TRACK_ITEM->sw.value) {
-//				synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate(device));
-//				PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+//				if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
+//					synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+//					PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+//					synscan_slew_axis_at_rate(device, kAxisDEC, synscan_tracking_rate_dec(device).dec);
+//					PRIVATE_DATA->decAxisMode = kAxisModeTracking;
+//				} else {
+//					synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+//					PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+//				}
 //
 //				//  Update the tracking property to be ON if not already so it is reflected in UI
 //				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_ON_ITEM, true);
@@ -542,11 +571,13 @@ void mount_handle_aa_coordinates(indigo_device *device) {
 static void mount_update_tracking_rate_timer_callback(indigo_device* device) {
 	//  Update the tracking rate
 	pthread_mutex_lock(&PRIVATE_DATA->driver_mutex);
-	double axisRate = synscan_tracking_rate(device);
+	double axisRate;
+	bool result;
 
+	// RA axis
+	axisRate = synscan_tracking_rate_ra(device);
 	//  Try a simple rate update on the axis
 	//  If a simple rate adjustment isn't possible, stop the axis first
-	bool result;
 	synscan_update_axis_to_rate(device, kAxisRA, axisRate, &result);
 	if (!result) {
 		synscan_stop_axis(device, kAxisRA);
@@ -555,9 +586,25 @@ static void mount_update_tracking_rate_timer_callback(indigo_device* device) {
 	}
 	PRIVATE_DATA->raAxisMode = kAxisModeTracking;
 
+	// DEC axis
+	if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
+		axisRate = synscan_tracking_rate_dec(device);
+		//  Try a simple rate update on the axis
+		//  If a simple rate adjustment isn't possible, stop the axis first
+		synscan_update_axis_to_rate(device, kAxisDEC, axisRate, &result);
+		if (!result) {
+			synscan_stop_axis(device, kAxisDEC);
+			synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
+			synscan_slew_axis_at_rate(device, kAxisDEC, axisRate);
+		}
+		PRIVATE_DATA->decAxisMode = kAxisModeTracking;
+	}
+
 	//  Finished updating
 	MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+	MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+	indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->driver_mutex);
 }
 
@@ -567,10 +614,23 @@ void mount_handle_tracking_rate(indigo_device* device) {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
 		indigo_set_timer(device, 0, mount_update_tracking_rate_timer_callback, NULL);
-	}
-	else {
+	} else {
 		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+	}
+}
+
+void mount_handle_custom_tracking_rate(indigo_device* device) {
+	//  Update the tracking rate of the axis if we are tracking
+	if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value && MOUNT_TRACKING_ON_ITEM->sw.value) {
+		MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_TRACK_RATE_PROPERTY, NULL);
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
+		indigo_set_timer(device, 0, mount_update_tracking_rate_timer_callback, NULL);
+	} else {
+		MOUNT_CUSTOM_TRACKING_RATE_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, MOUNT_CUSTOM_TRACKING_RATE_PROPERTY, NULL);
 	}
 }
 
@@ -579,14 +639,23 @@ static void mount_tracking_timer_callback(indigo_device* device) {
 	MOUNT_TRACKING_PROPERTY->state = INDIGO_OK_STATE;
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
 		//  Start tracking at the configured rate
-		double axisRate = synscan_tracking_rate(device);
-		synscan_slew_axis_at_rate(device, kAxisRA, axisRate);
-		PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+		if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
+			synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+			PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+			synscan_slew_axis_at_rate(device, kAxisDEC, synscan_tracking_rate_dec(device));
+			PRIVATE_DATA->decAxisMode = kAxisModeTracking;
+		} else {
+			synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+			PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+		}
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, "Tracking started");
 	} else if (MOUNT_TRACKING_OFF_ITEM->sw.value) {
 		synscan_stop_axis(device, kAxisRA);
 		synscan_wait_for_axis_stopped(device, kAxisRA, NULL);
 		PRIVATE_DATA->raAxisMode = kAxisModeIdle;
+		synscan_stop_axis(device, kAxisDEC);
+		synscan_wait_for_axis_stopped(device, kAxisDEC, NULL);
+		PRIVATE_DATA->decAxisMode = kAxisModeIdle;
 		indigo_send_message(device, "Tracking stopped");
 		indigo_update_property(device, MOUNT_TRACKING_PROPERTY, NULL);
 	}
@@ -639,9 +708,15 @@ static void manual_slew_ra_stop_timer_callback(indigo_device* device) {
 
 	//  Resume tracking if tracking is currently on
 	if (MOUNT_TRACKING_ON_ITEM->sw.value) {
-		double axisRate = synscan_tracking_rate(device);
-		synscan_slew_axis_at_rate(device, kAxisRA, axisRate);
-		PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+		if (MOUNT_TRACK_RATE_CUSTOM_ITEM->sw.value) {
+			synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+			PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+			synscan_slew_axis_at_rate(device, kAxisDEC, synscan_tracking_rate_dec(device));
+			PRIVATE_DATA->decAxisMode = kAxisModeTracking;
+		} else {
+			synscan_slew_axis_at_rate(device, kAxisRA, synscan_tracking_rate_ra(device));
+			PRIVATE_DATA->raAxisMode = kAxisModeTracking;
+		}
 	}
 
 	//  Update property to OK
