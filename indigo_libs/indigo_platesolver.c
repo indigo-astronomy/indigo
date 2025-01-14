@@ -369,7 +369,22 @@ static void solve(indigo_platesolver_task *task) {
 			return;
 		}
 	}
+	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.value = NULL;
+	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.size = 0;
+	AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format[0] = 0;
+	AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_BUSY_STATE;
+	indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
 	bool success = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->solve(device, task->image, task->size);
+	if (success) {
+		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.value = task->image;
+		AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.size = task->size;
+		indigo_copy_name(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM->blob.format, task->format);
+		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_OK_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
+	} else {
+		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->state = INDIGO_ALERT_STATE;
+		indigo_update_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
+	}
 	indigo_safe_free(task->image);
 	indigo_safe_free(task);
 	if (!success) {
@@ -782,11 +797,16 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 		if (AGENT_PLATESOLVER_ABORT_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_switch_item(AGENT_PLATESOLVER_ABORT_ITEM, AGENT_PLATESOLVER_ABORT_ITEM_NAME, "Abort", false);
-		// -------------------------------------------------------------------------------- IMAGE property
-		AGENT_PLATESOLVER_IMAGE_PROPERTY = indigo_init_blob_property_p(NULL, device->name, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
+		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE property
+		AGENT_PLATESOLVER_IMAGE_PROPERTY = indigo_init_blob_property_p(NULL, device->name, AGENT_PLATESOLVER_IMAGE_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image upload", INDIGO_OK_STATE, INDIGO_WO_PERM, 1);
 		if (AGENT_PLATESOLVER_IMAGE_PROPERTY == NULL)
 			return INDIGO_FAILED;
 		indigo_init_blob_item(AGENT_PLATESOLVER_IMAGE_ITEM, AGENT_PLATESOLVER_IMAGE_ITEM_NAME, "Image");
+		// -------------------------------------------------------------------------------- AGENT_PLATESOLVER_IMAGE_OUTPUT property
+		AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY = indigo_init_blob_property(NULL, device->name, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY_NAME, PLATESOLVER_MAIN_GROUP, "Image mirror", INDIGO_OK_STATE, 1);
+		if (AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY == NULL)
+			return INDIGO_FAILED;
+		indigo_init_blob_item(AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM, AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM_NAME, "Image");
 		// --------------------------------------------------------------------------------
 		CONFIG_PROPERTY->hidden = true;
 		PROFILE_PROPERTY->hidden = true;
@@ -827,6 +847,8 @@ indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, ind
 		indigo_define_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
 	if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_PROPERTY, property))
 		indigo_define_property(device, AGENT_PLATESOLVER_IMAGE_PROPERTY, NULL);
+	if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, property))
+		indigo_define_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 
@@ -924,6 +946,7 @@ indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_c
 			indigo_copy_value(task->image_url, AGENT_PLATESOLVER_IMAGE_ITEM->blob.url);
 			if (AGENT_PLATESOLVER_IMAGE_ITEM->blob.value != NULL) {
 				task->image = indigo_safe_malloc_copy(task->size = AGENT_PLATESOLVER_IMAGE_ITEM->blob.size, AGENT_PLATESOLVER_IMAGE_ITEM->blob.value);
+				indigo_copy_name(task->format, AGENT_PLATESOLVER_IMAGE_ITEM->blob.format);
 			} else {
 				task->image = NULL;
 			}
@@ -964,6 +987,7 @@ indigo_result indigo_platesolver_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_ABORT_PROPERTY);
 	indigo_release_property(AGENT_PLATESOLVER_IMAGE_PROPERTY);
+	indigo_release_property(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY);
 	pthread_mutex_destroy(&INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mutex);
 	return indigo_filter_device_detach(device);
 }
@@ -1076,6 +1100,7 @@ indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_d
 							indigo_copy_value(task->image_url, item->blob.url);
 							if (item->blob.value != NULL) {
 								task->image = indigo_safe_malloc_copy(task->size = item->blob.size, item->blob.value);
+								indigo_copy_name(task->format, item->blob.format);
 							} else {
 								task->image = NULL;
 							}

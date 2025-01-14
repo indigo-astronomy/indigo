@@ -119,12 +119,16 @@ extern "C" {
 #define AGENT_PLATESOLVER_IMAGE_PROPERTY			(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->image_property)
 #define AGENT_PLATESOLVER_IMAGE_ITEM					(AGENT_PLATESOLVER_IMAGE_PROPERTY->items+0)
 
+#define AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY	(INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->image_output_property)
+#define AGENT_PLATESOLVER_IMAGE_OUTPUT_ITEM			(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY->items+0)
+
 /** Plate solver  structure.
  */
 typedef struct {
 	indigo_device *device;
 	void *image;
 	long size;
+	char format[INDIGO_NAME_SIZE];
 	char image_url[INDIGO_VALUE_SIZE];
 } indigo_platesolver_task;
 
@@ -138,6 +142,7 @@ typedef struct {
 	indigo_property *start_process_property;
 	indigo_property *abort_property;
 	indigo_property *image_property;
+	indigo_property *image_output_property;
 	indigo_property *exposure_settings_property;
 	indigo_property *polar_alignment_state_property;
 	indigo_property *polar_alignment_settings_property;
