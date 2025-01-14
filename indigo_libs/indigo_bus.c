@@ -1523,6 +1523,7 @@ void indigo_property_copy_values(indigo_property *property, indigo_property *oth
 							break;
 						case INDIGO_BLOB_VECTOR:
 							property_item->blob.value = indigo_safe_realloc_copy(property_item->blob.value, property_item->blob.size = other_item->blob.size, other_item->blob.value);
+							indigo_copy_name(property_item->blob.format, other_item->blob.format);
 							break;
 						default:
 							break;
