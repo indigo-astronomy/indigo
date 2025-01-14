@@ -44,6 +44,8 @@
 static bool validate_related_agent(indigo_device *device, indigo_property *info_property, int mask) {
 	if (!strncmp(info_property->device, "Imager Agent", 12))
 		return true;
+	if (!strncmp(info_property->device, "Guider Agent", 12))
+		return true;
 	if (!strncmp(info_property->device, "Mount Agent", 11))
 		return true;
 	return false;
@@ -165,12 +167,18 @@ static bool start_exposure(indigo_device *device, double exposure) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_START_PREVIEW_1_ITEM_NAME, true);
 		return true;
 	}
+	related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Guider Agent");
+	if (related_agent_name != NULL) {
+		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_GUIDER_SETTINGS_PROPERTY_NAME, AGENT_GUIDER_SETTINGS_EXPOSURE_ITEM_NAME, exposure);
+		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_GUIDER_START_PREVIEW_1_ITEM_NAME, true);
+		return true;
+	}
 	indigo_send_message(device, "Failed to start exposure - no image source agent selected");
 	return false;
 }
 
 static bool abort_exposure(indigo_device *device) {
-	char *related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Imager Agent");
+	char *related_agent_name = indigo_filter_first_related_agent_2(FILTER_DEVICE_CONTEXT->device, "Imager Agent", "Guider Agent");
 	if (related_agent_name != NULL) {
 		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, CCD_ABORT_EXPOSURE_PROPERTY_NAME, CCD_ABORT_EXPOSURE_ITEM_NAME, true);
 		return true;
@@ -1047,7 +1055,7 @@ static void indigo_platesolver_handle_property(indigo_client *client, indigo_dev
 			INDIGO_PLATESOLVER_CLIENT_PRIVATE_DATA->mount_process_state = property->state;
 		}
 	}
-	related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
+	related_agent_name = indigo_filter_first_related_agent_2(FILTER_CLIENT_CONTEXT->device, "Imager Agent", "Guider Agent");
 	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		if (!strcmp(property->name, AGENT_START_PROCESS_PROPERTY_NAME)) {
@@ -1086,7 +1094,7 @@ void handle_polar_align_failure(indigo_device *device) {
 }
 
 indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message) {
-	char *related_agent_name = indigo_filter_first_related_agent(FILTER_CLIENT_CONTEXT->device, "Imager Agent");
+	char *related_agent_name = indigo_filter_first_related_agent_2(FILTER_CLIENT_CONTEXT->device, "Imager Agent", "Guider Agent");
 	if (related_agent_name && !strcmp(related_agent_name, property->device)) {
 		indigo_device *device = FILTER_CLIENT_CONTEXT->device;
 		if (!strcmp(property->name, CCD_IMAGE_PROPERTY_NAME)) {
