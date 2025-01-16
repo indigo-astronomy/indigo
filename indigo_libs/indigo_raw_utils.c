@@ -115,11 +115,31 @@ indigo_result indigo_equalize_bayer_channels(indigo_raw_type raw_type, void *dat
 		}
 	}
 
-	double overall_average = (ch1_sum + ch2_sum + ch3_sum + ch4_sum) / (double)(ch1_count + ch2_count + ch3_count + ch4_count);
-	double ch1_scale_factor = overall_average / (ch1_sum / (double)ch1_count);
-	double ch2_scale_factor = overall_average / (ch2_sum / (double)ch2_count);
-	double ch3_scale_factor = overall_average /(ch3_sum / (double)ch3_count);
-	double ch4_scale_factor = overall_average / (ch4_sum / (double)ch4_count);
+	double total_count = (double)(ch1_count + ch2_count + ch3_count + ch4_count);
+
+	if (total_count == 0) {
+		return INDIGO_FAILED;
+	}
+
+	double overall_average = (double)(ch1_sum + ch2_sum + ch3_sum + ch4_sum) / total_count;
+
+	if (ch1_count == 0 || ch2_count == 0 || ch3_count == 0 || ch4_count == 0) {
+		return INDIGO_FAILED;
+	}
+
+	double ch1_avg = ch1_sum / (double)ch1_count;
+	double ch2_avg = ch2_sum / (double)ch2_count;
+	double ch3_avg = ch3_sum / (double)ch3_count;
+	double ch4_avg = ch4_sum / (double)ch4_count;
+
+	if (ch1_avg == 0 || ch2_avg == 0 || ch3_avg == 0 || ch4_avg == 0) {
+		return INDIGO_FAILED;
+	}
+
+	double ch1_scale_factor = overall_average / ch1_avg;
+	double ch2_scale_factor = overall_average / ch2_avg;
+	double ch3_scale_factor = overall_average / ch3_avg;
+	double ch4_scale_factor = overall_average / ch4_avg;
 
 	if (raw_type == INDIGO_RAW_MONO16) {
 		uint16_t* data16 = (uint16_t*)data;
