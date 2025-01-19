@@ -1852,7 +1852,7 @@ static void fix_dms(double *d, double *m, double *s) {
 	}
 }
 
-char* indigo_dtos(double value, char *format) { // circular use of 4 static buffers!
+char* indigo_dtos(double value, const char *format) { // circular use of 4 static buffers!
 	double d = fabs(value);
 	double m = 60.0 * (d - floor(d));
 	double s = 60.0 * (m - floor(m));
@@ -1861,7 +1861,8 @@ char* indigo_dtos(double value, char *format) { // circular use of 4 static buff
 	}
 	char buffer[127], signature[16];
 	// compute format signature
-	char *fp = format, *sp = signature;
+	const char *fp = format;
+	char *sp = signature;
 	while (*fp && sp - signature < sizeof(signature) - 1) {
 		if (*fp == '%') {
 			fp++;
