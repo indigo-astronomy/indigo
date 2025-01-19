@@ -727,7 +727,7 @@ extern double indigo_stod(char *string);
 
 /** Convert double to sexagesimal string.
  */
-extern char* indigo_dtos(double value, char *format);
+extern char* indigo_dtos(double value, const char *format);
 
 /** Sleeps for specified number of microseconds.
  */
