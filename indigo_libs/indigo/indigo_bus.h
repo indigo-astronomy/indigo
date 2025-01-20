@@ -599,11 +599,11 @@ extern void indigo_set_switch(indigo_property *property, indigo_item *item, bool
 
 /** Get item.
  */
-extern indigo_item *indigo_get_item(indigo_property *property, char *item_name);
+extern indigo_item *indigo_get_item(indigo_property *property, const char *item_name);
 
 /** Get switch item value.
  */
-extern bool indigo_get_switch(indigo_property *property, char *item_name);
+extern bool indigo_get_switch(indigo_property *property, const char *item_name);
 
 /** Copy item values from other property into property (optionally including property state).
  */
