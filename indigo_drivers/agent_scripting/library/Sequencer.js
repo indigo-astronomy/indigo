@@ -96,6 +96,10 @@ Sequence.prototype.select_frame_type = function(name) {
 	this.sequence.push({ execute: 'select_frame_type("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.select_frame_type_by_label = function(label) {
+	this.sequence.push({ execute: 'select_frame_type_by_label("' + label + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.select_image_format = function(name) {
 	this.sequence.push({ execute: 'select_image_format("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -859,6 +863,26 @@ var indigo_sequencer = {
 			} else {
 				this.select_switch(agent, "CCD_FRAME_TYPE", name);
 			}
+		} else {
+			this.failure("Can't select frame type");
+		}
+	},
+
+	select_frame_type_by_label: function(label) {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].CCD_FRAME_TYPE;
+		if (property != null) {
+			for (var name in property.item_defs) {
+				if (property.item_defs[name].label === label) {
+					if (property.items[name]) {
+						this.warning("Frame type " + name + " is already selected");
+					} else {
+						this.select_switch(agent, "CCD_FRAME_TYPE", name);
+					}
+					return;
+				}
+			}
+			this.failure("Can't select frame type '" + label + "'");
 		} else {
 			this.failure("Can't select frame type");
 		}
