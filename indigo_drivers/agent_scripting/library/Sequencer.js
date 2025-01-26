@@ -104,8 +104,16 @@ Sequence.prototype.select_image_format = function(name) {
 	this.sequence.push({ execute: 'select_image_format("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.select_image_format_by_label = function(label) {
+	this.sequence.push({ execute: 'select_image_format_by_label("' + label + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.select_camera_mode = function(name) {
 	this.sequence.push({ execute: 'select_camera_mode("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.select_camera_mode_by_label = function(label) {
+	this.sequence.push({ execute: 'select_camera_mode_by_label("' + label + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.set_gain = function(value) {
@@ -595,7 +603,7 @@ var indigo_sequencer = {
 		this.wait_for_item = null;
 		this.wait_for_value = null;
 		this.sequence = null;
-		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state);
+		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state, message);
 	},
 	
 	wait: function(seconds) {
@@ -902,6 +910,26 @@ var indigo_sequencer = {
 		}
 	},
 
+	select_image_format_by_label: function(label) {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].CCD_IMAGE_FORMAT;
+		if (property != null) {
+			for (var name in property.item_defs) {
+				if (property.item_defs[name].label === label) {
+					if (property.items[name]) {
+						this.warning("Image format " + name + " is already selected");
+					} else {
+						this.select_switch(agent, "CCD_IMAGE_FORMAT", name);
+					}
+					return;
+				}
+			}
+			this.failure("Can't select image format '" + label + "'");
+		} else {
+			this.failure("Can't select image format");
+		}
+	},
+
 	select_camera_mode: function(name) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].CCD_MODE;
@@ -911,6 +939,26 @@ var indigo_sequencer = {
 			} else {
 				this.select_switch(agent, "CCD_MODE", name);
 			}
+		} else {
+			this.failure("Can't select camera mode");
+		}
+	},
+
+	select_camera_mode_by_label: function(label) {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].CCD_MODE;
+		if (property != null) {
+			for (var name in property.item_defs) {
+				if (property.item_defs[name].label === label) {
+					if (property.items[name]) {
+						this.warning("Camera mode " + name + " is already selected");
+					} else {
+						this.select_switch(agent, "CCD_MODE", name);
+					}
+					return;
+				}
+			}
+			this.failure("Can't select camera mode '" + label + "'");
 		} else {
 			this.failure("Can't select camera mode");
 		}
