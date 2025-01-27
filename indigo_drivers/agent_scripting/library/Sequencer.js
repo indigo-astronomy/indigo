@@ -177,6 +177,10 @@ Sequence.prototype.select_filter = function(name) {
 	this.sequence.push({ execute: 'select_filter("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+Sequence.prototype.select_filter_by_label = function(name) {
+	this.sequence.push({ execute: 'select_filter_by_label("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
 Sequence.prototype.set_directory = function(directory) {
 	this.sequence.push({ execute: 'set_local_mode("' + directory + '", null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
@@ -1132,6 +1136,26 @@ var indigo_sequencer = {
 			} else {
 				this.select_switch(agent, "AGENT_WHEEL_FILTER", name);
 			}
+		} else {
+			this.failure("Can't select filter");
+		}
+	},
+
+	select_filter_by_label: function(label) {
+		var agent = this.devices[2];
+		var property = indigo_devices[agent].AGENT_WHEEL_FILTER;
+		if (property != null) {
+			for (var name in property.item_defs) {
+				if (property.item_defs[name].label === label) {
+					if (property.items[name]) {
+						this.warning("Filter " + name + " is already selected");
+					} else {
+						this.select_switch(agent, "AGENT_WHEEL_FILTER", name);
+					}
+					return;
+				}
+			}
+			this.failure("Can't select filter '" + label + "'");
 		} else {
 			this.failure("Can't select filter");
 		}
