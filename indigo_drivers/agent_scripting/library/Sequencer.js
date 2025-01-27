@@ -623,7 +623,8 @@ var indigo_sequencer = {
 		this.wait_for_item = null;
 		this.wait_for_value = null;
 		this.sequence = null;
-		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state, message);
+		indigo_send_message(message);
+		indigo_update_number_property(this.devices[0], "SEQUENCE_STATE", { STEP: this.step, PROGRESS: this.progress, PROGRESS_TOTAL: this.progress_total, EXPOSURE: this.exposure, EXPOSURE_TOTAL: this.exposure_total }, this.state, "Sequence failed at step " + this.step);
 	},
 	
 	wait: function(seconds) {
@@ -892,7 +893,7 @@ var indigo_sequencer = {
 				this.select_switch(agent, "CCD_FRAME_TYPE", name);
 			}
 		} else {
-			this.failure("Can't select frame type");
+			this.failure("Can't select frame type '" + name + "'");
 		}
 	},
 
@@ -903,16 +904,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("Frame type " + name + " is already selected");
+						this.warning("Frame type '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "CCD_FRAME_TYPE", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select frame type '" + label + "'");
+			this.failure("Frame type '" + label + "' is not available");
 		} else {
-			this.failure("Can't select frame type");
+			this.failure("Can't select frame type '" + label + "'");
 		}
 	},
 
@@ -926,7 +927,7 @@ var indigo_sequencer = {
 				this.select_switch(agent, "CCD_IMAGE_FORMAT", name);
 			}
 		} else {
-			this.failure("Can't select image format");
+			this.failure("Can't select image format	" + name);
 		}
 	},
 
@@ -937,16 +938,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("Image format " + name + " is already selected");
+						this.warning("Image format '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "CCD_IMAGE_FORMAT", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select image format '" + label + "'");
+			this.failure("Image format '" + label + "' is not available");
 		} else {
-			this.failure("Can't select image format");
+			this.failure("Can't select image format '" + label + "'");
 		}
 	},
 
@@ -960,7 +961,7 @@ var indigo_sequencer = {
 				this.select_switch(agent, "CCD_MODE", name);
 			}
 		} else {
-			this.failure("Can't select camera mode");
+			this.failure("Can't select camera mode " + name);
 		}
 	},
 
@@ -971,16 +972,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("Camera mode " + name + " is already selected");
+						this.warning("Camera mode '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "CCD_MODE", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select camera mode '" + label + "'");
+			this.failure("Camera mode '" + label + "' is not available");
 		} else {
-			this.failure("Can't select camera mode");
+			this.failure("Can't select camera mode '" + label + "'");
 		}
 	},
 
@@ -1024,7 +1025,7 @@ var indigo_sequencer = {
 				this.select_switch(agent, "DSLR_PROGRAM", name);
 			}
 		} else {
-			this.failure("Can't select program");
+			this.failure("Can't select program " + name);
 		}
 	},
 
@@ -1035,16 +1036,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("Program " + name + " is already selected");
+						this.warning("Program '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_PROGRAM", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select program '" + label + "'");
+			this.failure("Program '" + label + "' is not available");
 		} else {
-			this.failure("Can't select program");
+			this.failure("Can't select program '" + label + "'");
 		}
 	},
 
@@ -1058,7 +1059,7 @@ var indigo_sequencer = {
 				this.select_switch(agent, "DSLR_APERTURE", name);
 			}
 		} else {
-			this.failure("Can't select aperture");
+			this.failure("Can't select aperture " + name);
 		}
 	},
 
@@ -1069,16 +1070,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("Aperture " + name + " is already selected");
+						this.warning("Aperture '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_APERTURE", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select aperture '" + label + "'");
+			this.failure("Aperture '" + label + "' is not available");
 		} else {
-			this.failure("Can't select aperture");
+			this.failure("Can't select aperture '" + label + "'");
 		}
 	},
 
@@ -1092,7 +1093,7 @@ var indigo_sequencer = {
 				this.select_switch(agent, "DSLR_SHUTTER", name);
 			}
 		} else {
-			this.failure("Can't select shutter");
+			this.failure("Can't select shutter speed " + name);
 		}
 	},
 
@@ -1103,16 +1104,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("Shutter " + name + " is already selected");
+						this.warning("Shutter '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_SHUTTER", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select shutter '" + label + "'");
+			this.failure("Shutter speed '" + label + "' is not available");
 		} else {
-			this.failure("Can't select shutter");
+			this.failure("Can't select shutter speed '" + label + "'");
 		}
 	},
 
@@ -1121,12 +1122,12 @@ var indigo_sequencer = {
 		var property = indigo_devices[agent].DSLR_ISO;
 		if (property != null && property.items[name] != undefined) {
 			if (property.items[name]) {
-				this.warning("ISO " + name + " is already selected");
+				this.warning("ISO '" + name + "' is already selected");
 			} else {
 				this.select_switch(agent, "DSLR_ISO", name);
 			}
 		} else {
-			this.failure("Can't select iso");
+			this.failure("Can't select ISO " + name);
 		}
 	},
 
@@ -1137,16 +1138,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("ISO " + name + " is already selected");
+						this.warning("ISO '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_ISO", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select iso '" + label + "'");
+			this.failure("ISO '" + label + "' is not available");
 		} else {
-			this.failure("Can't select iso");
+			this.failure("Can't select ISO '" + label + "'");
 		}
 	},
 
@@ -1233,7 +1234,7 @@ var indigo_sequencer = {
 				this.select_switch(agent, "AGENT_WHEEL_FILTER", name);
 			}
 		} else {
-			this.failure("Can't select filter");
+			this.failure("Can't select filter " + name);
 		}
 	},
 
@@ -1244,16 +1245,16 @@ var indigo_sequencer = {
 			for (var name in property.item_defs) {
 				if (property.item_defs[name].label === label) {
 					if (property.items[name]) {
-						this.warning("Filter " + name + " is already selected");
+						this.warning("Filter '" + label + "' is already selected");
 					} else {
 						this.select_switch(agent, "AGENT_WHEEL_FILTER", name);
 					}
 					return;
 				}
 			}
-			this.failure("Can't select filter '" + label + "'");
+			this.failure("Filter '" + label + "' is not available");
 		} else {
-			this.failure("Can't select filter");
+			this.failure("Can't select filter '" + label + "'");
 		}
 	},
 	
