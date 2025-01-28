@@ -203,7 +203,7 @@ Sequence.prototype.set_directory = function(directory) {
 
 Sequence.prototype.capture_batch = function(name_template, count, exposure) {
 	this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '")', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure * count });
+	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_batch()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	this.exposure += exposure * count;
@@ -211,7 +211,7 @@ Sequence.prototype.capture_batch = function(name_template, count, exposure) {
 
 Sequence.prototype.capture_stream = function(name_template, count, exposure) {
 	this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '")', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ', 0)', step: this.step, progress: this.progress++, exposure: this.exposure * count });
+	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ', 0)', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_stream()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 	this.exposure += exposure * count;
