@@ -339,15 +339,16 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 	char c;
 	struct timeval tv;
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
-
+	
 	// flush input and output
 	tcflush(PRIVATE_DATA->handle, TCIOFLUSH);
-
+	
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0)
+	if (sleep > 0) {
 		usleep(sleep);
-
+	}
+	
 	// read responce
 	if (response != NULL) {
 		int index = 0;
@@ -360,8 +361,9 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 			tv.tv_usec = 0;
 			timeout = 15; /* new sky darkness sensor may take up to 15 secods to read in complete darkness */
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			if (PRIVATE_DATA->udp) {
 				result = read(PRIVATE_DATA->handle, response, MAX_LEN);
 				if (result < 1) {
@@ -379,7 +381,7 @@ static bool aag_command(indigo_device *device, const char *command, char *respon
 					return false;
 				}
 				response[index++] = c;
-
+				
 				/* If the last block is a handshake block, aka end of message (!XON), stop reading */
 				if (index >= BLOCK_SIZE && index % BLOCK_SIZE == 0 && response[index - BLOCK_SIZE + 1] == 0x11) {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Handshake block received");
@@ -1224,8 +1226,9 @@ static bool aag_open(indigo_device *device) {
 
 static void aag_close(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d", PRIVATE_DATA->handle, DEVICE_CONNECTED);
-	if (!DEVICE_CONNECTED) return;
-
+	if (!DEVICE_CONNECTED) {
+		return;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	close(PRIVATE_DATA->handle);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "close(%d)", PRIVATE_DATA->handle);
