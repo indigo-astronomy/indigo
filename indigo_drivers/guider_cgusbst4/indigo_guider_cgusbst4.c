@@ -115,8 +115,6 @@ static bool cgusbst4_command(indigo_device *device, char *command, char *respons
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
-			if (c < 0)
-				c = ':';
 			if (c == '#')
 				break;
 			response[index++] = c;
