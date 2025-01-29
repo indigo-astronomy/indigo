@@ -644,19 +644,21 @@ static NSMutableArray *wrappers = nil;
 		}
 		if (!found) {
 			DDHidJoystickWrapper *wrapper = [[DDHidJoystickWrapper alloc] init];
-
+			
 			int axis_count = 0;
 			int pov_count = 0;
 			if (joystick.countOfSticks > 0) {
 				DDHidJoystickStick *stick = [joystick objectInSticksAtIndex:0];
-				if (stick.xAxisElement)
+				if (stick.xAxisElement) {
 					axis_count++;
-				if (stick.yAxisElement)
+				}
+				if (stick.yAxisElement) {
 					axis_count++;
+				}
 				axis_count += stick.countOfStickElements;
 				pov_count = stick.countOfPovElements;
 			}
-
+			
 			wrapper->device = allocate_device([joystick.productName cStringUsingEncoding:NSASCIIStringEncoding], joystick.locationId, joystick.numberOfButtons, axis_count, pov_count);
 			wrapper->joystick = joystick;
 			wrapper->queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
@@ -850,8 +852,9 @@ static void rescan() {
 		int index = 0;
 		if (sscanf(dir->d_name, "js%d", &index) == 1) {
 			found[index] = true;
-			if (devices[index])
+			if (devices[index]) {
 				continue;
+			}
 			int joy_fd, axis_count=0, button_count=0;
 			char name[512];
 			memset(name, 0, sizeof(name));
