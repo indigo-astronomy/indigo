@@ -306,14 +306,10 @@ static void ccd_exposure_callback(indigo_device *device) {
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(QSI_READOUT_SPEED_PROPERTY, property))
-			indigo_define_property(device, QSI_READOUT_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(QSI_ANTI_BLOOM_PROPERTY, property))
-			indigo_define_property(device, QSI_ANTI_BLOOM_PROPERTY, NULL);
-		if (indigo_property_match(QSI_PRE_EXPOSURE_FLUSH_PROPERTY, property))
-			indigo_define_property(device, QSI_PRE_EXPOSURE_FLUSH_PROPERTY, NULL);
-		if (indigo_property_match(QSI_FAN_MODE_PROPERTY, property))
-			indigo_define_property(device, QSI_FAN_MODE_PROPERTY, NULL);
+		indigo_define_matching_property(QSI_READOUT_SPEED_PROPERTY);
+		indigo_define_matching_property(QSI_ANTI_BLOOM_PROPERTY);
+		indigo_define_matching_property(QSI_PRE_EXPOSURE_FLUSH_PROPERTY);
+		indigo_define_matching_property(QSI_FAN_MODE_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }

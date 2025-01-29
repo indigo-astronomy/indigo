@@ -121,10 +121,8 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property))
-			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-		if (indigo_property_match(AUX_LIGHT_SWITCH_PROPERTY, property))
-			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
+		indigo_define_matching_property(AUX_LIGHT_INTENSITY_PROPERTY);
+		indigo_define_matching_property(AUX_LIGHT_SWITCH_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

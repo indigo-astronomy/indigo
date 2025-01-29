@@ -2880,50 +2880,28 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match(AGENT_IMAGER_BATCH_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_FOCUS_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_FOCUS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_FOCUS_FAILURE_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_FOCUS_FAILURE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_DELETE_FILE_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_DELETE_FILE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PAUSE_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_PAUSE_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property))
-		indigo_define_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_STARS_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_STARS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_SELECTION_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_SELECTION_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_STATS_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_SPIKES_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_SPIKES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_SEQUENCE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_BREAKPOINT_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_BREAKPOINT_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_RESUME_CONDITION_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_RESUME_CONDITION_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_IMAGER_BARRIER_STATE_PROPERTY, property))
-		indigo_define_property(device, AGENT_IMAGER_BARRIER_STATE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_FOCUSER_CONTROL_PROPERTY, property))
-		indigo_define_property(device, AGENT_FOCUSER_CONTROL_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_IMAGER_BATCH_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_FOCUS_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_FOCUS_FAILURE_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_FOCUS_ESTIMATOR_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_DOWNLOAD_FILE_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_DELETE_FILE_PROPERTY);
+	indigo_define_matching_property(AGENT_START_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_PAUSE_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_PROCESS_FEATURES_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_STARS_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_SELECTION_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_STATS_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_SPIKES_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_SEQUENCE_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_SEQUENCE_SIZE_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_BREAKPOINT_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_RESUME_CONDITION_PROPERTY);
+	indigo_define_matching_property(AGENT_IMAGER_BARRIER_STATE_PROPERTY);
+	indigo_define_matching_property(AGENT_FOCUSER_CONTROL_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 

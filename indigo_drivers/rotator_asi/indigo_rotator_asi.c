@@ -127,10 +127,8 @@ static void temperature_timer_callback(indigo_device *device) {
 
 static indigo_result caa_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(CAA_BEEP_PROPERTY, property))
-			indigo_define_property(device, CAA_BEEP_PROPERTY, NULL);
-		if (indigo_property_match(CAA_CUSTOM_SUFFIX_PROPERTY, property))
-			indigo_define_property(device, CAA_CUSTOM_SUFFIX_PROPERTY, NULL);
+		indigo_define_if_match(CAA_BEEP_PROPERTY)
+		indigo_define_if_match(CAA_CUSTOM_SUFFIX_PROPERTY)
 	}
 	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }

@@ -964,34 +964,20 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, property))
-		indigo_define_property(device, AGENT_GEOGRAPHIC_COORDINATES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_SITE_DATA_SOURCE_PROPERTY, property))
-		indigo_define_property(device, AGENT_SITE_DATA_SOURCE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_SET_HOST_TIME_PROPERTY, property))
-		indigo_define_property(device, AGENT_SET_HOST_TIME_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_ABORT_RELATED_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_ABORT_RELATED_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_LX200_SERVER_PROPERTY, property))
-		indigo_define_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_LX200_CONFIGURATION_PROPERTY, property))
-		indigo_define_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_LIMITS_PROPERTY, property))
-		indigo_define_property(device, AGENT_LIMITS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_MOUNT_FOV_PROPERTY, property))
-		indigo_define_property(device, AGENT_MOUNT_FOV_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, property))
-		indigo_define_property(device,AGENT_MOUNT_TARGET_COORDINATES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, property))
-		indigo_define_property(device,AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_FIELD_DEROTATION_PROPERTY, property))
-		indigo_define_property(device,AGENT_FIELD_DEROTATION_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property))
-		indigo_define_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_GEOGRAPHIC_COORDINATES_PROPERTY);
+	indigo_define_matching_property(AGENT_SITE_DATA_SOURCE_PROPERTY);
+	indigo_define_matching_property(AGENT_SET_HOST_TIME_PROPERTY);
+	indigo_define_matching_property(AGENT_ABORT_RELATED_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_LX200_SERVER_PROPERTY);
+	indigo_define_matching_property(AGENT_LX200_CONFIGURATION_PROPERTY);
+	indigo_define_matching_property(AGENT_LIMITS_PROPERTY);
+	indigo_define_matching_property(AGENT_MOUNT_FOV_PROPERTY);
+	indigo_define_matching_property(AGENT_MOUNT_TARGET_COORDINATES_PROPERTY);
+	indigo_define_matching_property(AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY);
+	indigo_define_matching_property(AGENT_FIELD_DEROTATION_PROPERTY);
+	indigo_define_matching_property(AGENT_START_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_PROCESS_FEATURES_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 

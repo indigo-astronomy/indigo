@@ -342,20 +342,13 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_NAME_PROPERTY, property))
-			indigo_define_property(device, X_NAME_PROPERTY, NULL);
-		if (indigo_property_match(X_SAVED_VALUES_PROPERTY, property))
-			indigo_define_property(device, X_SAVED_VALUES_PROPERTY, NULL);
-		if (indigo_property_match(X_STATUS_PROPERTY, property))
-			indigo_define_property(device, X_STATUS_PROPERTY, NULL);
-		if (indigo_property_match(X_SELECT_TC_SENSOR_PROPERTY, property))
-			indigo_define_property(device, X_SELECT_TC_SENSOR_PROPERTY, NULL);
-		if (indigo_property_match(X_RESET_PROPERTY, property))
-			indigo_define_property(device, X_RESET_PROPERTY, NULL);
-		if (indigo_property_match(X_USE_ENDSTOP_PROPERTY, property))
-			indigo_define_property(device, X_USE_ENDSTOP_PROPERTY, NULL);
-		if (indigo_property_match(X_START_ZEROING_PROPERTY, property))
-			indigo_define_property(device, X_START_ZEROING_PROPERTY, NULL);
+		indigo_define_matching_property(X_NAME_PROPERTY);
+		indigo_define_matching_property(X_SAVED_VALUES_PROPERTY);
+		indigo_define_matching_property(X_STATUS_PROPERTY);
+		indigo_define_matching_property(X_SELECT_TC_SENSOR_PROPERTY);
+		indigo_define_matching_property(X_RESET_PROPERTY);
+		indigo_define_matching_property(X_USE_ENDSTOP_PROPERTY);
+		indigo_define_matching_property(X_START_ZEROING_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -945,18 +938,12 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(AUX_HEATER_OUTLET_PROPERTY, property))
-			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property))
-			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-		if (indigo_property_match(X_USE_PID_PROPERTY, property))
-			indigo_define_property(device, X_USE_PID_PROPERTY, NULL);
-		if (indigo_property_match(X_PID_SETTINGS_PROPERTY, property))
-			indigo_define_property(device, X_PID_SETTINGS_PROPERTY, NULL);
-		if (indigo_property_match(X_SELECT_PID_SENSOR_PROPERTY, property))
-			indigo_define_property(device, X_SELECT_PID_SENSOR_PROPERTY, NULL);
-		if (indigo_property_match(X_SELECT_AMB_SENSOR_PROPERTY, property))
-			indigo_define_property(device, X_SELECT_AMB_SENSOR_PROPERTY, NULL);
+		indigo_define_matching_property(AUX_HEATER_OUTLET_PROPERTY);
+		indigo_define_matching_property(AUX_DEW_CONTROL_PROPERTY);
+		indigo_define_matching_property(X_USE_PID_PROPERTY);
+		indigo_define_matching_property(X_PID_SETTINGS_PROPERTY);
+		indigo_define_matching_property(X_SELECT_PID_SENSOR_PROPERTY);
+		indigo_define_matching_property(X_SELECT_AMB_SENSOR_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

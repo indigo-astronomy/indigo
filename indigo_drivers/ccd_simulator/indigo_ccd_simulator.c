@@ -923,37 +923,25 @@ static indigo_result ccd_attach(indigo_device *device) {
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
 		if (device == PRIVATE_DATA->dslr) {
-			if (indigo_property_match(DSLR_PROGRAM_PROPERTY, property))
-				indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_CAPTURE_MODE_PROPERTY, property))
-				indigo_define_property(device, DSLR_CAPTURE_MODE_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_APERTURE_PROPERTY, property))
-				indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property))
-				indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_COMPRESSION_PROPERTY, property))
-				indigo_define_property(device, DSLR_COMPRESSION_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_ISO_PROPERTY, property))
-				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
-			if (indigo_property_match(DSLR_BATTERY_LEVEL_PROPERTY, property))
-				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
+			indigo_define_matching_property(DSLR_PROGRAM_PROPERTY);
+			indigo_define_matching_property(DSLR_CAPTURE_MODE_PROPERTY);
+			indigo_define_matching_property(DSLR_APERTURE_PROPERTY);
+			indigo_define_matching_property(DSLR_SHUTTER_PROPERTY);
+			indigo_define_matching_property(DSLR_COMPRESSION_PROPERTY);
+			indigo_define_matching_property(DSLR_ISO_PROPERTY);
+			indigo_define_matching_property(DSLR_BATTERY_LEVEL_PROPERTY);
 		}
 	}
 	if (device == PRIVATE_DATA->file) {
-		if (indigo_property_match(FILE_NAME_PROPERTY, property))
-			indigo_define_property(device, FILE_NAME_PROPERTY, NULL);
-		if (indigo_property_match(BAYERPAT_PROPERTY, property))
-			indigo_define_property(device, BAYERPAT_PROPERTY, NULL);
+		indigo_define_matching_property(FILE_NAME_PROPERTY);
+		indigo_define_matching_property(BAYERPAT_PROPERTY);
 	}
 	if (device == PRIVATE_DATA->guider) {
-		if (indigo_property_match(GUIDER_MODE_PROPERTY, property))
-			indigo_define_property(device, GUIDER_MODE_PROPERTY, NULL);
-		if (indigo_property_match(GUIDER_SETTINGS_PROPERTY, property))
-			indigo_define_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
+		indigo_define_matching_property(GUIDER_MODE_PROPERTY);
+		indigo_define_matching_property(GUIDER_SETTINGS_PROPERTY);
 	}
 	if (device == PRIVATE_DATA->bahtinov) {
-		if (indigo_property_match(BAHTINOV_SETTINGS_PROPERTY, property))
-			indigo_define_property(device, BAHTINOV_SETTINGS_PROPERTY, NULL);
+		indigo_define_matching_property(BAHTINOV_SETTINGS_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }
@@ -1690,8 +1678,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(FOCUSER_SETTINGS_PROPERTY, property))
-		indigo_define_property(device, FOCUSER_SETTINGS_PROPERTY, NULL);
+	indigo_define_matching_property(FOCUSER_SETTINGS_PROPERTY);
 	return indigo_focuser_enumerate_properties(device, client, property);
 }
 

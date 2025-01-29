@@ -158,10 +158,8 @@ static bool pixel_format_supported(indigo_device *device, SVB_IMG_TYPE type) {
 
 static indigo_result svb_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
-			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-		if (indigo_property_match(SVB_ADVANCED_PROPERTY, property))
-			indigo_define_property(device, SVB_ADVANCED_PROPERTY, NULL);
+		indigo_define_matching_property(PIXEL_FORMAT_PROPERTY);
+		indigo_define_matching_property(SVB_ADVANCED_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }

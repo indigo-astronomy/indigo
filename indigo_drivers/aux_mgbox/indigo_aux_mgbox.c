@@ -498,10 +498,8 @@ static void mg_reset_gps(indigo_device *device) {
 
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_SEND_GPS_MOUNT_PROPERTY, property))
-			indigo_define_property(device, X_SEND_GPS_MOUNT_PROPERTY, NULL);
-		if (indigo_property_match(X_REBOOT_GPS_PROPERTY, property))
-			indigo_define_property(device, X_REBOOT_GPS_PROPERTY, NULL);
+		indigo_define_matching_property(X_SEND_GPS_MOUNT_PROPERTY);
+		indigo_define_matching_property(X_REBOOT_GPS_PROPERTY);
 
 	}
 	return indigo_gps_enumerate_properties(device, NULL, NULL);
@@ -773,25 +771,16 @@ static int aux_init_properties(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
-			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-		if (indigo_property_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY, property))
-			indigo_define_property(device, AUX_OUTLET_PULSE_LENGTHS_PROPERTY, NULL);
-		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
-			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-		if (indigo_property_match(AUX_DEW_WARNING_PROPERTY, property))
-			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-		if (indigo_property_match(X_CALIBRATION_PROPERTY, property))
-			indigo_define_property(device, X_CALIBRATION_PROPERTY, NULL);
-		if (indigo_property_match(X_SEND_WEATHER_MOUNT_PROPERTY, property))
-			indigo_define_property(device, X_SEND_WEATHER_MOUNT_PROPERTY, NULL);
-		if (indigo_property_match(X_REBOOT_PROPERTY, property))
-			indigo_define_property(device, X_REBOOT_PROPERTY, NULL);
+		indigo_define_matching_property(AUX_GPIO_OUTLET_PROPERTY);
+		indigo_define_matching_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
+		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
+		indigo_define_matching_property(AUX_DEW_WARNING_PROPERTY);
+		indigo_define_matching_property(X_CALIBRATION_PROPERTY);
+		indigo_define_matching_property(X_SEND_WEATHER_MOUNT_PROPERTY);
+		indigo_define_matching_property(X_REBOOT_PROPERTY);
 	}
-	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
-		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property))
-		indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
+	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
+	indigo_define_matching_property(AUX_DEW_THRESHOLD_PROPERTY);
 
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

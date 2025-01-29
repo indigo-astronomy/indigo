@@ -460,16 +460,12 @@ static int sbig_ao_center() {
 
 static indigo_result sbig_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if ((CONNECTION_CONNECTED_ITEM->sw.value) && (PRIMARY_CCD)) {
-		if (indigo_property_match(SBIG_FREEZE_TEC_PROPERTY, property))
-			indigo_define_property(device, SBIG_FREEZE_TEC_PROPERTY, NULL);
-		if (indigo_property_match(SBIG_ABG_PROPERTY, property))
-			indigo_define_property(device, SBIG_ABG_PROPERTY, NULL);
+		indigo_define_matching_property(SBIG_FREEZE_TEC_PROPERTY);
+		indigo_define_matching_property(SBIG_ABG_PROPERTY);
 	}
 	if (PRIMARY_CCD) {
-		if (indigo_property_match(SBIG_ADD_WHEEL_PROPERTY, property))
-			indigo_define_property(device, SBIG_ADD_WHEEL_PROPERTY, NULL);
-		if (indigo_property_match(SBIG_ADD_AO_PROPERTY, property))
-			indigo_define_property(device, SBIG_ADD_AO_PROPERTY, NULL);
+		indigo_define_matching_property(SBIG_ADD_WHEEL_PROPERTY);
+		indigo_define_matching_property(SBIG_ADD_AO_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }

@@ -159,12 +159,9 @@ static indigo_result agent_enumerate_properties(indigo_device *device, indigo_cl
 		return INDIGO_OK;
 	indigo_result result = INDIGO_OK;
 	if ((result = indigo_agent_enumerate_properties(device, client, property)) == INDIGO_OK) {
-		if (indigo_property_match(SNOOP_ADD_RULE_PROPERTY, property))
-			indigo_define_property(device, SNOOP_ADD_RULE_PROPERTY, NULL);
-		if (indigo_property_match(SNOOP_REMOVE_RULE_PROPERTY, property))
-			indigo_define_property(device, SNOOP_REMOVE_RULE_PROPERTY, NULL);
-		if (indigo_property_match(SNOOP_RULES_PROPERTY, property))
-			indigo_define_property(device, SNOOP_RULES_PROPERTY, NULL);
+		indigo_define_matching_property(SNOOP_ADD_RULE_PROPERTY);
+		indigo_define_matching_property(SNOOP_REMOVE_RULE_PROPERTY);
+		indigo_define_matching_property(SNOOP_RULES_PROPERTY);
 	}
 	return result;
 }

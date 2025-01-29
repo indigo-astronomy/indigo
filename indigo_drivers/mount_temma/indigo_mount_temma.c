@@ -392,12 +392,9 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(CORRECTION_SPEED_PROPERTY, property))
-			indigo_define_property(device, CORRECTION_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(HIGH_SPEED_PROPERTY, property))
-			indigo_define_property(device, HIGH_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(ZENITH_PROPERTY, property))
-			indigo_define_property(device, ZENITH_PROPERTY, NULL);
+		indigo_define_matching_property(CORRECTION_SPEED_PROPERTY);
+		indigo_define_matching_property(HIGH_SPEED_PROPERTY);
+		indigo_define_matching_property(ZENITH_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }

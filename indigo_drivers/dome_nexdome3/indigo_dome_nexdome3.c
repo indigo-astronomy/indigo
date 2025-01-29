@@ -637,30 +637,19 @@ static void dome_event_handler(indigo_device *device) {
 
 static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(NEXDOME_FIND_HOME_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_HOME_POSITION_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_HOME_POSITION_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_MOVE_THRESHOLD_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_MOVE_THRESHOLD_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_POWER_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_ACCELERATION_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_ACCELERATION_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_VELOCITY_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_VELOCITY_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_RANGE_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_RANGE_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_SETTINGS_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_SETTINGS_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_RAIN_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_RAIN_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_XB_STATE_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_XB_STATE_PROPERTY, NULL);
+		indigo_define_matching_property(NEXDOME_FIND_HOME_PROPERTY);
+		indigo_define_matching_property(NEXDOME_HOME_POSITION_PROPERTY);
+		indigo_define_matching_property(NEXDOME_MOVE_THRESHOLD_PROPERTY);
+		indigo_define_matching_property(NEXDOME_POWER_PROPERTY);
+		indigo_define_matching_property(NEXDOME_ACCELERATION_PROPERTY);
+		indigo_define_matching_property(NEXDOME_VELOCITY_PROPERTY);
+		indigo_define_matching_property(NEXDOME_RANGE_PROPERTY);
+		indigo_define_matching_property(NEXDOME_SETTINGS_PROPERTY);
+		indigo_define_matching_property(NEXDOME_RAIN_PROPERTY);
+		indigo_define_matching_property(NEXDOME_XB_STATE_PROPERTY);
 
 #ifdef CMD_AID
-		if (indigo_property_match(NEXDOME_COMMAND_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_COMMAND_PROPERTY, NULL);
+		indigo_define_matching_property(NEXDOME_COMMAND_PROPERTY);
 #endif
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);

@@ -368,29 +368,18 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(AUX_HEATER_OUTLET_PROPERTY, property))
-			indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
-		if (indigo_property_match(AUX_HEATER_OUTLET_STATE_PROPERTY, property))
-			indigo_define_property(device, AUX_HEATER_OUTLET_STATE_PROPERTY, NULL);
-		if (indigo_property_match(AUX_DEW_CONTROL_PROPERTY, property))
-			indigo_define_property(device, AUX_DEW_CONTROL_PROPERTY, NULL);
-		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
-			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-		if (indigo_property_match(AUX_TEMPERATURE_SENSORS_PROPERTY, property))
-			indigo_define_property(device, AUX_TEMPERATURE_SENSORS_PROPERTY, NULL);
-		if (indigo_property_match(AUX_CALLIBRATION_PROPERTY, property))
-			indigo_define_property(device, AUX_CALLIBRATION_PROPERTY, NULL);
-		if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property))
-			indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
-		if (indigo_property_match(AUX_DEW_WARNING_PROPERTY, property))
-			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-		if (indigo_property_match(AUX_LINK_CH_2AND3_PROPERTY, property))
-			indigo_define_property(device, AUX_LINK_CH_2AND3_PROPERTY, NULL);
-		if (indigo_property_match(AUX_HEATER_AGGRESSIVITY_PROPERTY, property))
-			indigo_define_property(device, AUX_HEATER_AGGRESSIVITY_PROPERTY, NULL);
+		indigo_define_matching_property(AUX_HEATER_OUTLET_PROPERTY);
+		indigo_define_matching_property(AUX_HEATER_OUTLET_STATE_PROPERTY);
+		indigo_define_matching_property(AUX_DEW_CONTROL_PROPERTY);
+		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
+		indigo_define_matching_property(AUX_TEMPERATURE_SENSORS_PROPERTY);
+		indigo_define_matching_property(AUX_CALLIBRATION_PROPERTY);
+		indigo_define_matching_property(AUX_DEW_THRESHOLD_PROPERTY);
+		indigo_define_matching_property(AUX_DEW_WARNING_PROPERTY);
+		indigo_define_matching_property(AUX_LINK_CH_2AND3_PROPERTY);
+		indigo_define_matching_property(AUX_HEATER_AGGRESSIVITY_PROPERTY);
 	}
-	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
-		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
+	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
 

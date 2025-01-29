@@ -756,6 +756,8 @@ extern void indigo_set_text_item_value(indigo_item *item, const char *value);
 #define indigo_copy_name(target, source) { memset(target, 0, INDIGO_NAME_SIZE); strncpy(target, source, INDIGO_NAME_SIZE - 1); }
 #define indigo_copy_value(target, source) { memset(target, 0, INDIGO_VALUE_SIZE); strncpy(target, source, INDIGO_VALUE_SIZE - 1); }
 
+#define indigo_define_matching_property(template); if (indigo_property_match(template, property)) indigo_define_property(device, template, NULL)
+
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
 extern indigo_property INDIGO_ALL_PROPERTIES;

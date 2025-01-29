@@ -1143,8 +1143,7 @@ static void guider_handle_connect(indigo_device *device) {
 
 static indigo_result nexstar_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(COMMAND_GUIDE_RATE_PROPERTY, property))
-			indigo_define_property(device, COMMAND_GUIDE_RATE_PROPERTY, NULL);
+		indigo_define_matching_property(COMMAND_GUIDE_RATE_PROPERTY);
 	}
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }

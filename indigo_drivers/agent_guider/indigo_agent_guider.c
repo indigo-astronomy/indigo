@@ -2082,38 +2082,22 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match(AGENT_GUIDER_DETECTION_MODE_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_DETECTION_MODE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_SETTINGS_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_SETTINGS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_STARS_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_STARS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_SELECTION_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_STATS_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_DEC_MODE_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_DEC_MODE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_ABORT_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_ABORT_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_DITHER_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_GUIDER_LOG_PROPERTY, property))
-		indigo_define_property(device, AGENT_GUIDER_LOG_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PROCESS_FEATURES_PROPERTY, property))
-		indigo_define_property(device, AGENT_PROCESS_FEATURES_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_GUIDER_DETECTION_MODE_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_MOUNT_COORDINATES_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_SETTINGS_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_FLIP_REVERSES_DEC_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_STARS_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_SELECTION_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_STATS_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_DEC_MODE_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_APPLY_DEC_BACKLASH_PROPERTY);
+	indigo_define_matching_property(AGENT_START_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_ABORT_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_DITHERING_OFFSETS_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_DITHER_PROPERTY);
+	indigo_define_matching_property(AGENT_GUIDER_LOG_PROPERTY);
+	indigo_define_matching_property(AGENT_PROCESS_FEATURES_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 

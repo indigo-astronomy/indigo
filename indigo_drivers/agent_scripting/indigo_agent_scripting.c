@@ -937,18 +937,12 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, property))
-		indigo_define_property(device, AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, property))
-		indigo_define_property(device, AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, property))
-		indigo_define_property(device, AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property))
-		indigo_define_property(device, AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, property))
-		indigo_define_property(device, AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, property))
-		indigo_define_property(device, AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_SCRIPTING_RUN_SCRIPT_PROPERTY);
+	indigo_define_matching_property(AGENT_SCRIPTING_ADD_SCRIPT_PROPERTY);
+	indigo_define_matching_property(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY);
+	indigo_define_matching_property(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY);
+	indigo_define_matching_property(AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY);
+	indigo_define_matching_property(AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY);
 	for (int i = 0; i < MAX_USER_SCRIPT_COUNT; i++) {
 		indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(i);
 		if (script_property)

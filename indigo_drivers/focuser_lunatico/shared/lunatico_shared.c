@@ -873,31 +873,19 @@ static int lunatico_init_properties(indigo_device *device) {
 
 static indigo_result lunatico_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (DEVICE_CONNECTED) {
-		if (indigo_property_match(LA_STEP_MODE_PROPERTY, property))
-			indigo_define_property(device, LA_STEP_MODE_PROPERTY, NULL);
-		if (indigo_property_match(LA_POWER_CONTROL_PROPERTY, property))
-			indigo_define_property(device, LA_POWER_CONTROL_PROPERTY, NULL);
-		if (indigo_property_match(LA_TEMPERATURE_SENSOR_PROPERTY, property))
-			indigo_define_property(device, LA_TEMPERATURE_SENSOR_PROPERTY, NULL);
-		if (indigo_property_match(LA_WIRING_PROPERTY, property))
-			indigo_define_property(device, LA_WIRING_PROPERTY, NULL);
-		if (indigo_property_match(LA_MOTOR_TYPE_PROPERTY, property))
-			indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
-		if (indigo_property_match(AUX_POWER_OUTLET_PROPERTY, property))
-			indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
-		if (indigo_property_match(AUX_GPIO_SENSORS_PROPERTY, property))
-			indigo_define_property(device, AUX_GPIO_SENSORS_PROPERTY, NULL);
+		indigo_define_matching_property(LA_STEP_MODE_PROPERTY);
+		indigo_define_matching_property(LA_POWER_CONTROL_PROPERTY);
+		indigo_define_matching_property(LA_TEMPERATURE_SENSOR_PROPERTY);
+		indigo_define_matching_property(LA_WIRING_PROPERTY);
+		indigo_define_matching_property(LA_MOTOR_TYPE_PROPERTY);
+		indigo_define_matching_property(AUX_POWER_OUTLET_PROPERTY);
+		indigo_define_matching_property(AUX_GPIO_SENSORS_PROPERTY);
 	}
-	if (indigo_property_match(LA_MODEL_PROPERTY, property))
-		indigo_define_property(device, LA_MODEL_PROPERTY, NULL);
-	if (indigo_property_match(LA_PORT_EXP_CONFIG_PROPERTY, property))
-		indigo_define_property(device, LA_PORT_EXP_CONFIG_PROPERTY, NULL);
-	if (indigo_property_match(LA_PORT_THIRD_CONFIG_PROPERTY, property))
-		indigo_define_property(device, LA_PORT_THIRD_CONFIG_PROPERTY, NULL);
-	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
-		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	if (indigo_property_match(AUX_SENSOR_NAMES_PROPERTY, property))
-		indigo_define_property(device, AUX_SENSOR_NAMES_PROPERTY, NULL);
+	indigo_define_matching_property(LA_MODEL_PROPERTY);
+	indigo_define_matching_property(LA_PORT_EXP_CONFIG_PROPERTY);
+	indigo_define_matching_property(LA_PORT_THIRD_CONFIG_PROPERTY);
+	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
+	indigo_define_matching_property(AUX_SENSOR_NAMES_PROPERTY);
 	return INDIGO_OK;
 }
 

@@ -151,12 +151,9 @@ static indigo_result rotator_attach(indigo_device *device) {
 
 static indigo_result rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_HOME_PROPERTY, property))
-			indigo_define_property(device, X_HOME_PROPERTY, NULL);
-		if (indigo_property_match(X_RATE_PROPERTY, property))
-			indigo_define_property(device, X_RATE_PROPERTY, NULL);
-		if (indigo_property_match(X_ROTATE_PROPERTY, property))
-			indigo_define_property(device, X_ROTATE_PROPERTY, NULL);
+		indigo_define_matching_property(X_HOME_PROPERTY);
+		indigo_define_matching_property(X_RATE_PROPERTY);
+		indigo_define_matching_property(X_ROTATE_PROPERTY);
 	}
 	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }

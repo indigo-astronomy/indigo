@@ -1011,18 +1011,10 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(DSLR_PROGRAM_PROPERTY, property)) {
-			indigo_define_property(device, DSLR_PROGRAM_PROPERTY, NULL);
-		}
-		if (indigo_property_match(DSLR_APERTURE_PROPERTY, property)) {
-			indigo_define_property(device, DSLR_APERTURE_PROPERTY, NULL);
-		}
-		if (indigo_property_match(DSLR_SHUTTER_PROPERTY, property)) {
-			indigo_define_property(device, DSLR_SHUTTER_PROPERTY, NULL);
-		}
-		if (indigo_property_match(DSLR_ISO_PROPERTY, property)) {
-			indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
-		}
+		indigo_define_matching_property(DSLR_PROGRAM_PROPERTY);
+		indigo_define_matching_property(DSLR_APERTURE_PROPERTY);
+		indigo_define_matching_property(DSLR_SHUTTER_PROPERTY);
+		indigo_define_matching_property(DSLR_ISO_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }

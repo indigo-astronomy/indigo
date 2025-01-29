@@ -335,18 +335,12 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(AUX_LIGHT_SWITCH_PROPERTY, property))
-			indigo_define_property(device, AUX_LIGHT_SWITCH_PROPERTY, NULL);
-		if (indigo_property_match(AUX_LIGHT_INTENSITY_PROPERTY, property))
-			indigo_define_property(device, AUX_LIGHT_INTENSITY_PROPERTY, NULL);
-		if (indigo_property_match(AUX_COVER_PROPERTY, property))
-			indigo_define_property(device, AUX_COVER_PROPERTY, NULL);
-		if (indigo_property_match(AUX_DETECT_OPEN_CLOSE_PROPERTY, property))
-			indigo_define_property(device, AUX_DETECT_OPEN_CLOSE_PROPERTY, NULL);
-		if (indigo_property_match(AUX_SET_OPEN_CLOSE_PROPERTY, property))
-			indigo_define_property(device, AUX_SET_OPEN_CLOSE_PROPERTY, NULL);
-		if (indigo_property_match(AUX_HEATER_PROPERTY, property))
-			indigo_define_property(device, AUX_HEATER_PROPERTY, NULL);
+		indigo_define_matching_property(AUX_LIGHT_SWITCH_PROPERTY);
+		indigo_define_matching_property(AUX_LIGHT_INTENSITY_PROPERTY);
+		indigo_define_matching_property(AUX_COVER_PROPERTY);
+		indigo_define_matching_property(AUX_DETECT_OPEN_CLOSE_PROPERTY);
+		indigo_define_matching_property(AUX_SET_OPEN_CLOSE_PROPERTY);
+		indigo_define_matching_property(AUX_HEATER_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

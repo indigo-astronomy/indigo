@@ -1670,11 +1670,9 @@ static indigo_result wheel_attach(indigo_device *device) {
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
-	if (indigo_property_match(X_WHEEL_MODEL_PROPERTY, property))
-		indigo_define_property(device, X_WHEEL_MODEL_PROPERTY, NULL);
+	indigo_define_matching_property(X_WHEEL_MODEL_PROPERTY);
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_CALIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
+		indigo_define_matching_property(X_CALIBRATE_PROPERTY);
 	}
 	return indigo_wheel_enumerate_properties(device, client, property);
 }
@@ -1999,8 +1997,7 @@ static void temperature_timer_callback(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_BEEP_PROPERTY, property))
-			indigo_define_property(device, X_BEEP_PROPERTY, NULL);
+		indigo_define_matching_property(X_BEEP_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }

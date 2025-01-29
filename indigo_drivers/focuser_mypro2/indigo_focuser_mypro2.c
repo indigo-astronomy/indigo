@@ -509,12 +509,9 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static indigo_result mfp_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_STEP_MODE_PROPERTY, property))
-			indigo_define_property(device, X_STEP_MODE_PROPERTY, NULL);
-		if (indigo_property_match(X_COILS_MODE_PROPERTY, property))
-			indigo_define_property(device, X_COILS_MODE_PROPERTY, NULL);
-		if (indigo_property_match(X_SETTLE_TIME_PROPERTY, property))
-			indigo_define_property(device, X_SETTLE_TIME_PROPERTY, NULL);
+		indigo_define_matching_property(X_STEP_MODE_PROPERTY);
+		indigo_define_matching_property(X_COILS_MODE_PROPERTY);
+		indigo_define_matching_property(X_SETTLE_TIME_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }

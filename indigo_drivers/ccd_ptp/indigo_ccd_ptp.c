@@ -133,18 +133,12 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		if (indigo_property_match(DSLR_DELETE_IMAGE_PROPERTY, property))
-			indigo_define_property(device, DSLR_DELETE_IMAGE_PROPERTY, NULL);
-		if (indigo_property_match(DSLR_MIRROR_LOCKUP_PROPERTY, property))
-			indigo_define_property(device, DSLR_MIRROR_LOCKUP_PROPERTY, NULL);
-		if (indigo_property_match(DSLR_ZOOM_PREVIEW_PROPERTY, property))
-			indigo_define_property(device, DSLR_ZOOM_PREVIEW_PROPERTY, NULL);
-		if (indigo_property_match(DSLR_LOCK_PROPERTY, property))
-			indigo_define_property(device, DSLR_LOCK_PROPERTY, NULL);
-		if (indigo_property_match(DSLR_AF_PROPERTY, property))
-			indigo_define_property(device, DSLR_AF_PROPERTY, NULL);
-		if (indigo_property_match(DSLR_SET_HOST_TIME_PROPERTY, property))
-			indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
+		indigo_define_matching_property(DSLR_DELETE_IMAGE_PROPERTY);
+		indigo_define_matching_property(DSLR_MIRROR_LOCKUP_PROPERTY);
+		indigo_define_matching_property(DSLR_ZOOM_PREVIEW_PROPERTY);
+		indigo_define_matching_property(DSLR_LOCK_PROPERTY);
+		indigo_define_matching_property(DSLR_AF_PROPERTY);
+		indigo_define_matching_property(DSLR_SET_HOST_TIME_PROPERTY);
 		for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 			if (indigo_property_match(PRIVATE_DATA->properties[i].property, property))
 				indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);

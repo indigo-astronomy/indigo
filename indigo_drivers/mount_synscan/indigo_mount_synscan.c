@@ -171,16 +171,11 @@ static indigo_result mount_enumerate_properties(indigo_device *device, indigo_cl
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		if (indigo_property_match(MOUNT_POLARSCOPE_PROPERTY, property))
-			indigo_define_property(device, MOUNT_POLARSCOPE_PROPERTY, NULL);
-		if (indigo_property_match(MOUNT_OPERATING_MODE_PROPERTY, property))
-			indigo_define_property(device, MOUNT_OPERATING_MODE_PROPERTY, NULL);
-		if (indigo_property_match(MOUNT_USE_ENCODERS_PROPERTY, property))
-			indigo_define_property(device, MOUNT_USE_ENCODERS_PROPERTY, NULL);
-		if (indigo_property_match(MOUNT_AUTOHOME_PROPERTY, property))
-			indigo_define_property(device, MOUNT_AUTOHOME_PROPERTY, NULL);
-		if (indigo_property_match(MOUNT_AUTOHOME_SETTINGS_PROPERTY, property))
-			indigo_define_property(device, MOUNT_AUTOHOME_SETTINGS_PROPERTY, NULL);
+		indigo_define_matching_property(MOUNT_POLARSCOPE_PROPERTY);
+		indigo_define_matching_property(MOUNT_OPERATING_MODE_PROPERTY);
+		indigo_define_matching_property(MOUNT_USE_ENCODERS_PROPERTY);
+		indigo_define_matching_property(MOUNT_AUTOHOME_PROPERTY);
+		indigo_define_matching_property(MOUNT_AUTOHOME_SETTINGS_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, client, property);
 }

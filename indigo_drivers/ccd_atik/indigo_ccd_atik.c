@@ -357,10 +357,8 @@ static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		if (indigo_property_match(ATIK_PRESETS_PROPERTY, property))
-			indigo_define_property(device, ATIK_PRESETS_PROPERTY, NULL);
-		if (indigo_property_match(ATIK_WINDOW_HEATER_PROPERTY, property))
-			indigo_define_property(device, ATIK_WINDOW_HEATER_PROPERTY, NULL);
+		indigo_define_matching_property(ATIK_PRESETS_PROPERTY);
+		indigo_define_matching_property(ATIK_WINDOW_HEATER_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }

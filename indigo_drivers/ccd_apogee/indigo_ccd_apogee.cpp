@@ -268,14 +268,10 @@ void checkStatus(const Apg::Status status) {
 // -------------------------------------------------------------------------------- INDIGO device implementation
 static indigo_result apg_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(APG_ADC_SPEED_PROPERTY, property))
-			indigo_define_property(device, APG_ADC_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(APG_FAN_SPEED_PROPERTY, property))
-			indigo_define_property(device, APG_FAN_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(APG_GAIN_PROPERTY, property))
-			indigo_define_property(device, APG_GAIN_PROPERTY, NULL);
-		if (indigo_property_match(APG_OFFSET_PROPERTY, property))
-			indigo_define_property(device, APG_OFFSET_PROPERTY, NULL);
+		indigo_define_matching_property(APG_ADC_SPEED_PROPERTY);
+		indigo_define_matching_property(APG_FAN_SPEED_PROPERTY);
+		indigo_define_matching_property(APG_GAIN_PROPERTY);
+		indigo_define_matching_property(APG_OFFSET_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }

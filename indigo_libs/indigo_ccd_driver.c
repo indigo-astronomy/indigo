@@ -371,70 +371,38 @@ indigo_result indigo_ccd_enumerate_properties(indigo_device *device, indigo_clie
 	assert(device != NULL);
 	assert(DEVICE_CONTEXT != NULL);
 	if (IS_CONNECTED) {
-		if (indigo_property_match(CCD_INFO_PROPERTY, property))
-			indigo_define_property(device, CCD_INFO_PROPERTY, NULL);
-		if (indigo_property_match(CCD_LENS_PROPERTY, property))
-			indigo_define_property(device, CCD_LENS_PROPERTY, NULL);
-		if (indigo_property_match(CCD_LOCAL_MODE_PROPERTY, property))
-			indigo_define_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_IMAGE_FILE_PROPERTY, property))
-			indigo_define_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_MODE_PROPERTY, property))
-			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_READ_MODE_PROPERTY, property))
-			indigo_define_property(device, CCD_READ_MODE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_EXPOSURE_PROPERTY, property))
-			indigo_define_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_STREAMING_PROPERTY, property))
-			indigo_define_property(device, CCD_STREAMING_PROPERTY, NULL);
-		if (indigo_property_match(CCD_ABORT_EXPOSURE_PROPERTY, property))
-			indigo_define_property(device, CCD_ABORT_EXPOSURE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_FRAME_PROPERTY, property))
-			indigo_define_property(device, CCD_FRAME_PROPERTY, NULL);
-		if (indigo_property_match(CCD_BIN_PROPERTY, property))
-			indigo_define_property(device, CCD_BIN_PROPERTY, NULL);
-		if (indigo_property_match(CCD_OFFSET_PROPERTY, property))
-			indigo_define_property(device, CCD_OFFSET_PROPERTY, NULL);
-		if (indigo_property_match(CCD_GAIN_PROPERTY, property))
-			indigo_define_property(device, CCD_GAIN_PROPERTY, NULL);
-		if (indigo_property_match(CCD_EGAIN_PROPERTY, property))
-			indigo_define_property(device, CCD_EGAIN_PROPERTY, NULL);
-		if (indigo_property_match(CCD_GAMMA_PROPERTY, property))
-			indigo_define_property(device, CCD_GAMMA_PROPERTY, NULL);
-		if (indigo_property_match(CCD_FRAME_TYPE_PROPERTY, property))
-			indigo_define_property(device, CCD_FRAME_TYPE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_IMAGE_FORMAT_PROPERTY, property))
-			indigo_define_property(device, CCD_IMAGE_FORMAT_PROPERTY, NULL);
-		if (indigo_property_match(CCD_UPLOAD_MODE_PROPERTY, property))
-			indigo_define_property(device, CCD_UPLOAD_MODE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_PREVIEW_PROPERTY, property))
-			indigo_define_property(device, CCD_PREVIEW_PROPERTY, NULL);
-		if (indigo_property_match(CCD_IMAGE_PROPERTY, property))
-			indigo_define_property(device, CCD_IMAGE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_PREVIEW_IMAGE_PROPERTY, property))
-			indigo_define_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_PREVIEW_HISTOGRAM_PROPERTY, property))
-			indigo_define_property(device, CCD_PREVIEW_HISTOGRAM_PROPERTY, NULL);
-		if (indigo_property_match(CCD_COOLER_PROPERTY, property))
-			indigo_define_property(device, CCD_COOLER_PROPERTY, NULL);
-		if (indigo_property_match(CCD_COOLER_POWER_PROPERTY, property))
-			indigo_define_property(device, CCD_COOLER_POWER_PROPERTY, NULL);
-		if (indigo_property_match(CCD_TEMPERATURE_PROPERTY, property))
-			indigo_define_property(device, CCD_TEMPERATURE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_FITS_HEADERS_PROPERTY, property))
-			indigo_define_property(device, CCD_FITS_HEADERS_PROPERTY, NULL);
-		if (indigo_property_match(CCD_SET_FITS_HEADER_PROPERTY, property))
-			indigo_define_property(device, CCD_SET_FITS_HEADER_PROPERTY, NULL);
-		if (indigo_property_match(CCD_REMOVE_FITS_HEADER_PROPERTY, property))
-			indigo_define_property(device, CCD_REMOVE_FITS_HEADER_PROPERTY, NULL);
-		if (indigo_property_match(CCD_JPEG_SETTINGS_PROPERTY, property))
-			indigo_define_property(device, CCD_JPEG_SETTINGS_PROPERTY, NULL);
-		if (indigo_property_match(CCD_JPEG_STRETCH_PRESETS_PROPERTY, property))
-			indigo_define_property(device, CCD_JPEG_STRETCH_PRESETS_PROPERTY, NULL);
-		if (indigo_property_match(CCD_RBI_FLUSH_ENABLE_PROPERTY, property))
-			indigo_define_property(device, CCD_RBI_FLUSH_ENABLE_PROPERTY, NULL);
-		if (indigo_property_match(CCD_RBI_FLUSH_PROPERTY, property))
-			indigo_define_property(device, CCD_RBI_FLUSH_PROPERTY, NULL);
+		indigo_define_matching_property(CCD_INFO_PROPERTY);
+		indigo_define_matching_property(CCD_LENS_PROPERTY);
+		indigo_define_matching_property(CCD_LOCAL_MODE_PROPERTY);
+		indigo_define_matching_property(CCD_IMAGE_FILE_PROPERTY);
+		indigo_define_matching_property(CCD_MODE_PROPERTY);
+		indigo_define_matching_property(CCD_READ_MODE_PROPERTY);
+		indigo_define_matching_property(CCD_EXPOSURE_PROPERTY);
+		indigo_define_matching_property(CCD_STREAMING_PROPERTY);
+		indigo_define_matching_property(CCD_ABORT_EXPOSURE_PROPERTY);
+		indigo_define_matching_property(CCD_FRAME_PROPERTY);
+		indigo_define_matching_property(CCD_BIN_PROPERTY);
+		indigo_define_matching_property(CCD_OFFSET_PROPERTY);
+		indigo_define_matching_property(CCD_GAIN_PROPERTY);
+		indigo_define_matching_property(CCD_EGAIN_PROPERTY);
+		indigo_define_matching_property(CCD_GAMMA_PROPERTY);
+		indigo_define_matching_property(CCD_FRAME_TYPE_PROPERTY);
+		indigo_define_matching_property(CCD_IMAGE_FORMAT_PROPERTY);
+		indigo_define_matching_property(CCD_UPLOAD_MODE_PROPERTY);
+		indigo_define_matching_property(CCD_PREVIEW_PROPERTY);
+		indigo_define_matching_property(CCD_IMAGE_PROPERTY);
+		indigo_define_matching_property(CCD_PREVIEW_IMAGE_PROPERTY);
+		indigo_define_matching_property(CCD_PREVIEW_HISTOGRAM_PROPERTY);
+		indigo_define_matching_property(CCD_COOLER_PROPERTY);
+		indigo_define_matching_property(CCD_COOLER_POWER_PROPERTY);
+		indigo_define_matching_property(CCD_TEMPERATURE_PROPERTY);
+		indigo_define_matching_property(CCD_FITS_HEADERS_PROPERTY);
+		indigo_define_matching_property(CCD_SET_FITS_HEADER_PROPERTY);
+		indigo_define_matching_property(CCD_REMOVE_FITS_HEADER_PROPERTY);
+		indigo_define_matching_property(CCD_JPEG_SETTINGS_PROPERTY);
+		indigo_define_matching_property(CCD_JPEG_STRETCH_PRESETS_PROPERTY);
+		indigo_define_matching_property(CCD_RBI_FLUSH_ENABLE_PROPERTY);
+		indigo_define_matching_property(CCD_RBI_FLUSH_PROPERTY);
 	}
 	return indigo_device_enumerate_properties(device, client, property);
 }

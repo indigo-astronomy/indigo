@@ -430,20 +430,13 @@ static indigo_result agent_device_attach(indigo_device *device) {
 }
 
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(AGENT_CONFIG_SETUP_PROPERTY, property))
-		indigo_define_property(device, AGENT_CONFIG_SETUP_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_CONFIG_SAVE_PROPERTY, property))
-		indigo_define_property(device, AGENT_CONFIG_SAVE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_CONFIG_DELETE_PROPERTY, property))
-		indigo_define_property(device, AGENT_CONFIG_DELETE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_CONFIG_LOAD_PROPERTY, property))
-		indigo_define_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_CONFIG_LAST_CONFIG_PROPERTY, property))
-		indigo_define_property(device, AGENT_CONFIG_LAST_CONFIG_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_CONFIG_DRIVERS_PROPERTY, property))
-		indigo_define_property(device, AGENT_CONFIG_DRIVERS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_CONFIG_PROFILES_PROPERTY, property))
-		indigo_define_property(device, AGENT_CONFIG_PROFILES_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_CONFIG_SETUP_PROPERTY);
+	indigo_define_matching_property(AGENT_CONFIG_SAVE_PROPERTY);
+	indigo_define_matching_property(AGENT_CONFIG_DELETE_PROPERTY);
+	indigo_define_matching_property(AGENT_CONFIG_LOAD_PROPERTY);
+	indigo_define_matching_property(AGENT_CONFIG_LAST_CONFIG_PROPERTY);
+	indigo_define_matching_property(AGENT_CONFIG_DRIVERS_PROPERTY);
+	indigo_define_matching_property(AGENT_CONFIG_PROFILES_PROPERTY);
 	for (int i = 0; i < MAX_AGENTS; i++)
 		if (AGENT_CONFIG_AGENTS_PROPERTIES[i] && indigo_property_match(AGENT_CONFIG_AGENTS_PROPERTIES[i], property))
 			indigo_define_property(device, AGENT_CONFIG_AGENTS_PROPERTIES[i], NULL);

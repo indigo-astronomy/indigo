@@ -672,16 +672,11 @@ static void dome_timer_callback(indigo_device *device) {
 
 static indigo_result nexdome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(NEXDOME_REVERSED_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_REVERSED_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_RESET_SHUTTER_COMM_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_RESET_SHUTTER_COMM_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_FIND_HOME_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_FIND_HOME_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_CALLIBRATE_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_CALLIBRATE_PROPERTY, NULL);
-		if (indigo_property_match(NEXDOME_POWER_PROPERTY, property))
-			indigo_define_property(device, NEXDOME_POWER_PROPERTY, NULL);
+		indigo_define_matching_property(NEXDOME_REVERSED_PROPERTY);
+		indigo_define_matching_property(NEXDOME_RESET_SHUTTER_COMM_PROPERTY);
+		indigo_define_matching_property(NEXDOME_FIND_HOME_PROPERTY);
+		indigo_define_matching_property(NEXDOME_CALLIBRATE_PROPERTY);
+		indigo_define_matching_property(NEXDOME_POWER_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }

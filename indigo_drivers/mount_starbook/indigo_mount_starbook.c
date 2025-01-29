@@ -1252,10 +1252,8 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(TIMEZONE_PROPERTY, property))
-			indigo_define_property(device, TIMEZONE_PROPERTY, NULL);
-		if (indigo_property_match(RESET_PROPERTY, property))
-		indigo_define_property(device, RESET_PROPERTY, NULL);
+		indigo_define_matching_property(TIMEZONE_PROPERTY);
+		indigo_define_matching_property(RESET_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }

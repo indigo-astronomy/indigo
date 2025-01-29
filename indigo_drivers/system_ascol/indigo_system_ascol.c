@@ -337,54 +337,30 @@ static indigo_device *dome = NULL;
 // -------------------------------------------------------------------------------- INDIGO MOUNT device implementation
 static indigo_result ascol_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(OIL_POWER_PROPERTY, property))
-			indigo_define_property(device, OIL_POWER_PROPERTY, NULL);
-		if (indigo_property_match(OIL_STATE_PROPERTY, property))
-			indigo_define_property(device, OIL_STATE_PROPERTY, NULL);
-		if (indigo_property_match(OIMV_PROPERTY, property))
-			indigo_define_property(device, OIMV_PROPERTY, NULL);
-		if (indigo_property_match(MOUNT_STATE_PROPERTY, property))
-			indigo_define_property(device, MOUNT_STATE_PROPERTY, NULL);
-		if (indigo_property_match(FLAP_STATE_PROPERTY, property))
-			indigo_define_property(device, FLAP_STATE_PROPERTY, NULL);
-		if (indigo_property_match(FLAP_TUBE_PROPERTY, property))
-			indigo_define_property(device, FLAP_TUBE_PROPERTY, NULL);
-		if (indigo_property_match(FLAP_COUDE_PROPERTY, property))
-			indigo_define_property(device, FLAP_COUDE_PROPERTY, NULL);
-		if (indigo_property_match(TELESCOPE_POWER_PROPERTY, property))
-			indigo_define_property(device, TELESCOPE_POWER_PROPERTY, NULL);
-		if (indigo_property_match(AXIS_CALIBRATED_PROPERTY, property))
-			indigo_define_property(device, AXIS_CALIBRATED_PROPERTY, NULL);
-		if (indigo_property_match(RA_CALIBRATION_PROPERTY, property))
-			indigo_define_property(device, RA_CALIBRATION_PROPERTY, NULL);
-		if (indigo_property_match(DEC_CALIBRATION_PROPERTY, property))
-			indigo_define_property(device, DEC_CALIBRATION_PROPERTY, NULL);
-		if (indigo_property_match(ABERRATION_PROPERTY, property))
-			indigo_define_property(device, ABERRATION_PROPERTY, NULL);
-		if (indigo_property_match(PRECESSION_PROPERTY, property))
-			indigo_define_property(device, PRECESSION_PROPERTY, NULL);
-		if (indigo_property_match(REFRACTION_PROPERTY, property))
-			indigo_define_property(device, REFRACTION_PROPERTY, NULL);
-		if (indigo_property_match(ERROR_CORRECTION_PROPERTY, property))
-			indigo_define_property(device, ERROR_CORRECTION_PROPERTY, NULL);
-		if (indigo_property_match(CORRECTION_MODEL_PROPERTY, property))
-			indigo_define_property(device, CORRECTION_MODEL_PROPERTY, NULL);
-		if (indigo_property_match(GUIDE_MODE_PROPERTY, property))
-			indigo_define_property(device, GUIDE_MODE_PROPERTY, NULL);
-		if (indigo_property_match(HADEC_COORDINATES_PROPERTY, property))
-			indigo_define_property(device, HADEC_COORDINATES_PROPERTY, NULL);
-		if (indigo_property_match(HADEC_RELATIVE_MOVE_PROPERTY, property))
-			indigo_define_property(device, HADEC_RELATIVE_MOVE_PROPERTY, NULL);
-		if (indigo_property_match(RADEC_RELATIVE_MOVE_PROPERTY, property))
-			indigo_define_property(device, RADEC_RELATIVE_MOVE_PROPERTY, NULL);
-		if (indigo_property_match(USER_SPEED_PROPERTY, property))
-			indigo_define_property(device, USER_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(T1_SPEED_PROPERTY, property))
-			indigo_define_property(device, T1_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(T2_SPEED_PROPERTY, property))
-			indigo_define_property(device, T2_SPEED_PROPERTY, NULL);
-		if (indigo_property_match(T3_SPEED_PROPERTY, property))
-			indigo_define_property(device, T3_SPEED_PROPERTY, NULL);
+		indigo_define_matching_property(OIL_POWER_PROPERTY);
+		indigo_define_matching_property(OIL_STATE_PROPERTY);
+		indigo_define_matching_property(OIMV_PROPERTY);
+		indigo_define_matching_property(MOUNT_STATE_PROPERTY);
+		indigo_define_matching_property(FLAP_STATE_PROPERTY);
+		indigo_define_matching_property(FLAP_TUBE_PROPERTY);
+		indigo_define_matching_property(FLAP_COUDE_PROPERTY);
+		indigo_define_matching_property(TELESCOPE_POWER_PROPERTY);
+		indigo_define_matching_property(AXIS_CALIBRATED_PROPERTY);
+		indigo_define_matching_property(RA_CALIBRATION_PROPERTY);
+		indigo_define_matching_property(DEC_CALIBRATION_PROPERTY);
+		indigo_define_matching_property(ABERRATION_PROPERTY);
+		indigo_define_matching_property(PRECESSION_PROPERTY);
+		indigo_define_matching_property(REFRACTION_PROPERTY);
+		indigo_define_matching_property(ERROR_CORRECTION_PROPERTY);
+		indigo_define_matching_property(CORRECTION_MODEL_PROPERTY);
+		indigo_define_matching_property(GUIDE_MODE_PROPERTY);
+		indigo_define_matching_property(HADEC_COORDINATES_PROPERTY);
+		indigo_define_matching_property(HADEC_RELATIVE_MOVE_PROPERTY);
+		indigo_define_matching_property(RADEC_RELATIVE_MOVE_PROPERTY);
+		indigo_define_matching_property(USER_SPEED_PROPERTY);
+		indigo_define_matching_property(T1_SPEED_PROPERTY);
+		indigo_define_matching_property(T2_SPEED_PROPERTY);
+		indigo_define_matching_property(T3_SPEED_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }
@@ -1965,8 +1941,7 @@ static indigo_result mount_detach(indigo_device *device) {
 
 static indigo_result ascol_guider_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(GUIDE_CORRECTION_PROPERTY, property))
-			indigo_define_property(device, GUIDE_CORRECTION_PROPERTY, NULL);
+		indigo_define_matching_property(GUIDE_CORRECTION_PROPERTY);
 	}
 	return indigo_guider_enumerate_properties(device, NULL, NULL);
 }
@@ -2485,12 +2460,9 @@ static void dome_handle_steps(indigo_device *device) {
 
 static indigo_result ascol_dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(DOME_POWER_PROPERTY, property))
-			indigo_define_property(device, DOME_POWER_PROPERTY, NULL);
-		if (indigo_property_match(DOME_STATE_PROPERTY, property))
-			indigo_define_property(device, DOME_STATE_PROPERTY, NULL);
-		if (indigo_property_match(DOME_SHUTTER_STATE_PROPERTY, property))
-			indigo_define_property(device, DOME_SHUTTER_STATE_PROPERTY, NULL);
+		indigo_define_matching_property(DOME_POWER_PROPERTY);
+		indigo_define_matching_property(DOME_STATE_PROPERTY);
+		indigo_define_matching_property(DOME_SHUTTER_STATE_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }
@@ -2794,8 +2766,7 @@ static void focus_handle_steps(indigo_device *device) {
 
 static indigo_result ascol_focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(FOCUSER_STATE_PROPERTY, property))
-			indigo_define_property(device, FOCUSER_STATE_PROPERTY, NULL);
+		indigo_define_matching_property(FOCUSER_STATE_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }
@@ -3123,10 +3094,8 @@ static indigo_result panel_attach(indigo_device *device) {
 
 static indigo_result panel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(ALARM_PROPERTY, property))
-			indigo_define_property(device, ALARM_PROPERTY, NULL);
-		if (indigo_property_match(GLME_PROPERTY, property))
-			indigo_define_property(device, GLME_PROPERTY, NULL);
+		indigo_define_matching_property(ALARM_PROPERTY);
+		indigo_define_matching_property(GLME_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

@@ -234,10 +234,8 @@ static indigo_result wheel_attach(indigo_device *device) {
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	if (device->is_connected) {
-		if (indigo_property_match(X_CALIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_CALIBRATE_PROPERTY, NULL);
-		if (indigo_property_match(X_CUSTOM_SUFFIX_PROPERTY, property))
-			indigo_define_property(device, X_CUSTOM_SUFFIX_PROPERTY, NULL);
+		indigo_define_if_match(X_CALIBRATE_PROPERTY)
+		indigo_define_if_match(X_CUSTOM_SUFFIX_PROPERTY)
 		if (indigo_property_match(X_BLUETOOTH_PROPERTY, property));
 			indigo_define_property(device, X_BLUETOOTH_PROPERTY, NULL);
 		if (indigo_property_match(X_BLUETOOTH_NAME_PROPERTY, property));

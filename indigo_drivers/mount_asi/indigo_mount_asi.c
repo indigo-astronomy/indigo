@@ -1207,14 +1207,10 @@ static indigo_result mount_attach(indigo_device *device) {
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(MOUNT_MODE_PROPERTY, property))
-			indigo_define_property(device, MOUNT_MODE_PROPERTY, NULL);
-		if (indigo_property_match(ZWO_BUZZER_PROPERTY, property))
-			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
-		if (indigo_property_match(ZWO_MERIDIAN_PROPERTY, property))
-			indigo_define_property(device, ZWO_MERIDIAN_PROPERTY, NULL);
-		if (indigo_property_match(ZWO_MERIDIAN_LIMIT_PROPERTY, property))
-			indigo_define_property(device, ZWO_MERIDIAN_LIMIT_PROPERTY, NULL);
+		indigo_define_matching_property(MOUNT_MODE_PROPERTY);
+		indigo_define_matching_property(ZWO_BUZZER_PROPERTY);
+		indigo_define_matching_property(ZWO_MERIDIAN_PROPERTY);
+		indigo_define_matching_property(ZWO_MERIDIAN_LIMIT_PROPERTY);
 	}
 	return indigo_mount_enumerate_properties(device, NULL, NULL);
 }

@@ -587,36 +587,21 @@ static indigo_result focuser_attach(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_STATE_PROPERTY, property))
-			indigo_define_property(device, X_STATE_PROPERTY, NULL);
-		if (indigo_property_match(X_CONFIG_PROPERTY, property))
-			indigo_define_property(device, X_CONFIG_PROPERTY, NULL);
-		if (indigo_property_match(X_LEDS_PROPERTY, property))
-			indigo_define_property(device, X_LEDS_PROPERTY, NULL);
-		if (indigo_property_match(X_WIFI_PROPERTY, property))
-			indigo_define_property(device, X_WIFI_PROPERTY, NULL);
-		if (indigo_property_match(X_WIFI_AP_PROPERTY, property))
-			indigo_define_property(device, X_WIFI_AP_PROPERTY, NULL);
-		if (indigo_property_match(X_WIFI_STA_PROPERTY, property))
-			indigo_define_property(device, X_WIFI_STA_PROPERTY, NULL);
-		if (indigo_property_match(X_RUNPRESET_L_PROPERTY, property))
-			indigo_define_property(device, X_RUNPRESET_L_PROPERTY, NULL);
-		if (indigo_property_match(X_RUNPRESET_M_PROPERTY, property))
-			indigo_define_property(device, X_RUNPRESET_M_PROPERTY, NULL);
-		if (indigo_property_match(X_RUNPRESET_S_PROPERTY, property))
-			indigo_define_property(device, X_RUNPRESET_S_PROPERTY, NULL);
-		if (indigo_property_match(X_RUNPRESET_1_PROPERTY, property))
-			indigo_define_property(device, X_RUNPRESET_1_PROPERTY, NULL);
-		if (indigo_property_match(X_RUNPRESET_2_PROPERTY, property))
-			indigo_define_property(device, X_RUNPRESET_2_PROPERTY, NULL);
-		if (indigo_property_match(X_RUNPRESET_3_PROPERTY, property))
-			indigo_define_property(device, X_RUNPRESET_3_PROPERTY, NULL);
-		if (indigo_property_match(X_RUNPRESET_PROPERTY, property))
-			indigo_define_property(device, X_RUNPRESET_PROPERTY, NULL);
-		if (indigo_property_match(X_HOLD_CURR_PROPERTY, property))
-			indigo_define_property(device, X_HOLD_CURR_PROPERTY, NULL);
-		if (indigo_property_match(X_CALIBRATE_F_PROPERTY, property))
-			indigo_define_property(device, X_CALIBRATE_F_PROPERTY, NULL);
+		indigo_define_matching_property(X_STATE_PROPERTY);
+		indigo_define_matching_property(X_CONFIG_PROPERTY);
+		indigo_define_matching_property(X_LEDS_PROPERTY);
+		indigo_define_matching_property(X_WIFI_PROPERTY);
+		indigo_define_matching_property(X_WIFI_AP_PROPERTY);
+		indigo_define_matching_property(X_WIFI_STA_PROPERTY);
+		indigo_define_matching_property(X_RUNPRESET_L_PROPERTY);
+		indigo_define_matching_property(X_RUNPRESET_M_PROPERTY);
+		indigo_define_matching_property(X_RUNPRESET_S_PROPERTY);
+		indigo_define_matching_property(X_RUNPRESET_1_PROPERTY);
+		indigo_define_matching_property(X_RUNPRESET_2_PROPERTY);
+		indigo_define_matching_property(X_RUNPRESET_3_PROPERTY);
+		indigo_define_matching_property(X_RUNPRESET_PROPERTY);
+		indigo_define_matching_property(X_HOLD_CURR_PROPERTY);
+		indigo_define_matching_property(X_CALIBRATE_F_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }

@@ -1659,57 +1659,32 @@ static void sensors_timer_callback(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (DEVICE_CONNECTED) {
-		if (indigo_property_match(AUX_GPIO_OUTLET_PROPERTY, property))
-			indigo_define_property(device, AUX_GPIO_OUTLET_PROPERTY, NULL);
-		if (indigo_property_match(X_HEATER_CONTROL_STATE_PROPERTY, property))
-			indigo_define_property(device, X_HEATER_CONTROL_STATE_PROPERTY, NULL);
-		if (indigo_property_match(X_CONSTANTS_PROPERTY, property))
-			indigo_define_property(device, X_CONSTANTS_PROPERTY, NULL);
-		if (indigo_property_match(X_SENSOR_READINGS_PROPERTY, property))
-			indigo_define_property(device, X_SENSOR_READINGS_PROPERTY, NULL);
-		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
-			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-		if (indigo_property_match(AUX_DEW_WARNING_PROPERTY, property))
-			indigo_define_property(device, AUX_DEW_WARNING_PROPERTY, NULL);
-		if (indigo_property_match(AUX_RAIN_WARNING_PROPERTY, property))
-			indigo_define_property(device, AUX_RAIN_WARNING_PROPERTY, NULL);
-		if (indigo_property_match(AUX_WIND_WARNING_PROPERTY, property))
-			indigo_define_property(device, AUX_WIND_WARNING_PROPERTY, NULL);
-		if (indigo_property_match(AUX_HUMIDITY_PROPERTY, property))
-			indigo_define_property(device, AUX_HUMIDITY_PROPERTY, NULL);
-		if (indigo_property_match(AUX_WIND_PROPERTY, property))
-			indigo_define_property(device, AUX_WIND_PROPERTY, NULL);
-		if (indigo_property_match(AUX_RAIN_PROPERTY, property))
-			indigo_define_property(device, AUX_RAIN_PROPERTY, NULL);
-		if (indigo_property_match(AUX_CLOUD_PROPERTY, property))
-			indigo_define_property(device, AUX_CLOUD_PROPERTY, NULL);
-		if (indigo_property_match(AUX_SKY_PROPERTY, property))
-			indigo_define_property(device, AUX_SKY_PROPERTY, NULL);
+		indigo_define_matching_property(AUX_GPIO_OUTLET_PROPERTY);
+		indigo_define_matching_property(X_HEATER_CONTROL_STATE_PROPERTY);
+		indigo_define_matching_property(X_CONSTANTS_PROPERTY);
+		indigo_define_matching_property(X_SENSOR_READINGS_PROPERTY);
+		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
+		indigo_define_matching_property(AUX_DEW_WARNING_PROPERTY);
+		indigo_define_matching_property(AUX_RAIN_WARNING_PROPERTY);
+		indigo_define_matching_property(AUX_WIND_WARNING_PROPERTY);
+		indigo_define_matching_property(AUX_HUMIDITY_PROPERTY);
+		indigo_define_matching_property(AUX_WIND_PROPERTY);
+		indigo_define_matching_property(AUX_RAIN_PROPERTY);
+		indigo_define_matching_property(AUX_CLOUD_PROPERTY);
+		indigo_define_matching_property(AUX_SKY_PROPERTY);
 	}
-	if (indigo_property_match(AUX_OUTLET_NAMES_PROPERTY, property))
-		indigo_define_property(device, AUX_OUTLET_NAMES_PROPERTY, NULL);
-	if (indigo_property_match(X_SKY_CORRECTION_PROPERTY, property))
-		indigo_define_property(device, X_SKY_CORRECTION_PROPERTY, NULL);
-	if (indigo_property_match(AUX_DEW_THRESHOLD_PROPERTY, property))
-		indigo_define_property(device, AUX_DEW_THRESHOLD_PROPERTY, NULL);
-	if (indigo_property_match(AUX_RAIN_THRESHOLD_PROPERTY, property))
-		indigo_define_property(device, AUX_RAIN_THRESHOLD_PROPERTY, NULL);
-	if (indigo_property_match(AUX_WIND_THRESHOLD_PROPERTY, property))
-		indigo_define_property(device, AUX_WIND_THRESHOLD_PROPERTY, NULL);
-	if (indigo_property_match(AUX_HUMIDITY_THRESHOLDS_PROPERTY, property))
-		indigo_define_property(device, AUX_HUMIDITY_THRESHOLDS_PROPERTY, NULL);
-	if (indigo_property_match(AUX_WIND_THRESHOLDS_PROPERTY, property))
-		indigo_define_property(device, AUX_WIND_THRESHOLDS_PROPERTY, NULL);
-	if (indigo_property_match(AUX_RAIN_THRESHOLDS_PROPERTY, property))
-		indigo_define_property(device, AUX_RAIN_THRESHOLDS_PROPERTY, NULL);
-	if (indigo_property_match(AUX_CLOUD_THRESHOLDS_PROPERTY, property))
-		indigo_define_property(device, AUX_CLOUD_THRESHOLDS_PROPERTY, NULL);
-	if (indigo_property_match(AUX_SKY_THRESHOLDS_PROPERTY, property))
-		indigo_define_property(device, AUX_SKY_THRESHOLDS_PROPERTY, NULL);
-	if (indigo_property_match(X_ANEMOMETER_TYPE_PROPERTY, property))
-		indigo_define_property(device, X_ANEMOMETER_TYPE_PROPERTY, NULL);
-	if (indigo_property_match(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, property))
-		indigo_define_property(device, X_RAIN_SENSOR_HEATER_SETUP_PROPERTY, NULL);
+	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY);
+	indigo_define_matching_property(X_SKY_CORRECTION_PROPERTY);
+	indigo_define_matching_property(AUX_DEW_THRESHOLD_PROPERTY);
+	indigo_define_matching_property(AUX_RAIN_THRESHOLD_PROPERTY);
+	indigo_define_matching_property(AUX_WIND_THRESHOLD_PROPERTY);
+	indigo_define_matching_property(AUX_HUMIDITY_THRESHOLDS_PROPERTY);
+	indigo_define_matching_property(AUX_WIND_THRESHOLDS_PROPERTY);
+	indigo_define_matching_property(AUX_RAIN_THRESHOLDS_PROPERTY);
+	indigo_define_matching_property(AUX_CLOUD_THRESHOLDS_PROPERTY);
+	indigo_define_matching_property(AUX_SKY_THRESHOLDS_PROPERTY);
+	indigo_define_matching_property(X_ANEMOMETER_TYPE_PROPERTY);
+	indigo_define_matching_property(X_RAIN_SENSOR_HEATER_SETUP_PROPERTY);
 
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

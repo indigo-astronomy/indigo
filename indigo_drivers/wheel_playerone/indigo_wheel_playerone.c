@@ -99,8 +99,7 @@ static void wheel_timer_callback(indigo_device *device) {
 
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(POA_CUSTOM_SUFFIX_PROPERTY, property))
-			indigo_define_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
+		indigo_define_matching_property(POA_CUSTOM_SUFFIX_PROPERTY);
 	}
 	return indigo_wheel_enumerate_properties(device, NULL, NULL);
 }

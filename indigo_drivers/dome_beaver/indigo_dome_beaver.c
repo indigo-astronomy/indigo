@@ -851,16 +851,11 @@ static void dome_timer_callback(indigo_device *device) {
 
 static indigo_result beaver_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_SHUTTER_CALIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
-		if (indigo_property_match(X_ROTATOR_CALIBRATE_PROPERTY, property))
-			indigo_define_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
-		if (indigo_property_match(X_FAILURE_MESSAGE_PROPERTY, property))
-			indigo_define_property(device, X_FAILURE_MESSAGE_PROPERTY, NULL);
-		if (indigo_property_match(X_CLEAR_FAILURE_PROPERTY, property))
-			indigo_define_property(device, X_CLEAR_FAILURE_PROPERTY, NULL);
-		if (indigo_property_match(X_CONDITIONS_SAFETY_PROPERTY, property))
-			indigo_define_property(device, X_CONDITIONS_SAFETY_PROPERTY, NULL);
+		indigo_define_matching_property(X_SHUTTER_CALIBRATE_PROPERTY);
+		indigo_define_matching_property(X_ROTATOR_CALIBRATE_PROPERTY);
+		indigo_define_matching_property(X_FAILURE_MESSAGE_PROPERTY);
+		indigo_define_matching_property(X_CLEAR_FAILURE_PROPERTY);
+		indigo_define_matching_property(X_CONDITIONS_SAFETY_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }

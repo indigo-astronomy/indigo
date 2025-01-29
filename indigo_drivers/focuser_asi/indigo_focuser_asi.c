@@ -231,10 +231,8 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static indigo_result eaf_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(EAF_BEEP_PROPERTY, property))
-			indigo_define_property(device, EAF_BEEP_PROPERTY, NULL);
-		if (indigo_property_match(EAF_CUSTOM_SUFFIX_PROPERTY, property))
-			indigo_define_property(device, EAF_CUSTOM_SUFFIX_PROPERTY, NULL);
+		indigo_define_matching_property(EAF_BEEP_PROPERTY);
+		indigo_define_matching_property(EAF_CUSTOM_SUFFIX_PROPERTY);
 	}
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
 }

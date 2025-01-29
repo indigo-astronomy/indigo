@@ -303,10 +303,8 @@ static indigo_result dome_attach(indigo_device *device) {
 
 static indigo_result dome_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_MOUNT_PARK_STATUS_PROPERTY, property))
-			indigo_define_property(device, X_MOUNT_PARK_STATUS_PROPERTY, NULL);
-		if (indigo_property_match(X_HEATER_CONTROL_PROPERTY, property))
-			indigo_define_property(device, X_HEATER_CONTROL_PROPERTY, NULL);
+		indigo_define_matching_property(X_MOUNT_PARK_STATUS_PROPERTY);
+		indigo_define_matching_property(X_HEATER_CONTROL_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }

@@ -764,24 +764,15 @@ static indigo_result ccd_attach(indigo_device *device) {
 
 static indigo_result ccd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(VSSPEED_PROPERTY, property))
-			indigo_define_property(device, VSSPEED_PROPERTY, NULL);
-		if (indigo_property_match(VSAMPLITUDE_PROPERTY, property))
-			indigo_define_property(device, VSAMPLITUDE_PROPERTY, NULL);
-		if (indigo_property_match(HREADOUT_PROPERTY, property))
-			indigo_define_property(device, HREADOUT_PROPERTY, NULL);
-		if (indigo_property_match(PREAMPGAIN_PROPERTY, property))
-			indigo_define_property(device, PREAMPGAIN_PROPERTY, NULL);
-		if (indigo_property_match(HIGHCAPACITY_PROPERTY, property))
-			indigo_define_property(device, HIGHCAPACITY_PROPERTY, NULL);
-		if (indigo_property_match(BASELINECLAMP_PROPERTY, property))
-			indigo_define_property(device, BASELINECLAMP_PROPERTY, NULL);
-		if (indigo_property_match(BASELINEOFFSET_PROPERTY, property))
-			indigo_define_property(device, BASELINEOFFSET_PROPERTY, NULL);
-		if (indigo_property_match(FANCONTROL_PROPERTY, property))
-			indigo_define_property(device, FANCONTROL_PROPERTY, NULL);
-		if (indigo_property_match(COOLERMODE_PROPERTY, property))
-			indigo_define_property(device, COOLERMODE_PROPERTY, NULL);
+		indigo_define_matching_property(VSSPEED_PROPERTY);
+		indigo_define_matching_property(VSAMPLITUDE_PROPERTY);
+		indigo_define_matching_property(HREADOUT_PROPERTY);
+		indigo_define_matching_property(PREAMPGAIN_PROPERTY);
+		indigo_define_matching_property(HIGHCAPACITY_PROPERTY);
+		indigo_define_matching_property(BASELINECLAMP_PROPERTY);
+		indigo_define_matching_property(BASELINEOFFSET_PROPERTY);
+		indigo_define_matching_property(FANCONTROL_PROPERTY);
+		indigo_define_matching_property(COOLERMODE_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, client, property);
 }

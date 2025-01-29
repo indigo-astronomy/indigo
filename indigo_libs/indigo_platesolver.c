@@ -829,34 +829,20 @@ indigo_result indigo_platesolver_device_attach(indigo_device *device, const char
 }
 
 indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(AGENT_PLATESOLVER_USE_INDEX_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_USE_INDEX_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_HINTS_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_HINTS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_WCS_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_WCS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_SYNC_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_SYNC_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_START_PROCESS_PROPERTY, property))
-		indigo_define_property(device, AGENT_START_PROCESS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_PA_STATE_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_PA_STATE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_ABORT_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_ABORT_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_IMAGE_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, property))
-		indigo_define_property(device, AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_PLATESOLVER_USE_INDEX_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_HINTS_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_WCS_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_SYNC_PROPERTY);
+	indigo_define_matching_property(AGENT_START_PROCESS_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_SOLVE_IMAGES_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_GOTO_SETTINGS_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_MOUNT_SETTLE_TIME_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_PA_STATE_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_ABORT_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_IMAGE_PROPERTY);
+	indigo_define_matching_property(AGENT_PLATESOLVER_IMAGE_OUTPUT_PROPERTY);
 	return indigo_filter_enumerate_properties(device, client, property);
 }
 

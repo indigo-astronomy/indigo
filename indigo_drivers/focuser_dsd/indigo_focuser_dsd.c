@@ -596,14 +596,10 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 static indigo_result dsd_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(DSD_STEP_MODE_PROPERTY, property))
-			indigo_define_property(device, DSD_STEP_MODE_PROPERTY, NULL);
-		if (indigo_property_match(DSD_COILS_MODE_PROPERTY, property))
-			indigo_define_property(device, DSD_COILS_MODE_PROPERTY, NULL);
-		if (indigo_property_match(DSD_CURRENT_CONTROL_PROPERTY, property))
-			indigo_define_property(device, DSD_CURRENT_CONTROL_PROPERTY, NULL);
-		if (indigo_property_match(DSD_TIMINGS_PROPERTY, property))
-			indigo_define_property(device, DSD_TIMINGS_PROPERTY, NULL);
+		indigo_define_matching_property(DSD_STEP_MODE_PROPERTY);
+		indigo_define_matching_property(DSD_COILS_MODE_PROPERTY);
+		indigo_define_matching_property(DSD_CURRENT_CONTROL_PROPERTY);
+		indigo_define_matching_property(DSD_TIMINGS_PROPERTY);
 	}
 	indigo_define_property(device, DSD_MODEL_HINT_PROPERTY, NULL);
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);

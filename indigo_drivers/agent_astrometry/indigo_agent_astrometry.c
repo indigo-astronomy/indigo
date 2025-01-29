@@ -766,10 +766,8 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client != NULL && client == FILTER_DEVICE_CONTEXT->client)
 		return INDIGO_OK;
-	if (indigo_property_match(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, property))
-		indigo_define_property(device, AGENT_ASTROMETRY_INDEX_41XX_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, property))
-		indigo_define_property(device, AGENT_ASTROMETRY_INDEX_42XX_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_ASTROMETRY_INDEX_41XX_PROPERTY);
+	indigo_define_matching_property(AGENT_ASTROMETRY_INDEX_42XX_PROPERTY);
 	return indigo_platesolver_enumerate_properties(device, client, property);
 }
 

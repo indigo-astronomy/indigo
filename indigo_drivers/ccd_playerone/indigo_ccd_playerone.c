@@ -186,14 +186,10 @@ static bool pixel_format_supported(indigo_device *device, POAImgFormat type) {
 
 static indigo_result playerone_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(PIXEL_FORMAT_PROPERTY, property))
-			indigo_define_property(device, PIXEL_FORMAT_PROPERTY, NULL);
-		if (indigo_property_match(POA_PRESETS_PROPERTY, property))
-			indigo_define_property(device, POA_PRESETS_PROPERTY, NULL);
-		if (indigo_property_match(POA_CUSTOM_SUFFIX_PROPERTY, property))
-			indigo_define_property(device, POA_CUSTOM_SUFFIX_PROPERTY, NULL);
-		if (indigo_property_match(POA_ADVANCED_PROPERTY, property))
-			indigo_define_property(device, POA_ADVANCED_PROPERTY, NULL);
+		indigo_define_matching_property(PIXEL_FORMAT_PROPERTY);
+		indigo_define_matching_property(POA_PRESETS_PROPERTY);
+		indigo_define_matching_property(POA_CUSTOM_SUFFIX_PROPERTY);
+		indigo_define_matching_property(POA_ADVANCED_PROPERTY);
 	}
 	return indigo_ccd_enumerate_properties(device, NULL, NULL);
 }

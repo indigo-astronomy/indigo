@@ -2985,21 +2985,14 @@ static indigo_result mount_attach(indigo_device *device) {
 }
 
 static indigo_result mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
-	if (indigo_property_match(MOUNT_TYPE_PROPERTY, property))
-		indigo_define_property(device, MOUNT_TYPE_PROPERTY, NULL);
+	indigo_define_matching_property(MOUNT_TYPE_PROPERTY);
 	if (IS_CONNECTED) {
-		if (indigo_property_match(MOUNT_MODE_PROPERTY, property))
-			indigo_define_property(device, MOUNT_MODE_PROPERTY, NULL);
-		if (indigo_property_match(FORCE_FLIP_PROPERTY, property))
-			indigo_define_property(device, FORCE_FLIP_PROPERTY, NULL);
-		if (indigo_property_match(ZWO_BUZZER_PROPERTY, property))
-			indigo_define_property(device, ZWO_BUZZER_PROPERTY, NULL);
-		if (indigo_property_match(NYX_WIFI_AP_PROPERTY, property))
-			indigo_define_property(device, NYX_WIFI_AP_PROPERTY, NULL);
-		if (indigo_property_match(NYX_WIFI_CL_PROPERTY, property))
-			indigo_define_property(device, NYX_WIFI_CL_PROPERTY, NULL);
-		if (indigo_property_match(NYX_WIFI_RESET_PROPERTY, property))
-			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
+		indigo_define_matching_property(MOUNT_MODE_PROPERTY);
+		indigo_define_matching_property(FORCE_FLIP_PROPERTY);
+		indigo_define_matching_property(ZWO_BUZZER_PROPERTY);
+		indigo_define_matching_property(NYX_WIFI_AP_PROPERTY);
+		indigo_define_matching_property(NYX_WIFI_CL_PROPERTY);
+		indigo_define_matching_property(NYX_WIFI_RESET_PROPERTY);
 		if (indigo_property_match(NYX_LEVELER_PROPERTY, property))
 			indigo_define_property(device, NYX_WIFI_RESET_PROPERTY, NULL);
 	}
@@ -3530,10 +3523,8 @@ static indigo_result aux_attach(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(AUX_WEATHER_PROPERTY, property))
-			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
-		if (indigo_property_match(AUX_INFO_PROPERTY, property))
-			indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_define_matching_property(AUX_WEATHER_PROPERTY);
+		indigo_define_matching_property(AUX_INFO_PROPERTY);
 	}
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

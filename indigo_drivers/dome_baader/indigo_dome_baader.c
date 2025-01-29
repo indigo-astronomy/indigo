@@ -525,8 +525,7 @@ static void dome_timer_callback(indigo_device *device) {
 
 static indigo_result baader_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		if (indigo_property_match(X_EMERGENCY_CLOSE_PROPERTY, property))
-			indigo_define_property(device, X_EMERGENCY_CLOSE_PROPERTY, NULL);
+		indigo_define_matching_property(X_EMERGENCY_CLOSE_PROPERTY);
 	}
 	return indigo_dome_enumerate_properties(device, NULL, NULL);
 }

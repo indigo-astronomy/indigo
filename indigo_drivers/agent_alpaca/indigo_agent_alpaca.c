@@ -434,12 +434,9 @@ static indigo_result agent_device_attach(indigo_device *device) {
 static indigo_result agent_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (client == indigo_agent_alpaca_client)
 		return INDIGO_OK;
-	if (indigo_property_match(AGENT_DISCOVERY_PROPERTY, property))
-		indigo_define_property(device, AGENT_DISCOVERY_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_DEVICES_PROPERTY, property))
-		indigo_define_property(device, AGENT_DEVICES_PROPERTY, NULL);
-	if (indigo_property_match(AGENT_CAMERA_BAYERPAT_PROPERTY, property))
-		indigo_define_property(device, AGENT_CAMERA_BAYERPAT_PROPERTY, NULL);
+	indigo_define_matching_property(AGENT_DISCOVERY_PROPERTY);
+	indigo_define_matching_property(AGENT_DEVICES_PROPERTY);
+	indigo_define_matching_property(AGENT_CAMERA_BAYERPAT_PROPERTY);
 	return indigo_device_enumerate_properties(device, client, property);
 }
 
