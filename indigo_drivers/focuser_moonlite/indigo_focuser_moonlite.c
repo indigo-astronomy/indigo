@@ -75,8 +75,6 @@ static bool moonlite_command(indigo_device *device, char *command, char *respons
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				return false;
 			}
-			if (c < 0)
-				c = ':';
 			if (c == '#')
 				break;
 			response[index++] = c;
