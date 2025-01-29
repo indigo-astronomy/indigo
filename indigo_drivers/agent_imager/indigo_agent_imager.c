@@ -1552,7 +1552,9 @@ static int calculate_mode(int arr[], int n) {
 	for (int i = 0; i < n; ++i) {
 		int count = 0;
 		for (int j = 0; j < n; ++j) {
-            if (arr[j] == arr[i]) ++count;
+			if (arr[j] == arr[i]) {
+				++count;
+			}
 		}
 		if (count > max_count) {
 			max_count = count;
@@ -2588,7 +2590,9 @@ static void sequence_process(indigo_device *device) {
 				AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.target = AGENT_IMAGER_BATCH_EXPOSURE_ITEM->number.value = exposure;
 				indigo_update_property(device, AGENT_IMAGER_BATCH_PROPERTY, NULL);
 				DEVICE_PRIVATE_DATA->focus_exposure = 0;
-				if (!success) break;
+				if (!success) {
+					break;
+				}
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
 				break;
@@ -3149,8 +3153,9 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					AGENT_PAUSE_PROCESS_AFTER_TRANSIT_ITEM->sw.value = false; // can be only cleared when set by agent
 				} else {
 					AGENT_PAUSE_PROCESS_PROPERTY->state = INDIGO_BUSY_STATE;
-					if (AGENT_PAUSE_PROCESS_ITEM->sw.value)
+					if (AGENT_PAUSE_PROCESS_ITEM->sw.value) {
 						abort_process(device);
+					}
 				}
 			}
 		} else {
