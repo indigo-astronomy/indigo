@@ -862,7 +862,7 @@ static indigo_result aux_attach(indigo_device *device) {
 static void handle_aux_connect_property(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->pwm_present = rpio_pwm_present();
-		if(PRIVATE_DATA->pwm_present) {
+		if (PRIVATE_DATA->pwm_present) {
 			AUX_GPIO_OUTLET_DUTY_PROPERTY->hidden = false;
 			AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY->hidden = false;
 			indigo_send_message(device, "PWM on Outputs #1 and #2 is present");
