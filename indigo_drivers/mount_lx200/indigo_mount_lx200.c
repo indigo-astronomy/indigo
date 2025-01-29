@@ -3283,7 +3283,7 @@ static void guider_connect_callback(indigo_device *device) {
 					GUIDER_GUIDE_WEST_ITEM->number.max = 3000;
 				}
 			}
-			if (PRIVATE_DATA->is_network & !PRIVATE_DATA->keep_alive_timer) {
+			if (PRIVATE_DATA->is_network && !PRIVATE_DATA->keep_alive_timer) {
 				/* In case of a network connection and there is no mount connected (to create chatter)
 				   the commection is closed in several seconds. So we send :GVP# on a regular basis
 				   to keep the connection alive */
@@ -3406,7 +3406,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				FOCUSER_SPEED_ITEM->number.max = 2;
 				FOCUSER_SPEED_PROPERTY->state = INDIGO_OK_STATE;
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-				if (PRIVATE_DATA->is_network & !PRIVATE_DATA->keep_alive_timer) {
+				if (PRIVATE_DATA->is_network && !PRIVATE_DATA->keep_alive_timer) {
 					/* In case of a network connection and there is no mount connected (to create chatter)
 					the commection is closed in several seconds. So we send :GVP# on a regular basis
 					to keep the connection alive */
