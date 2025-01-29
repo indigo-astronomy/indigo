@@ -75,17 +75,20 @@ static bool astromechanics_command(indigo_device *device, char *command, char *r
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				return false;
 			}
-			if (c <= ' ')
+			if (c <= ' ') {
 				continue;
-			if (c < 0 || c == '#')
+			}
+			if (c < 0 || c == '#') {
 				break;
+			}
 			response[index++] = c;
 		}
 		response[index] = 0;
@@ -137,8 +140,9 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	char response[16];
 	if (astromechanics_command(device, "V#", response)) {
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
