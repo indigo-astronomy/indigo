@@ -419,7 +419,9 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 				indigo_dslr_raw_image_s output_image = {0};
 				int rc = indigo_dslr_raw_process_image((void *)image, image_size, &output_image);
 				if (rc != LIBRAW_SUCCESS) {
-					if (output_image.data != NULL) free(output_image.data);
+					if (output_image.data != NULL) {
+						free(output_image.data);
+					}
 					image = NULL;
 				}
 				ASTROMETRY_DEVICE_PRIVATE_DATA->frame_width = output_image.width;
