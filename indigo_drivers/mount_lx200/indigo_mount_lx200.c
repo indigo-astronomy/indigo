@@ -383,8 +383,6 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
-			if (c < 0)
-				c = ':';
 			if (c == '#')
 				break;
 			response[index++] = c;
@@ -450,8 +448,6 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
-			if (c < 0)
-				c = ':';
 			if (c == '#')
 				break;
 			response[index++] = c;
