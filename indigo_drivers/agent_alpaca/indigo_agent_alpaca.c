@@ -157,12 +157,14 @@ static void shutdown_discovery_server() {
 }
 
 static void parse_url_params(char *params, uint32_t *client_id, uint32_t *client_transaction_id, int *id) {
-	if (params == NULL)
+	if (params == NULL) {
 		return;
+	}
 	while (true) {
 		char *token = strtok_r(params, "&", &params);
-		if (token == NULL)
+		if (token == NULL) {
 			break;
+		}
 		if (!strncasecmp(token, "ClientID", 8)) {
 			if ((token = strchr(token, '='))) {
 				*client_id = (uint32_t)atol(token + 1);
@@ -347,8 +349,9 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		int count = 0;
 		while (true) {
 			char *token = strtok_r(params, "&", &params);
-			if (token == NULL)
+			if (token == NULL) {
 				break;
+			}
 			if (!strncmp(token, "ClientID", 8)) {
 				if ((token = strchr(token, '='))) {
 					client_id = (uint32_t)atol(token + 1);
@@ -373,12 +376,13 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 		} else {
 			send_text_response(socket, path, 400, "Bad Request", "Unrecognised command");
 		}
-
+		
 	} else {
 		send_text_response(socket, path, 400, "Bad Request", "Invalid method");
 	}
-	if (buffer)
+	if (buffer) {
 		indigo_free_large_buffer(buffer);
+	}
 	return true;
 }
 
@@ -578,8 +582,9 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 					if (alpaca_device->device_number < 0) {
 						for (device_number = 0; device_number < AGENT_DEVICES_PROPERTY->count; device_number++) {
 							item = AGENT_DEVICES_PROPERTY->items + device_number;
-							if (*AGENT_DEVICES_PROPERTY->items[device_number].text.value == 0)
+							if (*AGENT_DEVICES_PROPERTY->items[device_number].text.value == 0) {
 								break;
+							}
 						}
 						if (device_number < ALPACA_MAX_ITEMS) {
 							indigo_item *item = AGENT_DEVICES_PROPERTY->items + device_number;
@@ -587,8 +592,9 @@ static indigo_result agent_define_property(indigo_client *client, indigo_device 
 							alpaca_device->device_number = device_number;
 							indigo_debug("Device %s mapped to #%d", property->device, device_number);
 							indigo_delete_property(indigo_agent_alpaca_device, AGENT_DEVICES_PROPERTY, NULL);
-							if (device_number == AGENT_DEVICES_PROPERTY->count)
+							if (device_number == AGENT_DEVICES_PROPERTY->count) {
 								AGENT_DEVICES_PROPERTY->count++;
+							}
 							indigo_define_property(indigo_agent_alpaca_device, AGENT_DEVICES_PROPERTY, NULL);
 							save_config(indigo_agent_alpaca_device);
 						} else {

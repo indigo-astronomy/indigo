@@ -1181,8 +1181,9 @@ long indigo_alpaca_ccd_get_command(indigo_alpaca_device *alpaca_device, int vers
 		if (result == indigo_alpaca_error_OK) {
 			long index = snprintf(buffer, buffer_length, "\"Value\": [ ");
 			for (int i = 0; i < ALPACA_MAX_ITEMS; i++) {
-				if (value[i] == NULL)
+				if (value[i] == NULL) {
 					break;
+				}
 				index += snprintf(buffer + index, buffer_length - index, "%s\"%s\"", i == 0 ? "" : ", ", value[i]);
 			}
 			index += snprintf(buffer + index, buffer_length - index, " ], \"ErrorNumber\": 0, \"ErrorMessage\": \"\"");
@@ -1493,7 +1494,8 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 			result = indigo_alpaca_error_InvalidOperation;
 		}
 		PRINTF("], \"ErrorNumber\": %d, \"ErrorMessage\": \"%s\", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", result, indigo_alpaca_error_string(result), client_transaction_id, server_transaction_id);
-		if (use_gzip)
+		if (use_gzip) {
 			gzclose(gzf);
+		}
 	}
 }
