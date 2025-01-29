@@ -284,8 +284,9 @@ static void *new_text_vector_handler(parser_state state, parser_context *context
 		indigo_change_property(client, property);
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
-			if (item->text.long_value)
+			if (item->text.long_value) {
 				free(item->text.long_value);
+			}
 		}
 		indigo_clear_property(property);
 		return top_level_handler;
@@ -528,8 +529,9 @@ static void set_property(parser_context *context, indigo_property *other, char *
 			if (other->type == INDIGO_TEXT_VECTOR) {
 				for (int i = 0; i < other->count; i++) {
 					indigo_item *item = other->items + i;
-					if (item->text.long_value)
+					if (item->text.long_value) {
 						free(item->text.long_value);
+					}
 				}
 			}
 			break;
@@ -798,8 +800,9 @@ static void def_property(parser_context *context, indigo_property *other, char *
 	pthread_mutex_lock(&context->mutex);
 	for (index = 0; index < context->count; index++) {
 		property = context->properties[index];
-		if (property == NULL)
+		if (property == NULL) {
 			break;
+		}
 		if (!strncmp(property->device, other->device, INDIGO_NAME_SIZE) && !strncmp(property->name, other->name, INDIGO_NAME_SIZE))
 			break;
 	}
@@ -1183,8 +1186,9 @@ static void *del_property_handler(parser_state state, parser_context *context, c
 					if (tmp->type == INDIGO_BLOB_VECTOR) {
 						for (int i = 0; i < tmp->count; i++) {
 							void *blob = tmp->items[i].blob.value;
-							if (blob)
+							if (blob) {
 								free(blob);
+							}
 						}
 					}
 					indigo_release_property(tmp);
@@ -1327,11 +1331,11 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	char *entity_pointer = NULL;
 	bool is_escaped = false;
 	/* (void)parser_state_name; */
-
+	
 	parser_handler handler = top_level_handler;
-
+	
 	parser_state state = IDLE;
-
+	
 	parser_context *context = indigo_safe_malloc(sizeof(parser_context));
 	context->client = client;
 	context->device = device;
@@ -1343,10 +1347,10 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 		context->count = 0;
 		context->properties = NULL;
 	}
-
+	
 	context->property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
 	context->property->allocated_count = INDIGO_PREALLOCATED_COUNT;
-
+	
 	int handle = 0;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
@@ -1586,7 +1590,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						blob_pointer += base64_decode_fast((unsigned char*)blob_pointer, (unsigned char*)buffer, len);
 						blob_len -= len;
 					}
-
+					
 					handler = handler(BLOB, context, NULL, (char *)blob_buffer, message);
 					pointer = buffer;
 					*pointer = 0;
@@ -1700,11 +1704,13 @@ exit_loop:
 		int index;
 		for (index = 0; index < context->count; index++) {
 			property = context->properties[index];
-			if (property != NULL)
+			if (property != NULL) {
 				break;
+			}
 		}
-		if (property == NULL)
+		if (property == NULL) {
 			break;
+		}
 		indigo_device remote_device;
 		indigo_copy_name(remote_device.name, property->device);
 		remote_device.version = property->version;
@@ -1717,8 +1723,9 @@ exit_loop:
 				if (property->type == INDIGO_BLOB_VECTOR) {
 					for (int i = 0; i < property->count; i++) {
 						void *blob = property->items[i].blob.value;
-						if (blob)
+						if (blob) {
 							free(blob);
+						}
 					}
 				}
 				indigo_release_property(property);
@@ -1748,8 +1755,9 @@ static bool free_escape_buffers_registered = false;
 
 static void free_escape_buffers() {
 	for (int i = 0; i < BUFFER_COUNT; i++)
-	  if (escape_buffer[i])
+		if (escape_buffer[i]) {
 			free(escape_buffer[i]);
+		}
 }
 
 const char *indigo_xml_escape(const char *string) {

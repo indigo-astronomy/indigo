@@ -125,49 +125,43 @@ long base64_decode_fast_nl(unsigned char* out, const unsigned char* in, long inl
 	uint32_t n32;
 	int j;
 	long n = (inlen/4)-1;
-	uint16_t* inp = (uint16_t*)in;
-
+	uint16_t* inp = (uint16_t*)in;	
 	for( j = 0; j < n; j++ ) {
-		if (in[0] == '\n') in++;
+		if (in[0] == '\n') {
+			in++;
+		}
 		inp = (uint16_t*)in;
-
 		s1 = rbase64lut[ inp[0] ];
 		s2 = rbase64lut[ inp[1] ];
-
 		n32 = s1;
 		n32 <<= 10;
 		n32 |= s2 >> 2;
-
 		b3 = ( n32 & 0x00ff );
 		n32 >>= 8;
 		b2 = ( n32 & 0x00ff );
 		n32 >>= 8;
 		b1 = ( n32 & 0x00ff );
-
 		out[0] = b1;
 		out[1] = b2;
 		out[2] = b3;
-
 		in += 4;
 		out += 3;
 	}
 	outlen = (inlen / 4 - 1) * 3;
-	if (in[0] == '\n') in++;
+	if (in[0] == '\n') {
+		in++;
+	}
 	inp = (uint16_t*)in;
-
 	s1 = rbase64lut[ inp[0] ];
 	s2 = rbase64lut[ inp[1] ];
-
 	n32 = s1;
 	n32 <<= 10;
 	n32 |= s2 >> 2;
-
 	b3 = ( n32 & 0x00ff );
 	n32 >>= 8;
 	b2 = ( n32 & 0x00ff );
 	n32 >>= 8;
 	b1 = ( n32 & 0x00ff );
-
 	*out++ = b1;
 	outlen++;
 	if ((inp[1] & 0x00FF) != 0x003D)  {

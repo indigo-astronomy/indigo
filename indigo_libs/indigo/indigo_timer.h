@@ -63,7 +63,7 @@ typedef struct indigo_timer {
 /* fix timespec so that abs(tv_nsec) < 1s */
 #define SEC_NS    1000000000LL       /* 1 sec in nanoseconds */
 static inline void normalize_timespec(struct timespec *ts) {
-	if((1 <= ts->tv_sec ) || ((0 == ts->tv_sec) && (0 <= ts->tv_nsec))) {
+	if ((1 <= ts->tv_sec ) || ((0 == ts->tv_sec) && (0 <= ts->tv_nsec))) {
 		/* timespec is non-negative, so ns >= 1s and ns < 0s are not ok */
 		if (SEC_NS <= ts->tv_nsec) {
 			ts->tv_nsec -= SEC_NS;

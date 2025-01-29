@@ -228,7 +228,7 @@ indigo_result indigo_rotator_change_property(indigo_device *device, indigo_clien
 	// -------------------------------------------------------------------------------- ROTATOR_POSITION
 	} else if (indigo_property_match_changeable(ROTATOR_POSITION_PROPERTY, property)) {
 		indigo_property_copy_values(ROTATOR_POSITION_PROPERTY, property, false);
-		if((ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value && !ROTATOR_POSITION_OFFSET_PROPERTY->hidden)) {
+		if ((ROTATOR_ON_POSITION_SET_SYNC_ITEM->sw.value && !ROTATOR_POSITION_OFFSET_PROPERTY->hidden)) {
 			ROTATOR_POSITION_OFFSET_ITEM->number.value = ROTATOR_POSITION_OFFSET_ITEM->number.target = rotator_calculate_offset(device);
 			indigo_rotator_save_calibration(device);
 			indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);

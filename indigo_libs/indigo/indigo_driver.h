@@ -298,7 +298,7 @@ typedef struct {
 
 #define SET_DRIVER_INFO(dinfo, ddescr, dname, dversion, dmulti, dstatus)\
 {\
-	if(dinfo) {\
+	if (dinfo) {\
 		indigo_copy_name(dinfo->description, ddescr);\
 		indigo_copy_name(dinfo->name, dname);\
 		dinfo->version = dversion;\

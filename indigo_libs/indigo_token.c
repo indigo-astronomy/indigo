@@ -145,24 +145,26 @@ void indigo_clear_device_tokens(void) {
 bool indigo_load_device_tokens_from_file(const char *file_name) {
 	FILE* fp;
 	char buffer[INDIGO_VALUE_SIZE + 50];
-
+	
 	fp = fopen(file_name, "r");
 	if (fp == NULL) {
 		INDIGO_ERROR(indigo_error("ACL: Can not open ACL file '%s'", file_name));
 		return false;
 	}
-
+	
 	INDIGO_DEBUG(indigo_debug("ACL: Loading ACL from file '%s'", file_name));
 	int line_count = 0;
 	while(fgets(buffer, INDIGO_NAME_SIZE + 50, fp)) {
 		char device[INDIGO_NAME_SIZE];
 		indigo_token token;
-
+		
 		line_count++;
-
+		
 		// skip lines starting with #
-		if (buffer[0] == '#') continue;
-
+		if (buffer[0] == '#') {
+			continue;
+		}
+		
 		// remove training spaces
 		int len = (int)strlen(buffer) - 1;
 		if (len >= 0) {
@@ -170,8 +172,10 @@ bool indigo_load_device_tokens_from_file(const char *file_name) {
 			buffer[len + 1] = '\0';
 		}
 		// skip empty lines
-		if (buffer[0] == '\0') continue;
-
+		if (buffer[0] == '\0') {
+			continue;
+		}
+		
 		if (sscanf(buffer, "%llx %127[^\n]s", &token, device) == 2) {
 			if (!strncmp(device, "@", 256)) {
 				indigo_set_master_token(token);

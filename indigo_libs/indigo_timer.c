@@ -30,9 +30,7 @@
 #include <errno.h>
 
 #include <indigo/indigo_timer.h>
-
 #include <indigo/indigo_driver.h>
-
 
 //#ifdef __MACH__ /* Mac OSX prior Sierra is missing clock_gettime() */
 //#include <mach/clock.h>
@@ -73,11 +71,11 @@ static void *timer_func(indigo_timer *timer) {
 					pthread_mutex_lock(&timer->mutex);
 					int rc = pthread_cond_timedwait(&timer->cond, &timer->mutex, &end);
 					pthread_mutex_unlock(&timer->mutex);
-					if (rc == ETIMEDOUT)
+					if (rc == ETIMEDOUT) {
 						break;
+					}
 				}
 			}
-
 			timer->scheduled = false;
 			if (!timer->canceled) {
 				pthread_mutex_lock(&timer->callback_mutex);
@@ -98,9 +96,7 @@ static void *timer_func(indigo_timer *timer) {
 				INDIGO_TRACE(indigo_trace("timer #%d - canceled", timer->timer_id));
 			}
 		}
-
 		INDIGO_TRACE(indigo_trace("timer #%d - done", timer->timer_id));
-
 		pthread_mutex_lock(&cancel_timer_mutex);
 		indigo_device *device = timer->device;
 		if (device != NULL) {
@@ -118,15 +114,12 @@ static void *timer_func(indigo_timer *timer) {
 			}
 		}
 		pthread_mutex_unlock(&cancel_timer_mutex);
-
 		pthread_mutex_lock(&free_timer_mutex);
 		timer->next = free_timer;
 		free_timer = timer;
 		timer->wake = false;
 		pthread_mutex_unlock(&free_timer_mutex);
-
-		INDIGO_TRACE(indigo_trace("timer #%d - released", timer->timer_id));
-		
+		INDIGO_TRACE(indigo_trace("timer #%d - released", timer->timer_id));	
 		pthread_mutex_lock(&timer->mutex);
 		while (!timer->wake)
 			pthread_cond_wait(&timer->cond, &timer->mutex);
@@ -306,8 +299,9 @@ void indigo_cancel_all_timers(indigo_device *device) {
 		if (timer)
 			DEVICE_CONTEXT->timers = timer->next;
 		pthread_mutex_unlock(&cancel_timer_mutex);
-		if (timer == NULL)
+		if (timer == NULL) {
 			break;
+		}
 		indigo_cancel_timer_sync(device, &timer);
 	}
 }

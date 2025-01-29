@@ -833,8 +833,9 @@ static inline void *indigo_safe_realloc_copy(void *pointer, size_t size, void *f
 }
 
 static inline void indigo_safe_free(void *pointer) {
-	if (pointer)
+	if (pointer) {
 		free(pointer);
+	}
 }
 
 static inline char *indigo_safe_strncpy(char *dst, const char *src, size_t size) {

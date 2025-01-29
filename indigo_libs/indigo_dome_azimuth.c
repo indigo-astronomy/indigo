@@ -196,7 +196,7 @@ double indigo_azimuth_distance(double az1, double az2) {
 #ifdef _TEST_
 
 int main(int argc, char *argv[]) {
-	if(argc != 3) return 1;
+	if (argc != 3) return 1;
 	double ha = atof(argv[1]);
 	double dec = atof(argv[2]);
 	//solve_dome_azimuth(ha, dec, site_latitude, dome_radius, mount_dec_height, mount_dec_length, mount_dec_offset, mount_is_gem)

@@ -201,9 +201,9 @@ void indigo_polynomial_string(int coefficient_count, double *polynomial_coeffici
 		p += sprintf(p, "y =");
 	}
 	for (int i = coefficient_count-1; i >= 0; i--) {
-		if(i > 1) {
+		if (i > 1) {
 			p += sprintf(p, " %+.15e*x^%d", polynomial_coefficients[i], i);
-		} else if(i == 1) {
+		} else if (i == 1) {
 			p += sprintf(p, " %+.15e*x", polynomial_coefficients[i]);
 		} else {
 			p += sprintf(p, " %+.15e", polynomial_coefficients[i]);

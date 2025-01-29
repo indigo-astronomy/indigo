@@ -505,8 +505,9 @@ static indigo_result update_related_agent_list(indigo_device *device, indigo_pro
 		for (int j = 0; j < related_agents_property->count; j++) {
 			indigo_item *local_item = related_agents_property->items + j;
 			if (!strcmp(remote_item->name, local_item->name)) {
-				if (remote_item->sw.value == local_item->sw.value)
+				if (remote_item->sw.value == local_item->sw.value) {
 					break;
+				}
 				local_item->sw.value = remote_item->sw.value;
 				if (!is_imager_agent || strncmp(local_item->name, "Imager Agent", 12)) {
 					indigo_set_timer_with_data(device, 0, set_reverse_relation, NULL, local_item);
@@ -562,8 +563,9 @@ indigo_result indigo_filter_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- ADDITIONAL_INSTANCES
 		assert(DEVICE_CONTEXT->base_device == NULL);
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
-		if (FILTER_DEVICE_CONTEXT->client != NULL)
+		if (FILTER_DEVICE_CONTEXT->client != NULL) {
 			update_additional_instances(device);
+		}
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
@@ -725,8 +727,9 @@ indigo_result indigo_filter_define_property(indigo_client *client, indigo_device
 		add_cached_connection_property(device, property);
 		for (int i = 0; i < INDIGO_FILTER_LIST_COUNT; i++) {
 			indigo_property *device_list = FILTER_CLIENT_CONTEXT->filter_device_list_properties[i];
-			if (!device_list->hidden)
+			if (!device_list->hidden) {
 				continue;
+			}
 			if (property->state != INDIGO_BUSY_STATE) {
 				indigo_item *connected_device = indigo_get_item(property, CONNECTION_CONNECTED_ITEM_NAME);
 				for (int j = 1; j < device_list->count; j++) {
@@ -1004,10 +1007,12 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 	indigo_property **device_cache = FILTER_CLIENT_CONTEXT->device_property_cache;
 	indigo_property **agent_cache = FILTER_CLIENT_CONTEXT->agent_property_cache;
 	for (int i = 0; i < INDIGO_FILTER_MAX_CACHED_PROPERTIES; i++) {
-		if (device_cache[i])
+		if (device_cache[i]) {
 			indigo_safe_free(device_cache[i]);
-		if (agent_cache[i])
+		}
+		if (agent_cache[i]) {
 			indigo_release_property(agent_cache[i]);
+		}
 	}
 	return INDIGO_OK;
 }

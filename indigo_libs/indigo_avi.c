@@ -270,10 +270,10 @@ struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned in
 	gwavi->stream_format.num_planes = 1;
 	gwavi->stream_format.bits_per_pixel = 24;
 	gwavi->stream_format.compression_type =
-		((unsigned int)fourcc[3] << 24) +
-		((unsigned int)fourcc[2] << 16) +
-		((unsigned int)fourcc[1] << 8) +
-		((unsigned int)fourcc[0]);
+	((unsigned int)fourcc[3] << 24) +
+	((unsigned int)fourcc[2] << 16) +
+	((unsigned int)fourcc[1] << 8) +
+	((unsigned int)fourcc[0]);
 	gwavi->stream_format.image_size = width * height * 3;
 	gwavi->stream_format.colors_used = 0;
 	gwavi->stream_format.colors_important = 0;
@@ -297,8 +297,9 @@ failure:
 		close(handle);
 	}
 	if (gwavi) {
-		if (gwavi->offsets)
+		if (gwavi->offsets) {
 			free(gwavi->offsets);
+		}
 		free(gwavi);
 	}
 	return NULL;
@@ -367,8 +368,9 @@ bool gwavi_close(struct gwavi_t *gwavi) {
 	free(gwavi);
 	return true;
 failure:
-	if (gwavi->offsets)
+	if (gwavi->offsets) {
 		free(gwavi->offsets);
+	}
 	close(handle);
 	free(gwavi);
 	return false;

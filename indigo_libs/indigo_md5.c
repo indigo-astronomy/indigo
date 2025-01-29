@@ -184,7 +184,7 @@ static void md5_update(md5_context *ctx, uint8_t *input_buffer, size_t input_len
 		// then reset the offset to 0 and fill in a new buffer.
 		// Every time we fill out a chunk, we run it through the algorithm
 		// to enable some back and forth between cpu and i/o
-		if(offset % 64 == 0) {
+		if (offset % 64 == 0) {
 			for(unsigned int j = 0; j < 16; ++j) {
 				// Convert to little-endian
 				// The local variable `input` our 512-bit chunk separated into 32-bit words

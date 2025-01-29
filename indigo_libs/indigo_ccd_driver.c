@@ -841,17 +841,17 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].clipping_point;
 			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
 			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_SLIGHT].target_background;
-		} else if(CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM->sw.value) {
+		} else if (CCD_JPEG_STRETCH_PRESETS_MODERATE_ITEM->sw.value) {
 			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
 			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].clipping_point;
 			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
 			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_MODERATE].target_background;
-		} else if(CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM->sw.value) {
+		} else if (CCD_JPEG_STRETCH_PRESETS_NORMAL_ITEM->sw.value) {
 			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
 			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].clipping_point;
 			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
 			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_NORMAL].target_background;
-		} else if(CCD_JPEG_STRETCH_PRESETS_HARD_ITEM->sw.value) {
+		} else if (CCD_JPEG_STRETCH_PRESETS_HARD_ITEM->sw.value) {
 			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.value =
 			CCD_JPEG_SETTINGS_CLIPPING_POINT_ITEM->number.target = ccd_jpeg_stretch_params_lut[CCD_JPEG_STRETCH_HARD].clipping_point;
 			CCD_JPEG_SETTINGS_TARGET_BACKGROUND_ITEM->number.value =
@@ -923,8 +923,9 @@ indigo_result indigo_ccd_detach(indigo_device *device) {
 	indigo_release_property(CCD_JPEG_STRETCH_PRESETS_PROPERTY);
 	indigo_release_property(CCD_RBI_FLUSH_ENABLE_PROPERTY);
 	indigo_release_property(CCD_RBI_FLUSH_PROPERTY);
-	if (CCD_CONTEXT->preview_image)
+	if (CCD_CONTEXT->preview_image) {
 		free(CCD_CONTEXT->preview_image);
+	}
 	return indigo_device_detach(device);
 }
 
@@ -1285,8 +1286,9 @@ static void sanitise(char *buffer) {
 	for (char *p = buffer; *p; p++) {
 		if (isalnum(*p) || isdigit(*p))
 			continue;
-		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%' || *p == '#' || *p == ' ' || *p == '+' || *p == '@')
-			continue;
+		if (*p == '-' || *p == '.' || *p == '_' || *p == '$' || *p == '%' || *p == '#' || *p == ' ' || *p == '+' || *p == '@') {
+  continue;
+}
 		*p = '_';
 	}
 }
@@ -1527,7 +1529,7 @@ int mkpath(const char *path) {
 void indigo_process_image(indigo_device *device, void *data, int frame_width, int frame_height, int bpp, bool little_endian, bool byte_order_rgb, indigo_fits_keyword *keywords, bool streaming) {
 	assert(device != NULL);
 	assert(data != NULL);
-
+	
 	INDIGO_DEBUG(clock_t start = clock());
 	int horizontal_bin = CCD_BIN_HORIZONTAL_ITEM->number.value;
 	int vertical_bin = CCD_BIN_VERTICAL_ITEM->number.value;
@@ -1579,8 +1581,9 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 	if (keywords) {
 		for (int i = 0;; i++) {
 			indigo_fits_keyword *keyword = keywords + i;
-			if (keyword->type == 0)
+			if (keyword->type == 0) {
 				break;
+			}
 			if (keyword->type == INDIGO_FITS_STRING && !strcmp(keyword->name, "BAYERPAT")) {
 				bayerpat = keyword->string;
 				break;
@@ -1878,7 +1881,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			header += sprintf(header, "<FITSKeyword name='EXPTIME'  value='%20.4f' comment='Exposure time in seconds'/>", CCD_EXPOSURE_ITEM->number.target);
 		header += sprintf(header, "<Property id='Instrument:Sensor:XPixelSize' type='Float32' value='%s'/><Property id='Instrument:Sensor:YPixelSize' type='Float32' value='%s'/>", indigo_dtoa(CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, b1), indigo_dtoa(CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin, b2));
 		header += sprintf(header, "<FITSKeyword name='XPIXSZ'  value='%20.2f' comment='Pixel horizontal width in microns'/><FITSKeyword name='YPIXSZ' value='%20.2f' comment='Pixel vertical width in microns'/>", CCD_INFO_PIXEL_WIDTH_ITEM->number.value * horizontal_bin, CCD_INFO_PIXEL_HEIGHT_ITEM->number.value * vertical_bin);
-
+		
 		if (!CCD_TEMPERATURE_PROPERTY->hidden) {
 			header += sprintf(header, "<Property id='Instrument:Sensor:Temperature' type='Float32' value='%s'/><Property id='Instrument:Sensor:TargetTemperature' type='Float32' value='%s'/>", indigo_dtoa(CCD_TEMPERATURE_ITEM->number.value, b1), indigo_dtoa(CCD_TEMPERATURE_ITEM->number.target, b2));
 			header += sprintf(header, "<FITSKeyword name='CCD-TEMP' value='%20.2f' comment='CCD chip temperature in celsius'/>", CCD_TEMPERATURE_ITEM->number.value);
@@ -2092,10 +2095,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		INDIGO_DEBUG(indigo_debug("Client upload in %gs", (clock() - start) / (double)CLOCKS_PER_SEC));
 	}
-	if (jpeg_data)
+	if (jpeg_data) {
 		free(jpeg_data);
-	if (histogram_data)
+	}
+	if (histogram_data) {
 		free(histogram_data);
+	}
 }
 
 void indigo_process_dslr_image(indigo_device *device, void *data, int data_size, const char *suffix, bool streaming) {
@@ -2203,7 +2208,9 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 			rc = indigo_dslr_raw_process_image((void *)data, data_size, &output_image);
 		}
 		if (rc != LIBRAW_SUCCESS) {
-			if (output_image.data != NULL) free(output_image.data);
+			if (output_image.data != NULL) {
+				free(output_image.data);
+			}
 			INDIGO_ERROR(indigo_error("Selected source format cannot be converted"));
 			CCD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, "Selected source format cannot be converted, please use camera RAW as a source");

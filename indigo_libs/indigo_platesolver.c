@@ -132,8 +132,9 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 				abort_mount_move(device);
 				return false;
 			}
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_BUSY_STATE || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_ALERT_STATE)
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_BUSY_STATE || INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state == INDIGO_ALERT_STATE) {
 				break;
+			}
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_BUSY_STATE) {
@@ -145,8 +146,9 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 				abort_mount_move(device);
 				return false;
 			}
-			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_BUSY_STATE)
+			if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_BUSY_STATE) {
 				break;
+			}
 			indigo_usleep(10000);
 		}
 		if (INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->mount_process_state != INDIGO_OK_STATE) {
@@ -362,7 +364,7 @@ static void solve(indigo_platesolver_task *task) {
 	INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->abort_process_requested = false;
 
 	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
-		if(AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_REFERENCE_1) {
+		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_REFERENCE_1) {
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.a = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.a;
 			INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_start_coordinates.d = INDIGO_PLATESOLVER_DEVICE_PRIVATE_DATA->eq_coordinates.d;
 		}
@@ -436,7 +438,7 @@ static void solve(indigo_platesolver_task *task) {
 	}
 
 	if (AGENT_PLATESOLVER_SYNC_CALCULATE_PA_ERROR_ITEM->sw.value) {
-		if(AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_REFERENCE_1) {
+		if (AGENT_PLATESOLVER_PA_STATE_ITEM->number.value == INDIGO_POLAR_ALIGN_REFERENCE_1) {
 			indigo_debug("%s(): state INDIGO_POLAR_ALIGN_REFERENCE_1 -> INDIGO_POLAR_ALIGN_REFERENCE_2", __FUNCTION__);
 			AGENT_PLATESOLVER_PA_STATE_PROPERTY->state = INDIGO_BUSY_STATE;
 			AGENT_PLATESOLVER_PA_STATE_ITEM->number.value = INDIGO_POLAR_ALIGN_REFERENCE_2;

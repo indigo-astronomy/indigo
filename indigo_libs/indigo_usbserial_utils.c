@@ -66,23 +66,23 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 		CFStringRef vendorString = IORegistryEntryCreateCFProperty(device, CFSTR(kUSBVendorString), kCFAllocatorDefault, 0);
 		CFStringRef productString = IORegistryEntryCreateCFProperty(device, CFSTR(kUSBProductString), kCFAllocatorDefault, 0);
 		CFStringRef serialNumberString = IORegistryEntryCreateCFProperty(device, CFSTR(kUSBSerialNumberString), kCFAllocatorDefault, 0);
-
+		
 		if (vendorIdAsCFNumber && productIdAsCFNumber && deviceClassAsCFNumber) {
 			int vendor_id, product_id, device_class;
 			CFNumberGetValue(vendorIdAsCFNumber, kCFNumberIntType, &vendor_id);
 			CFNumberGetValue(productIdAsCFNumber, kCFNumberIntType, &product_id);
 			CFNumberGetValue(deviceClassAsCFNumber, kCFNumberIntType, &device_class);
-
+			
 			// Skip USB hubs
 			if (device_class == 0x09) {
 				IOObjectRelease(device);
 				continue;
 			}
-
+			
 			char vendor_str[256] = {0};
 			char product_str[256] = {0};
 			char serial_str[256] = {0};
-
+			
 			if (vendorString) {
 				CFStringGetCString(vendorString, vendor_str, sizeof(vendor_str), kCFStringEncodingUTF8);
 			}
@@ -92,19 +92,19 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 			if (serialNumberString) {
 				CFStringGetCString(serialNumberString, serial_str, sizeof(serial_str), kCFStringEncodingUTF8);
 			}
-
+			
 			io_iterator_t serialIter;
 			IOUSBFindInterfaceRequest request;
 			request.bInterfaceClass = kIOUSBFindInterfaceDontCare;
 			request.bInterfaceSubClass = kIOUSBFindInterfaceDontCare;
 			request.bInterfaceProtocol = kIOUSBFindInterfaceDontCare;
 			request.bAlternateSetting = kIOUSBFindInterfaceDontCare;
-
+			
 			kr = IORegistryEntryCreateIterator(device, kIOServicePlane, kIORegistryIterateRecursively, &serialIter);
 			if (kr != KERN_SUCCESS) {
 				continue;
 			}
-
+			
 			io_service_t serialService;
 			while ((serialService = IOIteratorNext(serialIter)) != 0) {
 				CFTypeRef bsdPathAsCFString = IORegistryEntryCreateCFProperty(serialService, CFSTR(kIOCalloutDeviceKey), kCFAllocatorDefault, 0);
@@ -125,13 +125,25 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 			}
 			IOObjectRelease(serialIter);
 		}
-
-		if (vendorIdAsCFNumber) CFRelease(vendorIdAsCFNumber);
-		if (productIdAsCFNumber) CFRelease(productIdAsCFNumber);
-		if (deviceClassAsCFNumber) CFRelease(deviceClassAsCFNumber);
-		if (vendorString) CFRelease(vendorString);
-		if (productString) CFRelease(productString);
-		if (serialNumberString) CFRelease(serialNumberString);
+		
+		if (vendorIdAsCFNumber) {
+			CFRelease(vendorIdAsCFNumber);
+		}
+		if (productIdAsCFNumber) {
+			CFRelease(productIdAsCFNumber);
+		}
+		if (deviceClassAsCFNumber) {
+			CFRelease(deviceClassAsCFNumber);
+		}
+		if (vendorString) {
+			CFRelease(vendorString);
+		}
+		if (productString) {
+			CFRelease(productString);
+		}
+		if (serialNumberString) {
+			CFRelease(serialNumberString);
+		}
 		IOObjectRelease(device);
 	}
 	IOObjectRelease(iter);

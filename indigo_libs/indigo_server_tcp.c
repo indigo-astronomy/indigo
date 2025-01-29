@@ -103,7 +103,7 @@ static void start_worker_thread(int *client_socket) {
 	char c;
 	void *free_on_exit = NULL;
 	pthread_mutex_t *unlock_at_exit = NULL;
-
+	
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", socket));
@@ -408,10 +408,12 @@ failure:
 	close(socket);
 	server_callback(--client_count);
 	free(client_socket);
-	if (free_on_exit)
+	if (free_on_exit) {
 		free(free_on_exit);
-	if (unlock_at_exit)
+	}
+	if (unlock_at_exit) {
 		pthread_mutex_unlock(unlock_at_exit);
+	}
 	INDIGO_TRACE(indigo_trace("%d <- // Worker thread finished", socket));
 }
 
@@ -546,7 +548,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		indigo_error("Can't bind server socket (%s)", strerror(errno));
 		return INDIGO_CANT_START_SERVER;
 	}
-
+	
 #ifdef INDIGO_LINUX
 	int val = 1;
 	if (setsockopt(server_socket, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) < 0) {
@@ -554,7 +556,7 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 		return INDIGO_CANT_START_SERVER;
 	}
 #endif
-
+	
 	unsigned int length = sizeof(server_address);
 	if (getsockname(server_socket, (struct sockaddr *)&server_address, &length) == -1) {
 		close(server_socket);
@@ -574,8 +576,9 @@ indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
 	while (1) {
 		client_socket = accept(server_socket, (struct sockaddr *)&client_name, &name_len);
 		if (client_socket == -1) {
-			if (shutdown_initiated)
+			if (shutdown_initiated) {
 				break;
+			}
 			indigo_error("Can't accept connection (%s)", strerror(errno));
 		} else {
 			struct timeval timeout;

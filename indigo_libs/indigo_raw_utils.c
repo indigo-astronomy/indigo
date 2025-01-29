@@ -2266,10 +2266,12 @@ indigo_result indigo_calculate_drift(const indigo_frame_digest *ref, const indig
 indigo_result indigo_delete_frame_digest(indigo_frame_digest *fdigest) {
 	if (fdigest) {
 		if (fdigest->algorithm == donuts) {
-			if (fdigest->fft_x)
+			if (fdigest->fft_x) {
 				free(fdigest->fft_x);
-			if (fdigest->fft_y)
+			}
+			if (fdigest->fft_y) {
 				free(fdigest->fft_y);
+			}
 		}
 		fdigest->width = 0;
 		fdigest->height = 0;
@@ -2292,7 +2294,7 @@ static int luminance_comparator(const void *item_1, const void *item_2) {
 /* With radius < 3, no precise star positins will be determined */
 indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *data, const uint16_t radius, const int width, const int height, const int stars_max, indigo_star_detection star_list[], int *stars_found) {
 	if (data == NULL || star_list == NULL || stars_found == NULL) return INDIGO_FAILED;
-
+	
 	int  size = width * height;
 	uint16_t *buf = indigo_safe_malloc(size * sizeof(uint16_t));
 	int star_size = 100;
@@ -2300,12 +2302,12 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 	int clip_width  = width - clip_edge;
 	int clip_height = height - clip_edge;
 	uint16_t max_luminance = 0;
-
+	
 	uint8_t *data8 = (uint8_t *)data;
 	uint16_t *data16 = (uint16_t *)data;
 	double sum = 0;
 	double sum_sq = 0;
-
+	
 	switch (raw_type) {
 		case INDIGO_RAW_MONO8: {
 			max_luminance = 0xFF;
@@ -2366,28 +2368,28 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			break;
 		}
 	}
-
+	
 	// Calculate mean
 	double mean = sum / size;
-
+	
 	/* Calculate standard deviation - simplified, approximate estimate,
-	   with a nice property that it is less affected by outliers. This proeprty
-	   fixes the issue with finding guide stars in the presence of saturated stars,
-	   as it effectively filters out the outliers.
-	*/
+	 with a nice property that it is less affected by outliers. This proeprty
+	 fixes the issue with finding guide stars in the presence of saturated stars,
+	 as it effectively filters out the outliers.
+	 */
 	double stddev = sqrt(fabs(sum_sq / size - mean * mean));
-
+	
 	/* Calculate threshold - add 4.5 stddev threshold for stars */
 	uint32_t threshold = 4.5 * stddev + mean;
 	indigo_debug("%s(): image mean = %.2f, simplified stddev = %.2f, star detection threshold = %d", __FUNCTION__, mean, stddev, threshold);
-
+	
 	int threshold_hist = threshold * 0.9;
-
+	
 	int found = 0;
 	int width2 = width / 2;
 	int height2 = height / 2;
 	uint32_t lmax = threshold + 1;
-
+	
 	indigo_star_detection star = { 0 };
 	int divider = (width > height) ? height2 : width2;
 	while (lmax > threshold) {
@@ -2397,22 +2399,22 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 		star.nc_distance = 0;
 		star.luminance = 0;
 		star.oversaturated = 0;
-
+		
 		for (int j = clip_edge; j < clip_height; j++) {
 			for (int i = clip_edge; i < clip_width; i++) {
 				int off = j * width + i;
 				if (
-					buf[off] > lmax &&
-					/* also check median of the neighbouring pixels to avoid hot pixels and lines */
-					median3(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
-					median3(buf[off - width], buf[off], buf[off + width]) > threshold &&
-					median3(buf[off - width - 1], buf[off], buf[off + width + 1]) > threshold &&
-					median3(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold
-				) {
-					lmax = buf[off];
-					star.x = i;
-					star.y = j;
-				}
+						buf[off] > lmax &&
+						/* also check median of the neighbouring pixels to avoid hot pixels and lines */
+						median3(buf[off - 1], buf[off], buf[off + 1]) > threshold &&
+						median3(buf[off - width], buf[off], buf[off + width]) > threshold &&
+						median3(buf[off - width - 1], buf[off], buf[off + width + 1]) > threshold &&
+						median3(buf[off - width + 1], buf[off], buf[off + width - 1]) > threshold
+						) {
+							lmax = buf[off];
+							star.x = i;
+							star.y = j;
+						}
 			}
 		}
 		if (lmax > threshold) {
@@ -2425,7 +2427,9 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			int star_y = (int)star.y;
 			// clear +X, +Y quadrant
 			for (int j = star_y; j <= max_j; j++) {
-				if (buf[j * width + star_x] < threshold_hist) break;
+				if (buf[j * width + star_x] < threshold_hist) {
+					break;
+				}
 				for (int i = star_x; i <= max_i; i++) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
@@ -2438,7 +2442,9 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			}
 			// clear -X, +Y quadrant
 			for (int j = star_y; j <= max_j; j++) {
-				if (buf[j * width + star_x - 1] < threshold_hist) break;
+				if (buf[j * width + star_x - 1] < threshold_hist) {
+					break;
+				}
 				for (int i = star_x - 1; i >= min_i; i--) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
@@ -2451,7 +2457,9 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			}
 			// clear +X, -Y quadrant
 			for (int j = star_y - 1; j >= min_j; j--) {
-				if (buf[j * width + star_x] < threshold_hist) break;
+				if (buf[j * width + star_x] < threshold_hist) {
+					break;
+				}
 				for (int i = star_x; i <= max_i; i++) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
@@ -2464,7 +2472,9 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 			}
 			// clear -X, -Y quadrant
 			for (int j = star_y - 1; j >= min_j; j--) {
-				if (buf[j * width + star_x - 1] < threshold_hist) break;
+				if (buf[j * width + star_x - 1] < threshold_hist) {
+					break;
+				}
 				for (int i = star_x - 1; i >= min_i; i--) {
 					int off = j * width + i;
 					if (buf[off] > threshold_hist) {
@@ -2475,7 +2485,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 					}
 				}
 			}
-
+			
 			indigo_result res = INDIGO_FAILED;
 			if (radius >= 3) {
 				indigo_frame_digest center = {0};
@@ -2483,29 +2493,29 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 				star.x = center.centroid_x;
 				star.y = center.centroid_y;
 				star.close_to_other = false;
-				if(res == INDIGO_OK) {
+				if (res == INDIGO_OK) {
 					indigo_delete_frame_digest(&center);
 				}
 			}
-
+			
 			/* Check if the star is a duplicate (probably artifact) or is in close proximity to another one.
-			   In both cses these stars should not be used */
+			 In both cses these stars should not be used */
 			if (res == INDIGO_OK || radius < 3) {
 				for (int i = 0; i < found; i++) {
 					double dx = fabs(star_list[i].x - star.x);
 					double dy = fabs(star_list[i].y - star.y);
 					if (dx < 1 && dy < 1) {
 						/* The star (probably artifact) is a duplicate of another star.
-						   We mark the other star as being close to another one, so it
-						   won't be used automatically, and we skip the duplicate. */
+						 We mark the other star as being close to another one, so it
+						 won't be used automatically, and we skip the duplicate. */
 						indigo_debug("indigo_find_stars(): star (%lf, %lf) skipped, duplicate of #%u = (%lf, %lf)", star.x, star.y, i + 1, star_list[i].x, star_list[i].y);
 						star_list[i].close_to_other = true;
 						res = INDIGO_FAILED;
 						break;
 					} else if (dx < radius && dy < radius) {
 						/* The star is too close to another star.
-						   We mark both star as being close to another one, so they
-						   won't be used automatically but we keep both stars in the list. */
+						 We mark both star as being close to another one, so they
+						 won't be used automatically but we keep both stars in the list. */
 						indigo_debug("indigo_find_stars(): star (%lf, %lf), too close to #%u = (%lf, %lf)", star.x, star.y, i + 1, star_list[i].x, star_list[i].y);
 						star.close_to_other = true;
 						star_list[i].close_to_other = true;
@@ -2513,7 +2523,7 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 					}
 				}
 			}
-
+			
 			if (res == INDIGO_OK || radius < 3) {
 				star.oversaturated = lmax == max_luminance;
 				star.nc_distance = sqrt((star.x - width2) * (star.x - width2) + (star.y - height2) * (star.y - height2));
@@ -2527,25 +2537,25 @@ indigo_result indigo_find_stars_precise(indigo_raw_type raw_type, const void *da
 		}
 	}
 	free(buf);
-
+	
 	qsort(star_list, found, sizeof(indigo_star_detection), luminance_comparator);
-
+	
 	INDIGO_DEBUG(
-		for (size_t i = 0;i < found; i++) {
-			indigo_debug(
-				"%s: star #%u = (%lf, %lf), ncdist = %lf, lum = %lf, close_to_other = %d, oversaturated = %d",
-				__FUNCTION__,
-				i+1,
-				star_list[i].x,
-				star_list[i].y,
-				star_list[i].nc_distance,
-				star_list[i].luminance,
-				star_list[i].close_to_other,
-				star_list[i].oversaturated
-			);
-		}
-	)
-
+							 for (size_t i = 0;i < found; i++) {
+								 indigo_debug(
+															"%s: star #%u = (%lf, %lf), ncdist = %lf, lum = %lf, close_to_other = %d, oversaturated = %d",
+															__FUNCTION__,
+															i+1,
+															star_list[i].x,
+															star_list[i].y,
+															star_list[i].nc_distance,
+															star_list[i].luminance,
+															star_list[i].close_to_other,
+															star_list[i].oversaturated
+															);
+							 }
+							 )
+	
 	*stars_found = found;
 	return INDIGO_OK;
 }
@@ -2625,8 +2635,9 @@ indigo_result indigo_make_psf_map(indigo_raw_type image_raw_type, const void *im
 	indigo_find_stars_precise(image_raw_type, image_data, radius, image_width, image_height, stars_max, stars, &total_stars);
 	for (int i = 0; i < total_stars; i++) {
 		indigo_star_detection *star = stars + i;
-		if (star->oversaturated || star->close_to_other)
-			continue;
+		if (star->oversaturated || star->close_to_other) {
+  continue;
+}
 		double star_fwhm, star_hfd, star_peak;
 		indigo_selection_psf(image_raw_type, image_data, star->x, star->y, radius, image_width, image_height, &star_fwhm, &star_hfd, &star_peak);
 		star->x /= map_scale; // scale to map coordimates

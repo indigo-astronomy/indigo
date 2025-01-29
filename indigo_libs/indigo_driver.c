@@ -168,7 +168,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 	if (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
 		char target[PATH_MAX] = {0};
 		char *path = DEVICE_PORT_ITEM->text.value + strlen(USBSERIAL_AUTO_PREFIX);
-		if(realpath(path, target)) {
+		if (realpath(path, target)) {
 			INDIGO_DEBUG(indigo_debug("%s(): Selected port %s for '%s' resolves to %s", __FUNCTION__, path, device->name, target));
 			for (int i = 0; i < num_serial_info; i++) {
 				if (!strcmp(serial_info[i].path, target)) {
@@ -191,7 +191,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 
 	/* if nothing is matched select first USB-Serial port */
 	if (matching == NULL) {
-		if(port_exists) {
+		if (port_exists) {
 			INDIGO_DEBUG(indigo_debug(
 				"%s(): No matching port found for '%s', keeping selected: %s",
 				__FUNCTION__,
@@ -710,8 +710,9 @@ indigo_result indigo_device_detach(indigo_device *device) {
 			indigo_device *additional_device = DEVICE_CONTEXT->additional_device_instances[i];
 			if (additional_device != NULL) {
 				if (indigo_detach_device(additional_device) != INDIGO_NOT_FOUND) {
-					if (additional_device->master_device == NULL || additional_device->master_device == additional_device)
+					if (additional_device->master_device == NULL || additional_device->master_device == additional_device) {
 						free(additional_device->private_data);
+					}
 					free(additional_device);
 				}
 				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
@@ -821,8 +822,9 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		free(context);
 		free(client);
 	}
-	if (DEVICE_CONTEXT)
-		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	if (DEVICE_CONTEXT) {
+  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+}
 	return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
 }
 
@@ -852,8 +854,9 @@ indigo_result indigo_save_property(indigo_device *device, int *file_handle, indi
 				common_property = true;
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, common_property ? ".common" : ".config");
 			if (handle == 0) {
-				if (DEVICE_CONTEXT)
-					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+				if (DEVICE_CONTEXT) {
+  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+}
 				return INDIGO_FAILED;
 			}
 		}
@@ -886,8 +889,9 @@ indigo_result indigo_save_property(indigo_device *device, int *file_handle, indi
 			break;
 		}
 	}
-	if (DEVICE_CONTEXT)
-		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	if (DEVICE_CONTEXT) {
+  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+}
 	return INDIGO_OK;
 }
 
@@ -914,8 +918,9 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			}
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
 			if (handle == 0) {
-				if (DEVICE_CONTEXT)
-					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+				if (DEVICE_CONTEXT) {
+  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+}
 				return INDIGO_FAILED;
 			}
 		}
@@ -963,8 +968,9 @@ indigo_result indigo_save_property_items(indigo_device*device, int *file_handle,
 			break;
 		}
 	}
-	if (DEVICE_CONTEXT)
-		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	if (DEVICE_CONTEXT) {
+  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+}
 	return INDIGO_OK;
 }
 
@@ -983,13 +989,15 @@ indigo_result indigo_remove_properties(indigo_device *device) {
 	static char path[512];
 	if (make_config_file_name(device->name, profile, ".config", path, sizeof(path))) {
 		if (unlink(path) == 0) {
-			if (DEVICE_CONTEXT)
-				pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+			if (DEVICE_CONTEXT) {
+  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+}
 			return INDIGO_OK;
 		}
 	}
-	if (DEVICE_CONTEXT)
-		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	if (DEVICE_CONTEXT) {
+  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+}
 	return INDIGO_FAILED;
 }
 
@@ -1118,11 +1126,13 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 }
 
 void indigo_lock_master_device(indigo_device *device) {
-	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL)
-		pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL) {
+  pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+}
 }
 
 void indigo_unlock_master_device(indigo_device *device) {
-	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL)
-		pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL) {
+  pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+}
 }
