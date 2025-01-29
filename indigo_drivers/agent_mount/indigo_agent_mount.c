@@ -264,8 +264,9 @@ static void lx200_server_worker_thread(handler_data *data) {
 		*buffer_in = 0;
 		*buffer_out = 0;
 		result = read(client_socket, buffer_in, 1);
-		if (result <= 0)
+		if (result <= 0) {
 			break;
+		}
 		if (*buffer_in == 6) {
 			strcpy(buffer_out, "P");
 		} else if (*buffer_in == '#') {
@@ -274,16 +275,18 @@ static void lx200_server_worker_thread(handler_data *data) {
 			int i = 0;
 			while (i < sizeof(buffer_in)) {
 				result = read(client_socket, buffer_in + i, 1);
-				if (result <= 0)
+				if (result <= 0) {
 					break;
+				}
 				if (buffer_in[i] == '#') {
 					buffer_in[i] = 0;
 					break;
 				}
 				i++;
 			}
-			if (result == -1)
+			if (result == -1) {
 				break;
+			}
 			if (strcmp(buffer_in, "GVP") == 0) {
 				strcpy(buffer_out, "indigo#");
 			} else if (strcmp(buffer_in, "GR") == 0) {
@@ -494,8 +497,9 @@ static void stop_lx200_server(indigo_device *device) {
 }
 
 static void abort_imager_process(indigo_device *device, char *reason) {
-	if (!AGENT_ABORT_IMAGER_ITEM->sw.value)
+	if (!AGENT_ABORT_IMAGER_ITEM->sw.value) {
 		return;
+	}
 	indigo_send_message(device, "Aborting Imager agent process due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Imager Agent");
 	if (related_agent_name) {
@@ -504,8 +508,9 @@ static void abort_imager_process(indigo_device *device, char *reason) {
 }
 
 static void abort_guider_process(indigo_device *device, char *reason) {
-	if (!AGENT_ABORT_GUIDER_ITEM->sw.value)
+	if (!AGENT_ABORT_GUIDER_ITEM->sw.value) {
 		return;
+	}
 	indigo_send_message(device, "Aborting Guider agent process due to %s", reason);
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (related_agent_name) {
