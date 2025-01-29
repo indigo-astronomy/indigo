@@ -1219,15 +1219,17 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY);
 	for (int i = 0; i < MAX_USER_SCRIPT_COUNT; i++) {
 		indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(i);
-		if (script_property)
+		if (script_property) {
 			indigo_release_property(script_property);
+		}
 	}
 	for (int i = 0; i < MAX_CACHED_PROPERTY_COUNT; i++) {
 		indigo_property *cached_property = PRIVATE_DATA->agent_cached_property[i];
-		if (cached_property)
+		if (cached_property) {
 			indigo_release_property(cached_property);
+		}
 	}
-
+	
 	return indigo_device_detach(device);
 }
 
