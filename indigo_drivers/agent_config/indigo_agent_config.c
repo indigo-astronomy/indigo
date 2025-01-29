@@ -169,8 +169,9 @@ static void load_configuration(indigo_device *device) {
 				} else {
 					char *rest = NULL;
 					for (char *token = strtok_r(item->text.value, ";", &rest); token; token = strtok_r(NULL, ";", &rest)) {
-						if (token == NULL || *token == 0)
+						if (token == NULL || *token == 0) {
 							break;
+						}
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Deselecting '%s' from '%s'", token, device_name);
 						indigo_change_switch_property_1(agent_client, device_name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, token, false);
 					}
@@ -199,8 +200,9 @@ static void load_configuration(indigo_device *device) {
 			}
 			pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 		}
-		if (done)
+		if (done) {
 			break;
+		}
 		indigo_usleep(500000);
 	}
 	if (!done) {
@@ -244,8 +246,9 @@ static void load_configuration(indigo_device *device) {
 							break;
 						}
 					}
-					if (done)
+					if (done) {
 						break;
+					}
 					indigo_usleep(100000);
 				}
 				strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, item->name, INDIGO_VALUE_SIZE);
@@ -305,8 +308,9 @@ static void process_configuration_property(indigo_device *device) {
 							}
 						}
 						pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
-						if (done)
+						if (done) {
 							break;
+						}
 						if (k == 0)
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Waiting for '%s'", item->name);
 						indigo_usleep(500000);
@@ -338,8 +342,9 @@ static void process_configuration_property(indigo_device *device) {
 					if (!strcmp(item->name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME)) {
 						char *rest = NULL;
 						for (char *token = strtok_r(item->text.value, ";", &rest); token; token = strtok_r(NULL, ";", &rest)) {
-							if (token == NULL || *token == 0)
+							if (token == NULL || *token == 0) {
 								break;
+							}
 							INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Selecting '%s' from '%s'", item->text.value, device_name);
 							indigo_change_switch_property_1(agent_client, device_name, FILTER_RELATED_AGENT_LIST_PROPERTY_NAME, token, true);
 						}
@@ -366,8 +371,9 @@ static void process_configuration_property(indigo_device *device) {
 						}
 					}
 					pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
-					if (done)
+					if (done) {
 						break;
+					}
 				}
 			}
 			indigo_release_property(property);
@@ -591,8 +597,9 @@ static indigo_result agent_device_detach(indigo_device *device) {
 	indigo_release_property(AGENT_CONFIG_DRIVERS_PROPERTY);
 	indigo_release_property(AGENT_CONFIG_PROFILES_PROPERTY);
 	for (int i = 0; i < MAX_AGENTS; i++)
-		if (AGENT_CONFIG_AGENTS_PROPERTIES[i])
+		if (AGENT_CONFIG_AGENTS_PROPERTIES[i]) {
 			indigo_release_property(AGENT_CONFIG_AGENTS_PROPERTIES[i]);
+		}
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->restore_mutex);
 	pthread_mutex_destroy(&DEVICE_PRIVATE_DATA->data_mutex);
 	return indigo_agent_detach(device);;
