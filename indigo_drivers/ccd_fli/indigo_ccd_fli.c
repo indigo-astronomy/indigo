@@ -302,7 +302,7 @@ static bool fli_read_pixels(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		FLIGetDeviceStatus(id, &dev_status);
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-		if((dev_status != FLI_CAMERA_STATUS_UNKNOWN) && ((dev_status & FLI_CAMERA_DATA_READY) != 0)) {
+		if ((dev_status != FLI_CAMERA_STATUS_UNKNOWN) && ((dev_status & FLI_CAMERA_DATA_READY) != 0)) {
 			break;
 		}
 		indigo_usleep(10000);
@@ -343,7 +343,7 @@ static bool fli_abort_exposure(indigo_device *device) {
 	PRIVATE_DATA->can_check_temperature = true;
 	PRIVATE_DATA->abort_flag = true;
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-	if(err) return false;
+	if (err) return false;
 	else return true;
 }
 
@@ -357,20 +357,20 @@ static bool fli_set_cooler(indigo_device *device, double target, double *current
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	res = FLIGetTemperature(id, current);
-	if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetTemperature(%d) = %d", id, res);
+	if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetTemperature(%d) = %d", id, res);
 
 	if ((target != old_target) && CCD_COOLER_ON_ITEM->sw.value) {
 		res = FLISetTemperature(id, target);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetTemperature(%d) = %d", id, res);
-	} else if(CCD_COOLER_OFF_ITEM->sw.value) {
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetTemperature(%d) = %d", id, res);
+	} else if (CCD_COOLER_OFF_ITEM->sw.value) {
 		/* There is no ON and OFF for FLI clooler when you set temp it is turned on,
 		 * so to disable cooling set some hight temperature like +45 */
 		res = FLISetTemperature(id, 45);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetTemperature(%d) = %d", id, res);
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLISetTemperature(%d) = %d", id, res);
 	}
 
 	res = FLIGetCoolerPower(id, (double *)cooler_power);
-	if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetCoolerPower(%d) = %d", id, res);
+	if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "FLIGetCoolerPower(%d) = %d", id, res);
 
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	return true;
@@ -418,7 +418,7 @@ static void exposure_timer_callback(indigo_device *device) {
 
 static void rbi_exposure_timer_callback(indigo_device *device) {
 	if (!device->is_connected) return;
-	if(PRIVATE_DATA->abort_flag) return;
+	if (PRIVATE_DATA->abort_flag) return;
 	PRIVATE_DATA->can_check_temperature = false;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		if (fli_read_pixels(device)) { /* read the NIR flooded frame and discard it */
@@ -428,12 +428,12 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 				                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
 				{
 					fli_read_pixels(device);
-					if(PRIVATE_DATA->abort_flag) return;
+					if (PRIVATE_DATA->abort_flag) return;
 				}
 			}
 
 			PRIVATE_DATA->can_check_temperature = true;
-			if(PRIVATE_DATA->abort_flag) return;
+			if (PRIVATE_DATA->abort_flag) return;
 			indigo_ccd_resume_countdown(device);
 			/* The sensor is flushed -> start real exposure */
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Taking exposure...");
@@ -441,7 +441,7 @@ static void rbi_exposure_timer_callback(indigo_device *device) {
 			                       CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value,
 			                       CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value))
 			{
-				if(PRIVATE_DATA->abort_flag) return;
+				if (PRIVATE_DATA->abort_flag) return;
 				indigo_reschedule_timer_with_callback(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 			} else {
 				indigo_ccd_failure_cleanup(device);
@@ -459,7 +459,7 @@ static void ccd_temperature_callback(indigo_device *device) {
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (fli_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if(CCD_COOLER_ON_ITEM->sw.value) {
+			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > TEMP_THRESHOLD ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -618,7 +618,7 @@ static void ccd_connect_callback(indigo_device *device) {
 
 				CCD_COOLER_PROPERTY->hidden = false;
 
-				if(PRIVATE_DATA->rbi_flood_supported) {
+				if (PRIVATE_DATA->rbi_flood_supported) {
 					CCD_RBI_FLUSH_PROPERTY->hidden = false;
 					CCD_RBI_FLUSH_ENABLE_PROPERTY->hidden = false;
 				} else {
@@ -897,7 +897,7 @@ static void enumerate_devices() {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "FLIDeleteList() = %d", res);
 	/* FOR DEBUG only!
 	FLICreateList(FLIDOMAIN_USB | FLIDEVICE_FILTERWHEEL);
-	if(FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
+	if (FLIListFirst(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) {
 		do {
 			num_devices++;
 		} while((FLIListNext(&fli_domains[num_devices], fli_file_names[num_devices], MAX_PATH, fli_dev_names[num_devices], MAX_PATH) == 0) && (num_devices < MAX_DEVICES));

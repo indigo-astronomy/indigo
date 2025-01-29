@@ -229,7 +229,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				sprintf(description, "RAW 16 %dx%d", (int)CCD_INFO_WIDTH_ITEM->number.value / int_value, (int)CCD_INFO_HEIGHT_ITEM->number.value / int_value);
 				indigo_init_switch_item(CCD_MODE_ITEM + CCD_MODE_PROPERTY->count, name, description, int_value == 1);
 				CCD_MODE_PROPERTY->count++;
-				if(int_value < 4) {
+				if (int_value < 4) {
 					int_value++;
 				} else {
 					int_value *= 2;
@@ -472,7 +472,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
 				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);
-			} else if(CCD_COOLER_ON_ITEM->sw.value && CCD_TEMPERATURE_ITEM->number.target >= TEMP_COOLER_OFF) {
+			} else if (CCD_COOLER_ON_ITEM->sw.value && CCD_TEMPERATURE_ITEM->number.target >= TEMP_COOLER_OFF) {
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_OFF_ITEM, true);
 				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
 				indigo_update_property(device, CCD_COOLER_PROPERTY, NULL);

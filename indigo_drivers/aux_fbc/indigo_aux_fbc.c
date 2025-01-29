@@ -70,7 +70,7 @@ typedef struct {
 } fbc_private_data;
 
 static bool fbc_command(int handle, char *command, char *response, int resp_len) {
-	if(response) {
+	if (response) {
 		indigo_usleep(20000);
 		tcflush(handle, TCIOFLUSH);
 	}

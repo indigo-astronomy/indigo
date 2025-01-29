@@ -217,7 +217,7 @@ static bool temma_command(indigo_device *device, char *command, bool wait) {
 				sscanf(buffer + 1, "%02d%02d%02d", &d, &m, &s);
 				PRIVATE_DATA->currentRA = d + m / 60.0 + s / 3600.0;
 				sscanf(buffer + 8, "%02d%02d%01d", &d, &m, &s);
-				if(buffer[7] == '-')
+				if (buffer[7] == '-')
 					PRIVATE_DATA->currentDec = -(d + m / 60.0 + s / 600.0);
 				else
 					PRIVATE_DATA->currentDec = d + m / 60.0 + s / 600.0;

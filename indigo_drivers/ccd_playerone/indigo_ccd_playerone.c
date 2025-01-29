@@ -652,7 +652,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 	indigo_finalize_video_stream(device);
 
-	if(CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
+	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_ccd_abort_exposure_cleanup(device);
 	} else {

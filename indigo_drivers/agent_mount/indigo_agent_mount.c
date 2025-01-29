@@ -602,7 +602,7 @@ static void handle_mount_change(indigo_device *device) {
 		double target_rotator_position = AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value + DEVICE_PRIVATE_DATA->initial_frame_rotation;
 		if (target_rotator_position < 0) {
 			target_rotator_position += 360;
-		} else if(target_rotator_position >= 360) {
+		} else if (target_rotator_position >= 360) {
 			target_rotator_position -= 360;
 		}
 		double rotation_diff = fabs(indigo_angle_difference(DEVICE_PRIVATE_DATA->rotator_position, target_rotator_position));

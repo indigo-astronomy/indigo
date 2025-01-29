@@ -208,7 +208,7 @@ static bool dsd_command(indigo_device *device, const char *command, char *respon
 
 
 static bool dsd_get_info(indigo_device *device, char *board, char *firmware) {
-	if(!board || !firmware) return false;
+	if (!board || !firmware) return false;
 
 	char response[DSD_CMD_LEN]={0};
 	if (dsd_command(device, "[GFRM]", response, sizeof(response), 100)) {
@@ -242,9 +242,9 @@ static bool dsd_command_set_value(indigo_device *device, const char *command, ui
 	char response[DSD_CMD_LEN];
 
 	snprintf(command_string, DSD_CMD_LEN, command, value);
-	if(!dsd_command(device, command_string, response, sizeof(response), 100)) return false;
+	if (!dsd_command(device, command_string, response, sizeof(response), 100)) return false;
 
-	if(strcmp(response, "(OK)") == 0) {
+	if (strcmp(response, "(OK)") == 0) {
 		return true;
 	}
 	return false;
@@ -266,9 +266,9 @@ static bool dsd_set_reverse(indigo_device *device, bool enabled) {
 	char response[DSD_CMD_LEN];
 
 	snprintf(command, DSD_CMD_LEN, "[SREV%01d]", enabled ? 1 : 0);
-	if(!dsd_command(device, command, response, sizeof(response), 100)) return false;
+	if (!dsd_command(device, command, response, sizeof(response), 100)) return false;
 
-	if(strcmp(response, "(OK)") == 0) {
+	if (strcmp(response, "(OK)") == 0) {
 		return true;
 	}
 	return false;
@@ -289,7 +289,7 @@ static bool dsd_goto_position(indigo_device *device, uint32_t position) {
 	// Set Position First
 	if (!dsd_command(device, command, response, sizeof(response), 100)) return false;
 
-	if(strcmp(response, "!101)") == 0) {
+	if (strcmp(response, "!101)") == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Move failed");
 		return false;
 	}
@@ -1024,7 +1024,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				if(!dsd_sync_position(device, PRIVATE_DATA->target_position)) {
+				if (!dsd_sync_position(device, PRIVATE_DATA->target_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "dsd_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1154,23 +1154,23 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(DSD_STEP_MODE_PROPERTY, property, false);
 		DSD_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		stepmode_t mode = STEP_MODE_FULL;
-		if(DSD_STEP_MODE_FULL_ITEM->sw.value) {
+		if (DSD_STEP_MODE_FULL_ITEM->sw.value) {
 			mode = STEP_MODE_FULL;
-		} else if(DSD_STEP_MODE_HALF_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_HALF_ITEM->sw.value) {
 			mode = STEP_MODE_HALF;
-		} else if(DSD_STEP_MODE_FOURTH_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_FOURTH_ITEM->sw.value) {
 			mode = STEP_MODE_FOURTH;
-		} else if(DSD_STEP_MODE_EIGTH_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_EIGTH_ITEM->sw.value) {
 			mode = STEP_MODE_EIGTH;
-		} else if(DSD_STEP_MODE_16TH_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_16TH_ITEM->sw.value) {
 			mode = STEP_MODE_16TH;
-		} else if(DSD_STEP_MODE_32TH_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_32TH_ITEM->sw.value) {
 			mode = STEP_MODE_32TH;
-		} else if(DSD_STEP_MODE_64TH_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_64TH_ITEM->sw.value) {
 			mode = STEP_MODE_64TH;
-		} else if(DSD_STEP_MODE_128TH_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_128TH_ITEM->sw.value) {
 			mode = STEP_MODE_128TH;
-		} else if(DSD_STEP_MODE_256TH_ITEM->sw.value) {
+		} else if (DSD_STEP_MODE_256TH_ITEM->sw.value) {
 			mode = STEP_MODE_256TH;
 		}
 		if (!dsd_set_step_mode(device, mode)) {
@@ -1274,11 +1274,11 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(DSD_COILS_MODE_PROPERTY, property, false);
 		DSD_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		coilsmode_t mode = COILS_MODE_IDLE_OFF;
-		if(DSD_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
+		if (DSD_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
 			mode = COILS_MODE_IDLE_OFF;
-		} else if(DSD_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {
+		} else if (DSD_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {
 			mode = COILS_MODE_ALWAYS_ON;
-		} else if(DSD_COILS_MODE_TIMEOUT_ITEM->sw.value) {
+		} else if (DSD_COILS_MODE_TIMEOUT_ITEM->sw.value) {
 			mode = COILS_MODE_IDLE_TIMEOUT;
 		}
 		if (!dsd_set_coils_mode(device, mode)) {

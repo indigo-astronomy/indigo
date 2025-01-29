@@ -183,7 +183,7 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 
 
 static bool mfp_get_info(indigo_device *device, char *board, char *firmware) {
-	if(!board || !firmware) return false;
+	if (!board || !firmware) return false;
 
 	char response[MFP_CMD_LEN]={0};
 	if (mfp_command(device, ":04#", response, sizeof(response), 100)) {
@@ -716,7 +716,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					mfp_get_position(device, &position);
 					FOCUSER_POSITION_ITEM->number.value = (double)position;
 
-					if(!mfp_enable_backlash(device, false)) {
+					if (!mfp_enable_backlash(device, false)) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_enable_backlash(%d) failed", PRIVATE_DATA->handle);
 					}
 
@@ -837,7 +837,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				if(!mfp_sync_position(device, PRIVATE_DATA->target_position)) {
+				if (!mfp_sync_position(device, PRIVATE_DATA->target_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "mfp_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PRIVATE_DATA->target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -964,21 +964,21 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(X_STEP_MODE_PROPERTY, property, false);
 		X_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		stepmode_t mode = STEP_MODE_FULL;
-		if(X_STEP_MODE_FULL_ITEM->sw.value) {
+		if (X_STEP_MODE_FULL_ITEM->sw.value) {
 			mode = STEP_MODE_FULL;
-		} else if(X_STEP_MODE_HALF_ITEM->sw.value) {
+		} else if (X_STEP_MODE_HALF_ITEM->sw.value) {
 			mode = STEP_MODE_HALF;
-		} else if(X_STEP_MODE_FOURTH_ITEM->sw.value) {
+		} else if (X_STEP_MODE_FOURTH_ITEM->sw.value) {
 			mode = STEP_MODE_FOURTH;
-		} else if(X_STEP_MODE_EIGTH_ITEM->sw.value) {
+		} else if (X_STEP_MODE_EIGTH_ITEM->sw.value) {
 			mode = STEP_MODE_EIGTH;
-		} else if(X_STEP_MODE_16TH_ITEM->sw.value) {
+		} else if (X_STEP_MODE_16TH_ITEM->sw.value) {
 			mode = STEP_MODE_16TH;
-		} else if(X_STEP_MODE_32TH_ITEM->sw.value) {
+		} else if (X_STEP_MODE_32TH_ITEM->sw.value) {
 			mode = STEP_MODE_32TH;
-		} else if(X_STEP_MODE_64TH_ITEM->sw.value) {
+		} else if (X_STEP_MODE_64TH_ITEM->sw.value) {
 			mode = STEP_MODE_64TH;
-		} else if(X_STEP_MODE_128TH_ITEM->sw.value) {
+		} else if (X_STEP_MODE_128TH_ITEM->sw.value) {
 			mode = STEP_MODE_128TH;
 		}
 		if (!mfp_set_step_mode(device, mode)) {
@@ -1012,9 +1012,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		indigo_property_copy_values(X_COILS_MODE_PROPERTY, property, false);
 		X_COILS_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		coilsmode_t mode = COILS_MODE_IDLE_OFF;
-		if(X_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
+		if (X_COILS_MODE_IDLE_OFF_ITEM->sw.value) {
 			mode = COILS_MODE_IDLE_OFF;
-		} else if(X_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {
+		} else if (X_COILS_MODE_ALWAYS_ON_ITEM->sw.value) {
 			mode = COILS_MODE_ALWAYS_ON;
 		}
 		if (!mfp_set_coils_mode(device, mode)) {

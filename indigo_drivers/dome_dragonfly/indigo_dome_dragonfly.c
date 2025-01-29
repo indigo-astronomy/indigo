@@ -672,7 +672,7 @@ static void dome_timer_callback(indigo_device *device) {
 			indigo_update_property(device, DOME_SHUTTER_PROPERTY, "Roof is open.");
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Roof is open.");
 			return;
-		} else if(!opened && closed) {
+		} else if (!opened && closed) {
 			DEVICE_DATA.roof_timer_hits = 0;
 			DEVICE_DATA.roof_state = ROOF_CLOSED;
 			DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
@@ -979,7 +979,7 @@ static void handle_dome_connect_property(indigo_device *device) {
 							DOME_SHUTTER_OPENED_ITEM->sw.value = true;
 							DEVICE_DATA.roof_state = ROOF_OPENED;
 							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
-						} else if(!opened && closed) {
+						} else if (!opened && closed) {
 							DOME_SHUTTER_CLOSED_ITEM->sw.value = true;
 							DEVICE_DATA.roof_state = ROOF_CLOSED;
 							DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;

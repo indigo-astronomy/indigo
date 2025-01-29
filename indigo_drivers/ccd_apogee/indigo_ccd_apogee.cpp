@@ -118,11 +118,11 @@ std::vector<std::string> GetDeviceVector( const std::string & msg ) {
 	bool find = true;
 	while( find ) {
 		size_t posStart = msg.find( startDelim, pos );
-		if( std::string::npos == posStart ) {
+		if ( std::string::npos == posStart ) {
 			break;
 		}
 		size_t posStop = msg.find(stopDelim, posStart + 1);
-		if(std::string::npos == posStop) {
+		if (std::string::npos == posStop) {
 			break;
 		}
 		size_t strLen = (posStop - posStart) - startDelim.size();
@@ -156,7 +156,7 @@ std::string GetItemFromFindStr(const std::string & msg, const std::string & item
 	std::vector<std::string>::iterator iter;
 
 	for(iter = params.begin(); iter != params.end(); ++iter) {
-		if( std::string::npos != (*iter).find(item)) {
+		if ( std::string::npos != (*iter).find(item)) {
 			std::string result = MakeTokens((*iter), "=").at(1);
 			return result;
 		}
@@ -989,7 +989,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(APG_ADC_SPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		for(int i = 0; i < APG_ADC_SPEED_PROPERTY->count; i++) {
-			if(APG_ADC_SPEED_PROPERTY->items[i].sw.value) {
+			if (APG_ADC_SPEED_PROPERTY->items[i].sw.value) {
 				try {
 					PRIVATE_DATA->camera->SetCcdAdcSpeed((Apg::AdcSpeed)(i+1));
 				} catch (std::runtime_error err) {
@@ -1011,7 +1011,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(APG_FAN_SPEED_PROPERTY, property, false);
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		for(int i = 0; i < APG_FAN_SPEED_PROPERTY->count; i++) {
-			if(APG_FAN_SPEED_PROPERTY->items[i].sw.value) {
+			if (APG_FAN_SPEED_PROPERTY->items[i].sw.value) {
 				try {
 					PRIVATE_DATA->camera->SetFanMode((Apg::FanMode)i);
 				} catch (std::runtime_error err) {

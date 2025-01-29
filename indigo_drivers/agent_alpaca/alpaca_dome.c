@@ -597,7 +597,7 @@ void indigo_alpaca_dome_update_property(indigo_alpaca_device *alpaca_device, ind
 				alpaca_device->dome.isshuttermoving = false;
 			}
 		}
-	} else if(!strcmp(property->name, DOME_FLAP_PROPERTY_NAME)) {
+	} else if (!strcmp(property->name, DOME_FLAP_PROPERTY_NAME)) {
 		if (property->state == INDIGO_BUSY_STATE) {
 			alpaca_device->dome.isflapmoving = true;
 		} else {

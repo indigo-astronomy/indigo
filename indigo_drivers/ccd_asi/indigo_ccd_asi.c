@@ -273,7 +273,7 @@ static bool asi_open(indigo_device *device) {
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIInitCamera(%d) = %d", id, res);
 		if (PRIVATE_DATA->buffer == NULL) {
-			if(PRIVATE_DATA->info.IsColorCam)
+			if (PRIVATE_DATA->info.IsColorCam)
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*3 + FITS_HEADER_SIZE;
 			else
 				PRIVATE_DATA->buffer_size = PRIVATE_DATA->info.MaxHeight*PRIVATE_DATA->info.MaxWidth*2 + FITS_HEADER_SIZE;
@@ -847,7 +847,7 @@ static indigo_result handle_advanced_property(indigo_device *device, indigo_prop
 	for(int ctrl_no = 0; ctrl_no < ctrl_count; ctrl_no++) {
 		ASIGetControlCaps(id, ctrl_no, &ctrl_caps);
 		for(int item = 0; item < property->count; item++) {
-			if(!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
+			if (!strncmp(ctrl_caps.Name, property->items[item].name, INDIGO_NAME_SIZE)) {
 				res = ASISetControlValue(id, ctrl_caps.ControlType,property->items[item].number.value, ASI_FALSE);
 				if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASISetControlValue(%d, %s) = %d", id, ctrl_caps.Name, res);
 				res = ASIGetControlValue(id, ctrl_caps.ControlType,&value, &unused);
@@ -869,7 +869,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_EXPOSURE) {
 		CCD_EXPOSURE_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable)
 			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_EXPOSURE_PROPERTY->perm = INDIGO_RO_PERM;
@@ -887,7 +887,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 	if (ctrl_caps.ControlType == ASI_GAIN) {
 		CCD_GAIN_PROPERTY->hidden = false;
 		CCD_EGAIN_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable)
 			CCD_GAIN_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_GAIN_PROPERTY->perm = INDIGO_RO_PERM;
@@ -905,7 +905,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_GAMMA) {
 		CCD_GAMMA_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable)
 			CCD_GAMMA_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_GAMMA_PROPERTY->perm = INDIGO_RO_PERM;
@@ -923,7 +923,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_OFFSET) {
 		CCD_OFFSET_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable)
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_OFFSET_PROPERTY->perm = INDIGO_RO_PERM;
@@ -941,7 +941,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_TARGET_TEMP) {
 		CCD_TEMPERATURE_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable)
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_TEMPERATURE_PROPERTY->perm = INDIGO_RO_PERM;
@@ -966,7 +966,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_COOLER_ON) {
 		CCD_COOLER_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable)
 			CCD_COOLER_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_COOLER_PROPERTY->perm = INDIGO_RO_PERM;
@@ -976,7 +976,7 @@ static indigo_result init_camera_property(indigo_device *device, ASI_CONTROL_CAP
 
 	if (ctrl_caps.ControlType == ASI_COOLER_POWER_PERC) {
 		CCD_COOLER_POWER_PROPERTY->hidden = false;
-		if(ctrl_caps.IsWritable)
+		if (ctrl_caps.IsWritable)
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RW_PERM;
 		else
 			CCD_COOLER_POWER_PROPERTY->perm = INDIGO_RO_PERM;
@@ -1096,7 +1096,7 @@ static void handle_ccd_connect_property(indigo_device *device) {
 			}
 		}
 	} else {
-		if(device->is_connected) {
+		if (device->is_connected) {
 			PRIVATE_DATA->can_check_temperature = false;
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->temperature_timer);
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -1788,7 +1788,7 @@ static int find_plugged_device_id() {
 	for(i = 0; i < count; i++) {
 		ASIGetCameraProperty(&info, i);
 		id = info.CameraID;
-		if(!connected_ids[id]) {
+		if (!connected_ids[id]) {
 			new_id = id;
 			connected_ids[id] = true;
 			break;
@@ -1829,7 +1829,7 @@ static int find_unplugged_device_id() {
 
 	int id = -1;
 	for(i = 0; i < ASICAMERA_ID_MAX; i++) {
-		if(connected_ids[i] && !dev_tmp[i]){
+		if (connected_ids[i] && !dev_tmp[i]){
 			id = i;
 			connected_ids[id] = false;
 			break;

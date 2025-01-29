@@ -760,7 +760,7 @@ void mount_handle_motion_ra(indigo_device *device) {
 }
 
 void mount_handle_motion_dec(indigo_device *device) {
-	if(MOUNT_MOTION_NORTH_ITEM->sw.value) {
+	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		MOUNT_MOTION_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, MOUNT_MOTION_DEC_PROPERTY, NULL);
 		MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_BUSY_STATE;

@@ -492,7 +492,7 @@ static bool select_stars(indigo_device *device) {
 		indigo_item *item_x = AGENT_IMAGER_SELECTION_X_ITEM + 2 * i;
 		indigo_item *item_y = AGENT_IMAGER_SELECTION_Y_ITEM + 2 * i;
 		if (i == AGENT_IMAGER_STARS_PROPERTY->count - 1) {
-			if(DEVICE_PRIVATE_DATA->use_ucurve_focusing) {
+			if (DEVICE_PRIVATE_DATA->use_ucurve_focusing) {
 				indigo_send_message(device, "Warning: Only %d suitable stars found (%d requested).", star_count, (int)AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM->number.value);
 			}
 			break;
@@ -1759,7 +1759,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 				break;
 			}
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, false)) break;
-			if(moving_out) {
+			if (moving_out) {
 				current_offset += steps;
 			} else {
 				current_offset -= steps;

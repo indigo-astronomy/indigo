@@ -2363,7 +2363,7 @@ static void meade_update_teenastro_state(indigo_device *device) {
 	char response[128] = {0};
 	if (meade_command(device, ":GXI#", response, sizeof(response), 0)) {
 		// Byte 0 is tracking status
-		if(PRIVATE_DATA->prev_state[0] != response[0]) {
+		if (PRIVATE_DATA->prev_state[0] != response[0]) {
 			if (response[0] == '0') {
 				indigo_set_switch(MOUNT_TRACKING_PROPERTY, MOUNT_TRACKING_OFF_ITEM, true);
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_OK_STATE;
@@ -2379,7 +2379,7 @@ static void meade_update_teenastro_state(indigo_device *device) {
 		}
 
 		// Byte 1 is tracking rate
-		if(PRIVATE_DATA->prev_state[1] != response[1]) {
+		if (PRIVATE_DATA->prev_state[1] != response[1]) {
 			if (response[1] == '0') {
 				indigo_set_switch(MOUNT_TRACK_RATE_PROPERTY, MOUNT_TRACK_RATE_SIDEREAL_ITEM, true);
 				MOUNT_TRACK_RATE_PROPERTY->state = INDIGO_OK_STATE;
@@ -2396,7 +2396,7 @@ static void meade_update_teenastro_state(indigo_device *device) {
 		}
 
 		// Byte 2 is park status
-		if(PRIVATE_DATA->prev_state[2] != response[2]) {
+		if (PRIVATE_DATA->prev_state[2] != response[2]) {
 			if (response[2] == 'P') {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
@@ -2405,7 +2405,7 @@ static void meade_update_teenastro_state(indigo_device *device) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_UNPARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->park_changed = true;
-			} else if(response[2] == 'I') {
+			} else if (response[2] == 'I') {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
 				PRIVATE_DATA->park_changed = true;
@@ -2415,7 +2415,7 @@ static void meade_update_teenastro_state(indigo_device *device) {
 		}
 
 		//byte 3 is home status
-		if(PRIVATE_DATA->prev_state[3] != response[3]) {
+		if (PRIVATE_DATA->prev_state[3] != response[3]) {
 			if (response[3] == 'H') {
 				indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
 				MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
@@ -2430,7 +2430,7 @@ static void meade_update_teenastro_state(indigo_device *device) {
 		// TBD
 
 		// Byte 13 is pier side
-		if(PRIVATE_DATA->prev_state[13] != response[13]) {
+		if (PRIVATE_DATA->prev_state[13] != response[13]) {
 			if (response[13] == 'W') {
 				indigo_set_switch(MOUNT_SIDE_OF_PIER_PROPERTY, MOUNT_SIDE_OF_PIER_WEST_ITEM, true);
 				indigo_update_property(device, MOUNT_SIDE_OF_PIER_PROPERTY, NULL);
@@ -2574,7 +2574,7 @@ static void mount_connect_callback(indigo_device *device) {
 	} else {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->position_timer);
 		if (--PRIVATE_DATA->device_count == 0) {
-			if(PRIVATE_DATA->keep_alive_timer) {
+			if (PRIVATE_DATA->keep_alive_timer) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
 			}
 			meade_stop(device);
@@ -3285,7 +3285,7 @@ static void guider_connect_callback(indigo_device *device) {
 		}
 	} else {
 		if (--PRIVATE_DATA->device_count == 0) {
-			if(PRIVATE_DATA->keep_alive_timer) {
+			if (PRIVATE_DATA->keep_alive_timer) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
 			}
 			meade_close(device);
@@ -3413,7 +3413,7 @@ static void focuser_connect_callback(indigo_device *device) {
 		}
 	} else {
 		if (--PRIVATE_DATA->device_count == 0) {
-			if(PRIVATE_DATA->keep_alive_timer) {
+			if (PRIVATE_DATA->keep_alive_timer) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
 			}
 			meade_close(device);
@@ -3601,7 +3601,7 @@ static void aux_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
 		if (--PRIVATE_DATA->device_count == 0) {
-			if(PRIVATE_DATA->keep_alive_timer) {
+			if (PRIVATE_DATA->keep_alive_timer) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
 			}
 			meade_close(device);

@@ -59,20 +59,20 @@ void loop() {
   // update readings if needed
   if (0 == (epoch++ % READINGS_UPDATE)) {
     temp_ch1 += random(-50,50)/100.0;
-    if(temp_ch1 < -40) temp_ch1 = -40;
-    if(temp_ch1 > 50) temp_ch1 = 50;
+    if (temp_ch1 < -40) temp_ch1 = -40;
+    if (temp_ch1 > 50) temp_ch1 = 50;
 
     temp_ch2 += random(-50,50)/100.0;
-    if(temp_ch2 < -40) temp_ch2 = -40;
-    if(temp_ch2 > 50) temp_ch2 = 50;
+    if (temp_ch2 < -40) temp_ch2 = -40;
+    if (temp_ch2 > 50) temp_ch2 = 50;
 
     temp_amb += random(-50,50)/100.0;
-    if(temp_amb < -40) temp_amb = -40;
-    if(temp_amb > 50) temp_amb = 50;
+    if (temp_amb < -40) temp_amb = -40;
+    if (temp_amb > 50) temp_amb = 50;
 
     rh += random(-50,50)/100.0;
-    if(rh < 0) rh = 0;
-    if(rh > 100) rh = 100;
+    if (rh < 0) rh = 0;
+    if (rh > 100) rh = 100;
   }
 
   float dew_point = dewpoint(temp_amb, rh);

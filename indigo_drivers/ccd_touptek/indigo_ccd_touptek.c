@@ -1953,13 +1953,13 @@ static void temperature_timer_callback(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETAMBIENTTEMP), 0, &temp10));
 	if (FAILED(res)) {
-		if(has_sensor) {
+		if (has_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected (using internal sensor).");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected (using internal sensor).");
 		}
 		has_sensor = false;
 	} else {
-		if(!has_sensor) {
+		if (!has_sensor) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor connected.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor connected.");
 		}

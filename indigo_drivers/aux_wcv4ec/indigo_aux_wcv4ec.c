@@ -227,7 +227,7 @@ static void aux_update_states(indigo_device *device) {
 	}
 
 	// timeout if open or close get stuck somewhere
-	if(time(NULL) - PRIVATE_DATA->operation_start_time > 60 && PRIVATE_DATA->operation_start_time > 0) {
+	if (time(NULL) - PRIVATE_DATA->operation_start_time > 60 && PRIVATE_DATA->operation_start_time > 0) {
 		AUX_COVER_CLOSE_ITEM->sw.value = false;
 		AUX_COVER_OPEN_ITEM->sw.value = false;
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;

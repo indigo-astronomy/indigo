@@ -292,7 +292,7 @@ static bool sbig_check_link() {
 		return false;
 	}
 
-	if(glsr.linkEstablished) {
+	if (glsr.linkEstablished) {
 		return true;
 	}
 	return false;
@@ -390,19 +390,19 @@ static ushort sbig_set_relaymap(short handle, ushort relay_map) {
 		return res;
 	}
 
-	if(relay_map & RELAY_EAST) {
+	if (relay_map & RELAY_EAST) {
 		arp.tXPlus = RELAY_MAX_PULSE;
 	}
 
-	if(relay_map & RELAY_WEST) {
+	if (relay_map & RELAY_WEST) {
 		arp.tXMinus = RELAY_MAX_PULSE;
 	}
 
-	if(relay_map & RELAY_NORTH) {
+	if (relay_map & RELAY_NORTH) {
 		arp.tYMinus = RELAY_MAX_PULSE;
 	}
 
-	if(relay_map & RELAY_SOUTH) {
+	if (relay_map & RELAY_SOUTH) {
 		arp.tYPlus = RELAY_MAX_PULSE;
 	}
 
@@ -587,7 +587,7 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 		shutter_mode = SC_OPEN_SHUTTER;
 	}
 
-	if(PRIMARY_CCD) {
+	if (PRIMARY_CCD) {
 		sep = &(PRIVATE_DATA->imager_ccd_exp_params);
 		sep->ccd = CCD_IMAGING;
 		sep->abgState = (unsigned short)PRIVATE_DATA->imager_abg_state;
@@ -820,7 +820,7 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 
 	if ((cooler_on != CCD_COOLER_ON_ITEM->sw.value) || (csetpoint != target)) {
 		res = sbig_set_temperature(target, CCD_COOLER_ON_ITEM->sw.value);
-		if(res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_temperature() = %d (%s)", res, sbig_error_string(res));
+		if (res) INDIGO_DRIVER_ERROR(DRIVER_NAME, "sbig_set_temperature() = %d (%s)", res, sbig_error_string(res));
 	}
 
 	pthread_mutex_unlock(&driver_mutex);
@@ -881,7 +881,7 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		if (sbig_read_pixels(device)) {
-			if(PRIMARY_CCD) {
+			if (PRIMARY_CCD) {
 				frame_buffer = PRIVATE_DATA->imager_buffer;
 				/* check if colour and no binning => use BGGR patern */
 				if (((PRIVATE_DATA->imager_ccd_extended_info6.ccdBits & 0x03) == 0x01) &&
@@ -914,7 +914,7 @@ static void imager_ccd_temperature_callback(indigo_device *device) {
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		if (sbig_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
-			if(CCD_COOLER_ON_ITEM->sw.value) {
+			if (CCD_COOLER_ON_ITEM->sw.value) {
 				CCD_TEMPERATURE_PROPERTY->state = fabs(diff) > TEMP_THRESHOLD ? INDIGO_BUSY_STATE : INDIGO_OK_STATE;
 			} else {
 				CCD_TEMPERATURE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1731,7 +1731,7 @@ static bool get_host_ip(char *hostname , unsigned long *ip) {
 	}
 
 	for(p = servinfo; p != NULL; p = p->ai_next) {
-		if(p->ai_family == AF_INET) {
+		if (p->ai_family == AF_INET) {
 			*ip = ((struct sockaddr_in *)(p->ai_addr))->sin_addr.s_addr;
 			/* ip should be litle endian */
 			*ip = (*ip >> 24) | ((*ip << 8) & 0x00ff0000) | ((*ip >> 8) & 0x0000ff00) | (*ip << 24);
@@ -1973,7 +1973,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			}
 		}
 	} else { /* disconnect */
-		if(DEVICE_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->wheel_timer);
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -2109,7 +2109,7 @@ static void ao_connect_callback(indigo_device *device) {
 			}
 		}
 	} else { /* disconnect */
-		if(DEVICE_CONNECTED) {
+		if (DEVICE_CONNECTED) {
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
 			if ( res != CE_NO_ERROR ) {
@@ -2409,7 +2409,7 @@ static bool plug_optional_device(indigo_device *device) {
 	if ((res = sbig_command(CC_GET_CCD_INFO, &gcp, &(PRIVATE_DATA->imager_ccd_extended_info4))) == CE_NO_ERROR) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "imager_ccd_extended_info4.capabilitiesBits = 0x%x", PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits);
 		if (PRIVATE_DATA->imager_ccd_extended_info4.capabilitiesBits & 0x10) {
-			if((res = sbig_ao_center()) == CE_NO_ERROR) {
+			if ((res = sbig_ao_center()) == CE_NO_ERROR) {
 				if (!plug_ao(device, true)) {
 					return false;
 				}

@@ -610,7 +610,7 @@ static void mount_handle_tracking(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TETR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		MOUNT_TRACKING_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		MOUNT_TRACKING_ON_ITEM->sw.value = !MOUNT_TRACKING_ON_ITEM->sw.value;
@@ -638,7 +638,7 @@ static void mount_handle_oil_power(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_OION(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		OIL_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		OIL_ON_ITEM->sw.value = !OIL_ON_ITEM->sw.value;
@@ -669,7 +669,7 @@ static void mount_handle_telescope_power(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		TELESCOPE_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		TELESCOPE_ON_ITEM->sw.value = !TELESCOPE_ON_ITEM->sw.value;
@@ -705,7 +705,7 @@ static void mount_handle_ra_calibration(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEHC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		RA_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		RA_CALIBRATION_START_ITEM->sw.value = false;
@@ -741,7 +741,7 @@ static void mount_handle_dec_calibration(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TEDC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		DEC_CALIBRATION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		DEC_CALIBRATION_START_ITEM->sw.value = false;
@@ -781,7 +781,7 @@ static void mount_handle_aberration(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCA(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		ABERRATION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		ABERRATION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -814,7 +814,7 @@ static void mount_handle_precession(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCP(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		PRECESSION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		PRECESSION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -847,7 +847,7 @@ static void mount_handle_refraction(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCR(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		REFRACTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		REFRACTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -880,7 +880,7 @@ static void mount_handle_error_correction(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCM(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		ERROR_CORRECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		ERROR_CORRECTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -907,7 +907,7 @@ static void mount_handle_correction_model(indigo_device *device) {
 	res = ascol_TSCS(PRIVATE_DATA->dev_id, index);
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSCS(%d, %d) = %d", PRIVATE_DATA->dev_id, index, res);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		CORRECTION_MODEL_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		CORRECTION_MODEL_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -928,7 +928,7 @@ static void mount_handle_guide_mode(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_TSGM(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		GUIDE_MODE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		GUIDE_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -949,7 +949,7 @@ static void mount_handle_flap_tube(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FTOC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		FLAP_TUBE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		FLAP_TUBE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -970,7 +970,7 @@ static void mount_handle_flap_coude(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FCOC(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		FLAP_COUDE_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		FLAP_COUDE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1083,13 +1083,13 @@ static void mount_update_state() {
 	if (update_all || (prev_glst.state_bits != PRIVATE_DATA->glst.state_bits)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Updating AXIS_CALIBRATED_PROPERTY (dev = %d)", PRIVATE_DATA->dev_id);
 		AXIS_CALIBRATED_PROPERTY->state = INDIGO_OK_STATE;
-		if(IS_RA_CALIBRATED(PRIVATE_DATA->glst)) {
+		if (IS_RA_CALIBRATED(PRIVATE_DATA->glst)) {
 			RA_CALIBRATED_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
 			RA_CALIBRATED_ITEM->light.value = INDIGO_ALERT_STATE;
 			AXIS_CALIBRATED_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if(IS_DA_CALIBRATED(PRIVATE_DATA->glst)) {
+		if (IS_DA_CALIBRATED(PRIVATE_DATA->glst)) {
 			DEC_CALIBRATED_ITEM->light.value = INDIGO_OK_STATE;
 		} else {
 			DEC_CALIBRATED_ITEM->light.value = INDIGO_ALERT_STATE;
@@ -1112,7 +1112,7 @@ static void mount_update_state() {
 			OIL_ON_ITEM->sw.value = false;
 			OIL_OFF_ITEM->sw.value = true;
 			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
-		} else if(PRIVATE_DATA->glst.oil_state == OIL_STATE_ON) {
+		} else if (PRIVATE_DATA->glst.oil_state == OIL_STATE_ON) {
 			OIL_ON_ITEM->sw.value = true;
 			OIL_OFF_ITEM->sw.value = false;
 			OIL_POWER_PROPERTY->state = INDIGO_OK_STATE;
@@ -1278,7 +1278,7 @@ static void mount_update_state() {
 			FLAP_TUBE_OPEN_ITEM->sw.value = true;
 			FLAP_TUBE_CLOSE_ITEM->sw.value = false;
 			FLAP_TUBE_PROPERTY->state = INDIGO_OK_STATE;
-		} else if(PRIVATE_DATA->glst.flap_tube_state == SF_STATE_CLOSE) {
+		} else if (PRIVATE_DATA->glst.flap_tube_state == SF_STATE_CLOSE) {
 			FLAP_TUBE_OPEN_ITEM->sw.value = false;
 			FLAP_TUBE_CLOSE_ITEM->sw.value = true;
 			FLAP_TUBE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1294,7 +1294,7 @@ static void mount_update_state() {
 			FLAP_COUDE_OPEN_ITEM->sw.value = true;
 			FLAP_COUDE_CLOSE_ITEM->sw.value = false;
 			FLAP_COUDE_PROPERTY->state = INDIGO_OK_STATE;
-		} else if(PRIVATE_DATA->glst.flap_coude_state == SF_STATE_CLOSE) {
+		} else if (PRIVATE_DATA->glst.flap_coude_state == SF_STATE_CLOSE) {
 			FLAP_COUDE_OPEN_ITEM->sw.value = false;
 			FLAP_COUDE_CLOSE_ITEM->sw.value = true;
 			FLAP_COUDE_PROPERTY->state = INDIGO_OK_STATE;
@@ -1809,7 +1809,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 
 	} else if (indigo_property_match_changeable(MOUNT_EQUATORIAL_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_EQUATORIAL_COORDINATES
-		if(PRIVATE_DATA->parked) {
+		if (PRIVATE_DATA->parked) {
 			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
@@ -1822,7 +1822,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(HADEC_COORDINATES_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HADEC_COORDINATES
-		if(PRIVATE_DATA->parked) {
+		if (PRIVATE_DATA->parked) {
 			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
@@ -1835,7 +1835,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(HADEC_RELATIVE_MOVE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- HADEC_RELATIVE_MOVE
-		if(PRIVATE_DATA->parked) {
+		if (PRIVATE_DATA->parked) {
 			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
@@ -1844,7 +1844,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(RADEC_RELATIVE_MOVE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- RADEC_RELATIVE_MOVE
-		if(PRIVATE_DATA->parked) {
+		if (PRIVATE_DATA->parked) {
 			indigo_update_coordinates(device, WARN_PARKED_MSG);
 			return INDIGO_OK;
 		}
@@ -1873,7 +1873,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_TRACKING_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_TRACKING
-		//if(PRIVATE_DATA->parked) {
+		//if (PRIVATE_DATA->parked) {
 		//	indigo_update_property(device, MOUNT_TRACKING_PROPERTY, WARN_PARKED_MSG);
 		//	return INDIGO_OK;
 		//}
@@ -2297,7 +2297,7 @@ static void dome_handle_power(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOON(%d, ASCOL_OFF) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		DOME_POWER_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		DOME_ON_ITEM->sw.value = !DOME_ON_ITEM->sw.value;
@@ -2320,7 +2320,7 @@ static void dome_handle_auto_mode(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOST(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		DOME_SLAVING_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		DOME_SLAVING_ENABLE_ITEM->sw.value = !DOME_SLAVING_ENABLE_ITEM->sw.value;
@@ -2351,7 +2351,7 @@ static void dome_handle_slit(indigo_device *device) {
 		}
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		DOME_SHUTTER_OPENED_ITEM->sw.value = !DOME_SHUTTER_OPENED_ITEM->sw.value;
@@ -2376,7 +2376,7 @@ static void dome_handle_abort(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_DOST(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		DOME_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2780,7 +2780,7 @@ static void focus_handle_abort(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ascol_FOST(%d) = %d", PRIVATE_DATA->dev_id, res);
 	}
 	pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
-	if(res == ASCOL_OK) {
+	if (res == ASCOL_OK) {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else {
 		FOCUSER_ABORT_MOTION_PROPERTY->state = INDIGO_ALERT_STATE;

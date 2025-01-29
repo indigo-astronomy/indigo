@@ -117,7 +117,7 @@ static void dome_connect_callback(indigo_device *device) {
 }
 
 static void shutter_timer_callback(indigo_device *device) {
-	if(IS_CONNECTED) {
+	if (IS_CONNECTED) {
 		DOME_SHUTTER_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, DOME_SHUTTER_PROPERTY, NULL);
 	}

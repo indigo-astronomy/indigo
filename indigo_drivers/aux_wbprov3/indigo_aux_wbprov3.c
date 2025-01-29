@@ -503,7 +503,7 @@ static void aux_update_states(indigo_device *device) {
 		AUX_WEATHER_TEMPERATURE_ITEM->number.value = wb_stat.dht22_temperature;
 		AUX_WEATHER_HUMIDITY_ITEM->number.value = wb_stat.dht22_hunidity;
 		// calculate dew point
-		if(wb_stat.dht22_temperature > -100) {
+		if (wb_stat.dht22_temperature > -100) {
 			AUX_WEATHER_PROPERTY->state = INDIGO_OK_STATE;
 			AUX_WEATHER_DEWPOINT_ITEM->number.value = indigo_aux_dewpoint(wb_stat.dht22_temperature, wb_stat.dht22_hunidity);
 		} else {

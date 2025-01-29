@@ -706,7 +706,7 @@ static void mount_handle_motion_ne(indigo_device *device) {
 	if (PRIVATE_DATA->slew_rate == 0)
 		mount_handle_slew_rate(device);
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	if(MOUNT_MOTION_EAST_ITEM->sw.value) {
+	if (MOUNT_MOTION_EAST_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
 		MOUNT_MOTION_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 	} else if (MOUNT_MOTION_WEST_ITEM->sw.value) {
@@ -944,7 +944,7 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_MOTION_RA_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- MOUNT_MOTION_WE
-		if(PRIVATE_DATA->parked) {
+		if (PRIVATE_DATA->parked) {
 			MOUNT_MOTION_RA_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, MOUNT_MOTION_RA_PROPERTY, WARN_PARKED_MSG);
 			return INDIGO_OK;

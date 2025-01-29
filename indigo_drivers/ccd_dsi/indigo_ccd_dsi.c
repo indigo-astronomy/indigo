@@ -600,7 +600,7 @@ static void process_plug_event(indigo_device *unusued) {
 // doesn't work on macOS, dsi_open_camera resets the device what leads to duplicate plug/unplug
 	dsi_camera_t *dsi;
 	dsi = dsi_open_camera(sid);
-	if(dsi == NULL) {
+	if (dsi == NULL) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Camera %s can not be open.", sid);
 		pthread_mutex_unlock(&device_mutex);
 		return;

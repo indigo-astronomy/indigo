@@ -1072,7 +1072,7 @@ bool process_data_and_update(indigo_device *device, cloudwatcher_data data) {
 	}
 
 	// Sky quality
-	if(data.raw_sky_quality == NO_READING || data.raw_sky_quality == 0) {
+	if (data.raw_sky_quality == NO_READING || data.raw_sky_quality == 0) {
 		AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value =
 		AUX_WEATHER_SKY_BORTLE_CLASS_ITEM->number.value = 0;
 	} else {

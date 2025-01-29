@@ -342,7 +342,7 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 
 
 static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
-	if(!board || !firmware) return false;
+	if (!board || !firmware) return false;
 
 	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
 	int fwmaj, fwmin, model, oper, data;
@@ -369,7 +369,7 @@ static bool lunatico_get_info(indigo_device *device, char *board, char *firmware
 
 
 static bool lunatico_check_port_existance(indigo_device *device, bool *exists) {
-	if(!exists) return false;
+	if (!exists) return false;
 
 	int model, oper, data;
 	char response[LUNATICO_CMD_LEN]={0};
@@ -937,7 +937,7 @@ static void lunatico_init_device(indigo_device *device) {
 	indigo_define_property(device, LA_MOTOR_TYPE_PROPERTY, NULL);
 
 	step_mode_t mode = STEP_MODE_FULL;
-	if(LA_STEP_MODE_HALF_ITEM->sw.value) {
+	if (LA_STEP_MODE_HALF_ITEM->sw.value) {
 		mode = STEP_MODE_HALF;
 	}
 	if (!lunatico_set_step(device, mode)) {
@@ -1030,9 +1030,9 @@ static indigo_result lunatico_common_update_property(indigo_device *device, indi
 
 		LA_STEP_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		step_mode_t mode = STEP_MODE_FULL;
-		if(LA_STEP_MODE_FULL_ITEM->sw.value) {
+		if (LA_STEP_MODE_FULL_ITEM->sw.value) {
 			mode = STEP_MODE_FULL;
-		} else if(LA_STEP_MODE_HALF_ITEM->sw.value) {
+		} else if (LA_STEP_MODE_HALF_ITEM->sw.value) {
 			mode = STEP_MODE_HALF;
 		}
 		if (!lunatico_set_step(device, mode)) {
@@ -1431,7 +1431,7 @@ static void handle_rotator_connect_property(indigo_device *device) {
 
 				bool success = false;
 				if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-					if(ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
+					if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
 						success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 					} else {
 						success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
@@ -1544,7 +1544,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 				indigo_set_timer(device, 0.5, rotator_timer_callback, &PORT_DATA.focuser_timer);
 			} else { /* RESET CURRENT POSITION */
 				ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
-				if(!lunatico_sync_position(device, steps_position)) {
+				if (!lunatico_sync_position(device, steps_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.r_target_position);
 					ROTATOR_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 				}
@@ -1599,7 +1599,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		ROTATOR_DIRECTION_PROPERTY->state = INDIGO_OK_STATE;
 		bool success = true;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if(ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
+			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
 				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 			} else {
 				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
@@ -1627,7 +1627,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
 		bool success = true;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if(ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
+			if (ROTATOR_DIRECTION_NORMAL_ITEM->sw.value) {
 				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 			} else {
 				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
@@ -1913,7 +1913,7 @@ static void handle_focuser_connect_property(indigo_device *device) {
 
 				bool success = false;
 				if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-					if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
+					if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
 						success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 					} else {
 						success= lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
@@ -1986,7 +1986,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		FOCUSER_REVERSE_MOTION_PROPERTY->state = INDIGO_OK_STATE;
 		bool success = true;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
+			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
 				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 			} else {
 				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);
@@ -2038,7 +2038,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			} else { /* RESET CURRENT POSITION */
 				FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 				FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
-				if(!lunatico_sync_position(device, PORT_DATA.f_target_position)) {
+				if (!lunatico_sync_position(device, PORT_DATA.f_target_position)) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "lunatico_sync_position(%d, %d) failed", PRIVATE_DATA->handle, PORT_DATA.f_target_position);
 					FOCUSER_POSITION_PROPERTY->state = INDIGO_ALERT_STATE;
 					FOCUSER_STEPS_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2215,7 +2215,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		if (!DEVICE_CONNECTED) return INDIGO_OK;
 		LA_WIRING_PROPERTY->state = INDIGO_OK_STATE;
 		if (LA_WIRING_LUNATICO_ITEM->sw.value) {
-			if(FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
+			if (FOCUSER_REVERSE_MOTION_DISABLED_ITEM->sw.value) {
 				success = lunatico_set_wiring(device, MW_LUNATICO_NORMAL);
 			} else {
 				success = lunatico_set_wiring(device, MW_LUNATICO_REVERSED);

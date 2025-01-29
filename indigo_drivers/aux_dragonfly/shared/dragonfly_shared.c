@@ -122,7 +122,7 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 
 
 static bool lunatico_get_info(indigo_device *device, char *board, char *firmware) {
-	if(!board || !firmware) return false;
+	if (!board || !firmware) return false;
 
 	//const char *operative[3] = { "", "Bootloader", "Error" };
 	const char *models[6] = { "Error", "Seletek", "Armadillo", "Platypus", "Dragonfly", "Limpet" };
