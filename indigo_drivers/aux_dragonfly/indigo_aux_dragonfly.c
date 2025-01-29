@@ -569,9 +569,15 @@ static void create_port_device(int p_device_index, int l_device_index) {
 		aux_detach
 	);
 
-	if (l_device_index >= MAX_LOGICAL_DEVICES) return;
-	if (p_device_index >= MAX_PHYSICAL_DEVICES) return;
-	if (device_data[p_device_index].device[l_device_index] != NULL) return;
+	if (l_device_index >= MAX_LOGICAL_DEVICES) {
+		return;
+	}
+	if (p_device_index >= MAX_PHYSICAL_DEVICES) {
+		return;
+	}
+	if (device_data[p_device_index].device[l_device_index] != NULL) {
+		return;
+	}
 
 	if (device_data[p_device_index].private_data == NULL) {
 		device_data[p_device_index].private_data = indigo_safe_malloc(sizeof(lunatico_private_data));
@@ -590,8 +596,12 @@ static void create_port_device(int p_device_index, int l_device_index) {
 
 
 static void delete_port_device(int p_device_index, int l_device_index) {
-	if (l_device_index >= MAX_LOGICAL_DEVICES) return;
-	if (p_device_index >= MAX_PHYSICAL_DEVICES) return;
+	if (l_device_index >= MAX_LOGICAL_DEVICES) {
+		return;
+	}
+	if (p_device_index >= MAX_PHYSICAL_DEVICES) {
+		return;
+	}
 
 	if (device_data[p_device_index].device[l_device_index] != NULL) {
 		indigo_detach_device(device_data[p_device_index].device[l_device_index]);
@@ -601,7 +611,9 @@ static void delete_port_device(int p_device_index, int l_device_index) {
 	}
 
 	for (int i = 0; i < MAX_LOGICAL_DEVICES; i++) {
-		if (device_data[p_device_index].device[i] != NULL) return;
+		if (device_data[p_device_index].device[i] != NULL) {
+			return;
+		}
 	}
 
 	if (device_data[p_device_index].private_data != NULL) {
