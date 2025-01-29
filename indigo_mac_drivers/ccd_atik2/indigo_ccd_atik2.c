@@ -63,8 +63,9 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -85,8 +86,9 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void pre_exposure_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		indigo_set_timer(device, 2, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
@@ -94,8 +96,9 @@ static void pre_exposure_timer_callback(indigo_device *device) {
 }
 
 static void short_exposure_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -116,8 +119,9 @@ static void short_exposure_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		bool status;
 		if (libatik_check_cooler(PRIVATE_DATA->device_context, &status, &PRIVATE_DATA->cooler_power, &PRIVATE_DATA->current_temperature)) {
@@ -303,8 +307,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	if (device == device->master_device)
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
@@ -312,8 +317,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	libatik_guide_relays(PRIVATE_DATA->device_context, 0);
 	if (PRIVATE_DATA->relay_mask & (ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
@@ -424,8 +430,9 @@ static indigo_result guider_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	if (device == device->master_device)
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -433,7 +440,9 @@ static indigo_result guider_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO wheel device implementation
 
 static void wheel_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	libatik_check_filter_wheel(PRIVATE_DATA->device_context, &PRIVATE_DATA->current_slot);
 	WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
@@ -517,8 +526,9 @@ static indigo_result wheel_detach(indigo_device *device) {
 	assert(device != NULL);
 	if (CONNECTION_CONNECTED_ITEM->sw.value)
 		indigo_device_disconnect(NULL, device->name);
-	if (device == device->master_device)
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_wheel_detach(device);
 }
@@ -630,7 +640,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 			}
 			if (private_data != NULL) {
 				libusb_unref_device(dev);
-				if (private_data->buffer != NULL) free(private_data->buffer);
+				if (private_data->buffer != NULL) {
+					free(private_data->buffer);
+				}
 				free(private_data);
 			}
 			break;
