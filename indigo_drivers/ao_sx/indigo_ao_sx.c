@@ -92,8 +92,9 @@ static bool sx_command(indigo_device *device, char *command, char *response, int
 			tv.tv_sec = timeout;
 			tv.tv_usec = 100000;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
@@ -133,8 +134,9 @@ static bool sx_open(indigo_device *device) {
 }
 
 static void sx_close(indigo_device *device) {
-	if (--PRIVATE_DATA->device_count > 0)
+	if (--PRIVATE_DATA->device_count > 0) {
 		return;
+	}
 	if (PRIVATE_DATA->handle > 0) {
 		close(PRIVATE_DATA->handle);
 		PRIVATE_DATA->handle = 0;
