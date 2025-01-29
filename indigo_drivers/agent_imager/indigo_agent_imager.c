@@ -2953,7 +2953,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		double iterative_final_step = AGENT_IMAGER_FOCUS_ITERATIVE_FINAL_ITEM->number.value;
 		double ucurve_step = AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value;
 		indigo_property_copy_values(AGENT_IMAGER_FOCUS_PROPERTY, property, false);
-		if ( AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value != iterative_initial_step || AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value != ucurve_step) {
+		if (AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value != iterative_initial_step || AGENT_IMAGER_FOCUS_UCURVE_STEP_ITEM->number.value != ucurve_step) {
 			// ignore
 		} else if (AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.value != initial_step) {
 			AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.target = AGENT_IMAGER_FOCUS_ITERATIVE_INITIAL_ITEM->number.value = AGENT_IMAGER_FOCUS_INITIAL_ITEM->number.target;

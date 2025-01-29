@@ -280,7 +280,7 @@ indigo_spherical_point_t indigo_precess(const indigo_spherical_point_t *c0, cons
 		c1.a += 360 * DEG2RAD;
 	}
 
-	c1.d = atan2( z1 , sqrt(1 - z1 * z1));
+	c1.d = atan2(z1 , sqrt(1 - z1 * z1));
 
 	return c1;
 }

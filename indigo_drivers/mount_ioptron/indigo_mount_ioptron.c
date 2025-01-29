@@ -927,7 +927,7 @@ static void mount_connect_callback(indigo_device *device) {
 						strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, "/");
 						strcat(MOUNT_INFO_FIRMWARE_ITEM->text.value, response);
 					}
-					if ( PRIVATE_DATA->protocol == 0x0300 && product == 26 ) {
+					if (PRIVATE_DATA->protocol == 0x0300 && product == 26) {
 						// "0026" has been reassigned in v3.10
 						strcpy(MOUNT_INFO_MODEL_ITEM->text.value, "CEM26");
 					}
@@ -962,7 +962,7 @@ static void mount_connect_callback(indigo_device *device) {
 				PRIVATE_DATA->no_park = false;
 				PRIVATE_DATA->protocol = 0x0300;
 			}
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s (%s), firmware %s, protocol %d.%d %s", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF, PRIVATE_DATA->hc8406 ? "HC8406" : (PRIVATE_DATA->hc8407 ? "HC8407" : "" ));
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "Product:  %s (%s), firmware %s, protocol %d.%d %s", MOUNT_INFO_MODEL_ITEM->text.value, PRIVATE_DATA->product, MOUNT_INFO_FIRMWARE_ITEM->text.value, PRIVATE_DATA->protocol >> 8, PRIVATE_DATA->protocol & 0xFF, PRIVATE_DATA->hc8406 ? "HC8406" : (PRIVATE_DATA->hc8407 ? "HC8407" : ""));
 			if (PRIVATE_DATA->hc8406) {
 				MOUNT_PARK_PROPERTY->hidden = true;
 				MOUNT_TRACKING_PROPERTY->hidden = true;

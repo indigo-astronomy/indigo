@@ -384,7 +384,7 @@ static bool ascol_device_open(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "ascol_open(%s) = %d", DEVICE_PORT_ITEM->text.value, dev_id);
 			return false;
-		} else if (ascol_GLLG(dev_id, AUTHENTICATION_PASSWORD_ITEM->text.value) != ASCOL_OK ) {
+		} else if (ascol_GLLG(dev_id, AUTHENTICATION_PASSWORD_ITEM->text.value) != ASCOL_OK) {
 			ascol_close(dev_id);
 			PRIVATE_DATA->count_open--;
 			pthread_mutex_unlock(&PRIVATE_DATA->net_mutex);

@@ -319,7 +319,7 @@ static void aux_connection_handler(indigo_device *device) {
 				PRIVATE_DATA->handle = 0;
 			}
 
-			if (uch_command(device, "PV", response, sizeof(response)) ) {
+			if (uch_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "USB Control Hub");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
 				indigo_update_property(device, INFO_PROPERTY, NULL);

@@ -471,7 +471,7 @@ static void aux_connection_handler(indigo_device *device) {
 			upb_open(device);
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			if (upb_command(device, "PV", response, sizeof(response)) ) {
+			if (upb_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PeagasusAstro UPBv3");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3);
 				indigo_update_property(device, INFO_PROPERTY, NULL);

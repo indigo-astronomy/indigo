@@ -63,7 +63,7 @@ typedef struct {
 static bool sx_message(indigo_device *device, int a, int b) {
 	unsigned char buf[2] = { a, b };
 	int rc = hid_write(PRIVATE_DATA->handle, buf, 2);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_write( { %02x, %02x }) ->  %d", buf[0], buf[1], rc);
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "hid_write({ %02x, %02x }) ->  %d", buf[0], buf[1], rc);
 	if (rc != 2)
 		return false;
 	indigo_usleep(100);

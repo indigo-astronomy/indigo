@@ -555,7 +555,7 @@ static void handle_mount_change(indigo_device *device) {
 	AGENT_MOUNT_DISPLAY_COORDINATES_TIME_TO_TRANSIT_ITEM->number.value = indigo_time_to_transit(ra, lst);
 	AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY->state = DEVICE_PRIVATE_DATA->mount_eq_coordinates_state;
 	AGENT_MOUNT_DISPLAY_COORDINATES_DEROTATION_RATE_ITEM->number.value = indigo_derotation_rate(AGENT_MOUNT_DISPLAY_COORDINATES_ALT_ITEM->number.value, AGENT_MOUNT_DISPLAY_COORDINATES_AZ_ITEM->number.value, latitude);
-	AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value = indigo_parallactic_angle( AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value * 15, dec, latitude);
+	AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value = indigo_parallactic_angle(AGENT_MOUNT_DISPLAY_COORDINATES_HA_ITEM->number.value * 15, dec, latitude);
 	indigo_update_property(device, AGENT_MOUNT_DISPLAY_COORDINATES_PROPERTY, NULL);
 	// check limits
 	double ha = fmod(lst - ra + 24, 24);

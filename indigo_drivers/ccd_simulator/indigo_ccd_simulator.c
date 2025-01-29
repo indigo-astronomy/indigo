@@ -290,7 +290,7 @@ static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	if (r >= h / 2) {
 		r = h / 2 - 1;
 	}
-	double iarr = 1 / ( r + r + 1);
+	double iarr = 1 / (r + r + 1);
 	for (int i = 0; i < w; i++) {
 		int ti = i, li = ti, ri = ti + r * w;
 		int fv = scl[ti], lv = scl[ti + w * (h - 1)], val = (r + 1) * fv;

@@ -696,7 +696,7 @@ static void focuser_connection_handler(indigo_device *device) {
 				if ((text = get_string(response, tokens, GET_MOT1_ERROR)) && *text) {
 					indigo_send_message(device, "ERROR: %s", text);
 				}
-				if ( get_number(response, tokens, GET_CALRESTART_MOT1)) {
+				if (get_number(response, tokens, GET_CALRESTART_MOT1)) {
 					indigo_send_message(device, "ERROR: %s needs calibration", INFO_DEVICE_MODEL_ITEM->text.value);
 				}
 				PRIVATE_DATA->has_abs_pos = getToken(response, tokens, 0, GET_MOT1_ABS_POS) != -1;
@@ -1363,7 +1363,7 @@ static void rotator_connection_handler(indigo_device *device) {
 					if ((text = get_string(response, tokens, GET_MOT2_ERROR)) && *text) {
 						indigo_send_message(device, "ERROR: %s", text);
 					}
-					if ( get_number(response, tokens, GET_CALRESTART_MOT2)) {
+					if (get_number(response, tokens, GET_CALRESTART_MOT2)) {
 						indigo_send_message(device, "ERROR: ARCO needs calibration");
 					}
 				}

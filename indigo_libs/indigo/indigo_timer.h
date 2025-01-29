@@ -68,16 +68,16 @@ static inline void normalize_timespec(struct timespec *ts) {
 		if (SEC_NS <= ts->tv_nsec) {
 			ts->tv_nsec -= SEC_NS;
 			ts->tv_sec++;
-		} else if ( 0 > (ts)->tv_nsec ) {
+		} else if (0 > (ts)->tv_nsec) {
 			ts->tv_nsec += SEC_NS;
 			ts->tv_sec--;
 		}
 	} else {
 		/* timespec is negative, so ns <= -1s and ns > 0s are not ok */
-		if ( (-1 * SEC_NS) >= ts->tv_nsec ) {
+		if ((-1 * SEC_NS) >= ts->tv_nsec) {
 			ts->tv_nsec += SEC_NS;
 			ts->tv_sec--;
-		} else if ( 0 < ts->tv_nsec ) {
+		} else if (0 < ts->tv_nsec) {
 			ts->tv_nsec -= SEC_NS;
 			ts->tv_sec++;
 		}

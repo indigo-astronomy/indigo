@@ -168,16 +168,16 @@ double indigocat_get_dynamical_time_diff(double JD) {
 
 	/* check when JD is, and use corresponding formula */
 	/* check for date < 948 A.D. */
-	if ( JD < 2067314.5 )
+	if (JD < 2067314.5)
 		/* Stephenson and Houlden */
 		TD = get_dynamical_diff_sh1 (JD);
-	else if ( JD >= 2067314.5 && JD < 2305447.5 )
+	else if (JD >= 2067314.5 && JD < 2305447.5)
 		/* check for date 948..1600 A.D. Stephenson and Houlden */
 		TD = get_dynamical_diff_sh2 (JD);
-	else if ( JD >= 2312752.5 && JD < 2448622.5 )
+	else if (JD >= 2312752.5 && JD < 2448622.5)
 		/* check for value in table 1620..1992  interpolation of table */
 		TD = get_dynamical_diff_table (JD);
-	else if ( JD >= 2448622.5 && JD <= 2455197.5 )
+	else if (JD >= 2448622.5 && JD <= 2455197.5)
 		/* check for near future 1992..2010 interpolation */
 		TD = get_dynamical_diff_near (JD);
 	else

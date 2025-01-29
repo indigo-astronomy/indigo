@@ -499,7 +499,7 @@ static void aux_connection_handler(indigo_device *device) {
 			} else {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, "PPB");
 			}
-			if (ppb_command(device, "PV", response, sizeof(response)) ) {
+			if (ppb_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
 			}
 			indigo_update_property(device, INFO_PROPERTY, NULL);

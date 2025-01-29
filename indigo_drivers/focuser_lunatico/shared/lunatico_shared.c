@@ -604,7 +604,7 @@ static bool lunatico_set_speed(indigo_device *device, double speed_khz) {
 
 	if (speed_khz <= 0.00001) return false;
 	int speed_us = (int)(1000 / speed_khz);
-	if ((speed_us < 50) || (speed_us > 500000 )) {
+	if ((speed_us < 50) || (speed_us > 500000)) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Speed out of range %.3f", speed_khz);
 		return false;
 	}

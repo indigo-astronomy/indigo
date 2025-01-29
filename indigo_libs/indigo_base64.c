@@ -33,7 +33,7 @@ long base64_encode(unsigned char *out, const unsigned char *in, long inlen) {
 	long dlen = ((inlen+2)/3)*4; /* 4/3, rounded up */
 	uint16_t* wbuf = (uint16_t*)out;
 
-	for(; inlen > 2; inlen -= 3 ) {
+	for(; inlen > 2; inlen -= 3) {
 		uint32_t n = in[0] << 16 | in[1] << 8 | in[2];
 
 		wbuf[0] = b64lut[ n >> 12 ];
@@ -44,7 +44,7 @@ long base64_encode(unsigned char *out, const unsigned char *in, long inlen) {
 	}
 
 	out = (unsigned char*)wbuf;
-	if ( inlen > 0 ) {
+	if (inlen > 0) {
 		unsigned char fragment;
 		*out++ = base64digits[in[0] >> 2];
 		fragment = (in[0] << 4) & 0x30;
@@ -68,7 +68,7 @@ long base64_decode_fast(unsigned char* out, const unsigned char* in, long inlen)
 	long n = (inlen/4)-1;
 	uint16_t* inp = (uint16_t*)in;
 
-	for( j = 0; j < n; j++ ) {
+	for(j = 0; j < n; j++) {
 		s1 = rbase64lut[ inp[0] ];
 		s2 = rbase64lut[ inp[1] ];
 
@@ -76,11 +76,11 @@ long base64_decode_fast(unsigned char* out, const unsigned char* in, long inlen)
 		n32 <<= 10;
 		n32 |= s2 >> 2;
 
-		b3 = ( n32 & 0x00ff );
+		b3 = (n32 & 0x00ff);
 		n32 >>= 8;
-		b2 = ( n32 & 0x00ff );
+		b2 = (n32 & 0x00ff);
 		n32 >>= 8;
-		b1 = ( n32 & 0x00ff );
+		b1 = (n32 & 0x00ff);
 
 		out[0] = b1;
 		out[1] = b2;
@@ -98,11 +98,11 @@ long base64_decode_fast(unsigned char* out, const unsigned char* in, long inlen)
 	n32 <<= 10;
 	n32 |= s2 >> 2;
 
-	b3 = ( n32 & 0x00ff );
+	b3 = (n32 & 0x00ff);
 	n32 >>= 8;
-	b2 = ( n32 & 0x00ff );
+	b2 = (n32 & 0x00ff);
 	n32 >>= 8;
-	b1 = ( n32 & 0x00ff );
+	b1 = (n32 & 0x00ff);
 
 	*out++ = b1;
 	outlen++;
@@ -126,7 +126,7 @@ long base64_decode_fast_nl(unsigned char* out, const unsigned char* in, long inl
 	int j;
 	long n = (inlen/4)-1;
 	uint16_t* inp = (uint16_t*)in;	
-	for( j = 0; j < n; j++ ) {
+	for(j = 0; j < n; j++) {
 		if (in[0] == '\n') {
 			in++;
 		}
@@ -136,11 +136,11 @@ long base64_decode_fast_nl(unsigned char* out, const unsigned char* in, long inl
 		n32 = s1;
 		n32 <<= 10;
 		n32 |= s2 >> 2;
-		b3 = ( n32 & 0x00ff );
+		b3 = (n32 & 0x00ff);
 		n32 >>= 8;
-		b2 = ( n32 & 0x00ff );
+		b2 = (n32 & 0x00ff);
 		n32 >>= 8;
-		b1 = ( n32 & 0x00ff );
+		b1 = (n32 & 0x00ff);
 		out[0] = b1;
 		out[1] = b2;
 		out[2] = b3;
@@ -157,11 +157,11 @@ long base64_decode_fast_nl(unsigned char* out, const unsigned char* in, long inl
 	n32 = s1;
 	n32 <<= 10;
 	n32 |= s2 >> 2;
-	b3 = ( n32 & 0x00ff );
+	b3 = (n32 & 0x00ff);
 	n32 >>= 8;
-	b2 = ( n32 & 0x00ff );
+	b2 = (n32 & 0x00ff);
 	n32 >>= 8;
-	b1 = ( n32 & 0x00ff );
+	b1 = (n32 & 0x00ff);
 	*out++ = b1;
 	outlen++;
 	if ((inp[1] & 0x00FF) != 0x003D)  {

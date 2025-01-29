@@ -109,16 +109,16 @@ typedef struct {
 
 
 //------------------- Routines to deal with discovery string, mostly taken from libapogee examples.
-std::vector<std::string> GetDeviceVector( const std::string & msg ) {
+std::vector<std::string> GetDeviceVector(const std::string & msg) {
 	std::vector<std::string> devices;
 	const std::string startDelim("<d>");
 	const std::string stopDelim("</d>");
 
 	size_t pos = 0;
 	bool find = true;
-	while( find ) {
-		size_t posStart = msg.find( startDelim, pos );
-		if ( std::string::npos == posStart ) {
+	while(find) {
+		size_t posStart = msg.find(startDelim, pos);
+		if (std::string::npos == posStart) {
 			break;
 		}
 		size_t posStop = msg.find(stopDelim, posStart + 1);
@@ -152,7 +152,7 @@ std::vector<std::string> MakeTokens(const std::string &str, const std::string &s
 
 std::string GetItemFromFindStr(const std::string & msg, const std::string & item) {
 	//search the single device input string for the requested item
-    std::vector<std::string> params = MakeTokens( msg, "," );
+    std::vector<std::string> params = MakeTokens(msg, ",");
 	std::vector<std::string>::iterator iter;
 
 	for(iter = params.begin(); iter != params.end(); ++iter) {
@@ -220,7 +220,7 @@ std::string GetModelName(const std::string &msg) {
 
 bool IsDeviceFilterWheel(const std::string & msg) {
 	std::string str = GetItemFromFindStr(msg, "deviceType=");
-	return ( 0 == str.compare("filterWheel") ? true : false );
+	return (0 == str.compare("filterWheel") ? true : false);
 }
 
 
@@ -229,7 +229,7 @@ void checkStatus(const Apg::Status status) {
 		case Apg::Status_ConnectionError:
 		{
 			std::string errMsg("Status_ConnectionError");
-			std::runtime_error except( errMsg );
+			std::runtime_error except(errMsg);
 			throw except;
 		}
 		break;
@@ -237,7 +237,7 @@ void checkStatus(const Apg::Status status) {
 		case Apg::Status_DataError:
 		{
 			std::string errMsg("Status_DataError");
-			std::runtime_error except( errMsg );
+			std::runtime_error except(errMsg);
 			throw except;
 		}
 		break;
@@ -245,7 +245,7 @@ void checkStatus(const Apg::Status status) {
 		case Apg::Status_PatternError:
 		{
 			std::string errMsg("Status_PatternError");
-			std::runtime_error except( errMsg );
+			std::runtime_error except(errMsg);
 			throw except;
 		}
 		break;
@@ -253,7 +253,7 @@ void checkStatus(const Apg::Status status) {
 		case Apg::Status_Idle:
 		{
 			std::string errMsg("Status_Idle");
-			std::runtime_error except( errMsg );
+			std::runtime_error except(errMsg);
 			throw except;
 		}
 		break;
@@ -1410,7 +1410,7 @@ static void process_unplug_event(indigo_device *unused) {
 			exit(0);
 		}
 	}
-	device_strings = GetDeviceVector( msg );
+	device_strings = GetDeviceVector(msg);
 	for (int j = 0; j < MAX_DEVICES; j++) {
 		indigo_device *device = devices[j];
 		if (device) {

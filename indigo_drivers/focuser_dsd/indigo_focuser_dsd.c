@@ -789,7 +789,7 @@ static void focuser_connect_callback(indigo_device *device) {
 					indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
 					PRIVATE_DATA->handle = indigo_open_network_device(name, 8080, &proto);
 				}
-				if ( PRIVATE_DATA->handle < 0) {
+				if (PRIVATE_DATA->handle < 0) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Opening device %s: failed", DEVICE_PORT_ITEM->text.value);
 					CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);

@@ -210,7 +210,7 @@ static char *sbig_error_string(long err) {
 static short get_sbig_handle() {
 	GetDriverHandleResults gdhr;
 	int res = sbig_command(CC_GET_DRIVER_HANDLE, NULL, &gdhr);
-	if ( res == CE_NO_ERROR )
+	if (res == CE_NO_ERROR)
 		return gdhr.handle;
 	else
 		return INVALID_HANDLE_VALUE;
@@ -252,12 +252,12 @@ static short close_driver(short *handle) {
 	short res;
 
 	res = set_sbig_handle(*handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		return res;
 	}
 
 	res = sbig_command(CC_CLOSE_DRIVER, NULL, NULL);
-	if ( res == CE_NO_ERROR )
+	if (res == CE_NO_ERROR)
 		*handle = INVALID_HANDLE_VALUE;
 
 	return res;
@@ -365,7 +365,7 @@ static ushort sbig_get_relaymap(short handle, ushort *relay_map) {
 	QueryCommandStatusResults csr;
 
 	res = set_sbig_handle(handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		return res;
 	}
 
@@ -386,7 +386,7 @@ static ushort sbig_set_relaymap(short handle, ushort relay_map) {
 	ActivateRelayParams arp = {0};
 
 	res = set_sbig_handle(handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		return res;
 	}
 
@@ -569,7 +569,7 @@ static bool sbig_start_exposure(indigo_device *device, double exposure, bool dar
 	pthread_mutex_lock(&driver_mutex);
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
@@ -636,7 +636,7 @@ static bool sbig_exposure_complete(indigo_device *device) {
 	pthread_mutex_lock(&driver_mutex);
 
 	int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
@@ -687,7 +687,7 @@ static bool sbig_read_pixels(indigo_device *device) {
 	pthread_mutex_lock(&driver_mutex);
 
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
@@ -772,7 +772,7 @@ static bool sbig_abort_exposure(indigo_device *device) {
 	pthread_mutex_lock(&driver_mutex);
 
 	int res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return false;
@@ -787,7 +787,7 @@ static bool sbig_abort_exposure(indigo_device *device) {
 	}
 
 	res = sbig_command(CC_END_EXPOSURE, &eep, NULL);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "CC_END_EXPOSURE error = %d (%s)", res, sbig_error_string(res));
 	}
 	pthread_mutex_unlock(&driver_mutex);
@@ -1066,7 +1066,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_INFO_PROPERTY->hidden = false;
 
 					res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-					if ( res != CE_NO_ERROR ) {
+					if (res != CE_NO_ERROR) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 					}
 
@@ -1188,7 +1188,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					CCD_INFO_PROPERTY->hidden = false;
 
 					res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-					if ( res != CE_NO_ERROR ) {
+					if (res != CE_NO_ERROR) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 					}
 
@@ -1866,7 +1866,7 @@ static void wheel_timer_callback(indigo_device *device) {
 
 	pthread_mutex_lock(&driver_mutex);
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-	if ( res != CE_NO_ERROR ) {
+	if (res != CE_NO_ERROR) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 		pthread_mutex_unlock(&driver_mutex);
 		return;
@@ -1919,7 +1919,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			if (sbig_open(device)) {
 				pthread_mutex_lock(&driver_mutex);
 				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-				if ( res != CE_NO_ERROR ) {
+				if (res != CE_NO_ERROR) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 					pthread_mutex_unlock(&driver_mutex);
 					indigo_unlock_master_device(device);
@@ -1991,7 +1991,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->wheel_timer);
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-			if ( res != CE_NO_ERROR ) {
+			if (res != CE_NO_ERROR) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 				pthread_mutex_unlock(&driver_mutex);
 				indigo_unlock_master_device(device);
@@ -2044,7 +2044,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-			if ( res != CE_NO_ERROR ) {
+			if (res != CE_NO_ERROR) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 				WHEEL_SLOT_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_update_property(device, WHEEL_SLOT_PROPERTY, NULL);
@@ -2107,7 +2107,7 @@ static void ao_connect_callback(indigo_device *device) {
 			if (sbig_open(device)) {
 				pthread_mutex_lock(&driver_mutex);
 				res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-				if ( res != CE_NO_ERROR ) {
+				if (res != CE_NO_ERROR) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 					pthread_mutex_unlock(&driver_mutex);
 					indigo_unlock_master_device(device);
@@ -2126,7 +2126,7 @@ static void ao_connect_callback(indigo_device *device) {
 		if (DEVICE_CONNECTED) {
 			pthread_mutex_lock(&driver_mutex);
 			res = set_sbig_handle(PRIVATE_DATA->driver_handle);
-			if ( res != CE_NO_ERROR ) {
+			if (res != CE_NO_ERROR) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "set_sbig_handle(%d) = %d (%s)", PRIVATE_DATA->driver_handle, res, sbig_error_string(res));
 				pthread_mutex_unlock(&driver_mutex);
 				indigo_unlock_master_device(device);

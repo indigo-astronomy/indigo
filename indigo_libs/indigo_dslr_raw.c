@@ -198,7 +198,7 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 
 	rc = libraw_unpack(raw_data);
 	if (rc != LIBRAW_SUCCESS) {
-		indigo_error( "[rc:%d] libraw_unpack failed: '%s'", rc, libraw_strerror(rc));
+		indigo_error("[rc:%d] libraw_unpack failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
 

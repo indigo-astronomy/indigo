@@ -233,7 +233,7 @@ static void gps_refresh_callback(indigo_device *device) {
 				if (!strcmp(tokens[5], "W"))
 					lon = -lon;
 				lon = round(lon * 10000) / 10000;
-				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat ) {
+				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
 					GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = lat;
 				}

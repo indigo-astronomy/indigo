@@ -869,7 +869,7 @@ static void aux_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			if (upb_command(device, "PV", response, sizeof(response)) ) {
+			if (upb_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response + 3); // remove "PV:" prefix
 				indigo_update_property(device, INFO_PROPERTY, NULL);
@@ -1407,12 +1407,12 @@ static void focuser_connection_handler(indigo_device *device) {
 			}
 		}
 		if (PRIVATE_DATA->handle > 0) {
-			if (upb_command(device, "PV", response, sizeof(response)) ) {
+			if (upb_command(device, "PV", response, sizeof(response))) {
 				strcpy(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->version == 2 ? "UPBv2" : "UPB");
 				strcpy(INFO_DEVICE_FW_REVISION_ITEM->text.value, response);
 				indigo_update_property(device, INFO_PROPERTY, NULL);
 			}
-			if (upb_command(device, "SS", response, sizeof(response)) ) {
+			if (upb_command(device, "SS", response, sizeof(response))) {
 				FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = atol(response);
 			}
 			upb_command(device, "PL:1", response, sizeof(response));

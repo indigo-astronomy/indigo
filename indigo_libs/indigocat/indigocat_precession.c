@@ -72,7 +72,7 @@ equatorial_coords_s indigocat_precess(const equatorial_coords_s *c0, const doubl
 		c1.ra += 360 * DEG2RAD;
 	}
 
-	c1.dec = atan2( z1 , sqrt(1 - z1 * z1));
+	c1.dec = atan2(z1 , sqrt(1 - z1 * z1));
 
 	return c1;
 }
