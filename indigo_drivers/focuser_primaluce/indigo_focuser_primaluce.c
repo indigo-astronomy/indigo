@@ -609,8 +609,9 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 static void focuser_timer_callback(indigo_device *device) {
 	char response[1024];
 	jsmntok_t tokens[128];
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (primaluce_command(device, "{\"req\":{\"get\":{\"EXT_T\":\"\", \"VIN_12V\": \"\", \"MOT1\":{\"NTC_T\":\"\"}}}}", response, sizeof(response), tokens, 128)) {
 		double temp = get_number(response, tokens, GET_EXT_T);
 		if (temp != FOCUSER_TEMPERATURE_ITEM->number.value) {
@@ -878,8 +879,9 @@ static void focuser_position_handler(indigo_device *device) {
 			FOCUSER_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT1_ABS_POS : GET_MOT1_ABS_POS_STEP);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 		}
-		if (FOCUSER_POSITION_ITEM->number.target == FOCUSER_POSITION_ITEM->number.value)
+		if (FOCUSER_POSITION_ITEM->number.target == FOCUSER_POSITION_ITEM->number.value) {
 			break;
+		}
 	}
 	FOCUSER_POSITION_PROPERTY->state = FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
@@ -1427,8 +1429,9 @@ static void rotator_position_handler(indigo_device *device) {
 			ROTATOR_POSITION_ITEM->number.value = get_number(response, tokens, PRIVATE_DATA->has_abs_pos ? GET_MOT2_ABS_POS : GET_MOT2_ABS_POS_DEG);
 			indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);
 		}
-		if (ROTATOR_POSITION_ITEM->number.target == ROTATOR_POSITION_ITEM->number.value)
+		if (ROTATOR_POSITION_ITEM->number.target == ROTATOR_POSITION_ITEM->number.value) {
 			break;
+		}
 	}
 	ROTATOR_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, ROTATOR_POSITION_PROPERTY, NULL);

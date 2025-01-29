@@ -396,8 +396,9 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 }
 
 static void playerone_close(indigo_device *device) {
-	if (!device->is_connected)
+	if (!device->is_connected) {
 		return;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		POACloseCamera(PRIVATE_DATA->dev_id);
@@ -415,8 +416,9 @@ static void playerone_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
 		{ 0 }
@@ -480,11 +482,11 @@ static void exposure_timer_callback(indigo_device *device) {
 			if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POAGetImageData(
-					id,
-					PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-					PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
-					2000
-				);
+															id,
+															PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+															PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
+															2000
+															);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				if (res) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
@@ -514,9 +516,9 @@ static void exposure_timer_callback(indigo_device *device) {
 		res = POA_ERROR_EXPOSURE_FAILED;
 		exposure_failed = true;
 	}
-
+	
 	PRIVATE_DATA->can_check_temperature = true;
-
+	
 	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_ccd_abort_exposure_cleanup(device);
@@ -540,8 +542,9 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void streaming_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	indigo_fits_keyword keywords[] = {
 		{ INDIGO_FITS_STRING, "BAYERPAT", .string = PRIVATE_DATA->bayer_pattern, "Bayer color pattern" },
 		{ 0 }
@@ -614,11 +617,11 @@ static void streaming_timer_callback(indigo_device *device) {
 				if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE) {
 					pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 					res = POAGetImageData(
-						id,
-						PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
-						PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
-						2000
-					);
+																id,
+																PRIVATE_DATA->buffer + FITS_HEADER_SIZE,
+																PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE,
+																2000
+																);
 					pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 					if (res) {
 						INDIGO_DRIVER_ERROR(DRIVER_NAME, "POAGetImageData(%d, ..., ..., %d) > %d", id, 2000, res);
@@ -647,11 +650,11 @@ static void streaming_timer_callback(indigo_device *device) {
 		res = POA_ERROR_EXPOSURE_FAILED;
 		exposure_failed = true;
 	}
-
+	
 	PRIVATE_DATA->can_check_temperature = true;
 	CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
 	indigo_finalize_video_stream(device);
-
+	
 	if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_STREAMING_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_ccd_abort_exposure_cleanup(device);
@@ -677,7 +680,9 @@ static void streaming_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (playerone_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -719,12 +724,13 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	else
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_WEST, false, false)", id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
+	
 	PRIVATE_DATA->guider_timer_ra = NULL;
-
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
-
+	}
+	
 	GUIDER_GUIDE_EAST_ITEM->number.value = 0;
 	GUIDER_GUIDE_WEST_ITEM->number.value = 0;
 	GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
@@ -749,10 +755,11 @@ static void guider_timer_callback_dec(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POASetConfig(%d, POA_GUIDE_SOUTH, false, false)", id);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 	PRIVATE_DATA->guider_timer_dec = NULL;
-
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
-
+	}
+	
 	GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
 	GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
@@ -896,8 +903,9 @@ static void handle_advanced_property(indigo_device *device) {
 	POAErrors res;
 	int id = PRIVATE_DATA->dev_id;
 
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
@@ -1698,8 +1706,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 		handle_ccd_connect_property(device);
 	}
 
-	if (device == device->master_device)
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
+	}
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 
@@ -1846,8 +1855,9 @@ static indigo_result guider_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		handle_guider_connection_property(device);
 	}
-	if (device == device->master_device)
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -1903,7 +1913,9 @@ static int find_available_device_slot() {
 static int find_device_slot(int id) {
 	for (int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA->dev_id == id) return slot;
 	}
 	return -1;
@@ -2115,7 +2127,9 @@ static void remove_all_devices() {
 
 	for (i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
 		indigo_detach_device(device);
 		free(device);

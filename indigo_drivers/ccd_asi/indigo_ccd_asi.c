@@ -373,9 +373,9 @@ static bool asi_read_pixels(indigo_device *device) {
 	ASI_EXPOSURE_STATUS status;
 	int wait_cycles = 30000;    /* 30000*2000us = 1min */
 	status = ASI_EXP_WORKING;
-
+	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "start checking exposure status: dev_id = %d, wait_cycles = %d", PRIVATE_DATA->dev_id, wait_cycles);
-
+	
 	/* wait for the exposure to complete */
 	while((status == ASI_EXP_WORKING) && wait_cycles--) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -383,9 +383,9 @@ static bool asi_read_pixels(indigo_device *device) {
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 		indigo_usleep(2000);
 	}
-
+	
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "stopped checking exposure status: dev_id = %d, wait_cycles = %d, status = %d", PRIVATE_DATA->dev_id, wait_cycles, status);
-
+	
 	if (status == ASI_EXP_SUCCESS) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = ASIGetDataAfterExp(PRIVATE_DATA->dev_id, PRIVATE_DATA->buffer + FITS_HEADER_SIZE, PRIVATE_DATA->buffer_size - FITS_HEADER_SIZE);
@@ -395,8 +395,9 @@ static bool asi_read_pixels(indigo_device *device) {
 			return false;
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "ASIGetDataAfterExp(%d) = %d", PRIVATE_DATA->dev_id, res);
-		if (PRIVATE_DATA->is_asi120)
+		if (PRIVATE_DATA->is_asi120) {
 			indigo_usleep(150000);
+		}
 		return true;
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed: dev_id = %d exposure status = %d", PRIVATE_DATA->dev_id, status);
@@ -491,9 +492,11 @@ static bool asi_set_cooler(indigo_device *device, bool status, double target, do
 
 
 static void asi_close(indigo_device *device) {
-
-	if (!device->is_connected) return;
-
+	
+	if (!device->is_connected) {
+		return;
+	}
+	
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		ASICloseCamera(PRIVATE_DATA->dev_id);
@@ -511,7 +514,9 @@ static void asi_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	if (PRIVATE_DATA->in_exposure_callback) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s() Already in function. Returning cleanly.", __FUNCTION__);
@@ -551,7 +556,9 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void streaming_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	char *color_string = get_bayer_string(device);
 	indigo_fits_keyword keywords[] = {
@@ -636,7 +643,9 @@ static void streaming_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (asi_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -666,7 +675,9 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
 	int id = PRIVATE_DATA->dev_id;
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ASIPulseGuideOff(id, ASI_GUIDE_EAST);
@@ -687,14 +698,16 @@ static void guider_timer_callback_ra(indigo_device *device) {
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
 	int id = PRIVATE_DATA->dev_id;
-
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
-
+	
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
+	
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	ASIPulseGuideOff(id, ASI_GUIDE_SOUTH);
 	ASIPulseGuideOff(id, ASI_GUIDE_NORTH);
 	pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
-
+	
 	if (PRIVATE_DATA->guide_relays[ASI_GUIDE_NORTH] || PRIVATE_DATA->guide_relays[ASI_GUIDE_SOUTH]) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -1584,17 +1597,18 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		handle_ccd_connect_property(device);
 	}
-
-	if (device == device->master_device)
+	
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
-
+	}
+	
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
-
+	
 	indigo_release_property(PIXEL_FORMAT_PROPERTY);
 	indigo_release_property(ASI_PRESETS_PROPERTY);
 	indigo_release_property(ASI_CUSTOM_SUFFIX_PROPERTY);
 	indigo_release_property(ASI_ADVANCED_PROPERTY);
-
+	
 	return indigo_ccd_detach(device);
 }
 
@@ -1746,10 +1760,11 @@ static indigo_result guider_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		handle_guider_connection_property(device);
 	}
-
-	if (device == device->master_device)
+	
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
-
+	}
+	
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
 }
@@ -1809,7 +1824,9 @@ static int find_available_device_slot() {
 static int find_device_slot(int id) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA->dev_id == id) return slot;
 	}
 	return -1;
@@ -2013,8 +2030,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
 			for (int i = 0; i < asi_id_count; i++) {
-				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct)
+				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct) {
 					continue;
+				}
 				indigo_set_timer(NULL, 2.0, process_plug_event, NULL);
 			}
 			break;
@@ -2025,7 +2043,7 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		}
 	}
 	return 0;
-};
+}
 
 
 static void remove_all_devices() {
@@ -2034,7 +2052,9 @@ static void remove_all_devices() {
 
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
 		indigo_detach_device(device);
 		free(device);

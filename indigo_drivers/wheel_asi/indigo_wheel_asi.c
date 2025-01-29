@@ -379,7 +379,9 @@ static int find_available_device_slot() {
 static int find_device_slot(int id) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA->dev_id == id) return slot;
 	}
 	return -1;
@@ -507,7 +509,9 @@ static void process_unplug_event(indigo_device *unused) {
 	pthread_mutex_lock(&indigo_device_enumeration_mutex);
 	while ((id = find_unplugged_device_id()) != -1) {
 		slot = find_device_slot(id);
-		if (slot < 0) continue;
+		if (slot < 0) {
+			continue;
+		}
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
@@ -551,8 +555,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static void remove_all_devices() {
 	for (int index = 0; index < MAX_DEVICES; index++) {
 		indigo_device **device = &devices[index];
-		if (*device == NULL)
+		if (*device == NULL) {
 			continue;
+		}
 		indigo_detach_device(*device);
 		free((*device)->private_data);
 		free(*device);

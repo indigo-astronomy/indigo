@@ -125,8 +125,9 @@ static void skyalert_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- async handlers
 
 static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	char response[RESPONSE_LENGTH] = { 0 }, *pnt;
 	if (skyalert_command(device, "send", response)) {
 		char *tok = strtok_r(response, " ", &pnt);

@@ -132,8 +132,9 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 		tv.tv_sec = 0;
 		tv.tv_usec = 100000;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
+		if (result == 0) {
 			break;
+		}
 		if (result < 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -146,8 +147,9 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 	}
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0)
+	if (sleep > 0) {
 		usleep(sleep);
+	}
 
 	// read responce
 	if (response != NULL) {
@@ -161,8 +163,9 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 			tv.tv_usec = 100000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
@@ -171,8 +174,9 @@ static bool mfp_command(indigo_device *device, const char *command, char *respon
 			}
 			response[index++] = c;
 
-			if (c == '#')
+			if (c == '#') {
 				break;
+			}
 		}
 		response[index] = 0;
 	}

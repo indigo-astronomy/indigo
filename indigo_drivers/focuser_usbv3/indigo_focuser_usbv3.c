@@ -80,8 +80,9 @@ static char *usbv3_response(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return "";
 		}
-		if (c == '\n')
+		if (c == '\n') {
 			continue;
+		}
 		if (c == '\r') {
 			break;
 		}

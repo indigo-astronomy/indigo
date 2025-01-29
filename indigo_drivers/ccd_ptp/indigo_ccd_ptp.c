@@ -193,8 +193,9 @@ static void handle_connection(indigo_device *device) {
 				indigo_define_property(device, DSLR_SET_HOST_TIME_PROPERTY, NULL);
 				for (int i = 0; PRIVATE_DATA->info_properties_supported[i]; i++)
 					indigo_define_property(device, PRIVATE_DATA->properties[i].property, NULL);
-				if (PRIVATE_DATA->focuser)
+				if (PRIVATE_DATA->focuser) {
 					indigo_attach_device(PRIVATE_DATA->focuser);
+				}
 			} else {
 				for (int i = 0; PRIVATE_DATA->properties[i].property; i++)
 					indigo_release_property(PRIVATE_DATA->properties[i].property);
@@ -723,8 +724,9 @@ static indigo_device *attach_device(int vendor, int product, const char *usb_pat
 					indigo_detach_device(device);
 					free(device);
 					devices[j] = NULL;
-					if (private_data->vendor_private_data)
+					if (private_data->vendor_private_data) {
 						free(private_data->vendor_private_data);
+					}
 					free(private_data);
 				}
 			}
@@ -770,8 +772,9 @@ static void process_unplug_event(libusb_device *dev) {
 				devices[j] = NULL;
 				free(device);
 				libusb_unref_device(dev);
-				if (private_data->vendor_private_data)
+				if (private_data->vendor_private_data) {
 					free(private_data->vendor_private_data);
+				}
 				free(private_data);
 				break;
 			}

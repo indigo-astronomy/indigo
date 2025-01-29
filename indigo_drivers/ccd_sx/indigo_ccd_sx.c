@@ -682,7 +682,9 @@ static void sx_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -700,7 +702,9 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void clear_reg_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		sx_clear_regs(device);
@@ -709,7 +713,9 @@ static void clear_reg_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (sx_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -918,7 +924,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	sx_guide_relays(device, 0);
 	if (PRIVATE_DATA->relay_mask & (SX_GUIDE_NORTH | SX_GUIDE_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
@@ -1186,12 +1194,15 @@ static void process_unplug_event(libusb_device *dev) {
 	}
 	if (private_data != NULL) {
 		libusb_unref_device(dev);
-		if (private_data->buffer != NULL)
+		if (private_data->buffer != NULL) {
 			free(private_data->buffer);
-		if (private_data->even != NULL)
+		}
+		if (private_data->even != NULL) {
 			free(private_data->even);
-		if (private_data->odd != NULL)
+		}
+		if (private_data->odd != NULL) {
 			free(private_data->odd);
+		}
 		free(private_data);
 	}
 	pthread_mutex_unlock(&device_mutex);

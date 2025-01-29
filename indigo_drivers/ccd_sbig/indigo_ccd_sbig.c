@@ -831,7 +831,9 @@ static bool sbig_set_cooler(indigo_device *device, double target, double *curren
 static void sbig_close(indigo_device *device) {
 	int res;
 
-	if (!DEVICE_CONNECTED) return;
+	if (!DEVICE_CONNECTED) {
+		return;
+	}
 
 	pthread_mutex_lock(&driver_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
@@ -874,7 +876,9 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 		{ 0 }
 	};
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	PRIVATE_DATA->imager_no_check_temperature = true;
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -910,7 +914,9 @@ static void imager_ccd_exposure_timer_callback(indigo_device *device) {
 
 
 static void imager_ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		if (sbig_set_cooler(device, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -940,7 +946,9 @@ static void imager_ccd_temperature_callback(indigo_device *device) {
 
 
 static void guider_ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (!PRIVATE_DATA->imager_no_check_temperature || !PRIVATE_DATA->guider_no_check_temperature) {
 		pthread_mutex_lock(&driver_mutex);
 
@@ -1529,7 +1537,9 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	int res;
 	ushort relay_map = 0;
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	pthread_mutex_lock(&driver_mutex);
 
@@ -1564,7 +1574,9 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	int res;
 	ushort relay_map = 0;
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	pthread_mutex_lock(&driver_mutex);
 
@@ -1848,7 +1860,9 @@ static const char *cfw_type[] = {
 static void wheel_timer_callback(indigo_device *device) {
 	int res;
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	pthread_mutex_lock(&driver_mutex);
 	res = set_sbig_handle(PRIVATE_DATA->driver_handle);
@@ -2242,7 +2256,9 @@ static int find_available_device_slot() {
 static int find_device_slot(SBIG_DEVICE_TYPE usb_id) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA->usb_id == usb_id) return slot;
 	}
 	return -1;
@@ -2292,7 +2308,9 @@ static void unplug_wheel(char *master_name, int fw_model) {
 
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA) {
 			if (
 				!strncmp(master_name, PRIVATE_DATA->dev_name, MAX_PATH) &&
@@ -2315,7 +2333,9 @@ static void unplug_ao(char *master_name) {
 
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA) {
 			if (
 				!strncmp(master_name, PRIVATE_DATA->dev_name, MAX_PATH) &&
@@ -2600,10 +2620,14 @@ static int find_plugged_device(char *dev_name) {
 	enumerate_devices();
 	for (int dev_no = 0; dev_no < MAX_USB_DEVICES; dev_no++) {
 		bool found = false;
-		if (!usb_cams.usbInfo[dev_no].cameraFound) continue;
+		if (!usb_cams.usbInfo[dev_no].cameraFound) {
+			continue;
+		}
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
-			if (device == NULL) continue;
+			if (device == NULL) {
+				continue;
+			}
 			if (PRIVATE_DATA->usb_id == index_to_usb(dev_no)) {
 				found = true;
 				break;
@@ -2626,10 +2650,14 @@ static int find_unplugged_device(char *dev_name) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		bool found = false;
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if ((PRIVATE_DATA) && (!PRIVATE_DATA->is_usb)) continue;
 		for (int dev_no = 0; dev_no < MAX_USB_DEVICES; dev_no++) {
-			if (!usb_cams.usbInfo[dev_no].cameraFound) continue;
+			if (!usb_cams.usbInfo[dev_no].cameraFound) {
+				continue;
+			}
 			if (PRIVATE_DATA->usb_id == index_to_usb(dev_no)) {
 				found = true;
 				break;
@@ -2694,8 +2722,12 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 
 				if (private_data) {
 					/* close driver and device here */
-					if (private_data->imager_buffer) free(private_data->imager_buffer);
-					if (private_data->guider_buffer) free(private_data->guider_buffer);
+					if (private_data->imager_buffer) {
+						free(private_data->imager_buffer);
+					}
+					if (private_data->guider_buffer) {
+						free(private_data->guider_buffer);
+					}
 					free(private_data);
 					private_data = NULL;
 				}
@@ -2714,25 +2746,33 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static void remove_usb_devices() {
 	int i;
 	sbig_private_data *pds[MAX_USB_DEVICES] = {NULL};
-
+	
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA) {
-			if (!PRIVATE_DATA->is_usb) continue;
+			if (!PRIVATE_DATA->is_usb) {
+				continue;
+			}
 			pds[usb_to_index(PRIVATE_DATA->usb_id)] = PRIVATE_DATA; /* preserve pointers to private data */
 		}
 		indigo_detach_device(device);
 		free(device);
 		devices[i] = NULL;
 	}
-
+	
 	/* free private data */
 	for(i = 0; i < MAX_USB_DEVICES; i++) {
 		if (pds[i]) {
 			sbig_private_data *private_data = (sbig_private_data*)pds[i];
-			if (private_data->imager_buffer) free(private_data->imager_buffer);
-			if (private_data->guider_buffer) free(private_data->guider_buffer);
+			if (private_data->imager_buffer) {
+				free(private_data->imager_buffer);
+			}
+			if (private_data->guider_buffer) {
+				free(private_data->guider_buffer);
+			}
 			free(pds[i]);
 		}
 	}
@@ -2742,12 +2782,16 @@ static void remove_usb_devices() {
 static void remove_eth_devices() {
 	int i;
 	sbig_private_data *private_data = NULL;
-
+	
 	for(i = 0; i < MAX_DEVICES -1; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA) {
-			if (PRIVATE_DATA->is_usb) continue;
+			if (PRIVATE_DATA->is_usb) {
+				continue;
+			}
 			private_data = PRIVATE_DATA; /* preserve pointer to private data */
 		}
 		indigo_detach_device(device);
@@ -2755,8 +2799,12 @@ static void remove_eth_devices() {
 		devices[i] = NULL;
 	}
 	if (private_data) {
-		if (private_data->imager_buffer) free(private_data->imager_buffer);
-		if (private_data->guider_buffer) free(private_data->guider_buffer);
+		if (private_data->imager_buffer) {
+			free(private_data->imager_buffer);
+		}
+		if (private_data->guider_buffer) {
+			free(private_data->guider_buffer);
+		}
 		free(private_data);
 	}
 }

@@ -146,8 +146,9 @@ static void streaming_callback(indigo_device *device) {
 		} else {
 			CCD_STREAMING_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (CCD_STREAMING_COUNT_ITEM->number.value != -1)
+		if (CCD_STREAMING_COUNT_ITEM->number.value != -1) {
 			CCD_STREAMING_COUNT_ITEM->number.value--;
+		}
 		if (CCD_ABORT_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_finalize_video_stream(device);
 			uvc_stream_close(PRIVATE_DATA->strmhp);
@@ -320,8 +321,9 @@ static void ccd_connect_callback(indigo_device *device) {
 			uvc_close(PRIVATE_DATA->handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "uvc_close()");
 			PRIVATE_DATA->handle = 0;
-			if (PRIVATE_DATA->buffer)
+			if (PRIVATE_DATA->buffer) {
 				free(PRIVATE_DATA->buffer);
+			}
 			PRIVATE_DATA->buffer = NULL;
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;

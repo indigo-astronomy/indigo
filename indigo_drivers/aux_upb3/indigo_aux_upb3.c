@@ -345,8 +345,9 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	char response[128];
 	bool updatePowerOutletState = false;
 	bool updateWeather = false;
@@ -871,8 +872,9 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static void focuser_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	char response[128];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (upb_command(device, "ES", response, sizeof(response))) {

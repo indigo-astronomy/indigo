@@ -1142,8 +1142,9 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait RA home position index change");
 		while (true) {
 			synscan_ext_inquiry(device, kAxisRA, kGetHomeIndex, &value);
-			if (value != 0xFFFFFF)
+			if (value != 0xFFFFFF) {
 				break;
+			}
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait 3s");
 		indigo_usleep(3 * ONE_SECOND_DELAY);
@@ -1165,8 +1166,9 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait DEC home position index change");
 		while (true) {
 			synscan_ext_inquiry(device, kAxisDEC, kGetHomeIndex, &value);
-			if (value != 0xFFFFFF)
+			if (value != 0xFFFFFF) {
 				break;
+			}
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait 3s");
 		indigo_usleep(3 * ONE_SECOND_DELAY);

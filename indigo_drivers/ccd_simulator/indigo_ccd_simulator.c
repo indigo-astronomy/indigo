@@ -180,8 +180,9 @@ static void search_stars(indigo_device *device) {
 		double ppr_sin = ppr * sin(angle);
 		PRIVATE_DATA->star_count = 0;
 		for (indigocat_star_entry *star_data = indigocat_get_star_data(); star_data->hip; star_data++) {
-			if (star_data->mag > GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM->number.value)
+			if (star_data->mag > GUIDER_IMAGE_MAGNITUDE_LIMIT_ITEM->number.value) {
 				continue;
+			}
 			double ra = (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 ? star_data->ra : star_data->ra_now) * h2r;
 			double dec = (GUIDER_IMAGE_EPOCH_ITEM->number.target != 0 ? star_data->dec : star_data->dec_now) * d2r;
 			double cos_dec = cos(dec);
@@ -190,8 +191,9 @@ static void search_stars(indigo_device *device) {
 			double cos_dec_dec = cos_mount_dec * cos_dec;
 			double cos_ra_ra = cos(ra - mount_ra);
 			double distance = acos(sin_dec_dec + cos_dec_dec * cos_ra_ra);
-			if (distance > radius)
+			if (distance > radius) {
 				continue;
+			}
 			double sin_ra_ra = sin(ra - mount_ra);
 			double ccc_ss = cos_dec_dec * cos_ra_ra + sin_dec_dec;
 			double sx = cos_dec * sin_ra_ra / ccc_ss;
@@ -203,8 +205,9 @@ static void search_stars(indigo_device *device) {
 				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
 				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
 				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)star_data->mag];
-				if (PRIVATE_DATA->star_count++ == GUIDER_MAX_STARS)
+				if (PRIVATE_DATA->star_count++ == GUIDER_MAX_STARS) {
 					break;
+				}
 			} else {
 				continue;
 			}
@@ -326,8 +329,9 @@ static void box_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	double ideal = sqrt((12 * r * r / 3) + 1);
 	int wl = floor(ideal);
-	if (wl % 2 == 0)
+	if (wl % 2 == 0) {
 		wl--;
+	}
 	int wu = wl + 2;
 	ideal = (12 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
 	int m = round(ideal);
@@ -403,7 +407,7 @@ static void create_frame(indigo_device *device) {
 			{ INDIGO_FITS_STRING, "BAYERPAT", .string = BAYERPAT_ITEM->text.value, "Bayer color pattern" },
 			{ 0 }
 		};
-
+		
 		if (FOCUSER_SETTINGS_FOCUS_ITEM->number.value != 0 && PRIVATE_DATA->file_image_header.signature == INDIGO_RAW_MONO16) {
 			uint16_t *tmp = indigo_safe_malloc(2 * size);
 			blur_image((uint16_t *)PRIVATE_DATA->file_image, tmp, PRIVATE_DATA->file_image_header.width, PRIVATE_DATA->file_image_header.height, FOCUSER_SETTINGS_FOCUS_ITEM->number.value);
@@ -472,7 +476,7 @@ static void create_frame(indigo_device *device) {
 		int offset = (int)CCD_OFFSET_ITEM->number.value;
 		double gamma = CCD_GAMMA_ITEM->number.value;
 		bool light_frame = CCD_FRAME_TYPE_LIGHT_ITEM->sw.value || CCD_FRAME_TYPE_FLAT_ITEM->sw.value;
-
+		
 		if (device == PRIVATE_DATA->imager && light_frame) {
 			for (int j = 0; j < frame_height; j++) {
 				int jj = (frame_top + j) * vertical_bin;
@@ -522,13 +526,15 @@ static void create_frame(indigo_device *device) {
 					int xMax = (int)round(center_x) + 8 / horizontal_bin;
 					int yMax = (int)round(center_y) + 8 / vertical_bin;
 					for (int y = yMax - 16 / vertical_bin; y <= yMax; y++) {
-						if (y < 0 || y >= frame_height)
+						if (y < 0 || y >= frame_height) {
 							continue;
+						}
 						int yw = y * frame_width;
 						double yy = center_y - y;
 						for (int x = xMax - 16 / horizontal_bin; x <= xMax; x++) {
-							if (x < 0 || x >= frame_width)
+							if (x < 0 || x >= frame_width) {
 								continue;
+							}
 							double xx = center_x - x;
 							double v = a * exp(-(xx * xx / 4 + yy * yy / 4));
 							raw[yw + x] += (unsigned short)v;
@@ -541,14 +547,16 @@ static void create_frame(indigo_device *device) {
 				double eclipse_x = (GUIDER_IMAGE_WIDTH_ITEM->number.target / 2 + PRIVATE_DATA->eclipse + x_offset) / horizontal_bin - frame_left;
 				double eclipse_y = (GUIDER_IMAGE_HEIGHT_ITEM->number.target / 2 + PRIVATE_DATA->eclipse + y_offset) / vertical_bin - frame_top;
 				for (int y = 0; y <= GUIDER_IMAGE_HEIGHT_ITEM->number.target / vertical_bin; y++) {
-					if (y < 0 || y >= frame_height)
+					if (y < 0 || y >= frame_height) {
 						continue;
+					}
 					int yw = y * frame_width;
 					double yy = (center_y - y) * vertical_bin;
 					double eclipse_yy = (eclipse_y - y) * vertical_bin;
 					for (int x = 0; x <= GUIDER_IMAGE_WIDTH_ITEM->number.target / horizontal_bin; x++) {
-						if (x < 0 || x >= frame_width)
+						if (x < 0 || x >= frame_width) {
 							continue;
+						}
 						double xx = (center_x - x) * horizontal_bin;
 						double eclipse_xx = (eclipse_x - x) * horizontal_bin;
 						double value = 500000 * exp(-((xx * xx + yy * yy) / 20000.0));
@@ -597,12 +605,13 @@ static void create_frame(indigo_device *device) {
 			for (int i = 0; i < size; i++)
 				raw[i] = (rand() & 0x7F);
 		}
-
+		
 		for (int i = 0; i <= GUIDER_IMAGE_HOTPIXELS_ITEM->number.target; i++) {
 			unsigned x = PRIVATE_DATA->hotpixel_x[i] / horizontal_bin - frame_left;
 			unsigned y = PRIVATE_DATA->hotpixel_y[i] / vertical_bin - frame_top;
-			if (x < 0 || x >= frame_width || y < 0 || y > frame_height)
+			if (x < 0 || x >= frame_width || y < 0 || y > frame_height) {
 				continue;
+			}
 			if (i) {
 				raw[y * frame_width + x] = 0xFFFF;
 			} else {
@@ -660,13 +669,15 @@ static void streaming_timer_callback(indigo_device *device) {
 			if (device != PRIVATE_DATA->dslr || !CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 				create_frame(device);
 			}
-			if (CCD_STREAMING_COUNT_ITEM->number.value > 0)
+			if (CCD_STREAMING_COUNT_ITEM->number.value > 0) {
 				CCD_STREAMING_COUNT_ITEM->number.value--;
+			}
 			indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 		}
 	}
-	if (device == PRIVATE_DATA->dslr)
+	if (device == PRIVATE_DATA->dslr) {
 		indigo_finalize_dslr_video_stream(device);
+	}
 	else
 		indigo_finalize_video_stream(device);
 	if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE)

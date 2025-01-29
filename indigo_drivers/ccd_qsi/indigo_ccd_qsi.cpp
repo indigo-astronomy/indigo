@@ -218,8 +218,9 @@ static indigo_result wheel_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -249,8 +250,9 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		try {
 			bool canGetPower;
@@ -940,8 +942,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 static void remove_all_devices() {
 	for (int i = 0; i < QSICamera::MAXCAMERAS; i++) {
 		indigo_device **device = &devices[i];
-		if (*device == NULL)
+		if (*device == NULL) {
 			continue;
+		}
 		indigo_detach_device(*device);
 		if (((qsi_private_data *)(*device)->private_data)->buffer)
 			free(((qsi_private_data *)(*device)->private_data)->buffer);

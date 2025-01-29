@@ -120,8 +120,9 @@ static int ssag_upload(libusb_device_handle *handle, unsigned char *data) {
 	int rc = 0;
 	for (;;) {
 		unsigned char byte_count = *data;
-		if (byte_count == 0)
+		if (byte_count == 0) {
 			break;
+		}
 		unsigned short address = *(unsigned int *)(data+1);
 		rc = libusb_control_transfer(handle, 0x40, USB_RQ_LOAD_FIRMWARE, address, 0, (unsigned char *)(data+3), byte_count, USB_TIMEOUT);
 		if (rc != byte_count) {
@@ -142,8 +143,9 @@ static void ssag_firmware(libusb_device *dev) {
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
 		rc = rc < 0 ? rc : ssag_upload(handle, bootloader);
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x00);
-		if (rc >=0)
-			  indigo_usleep(ONE_SECOND_DELAY);
+		if (rc >=0) {
+			indigo_usleep(ONE_SECOND_DELAY);
+		}
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
 		rc = rc < 0 ? rc : ssag_upload(handle, firmware);
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
@@ -273,8 +275,9 @@ static void ssag_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -649,8 +652,9 @@ static void process_unplug_event(libusb_device *dev) {
 	}
 	if (private_data != NULL) {
 		libusb_unref_device(dev);
-		if (private_data->buffer)
-			free(private_data->buffer);
+		if (private_data->buffer) {
+  free(private_data->buffer);
+}
 		free(private_data);
 	}
 	pthread_mutex_unlock(&device_mutex);

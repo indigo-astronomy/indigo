@@ -82,8 +82,9 @@ static void mi_report_error(indigo_device *device, indigo_property *property) {
 // -------------------------------------------------------------------------------- INDIGO CCD device implementation
 
 static void exposure_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->downloading = true;
 		CCD_EXPOSURE_ITEM->number.value = 0;
@@ -114,8 +115,9 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (!PRIVATE_DATA->downloading) {
 		int state = gxccd_get_value(PRIVATE_DATA->camera, GV_CHIP_TEMPERATURE, &PRIVATE_DATA->current_temperature);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "gxccd_get_value(..., GV_CHIP_TEMPERATURE, -> %g) -> %d", PRIVATE_DATA->current_temperature, state);
@@ -136,8 +138,9 @@ static void ccd_temperature_callback(indigo_device *device) {
 }
 
 static void ccd_power_util_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (!PRIVATE_DATA->downloading) {
 		float float_value;
 		int state = gxccd_get_value(PRIVATE_DATA->camera, GV_POWER_UTILIZATION, &float_value);
@@ -514,8 +517,9 @@ static indigo_result ccd_detach(indigo_device *device) {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (GUIDER_GUIDE_NORTH_ITEM->number.value != 0 || GUIDER_GUIDE_SOUTH_ITEM->number.value != 0) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;
 		GUIDER_GUIDE_SOUTH_ITEM->number.value = 0;
@@ -838,8 +842,9 @@ static void process_unplug_event(libusb_device *dev) {
 			indigo_detach_device(device);
 			if (device->master_device == device) {
 				mi_private_data *private_data = PRIVATE_DATA;
-				if (private_data->buffer != NULL)
+				if (private_data->buffer != NULL) {
 					free(private_data->buffer);
+				}
 				free(private_data);
 			}
 			free(device);
@@ -867,12 +872,12 @@ static libusb_hotplug_callback_handle callback_handle;
 
 indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *info) {
 	static indigo_driver_action last_action = INDIGO_DRIVER_SHUTDOWN;
-
+	
 	SET_DRIVER_INFO(info, "Moravian Instruments Camera", __FUNCTION__, DRIVER_VERSION, true, last_action);
-
+	
 	if (action == last_action)
 		return INDIGO_OK;
-
+	
 	switch(action) {
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
@@ -883,34 +888,35 @@ indigo_result indigo_ccd_mi(indigo_driver_action action, indigo_driver_info *inf
 			int rc = libusb_hotplug_register_callback(NULL, LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED | LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, LIBUSB_HOTPLUG_ENUMERATE, MI_VID, LIBUSB_HOTPLUG_MATCH_ANY, LIBUSB_HOTPLUG_MATCH_ANY, hotplug_callback, NULL, &callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_register_callback ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 			return rc >= 0 ? INDIGO_OK : INDIGO_FAILED;
-
+			
 		case INDIGO_DRIVER_SHUTDOWN:
 			for (int i = 0; i < MAX_DEVICES; i++)
 				VERIFY_NOT_CONNECTED(devices[i]);
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
-
+			
 			for (int i = MAX_DEVICES - 1; i >=0; i--) {
 				indigo_device *device = devices[i];
 				if (device) {
 					indigo_detach_device(device);
 					if (device->master_device == device) {
 						mi_private_data *private_data = PRIVATE_DATA;
-						if (private_data->buffer != NULL)
+						if (private_data->buffer != NULL) {
 							free(private_data->buffer);
+						}
 						free(private_data);
 					}
 					free(device);
 					devices[i] = NULL;
 				}
 			}
-
+			
 			break;
-
-	case INDIGO_DRIVER_INFO:
-		break;
+			
+		case INDIGO_DRIVER_INFO:
+			break;
 	}
-
+	
 	return INDIGO_OK;
 }

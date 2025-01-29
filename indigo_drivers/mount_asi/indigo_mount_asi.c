@@ -166,8 +166,9 @@ static bool asi_open(indigo_device *device) {
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result == 0)
+			if (result == 0) {
 				break;
+			}
 			if (result < 0) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
@@ -205,8 +206,9 @@ static bool asi_command(indigo_device *device, char *command, char *response, in
 			tv.tv_usec = 5000;
 		}
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
+		if (result == 0) {
 			break;
+		}
 		if (result < 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -224,8 +226,9 @@ static bool asi_command(indigo_device *device, char *command, char *response, in
 	}
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0)
+	if (sleep > 0) {
 		indigo_usleep(sleep);
+	}
 	// read response
 	if (response != NULL) {
 		int index = 0;
@@ -238,16 +241,18 @@ static bool asi_command(indigo_device *device, char *command, char *response, in
 			tv.tv_usec = 100000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
-			if (c == '#')
-				break;
+			if (c == '#') {
+  break;
+}
 			response[index++] = c;
 		}
 		response[index] = 0;

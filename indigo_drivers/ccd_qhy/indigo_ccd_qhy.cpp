@@ -462,8 +462,9 @@ static bool qhy_set_cooler(indigo_device *device, bool status, double target, do
 }
 
 static void qhy_close(indigo_device *device) {
-	if (!device->is_connected)
+	if (!device->is_connected) {
 		return;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Close %s: handle = %p\n", PRIVATE_DATA->dev_sid, PRIVATE_DATA->handle);
@@ -484,8 +485,9 @@ static void qhy_close(indigo_device *device) {
 
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -522,8 +524,9 @@ static void exposure_timer_callback(indigo_device *device) {
 }
 
 static void streaming_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	char *color_string = get_bayer_string(device);
 	indigo_fits_keyword keywords[] = {
 		{ .type = INDIGO_FITS_STRING, .name = "BAYERPAT", {.string = color_string }, .comment = "Bayer color pattern" },
@@ -556,7 +559,9 @@ static void streaming_timer_callback(indigo_device *device) {
 
 // callback called 4s before image download (e.g. to clear vreg or turn off temperature check)
 static void clear_reg_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		PRIVATE_DATA->can_check_temperature = false;
 		indigo_reschedule_timer_with_callback(device, 4, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
@@ -564,8 +569,9 @@ static void clear_reg_timer_callback(indigo_device *device) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		if (qhy_set_cooler(device, CCD_COOLER_ON_ITEM->sw.value, PRIVATE_DATA->target_temperature, &PRIVATE_DATA->current_temperature, &PRIVATE_DATA->cooler_power)) {
 			double diff = PRIVATE_DATA->current_temperature - PRIVATE_DATA->target_temperature;
@@ -595,7 +601,9 @@ static void ccd_temperature_callback(indigo_device *device) {
 static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
 	int res;
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 	int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
@@ -625,8 +633,9 @@ static void guider_timer_callback_ra(indigo_device *device) {
 static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
 	int res;
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
-			return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
 	if (duration > 0) {
 		/* No sync possible here, ControlQHYCCDGuide is blocking. Let us hope is will work... */
@@ -782,8 +791,9 @@ static void ccd_connect_callback(indigo_device *device) {
 				int count = 0;
 				char name[32], label[64];
 				for (int bin = 1; bin <= PRIVATE_DATA->max_bin; bin++) {
-					if (!PRIVATE_DATA->bins_ok[bin-1])
+					if (!PRIVATE_DATA->bins_ok[bin-1]) {
 						continue;
+					}
 					if (bpp_supported(device, 8)) {
 						snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
 						snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
@@ -1153,8 +1163,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 					int count = 0;
 					char name[32], label[64];
 					for (int bin = 1; bin <= PRIVATE_DATA->max_bin; bin++) {
-						if (!PRIVATE_DATA->bins_ok[bin-1])
+						if (!PRIVATE_DATA->bins_ok[bin-1]) {
 							continue;
+						}
 						if (bpp_supported(device, 8)) {
 							snprintf(name, 32, "%s %dx%d", RAW8_NAME, bin, bin);
 							snprintf(label, 64, "%s %dx%d", RAW8_NAME, (int)CCD_FRAME_WIDTH_ITEM->number.value / bin, (int)CCD_FRAME_HEIGHT_ITEM->number.value / bin);
@@ -1377,8 +1388,9 @@ static indigo_result guider_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		guider_connect_callback(device);
 	}
-	if (device == device->master_device)
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
+	}
 
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_guider_detach(device);
@@ -1390,7 +1402,9 @@ static void wheel_timer_callback(indigo_device *device) {
 	int res;
 	char currentpos[64];
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	int checktimes = 0;
 	while(checktimes++ < 90) {
@@ -1574,8 +1588,9 @@ static bool find_plugged_device_sid(char *new_sid) {
 		found = false;
 		for (int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
-			if (device == NULL)
+			if (device == NULL) {
 				continue;
+			}
 			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, sid, MAX_SID_LEN))) {
 				found = true;
 				break;
@@ -1608,7 +1623,9 @@ static int find_unplugged_device_slot() {
 	int count = ScanQHYCCD();
 	for (slot = 0; slot < MAX_DEVICES; slot++) {
 		device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		found = false;
 		for (int i = 0; i < count; i++) {
 			GetQHYCCDId(i, sid);
@@ -1812,8 +1829,9 @@ static void add_all_devices() {
 	int count = ScanQHYCCD();
 	int slot = 0;
 	for (int i = 0; i < count; i++) {
-		if (slot == MAX_DEVICES)
+		if (slot == MAX_DEVICES) {
 			break;
+		}
 		char sid[MAX_SID_LEN] = { 0 };
 		GetQHYCCDId(i, sid);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME,"%d of %d: %s", i + 1 , count, sid);
@@ -1845,8 +1863,9 @@ static void add_all_devices() {
 		device->private_data = private_data;
 		indigo_attach_device(device);
 		devices[slot++] = device;
-		if (slot == MAX_DEVICES)
+		if (slot == MAX_DEVICES) {
 			break;
+		}
 		if (check_st4 == QHYCCD_SUCCESS) {
 			device = (indigo_device*)malloc(sizeof(indigo_device));
 			assert(device != NULL);
@@ -1860,8 +1879,9 @@ static void add_all_devices() {
 			indigo_attach_device(device);
 			devices[slot++] = device;
 		}
-		if (slot == MAX_DEVICES)
+		if (slot == MAX_DEVICES) {
 			break;
+		}
 		if (check_wheel == QHYCCD_SUCCESS) {
 			device = (indigo_device*)malloc(sizeof(indigo_device));
 			assert(device != NULL);
@@ -1882,17 +1902,20 @@ static void add_all_devices() {
 static void remove_all_devices() {
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL)
+		if (device == NULL) {
 			continue;
+		}
 		qhy_close(device);
 		indigo_detach_device(device);
 	}
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL)
+		if (device == NULL) {
 			continue;
-		if (device->master_device == device)
+		}
+		if (device->master_device == device) {
 			free(device->private_data);
+		}
 		free(device);
 		devices[i] = NULL;
 	}

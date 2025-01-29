@@ -209,8 +209,9 @@ static bool pmc8_command(indigo_device *device, char *command, char *response, i
 		tv.tv_sec = 0;
 		tv.tv_usec = 10000;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
+		if (result == 0) {
 			break;
+		}
 		if (result < 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -227,14 +228,15 @@ static bool pmc8_command(indigo_device *device, char *command, char *response, i
 		}
 	}
 	for (int repeat = 10; ; repeat--) {
-	// write command
+		// write command
 		if (PRIVATE_DATA->proto == INDIGO_PROTOCOL_UDP) {
 			send(PRIVATE_DATA->handle, command, strlen(command), 0);
 		} else {
 			indigo_write(PRIVATE_DATA->handle, command, strlen(command));
 		}
-		if (sleep > 0)
+		if (sleep > 0) {
 			indigo_usleep(sleep);
+		}
 		// read response
 		if (response != NULL) {
 			fd_set readout;
@@ -263,8 +265,9 @@ static bool pmc8_command(indigo_device *device, char *command, char *response, i
 						break;
 					}
 					response[bytes_read++] = c;
-					if (c == '!' || c == '%' || c == '#')
+					if (c == '!' || c == '%' || c == '#') {
 						break;
+					}
 				}
 				response[bytes_read] = 0;
 			}
@@ -597,14 +600,16 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		if (!pmc8_point(device, raw_ha, raw_dec)) {
 			MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
-		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value)
-			break;		
+		if (MOUNT_ON_COORDINATES_SET_SYNC_ITEM->sw.value) {
+			break;
+		}		
 		indigo_usleep(1000000);
 		while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			int32_t ra_rate, dec_rate;
 			if (pmc8_get_rate(device, &ra_rate, &dec_rate)) {
-				if (ra_rate <= PRIVATE_DATA->rate[2] && dec_rate == 0)
+				if (ra_rate <= PRIVATE_DATA->rate[2] && dec_rate == 0) {
 					break;
+				}
 			} else {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 			}

@@ -78,8 +78,9 @@ static void mi_report_error(indigo_device *device, indigo_property *property) {
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 static void wheel_goto_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 
 	int slot = WHEEL_SLOT_ITEM->number.target;
 	int res = gxfw_set_filter(PRIVATE_DATA->wheel, slot - 1);
@@ -95,8 +96,9 @@ static void wheel_goto_callback(indigo_device *device) {
 }
 
 static void wheel_reinit_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 
 	int num_filters;
 	int res = gxfw_reinit_filter_wheel(PRIVATE_DATA->wheel, &num_filters);

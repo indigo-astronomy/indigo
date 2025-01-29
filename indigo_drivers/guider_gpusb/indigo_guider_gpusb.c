@@ -53,8 +53,9 @@ typedef struct {
 // -------------------------------------------------------------------------------- INDIGO guider device implementation
 
 static void guider_ra_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	libgpusb_set(PRIVATE_DATA->device_context, 0);
 	if (PRIVATE_DATA->relay_mask & (GPUSB_RA_WEST | GPUSB_RA_EAST)) {
 		GUIDER_GUIDE_EAST_ITEM->number.value = 0;
@@ -66,8 +67,9 @@ static void guider_ra_timer_callback(indigo_device *device) {
 }
 
 static void guider_dec_timer_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	libgpusb_set(PRIVATE_DATA->device_context, 0);
 	if (PRIVATE_DATA->relay_mask & (GPUSB_DEC_NORTH | GPUSB_DEC_SOUTH)) {
 		GUIDER_GUIDE_NORTH_ITEM->number.value = 0;

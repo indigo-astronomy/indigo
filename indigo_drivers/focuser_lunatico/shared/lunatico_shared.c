@@ -272,8 +272,9 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 		tv.tv_sec = 0;
 		tv.tv_usec = 100000;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
+		if (result == 0) {
 			break;
+		}
 		if (result < 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -296,8 +297,9 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0)
+	if (sleep > 0) {
 		usleep(sleep);
+	}
 
 	// read responce
 	if (response != NULL) {
@@ -311,8 +313,9 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 			tv.tv_usec = 100000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			if (PRIVATE_DATA->udp) {
 				result = read(PRIVATE_DATA->handle, response, LUNATICO_CMD_LEN);
 				if (result < 1) {
@@ -330,7 +333,9 @@ static bool lunatico_command(indigo_device *device, const char *command, char *r
 					return false;
 				}
 				response[index++] = c;
-				if (c == '#') break;
+				if (c == '#') {
+					break;
+				}
 			}
 		}
 		response[index] = '\0';
@@ -707,7 +712,9 @@ static bool lunatico_open(indigo_device *device) {
 
 static void lunatico_close(indigo_device *device) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "CLOSE REQUESTED: %d -> %d, count_open = %d", PRIVATE_DATA->handle, DEVICE_CONNECTED, PRIVATE_DATA->count_open);
-	if (!DEVICE_CONNECTED) return;
+	if (!DEVICE_CONNECTED) {
+		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
@@ -2283,8 +2290,12 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 		aux_detach
 	);
 
-	if (port_index >= MAX_PORTS) return;
-	if (device_index >= MAX_DEVICES) return;
+	if (port_index >= MAX_PORTS) {
+		return;
+	}
+	if (device_index >= MAX_DEVICES) {
+		return;
+	}
 	if (device_data[device_index].port[port_index] != NULL) {
 		if ((device_data[device_index].private_data) && (device_data[device_index].private_data->port_data[port_index].device_type == device_type)) {
 				return;
@@ -2320,8 +2331,12 @@ static void create_port_device(int device_index, int port_index, device_type_t d
 
 
 static void delete_port_device(int device_index, int port_index) {
-	if (port_index >= MAX_PORTS) return;
-	if (device_index >= MAX_DEVICES) return;
+	if (port_index >= MAX_PORTS) {
+		return;
+	}
+	if (device_index >= MAX_DEVICES) {
+		return;
+	}
 
 	if (device_data[device_index].port[port_index] != NULL) {
 		indigo_detach_device(device_data[device_index].port[port_index]);
@@ -2331,7 +2346,9 @@ static void delete_port_device(int device_index, int port_index) {
 	}
 
 	for (int i = 0; i < MAX_PORTS; i++) {
-		if (device_data[device_index].port[i] != NULL) return;
+		if (device_data[device_index].port[i] != NULL) {
+			return;
+		}
 	}
 
 	if (device_data[device_index].private_data != NULL) {

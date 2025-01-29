@@ -58,8 +58,9 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static void focuser_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	int target = device->gp_bits & 0x3;
 	if (FOCUSER_MODE_PROPERTY->state == INDIGO_OK_STATE && FOCUSER_MODE_MANUAL_ITEM->sw.value) {

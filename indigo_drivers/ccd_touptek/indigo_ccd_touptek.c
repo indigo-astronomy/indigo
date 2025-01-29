@@ -459,8 +459,9 @@ static void pull_callback(unsigned event, void* callbackCtx) {
 }
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value)
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
 		return;
+	}
 	short temperature;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	HRESULT result = SDK_CALL(get_Temperature)(PRIVATE_DATA->handle, &temperature);
@@ -1401,20 +1402,27 @@ static indigo_result ccd_detach(indigo_device *device) {
 		indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
 		ccd_connect_callback(device);
 	}
-	if (X_CCD_ADVANCED_PROPERTY)
+	if (X_CCD_ADVANCED_PROPERTY) {
 		indigo_release_property(X_CCD_ADVANCED_PROPERTY);
-	if (X_CCD_FAN_PROPERTY)
+	}
+	if (X_CCD_FAN_PROPERTY) {
 		indigo_release_property(X_CCD_FAN_PROPERTY);
-	if (X_CCD_HEATER_PROPERTY)
+	}
+	if (X_CCD_HEATER_PROPERTY) {
 		indigo_release_property(X_CCD_HEATER_PROPERTY);
-	if (X_CCD_CONVERSION_GAIN_PROPERTY)
+	}
+	if (X_CCD_CONVERSION_GAIN_PROPERTY) {
 		indigo_release_property(X_CCD_CONVERSION_GAIN_PROPERTY);
-	if (X_CCD_BIN_MODE_PROPERTY)
+	}
+	if (X_CCD_BIN_MODE_PROPERTY) {
 		indigo_release_property(X_CCD_BIN_MODE_PROPERTY);
-	if (X_CCD_LED_PROPERTY)
+	}
+	if (X_CCD_LED_PROPERTY) {
 		indigo_release_property(X_CCD_LED_PROPERTY);
-	if (device == device->master_device)
+	}
+	if (device == device->master_device) {
 		indigo_global_unlock(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_ccd_detach(device);
 }
@@ -2679,8 +2687,9 @@ static void process_plug_event(indigo_device *unusued) {
 				free(guider);
 			}
 			indigo_detach_device(device);
-			if (device->private_data)
+			if (device->private_data) {
 				free(device->private_data);
+			}
 			free(device);
 			devices[i] = NULL;
 		}
@@ -2703,8 +2712,9 @@ static void remove_all_devices() {
 				free(guider);
 			}
 			indigo_detach_device(device);
-			if (device->private_data)
+			if (device->private_data) {
 				free(device->private_data);
+			}
 			free(device);
 			devices[i] = NULL;
 		}

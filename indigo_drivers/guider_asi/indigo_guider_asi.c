@@ -100,7 +100,9 @@ static bool asi_open(indigo_device *device) {
 
 static void asi_close(indigo_device *device) {
 
-	if (!device->is_connected) return;
+	if (!device->is_connected) {
+		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	USB2ST4Close(PRIVATE_DATA->dev_id);
@@ -113,7 +115,9 @@ static void guider_timer_callback_ra(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_ra = NULL;
 	int id = PRIVATE_DATA->dev_id;
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	USB2ST4PulseGuide(id, USB2ST4_EAST, false);
@@ -135,7 +139,9 @@ static void guider_timer_callback_dec(indigo_device *device) {
 	PRIVATE_DATA->guider_timer_dec = NULL;
 	int id = PRIVATE_DATA->dev_id;
 
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	USB2ST4PulseGuide(id, USB2ST4_SOUTH, false);
@@ -337,7 +343,9 @@ static int find_available_device_slot() {
 static int find_device_slot(int id) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA->dev_id == id) return slot;
 	}
 	return -1;
@@ -444,8 +452,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
 			for (int i = 0; i < asi_id_count; i++) {
-				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct)
+				if (descriptor.idVendor != ASI_VENDOR_ID || asi_products[i] != descriptor.idProduct) {
 					continue;
+				}
 				indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			}
 			break;
@@ -464,7 +473,9 @@ static void remove_all_devices() {
 	asi_private_data *pds[USB2ST4_ID_MAX] = { NULL };
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device *device = devices[i];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (PRIVATE_DATA) pds[PRIVATE_DATA->dev_id] = PRIVATE_DATA; /* preserve pointers to private data */
 		indigo_detach_device(device);
 		free(device);
@@ -472,7 +483,9 @@ static void remove_all_devices() {
 	}
 	/* free private data */
 	for(i = 0; i < USB2ST4_ID_MAX; i++) {
-		if (pds[i]) free(pds[i]);
+		if (pds[i]) {
+			free(pds[i]);
+		}
 	}
 	for(i = 0; i < USB2ST4_ID_MAX; i++)
 		connected_ids[i] = false;

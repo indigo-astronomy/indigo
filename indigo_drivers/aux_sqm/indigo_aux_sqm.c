@@ -101,8 +101,9 @@ static void sqm_close(indigo_device *device) {
 // -------------------------------------------------------------------------------- async handlers
 
 static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	char response[RESPONSE_LENGTH] = { 0 }, *pnt;
 	if (sqm_command(device, "rx", response)) {
 		char *tok = strtok_r(response, ",", &pnt);

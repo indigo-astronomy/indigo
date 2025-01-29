@@ -302,8 +302,9 @@ static bool meade_open(indigo_device *device) {
 			FD_ZERO(&readout);
 			FD_SET(PRIVATE_DATA->handle, &readout);
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result == 0)
+			if (result == 0) {
 				break;
+			}
 			if (result < 0) {
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
@@ -340,10 +341,11 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 		} else {
 			tv.tv_usec = 5000;
 		}
-
+		
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
+		if (result == 0) {
 			break;
+		}
 		if (result < 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -361,8 +363,9 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 	}
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0)
+	if (sleep > 0) {
 		indigo_usleep(sleep);
+	}
 	// read response
 	if (response != NULL) {
 		int index = 0;
@@ -375,16 +378,18 @@ static bool meade_command(indigo_device *device, char *command, char *response, 
 			tv.tv_usec = 100000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
-			if (c == '#')
+			if (c == '#') {
 				break;
+			}
 			response[index++] = c;
 		}
 		response[index] = 0;
@@ -407,8 +412,9 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 		tv.tv_sec = 0;
 		tv.tv_usec = 100000;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
+		if (result == 0) {
 			break;
+		}
 		if (result < 0) {
 			pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 			return false;
@@ -426,8 +432,9 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 	}
 	// write command
 	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (sleep > 0)
+	if (sleep > 0) {
 		indigo_usleep(sleep);
+	}
 	// read response
 	if (response != NULL) {
 		int index = 0;
@@ -440,16 +447,18 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 			tv.tv_usec = 100000;
 			timeout = 0;
 			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0)
+			if (result <= 0) {
 				break;
+			}
 			result = read(PRIVATE_DATA->handle, &c, 1);
 			if (result < 1) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 				pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 				return false;
 			}
-			if (c == '#')
+			if (c == '#') {
 				break;
+			}
 			response[index++] = c;
 		}
 		response[index] = 0;
@@ -467,8 +476,9 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 		tv.tv_usec = 100000;
 		timeout = 0;
 		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result <= 0)
+		if (result <= 0) {
 			break;
+		}
 		result = read(PRIVATE_DATA->handle, &c, 1);
 		if (result < 1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
@@ -477,8 +487,9 @@ static bool meade_command_progress(indigo_device *device, char *command, char *r
 		}
 		if (c < 0)
 			c = ':';
-		if (c == '#')
+		if (c == '#') {
 			break;
+		}
 		progress[index++] = c;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Progress width: %d", index);
@@ -631,8 +642,9 @@ static bool meade_get_utc(indigo_device *device, time_t *secs, int *utc_offset) 
 
 static void meade_get_site(indigo_device *device, double *latitude, double *longitude) {
 	char response[128];
-	if (MOUNT_TYPE_STARGO2_ITEM->sw.value)
+	if (MOUNT_TYPE_STARGO2_ITEM->sw.value) {
 		return;
+	}
 	if (meade_command(device, ":Gt#", response, sizeof(response), 0)) {
 		if (MOUNT_TYPE_STARGO_ITEM->sw.value)
 			str_replace(response, 't', '*');
@@ -1185,8 +1197,9 @@ static bool meade_focus_rel(indigo_device *device, bool slow, int steps) {
 			indigo_usleep(100000);
 			if (!meade_command(device, ":FT#", response, sizeof((response)), 0))
 				return false;
-			if (*response == 'S')
+			if (*response == 'S') {
 				break;
+			}
 		}
 	}
 	return false;
@@ -1756,32 +1769,45 @@ static void meade_init_mount(indigo_device *device) {
 	NYX_WIFI_RESET_PROPERTY->hidden = true;
 	NYX_LEVELER_PROPERTY->hidden = true;
 	memset(PRIVATE_DATA->prev_state, 0, sizeof(PRIVATE_DATA->prev_state));
-	if (MOUNT_TYPE_MEADE_ITEM->sw.value)
+	if (MOUNT_TYPE_MEADE_ITEM->sw.value) {
 		meade_init_meade_mount(device);
-	else if (MOUNT_TYPE_EQMAC_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_EQMAC_ITEM->sw.value) {
 		meade_init_eqmac_mount(device);
-	else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_10MICRONS_ITEM->sw.value) {
 		meade_init_10microns_mount(device);
-	else if (MOUNT_TYPE_GEMINI_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_GEMINI_ITEM->sw.value) {
 		meade_init_gemini_mount(device);
-	else if (MOUNT_TYPE_STARGO_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_STARGO_ITEM->sw.value) {
 		meade_init_stargo_mount(device);
-	else if (MOUNT_TYPE_STARGO2_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_STARGO2_ITEM->sw.value) {
 		meade_init_stargo2_mount(device);
-	else if (MOUNT_TYPE_AP_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_AP_ITEM->sw.value) {
 		meade_init_ap_mount(device);
-	else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
 		meade_init_onstep_mount(device);
-	else if (MOUNT_TYPE_AGOTINO_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_AGOTINO_ITEM->sw.value) {
 		meade_init_agotino_mount(device);
-	else if (MOUNT_TYPE_ZWO_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_ZWO_ITEM->sw.value) {
 		meade_init_zwo_mount(device);
-	else if (MOUNT_TYPE_NYX_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 		meade_init_nyx_mount(device);
-	else if (MOUNT_TYPE_OAT_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_OAT_ITEM->sw.value) {
 		meade_init_oat_mount(device);
-	else if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value)
+	}
+	else if (MOUNT_TYPE_TEEN_ASTRO_ITEM->sw.value) {
 		meade_init_teenastro_mount(device);
+	}
 	else
 		meade_init_generic_mount(device);
 }
@@ -3388,8 +3414,9 @@ static void focuser_connect_callback(indigo_device *device) {
 			result = meade_open(device->master_device);
 		}
 		if (result) {
-			if (MOUNT_TYPE_DETECT_ITEM->sw.value)
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				meade_detect_mount(device->master_device);
+			}
 			if (MOUNT_TYPE_MEADE_ITEM->sw.value || MOUNT_TYPE_AP_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value || MOUNT_TYPE_OAT_ITEM->sw.value) {
 				FOCUSER_SPEED_ITEM->number.min = FOCUSER_SPEED_ITEM->number.value = FOCUSER_SPEED_ITEM->number.target = 1;
 				FOCUSER_SPEED_ITEM->number.max = 2;
@@ -3397,8 +3424,8 @@ static void focuser_connect_callback(indigo_device *device) {
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 				if (PRIVATE_DATA->is_network && !PRIVATE_DATA->keep_alive_timer) {
 					/* In case of a network connection and there is no mount connected (to create chatter)
-					the commection is closed in several seconds. So we send :GVP# on a regular basis
-					to keep the connection alive */
+					 the commection is closed in several seconds. So we send :GVP# on a regular basis
+					 to keep the connection alive */
 					indigo_set_timer(device, 0, keep_alive_callback, &PRIVATE_DATA->keep_alive_timer);
 				}
 			} else {
@@ -3530,8 +3557,9 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 }
 
 static void aux_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	char response[128];
 	bool updateWeather = false;
 	bool updateInfo = false;
@@ -3579,8 +3607,9 @@ static void aux_connect_callback(indigo_device *device) {
 			result = meade_open(device->master_device);
 		}
 		if (result) {
-			if (MOUNT_TYPE_DETECT_ITEM->sw.value)
+			if (MOUNT_TYPE_DETECT_ITEM->sw.value) {
 				meade_detect_mount(device->master_device);
+			}
 			if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 				indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);

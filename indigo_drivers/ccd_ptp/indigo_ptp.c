@@ -1115,8 +1115,9 @@ bool ptp_get_event(indigo_device *device) {
 			if ((eventData = delegate.events.lastObject))
 				[delegate.events removeLastObject];
 		}
-		if (eventData == nil)
+		if (eventData == nil) {
 			break;
+		}
 		[eventData getBytes:&event length:sizeof(event)];
 		PTP_DUMP_CONTAINER(&event);
 		PRIVATE_DATA->handle_event(device, event.code, event.payload.params);
@@ -1163,8 +1164,9 @@ bool ptp_open(indigo_device *device) {
 	for (int config = 0; config < device_descriptor.bNumConfigurations; config++) {
 		rc = libusb_get_config_descriptor(dev, config, &config_descriptor);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_config_descriptor(%d) -> %s", config, rc < 0 ? libusb_error_name(rc) : "OK");
-		if (rc < 0)
+		if (rc < 0) {
 			break;
+		}
 		for (int iface = 0; iface < config_descriptor->bNumInterfaces; iface++) {
 			interface = config_descriptor->interface + iface;
 			if (interface->altsetting->bInterfaceClass == 0x06 && interface->altsetting->bInterfaceSubClass == 0x01 && interface->altsetting->bInterfaceProtocol == 0x01) {
@@ -1173,8 +1175,9 @@ bool ptp_open(indigo_device *device) {
 			}
 			interface = NULL;
 		}
-		if (interface)
+		if (interface) {
 			break;
+		}
 		libusb_free_config_descriptor(config_descriptor);
 		config_descriptor = NULL;
 	}
@@ -1221,8 +1224,9 @@ bool ptp_open(indigo_device *device) {
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "PTP EP OUT = %02x IN = %02x INT = %02x", PRIVATE_DATA->ep_out, PRIVATE_DATA->ep_in, PRIVATE_DATA->ep_int);
 	}
-	if (config_descriptor)
+	if (config_descriptor) {
 		libusb_free_config_descriptor(config_descriptor);
+	}
 	if (rc < 0 && PRIVATE_DATA->handle) {
 			libusb_close(PRIVATE_DATA->handle);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close()");
@@ -1296,8 +1300,9 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 			pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 			return false;
 		}
-		if (length == 0)
+		if (length == 0) {
 			continue;
+		}
 		break;
 	}
 	PTP_DUMP_CONTAINER(&response);
@@ -1333,8 +1338,9 @@ bool ptp_transaction(indigo_device *device, uint16_t code, int count, uint32_t o
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
 				return false;
 			}
-			if (length == 0)
+			if (length == 0) {
 				continue;
+			}
 			break;
 		}
 		PTP_DUMP_CONTAINER(&response);
@@ -1568,8 +1574,9 @@ bool ptp_refresh_property(indigo_device *device, ptp_property *property) {
 			ptp_decode_property(buffer, size, device, property);
 			result = true;
 		}
-		if (buffer)
+		if (buffer) {
 			free(buffer);
+		}
 	}
 	return result;
 }
@@ -1591,16 +1598,18 @@ bool ptp_initialise(indigo_device *device) {
 			indigo_log("injected:");
 			PTP_DUMP_DEVICE_INFO();
 		}
-		if (buffer)
+		if (buffer) {
 			free(buffer);
+		}
 		buffer = NULL;
 		uint16_t *properties = PRIVATE_DATA->info_properties_supported;
 		
 #ifndef UNKNOWN_GROUP
 		for (int i = 0; properties[i]; i++) {
 			uint16_t code = properties[i];
-			if (code == ptp_property_DateTime)
+			if (code == ptp_property_DateTime) {
 				continue;
+			}
 			char *name = PRIVATE_DATA->property_code_name(code);
 			if (!strncmp(name, "CCD_", 4))
 				continue;
@@ -1620,8 +1629,9 @@ bool ptp_initialise(indigo_device *device) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, properties[i], &buffer, &size)) {
 				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
 			}
-			if (buffer)
+			if (buffer) {
 				free(buffer);
+			}
 			buffer = NULL;
 		}
 		if (PRIVATE_DATA->initialise == ptp_initialise) {
@@ -1629,8 +1639,9 @@ bool ptp_initialise(indigo_device *device) {
 		}
 		return true;
 	}
-	if (buffer)
+	if (buffer) {
 		free(buffer);
+	}
 	return false;
 }
 
@@ -1658,8 +1669,9 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 							}
 						} else {
 							indigo_process_dslr_image(device, buffer, size, ext, false);
-							if (PRIVATE_DATA->image_buffer)
+							if (PRIVATE_DATA->image_buffer) {
 								free(PRIVATE_DATA->image_buffer);
+							}
 							PRIVATE_DATA->image_buffer = buffer;
 							buffer = NULL;
 						}
@@ -1667,8 +1679,9 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 							ptp_transaction_1_0(device, ptp_operation_DeleteObject, params[0]);
 					}
 				}
-				if (buffer)
+				if (buffer) {
 					free(buffer);
+				}
 			}
 			PRIVATE_DATA->image_added = true;
 			return true;
@@ -1686,8 +1699,9 @@ bool ptp_handle_event(indigo_device *device, ptp_event_code code, uint32_t *para
 					break;
 				}
 			}
-			if (buffer)
+			if (buffer) {
 				free(buffer);
+			}
 		}
 		default:
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s (%04x)", PRIVATE_DATA->event_code_label(code), code);

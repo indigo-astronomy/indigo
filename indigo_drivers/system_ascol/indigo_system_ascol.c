@@ -1059,7 +1059,9 @@ static bool mount_handle_abort_motion(indigo_device *device) {
 
 
 static void ascol_device_close(indigo_device *device) {
-	if (!device->is_connected) return;
+	if (!device->is_connected) {
+		return;
+	}
 
 	pthread_mutex_lock(&PRIVATE_DATA->net_mutex);
 	if (--PRIVATE_DATA->count_open == 0) {
@@ -1931,7 +1933,9 @@ static indigo_result mount_detach(indigo_device *device) {
 	indigo_release_property(T1_SPEED_PROPERTY);
 	indigo_release_property(T2_SPEED_PROPERTY);
 	indigo_release_property(T3_SPEED_PROPERTY);
-	if (PRIVATE_DATA->dev_id > 0) ascol_device_close(device);
+	if (PRIVATE_DATA->dev_id > 0) {
+		ascol_device_close(device);
+	}
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_mount_detach(device);
 }

@@ -153,8 +153,9 @@ static bool nexstaraux_command(indigo_device *device, targets src, targets dst, 
 		while (true) {
 			for (int i = 0; i < 10; i++) {
 				if (read(PRIVATE_DATA->handle, reply, 1) == 1) {
-					if (*reply == 0x3b)
+					if (*reply == 0x3b) {
 						break;
+					}
 				} else {
 					INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> Failed", PRIVATE_DATA->handle);
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
@@ -412,15 +413,17 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 		while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 			indigo_usleep(1000000);
 			if (nexstaraux_command(device, APP, AZM, MC_SLEW_DONE, NULL, 0, reply)) {
-				if (reply[5] == 0x00)
+				if (reply[5] == 0x00) {
 					continue;
+				}
 			} else {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				break;
 			}
 			if (nexstaraux_command(device, APP, ALT, MC_SLEW_DONE, NULL, 0, reply)) {
-				if (reply[5] == 0x00)
+				if (reply[5] == 0x00) {
 					continue;
+				}
 			} else {
 				MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 				break;
@@ -433,15 +436,17 @@ static void mount_equatorial_coordinates_handler(indigo_device *device) {
 			while (MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state == INDIGO_BUSY_STATE) {
 				indigo_usleep(1000000);
 				if (nexstaraux_command(device, APP, AZM, MC_SLEW_DONE, NULL, 0, reply)) {
-					if (reply[5] == 0x00)
+					if (reply[5] == 0x00) {
 						continue;
+					}
 				} else {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
 				}
 				if (nexstaraux_command(device, APP, ALT, MC_SLEW_DONE, NULL, 0, reply)) {
-					if (reply[5] == 0x00)
+					if (reply[5] == 0x00) {
 						continue;
+					}
 				} else {
 					MOUNT_EQUATORIAL_COORDINATES_PROPERTY->state = INDIGO_ALERT_STATE;
 					break;
@@ -490,15 +495,17 @@ static void mount_park_handler(indigo_device *device) {
 	while (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE) {
 		indigo_usleep(1000000);
 		if (nexstaraux_command(device, APP, AZM, MC_SLEW_DONE, NULL, 0, reply)) {
-			if (reply[5] == 0x00)
+			if (reply[5] == 0x00) {
 				continue;
+			}
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 			break;
 		}
 		if (nexstaraux_command(device, APP, ALT, MC_SLEW_DONE, NULL, 0, reply)) {
-			if (reply[5] == 0x00)
+			if (reply[5] == 0x00) {
 				continue;
+			}
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
 			break;

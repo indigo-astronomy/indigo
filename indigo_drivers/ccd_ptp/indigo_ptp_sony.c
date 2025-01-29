@@ -1373,15 +1373,17 @@ bool ptp_sony_initialise(indigo_device *device) {
 				source += sizeof(uint32_t);
 				for (int i = 0; i < count; i++) {
 					source = ptp_sony_decode_property(source, device);
-					if (source == NULL)
+					if (source == NULL) {
 						break;
+					}
 				}
 				free(buffer);
 				buffer = NULL;
 			}
 		}
-		if (buffer)
+		if (buffer) {
 			free(buffer);
+		}
 	}
 	indigo_set_timer(device, 0.5, ptp_check_event, &PRIVATE_DATA->event_checker);
 	struct timespec now;
@@ -1401,8 +1403,9 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 				source += sizeof(uint32_t);
 				for (int i = 0; i < count; i++) {
 					source = ptp_sony_decode_property(source, device);
-					if (source == NULL)
+					if (source == NULL) {
 						break;
+					}
 				}
 			}
 			free(buffer);
@@ -1430,15 +1433,17 @@ bool ptp_sony_handle_event(indigo_device *device, ptp_event_code code, uint32_t 
 						ptp_sony_handle_event(device, code, params);
 					} else {
 						indigo_process_dslr_image(device, buffer, size, ext, false);
-						if (PRIVATE_DATA->image_buffer)
+						if (PRIVATE_DATA->image_buffer) {
 							free(PRIVATE_DATA->image_buffer);
+						}
 						PRIVATE_DATA->image_buffer = buffer;
 						buffer = NULL;
 					}
 				}
 			}
-			if (buffer)
+			if (buffer) {
 				free(buffer);
+			}
 			return true;
 		}
 	}
@@ -1511,8 +1516,9 @@ bool ptp_sony_exposure(indigo_device *device) {
 			while (true) {
 				indigo_usleep(100000);
 				clock_gettime(CLOCK_REALTIME, &now);
-				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3)
+				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3) {
 					break;
+				}
 				if (PRIVATE_DATA->abort_capture)
 					return false;
 			}
@@ -1617,8 +1623,9 @@ bool ptp_sony_liveview(indigo_device *device) {
 			while (true) {
 				indigo_usleep(100000);
 				clock_gettime(CLOCK_REALTIME, &now);
-				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3)
+				if (now.tv_sec - SONY_PRIVATE_DATA->connection_time > 3) {
 					break;
+				}
 				if (PRIVATE_DATA->abort_capture)
 					return false;
 			}
@@ -1642,8 +1649,9 @@ bool ptp_sony_liveview(indigo_device *device) {
 								indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 							}
 							indigo_process_dslr_image(device, start, (int)(end - start), ".jpeg", true);
-							if (PRIVATE_DATA->image_buffer)
+							if (PRIVATE_DATA->image_buffer) {
 								free(PRIVATE_DATA->image_buffer);
+							}
 							PRIVATE_DATA->image_buffer = buffer;
 							buffer = NULL;
 							CCD_STREAMING_COUNT_ITEM->number.value--;
@@ -1667,8 +1675,9 @@ bool ptp_sony_liveview(indigo_device *device) {
 				return false;
 			}
 		}
-		if (buffer)
+		if (buffer) {
 			free(buffer);
+		}
 		buffer = NULL;
 		indigo_usleep(100000);
 	}

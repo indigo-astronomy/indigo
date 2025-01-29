@@ -168,8 +168,9 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 }
 
 static void focuser_timer_callback(indigo_device *device) {
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	char response[16];
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (prodigy_command(device, "T", response, sizeof(response))) {

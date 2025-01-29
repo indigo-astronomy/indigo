@@ -946,8 +946,9 @@ void synscan_wait_for_axis_stopped(indigo_device* device, enum AxisID axis, bool
 	long axisStatus;
 	while (true) {
 		//  Abort if needed
-		if (abort && *abort)
+		if (abort && *abort) {
 			break;
+		}
 
 		//  Poll the axis status
 		if (!synscan_motor_status(device, axis, &axisStatus))

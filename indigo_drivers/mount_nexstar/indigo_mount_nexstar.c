@@ -133,8 +133,9 @@ static void position_timer_callback(indigo_device *device) {
 	double ra, dec, lon, lat;
 	char side_of_pier = 0;
 	int dev_id = PRIVATE_DATA->dev_id;
-	if (dev_id < 0)
+	if (dev_id < 0) {
 		return;
+	}
 
 	if (!PRIVATE_DATA->guiding_in_progress) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
@@ -258,8 +259,9 @@ static void position_timer_callback(indigo_device *device) {
 static void park_timer_callback(indigo_device *device) {
 	int res;
 	int dev_id = PRIVATE_DATA->dev_id;
-	if (dev_id < 0)
+	if (dev_id < 0) {
 		return;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (tc_goto_in_progress(dev_id)) {
 		MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -679,8 +681,9 @@ static void mount_handle_slew_rate(indigo_device *device) {
 static void mount_handle_motion_ns(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res = RC_OK;
-	if (PRIVATE_DATA->slew_rate == 0)
+	if (PRIVATE_DATA->slew_rate == 0) {
 		mount_handle_slew_rate(device);
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (MOUNT_MOTION_NORTH_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_DE, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);
@@ -703,8 +706,9 @@ static void mount_handle_motion_ns(indigo_device *device) {
 static void mount_handle_motion_ne(indigo_device *device) {
 	int dev_id = PRIVATE_DATA->dev_id;
 	int res = RC_OK;
-	if (PRIVATE_DATA->slew_rate == 0)
+	if (PRIVATE_DATA->slew_rate == 0) {
 		mount_handle_slew_rate(device);
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	if (MOUNT_MOTION_EAST_ITEM->sw.value) {
 		res = tc_slew_fixed(dev_id, TC_AXIS_RA, TC_DIR_POSITIVE, PRIVATE_DATA->slew_rate);

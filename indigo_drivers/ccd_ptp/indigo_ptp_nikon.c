@@ -727,8 +727,9 @@ static void ptp_check_event(indigo_device *device) {
 				ptp_nikon_handle_event(device, code, &param);
 			}
 		}
-		if (buffer)
+		if (buffer) {
 			free(buffer);
+		}
 	} else {
 		uint32_t size = 0;
 		ptp_get_event(device);
@@ -736,8 +737,9 @@ static void ptp_check_event(indigo_device *device) {
 			if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, PRIVATE_DATA->info_properties_supported[i], &buffer, &size)) {
 				ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + i);
 			}
-			if (buffer)
+			if (buffer) {
 				free(buffer);
+			}
 			buffer = NULL;
 		}
 	}
@@ -793,21 +795,24 @@ bool ptp_nikon_initialise(indigo_device *device) {
 					skip = false;
 				}
 	#endif
-				if (skip)
-					continue;				
+				if (skip) {
+					continue;
+				}
 				target[index] = code;
 				if (ptp_transaction_1_0_i(device, ptp_operation_GetDevicePropDesc, target[index], &buffer, &size)) {
 					ptp_decode_property(buffer, size, device, PRIVATE_DATA->properties + index);
 				}
-				if (buffer)
+				if (buffer) {
 					free(buffer);
+				}
 				buffer = NULL;
 				index++;
 			}
 			target[index] = 0;
 		}
-		if (buffer)
+		if (buffer) {
 			free(buffer);
+		}
 		indigo_log("vendor:");
 		PTP_DUMP_DEVICE_INFO();
 	}
@@ -1185,8 +1190,9 @@ bool ptp_nikon_exposure(indigo_device *device) {
 			indigo_update_property(device, CCD_PREVIEW_IMAGE_PROPERTY, NULL);
 		}
 		while (true) {
-			if (PRIVATE_DATA->abort_capture || PRIVATE_DATA->image_added)
+			if (PRIVATE_DATA->abort_capture || PRIVATE_DATA->image_added) {
 				break;
+			}
 			indigo_usleep(100000);
 		}
 	}
@@ -1231,8 +1237,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 					}
 					if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 						indigo_process_dslr_image(device, (void *)buffer + 64, size - 64, ".jpeg", true);
-						if (PRIVATE_DATA->image_buffer)
+						if (PRIVATE_DATA->image_buffer) {
 							free(PRIVATE_DATA->image_buffer);
+						}
 						PRIVATE_DATA->image_buffer = buffer;
 						buffer = NULL;
 					}
@@ -1251,8 +1258,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 					}
 					if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 						indigo_process_dslr_image(device, (void *)buffer + 128, size - 128, ".jpeg", true);
-						if (PRIVATE_DATA->image_buffer)
+						if (PRIVATE_DATA->image_buffer) {
 							free(PRIVATE_DATA->image_buffer);
+						}
 						PRIVATE_DATA->image_buffer = buffer;
 						buffer = NULL;
 					}
@@ -1271,8 +1279,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 					}
 					if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 						indigo_process_dslr_image(device, (void *)buffer + 384, size - 384, ".jpeg", true);
-						if (PRIVATE_DATA->image_buffer)
+						if (PRIVATE_DATA->image_buffer) {
 							free(PRIVATE_DATA->image_buffer);
+						}
 						PRIVATE_DATA->image_buffer = buffer;
 						buffer = NULL;
 					}
@@ -1282,8 +1291,9 @@ bool ptp_nikon_liveview(indigo_device *device) {
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				}
 			}
-			if (buffer)
+			if (buffer) {
 				free(buffer);
+			}
 			buffer = NULL;
 			indigo_usleep(100000);
 		}
@@ -1331,16 +1341,18 @@ bool ptp_nikon_focus(indigo_device *device, int steps) {
 					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 1, steps);
 				else
 					result = ptp_transaction_2_0(device, ptp_operation_nikon_MfDrive, 2, -steps);
-				if (result)
+				if (result) {
 					break;
+				}
 				indigo_usleep(10000);
 			}
 		}
 		if (temporary_lv) {
 			for (int i = 0; i < 100; i++) {
 				result = ptp_transaction_0_0(device, ptp_operation_nikon_EndLiveView);
-				if (result)
+				if (result) {
 					break;
+				}
 				indigo_usleep(10000);
 			}
 		}

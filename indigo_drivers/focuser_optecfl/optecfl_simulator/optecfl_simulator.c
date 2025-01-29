@@ -57,8 +57,9 @@ int sim_read_line(int handle, char *buffer, int length) {
 			if (c == '<')
 				total_bytes = 0;
 			buffer[total_bytes++] = c;
-			if (c == '>')
+			if (c == '>') {
 				break;
+			}
 		}
 	}
 	buffer[total_bytes] = '\0';

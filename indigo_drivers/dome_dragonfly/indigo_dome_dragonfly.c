@@ -1081,8 +1081,12 @@ static void create_port_device(int p_device_index, int l_device_index, device_ty
 		dome_detach
 	);
 
-	if (l_device_index >= MAX_LOGICAL_DEVICES) return;
-	if (p_device_index >= MAX_PHYSICAL_DEVICES) return;
+	if (l_device_index >= MAX_LOGICAL_DEVICES) {
+		return;
+	}
+	if (p_device_index >= MAX_PHYSICAL_DEVICES) {
+		return;
+	}
 	if (device_data[p_device_index].device[l_device_index] != NULL) {
 		if ((device_data[p_device_index].private_data) && (device_data[p_device_index].private_data->device_data[l_device_index].device_type == device_type)) {
 				return;
@@ -1114,8 +1118,12 @@ static void create_port_device(int p_device_index, int l_device_index, device_ty
 
 
 static void delete_port_device(int p_device_index, int l_device_index) {
-	if (l_device_index >= MAX_LOGICAL_DEVICES) return;
-	if (p_device_index >= MAX_PHYSICAL_DEVICES) return;
+	if (l_device_index >= MAX_LOGICAL_DEVICES) {
+		return;
+	}
+	if (p_device_index >= MAX_PHYSICAL_DEVICES) {
+		return;
+	}
 
 	if (device_data[p_device_index].device[l_device_index] != NULL) {
 		indigo_detach_device(device_data[p_device_index].device[l_device_index]);
@@ -1125,7 +1133,9 @@ static void delete_port_device(int p_device_index, int l_device_index) {
 	}
 
 	for (int i = 0; i < MAX_LOGICAL_DEVICES; i++) {
-		if (device_data[p_device_index].device[i] != NULL) return;
+		if (device_data[p_device_index].device[i] != NULL) {
+			return;
+		}
 	}
 
 	if (device_data[p_device_index].private_data != NULL) {

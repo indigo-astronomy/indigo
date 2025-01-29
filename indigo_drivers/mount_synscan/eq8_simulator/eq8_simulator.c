@@ -418,10 +418,12 @@ int sim_read_line(int handle, char *buffer, int length) {
 	long total_bytes = 0;
 	while (total_bytes < length) {
 		long bytes_read = read(handle, &c, 1);
-		if (bytes_read <= 0)
+		if (bytes_read <= 0) {
 			continue;
-		if (c == '\r')
+		}
+		if (c == '\r') {
 			break;
+		}
 		buffer[total_bytes++] = c;
 	}
 	buffer[total_bytes] = '\0';

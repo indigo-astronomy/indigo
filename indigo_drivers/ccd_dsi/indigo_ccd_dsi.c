@@ -183,8 +183,10 @@ static bool camera_abort_exposure(indigo_device *device) {
 
 
 static void camera_close(indigo_device *device) {
-	if (!device->is_connected) return;
-
+	if (!device->is_connected) {
+		return;
+	}
+	
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	dsi_close_camera(PRIVATE_DATA->dsi);
 	indigo_global_unlock(device);
@@ -200,7 +202,9 @@ static void camera_close(indigo_device *device) {
 // callback for image download
 static void exposure_timer_callback(indigo_device *device) {
 	PRIVATE_DATA->can_check_temperature = true;
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (CCD_EXPOSURE_PROPERTY->state == INDIGO_BUSY_STATE) {
 		CCD_EXPOSURE_ITEM->number.value = 0;
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -209,28 +213,28 @@ static void exposure_timer_callback(indigo_device *device) {
 			const char *color_string = dsi_get_bayer_pattern(PRIVATE_DATA->dsi);
 			if (color_string[0] != '\0') {
 				/* NOTE: There is no need to take care about the offsets,
-				   the SDK takes care the image to be in the correct bayer pattern */
+				 the SDK takes care the image to be in the correct bayer pattern */
 				indigo_fits_keyword keywords[] = {
 					{ INDIGO_FITS_STRING, "BAYERPAT", .string = color_string, "Bayer color pattern" },
 					{ 0 }
 				};
 				indigo_process_image(
-					device,
-					PRIVATE_DATA->buffer,
-					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
-					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
-					DEFAULT_BPP,
-					true, true, keywords, false
-				);
+														 device,
+														 PRIVATE_DATA->buffer,
+														 (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
+														 (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
+														 DEFAULT_BPP,
+														 true, true, keywords, false
+														 );
 			} else {
 				indigo_process_image(
-					device,
-					PRIVATE_DATA->buffer,
-					(int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
-					(int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
-					DEFAULT_BPP,
-					true, true, NULL, false
-				);
+														 device,
+														 PRIVATE_DATA->buffer,
+														 (int)(CCD_FRAME_WIDTH_ITEM->number.value / binning),
+														 (int)(CCD_FRAME_HEIGHT_ITEM->number.value / binning),
+														 DEFAULT_BPP,
+														 true, true, NULL, false
+														 );
 			}
 			CCD_EXPOSURE_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
@@ -245,7 +249,9 @@ static void exposure_timer_callback(indigo_device *device) {
 
 
 static void ccd_temperature_callback(indigo_device *device) {
-	if (!CONNECTION_CONNECTED_ITEM->sw.value) return;
+	if (!CONNECTION_CONNECTED_ITEM->sw.value) {
+		return;
+	}
 	if (PRIVATE_DATA->can_check_temperature) {
 		// check temperature;
 		CCD_TEMPERATURE_ITEM->number.value = dsi_get_temperature(PRIVATE_DATA->dsi);
@@ -499,20 +505,22 @@ static bool find_plugged_device_sid(char *new_sid) {
 	int i;
 	bool found = false;
 	dsi_device_list dev_list;
-
+	
 	int count = dsi_scan_usb(dev_list);
 	for(i = 0; i < count; i++) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME,"+ %d of %d: %s", i , count, dev_list[i]);
 		found = false;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
-			if (device == NULL) continue;
+			if (device == NULL) {
+				continue;
+			}
 			if (PRIVATE_DATA && (!strncmp(PRIVATE_DATA->dev_sid, dev_list[i], DSI_ID_LEN))) {
 				found = true;
 				break;
 			}
 		}
-
+		
 		if (!found) {
 			strncpy(new_sid, dev_list[i], DSI_ID_LEN);
 			return true;
@@ -534,7 +542,9 @@ static int find_available_device_slot() {
 static int find_device_slot(const char *sid) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (!strncmp(PRIVATE_DATA->dev_sid, sid, DSI_ID_LEN)) return slot;
 	}
 	return NOT_FOUND;
@@ -550,7 +560,9 @@ static int find_unplugged_device_slot() {
 	int count = dsi_scan_usb(dev_list);
 	for(slot = 0; slot < MAX_DEVICES; slot++) {
 		device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		found = false;
 		for(int i = 0; i < count; i++) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME,"- %d of %d: %s", i , count, dev_list[i]);
@@ -684,8 +696,9 @@ static void remove_all_devices() {
 	int i;
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device **device = &devices[i];
-		if (*device == NULL)
+		if (*device == NULL) {
 			continue;
+		}
 		indigo_detach_device(*device);
 		camera_close(*device);
 		free((*device)->private_data);

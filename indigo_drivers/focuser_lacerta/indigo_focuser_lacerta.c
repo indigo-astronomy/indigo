@@ -73,16 +73,18 @@ static bool lacerta_command(indigo_device *device, char *command, char *response
 				FD_ZERO(&readout);
 				FD_SET(PRIVATE_DATA->handle, &readout);
 				long result = select(PRIVATE_DATA->handle + 1, &readout, NULL, NULL, &tv);
-				if (result <= 0)
+				if (result <= 0) {
 					break;
+				}
 				result = read(PRIVATE_DATA->handle, &c, 1);
 				if (result < 1) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 					pthread_mutex_unlock(&PRIVATE_DATA->port_mutex);
 					return false;
 				}
-				if (c == '\r')
+				if (c == '\r') {
 					break;
+				}
 				response[index++] = c;
 			}
 			response[index] = 0;
@@ -141,8 +143,9 @@ static void lacerta_close(indigo_device *device) {
 
 static void focuser_timer_callback(indigo_device *device) {
 	char response[32];
-	if (!IS_CONNECTED)
+	if (!IS_CONNECTED) {
 		return;
+	}
 	if (lacerta_command(device, ": t #", response, sizeof(response), 't')) {
 		double temp = indigo_atod(response + 1);
 		if (FOCUSER_TEMPERATURE_ITEM->number.value != temp) {

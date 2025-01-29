@@ -354,8 +354,9 @@ static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_
 }
 
 static void focuser_timer_callback(indigo_device *device) {
-	if (PRIVATE_DATA->handle == 0)
+	if (PRIVATE_DATA->handle == 0) {
 		return;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	indigo_device *aux = device;
 	device = device->master_device;
@@ -435,8 +436,9 @@ static void focuser_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[256];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (PRIVATE_DATA->count++ == 0)
+		if (PRIVATE_DATA->count++ == 0) {
 			steeldrive2_connect(device);
+		}
 		if (PRIVATE_DATA->handle > 0) {
 			int value;
 			if (steeldrive2_command(device, "$BS GET NAME", response, sizeof(response)) && sscanf(response, "$BS STATUS NAME:%s", X_NAME_ITEM->text.value) == 1) {
@@ -953,8 +955,9 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[256];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (PRIVATE_DATA->count++ == 0)
+		if (PRIVATE_DATA->count++ == 0) {
 			steeldrive2_connect(device->master_device);
+		}
 		if (PRIVATE_DATA->handle > 0) {
 			int value;
 			X_USE_PID_PROPERTY->state = INDIGO_OK_STATE;

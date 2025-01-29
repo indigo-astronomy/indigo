@@ -825,8 +825,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 			uint32_t size, event;
 			source = ptp_decode_uint32(source, &size);
 			source = ptp_decode_uint32(source, &event);
-			if (size <= 8 || event == 0)
+			if (size <= 8 || event == 0) {
 				break;
+			}
 			switch (event) {
 				case ptp_event_canon_PropValueChanged: {
 					uint32_t code;
@@ -839,8 +840,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 							break;
 						}
 					}
-					if (property == NULL)
+					if (property == NULL) {
 						break;
+					}
 					property->code = code;
 					switch (code) {
 						case ptp_property_canon_BatteryPower:
@@ -1024,8 +1026,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 											unsigned int value_size = source_uint32[offset++];
 											int index = 0;
 											for (index = 0; PRIVATE_DATA->info_properties_supported[index]; index++) {
-												if (PRIVATE_DATA->info_properties_supported[index] == item_code)
+												if (PRIVATE_DATA->info_properties_supported[index] == item_code) {
 													break;
+												}
 											}
 											if (PRIVATE_DATA->info_properties_supported[index] == 0) {
 												PRIVATE_DATA->info_properties_supported[index] = item_code;
@@ -1099,8 +1102,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 							break;
 						}
 					}
-					if (property == NULL)
+					if (property == NULL) {
 						break;
+					}
 					property->code = code;
 					source = ptp_decode_uint32(source, &type);
 					source = ptp_decode_uint32(source, &count);
@@ -1160,16 +1164,18 @@ static void ptp_canon_get_event(indigo_device *device) {
 								}
 							} else {
 								indigo_process_dslr_image(device, buffer, (int)length, ext, false);
-								if (PRIVATE_DATA->image_buffer)
+								if (PRIVATE_DATA->image_buffer) {
 									free(PRIVATE_DATA->image_buffer);
+								}
 								PRIVATE_DATA->image_buffer = buffer;
 								buffer = NULL;
 							}
 							if (DSLR_DELETE_IMAGE_ON_ITEM->sw.value)
 								ptp_transaction_1_0(device, ptp_operation_canon_DeleteObject, handle);
 						}
-						if (buffer)
+						if (buffer) {
 							free(buffer);
+						}
 					}
 					PRIVATE_DATA->image_added = true;
 					break;
@@ -1262,8 +1268,9 @@ static void ptp_canon_get_event(indigo_device *device) {
 			ptp_update_property(device, *property);
 		}
 	}
-	if (buffer)
+	if (buffer) {
 		free(buffer);
+	}
 	buffer = NULL;
 }
 
@@ -1280,8 +1287,9 @@ bool ptp_canon_initialise(indigo_device *device) {
 		return false;
 	void *buffer = NULL;
 	if (!ptp_transaction_0_0_i(device, ptp_operation_canon_GetDeviceInfoEx, &buffer, NULL)) {
-		if (buffer)
+		if (buffer) {
 			free(buffer);
+		}
 		return false;
 	}
 	uint8_t *source = buffer + sizeof(uint32_t);
@@ -1290,8 +1298,9 @@ bool ptp_canon_initialise(indigo_device *device) {
 	ptp_append_uint16_32_array(PRIVATE_DATA->info_events_supported, events);
 	source = ptp_decode_uint32_array(source, properties, NULL);
 	ptp_append_uint16_32_array(PRIVATE_DATA->info_properties_supported, properties);
-	if (buffer)
+	if (buffer) {
 		free(buffer);
+	}
 	buffer = NULL;
 	INDIGO_LOG(indigo_log("%s[%d, %s]: device ext_info", DRIVER_NAME, __LINE__, __FUNCTION__));
 	INDIGO_LOG(indigo_log("events:"));
@@ -1349,8 +1358,9 @@ static bool set_number_property(indigo_device *device, uint16_t code, uint64_t v
 					offset += value_size;
 				}
 			}
-			if (code == ptp_property_canon_CustomFuncEx)
+			if (code == ptp_property_canon_CustomFuncEx) {
 				break;
+			}
 		}
 	} else {
 		target = ptp_encode_uint32((uint32_t)value, target);
@@ -1463,8 +1473,9 @@ bool ptp_canon_exposure(indigo_device *device) {
 		}
 		while (true) {
 			ptp_canon_get_event(device);
-			if (PRIVATE_DATA->abort_capture || PRIVATE_DATA->image_added)
+			if (PRIVATE_DATA->abort_capture || PRIVATE_DATA->image_added) {
 				break;
+			}
 			indigo_usleep(100000);
 		}
 	}
@@ -1513,8 +1524,9 @@ bool ptp_canon_liveview(indigo_device *device) {
 						}
 						if (!CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 							indigo_process_dslr_image(device, source, length, ".jpeg", true);
-							if (PRIVATE_DATA->image_buffer)
+							if (PRIVATE_DATA->image_buffer) {
 								free(PRIVATE_DATA->image_buffer);
+							}
 							PRIVATE_DATA->image_buffer = buffer;
 							buffer = NULL;
 						}
@@ -1527,8 +1539,9 @@ bool ptp_canon_liveview(indigo_device *device) {
 					source += length - 8;
 				}
 			}
-			if (buffer)
+			if (buffer) {
 				free(buffer);
+			}
 			indigo_usleep(100000);
 		}
 		indigo_finalize_dslr_video_stream(device);

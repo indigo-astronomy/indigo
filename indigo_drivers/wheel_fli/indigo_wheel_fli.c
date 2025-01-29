@@ -70,7 +70,9 @@ static int find_index_by_device_fname(char *fname);
 // -------------------------------------------------------------------------------- INDIGO Wheel device implementation
 
 static void wheel_timer_callback(indigo_device *device) {
-	if (!device->is_connected) return;
+	if (!device->is_connected) {
+		return;
+	}
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 
 	long res = FLISetFilterPos(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
@@ -290,7 +292,9 @@ static int find_plugged_device(char *fname) {
 		bool found = false;
 		for(int slot = 0; slot < MAX_DEVICES; slot++) {
 			indigo_device *device = devices[slot];
-			if (device == NULL) continue;
+			if (device == NULL) {
+				continue;
+			}
 			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
 				found = true;
 				break;
@@ -329,7 +333,9 @@ static int find_available_device_slot() {
 static int find_device_slot(char *fname) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		if (!strncmp(PRIVATE_DATA->dev_file_name, fname, 255)) return slot;
 	}
 	return -1;
@@ -341,7 +347,9 @@ static int find_unplugged_device(char *fname) {
 	for(int slot = 0; slot < MAX_DEVICES; slot++) {
 		bool found = false;
 		indigo_device *device = devices[slot];
-		if (device == NULL) continue;
+		if (device == NULL) {
+			continue;
+		}
 		for (int dev_no = 0; dev_no < num_devices; dev_no++) {
 			if (!strncmp(PRIVATE_DATA->dev_file_name, fli_file_names[dev_no], MAX_PATH)) {
 				found = true;
@@ -405,7 +413,9 @@ static void process_unplug_event(indigo_device *unused) {
 	bool removed = false;
 	while ((id = find_unplugged_device(file_name)) != -1) {
 		slot = find_device_slot(file_name);
-		if (slot < 0) continue;
+		if (slot < 0) {
+			continue;
+		}
 		indigo_device **device = &devices[slot];
 		if (*device == NULL) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
@@ -430,8 +440,9 @@ static int hotplug_callback(libusb_context *ctx, libusb_device *dev, libusb_hotp
 	switch (event) {
 		case LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED: {
 			libusb_get_device_descriptor(dev, &descriptor);
-			if (descriptor.idVendor != FLI_VENDOR_ID)
+			if (descriptor.idVendor != FLI_VENDOR_ID) {
 				break;
+			}
 			indigo_set_timer(NULL, 0.5, process_plug_event, NULL);
 			break;
 		}
@@ -447,8 +458,9 @@ static void remove_all_devices() {
 	int i;
 	for(i = 0; i < MAX_DEVICES; i++) {
 		indigo_device **device = &devices[i];
-		if (*device == NULL)
+		if (*device == NULL) {
 			continue;
+		}
 		indigo_detach_device(*device);
 		free((*device)->private_data);
 		free(*device);

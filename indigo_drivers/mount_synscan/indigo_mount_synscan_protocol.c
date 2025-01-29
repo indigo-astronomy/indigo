@@ -100,8 +100,9 @@ static bool synscan_flush(indigo_device* device) {
 		tv.tv_sec = 0;
 		tv.tv_usec = 10000;
 		long result = select(1, &readout, NULL, NULL, &tv);
-		if (result == 0)
+		if (result == 0) {
 			break;
+		}
 		if (result < 0) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "SELECT FAIL 1");
 			return false;
@@ -157,8 +158,9 @@ static bool synscan_read_response(indigo_device* device, char* r) {
 			}
 			if (bytes_read > 0) {
 				resp[total_bytes++] = c;
-				if (c == '\r')
+				if (c == '\r') {
 					break;
+				}
 			}
 		}
 		resp[total_bytes] = 0;
@@ -400,8 +402,9 @@ static void synscan_delay_ms(int millis) {
 		//  wanted to sleep for.
 
 		//  Return if we've reached the end time
-		if (tnow >= tend)
+		if (tnow >= tend) {
 			return;
+		}
 	}
 }
 
@@ -448,8 +451,9 @@ bool synscan_guide_pulse_ra(indigo_device* device, long guide_rate, int duration
 	}
 
 	//  Do the delay (if any still required)
-	if (duration_ms > 0)
+	if (duration_ms > 0) {
 		synscan_delay_ms(duration_ms);
+	}
 
 	//  Resume tracking on the axis
 	sprintf(buffer, ":I%c%s", kAxisRA, longToHex(track_rate));
@@ -520,8 +524,9 @@ bool synscan_guide_pulse_dec(indigo_device* device, enum AxisDirectionID directi
 	}
 
 	//  Do the delay (if any still required)
-	if (duration_ms > 0)
+	if (duration_ms > 0) {
 		synscan_delay_ms(duration_ms);
+	}
 
 	//  Stop the axis
 	sprintf(buffer, ":L%c", kAxisDEC);
