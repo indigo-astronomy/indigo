@@ -292,8 +292,9 @@ static void open_log(indigo_device *device) {
 	strncpy(DEVICE_PRIVATE_DATA->log_file_name, AGENT_GUIDER_LOG_DIR_ITEM->text.value, PATH_MAX);
 	int len = (int)strlen(DEVICE_PRIVATE_DATA->log_file_name);
 	strftime(DEVICE_PRIVATE_DATA->log_file_name + len, PATH_MAX - len, AGENT_GUIDER_LOG_TEMPLATE_ITEM->text.value, local);
-	if (DEVICE_PRIVATE_DATA->log_file > 0)
+	if (DEVICE_PRIVATE_DATA->log_file > 0) {
 		close(DEVICE_PRIVATE_DATA->log_file);
+	}
 	DEVICE_PRIVATE_DATA->log_file = open(DEVICE_PRIVATE_DATA->log_file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (DEVICE_PRIVATE_DATA->log_file == -1) {
 		indigo_send_message(device, "Failed to create guiding log file (%s)", strerror(errno));
@@ -347,8 +348,9 @@ static void write_log_record(indigo_device *device) {
 }
 
 static void close_log(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->log_file > 0)
+	if (DEVICE_PRIVATE_DATA->log_file > 0) {
 		close(DEVICE_PRIVATE_DATA->log_file);
+	}
 	DEVICE_PRIVATE_DATA->log_file = -1;
 }
 
@@ -1661,8 +1663,9 @@ static bool guide(indigo_device *device) {
 				DEVICE_PRIVATE_DATA->rmse_count++;
 			} else {
 				DEVICE_PRIVATE_DATA->rmse_ra_sum = DEVICE_PRIVATE_DATA->rmse_dec_sum = DEVICE_PRIVATE_DATA->rmse_ra_s_sum = DEVICE_PRIVATE_DATA->rmse_dec_s_sum = 0;
-				if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value)
+				if (DEVICE_PRIVATE_DATA->rmse_count < AGENT_GUIDER_SETTINGS_DITH_LIMIT_ITEM->number.value) {
 					DEVICE_PRIVATE_DATA->rmse_count++;
+				}
 				int count = (int)DEVICE_PRIVATE_DATA->rmse_count;
 				if (count > MAX_STACK) {
 					count = MAX_STACK;
