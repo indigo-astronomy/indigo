@@ -47,6 +47,8 @@
 #include <indigo/indigo_md5.h>
 #include <indigo/indigo_stretch.h>
 
+#define OBJECT_LENGTH 41
+
 struct indigo_jpeg_compress_struct {
 	struct jpeg_compress_struct pub;
 	jmp_buf jpeg_error;
@@ -173,11 +175,12 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 			indigo_init_switch_item(CCD_PREVIEW_ENABLED_ITEM, CCD_PREVIEW_ENABLED_ITEM_NAME, "Enabled", false);
 			indigo_init_switch_item(CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM, CCD_PREVIEW_ENABLED_WITH_HISTOGRAM_ITEM_NAME, "Enabled with histogram", false);
 			// -------------------------------------------------------------------------------- CCD_LOCAL_MODE
-			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Save on server", INDIGO_OK_STATE, INDIGO_RW_PERM, 2);
+			CCD_LOCAL_MODE_PROPERTY = indigo_init_text_property(NULL, device->name, CCD_LOCAL_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Save on server", INDIGO_OK_STATE, INDIGO_RW_PERM, 3);
 			if (CCD_LOCAL_MODE_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			indigo_init_text_item(CCD_LOCAL_MODE_DIR_ITEM, CCD_LOCAL_MODE_DIR_ITEM_NAME, "Directory", default_image_path);
-			indigo_init_text_item(CCD_LOCAL_MODE_PREFIX_ITEM, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, "File name prefix", "IMAGE_XXX");
+			indigo_init_text_item(CCD_LOCAL_MODE_PREFIX_ITEM, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, "File name template", "IMAGE_XXX");
+			indigo_init_text_item(CCD_LOCAL_MODE_OBJECT_ITEM, CCD_LOCAL_MODE_OBJECT_ITEM_NAME, "Object name", "unknown");
 			// -------------------------------------------------------------------------------- CCD_MODE
 			CCD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Capture mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 256);
 			if (CCD_MODE_PROPERTY == NULL)
@@ -734,6 +737,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_LOCAL_MODE_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_LOCAL_MODE
 		indigo_property_copy_values(CCD_LOCAL_MODE_PROPERTY, property, false);
+		CCD_LOCAL_MODE_OBJECT_ITEM->text.value[OBJECT_LENGTH - 1] = '\0';
 		long len = strlen(CCD_LOCAL_MODE_DIR_ITEM->text.value);
 		if (len == 0)
 			strncpy(CCD_LOCAL_MODE_DIR_ITEM->text.value, default_image_path, INDIGO_VALUE_SIZE);
@@ -743,7 +747,7 @@ indigo_result indigo_ccd_change_property(indigo_device *device, indigo_client *c
 			CCD_LOCAL_MODE_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			CCD_LOCAL_MODE_PROPERTY->state = INDIGO_ALERT_STATE;
-		}		
+		}
 		indigo_update_property(device, CCD_LOCAL_MODE_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_SET_FITS_HEADER_PROPERTY, property)) {
@@ -1208,6 +1212,8 @@ static void raw_to_tiff(indigo_device *device, void *data_in, int frame_width, i
 	add_key(&next_key, false, "JD      = %20.8f / JD when exposure started", UT2JD(timer));
 	add_key(&next_key, false, "DATE-OBS= '%s' / UTC when exposure started", date_time_start);
 	add_key(&next_key, false, "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
+	if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0')
+		add_key(&next_key, false, "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
 	add_key(&next_key, false, "ROWORDER= 'TOP-DOWN'           / Image row order");
 	add_key(&next_key, false, "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_BUILD);
 	if (keywords) {
@@ -1326,6 +1332,13 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strncpy(tmp, format, fs - format);
 			indigo_md5_partial(md5_digest, blob_value, blob_size, INDIGO_PARTIAL_MD5_LEN);
 			strcat(tmp, md5_digest);
+			strcat(tmp, fs + 2);
+			strcpy(format, tmp);
+		} else if (fs[1] == 'o') { // %o - Object name
+			char buffer[OBJECT_LENGTH];
+			strncpy(tmp, format, fs - format);
+			strncpy(buffer, CCD_LOCAL_MODE_OBJECT_ITEM->text.value, sizeof(buffer));
+			strcat(tmp, buffer);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if (fs[1] == 'E' || (isdigit(fs[1]) && fs[2] == 'E')) { // %E or %nE - exposure time
@@ -1728,6 +1741,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		add_key(&header, true,  "JD      = %20.8f / JD when the FITS file was created", UT2JD(tv.tv_sec + tv.tv_usec / 1e6));
 		add_key(&header, true,  "DATE-OBS= '%s' / UTC when the FITS file was created", date_time_end);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
+		if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0')
+			add_key(&header, true,  "OBJECT  = '%s'/ object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
 		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
 		add_key(&header, true,  "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_BUILD);
 		if (!CCD_LENS_PROPERTY->hidden) {

@@ -172,6 +172,10 @@ extern "C" {
  */
 #define CCD_LOCAL_MODE_PREFIX_ITEM        (CCD_LOCAL_MODE_PROPERTY->items+1)
 
+/** CCD_LOCAL_MODE.OBJECT property item pointer.
+ */
+#define CCD_LOCAL_MODE_OBJECT_ITEM        (CCD_LOCAL_MODE_PROPERTY->items+2)
+
 /** CCD_EXPOSURE property pointer, property is mandatory, property change request handler should set property items and state and call indigo_ccd_change_property().
  */
 #define CCD_EXPOSURE_PROPERTY             (CCD_CONTEXT->ccd_exposure_property)
