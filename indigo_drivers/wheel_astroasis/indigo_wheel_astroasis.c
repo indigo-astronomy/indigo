@@ -234,14 +234,11 @@ static indigo_result wheel_attach(indigo_device *device) {
 static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	assert(device != NULL);
 	if (device->is_connected) {
-		indigo_define_if_match(X_CALIBRATE_PROPERTY)
-		indigo_define_if_match(X_CUSTOM_SUFFIX_PROPERTY)
-		if (indigo_property_match(X_BLUETOOTH_PROPERTY, property));
-			indigo_define_property(device, X_BLUETOOTH_PROPERTY, NULL);
-		if (indigo_property_match(X_BLUETOOTH_NAME_PROPERTY, property));
-			indigo_define_property(device, X_BLUETOOTH_NAME_PROPERTY, NULL);
-		if (indigo_property_match(X_FACTORY_RESET_PROPERTY, property));
-			indigo_define_property(device, X_FACTORY_RESET_PROPERTY, NULL);
+		indigo_define_matching_property(X_CALIBRATE_PROPERTY);
+		indigo_define_matching_property(X_CUSTOM_SUFFIX_PROPERTY);
+		indigo_define_matching_property(X_BLUETOOTH_PROPERTY);
+		indigo_define_matching_property(X_BLUETOOTH_NAME_PROPERTY);
+		indigo_define_matching_property(X_FACTORY_RESET_PROPERTY);
 	}
 	return indigo_wheel_enumerate_properties(device, client, property);
 }
@@ -361,7 +358,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 	} else if (indigo_property_match_changeable(X_CUSTOM_SUFFIX_PROPERTY, property)) {
 		X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_property_copy_values(X_CUSTOM_SUFFIX_PROPERTY, property, false);
-		
+
 		if (strlen(X_CUSTOM_SUFFIX_ITEM->text.value) > OFW_NAME_LEN) {
 			X_CUSTOM_SUFFIX_PROPERTY->state = INDIGO_ALERT_STATE;
 			indigo_update_property(device, X_CUSTOM_SUFFIX_PROPERTY, "Suffix is too long");

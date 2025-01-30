@@ -277,14 +277,14 @@ static void temperature_timer_callback(indigo_device *device) {
 
 static indigo_result focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_if_match(BEEP_ON_POWER_UP_PROPERTY)
-		indigo_define_if_match(BEEP_ON_MOVE_PROPERTY)
-		indigo_define_if_match(BACKLASH_DIRECTION_PROPERTY)
-		indigo_define_if_match(CUSTOM_SUFFIX_PROPERTY)
-		indigo_define_if_match(BLUETOOTH_PROPERTY)
-		indigo_define_if_match(BLUETOOTH_NAME_PROPERTY)
-		indigo_define_if_match(FACTORY_RESET_PROPERTY)
-		indigo_define_if_match(FOCUSER_TEMPERATURE_BOARD_PROPERTY)
+		indigo_define_matching_property(BEEP_ON_POWER_UP_PROPERTY);
+		indigo_define_matching_property(BEEP_ON_MOVE_PROPERTY);
+		indigo_define_matching_property(BACKLASH_DIRECTION_PROPERTY);
+		indigo_define_matching_property(CUSTOM_SUFFIX_PROPERTY);
+		indigo_define_matching_property(BLUETOOTH_PROPERTY);
+		indigo_define_matching_property(BLUETOOTH_NAME_PROPERTY);
+		indigo_define_matching_property(FACTORY_RESET_PROPERTY);
+		indigo_define_matching_property(FOCUSER_TEMPERATURE_BOARD_PROPERTY);
 	}
 
 	return indigo_focuser_enumerate_properties(device, NULL, NULL);
@@ -415,7 +415,7 @@ static void focuser_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserOpen() failed, ret = %d", ret);
 			} else {
 				ret = AOFocuserGetConfig(PRIVATE_DATA->dev_id, &PRIVATE_DATA->config);
-				
+
 				if (ret != AO_SUCCESS)
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "AOFocuserGetConfig() failed, ret = %d", ret);
 			}
@@ -580,7 +580,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_LIMITS_PROPERTY, property)) {
 		// FOCUSER_LIMITS
 		indigo_property_copy_values(FOCUSER_LIMITS_PROPERTY, property, false);
-		
+
 		int max_position = (int)FOCUSER_LIMITS_MAX_POSITION_ITEM->number.target;
 
 		if (focuser_config(device, MASK_MAX_STEP, max_position))
@@ -764,7 +764,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		}
 
 		indigo_update_property(device, BLUETOOTH_NAME_PROPERTY, NULL);
-		
+
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(FACTORY_RESET_PROPERTY, property)) {
 		// FACTORY_RESET_PROPERTY

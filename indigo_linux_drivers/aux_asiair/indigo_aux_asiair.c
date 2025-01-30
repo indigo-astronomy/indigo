@@ -671,12 +671,12 @@ static bool set_gpio_outlets(indigo_device *device) {
 
 static indigo_result aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_if_match(AUX_GPIO_OUTLET_PROPERTY)
-		indigo_define_if_match(AUX_OUTLET_PULSE_LENGTHS_PROPERTY)
-		indigo_define_if_match(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY)
-		indigo_define_if_match(AUX_GPIO_OUTLET_DUTY_PROPERTY)
+		indigo_define_matching_property(AUX_GPIO_OUTLET_PROPERTY);
+		indigo_define_matching_property(AUX_OUTLET_PULSE_LENGTHS_PROPERTY);
+		indigo_define_matching_property(AUX_GPIO_OUTLET_FREQUENCIES_PROPERTY);
+		indigo_define_matching_property(AUX_GPIO_OUTLET_DUTY_PROPERTY);
 	}
-	indigo_define_if_match(AUX_OUTLET_NAMES_PROPERTY)
+	indigo_define_matching_property(AUX_OUTLET_NAMES_PROPERTY)
 
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }

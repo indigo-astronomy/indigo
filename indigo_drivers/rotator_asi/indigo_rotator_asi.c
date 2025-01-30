@@ -127,8 +127,8 @@ static void temperature_timer_callback(indigo_device *device) {
 
 static indigo_result caa_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	if (IS_CONNECTED) {
-		indigo_define_if_match(CAA_BEEP_PROPERTY)
-		indigo_define_if_match(CAA_CUSTOM_SUFFIX_PROPERTY)
+		indigo_define_matching_property(CAA_BEEP_PROPERTY);
+		indigo_define_matching_property(CAA_CUSTOM_SUFFIX_PROPERTY);
 	}
 	return indigo_rotator_enumerate_properties(device, NULL, NULL);
 }
@@ -398,7 +398,7 @@ static indigo_result rotator_change_property(indigo_device *device, indigo_clien
 			if (res != CAA_SUCCESS) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CAAGetDegree(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
-				
+
 			PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + ROTATOR_RELATIVE_MOVE_ITEM->number.value;
 
 			/* Make sure we do not attempt to go beyond the limits */
