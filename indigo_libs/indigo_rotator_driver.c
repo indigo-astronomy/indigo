@@ -58,13 +58,13 @@ void indigo_rotator_load_calibration(indigo_device *device) {
 	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
 		return;
 	}
-	int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".calibration");
-	if (handle > 0) {
+	indigo_uni_handle handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".calibration");
+	if (handle.opened) {
 		double offset = 0;
 		char buffer[128];
-		indigo_read_line(handle, buffer, sizeof(buffer));
+		indigo_uni_read_line(handle, buffer, sizeof(buffer));
 		offset = atof(buffer);
-		close(handle);
+		indigo_uni_close(handle);
 		ROTATOR_POSITION_OFFSET_ITEM->number.value = ROTATOR_POSITION_OFFSET_ITEM->number.target = offset;
 		indigo_update_property(device, ROTATOR_POSITION_OFFSET_PROPERTY, NULL);
 	}
@@ -74,10 +74,10 @@ void indigo_rotator_save_calibration(indigo_device *device) {
 	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
 		return;
 	}
-	int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".calibration");
-	if (handle > 0) {
-		indigo_printf(handle, "%f\n", ROTATOR_POSITION_OFFSET_ITEM->number.value);
-		close(handle);
+	indigo_uni_handle handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".calibration");
+	if (handle.opened) {
+		indigo_uni_printf(handle, "%f\n", ROTATOR_POSITION_OFFSET_ITEM->number.value);
+		indigo_uni_close(handle);
 	}
 }
 

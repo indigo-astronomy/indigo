@@ -65,7 +65,7 @@
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_xml.h>
 #include <indigo/indigo_names.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_usb_utils.h>
 
 #define MAX_SLAVE_DEVICES 10
@@ -73,6 +73,7 @@
 pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 indigo_result indigo_try_global_lock(indigo_device *device) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
 	if (device->master_device != NULL)
@@ -84,14 +85,12 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
 	if (fd == -1)
 		return -1;
-
 	static struct flock lock;
 	lock.l_type = F_WRLCK;
 	lock.l_start = 0;
 	lock.l_whence = SEEK_SET;
 	lock.l_len = 0;
 	lock.l_pid = getpid();
-
 	int ret = fcntl(fd, F_SETLK, &lock);
 	if (ret == -1) {
 		int local_errno = errno;
@@ -103,9 +102,13 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 	if (fd > 0)
 		return INDIGO_OK;
 	return INDIGO_LOCK_ERROR;
+#else
+	return INDIGO_OK;
+#endif
 }
 
 indigo_result indigo_global_unlock(indigo_device *device) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (indigo_is_sandboxed)
 		return INDIGO_OK;
 	if (device->master_device != NULL)
@@ -117,9 +120,9 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 	device->lock = -1;
 	strncat(tmp_lock_file, device->name, 250);
 	unlink(tmp_lock_file);
+#endif
 	return INDIGO_OK;
 }
-
 
 #if defined(INDIGO_LINUX)
 static int port_type(char *path) {
@@ -499,9 +502,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
 			if (DEVICE_CONTEXT->base_device == NULL)
 				indigo_save_property(device, NULL, ADDITIONAL_INSTANCES_PROPERTY);
-			if (DEVICE_CONTEXT->property_save_file_handle) {
-				close(DEVICE_CONTEXT->property_save_file_handle);
-				DEVICE_CONTEXT->property_save_file_handle = 0;
+			if (DEVICE_CONTEXT->property_save_file_handle.opened) {
+				indigo_uni_close(DEVICE_CONTEXT->property_save_file_handle);
 			} else {
 				CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -528,10 +530,9 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		indigo_define_property(device, PROFILE_PROPERTY, NULL);
 		if (strcmp(client->name, CONFIG_READER)) {
 			indigo_save_property(device, NULL, PROFILE_NAME_PROPERTY);
-			if (DEVICE_CONTEXT->property_save_file_handle) {
+			if (DEVICE_CONTEXT->property_save_file_handle.opened) {
 				PROFILE_NAME_PROPERTY->state = INDIGO_OK_STATE;
-				close(DEVICE_CONTEXT->property_save_file_handle);
-				DEVICE_CONTEXT->property_save_file_handle = 0;
+				indigo_uni_close(DEVICE_CONTEXT->property_save_file_handle);
 			} else {
 				PROFILE_NAME_PROPERTY->state = INDIGO_ALERT_STATE;
 			}
@@ -742,45 +743,41 @@ extern int indigo_server_tcp_port;
 extern bool indigo_is_ephemeral_port;
 
 static bool make_config_file_name(char *device_name, int profile, const char *suffix, char *path, int size) {
-	int path_end = snprintf(path, size, "%s/.indigo", getenv("HOME"));
-	int handle = mkdir(path, 0777);
-	if (handle == 0 || errno == EEXIST) {
+	int path_end = snprintf(path, size, "%s", indigo_uni_config_folder());
+	if (indigo_uni_mkdir(path)) {
 		if (indigo_server_tcp_port == 7624 || indigo_is_ephemeral_port) {
 			if (profile)
-				snprintf(path + path_end, size - path_end, "/%s#%d%s", device_name, profile, suffix);
+				snprintf(path + path_end, size - path_end, "%c%s#%d%s", INDIGO_PATH_SEPATATOR, device_name, profile, suffix);
 			else
-				snprintf(path + path_end, size - path_end, "/%s%s", device_name, suffix);
+				snprintf(path + path_end, size - path_end, "%c%s%s", INDIGO_PATH_SEPATATOR, device_name, suffix);
 		} else {
 			if (profile)
-				snprintf(path + path_end, size - path_end, "/%s#%d_%d%s", device_name, profile, indigo_server_tcp_port, suffix);
+				snprintf(path + path_end, size - path_end, "%c%s#%d_%d%s", INDIGO_PATH_SEPATATOR, device_name, profile, indigo_server_tcp_port, suffix);
 			else
-				snprintf(path + path_end, size - path_end, "/%s_%d%s", device_name, indigo_server_tcp_port, suffix);
+				snprintf(path + path_end, size - path_end, "%c%s_%d%s", INDIGO_PATH_SEPATATOR, device_name, indigo_server_tcp_port, suffix);
 		}
 		char *space = strchr(path, ' ');
 		while (space != NULL) {
 			*space = '_';
-			space = strchr(space+1, ' ');
+			space = strchr(space + 1, ' ');
 		}
 		return true;
 	}
 	return false;
 }
 
-int indigo_open_config_file(char *device_name, int profile, int mode, const char *suffix) {
+indigo_uni_handle indigo_open_config_file(char *device_name, int profile, bool create, const char *suffix) {
 	static char path[512];
 	if (make_config_file_name(device_name, profile, suffix, path, sizeof(path))) {
-		int handle = open(path, mode, 0644);
-		if (handle < 0) {
-			if (errno == ENOENT)
-				INDIGO_TRACE(indigo_trace("Can't %s %s (%s)", mode == O_RDONLY ? "open" : "create", path, strerror(errno)));
-			else
-				indigo_error("Can't %s %s (%s)", mode == O_RDONLY ? "open" : "create", path, strerror(errno));
+		indigo_uni_handle handle = create ? indigo_uni_create_file(path) : indigo_uni_open_file(path);
+		if (!handle.opened) {
+			INDIGO_TRACE(indigo_trace("Can't %s %s (%s)", create ? "create" : "open", path, indigo_uni_strerror(handle)));
 		}
 		return handle;
 	} else {
-		indigo_error("Can't create %s (%s)", path, strerror(errno));
+		indigo_error("Can't create config file");
 	}
-	return -1;
+	return INDIGO_ERROR_HANDLE;
 }
 
 indigo_result indigo_load_properties(indigo_device *device, bool default_properties) {
@@ -788,15 +785,17 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	int profile = 0;
 	if (DEVICE_CONTEXT) {
 		pthread_mutex_lock(&DEVICE_CONTEXT->config_mutex);
-		for (int i = 0; i < PROFILE_COUNT; i++)
+		for (int i = 0; i < PROFILE_COUNT; i++) {
 			if (PROFILE_PROPERTY->items[i].sw.value) {
 				profile = i;
 				break;
 			}
+		}
 	}
-	int handle = indigo_open_config_file(device->name, profile, O_RDONLY, ".common");
-	if (handle > 0) {
-		INDIGO_TRACE(indigo_trace("%d -> // Common config file for '%s'", handle, device->name));
+	indigo_result result = INDIGO_FAILED;
+	indigo_uni_handle handle = indigo_open_config_file(device->name, profile, false, ".common");
+	if (handle.opened) {
+		INDIGO_TRACE(indigo_trace("%d -> // Common config file for '%s'", handle.fd, device->name));
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
@@ -804,13 +803,14 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
 		indigo_xml_parse(NULL, client);
-		close(handle);
-		free(context);
-		free(client);
+		indigo_uni_close(handle);
+		indigo_safe_free(context);
+		indigo_safe_free(client);
+		result = INDIGO_OK;
 	}
-	handle = indigo_open_config_file(device->name, profile, O_RDONLY, default_properties ? ".default" : ".config");
-	if (handle > 0) {
-		INDIGO_TRACE(indigo_trace("%d -> // Config file for '%s'", handle, device->name));
+	handle = indigo_open_config_file(device->name, profile, false, default_properties ? ".default" : ".config");
+	if (handle.opened) {
+		INDIGO_TRACE(indigo_trace("%d -> // Config file for '%s'", handle.fd, device->name));
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
@@ -818,29 +818,32 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
 		indigo_xml_parse(NULL, client);
-		close(handle);
-		free(context);
-		free(client);
+		indigo_uni_close(handle);
+		indigo_safe_free(context);
+		indigo_safe_free(client);
+		result = INDIGO_OK;
 	}
 	if (DEVICE_CONTEXT) {
-  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-}
-	return handle > 0 ? INDIGO_OK : INDIGO_FAILED;
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	}
+	return result;
 }
 
-indigo_result indigo_save_property(indigo_device *device, int *file_handle, indigo_property *property) {
-	if (property == NULL)
+indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle *file_handle, indigo_property *property) {
+	if (property == NULL) {
 		return INDIGO_FAILED;
+	}
 	if (DEVICE_CONTEXT && pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex)) {
 		INDIGO_DEBUG(indigo_debug("Config file is locked, property '%s.%s' not saved", device->name, property->name));
 		return INDIGO_FAILED;
 	}
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
-		if (file_handle == NULL)
+		if (file_handle == NULL) {
 			file_handle = &DEVICE_CONTEXT->property_save_file_handle;
-		int handle = *file_handle;
-		if (handle == 0) {
+		}
+		indigo_uni_handle handle = *file_handle;
+		if (!handle.opened) {
 			int profile = 0;
 			if (DEVICE_CONTEXT) {
 				for (int i = 0; i < PROFILE_COUNT; i++)
@@ -850,127 +853,131 @@ indigo_result indigo_save_property(indigo_device *device, int *file_handle, indi
 					}
 			}
 			bool common_property = false;
-			if (!strcmp(property->name, PROFILE_NAME_PROPERTY_NAME))
+			if (!strcmp(property->name, PROFILE_NAME_PROPERTY_NAME)) {
 				common_property = true;
+			}
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, common_property ? ".common" : ".config");
-			if (handle == 0) {
+			if (!handle.opened) {
 				if (DEVICE_CONTEXT) {
-  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-}
+					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+				}
 				return INDIGO_FAILED;
 			}
 		}
 		switch (property->type) {
-		case INDIGO_TEXT_VECTOR:
-			indigo_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(indigo_get_text_item_value(item)));
-			}
-			indigo_printf(handle, "</newTextVector>\n");
-			break;
-		case INDIGO_NUMBER_VECTOR:
-			indigo_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
-			}
-			indigo_printf(handle, "</newNumberVector>\n");
-			break;
-		case INDIGO_SWITCH_VECTOR:
-			indigo_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = &property->items[i];
-				indigo_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
-			}
-			indigo_printf(handle, "</newSwitchVector>\n");
-			break;
-		default:
-			break;
+			case INDIGO_TEXT_VECTOR:
+				indigo_uni_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = &property->items[i];
+					indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(indigo_get_text_item_value(item)));
+				}
+				indigo_uni_printf(handle, "</newTextVector>\n");
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				indigo_uni_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = &property->items[i];
+					indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
+				}
+				indigo_uni_printf(handle, "</newNumberVector>\n");
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				indigo_uni_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = &property->items[i];
+					indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
+				}
+				indigo_uni_printf(handle, "</newSwitchVector>\n");
+				break;
+			default:
+				break;
 		}
 	}
 	if (DEVICE_CONTEXT) {
-  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-}
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	}
 	return INDIGO_OK;
 }
 
-indigo_result indigo_save_property_items(indigo_device*device, int *file_handle, indigo_property *property, const int count, const char **items) {
-	if (property == NULL)
+indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle *file_handle, indigo_property *property, const int count, const char **items) {
+	if (property == NULL) {
 		return INDIGO_FAILED;
+	}
 	if (DEVICE_CONTEXT && pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex)) {
 		INDIGO_DEBUG(indigo_debug("Config file is locked, property '%s.%s' not saved", device->name, property->name));
 		return INDIGO_FAILED;
 	}
 	if (!property->hidden && property->perm != INDIGO_RO_PERM) {
 		char b1[32];
-		if (file_handle == NULL)
+		if (file_handle == NULL) {
 			file_handle = &DEVICE_CONTEXT->property_save_file_handle;
-		int handle = *file_handle;
-		if (handle == 0) {
+		}
+		indigo_uni_handle handle = *file_handle;
+		if (!handle.opened) {
 			int profile = 0;
 			if (DEVICE_CONTEXT) {
-				for (int i = 0; i < PROFILE_COUNT; i++)
+				for (int i = 0; i < PROFILE_COUNT; i++) {
 					if (PROFILE_PROPERTY->items[i].sw.value) {
 						profile = i;
 						break;
 					}
+				}
 			}
 			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
-			if (handle == 0) {
+			if (!handle.opened) {
 				if (DEVICE_CONTEXT) {
-  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-}
+					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+				}
 				return INDIGO_FAILED;
 			}
 		}
 		switch (property->type) {
-		case INDIGO_TEXT_VECTOR:
-			indigo_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = &property->items[i];
-				for (int j = 0; j < count; j++) {
-					if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
-						indigo_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(item->text.value));
-						break;
+			case INDIGO_TEXT_VECTOR:
+				indigo_uni_printf(handle, "<newTextVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = &property->items[i];
+					for (int j = 0; j < count; j++) {
+						if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
+							indigo_uni_printf(handle, "<oneText name='%s'>%s</oneText>\n", item->name, indigo_xml_escape(item->text.value));
+							break;
+						}
 					}
 				}
-			}
-			indigo_printf(handle, "</newTextVector>\n");
-			break;
-		case INDIGO_NUMBER_VECTOR:
-			indigo_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = &property->items[i];
-				for (int j = 0; j < count; j++) {
-					if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
-						indigo_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
-						break;
+				indigo_uni_printf(handle, "</newTextVector>\n");
+				break;
+			case INDIGO_NUMBER_VECTOR:
+				indigo_uni_printf(handle, "<newNumberVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = &property->items[i];
+					for (int j = 0; j < count; j++) {
+						if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
+							indigo_uni_printf(handle, "<oneNumber name='%s'>%s</oneNumber>\n", item->name, indigo_dtoa(item->number.value, b1));
+							break;
+						}
 					}
 				}
-			}
-			indigo_printf(handle, "</newNumberVector>\n");
-			break;
-		case INDIGO_SWITCH_VECTOR:
-			indigo_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
-			for (int i = 0; i < property->count; i++) {
-				indigo_item *item = &property->items[i];
-				for (int j = 0; j < count; j++) {
-					if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
-						indigo_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
-						break;
+				indigo_uni_printf(handle, "</newNumberVector>\n");
+				break;
+			case INDIGO_SWITCH_VECTOR:
+				indigo_uni_printf(handle, "<newSwitchVector device='%s' name='%s'>\n", indigo_xml_escape(property->device), property->name, indigo_property_state_text[property->state]);
+				for (int i = 0; i < property->count; i++) {
+					indigo_item *item = &property->items[i];
+					for (int j = 0; j < count; j++) {
+						if (!strncmp(items[j], item->name, INDIGO_NAME_SIZE)) {
+							indigo_uni_printf(handle, "<oneSwitch name='%s'>%s</oneSwitch>\n", item->name, item->sw.value ? "On" : "Off");
+							break;
+						}
 					}
 				}
-			}
-			indigo_printf(handle, "</newSwitchVector>\n");
-			break;
-		default:
-			break;
+				indigo_uni_printf(handle, "</newSwitchVector>\n");
+				break;
+			default:
+				break;
 		}
 	}
 	if (DEVICE_CONTEXT) {
-  pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
-}
+		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
+	}
 	return INDIGO_OK;
 }
 

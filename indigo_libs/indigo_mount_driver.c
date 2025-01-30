@@ -283,18 +283,18 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 }
 
 void indigo_mount_load_alignment_points(indigo_device *device) {
-	int handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
-	if (handle > 0) {
+	indigo_uni_handle handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
+	if (handle.opened) {
 		int count;
 		char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
-		indigo_read_line(handle, buffer, sizeof(buffer));
+		indigo_uni_read_line(handle, buffer, sizeof(buffer));
 		sscanf(buffer, "%d", &count);
 		MOUNT_CONTEXT->alignment_point_count = count;
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->count = count;
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->count = count > 0 ? count + 1 : 0;
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-			indigo_read_line(handle, buffer, sizeof(buffer));
+			indigo_uni_read_line(handle, buffer, sizeof(buffer));
 			point->used = false;
 			sscanf(buffer, "%d %lg %lg %lg %lg %lg %d", (int *)&point->used, &point->ra, &point->dec, &point->raw_ra, &point->raw_dec, &point->lst, &point->side_of_pier);
 			snprintf(name, INDIGO_NAME_SIZE, "%d", i);
@@ -302,7 +302,7 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 			indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
 			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i + 1, name, label, false);
 		}
-		close(handle);
+		indigo_uni_close(handle);
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
@@ -311,16 +311,16 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 }
 
 void indigo_mount_save_alignment_points(indigo_device *device) {
-	int handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".alignment");
-	if (handle > 0) {
+	indigo_uni_handle handle = indigo_open_config_file(device->name, 0, true, ".alignment");
+	if (handle.opened) {
 		int count = MOUNT_CONTEXT->alignment_point_count;
 		char b1[32], b2[32], b3[32], b4[32], b5[32];
-		indigo_printf(handle, "%d\n", count);
+		indigo_uni_printf(handle, "%d\n", count);
 		for (int i = 0; i < count; i++) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
-			indigo_printf(handle, "%d %s %s %s %s %s %d\n", point->used, indigo_dtoa(point->ra, b1), indigo_dtoa(point->dec, b2), indigo_dtoa(point->raw_ra, b3), indigo_dtoa(point->raw_dec, b4), indigo_dtoa(point->lst, b5), point->side_of_pier);
+			indigo_uni_printf(handle, "%d %s %s %s %s %s %d\n", point->used, indigo_dtoa(point->ra, b1), indigo_dtoa(point->dec, b2), indigo_dtoa(point->raw_ra, b3), indigo_dtoa(point->raw_dec, b4), indigo_dtoa(point->lst, b5), point->side_of_pier);
 		}
-		close(handle);
+		indigo_uni_close(handle);
 	}
 }
 

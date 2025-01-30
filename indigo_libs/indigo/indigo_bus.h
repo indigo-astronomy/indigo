@@ -37,6 +37,7 @@
 
 #include <indigo/indigo_config.h>
 #include <indigo/indigo_token.h>
+#include <indigo/indigo_uni_io.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -362,8 +363,8 @@ typedef struct indigo_client {
 /** Wire protocol adapter private data structure.
  */
 typedef struct {
-	int input;													///< input handle
-	int output;													///< output handle
+	indigo_uni_handle input;						///< input handle
+	indigo_uni_handle output;						///< output handle
 	bool web_socket;										///< connection over WebSocket (RFC6455)
 	char url_prefix[INDIGO_NAME_SIZE];	///< server url prefix (for BLOB download)
 } indigo_adapter_context;

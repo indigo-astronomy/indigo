@@ -107,7 +107,8 @@ static void start_worker_thread(int *client_socket) {
 	if (recv(socket, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", socket));
-			indigo_client *protocol_adapter = indigo_xml_device_adapter(socket, socket);
+			indigo_uni_handle handle = INDIGO_TCP_SOCKET(socket);
+			indigo_client *protocol_adapter = indigo_xml_device_adapter(handle, handle);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
 			indigo_xml_parse(NULL, protocol_adapter);
@@ -115,7 +116,8 @@ static void start_worker_thread(int *client_socket) {
 			indigo_release_xml_device_adapter(protocol_adapter);
 		} else if (c == '{') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON", socket));
-			indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, false);
+			indigo_uni_handle handle = INDIGO_TCP_SOCKET(socket);
+			indigo_client *protocol_adapter = indigo_json_device_adapter(handle, handle, false);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
 			indigo_json_parse(NULL, protocol_adapter);
@@ -165,7 +167,8 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(socket, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
 							INDIGO_PRINTF(socket, "\r\n");
 							INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON-over-WebSockets", socket));
-							indigo_client *protocol_adapter = indigo_json_device_adapter(socket, socket, true);
+							indigo_uni_handle handle = INDIGO_TCP_SOCKET(socket);
+							indigo_client *protocol_adapter = indigo_json_device_adapter(handle, handle, true);
 							assert(protocol_adapter != NULL);
 							indigo_attach_client(protocol_adapter);
 							indigo_json_parse(NULL, protocol_adapter);

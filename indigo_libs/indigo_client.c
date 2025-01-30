@@ -255,7 +255,7 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			close(input[1]);
 			close(output[0]);
 			char *slash = strrchr(subprocess->executable, '/');
-			subprocess->protocol_adapter = indigo_xml_client_adapter(slash ? slash + 1 : subprocess->executable, "", input[0], output[1]);
+			subprocess->protocol_adapter = indigo_xml_client_adapter(slash ? slash + 1 : subprocess->executable, "", INDIGO_FILE(input[0]), INDIGO_FILE(output[1]));
 			indigo_attach_device(subprocess->protocol_adapter);
 			indigo_xml_parse(subprocess->protocol_adapter, NULL);
 			indigo_detach_device(subprocess->protocol_adapter);
@@ -411,7 +411,8 @@ static void *server_thread(indigo_server_entry *server) {
 #if defined(INDIGO_WINDOWS)
 			indigo_send_message(server->protocol_adapter, "connected");
 #endif
-			server->protocol_adapter = indigo_xml_client_adapter(server->name, url, server->socket, server->socket);
+			indigo_uni_handle handle = INDIGO_TCP_SOCKET(server->socket);
+			server->protocol_adapter = indigo_xml_client_adapter(server->name, url, handle, handle);
 			indigo_attach_device(server->protocol_adapter);
 			indigo_xml_parse(server->protocol_adapter, NULL);
 			indigo_detach_device(server->protocol_adapter);

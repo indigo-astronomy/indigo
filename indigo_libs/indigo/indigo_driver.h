@@ -30,6 +30,7 @@
 #include <pthread.h>
 
 #include <indigo/indigo_bus.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_usbserial_utils.h>
@@ -263,7 +264,7 @@ typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_
 /** Device context structure.
  */
 typedef struct {
-	int property_save_file_handle;            ///< handle for property save
+	indigo_uni_handle property_save_file_handle;            ///< handle for property save
 	pthread_mutex_t config_mutex;							///< mutex for configuration load/save synchronisation
 	pthread_mutex_t multi_device_mutex;				///< mutex for synchronising multi-device access over single low level connection
 	indigo_timer *timers;											///< active timer list
@@ -360,7 +361,7 @@ extern indigo_result indigo_device_detach(indigo_device *device);
 /** Open config file.
  */
 
-extern int indigo_open_config_file(char *device_name, int profile, int mode, const char *suffix);
+extern indigo_uni_handle indigo_open_config_file(char *device_name, int profile, bool create, const char *suffix);
 
 /** Load properties.
  */
@@ -368,11 +369,11 @@ extern indigo_result indigo_load_properties(indigo_device *device, bool default_
 
 /** Save single property.
  */
-extern indigo_result indigo_save_property(indigo_device*device, int *file_handle, indigo_property *property);
+extern indigo_result indigo_save_property(indigo_device*device, indigo_uni_handle *file_handle, indigo_property *property);
 
 /** Save items of a property.
  */
-extern indigo_result indigo_save_property_items(indigo_device*device, int *file_handle, indigo_property *property, const int count, const char **items);
+extern indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle *file_handle, indigo_property *property, const int count, const char **items);
 
 /** Remove properties.
  */

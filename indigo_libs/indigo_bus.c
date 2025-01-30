@@ -40,25 +40,19 @@
 #include <sys/time.h>
 #include <syslog.h>
 #include <unistd.h>
-#include <sys/socket.h>
-#endif
-#if defined(INDIGO_WINDOWS)
+#elif defined(INDIGO_WINDOWS)
 #include <io.h>
-#include <winsock2.h>
 #pragma warning(disable:4996)
-#define strcasecmp stricmp
 #endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_names.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_token.h>
 
 #define MAX_DEVICES 256
 #define MAX_CLIENTS 256
 #define MAX_BLOBS	32
-
-#define BUFFER_SIZE	1024
 
 #define isdigit(c) (c >= '0' && c <= '9')
 #define isspace(c) (c == ' ')
@@ -216,21 +210,12 @@ void indigo_log_base(indigo_log_levels level, const char *format, va_list args) 
 #else
 	strftime (timestamp, 9, "%H:%M:%S", localtime((const time_t *) &tmnow.tv_sec));
 #endif
-
-#ifdef INDIGO_MACOS
-	snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", tmnow.tv_usec);
-#else
-	snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06ld", tmnow.tv_usec);
-#endif
+	snprintf(timestamp + 8, sizeof(timestamp) - 8, ".%06d", (int)tmnow.tv_usec);
 	if (indigo_log_name[0] == '\0') {
 		if (indigo_main_argc == 0) {
 			strncpy(indigo_log_name, "Application", sizeof(indigo_log_name));
 		} else {
-#if defined(INDIGO_WINDOWS)
-			char *name = strrchr(indigo_main_argv[0], '\\');
-#else
-			char *name = strrchr(indigo_main_argv[0], '/');
-#endif
+			char *name = strrchr(indigo_main_argv[0], INDIGO_PATH_SEPATATOR);
 			if (name != NULL) {
 				name++;
 			} else {
@@ -417,11 +402,6 @@ indigo_result indigo_start() {
 		memset(&INDIGO_ALL_PROPERTIES, 0, sizeof(INDIGO_ALL_PROPERTIES));
 		is_started = true;
 	}
-#if defined(INDIGO_WINDOWS)
-	WORD version_requested = MAKEWORD(1, 1);
-	WSADATA data;
-	WSAStartup(version_requested, &data);
-#endif
 	pthread_mutex_unlock(&client_mutex);
 	pthread_mutex_unlock(&device_mutex);
 	return INDIGO_OK;
@@ -1122,68 +1102,56 @@ void *indigo_alloc_blob_buffer(long size) {
 }
 
 bool indigo_download_blob(char *url, void **value, long *size, char *format) {
-	char *host = indigo_safe_malloc(BUFFER_SIZE);
+	char host[256];
 	int port = 80;
-	char *file = indigo_safe_malloc(BUFFER_SIZE);
-	char *request = indigo_safe_malloc(BUFFER_SIZE);
-	char *http_line = indigo_safe_malloc(BUFFER_SIZE);
-	char *http_response = indigo_safe_malloc(BUFFER_SIZE);
-	long content_len = 0;
-	long uncompressed_content_len = 0;
-	int http_result = 0;
-	char *image_type;
-	int socket = -1;
-	int res = false;
-	sscanf(url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
-	socket = indigo_open_tcp(host, port);
-	if (socket < 0)
-		goto clean_return;
-	INDIGO_TRACE(indigo_trace("%d <- // open for '%s:%d'", socket, host, port));
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\r\nAccept-Encoding: gzip\r\n\r\n", file);
-#else
-	snprintf(request, BUFFER_SIZE, "GET /%s HTTP/1.1\r\n\r\n", file);
-#endif
-	INDIGO_TRACE(indigo_trace("%d <- %s", socket, request));
-	res = indigo_write(socket, request, strlen(request));
-	if (res == false)
-		goto clean_return;
-	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-	if (res < 0) {
-		res = false;
-		goto clean_return;
+	char file[256];
+	sscanf(url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file);
+	indigo_uni_handle handle = indigo_uni_client_tcp_socket(host, port);
+	if (!handle.opened) {
+		return false;
 	}
-	INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
-	int count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
-	if ((count != 2) || (http_result != 200)) {
-		goto clean_return;
+	char line[256];
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int length = snprintf(line, sizeof(line), "GET /%s HTTP/1.1\r\nAccept-Encoding: gzip\r\n\r\n", file);
+#else
+	int length = snprintf(line, sizeof(line), "GET /%s HTTP/1.1\r\n\r\n", file);
+#endif
+	if (indigo_uni_write(handle, line, length) < 0) {
+		goto error_return;
+	}
+	if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+		goto error_return;
+	}
+	int http_result = 0;
+	char http_response[256] = "No response";
+	if (sscanf(line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response) != 2 || http_result != 200) {
+		goto error_return;
 	}
 	bool use_gzip = false;
-	/* On Raspberry Pi blob compression may take longer. Make sure we do not timeout prematurely */
-	struct timeval timeout;
-	timeout.tv_sec = 15;
-	timeout.tv_usec = 0;
-	setsockopt(socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
-	do {
-		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-		if (res < 0) {
-			res = false;
-			goto clean_return;
-		}
-		INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		if (!strncasecmp(http_line, "Content-Encoding: gzip", 22)) {
+	/* On Raspberry Pi blob compression may take longer. Make sure we do not timeout prematurely */
+	struct timeval timeout = { .tv_sec = 15 };
+	setsockopt(handle.fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+	long uncompressed_content_len = 0;
+#endif
+	long content_len = 0;
+	do {
+		if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+			goto error_return;
+		}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		if (!strncasecmp(line, "Content-Encoding: gzip", 22)) {
 			use_gzip = true;
 			continue;
 		}
+		if (sscanf(line, "X-Uncompressed-Content-Length: %20ld[^\n]", &uncompressed_content_len) == 1)
+			continue;
 #endif
-		if (sscanf(http_line, "Content-Length: %20ld[^\n]", &content_len) == 1)
+		if (sscanf(line, "Content-Length: %20ld[^\n]", &content_len) == 1)
 			continue;
-		if (sscanf(http_line, "X-Uncompressed-Content-Length: %20ld[^\n]", &uncompressed_content_len) == 1)
-			continue;
-	} while (http_line[0] != '\0');
+	} while (line[0] != 0);
 	if (content_len) {
-		image_type = strrchr(file, '.');
+		char *image_type = strrchr(file, '.');
 		if (image_type && format != NULL)
 			indigo_copy_name(format, image_type);
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -1191,47 +1159,38 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 			*size = uncompressed_content_len;
 			*value = indigo_safe_realloc(*value, *size);
 			char *compressed_buffer = indigo_safe_malloc(content_len);
-			res = (indigo_read(socket, compressed_buffer, content_len) >= 0) ? true : false;
-			if (res) {
-				unsigned out_size = (unsigned)uncompressed_content_len;
-				indigo_decompress(compressed_buffer, (unsigned)content_len, *value, &out_size);
+			if (indigo_uni_read(handle, compressed_buffer, content_len) < 0) {
+				goto error_return;
 			}
+			unsigned out_size = (unsigned)uncompressed_content_len;
+			indigo_uni_decompress(compressed_buffer, (unsigned)content_len, *value, &out_size);
 			free(compressed_buffer);
+			indigo_uni_close(handle);
+			return true;
 		} else {
 			*size = content_len;
 			*value = indigo_safe_realloc(*value, *size);
-			INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, *size));
-			res = (indigo_read(socket, *value, *size) >= 0) ? true : false;
+			if (indigo_uni_read(handle, *value, *size) < 0) {
+				goto error_return;
+			}
+			indigo_uni_close(handle);
+			return true;
 		}
 #else
 		*size = content_len;
 		*value = indigo_safe_realloc(*value, *size);
-		INDIGO_TRACE(indigo_trace("%d -> // %d bytes", socket, *size));
-		res = (indigo_read(socket, *value, *size) >= 0) ? true : false;
+		if (indigo_uni_read(handle, *value, *size) < 0) {
+			goto error_return;
+		}
+		indigo_uni_close(handle);
+		return true;
 #endif
 	} else {
-		res = false;
+		INDIGO_TRACE(indigo_trace("%d -> // No data expected"));
 	}
-
-clean_return:
-	if (!res || socket < 0)
-		INDIGO_TRACE(indigo_trace("%d -> // %s", socket, strerror(errno)));
-	if (socket >= 0) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		shutdown(socket, SHUT_RDWR);
-		close(socket);
-#endif
-#if defined(INDIGO_WINDOWS)
-		shutdown(socket, SD_BOTH);
-		closesocket(socket);
-#endif
-	}
-	indigo_safe_free(host);
-	indigo_safe_free(file);
-	indigo_safe_free(request);
-	indigo_safe_free(http_line);
-	indigo_safe_free(http_response);
-	return res;
+error_return:
+	indigo_uni_close(handle);
+	return false;
 }
 
 bool indigo_populate_http_blob_item(indigo_item *blob_item) {
@@ -1243,89 +1202,44 @@ bool indigo_populate_http_blob_item(indigo_item *blob_item) {
 }
 
 bool indigo_upload_http_blob_item(indigo_item *blob_item) {
-	char *host = indigo_safe_malloc(BUFFER_SIZE);
-	int port = 80;
-	char *file = indigo_safe_malloc(BUFFER_SIZE);
-	char *request = indigo_safe_malloc(BUFFER_SIZE);
-	char *http_line = indigo_safe_malloc(BUFFER_SIZE);
-	char *http_response = indigo_safe_malloc(BUFFER_SIZE);
-	int http_result = 0;
-	int socket = -1;
-	int res = false;
 	if ((blob_item->blob.url[0] == '\0') || strcmp(blob_item->name, CCD_IMAGE_ITEM_NAME)) {
 		indigo_error("%s(): url == \"\" or item != \"%s\"", __FUNCTION__, CCD_IMAGE_ITEM_NAME);
-		goto clean_return;
+		return false;
 	}
-	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%256[^\n]", host, &port, file);
-	socket = indigo_open_tcp(host, port);
-	if (socket < 0)
-		goto clean_return;
-	INDIGO_TRACE(indigo_trace("%d <- // open for '%s:%d'", socket, host, port));
-//#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#if false
-	unsigned char *out_buffer = indigo_safe_malloc(blob_item->blob.size);
-	unsigned int out_size = blob_item->blob.size;
-	if (out_buffer == NULL)
-		goto clean_return;
-	indigo_compress("image", blob_item->blob.value, (unsigned int)blob_item->blob.size, out_buffer, &out_size);
-	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Encoding: gzip\r\nContent-Length: %d\r\nX-Uncompressed-Content-Length: %ld\r\n\r\n", file, out_size, blob_item->blob.size);
-	INDIGO_TRACE(indigo_trace("%d <- %s", request));
-	res = indigo_write(socket, request, strlen(request));
-	if (res == false)
-		goto clean_return;
-	INDIGO_TRACE(indigo_trace("%d <- // %d bytes", socket, blob_item->blob.size));
-	res = indigo_write(socket, (const char *)out_buffer, out_size);
-	indigo_safe_free(out_buffer);
-	if (res == false)
-		goto clean_return;
-#else
-	snprintf(request, BUFFER_SIZE, "PUT /%s HTTP/1.1\r\nContent-Length: %ld\r\n\r\n", file, blob_item->blob.size);
-	INDIGO_TRACE(indigo_trace("%d <- %s", socket, request));
-	res = indigo_write(socket, request, strlen(request));
-	if (res == false)
-		goto clean_return;
-	INDIGO_TRACE(indigo_trace("%d <- // %d bytes", socket, blob_item->blob.size));
-	res = indigo_write(socket, blob_item->blob.value, blob_item->blob.size);
-	if (res == false)
-		goto clean_return;
-#endif
-	res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-	INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
-	if (res < 0) {
-		res = false;
-		goto clean_return;
+	char host[256];
+	int port = 80;
+	char file[256];
+	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file);
+	indigo_uni_handle handle = indigo_uni_client_tcp_socket(host, port);
+	if (!handle.opened) {
+		return false;
 	}
-	int count = sscanf(http_line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response);
-	if ((count != 2) || (http_result != 200)) {
-		goto clean_return;
+	char line[256];
+	int length = snprintf(line, sizeof(line), "PUT /%s HTTP/1.1\r\nContent-Length: %ld\r\n\r\n", file, blob_item->blob.size);
+	if (indigo_uni_write(handle, line, length) < 0) {
+		goto error_return;
+	}
+	if (indigo_uni_write(handle, blob_item->blob.value, blob_item->blob.size) < 0) {
+		goto error_return;
+	}
+	if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+		goto error_return;
+	}
+	int http_result = 0;
+	char http_response[256] = "No response";
+	if (sscanf(line, "HTTP/1.1 %d %255[^\n]", &http_result, http_response) != 2 || http_result != 200) {
+		goto error_return;
 	}
 	do {
-		res = indigo_read_line(socket, http_line, BUFFER_SIZE);
-		INDIGO_TRACE(indigo_trace("%d -> %s", socket, http_line));
-		if (res < 0) {
-			res = false;
-			goto clean_return;
+		if (indigo_uni_read_line(handle, line, sizeof(line)) < 0) {
+			goto error_return;
 		}
-	} while (http_line[0] != '\0');
-clean_return:
-	if (!res || socket < 0)
-		INDIGO_TRACE(indigo_trace("%d -> // %s", socket, strerror(errno)));
-	if (socket >= 0) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-		shutdown(socket, SHUT_RDWR);
-		close(socket);
-#endif
-#if defined(INDIGO_WINDOWS)
-		shutdown(socket, SD_BOTH);
-		closesocket(socket);
-#endif
-	}
-	indigo_safe_free(host);
-	indigo_safe_free(file);
-	indigo_safe_free(request);
-	indigo_safe_free(http_line);
-	indigo_safe_free(http_response);
-	return res;
+	} while (line[0] != 0);
+	indigo_uni_close(handle);
+	return true;
+error_return:
+	indigo_uni_close(handle);
+	return false;
 }
 
 static bool indigo_get_hint(char *hints, const char *key, char *value) {
@@ -1590,7 +1504,6 @@ void indigo_set_text_item_value(indigo_item *item, const char *value) {
 		item->text.long_value[length] = 0;
 	}
 }
-
 
 indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values) {
 	indigo_property *property = indigo_init_text_property(NULL, device, name, NULL, NULL, 0, 0, count);

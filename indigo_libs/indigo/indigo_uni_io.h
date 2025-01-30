@@ -31,6 +31,15 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <sys/socket.h>
+#define INDIGO_PATH_SEPATATOR	'/'
+#elif defined(INDIGO_WINDOWS)
+#include <winsock2.h>
+#define INDIGO_PATH_SEPATATOR	'\\'
+#define strcasecmp stricmp
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -48,12 +57,14 @@ typedef struct {
 	int last_error;
 } indigo_uni_handle;
 
-
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #define INDIGO_ERROR_HANDLE (indigo_uni_handle) { 0, -1, false, EINVAL }
-#else
-#warning "TODO: Unified I/O"
-#endif
+
+#define INDIGO_STDIN_HANDLE (indigo_uni_handle) { INDIGO_FILE_HANDLE, 0, true, 0 }
+#define INDIGO_STDOUT_HANDLE (indigo_uni_handle) { INDIGO_FILE_HANDLE, 1, true, 0 }
+#define INDIGO_STDERR_HANDLE (indigo_uni_handle) { INDIGO_FILE_HANDLE, 2, true, 0 }
+
+#define INDIGO_TCP_SOCKET(socket) (indigo_uni_handle) { INDIGO_TCP_HANDLE, socket, true, 0 }
+#define INDIGO_FILE(fd) (indigo_uni_handle) { INDIGO_FILE_HANDLE, fd, true, 0 }
 
 /** Decode last error to string.
  */
@@ -91,7 +102,11 @@ extern indigo_uni_handle indigo_uni_open_client_socket(const char *host, int por
  */
 extern indigo_uni_handle indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint);
 
-/** Read into buffer.
+/** Read available data into buffer.
+ */
+extern long indigo_uni_read_available(indigo_uni_handle handle, void *buffer, long length);
+
+/** Read data into buffer.
  */
 extern long indigo_uni_read(indigo_uni_handle handle, void *buffer, long length);
 
@@ -115,9 +130,28 @@ extern long indigo_uni_write(indigo_uni_handle handle, const char *buffer, long 
 
 extern long indigo_uni_printf(indigo_uni_handle handle, const char *format, ...);
 
-/** Close handle
+/** Close handle.
  */
 extern void indigo_uni_close(indigo_uni_handle handle);
+
+/** INDIGO config folder (~/.indigo)
+ */
+
+extern const char *indigo_uni_config_folder();
+
+/** Create folder.
+ */
+extern bool indigo_uni_mkdir(const char *path);
+
+/** Compress with gzip.
+ */
+
+extern void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
+
+/** Decompress with gzip.
+ */
+
+extern void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
 
 #ifdef __cplusplus
 }

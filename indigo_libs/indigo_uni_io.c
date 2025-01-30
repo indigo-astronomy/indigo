@@ -36,10 +36,13 @@
 #include <unistd.h>
 #include <termios.h>
 #include <netdb.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <zlib.h>
+#elif defined(INDIGO_WINDOWS)
+#include <direct.h>
 #else
 #warning "TODO: Unified I/O"
 #endif
@@ -62,6 +65,11 @@ indigo_uni_handle indigo_uni_open_file(const char *path) {
 	indigo_uni_handle handle;
 	handle.type = INDIGO_FILE_HANDLE;
 	handle.fd = open(path, O_RDONLY);
+	if (handle.fd >= 0) {
+		handle.opened = true;
+	} else {
+		handle.last_error = errno;
+	}
 	return handle;
 #else
 #warning "TODO: indigo_uni_open_file()"
@@ -73,6 +81,11 @@ indigo_uni_handle indigo_uni_create_file(const char *path) {
 	indigo_uni_handle handle;
 	handle.type = INDIGO_FILE_HANDLE;
 	handle.fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (handle.fd >= 0) {
+		handle.opened = true;
+	} else {
+		handle.last_error = errno;
+	}
 	return handle;
 #else
 #warning "TODO: indigo_uni_create_file()"
@@ -272,18 +285,19 @@ indigo_uni_handle indigo_uni_open_client_socket(const char *host, int port, int 
 			handle.fd = socket(AF_INET, type, 0);
 			if (handle.fd == -1) {
 				handle.last_error = errno;
-				indigo_error("Can't create socket [%s]", indigo_uni_strerror(handle));
+				indigo_error("Can't create %s socket for '%s:%d' [%s]", type == SOCK_STREAM ? "TCP" : "UDP", host, port, indigo_uni_strerror(handle));
 				break;
 			}
 			*(uint16_t *)(address->ai_addr->sa_data) = htons(port);
 			if (connect(handle.fd, address->ai_addr, address->ai_addrlen) == 0) {
-				struct timeval timeout = { .tv_sec = 5, .tv_usec = 0 };
+				struct timeval timeout = { .tv_sec = 5 };
 				if (setsockopt(handle.fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) == 0 && setsockopt(handle.fd, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) == 0) {
+					INDIGO_TRACE(indigo_trace("%d <- // connected to '%s:%d'", handle.fd, host, port));
 					break;
 				}
 			}
 			handle.last_error = errno;
-			indigo_error("Can't connect socket [%s]", indigo_uni_strerror(handle));
+			indigo_error("Can't connect %s socket for '%s:%d' [%s]", type == SOCK_STREAM ? "TCP" : "UDP", host, port, indigo_uni_strerror(handle));
 			close(handle.fd);
 			handle.fd = -1;
 		}
@@ -291,16 +305,23 @@ indigo_uni_handle indigo_uni_open_client_socket(const char *host, int port, int 
 	freeaddrinfo(address_list);
 	return handle;
 #else
+	static bool initialized = false;
+	if (!initialized) {
+		WORD version_requested = MAKEWORD(1, 1);
+		WSADATA data;
+		WSAStartup(version_requested, &data);
+		initializd = true;
+	}
 	indigo_uni_handle handle = { type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE, -1, false, 0 };
 	struct hostent *he;
 	if ((he = gethostbyname(host)) == NULL) {
 		handle.last_eror = WSAGetLastError();
-		indigo_error("Can't resolve host [%s]", indigo_uni_strerror(handle));
+		indigo_error("Can't resolve host for '%s:%d' [%s]", host, port, indigo_uni_strerror(handle));
 		return handle;
 	}
 	if ((handle.fd = socket(AF_INET, type, 0))== -1) {
 		handle.last_eror = WSAGetLastError();
-		indigo_error("Can't create socket [%s]", indigo_uni_strerror(handle));
+		indigo_error("Can't create %s socket for '%s:%d' [%s]", type == SOCK_STREAM ? "TCP" : "UDP", host, port, indigo_uni_strerror(handle));
 		return handle;
 	}
 	struct sockaddr_in srv_info;
@@ -308,12 +329,13 @@ indigo_uni_handle indigo_uni_open_client_socket(const char *host, int port, int 
 	srv_info.sin_family = AF_INET;
 	srv_info.sin_port = htons(port);
 	srv_info.sin_addr = *((struct in_addr *)he->h_addr);
-	struct timeval timeout = { .tv_sec = 5, .tv_usec = 0 };
+	struct timeval timeout = { .tv_sec = 5 };
 	if (connect(handle.fd, (struct sockaddr *)&srv_info, sizeof(struct sockaddr)) == 0 && setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) == 0 && setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0) {
+		INDIGO_TRACE(indigo_trace("%d <- // connected to '%s:%d'", handle.fd, host, port));
 		return handle;
 	}
 	handle.last_eror = WSAGetLastError();
-	indigo_error("Can't connect socket [%s]", indigo_uni_strerror(handle));
+	indigo_error("Can't connect %s socket for '%s:%d' [%s]", type == SOCK_STREAM ? "TCP" : "UDP", host, port, indigo_uni_strerror(handle));
 	return handle;
 #endif
 }
@@ -344,7 +366,6 @@ indigo_uni_handle indigo_uni_open_url(const char *url, int default_port, indigo_
 	} else {
 		indigo_copy_name(host_name, host);
 	}
-	INDIGO_DEBUG(indigo_debug("Trying to open '%s', port = %d, protocol = %d", host_name, port, protocol_hint));
 	switch (protocol_hint) {
 		case INDIGO_TCP_HANDLE:
 			return indigo_uni_client_tcp_socket(host_name, port);
@@ -354,6 +375,23 @@ indigo_uni_handle indigo_uni_open_url(const char *url, int default_port, indigo_
 			return INDIGO_ERROR_HANDLE;
 	}
 }
+
+long indigo_uni_read_available(indigo_uni_handle handle, void *buffer, long length) {
+	long bytes_read;
+#if defined(INDIGO_WINDOWS)
+	if (handle.type == INDIGO_FILE_HANDLE) {
+		bytes_read = read(handle.fd, buffer, length);
+	} else {
+		bytes_read = recv(handle, buffer, length, 0);
+		handle.last_error = WSAGetLastError();
+	}
+#else
+	bytes_read = read(handle.fd, buffer, length);
+	handle.last_error = errno;
+#endif
+	return bytes_read;
+}
+
 
 long indigo_uni_read(indigo_uni_handle handle, void *buffer, long length) {
 	long remains = length;
@@ -365,24 +403,24 @@ long indigo_uni_read(indigo_uni_handle handle, void *buffer, long length) {
 			bytes_read = read(handle.fd, buffer, remains);
 		} else {
 			bytes_read = recv(handle, buffer, remains, 0);
-			if (bytes_read == -1 && WSAGetLastError() == WSAETIMEDOUT) {
+			handle.last_error = WSAGetLastError();
+			if (bytes_read == -1 && handle.last_error == WSAETIMEDOUT) {
 				Sleep(500);
 			}
 		}
-		handle.last_error = WSAGetLastError();
 #else
 		bytes_read = read(handle.fd, buffer, remains);
 		handle.last_error = errno;
 #endif
 		if (bytes_read <= 0) {
 			if (bytes_read < 0) {
-				INDIGO_ERROR(indigo_error("%d -> // %s", handle, strerror(errno)));
+				INDIGO_ERROR(indigo_error("%d -> // %s", handle.fd, indigo_uni_strerror(handle)));
 			}
 			return (int)bytes_read;
 		}
 		total_bytes += bytes_read;
 		if (bytes_read == remains) {
-			INDIGO_TRACE(indigo_trace("%d -> // %ld bytes read", handle, total_bytes));
+			INDIGO_TRACE(indigo_trace("%d -> // %ld bytes read", handle.fd, total_bytes));
 			return (int)total_bytes;
 		}
 		buffer += bytes_read;
@@ -484,20 +522,21 @@ long indigo_uni_write(indigo_uni_handle handle, const char *buffer, long length)
 #if defined(INDIGO_WINDOWS)
 		if (handle.type == INDIGO_FILE_HANDLE) {
 			bytes_written = write(handle.fd, buffer, remains);
+			handle.last_error = errno;
 		} else {
 			bytes_written = send(handle.fd, buffer, remains, 0);
+			handle.last_error = WSAGetLastError();
 		}
-		handle.last_error = WSAGetLastError();
 #else
 		bytes_written = write(handle.fd, buffer, remains);
 		handle.last_error = errno;
 #endif
 		if (bytes_written < 0) {
-			INDIGO_ERROR(indigo_error("%d <- // %s", handle, strerror(errno)));
+			INDIGO_ERROR(indigo_error("%d <- // %s", handle.fd, indigo_uni_strerror(handle)));
 			return -1;
 		}
 		if (bytes_written == remains) {
-			INDIGO_TRACE(indigo_trace("%d <- // %ld bytes written", handle, bytes_written));
+			INDIGO_TRACE(indigo_trace("%d <- // %ld bytes written", handle.fd, bytes_written));
 			return bytes_written;
 		}
 		buffer += bytes_written;
@@ -525,15 +564,82 @@ void indigo_uni_close(indigo_uni_handle handle) {
 #if defined(INDIGO_WINDOWS)
 		if (handle.type == INDIGO_FILE_HANDLE) {
 			close(handle.fd);
+			handle.last_error = errno;
 		} else {
+			shutdown(handle.fd, SD_BOTH);
 			closesocket(handle.fd);
+			handle.last_error = WSAGetLastError();
 		}
-		handle.last_error = WSAGetLastError();
 #else
+		if (handle.type != INDIGO_FILE_HANDLE) {
+			shutdown(handle.fd, SHUT_RDWR);
+		}
 		close(handle.fd);
 		handle.last_error = errno;
 #endif
 		handle.fd = -1;
 		handle.opened = false;
 	}
+}
+
+const char *indigo_uni_config_folder() {
+	static char config_folder[512] = { 0 };
+	if (config_folder[0] == 0) {
+		snprintf(config_folder, sizeof(config_folder), "%s/.indigo", getenv("HOME"));
+	}
+	return config_folder;
+}
+
+bool indigo_uni_mkdir(const char *path) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (mkdir(path, 0777) == 0 || errno == EEXIST) {
+		return true;
+	}
+	return false;
+#else
+#warning "TODO: indigo_uni_mkdir()"
+#endif
+}
+
+void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	z_stream defstream;
+	defstream.zalloc = Z_NULL;
+	defstream.zfree = Z_NULL;
+	defstream.opaque = Z_NULL;
+	defstream.avail_in = in_size;
+	defstream.next_in = (Bytef *)in_buffer;
+	defstream.avail_out = *out_size;
+	defstream.next_out = (Bytef *)out_buffer;
+	gz_header header = { 0 };
+	header.name = (Bytef *)name;
+	header.comment = Z_NULL;
+	header.extra = Z_NULL;
+	int r = deflateInit2(&defstream, Z_DEFAULT_COMPRESSION, Z_DEFLATED, 15 + 16, 9, Z_DEFAULT_STRATEGY);
+	r = deflateSetHeader(&defstream, &header);
+	r = deflate(&defstream, Z_FINISH);
+	r = deflateEnd(&defstream);
+	*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
+#else
+#warning "TODO: indigo_compress()"
+#endif
+}
+
+void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	z_stream infstream;
+	infstream.zalloc = Z_NULL;
+	infstream.zfree = Z_NULL;
+	infstream.opaque = Z_NULL;
+	infstream.avail_in = in_size;
+	infstream.next_in = (Bytef *)in_buffer;
+	infstream.avail_out = *out_size;
+	infstream.next_out = (Bytef *)out_buffer;
+	int r = inflateInit2(&infstream, MAX_WBITS + 16);
+	r = inflate(&infstream, Z_NO_FLUSH);
+	r = inflateEnd(&infstream);
+	*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
+#else
+#warning "TODO: indigo_decompress()"
+#endif
 }
