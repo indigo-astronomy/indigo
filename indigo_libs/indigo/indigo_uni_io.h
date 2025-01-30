@@ -99,9 +99,7 @@ extern long indigo_uni_read(indigo_uni_handle handle, void *buffer, long length)
  */
 extern long indigo_uni_read_section(indigo_uni_handle handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout);
 
-/** Read '\n' terminated ignoring '\r' line.
- */
-extern long indigo_uni_read_line(indigo_uni_handle handle, char *buffer, int length);
+#define indigo_uni_read_line(handle, buffer, length) indigo_uni_read_section(handle, buffer, length, "\n", "\r\n", -1)
 
 /** Read formatted.
  */
@@ -110,12 +108,12 @@ extern int indigo_uni_scanf(indigo_uni_handle handle, const char *format, ...);
 
 /** Write buffer.
  */
-extern bool indigo_uni_write(indigo_uni_handle handle, const char *buffer, long length);
+extern long indigo_uni_write(indigo_uni_handle handle, const char *buffer, long length);
 
 /** Write formatted.
  */
 
-extern bool indigo_uni_printf(indigo_uni_handle handle, const char *format, ...);
+extern long indigo_uni_printf(indigo_uni_handle handle, const char *format, ...);
 
 /** Close handle
  */

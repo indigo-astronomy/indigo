@@ -415,7 +415,6 @@ long indigo_uni_read_section(indigo_uni_handle handle, char *buffer, long length
 		buffer[bytes_read] = 0;
 	} else {
 		bool terminated = false;
-		bool ignored = false;
 		int bytes_read = 0;
 		while (bytes_read < length) {
 			fd_set readout;
@@ -436,17 +435,16 @@ long indigo_uni_read_section(indigo_uni_handle handle, char *buffer, long length
 				handle.last_error = errno;
 				break;
 			}
+			bool ignored = false;
 			for (const char *s = ignore; *s; s++) {
 				if (c == *s) {
 					ignored = true;
 					break;
 				}
 			}
-			if (ignored) {
-				ignored = false;
-				continue;
+			if (!ignored) {
+				buffer[bytes_read++] = c;
 			}
-			buffer[bytes_read++] = c;
 			for (const char *s = terminators; *s; s++) {
 				if (c == *s) {
 					terminated = true;
@@ -466,13 +464,61 @@ long indigo_uni_read_section(indigo_uni_handle handle, char *buffer, long length
 #endif
 }
 
-long indigo_uni_read_line(indigo_uni_handle handle, char *buffer, int length);
+int indigo_uni_scanf_line(indigo_uni_handle handle, const char *format, ...) {
+	char *buffer = indigo_alloc_large_buffer();
+	int count = 0;
+	if (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE) > 0) {
+		va_list args;
+		va_start(args, format);
+		count = vsscanf(buffer, format, args);
+		va_end(args);
+	}
+	indigo_free_large_buffer(buffer);
+	return count;
+}
 
-int indigo_uni_scanf(indigo_uni_handle handle, const char *format, ...);
+long indigo_uni_write(indigo_uni_handle handle, const char *buffer, long length) {
+	long remains = length;
+	while (true) {
+		long bytes_written;
+#if defined(INDIGO_WINDOWS)
+		if (handle.type == INDIGO_FILE_HANDLE) {
+			bytes_written = write(handle.fd, buffer, remains);
+		} else {
+			bytes_written = send(handle.fd, buffer, remains, 0);
+		}
+		handle.last_error = WSAGetLastError();
+#else
+		bytes_written = write(handle.fd, buffer, remains);
+		handle.last_error = errno;
+#endif
+		if (bytes_written < 0) {
+			INDIGO_ERROR(indigo_error("%d <- // %s", handle, strerror(errno)));
+			return -1;
+		}
+		if (bytes_written == remains) {
+			INDIGO_TRACE(indigo_trace("%d <- // %ld bytes written", handle, bytes_written));
+			return bytes_written;
+		}
+		buffer += bytes_written;
+		remains -= bytes_written;
+	}
+}
 
-bool indigo_uni_write(indigo_uni_handle handle, const char *buffer, long length);
-
-bool indigo_uni_printf(indigo_uni_handle handle, const char *format, ...);
+long indigo_uni_printf(indigo_uni_handle handle, const char *format, ...) {
+	if (strchr(format, '%')) {
+		char *buffer = indigo_alloc_large_buffer();
+		va_list args;
+		va_start(args, format);
+		int length = vsnprintf(buffer, INDIGO_BUFFER_SIZE, format, args);
+		va_end(args);
+		bool result = indigo_uni_write(handle, buffer, length);
+		indigo_free_large_buffer(buffer);
+		return result;
+	} else {
+		return indigo_uni_write(handle, format, strlen(format));
+	}
+}
 
 void indigo_uni_close(indigo_uni_handle handle) {
 	if (handle.opened) {
