@@ -175,10 +175,9 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_LIMITS_PROPERTY);
 		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = tmp_ha_tracking_limit;
 		 AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = tmp_local_time_limit;
-		if (DEVICE_CONTEXT->property_save_file_handle) {
+		if (DEVICE_CONTEXT->property_save_file_handle.opened) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			close(DEVICE_CONTEXT->property_save_file_handle);
-			DEVICE_CONTEXT->property_save_file_handle = 0;
+			indigo_uni_close(DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}

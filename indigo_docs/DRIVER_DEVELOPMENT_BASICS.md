@@ -234,7 +234,7 @@ The main function for the **executable driver** is pretty much a boiler plate co
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(INDIGO_STDIN_HANDLE, INDIGO_STDOUT_HANDLE);
 	indigo_start();
 	indigo_wheel_atik(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
@@ -841,7 +841,7 @@ File containg main fuction needed only for the executable driver  **indigo_wheel
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(INDIGO_STDIN_HANDLE, INDIGO_STDOUT_HANDLE);
 	indigo_start();
 	indigo_wheel_atik(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
