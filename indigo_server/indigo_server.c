@@ -199,6 +199,8 @@
 #include "focuser_lacerta/indigo_focuser_lacerta.h"
 #include "ccd_pentax/indigo_ccd_pentax.h"
 #include "rotator_asi/indigo_rotator_asi.h"
+#include "focuser_astroasis/indigo_focuser_astroasis.h"
+#include "wheel_astroasis/indigo_wheel_astroasis.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -298,6 +300,7 @@ driver_entry_point static_drivers[] = {
 	indigo_dome_skyroof,
 	indigo_dome_talon6ror,
 	indigo_focuser_asi,
+	indigo_focuser_astroasis,
 	indigo_focuser_astromechanics,
 	indigo_focuser_dmfc,
 	indigo_focuser_dsd,
@@ -352,6 +355,7 @@ driver_entry_point static_drivers[] = {
 	indigo_rotator_optec,
 	indigo_rotator_simulator,
 	indigo_wheel_asi,
+	indigo_wheel_astroasis,
 	indigo_wheel_atik,
 	indigo_wheel_fli,
 	indigo_wheel_indigo,
