@@ -279,7 +279,7 @@ static bool meade_open(indigo_device *device) {
 	} else {
 		PRIVATE_DATA->is_network = true;
 		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		if (MOUNT_TYPE_NYX_ITEM->sw.value)
+		if (MOUNT_TYPE_NYX_ITEM->sw.value || MOUNT_TYPE_ON_STEP_ITEM->sw.value)
 			PRIVATE_DATA->handle = indigo_open_network_device(name, 9999, &proto);
 		else
 			PRIVATE_DATA->handle = indigo_open_network_device(name, 4030, &proto);
