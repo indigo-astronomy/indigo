@@ -1,6 +1,6 @@
 # Saving images from the camera driver
 
-Revision: 06.11.2022 (draft)
+Revision: 31.01.2025 (draft)
 
 Author: **Rumen G.Bogdanovski**
 
@@ -38,6 +38,7 @@ The legacy file name templates come as INDI standard heritage. Here **PREFIX** i
 INDIGO file name templates support a number of placeholders starting with "%" character, which will be expanded to different image properties in the file name. If "%" is present in the **PREFIX** INDIGO placeholder format is assumed and X-es in the suffix will not be replaced with with the file number.
 
 ### Valid placeholders:
+* **%o** - will be expanded to the object name in **CCD_LOCAL_MODE.OBJECT**
 
 * **%M** - will be expanded to the MD5 sum of the first 5kb of the file content. It can be used to provide unique file names and to check if the file is already downloaded by the client.
 
