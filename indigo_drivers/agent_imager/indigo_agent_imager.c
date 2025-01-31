@@ -3214,12 +3214,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(malloc_size);
 					DEVICE_PRIVATE_DATA->image_buffer_size = malloc_size;
 				}
-				int fd = open(file_name, O_RDONLY, 0);
-				if (fd == -1) {
+				indigo_uni_handle handle = indigo_uni_open_file(file_name);
+				if (!handle.opened) {
 					break;
 				}
-				int result = indigo_read(fd, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.value = DEVICE_PRIVATE_DATA->image_buffer, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.size = file_stat.st_size);
-				close(fd);
+				long result = indigo_uni_read(handle, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.value = DEVICE_PRIVATE_DATA->image_buffer, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.size = file_stat.st_size);
+				indigo_uni_close(handle);
 				if (result == -1) {
 					AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);
