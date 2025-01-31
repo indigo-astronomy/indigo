@@ -1316,9 +1316,9 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 	return snprintf(buffer, buffer_length, "\"ErrorNumber\": %d, \"ErrorMessage\": \"%s\"", indigo_alpaca_error_NotImplemented, indigo_alpaca_error_string(indigo_alpaca_error_NotImplemented));
 }
 
-#define PRINTF(fmt, ...) if (use_gzip) gzprintf(gzf, fmt, ##__VA_ARGS__); else indigo_printf(socket, fmt, ##__VA_ARGS__);
+#define PRINTF(fmt, ...) if (use_gzip) gzprintf(gzf, fmt, ##__VA_ARGS__); else indigo_uni_printf(handle, fmt, ##__VA_ARGS__);
 
-void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, int socket, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
+void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle handle, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
 	indigo_alpaca_error result = indigo_alpaca_error_OK;
 	indigo_blob_entry *entry;
 	if (use_imagebytes) {
@@ -1345,9 +1345,9 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
-					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-					indigo_write(socket, (const char *)buffer, size * 4);
+					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
+					indigo_uni_write(handle, (const char *)buffer, size * 4);
 					break;
 				}
 				case INDIGO_RAW_MONO16: {
@@ -1358,9 +1358,9 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 					for (int col = 0; col < width; col++)
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
-					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-					indigo_write(socket, (const char *)buffer, size * 4);
+					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
+					indigo_uni_write(handle, (const char *)buffer, size * 4);
 					free(buffer);
 					break;
 				}
@@ -1376,15 +1376,15 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 0];
 							*pnt++ = data[base + 1];
 						}
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
-					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-					indigo_write(socket, (const char *)buffer, size * 12);
+					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
+					indigo_uni_write(handle, (const char *)buffer, size * 12);
 					break;
 				}
 				case INDIGO_RAW_RGB48: {
 					metadata.dimension3 = 3;
 					metadata.rank = 3;
-					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
+					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					uint16_t *data = entry->content + sizeof(indigo_raw_header);
 					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
@@ -1394,25 +1394,26 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 1];
 							*pnt++ = data[base + 2];
 						}
-					indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
-					indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-					indigo_write(socket, (const char *)buffer, size * 12);
+					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
+					indigo_uni_write(handle, (const char *)buffer, size * 12);
 					break;
 				}
 			}
 			pthread_mutex_unlock(&entry->mutext);
 		} else {
 			metadata.error_number = result;
-			indigo_write(socket, (const char *)&metadata, sizeof(metadata));
-			indigo_printf(socket, "%s", indigo_alpaca_error_string(result));
+			indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
+			indigo_uni_printf(handle, "%s", indigo_alpaca_error_string(result));
 		}
 	} else {
 		gzFile gzf = NULL;
 		if (use_gzip) {
-			indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
-			gzf = gzdopen(socket, "w");
+			indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
+#warning: "TODO: Pending issue for migration to unified I/O"
+			gzf = gzdopen(handle.fd, "w");
 		} else {
-			indigo_printf(socket, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
+			indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
 		}
 		if (alpaca_device->ccd.imageready && (entry = indigo_validate_blob(alpaca_device->ccd.imageready))) {
 			pthread_mutex_lock(&entry->mutext);
