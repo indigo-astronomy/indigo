@@ -69,7 +69,7 @@ extern void indigo_server_add_file_resource(const char *path, const char *file_n
 
 /** Add URI handler.
  */
-extern void indigo_server_add_handler(const char *path, bool (*handler)(int client_socket, char *method, char *path, char *params));
+extern void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle handle, char *method, char *path, char *params));
 
 /** Remove document.
  */

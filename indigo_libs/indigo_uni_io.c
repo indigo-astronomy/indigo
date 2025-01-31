@@ -583,6 +583,7 @@ void indigo_uni_close(indigo_uni_handle handle) {
 #else
 		if (handle.type != INDIGO_FILE_HANDLE) {
 			shutdown(handle.fd, SHUT_RDWR);
+			indigo_usleep(ONE_SECOND_DELAY);
 		}
 		close(handle.fd);
 		handle.last_error = errno;
