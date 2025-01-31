@@ -245,7 +245,7 @@ typedef struct {
 	int stack_size;
 	unsigned int dither_num;
 	pthread_mutex_t mutex;
-	int log_file;
+	indigo_uni_handle log_file;
 	char log_file_name[PATH_MAX];
 	int stars_used_at_start;
 	bool no_guiding_star;
@@ -291,66 +291,63 @@ static void open_log(indigo_device *device) {
 	strncpy(DEVICE_PRIVATE_DATA->log_file_name, AGENT_GUIDER_LOG_DIR_ITEM->text.value, PATH_MAX);
 	int len = (int)strlen(DEVICE_PRIVATE_DATA->log_file_name);
 	strftime(DEVICE_PRIVATE_DATA->log_file_name + len, PATH_MAX - len, AGENT_GUIDER_LOG_TEMPLATE_ITEM->text.value, local);
-	if (DEVICE_PRIVATE_DATA->log_file > 0) {
-		close(DEVICE_PRIVATE_DATA->log_file);
+	if (DEVICE_PRIVATE_DATA->log_file.opened) {
+		indigo_uni_close(DEVICE_PRIVATE_DATA->log_file);
 	}
-	DEVICE_PRIVATE_DATA->log_file = open(DEVICE_PRIVATE_DATA->log_file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-	if (DEVICE_PRIVATE_DATA->log_file == -1) {
-		indigo_send_message(device, "Failed to create guiding log file (%s)", strerror(errno));
+	DEVICE_PRIVATE_DATA->log_file = indigo_uni_create_file(DEVICE_PRIVATE_DATA->log_file_name);
+	if (!DEVICE_PRIVATE_DATA->log_file.opened) {
+		indigo_send_message(device, "Failed to create guiding log file (%s)", indigo_uni_strerror(DEVICE_PRIVATE_DATA->log_file));
 	}
 	indigo_server_remove_resource("/guiding");
 	indigo_server_add_file_resource("/guiding", DEVICE_PRIVATE_DATA->log_file_name, "text/csv; charset=UTF-8");
 }
 
 static void write_log_header(indigo_device *device, const char *log_type) {
-	if (DEVICE_PRIVATE_DATA->log_file > 0) {
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"Type:\",\"%s\"\r\n", log_type);
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"Camera:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]);
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"Guider:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
+	if (DEVICE_PRIVATE_DATA->log_file.opened) {
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Type:\",\"%s\"\r\n", log_type);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Camera:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_CCD_INDEX]);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"Guider:\",\"%s\"\r\n", FILTER_DEVICE_CONTEXT->device_name[INDIGO_FILTER_GUIDER_INDEX]);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
 		for (int i = 0; i <AGENT_GUIDER_SETTINGS_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_GUIDER_SETTINGS_PROPERTY->items + i;
-			indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
+			indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
 		}
 		for (int i = 0; i <AGENT_GUIDER_DETECTION_MODE_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_GUIDER_DETECTION_MODE_PROPERTY->items + i;
 			if (item->sw.value) {
-				indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DETECTION_MODE_PROPERTY->label, item->label);
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DETECTION_MODE_PROPERTY->label, item->label);
 			}
 		}
 		for (int i = 0; i <AGENT_GUIDER_DEC_MODE_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_GUIDER_DEC_MODE_PROPERTY->items + i;
 			if (item->sw.value) {
-				indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DEC_MODE_PROPERTY->label, item->label);
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DEC_MODE_PROPERTY->label, item->label);
 			}
 		}
 		for (int i = 0; i <AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->items + i;
 			if (item->sw.value) {
-				indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->label, item->label);
+				indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",\"%s\"\r\n", AGENT_GUIDER_DITHERING_STRATEGY_PROPERTY->label, item->label);
 			}
 		}
 		for (int i = 0; i <AGENT_GUIDER_SELECTION_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_GUIDER_SELECTION_PROPERTY->items + i;
-			indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
+			indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"%s:\",%g\r\n", item->label, item->number.value);
 		}
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "\"phase\",\"frame\",\"ref x\",\"ref y\",\"drift x\",\"drift y\",\"drift ra\",\"drift dec\",\"corr ra\",\"corr dec\",\"rmse ra\",\"rmse dec\",\"rmse dith\",\"snr\"\r\n");
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\r\n", log_type);
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "\"phase\",\"frame\",\"ref x\",\"ref y\",\"drift x\",\"drift y\",\"drift ra\",\"drift dec\",\"corr ra\",\"corr dec\",\"rmse ra\",\"rmse dec\",\"rmse dith\",\"snr\"\r\n");
 	}
 }
 
 static void write_log_record(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->log_file > 0) {
-		indigo_printf(DEVICE_PRIVATE_DATA->log_file, "%d,%d,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g\r\n", (int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value, (int)AGENT_GUIDER_STATS_FRAME_ITEM->number.value, AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value, AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value, AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value, AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value, AGENT_GUIDER_STATS_DITHERING_ITEM->number.value, AGENT_GUIDER_STATS_SNR_ITEM->number.value);
+	if (DEVICE_PRIVATE_DATA->log_file.opened) {
+		indigo_uni_printf(DEVICE_PRIVATE_DATA->log_file, "%d,%d,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g,%g\r\n", (int)AGENT_GUIDER_STATS_PHASE_ITEM->number.value, (int)AGENT_GUIDER_STATS_FRAME_ITEM->number.value, AGENT_GUIDER_STATS_REFERENCE_X_ITEM->number.value, AGENT_GUIDER_STATS_REFERENCE_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_X_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_Y_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_RA_S_ITEM->number.value, AGENT_GUIDER_STATS_DRIFT_DEC_S_ITEM->number.value, AGENT_GUIDER_STATS_CORR_RA_ITEM->number.value, AGENT_GUIDER_STATS_CORR_DEC_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_RA_S_ITEM->number.value, AGENT_GUIDER_STATS_RMSE_DEC_S_ITEM->number.value, AGENT_GUIDER_STATS_DITHERING_ITEM->number.value, AGENT_GUIDER_STATS_SNR_ITEM->number.value);
 	}
 }
 
 static void close_log(indigo_device *device) {
-	if (DEVICE_PRIVATE_DATA->log_file > 0) {
-		close(DEVICE_PRIVATE_DATA->log_file);
-	}
-	DEVICE_PRIVATE_DATA->log_file = -1;
+	indigo_uni_close(DEVICE_PRIVATE_DATA->log_file);
 }
 
 static void allow_abort_by_mount_agent(indigo_device *device, bool state) {
