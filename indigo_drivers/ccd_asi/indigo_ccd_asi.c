@@ -582,7 +582,7 @@ static void streaming_timer_callback(indigo_device *device) {
 				while (CCD_STREAMING_EXPOSURE_ITEM->number.value >= 2) {
 					CCD_STREAMING_EXPOSURE_ITEM->number.value --;
 					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
-						CCD_STREAMING_COUNT_ITEM->number.value == 0;
+						CCD_STREAMING_COUNT_ITEM->number.value = 0;
 					}
 					indigo_usleep(ONE_SECOND_DELAY);
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);

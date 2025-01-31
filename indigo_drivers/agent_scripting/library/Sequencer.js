@@ -198,22 +198,66 @@ Sequence.prototype.select_filter_by_label = function(name) {
 };
 
 Sequence.prototype.set_directory = function(directory) {
-	this.sequence.push({ execute: 'set_local_mode("' + directory + '", null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+	this.sequence.push({ execute: 'set_local_mode("' + directory + '", null, null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.capture_batch = function(name_template, count, exposure) {
-	this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '")', step: this.step, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.set_file_template = function(template) {
+	this.sequence.push({ execute: 'set_local_mode(null, "' + template + '", null)', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.set_object_name = function(name) {
+	this.sequence.push({ execute: 'set_local_mode(null, null, "' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+};
+
+Sequence.prototype.capture_batch = function(p1, p2, p3) {
+	// If p1 is not string, treat p1 as count and p2 as exposure
+	// Else treat p1 as name_template, p2 as count, and p3 as exposure
+	var name_template = null;
+	var count = 0;
+	var exposure = 0;
+
+	if (typeof p1 === 'string') {
+		name_template = p1;
+		count = p2;
+		exposure = p3;
+	} else {
+		count = p1;
+		exposure = p2;
+	}
+
+	if (arguments.length === 3 && typeof p1 === 'string') {
+		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
+	}
 	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_batch()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+
 	this.exposure += exposure * count;
 };
 
-Sequence.prototype.capture_stream = function(name_template, count, exposure) {
-	this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '")', step: this.step, progress: this.progress++, exposure: this.exposure });
-	this.sequence.push({ execute: 'set_batch(' + count + ',' + exposure + ', 0)', step: this.step, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.capture_stream = function(p1, p2, p3) {
+	// If p1 is not string, treat p1 as count and p2 as exposure
+	// Else treat p1 as name_template, p2 as count, and p3 as exposure
+	var name_template = null;
+	var count = 0;
+	var exposure = 0;
+
+	if (typeof p1 === 'string') {
+		name_template = p1;
+		count = p2;
+		exposure = p3;
+	} else {
+		count = p1;
+		exposure = p2;
+	}
+
+	if (arguments.length === 3 && typeof p1 === 'string') {
+		this.sequence.push({ execute: 'set_local_mode(null, "' + name_template + '", null)', step: this.step, progress: this.progress++, exposure: this.exposure });
+	}
+	this.sequence.push({ execute: 'set_stream(' + count + ',' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'set_upload_mode("BOTH")', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'capture_stream()', step: this.step++, progress: this.progress++, exposure: this.exposure });
+
 	this.exposure += exposure * count;
 };
 
@@ -263,19 +307,28 @@ Sequence.prototype.wait_for_gps = function() {
 	this.sequence.push({ execute: 'wait_for_gps()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.calibrate_guiding = function() {
+Sequence.prototype.calibrate_guiding = function(exposure) {
+	if (exposure != undefined) {
+		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	}
 	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+
+// TO BE REMOVED IN FUTURE RELEASE - USE calibrate_guiding() INSTEAD
 Sequence.prototype.calibrate_guiding_exposure = function(exposure) {
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.start_guiding = function() {
+Sequence.prototype.start_guiding = function(exposure) {
+	if (exposure != undefined) {
+		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	}
 	this.sequence.push({ execute: 'start_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+// TO BE REMOVED IN FUTURE RELEASE - USE start_guiding() INSTEAD
 Sequence.prototype.start_guiding_exposure = function(exposure) {
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
@@ -722,7 +775,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + camera);
 	},
-	
+
 	select_filter_wheel: function(wheel) {
 		var agent = this.devices[2];
 		if (wheel == undefined)
@@ -742,7 +795,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + wheel);
 	},
-	
+
 	select_focuser: function(focuser) {
 		var agent = this.devices[2];
 		if (focuser == undefined)
@@ -762,7 +815,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + focuser);
 	},
-	
+
 	select_rotator: function(rotator) {
 		var agent = this.devices[2];
 		if (rotator == undefined)
@@ -782,7 +835,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + rotator);
 	},
-	
+
 	select_mount: function(mount) {
 		var agent = this.devices[3];
 		if (mount == undefined)
@@ -802,7 +855,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select the " + mount);
 	},
-	
+
 	select_dome: function(dome) {
 		var agent = this.devices[3];
 		if (dome == undefined)
@@ -822,7 +875,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select the " + dome);
 	},
-	
+
 	select_gps: function(gps) {
 		var agent = this.devices[3];
 		if (gps == undefined)
@@ -842,7 +895,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select the " + gps);
 	},
-	
+
 	select_guider_camera: function(camera) {
 		var agent = this.devices[4];
 		if (camera == undefined)
@@ -862,7 +915,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + camera);
 	},
-	
+
 	select_guider: function(guider) {
 		var agent = this.devices[4];
 		if (guider == undefined)
@@ -882,7 +935,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + guider);
 	},
-	
+
 	select_frame_type: function(name) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].CCD_FRAME_TYPE;
@@ -1258,7 +1311,7 @@ var indigo_sequencer = {
 		}
 	},
 	
-	set_local_mode: function(directory, prefix) {
+	set_local_mode: function(directory, prefix, object) {
 		var agent = this.devices[2];
 		var items = { };
 		if (directory != null) {
@@ -1268,6 +1321,9 @@ var indigo_sequencer = {
 			if (!prefix.includes("XXX") && !prefix.includes("%"))
 				prefix += "_%3S";
 			items.PREFIX = prefix;
+		}
+		if (object != null) {
+			items.OBJECT = object;
 		}
 		var property = indigo_devices[agent].CCD_LOCAL_MODE;
 		if (property != null) {
@@ -1296,7 +1352,7 @@ var indigo_sequencer = {
 			this.failure("Can't restore batch");
 		}
 	},
-		
+
 	set_upload_mode: function(mode) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].CCD_UPLOAD_MODE;
@@ -1306,7 +1362,7 @@ var indigo_sequencer = {
 			this.failure("Can't set upload mode");
 		}
 	},
-	
+
 	set_batch: function(count, exposure) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;

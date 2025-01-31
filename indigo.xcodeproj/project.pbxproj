@@ -701,8 +701,6 @@
 		59A413332971E54C00F0A80B /* PlayerOnePW.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4131D2971E54C00F0A80B /* PlayerOnePW.h */; };
 		59A413362971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */; };
 		59A413372971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A4132C2971E54C00F0A80B /* indigo_wheel_playerone.h */; };
-		59A413382971E54C00F0A80B /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A4132D2971E54C00F0A80B /* Makefile.inc */; };
-		59A413392971E54C00F0A80B /* Makefile.inc in Sources */ = {isa = PBXBuildFile; fileRef = 59A4132D2971E54C00F0A80B /* Makefile.inc */; };
 		59A52D5321A33106000B6F27 /* sbigudrv.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D3F21A330FB000B6F27 /* sbigudrv.h */; };
 		59A52D6521A33617000B6F27 /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52D5721A3360B000B6F27 /* gxccd.h */; };
 		59A52DF121A33E4C000B6F27 /* libfli.h in Headers */ = {isa = PBXBuildFile; fileRef = 59A52DCF21A33E34000B6F27 /* libfli.h */; };
@@ -15475,7 +15473,6 @@
 				598A1B65259BA94A00C0B34C /* indigo_mount_simulator.c in Sources */,
 				9DD01BE8298A63A50044FB3B /* indigo_build.c in Sources */,
 				598A1B67259BA94A00C0B34C /* libuvc_stream.c in Sources */,
-				59A413392971E54C00F0A80B /* Makefile.inc in Sources */,
 				595A8E5A2C9479E600E7998C /* indigo_ccd_pentax.c in Sources */,
 				598A1B68259BA94A00C0B34C /* indigo_mount_ioptron.c in Sources */,
 				596FCAA02BD0320E00F5BACB /* indigo_wheel_mi.c in Sources */,
@@ -15757,7 +15754,6 @@
 				59F682AB250FE9C400ABD731 /* indigo_focuser_robofocus.c in Sources */,
 				595F292F211E211200380EF4 /* DDHidUsage.m in Sources */,
 				59EFE8A62363483000ED5337 /* indigo_focuser_focusdreampro.c in Sources */,
-				59A413382971E54C00F0A80B /* Makefile.inc in Sources */,
 				599E6A77214D8EFF00E45C9E /* indigo_focuser_nstep.c in Sources */,
 				9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */,
 				59CBD4801FAF6C99000DAFDB /* indigo_gps_driver.c in Sources */,

@@ -375,6 +375,10 @@
  */
 #define CCD_LOCAL_MODE_PREFIX_ITEM_NAME       "PREFIX"
 
+/** CCD_LOCAL_MODE.OBJECT property item name.
+ */
+#define CCD_LOCAL_MODE_OBJECT_ITEM_NAME       "OBJECT"
+
 //----------------------------------------------------------------------
 /** CCD_EXPOSURE property name.
  */
