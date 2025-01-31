@@ -307,19 +307,28 @@ Sequence.prototype.wait_for_gps = function() {
 	this.sequence.push({ execute: 'wait_for_gps()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.calibrate_guiding = function() {
+Sequence.prototype.calibrate_guiding = function(exposure) {
+	if (exposure != undefined) {
+		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	}
 	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+
+// TO BE REMOVED IN FUTURE RELEASE - USE calibrate_guiding() INSTEAD
 Sequence.prototype.calibrate_guiding_exposure = function(exposure) {
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'calibrate_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.start_guiding = function() {
+Sequence.prototype.start_guiding = function(exposure) {
+	if (exposure != undefined) {
+		this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
+	}
 	this.sequence.push({ execute: 'start_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
+// TO BE REMOVED IN FUTURE RELEASE - USE start_guiding() INSTEAD
 Sequence.prototype.start_guiding_exposure = function(exposure) {
 	this.sequence.push({ execute: 'set_guider_exposure(' + exposure + ')', step: this.step, progress: this.progress++, exposure: this.exposure });
 	this.sequence.push({ execute: 'start_guiding()', step: this.step++, progress: this.progress++, exposure: this.exposure });
@@ -766,7 +775,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + camera);
 	},
-	
+
 	select_filter_wheel: function(wheel) {
 		var agent = this.devices[2];
 		if (wheel == undefined)
@@ -786,7 +795,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + wheel);
 	},
-	
+
 	select_focuser: function(focuser) {
 		var agent = this.devices[2];
 		if (focuser == undefined)
@@ -806,7 +815,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + focuser);
 	},
-	
+
 	select_rotator: function(rotator) {
 		var agent = this.devices[2];
 		if (rotator == undefined)
@@ -826,7 +835,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + rotator);
 	},
-	
+
 	select_mount: function(mount) {
 		var agent = this.devices[3];
 		if (mount == undefined)
@@ -846,7 +855,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select the " + mount);
 	},
-	
+
 	select_dome: function(dome) {
 		var agent = this.devices[3];
 		if (dome == undefined)
@@ -866,7 +875,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select the " + dome);
 	},
-	
+
 	select_gps: function(gps) {
 		var agent = this.devices[3];
 		if (gps == undefined)
@@ -886,7 +895,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select the " + gps);
 	},
-	
+
 	select_guider_camera: function(camera) {
 		var agent = this.devices[4];
 		if (camera == undefined)
@@ -906,7 +915,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + camera);
 	},
-	
+
 	select_guider: function(guider) {
 		var agent = this.devices[4];
 		if (guider == undefined)
@@ -926,7 +935,7 @@ var indigo_sequencer = {
 		}
 		this.failure("Can't select " + guider);
 	},
-	
+
 	select_frame_type: function(name) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].CCD_FRAME_TYPE;
@@ -1343,7 +1352,7 @@ var indigo_sequencer = {
 			this.failure("Can't restore batch");
 		}
 	},
-		
+
 	set_upload_mode: function(mode) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].CCD_UPLOAD_MODE;
@@ -1353,7 +1362,7 @@ var indigo_sequencer = {
 			this.failure("Can't set upload mode");
 		}
 	},
-	
+
 	set_batch: function(count, exposure) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].AGENT_IMAGER_BATCH;
