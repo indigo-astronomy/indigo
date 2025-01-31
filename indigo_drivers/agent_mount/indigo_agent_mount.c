@@ -153,7 +153,7 @@ typedef struct {
 } mount_agent_private_data;
 
 typedef struct {
-	int client_socket;
+	indigo_uni_handle handle;
 	indigo_device *device;
 } handler_data;
 
@@ -250,19 +250,18 @@ static void sync_process(indigo_device *device) {
 
 static void lx200_server_worker_thread(handler_data *data) {
 	indigo_device *device = data->device;
-	int client_socket = data->client_socket;
+	indigo_uni_handle handle = data->handle;
 	char buffer_in[128];
 	char buffer_out[128];
 	long result = 1;
-	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
-	setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", client_socket);
+	struct timeval tv = { .tv_usec = 500000 };
+#warning: "TODO: Pending issue for migration to unified I/O"
+	setsockopt(handle.fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", handle);
 	while (true) {
 		*buffer_in = 0;
 		*buffer_out = 0;
-		result = read(client_socket, buffer_in, 1);
+		result = indigo_uni_read_available(handle, buffer_in, 1);
 		if (result <= 0) {
 			break;
 		}
@@ -273,7 +272,7 @@ static void lx200_server_worker_thread(handler_data *data) {
 		} else if (*buffer_in == ':') {
 			int i = 0;
 			while (i < sizeof(buffer_in)) {
-				result = read(client_socket, buffer_in + i, 1);
+				result = indigo_uni_read_available(handle, buffer_in + i, 1);
 				if (result <= 0) {
 					break;
 				}
@@ -401,25 +400,22 @@ static void lx200_server_worker_thread(handler_data *data) {
 				strcpy(buffer_out, "1");
 			}
 			if (*buffer_out) {
-				indigo_write(client_socket, buffer_out, strlen(buffer_out));
-				if (*buffer_in == 'G')
-					INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
-				else
-					INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
+				indigo_uni_write(handle, buffer_out, strlen(buffer_out));
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", handle, buffer_in, buffer_out);
 			} else {
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", client_socket, buffer_in);
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", handle, buffer_in);
 			}
 		}
 	}
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", client_socket);
-	close(client_socket);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", handle);
+	indigo_uni_close(handle);
 	free(data);
 }
 
 static void start_lx200_server(indigo_device *device) {
 	struct sockaddr_in client_name;
 	unsigned int name_len = sizeof(client_name);
-
+#warning: "TODO: Pending issue for migration to unified I/O"
 	int port = (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value;
 	int server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (server_socket == -1) {
@@ -473,7 +469,7 @@ static void start_lx200_server(indigo_device *device) {
 		int client_socket = accept(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&client_name, &name_len);
 		if (client_socket != -1) {
 			handler_data *data = indigo_safe_malloc(sizeof(handler_data));
-			data->client_socket = client_socket;
+			data->handle =INDIGO_TCP_SOCKET(client_socket);
 			data->device = device;
 			if (!indigo_async((void *(*)(void *))lx200_server_worker_thread, data))
 				INDIGO_DRIVER_ERROR(MOUNT_AGENT_NAME, "Can't create worker thread for connection (%s)", strerror(errno));
