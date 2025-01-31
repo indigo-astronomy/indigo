@@ -46,9 +46,9 @@
 
 //#define PROPERTY_SIZE sizeof(indigo_property)+INDIGO_MAX_ITEMS*(sizeof(indigo_item))
 
-static long ws_read(int handle, char *buffer, long length) {
+static long ws_read(indigo_uni_handle handle, char *buffer, long length) {
 	uint8_t header[14];
-	int bytes_read = indigo_read(handle, (char *)header, 6);
+	long bytes_read = indigo_uni_read(handle, (char *)header, 6);
 	if (bytes_read <= 0) {
 		return bytes_read;
 	}
@@ -56,14 +56,14 @@ static long ws_read(int handle, char *buffer, long length) {
 	uint8_t *masking_key = header+2;
 	uint64_t payload_length = header[1] & 0x7F;
 	if (payload_length == 0x7E) {
-		bytes_read = indigo_read(handle, (char *)header + 6, 2);
+		bytes_read = indigo_uni_read(handle, (char *)header + 6, 2);
 		if (bytes_read <= 0) {
 			return bytes_read;
 		}
 		masking_key = header + 4;
 		payload_length = ntohs(*((uint16_t *)(header+2)));
 	} else if (payload_length == 0x7F) {
-		bytes_read = indigo_read(handle, (char *)header + 6, 8);
+		bytes_read = indigo_uni_read(handle, (char *)header + 6, 8);
 		if (bytes_read <= 0) {
 			return bytes_read;
 		}
@@ -74,7 +74,7 @@ static long ws_read(int handle, char *buffer, long length) {
 		errno = ENODATA;
 		return -1;
 	}
-	bytes_read = indigo_read(handle, buffer, payload_length);
+	bytes_read = indigo_uni_read(handle, buffer, payload_length);
 	if (bytes_read <= 0) {
 		return bytes_read;
 	}
@@ -322,7 +322,7 @@ void indigo_json_parse(indigo_device *device, indigo_client *client) {
 			goto exit_loop;
 		}
 		while ((c = *pointer++) == 0) {
-			long count = (int)context->web_socket ? ws_read(handle.fd, buffer, JSON_BUFFER_SIZE) : indigo_uni_read_line(handle, buffer, JSON_BUFFER_SIZE);
+			long count = context->web_socket ? ws_read(handle, buffer, JSON_BUFFER_SIZE) : indigo_uni_read_line(handle, buffer, JSON_BUFFER_SIZE);
 			if (count <= 0) {
 				goto exit_loop;
 			}

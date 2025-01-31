@@ -559,6 +559,16 @@ long indigo_uni_printf(indigo_uni_handle handle, const char *format, ...) {
 	}
 }
 
+long indigo_uni_seek(indigo_uni_handle handle, long position, int whence) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	long result = lseek(handle.fd, position, whence);
+	handle.last_error = errno;
+	return result;
+#else
+#warning "TODO: indigo_uni_seek()
+#endif
+}
+
 void indigo_uni_close(indigo_uni_handle handle) {
 	if (handle.opened) {
 #if defined(INDIGO_WINDOWS)

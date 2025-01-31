@@ -30,16 +30,16 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_ser.h>
 
-static bool write_int(int handle, uint32_t n) {
+static bool write_int(indigo_uni_handle handle, uint32_t n) {
 	unsigned char buffer[4];
 	buffer[0] = n;
 	buffer[1] = n >> 8;
 	buffer[2] = n >> 16;
 	buffer[3] = n >> 24;
-	return indigo_write(handle, (const char *)buffer, 4);
+	return indigo_uni_write(handle, (const char *)buffer, 4);
 }
 
-static bool write_long(int handle, uint64_t n) {
+static bool write_long(indigo_uni_handle handle, uint64_t n) {
 	unsigned char buffer[8];
 	buffer[0] = n;
 	buffer[1] = n >> 8;
@@ -49,13 +49,13 @@ static bool write_long(int handle, uint64_t n) {
 	buffer[5] = n >> 40;
 	buffer[6] = n >> 48;
 	buffer[7] = n >> 56;
-	return indigo_write(handle, (const char *)buffer, 8);
+	return indigo_uni_write(handle, (const char *)buffer, 8);
 }
 
 indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	indigo_ser *ser = NULL;
-	int handle;
-	if ((handle = open(filename, O_WRONLY | O_CREAT | O_TRUNC, 0644)) == -1) {
+	indigo_uni_handle handle = indigo_uni_open_file(filename);
+	if (!handle.opened) {
 		INDIGO_ERROR(indigo_error("indigo_ser: failed to open file for writing"));
 		goto failure;
 	}
@@ -65,7 +65,7 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	}
 	ser->handle = handle;
 	ser->count = 0;
-	int result = indigo_write(handle, "LUCAM-RECORDER", 14); // 0
+	long result = indigo_uni_write(handle, "LUCAM-RECORDER", 14); // 0
 	result = result && write_int(handle, 0); // 14
 	indigo_raw_header *header = (indigo_raw_header *)buffer;
 	int bits_per_pixel = 8;
@@ -91,9 +91,9 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	result = result && write_int(handle, bits_per_pixel); // 34
 	result = result && write_int(handle, 0); // 38
 	static char zero[40] = { 0 };
-	result = result && indigo_write(handle, zero, 40); // 42
-	result = result && indigo_write(handle, zero, 40); // 82
-	result = result && indigo_write(handle, zero, 40); // 122
+	result = result && indigo_uni_write(handle, zero, 40); // 42
+	result = result && indigo_uni_write(handle, zero, 40); // 82
+	result = result && indigo_uni_write(handle, zero, 40); // 122
 	tzset();
 	long time_utc = (time(NULL) + 62135600400L) * 10000000L;
 	long timezone_diff =  (timezone - daylight ? 3600 : 0) * 10000000L;
@@ -103,22 +103,20 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 		goto failure;
 	return ser;
 failure:
-	if (handle != -1) {
-		close(handle);
-	}
+	indigo_uni_close(handle);
 	indigo_safe_free(ser);
 	return NULL;
 }
 
 bool indigo_ser_add_frame(indigo_ser *ser, void *buffer, size_t len) {
 	ser->count++;
-	return indigo_write(ser->handle, buffer + 12, len - 12);
+	return indigo_uni_write(ser->handle, buffer + 12, len - 12);
 }
 
 bool indigo_ser_close(indigo_ser *ser) {
-	int handle = ser->handle;
-	if (lseek(handle, 38, SEEK_SET) && write_int(handle, ser->count)) {
-		close(handle);
+	indigo_uni_handle handle = ser->handle;
+	if (indigo_uni_seek(handle, 38, SEEK_SET) && write_int(handle, ser->count)) {
+		indigo_uni_close(handle);
 		free(ser);
 		return true;
 	}

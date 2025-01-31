@@ -29,7 +29,7 @@ extern "C" {
 #endif
 
 typedef struct {
-	int handle;
+	indigo_uni_handle handle;
 	int count;
 } indigo_ser;
 

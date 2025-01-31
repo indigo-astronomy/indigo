@@ -2026,8 +2026,8 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			}
 		}
 		char *message = NULL;
-		int handle = 0;
-		char file_name[INDIGO_VALUE_SIZE] = {0};
+		indigo_uni_handle handle = { 0 };
+		char file_name[INDIGO_VALUE_SIZE] = { 0 };
 		if (!(use_avi || use_ser) || CCD_CONTEXT->video_stream == NULL) {
 			if (indigo_is_sandboxed || !mkpath(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
 				if (create_file_name(device, blob_value, blob_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, suffix, file_name)) {
@@ -2038,7 +2038,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					} else if (use_ser) {
 						CCD_CONTEXT->video_stream = indigo_ser_open(file_name, data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 					} else {
-						handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+						handle = indigo_uni_open_file(file_name);
 					}
 				} else {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2061,12 +2061,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					message = strerror(errno);
 				}
 			}
-		} else if (handle > 0) {
-			if (!indigo_write(handle, blob_value, blob_size)) {
+		} else if (handle.opened) {
+			if (!indigo_uni_write(handle, blob_value, blob_size)) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}
-			close(handle);
+			indigo_uni_close(handle);
 			if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
 				file_remove(file_name);
 			}
@@ -2161,13 +2161,13 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 					if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, ".raw", file_name)) {
 						indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-						int handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
-						if (handle > 0) {
-							if (!indigo_write(handle, image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
+						indigo_uni_handle handle = indigo_uni_open_file(file_name);
+						if (handle.opened) {
+							if (!indigo_uni_write(handle, image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
 								CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 								message = strerror(errno);
 							}
-							close(handle);
+							indigo_uni_close(handle);
 							if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
 								file_remove(file_name);
 							}
@@ -2235,7 +2235,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 	}
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		bool use_avi = false;
-		int handle = 0;
+		indigo_uni_handle handle = { 0 };
 		char *message = NULL;
 		char file_name[INDIGO_VALUE_SIZE] = {0};
 		if (CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM->sw.value && !strcmp(standard_suffix, ".jpeg") && streaming) {
@@ -2267,7 +2267,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 						jpeg_destroy_decompress(&cinfo.pub);
 						CCD_CONTEXT->video_stream = gwavi_open(file_name, cinfo.pub.image_width, cinfo.pub.image_height, "MJPG", 5);
 					} else {
-						handle = open(file_name, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+						handle = indigo_uni_open_file(file_name);
 					}
 				} else {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2285,12 +2285,12 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 					message = strerror(errno);
 				}
 			}
-		} else if (handle > 0) {
-			if (!indigo_write(handle, data, data_size)) {
+		} else if (handle.opened) {
+			if (!indigo_uni_write(handle, data, data_size)) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}
-			close(handle);
+			indigo_uni_close(handle);
 			if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
 				file_remove(file_name);
 			}

@@ -130,6 +130,11 @@ extern long indigo_uni_write(indigo_uni_handle handle, const char *buffer, long 
 
 extern long indigo_uni_printf(indigo_uni_handle handle, const char *format, ...);
 
+/** Seek.
+ */
+
+extern long indigo_uni_seek(indigo_uni_handle handle, long position, int whence);
+
 /** Close handle.
  */
 extern void indigo_uni_close(indigo_uni_handle handle);
