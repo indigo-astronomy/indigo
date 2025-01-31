@@ -180,7 +180,7 @@ indigo_result indigo_ccd_attach(indigo_device *device, const char* driver_name, 
 				return INDIGO_FAILED;
 			indigo_init_text_item(CCD_LOCAL_MODE_DIR_ITEM, CCD_LOCAL_MODE_DIR_ITEM_NAME, "Directory", default_image_path);
 			indigo_init_text_item(CCD_LOCAL_MODE_PREFIX_ITEM, CCD_LOCAL_MODE_PREFIX_ITEM_NAME, "File name template", "IMAGE_XXX");
-			indigo_init_text_item(CCD_LOCAL_MODE_OBJECT_ITEM, CCD_LOCAL_MODE_OBJECT_ITEM_NAME, "Object name", "unknown");
+			indigo_init_text_item(CCD_LOCAL_MODE_OBJECT_ITEM, CCD_LOCAL_MODE_OBJECT_ITEM_NAME, "Object name", "");
 			// -------------------------------------------------------------------------------- CCD_MODE
 			CCD_MODE_PROPERTY = indigo_init_switch_property(NULL, device->name, CCD_MODE_PROPERTY_NAME, CCD_MAIN_GROUP, "Capture mode", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 256);
 			if (CCD_MODE_PROPERTY == NULL)
@@ -1335,9 +1335,11 @@ static bool create_file_name(indigo_device *device, void *blob_value, long blob_
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
 		} else if (fs[1] == 'o') { // %o - Object name
-			char buffer[OBJECT_LENGTH];
+			char buffer[OBJECT_LENGTH] = "unknown";
 			strncpy(tmp, format, fs - format);
-			strncpy(buffer, CCD_LOCAL_MODE_OBJECT_ITEM->text.value, sizeof(buffer));
+			if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0') {
+				strncpy(buffer, CCD_LOCAL_MODE_OBJECT_ITEM->text.value, sizeof(buffer));
+			}
 			strcat(tmp, buffer);
 			strcat(tmp, fs + 2);
 			strcpy(format, tmp);
@@ -1742,7 +1744,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 		add_key(&header, true,  "DATE-OBS= '%s' / UTC when the FITS file was created", date_time_end);
 		add_key(&header, true,  "INSTRUME= '%s'%*c / instrument name", device->name, (int)(19 - strlen(device->name)), ' ');
 		if (CCD_LOCAL_MODE_OBJECT_ITEM->text.value[0] != '\0')
-			add_key(&header, true,  "OBJECT  = '%s'/ object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
+			add_key(&header, true,  "OBJECT  = '%s' / object name", CCD_LOCAL_MODE_OBJECT_ITEM->text.value);
 		add_key(&header, true,  "ROWORDER= 'TOP-DOWN'           / Image row order");
 		add_key(&header, true,  "SWCREATE= 'INDIGO 2.0-%s'     / Capture software", INDIGO_BUILD);
 		if (!CCD_LENS_PROPERTY->hidden) {
