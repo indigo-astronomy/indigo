@@ -860,7 +860,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					READ_MODE_PROPERTY->hidden = false;
 					for (int i = 0; i < mode_count; i++) {
 						char name[INDIGO_NAME_SIZE], label[INDIGO_NAME_SIZE];
-						sprintf(name, "%d", i);
+						snprintf(name, sizeof(name), "%d", i);
 						GetQHYCCDReadModeName(PRIVATE_DATA->handle, i, label);
 						indigo_init_switch_item(READ_MODE_PROPERTY->items + i, name, label, i == current_mode);
 					}
@@ -1859,7 +1859,7 @@ static void add_all_devices() {
 		qhy_private_data *private_data = (qhy_private_data*)malloc(sizeof(qhy_private_data));
 		assert(private_data);
 		memset(private_data, 0, sizeof(qhy_private_data));
-		sprintf(private_data->dev_sid, "%s", sid);
+		snprintf(private_data->dev_sid, sizeof(private_data->dev_sid), "%s", sid);
 		device->private_data = private_data;
 		indigo_attach_device(device);
 		devices[slot++] = device;

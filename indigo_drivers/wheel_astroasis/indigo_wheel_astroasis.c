@@ -245,7 +245,7 @@ static indigo_result wheel_enumerate_properties(indigo_device *device, indigo_cl
 
 static void wheel_connect_callback(indigo_device *device) {
 	//EFW_INFO info;
-	int index;
+	int index = 0;
 	CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
