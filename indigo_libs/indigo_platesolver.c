@@ -164,8 +164,7 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 static bool start_exposure(indigo_device *device, double exposure) {
 	char *related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Imager Agent");
 	if (related_agent_name != NULL) {
-		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_IMAGER_BATCH_PROPERTY_NAME, AGENT_IMAGER_BATCH_EXPOSURE_ITEM_NAME, exposure);
-		indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_START_PROCESS_PROPERTY_NAME, AGENT_IMAGER_START_PREVIEW_1_ITEM_NAME, true);
+		indigo_change_number_property_1(FILTER_DEVICE_CONTEXT->client, related_agent_name, AGENT_IMAGER_CAPTURE_PROPERTY_NAME, AGENT_IMAGER_CAPTURE_ITEM_NAME, exposure);
 		return true;
 	}
 	related_agent_name = indigo_filter_first_related_agent(FILTER_DEVICE_CONTEXT->device, "Guider Agent");
