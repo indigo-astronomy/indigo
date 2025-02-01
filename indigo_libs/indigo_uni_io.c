@@ -405,6 +405,16 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 #endif
 }
 
+void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout) {
+	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
+	setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+}
+
+void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout) {
+	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
+	setsockopt(handle->fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
+}
+
 indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint) {
 	int port = default_port;
 	char host_name[INDIGO_NAME_SIZE];

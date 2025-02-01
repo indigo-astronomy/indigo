@@ -38,7 +38,7 @@
 #include <fcntl.h>
 
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_driver.h>
 
 #include "duktape.h"
@@ -48,7 +48,7 @@
 #define PRIVATE_DATA															private_data
 
 #define MAX_USER_SCRIPT_COUNT											128
-#define MAX_CACHED_PROPERTY_COUNT										126
+#define MAX_CACHED_PROPERTY_COUNT									126
 #define MAX_TIMER_COUNT														32
 #define MAX_ITEMS																	128
 
@@ -313,10 +313,10 @@ static duk_ret_t save_blob(duk_context *ctx) {
 		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
 		duk_put_prop_string(PRIVATE_DATA->ctx, 1, "size");
 	}
-	int handle = open(file_name, O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
-	if (handle > 0) {
-		indigo_write(handle, item->blob.value, item->blob.size);
-		close(handle);
+	indigo_uni_handle *handle = indigo_uni_create_file(file_name);
+	if (handle != NULL) {
+		indigo_uni_write(handle, item->blob.value, item->blob.size);
+		indigo_uni_close(&handle);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_save_blob() failed -> %d (%s)", stderr, strerror(errno));
 		return 0;

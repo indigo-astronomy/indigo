@@ -99,6 +99,15 @@ extern indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int po
 #define indigo_uni_client_tcp_socket(host, port) indigo_uni_open_client_socket(host, port, SOCK_STREAM);
 #define indigo_uni_client_udp_socket(host, port) indigo_uni_open_client_socket(host, port, SOCK_DGRAM);
 
+/** Set read timeout.
+ */
+extern void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout);
+
+/** Set write timeout.
+ */
+extern void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout);
+
+
 /** Open server socket.
  */
 

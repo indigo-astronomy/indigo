@@ -1130,8 +1130,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	bool use_gzip = false;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	/* On Raspberry Pi blob compression may take longer. Make sure we do not timeout prematurely */
-	struct timeval timeout = { .tv_sec = 15 };
-	setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+	indigo_uni_set_socket_read_timeout(handle, 15000000L);
 	long uncompressed_content_len = 0;
 #endif
 	long content_len = 0;
