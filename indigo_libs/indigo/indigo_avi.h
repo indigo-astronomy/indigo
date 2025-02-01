@@ -97,7 +97,7 @@ struct gwavi_stream_format_t {
 };
 
 struct gwavi_t {
-	indigo_uni_handle handle;
+	indigo_uni_handle *handle;
 	struct gwavi_header_t avi_header;
 	struct gwavi_stream_header_t stream_header;
 	struct gwavi_stream_format_t stream_format;

@@ -218,7 +218,7 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				version = INDIGO_VERSION_2_0;
 			if (version > client->version) {
 				assert(client->client_context != NULL);
-				indigo_uni_handle handle = ((indigo_adapter_context *)(client->client_context))->output;
+				indigo_uni_handle *handle = ((indigo_adapter_context *)(client->client_context))->output;
 				indigo_uni_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
 				client->version = version;
 			}
@@ -1341,7 +1341,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	context->property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
 	context->property->allocated_count = INDIGO_PREALLOCATED_COUNT;
 	
-	indigo_uni_handle handle = { 0 };
+	indigo_uni_handle *handle = { 0 };
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
 		device->enumerate_properties(device, client, NULL);
@@ -1722,7 +1722,7 @@ exit_loop:
 	free(context);
 	free(buffer);
 	free(value_buffer);
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: parser finished"));
 }
 

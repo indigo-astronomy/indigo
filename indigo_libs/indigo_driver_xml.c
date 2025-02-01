@@ -84,11 +84,11 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (!client_context->output.opened)
+	if (client_context->output == NULL)
 		return INDIGO_OK;
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
-	indigo_uni_handle handle = client_context->output;
+	indigo_uni_handle *handle = client_context->output;
 	char b1[32], b2[32], b3[32], b4[32], b5[32];
 	switch (property->type) {
 	case INDIGO_TEXT_VECTOR:
@@ -147,8 +147,8 @@ static indigo_result xml_device_adapter_define_property(indigo_client *client, i
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
+	indigo_uni_close(&client_context->input);
+	indigo_uni_close(&client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -164,11 +164,11 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (!client_context->output.opened)
+	if (client_context->output == NULL)
 		return INDIGO_OK;
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
-	indigo_uni_handle handle = client_context->output;
+	indigo_uni_handle *handle = client_context->output;
 	char b1[32], b2[32];
 	switch (property->type) {
 		case INDIGO_TEXT_VECTOR:
@@ -232,7 +232,7 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 							long input_length = item->blob.size;
 							unsigned char *data = item->blob.value;
 							INDIGO_PRINTF(handle, "<oneBLOB name='%s' format='%s' size='%ld'>\n", indigo_item_name(client->version, property, item), item->blob.format, item->blob.size);
-							handle2 = dup(handle.fd);
+							handle2 = dup(handle->fd);
 							fh = fdopen(handle2, "w");
 							if (client->version >= INDIGO_VERSION_2_0) {
 								while (input_length) {
@@ -269,8 +269,8 @@ static indigo_result xml_device_adapter_update_property(indigo_client *client, i
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
+	indigo_uni_close(&client_context->input);
+	indigo_uni_close(&client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -284,11 +284,11 @@ static indigo_result xml_device_adapter_delete_property(indigo_client *client, i
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (!client_context->output.opened)
+	if (client_context->output == NULL)
 		return INDIGO_OK;
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
-	indigo_uni_handle handle = client_context->output;
+	indigo_uni_handle *handle = client_context->output;
 	if (*property->name) {
 		INDIGO_PRINTF(handle, "<delProperty device='%s' name='%s'%s/>\n", indigo_xml_escape(property->device), indigo_property_name(client->version, property), message_attribute(message));
 	} else {
@@ -297,8 +297,8 @@ static indigo_result xml_device_adapter_delete_property(indigo_client *client, i
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
+	indigo_uni_close(&client_context->input);
+	indigo_uni_close(&client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
@@ -311,11 +311,11 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	if (!client_context->output.opened)
+	if (client_context->output == NULL)
 		return INDIGO_OK;
 	pthread_mutex_lock(&write_mutex);
 	assert(client_context != NULL);
-	indigo_uni_handle handle = client_context->output;
+	indigo_uni_handle *handle = client_context->output;
 	if (message) {
 		if (device) {
 			INDIGO_PRINTF(handle, "<message device='%s'%s/>\n", device->name, message_attribute(message));
@@ -326,13 +326,13 @@ static indigo_result xml_device_adapter_send_message(indigo_client *client, indi
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 failure:
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
+	indigo_uni_close(&client_context->input);
+	indigo_uni_close(&client_context->output);
 	pthread_mutex_unlock(&write_mutex);
 	return INDIGO_OK;
 }
 
-indigo_client *indigo_xml_device_adapter(indigo_uni_handle input, indigo_uni_handle ouput) {
+indigo_client *indigo_xml_device_adapter(indigo_uni_handle *input, indigo_uni_handle *output) {
 	static indigo_client client_template = {
 		"XML Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_NONE, NULL,
 		NULL,
@@ -344,11 +344,11 @@ indigo_client *indigo_xml_device_adapter(indigo_uni_handle input, indigo_uni_han
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-	snprintf(client->name, sizeof(client->name), "XML Driver Adapter #%d", input.fd);
+	snprintf(client->name, sizeof(client->name), "XML Driver Adapter #%d", input->fd);
 	client_context->input = input;
-	client_context->output = ouput;
+	client_context->output = output;
 	client->client_context = client_context;
-	client->is_remote = input.type == INDIGO_TCP_HANDLE;
+	client->is_remote = input->type == INDIGO_TCP_HANDLE;
 	return client;
 }
 

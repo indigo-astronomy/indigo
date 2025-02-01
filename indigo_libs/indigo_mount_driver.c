@@ -283,8 +283,8 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 }
 
 void indigo_mount_load_alignment_points(indigo_device *device) {
-	indigo_uni_handle handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
-	if (handle.opened) {
+	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
+	if (handle != NULL) {
 		int count;
 		char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];
 		indigo_uni_read_line(handle, buffer, sizeof(buffer));
@@ -302,7 +302,7 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 			indigo_init_switch_item(MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->items + i, name, label, point->used);
 			indigo_init_switch_item(MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->items + i + 1, name, label, false);
 		}
-		indigo_uni_close(handle);
+		indigo_uni_close(&handle);
 		MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, MOUNT_ALIGNMENT_SELECT_POINTS_PROPERTY, NULL);
 		MOUNT_ALIGNMENT_DELETE_POINTS_PROPERTY->state = INDIGO_OK_STATE;
@@ -311,8 +311,8 @@ void indigo_mount_load_alignment_points(indigo_device *device) {
 }
 
 void indigo_mount_save_alignment_points(indigo_device *device) {
-	indigo_uni_handle handle = indigo_open_config_file(device->name, 0, true, ".alignment");
-	if (handle.opened) {
+	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, true, ".alignment");
+	if (handle != NULL) {
 		int count = MOUNT_CONTEXT->alignment_point_count;
 		char b1[32], b2[32], b3[32], b4[32], b5[32];
 		indigo_uni_printf(handle, "%d\n", count);
@@ -320,7 +320,7 @@ void indigo_mount_save_alignment_points(indigo_device *device) {
 			indigo_alignment_point *point =  MOUNT_CONTEXT->alignment_points + i;
 			indigo_uni_printf(handle, "%d %s %s %s %s %s %d\n", point->used, indigo_dtoa(point->ra, b1), indigo_dtoa(point->dec, b2), indigo_dtoa(point->raw_ra, b3), indigo_dtoa(point->raw_dec, b4), indigo_dtoa(point->lst, b5), point->side_of_pier);
 		}
-		indigo_uni_close(handle);
+		indigo_uni_close(&handle);
 	}
 }
 

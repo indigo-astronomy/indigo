@@ -43,7 +43,7 @@
 
 static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-static long ws_write(indigo_uni_handle handle, const char *buffer, long length) {
+static long ws_write(indigo_uni_handle *handle, const char *buffer, long length) {
 	uint8_t header[10] = { 0x81 };
 	long result;
 	if (length <= 0x7D) {
@@ -87,7 +87,7 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
-	indigo_uni_handle handle = client_context->output;
+	indigo_uni_handle *handle = client_context->output;
 	long buffer_size = JSON_BUFFER_SIZE;
 	char *output_buffer = indigo_safe_malloc(buffer_size);
 	char *pnt = output_buffer;
@@ -191,8 +191,8 @@ static indigo_result json_define_property(indigo_client *client, indigo_device *
 			break;
 	}
 	if ((client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_uni_write(handle, output_buffer, size)) < 0) {
-		indigo_uni_close(client_context->input);
-		indigo_uni_close(client_context->output);
+		indigo_uni_close(&client_context->input);
+		indigo_uni_close(&client_context->output);
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
@@ -208,8 +208,8 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 	if (client->version == INDIGO_VERSION_NONE)
 		return INDIGO_OK;
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	indigo_uni_handle handle = client_context->output;
-	if (!handle.opened)
+	indigo_uni_handle *handle = client_context->output;
+	if (handle == NULL)
 		return INDIGO_OK;
 	pthread_mutex_lock(&json_mutex);
 	assert(client_context != NULL);
@@ -301,8 +301,8 @@ static indigo_result json_update_property(indigo_client *client, indigo_device *
 			break;
 	}
 	if ((client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_uni_write(handle, output_buffer, size)) < 0) {
-		indigo_uni_close(client_context->input);
-		indigo_uni_close(client_context->output);
+		indigo_uni_close(&client_context->input);
+		indigo_uni_close(&client_context->output);
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
@@ -320,7 +320,7 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
-	indigo_uni_handle handle = client_context->output;
+	indigo_uni_handle *handle = client_context->output;
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
 	long size;
@@ -340,8 +340,8 @@ static indigo_result json_delete_property(indigo_client *client, indigo_device *
 	else
 		indigo_uni_write(handle, output_buffer, size);
 	if ((client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_uni_write(handle, output_buffer, size)) < 0) {
-		indigo_uni_close(client_context->input);
-		indigo_uni_close(client_context->output);
+		indigo_uni_close(&client_context->input);
+		indigo_uni_close(&client_context->output);
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
@@ -356,13 +356,13 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 	pthread_mutex_lock(&json_mutex);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
 	assert(client_context != NULL);
-	indigo_uni_handle handle = client_context->output;
+	indigo_uni_handle *handle = client_context->output;
 	char *output_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *pnt = output_buffer;
 	long size = sprintf(pnt, "{ \"message\": \"%s\" }", message);
 	if ((client_context->web_socket ? ws_write(handle, output_buffer, size) : indigo_uni_write(handle, output_buffer, size)) < 0) {
-		indigo_uni_close(client_context->input);
-		indigo_uni_close(client_context->output);
+		indigo_uni_close(&client_context->input);
+		indigo_uni_close(&client_context->output);
 	}
 	free(output_buffer);
 	pthread_mutex_unlock(&json_mutex);
@@ -372,12 +372,12 @@ static indigo_result json_message_property(indigo_client *client, indigo_device 
 static indigo_result json_detach(indigo_client *client) {
 	assert(client != NULL);
 	indigo_adapter_context *client_context = (indigo_adapter_context *)client->client_context;
-	indigo_uni_close(client_context->input);
-	indigo_uni_close(client_context->output);
+	indigo_uni_close(&client_context->input);
+	indigo_uni_close(&client_context->output);
 	return INDIGO_OK;
 }
 
-indigo_client *indigo_json_device_adapter(indigo_uni_handle input, indigo_uni_handle ouput, bool web_socket) {
+indigo_client *indigo_json_device_adapter(indigo_uni_handle *input, indigo_uni_handle *output, bool web_socket) {
 	static indigo_client client_template = {
 		"JSON Driver Adapter", false, NULL, INDIGO_OK, INDIGO_VERSION_CURRENT, NULL,
 		NULL,
@@ -390,12 +390,12 @@ indigo_client *indigo_json_device_adapter(indigo_uni_handle input, indigo_uni_ha
 	};
 	indigo_client *client = indigo_safe_malloc_copy(sizeof(indigo_client), &client_template);
 	indigo_adapter_context *client_context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-	snprintf(client->name, sizeof(client->name), "JSON Driver Adapter #%d", input.fd);
+	snprintf(client->name, sizeof(client->name), "JSON Driver Adapter #%d", input->fd);
 	client_context->input = input;
-	client_context->output = ouput;
+	client_context->output = output;
 	client_context->web_socket = web_socket;
 	client->client_context = client_context;
-	client->is_remote = input.type == INDIGO_TCP_HANDLE;
+	client->is_remote = input->type == INDIGO_TCP_HANDLE;
 	return client;
 }
 

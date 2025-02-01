@@ -35,10 +35,6 @@ extern "C" {
 #define MDNS_INDIGO_TYPE    "_indigo._tcp"
 #define MDNS_HTTP_TYPE      "_http._tcp"
 
-/** Prototype of callback function for network server (providing number of active clients).
- */
-typedef void (*indigo_server_tcp_callback)(int);
-
 /** TCP port to run on.
  */
 extern int indigo_server_tcp_port;
@@ -69,7 +65,7 @@ extern void indigo_server_add_file_resource(const char *path, const char *file_n
 
 /** Add URI handler.
  */
-extern void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle handle, char *method, char *path, char *params));
+extern void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params));
 
 /** Remove document.
  */
@@ -81,7 +77,7 @@ extern void indigo_server_remove_resources(void);
 	
 /** Start network server (function will block until server is active).
  */
-extern indigo_result indigo_server_start(indigo_server_tcp_callback callback);
+extern indigo_result indigo_server_start(void (*callback)(int));
 
 /** Shutdown network server (function will block until server is active).
  */

@@ -51,7 +51,7 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_avi.h>
 
-static bool write_int(indigo_uni_handle handle, uint32_t n) {
+static bool write_int(indigo_uni_handle *handle, uint32_t n) {
 	unsigned char buffer[4];
 	buffer[0] = n;
 	buffer[1] = n >> 8;
@@ -60,31 +60,31 @@ static bool write_int(indigo_uni_handle handle, uint32_t n) {
 	return indigo_uni_write(handle, (const char *)buffer, 4);
 }
 
-static bool write_short(indigo_uni_handle handle, uint16_t n) {
+static bool write_short(indigo_uni_handle *handle, uint16_t n) {
 	unsigned char buffer[2];
 	buffer[0] = n;
 	buffer[1] = n >> 8;
 	return indigo_uni_write(handle, (const char *)buffer, 2);
 }
 
-static bool write_chars(indigo_uni_handle handle, const char *s) {
+static bool write_chars(indigo_uni_handle *handle, const char *s) {
 	int count = (int)strlen(s);
 	return indigo_uni_write(handle, s, count);
 }
 
-static bool write_chars_bin(indigo_uni_handle handle, const char *s, int count) {
+static bool write_chars_bin(indigo_uni_handle *handle, const char *s, int count) {
 	return indigo_uni_write(handle, s, count);
 }
 
-static bool tell(indigo_uni_handle handle, long *offset) {
+static bool tell(indigo_uni_handle *handle, long *offset) {
 	return (*offset = indigo_uni_seek(handle, 0, SEEK_CUR)) != -1;
 }
 
-static bool seek(indigo_uni_handle handle, long offset) {
+static bool seek(indigo_uni_handle *handle, long offset) {
 	return indigo_uni_seek(handle, offset, SEEK_SET);
 }
 
-static bool write_avi_header(indigo_uni_handle handle, struct gwavi_header_t *avi_header) {
+static bool write_avi_header(indigo_uni_handle *handle, struct gwavi_header_t *avi_header) {
 	long marker, t;
 	return
 		write_chars_bin(handle, "avih", 4) &&
@@ -110,7 +110,7 @@ static bool write_avi_header(indigo_uni_handle handle, struct gwavi_header_t *av
 		seek(handle, t);
 }
 
-static bool write_stream_header(indigo_uni_handle handle, struct gwavi_stream_header_t *stream_header) {
+static bool write_stream_header(indigo_uni_handle *handle, struct gwavi_stream_header_t *stream_header) {
 	long marker, t;
 	return
 		write_chars_bin(handle, "strh", 4) &&
@@ -136,7 +136,7 @@ static bool write_stream_header(indigo_uni_handle handle, struct gwavi_stream_he
 		seek(handle, t);
 }
 
-static bool write_stream_format(indigo_uni_handle handle, struct gwavi_stream_format_t *stream_format) {
+static bool write_stream_format(indigo_uni_handle *handle, struct gwavi_stream_format_t *stream_format) {
 	long marker, t;
 	return
 		write_chars_bin(handle, "strf", 4) &&
@@ -161,7 +161,7 @@ static bool write_stream_format(indigo_uni_handle handle, struct gwavi_stream_fo
 
 static bool write_avi_header_chunk(struct gwavi_t *gwavi) {
 	long marker, sub_marker, t;
-	indigo_uni_handle handle = gwavi->handle;
+	indigo_uni_handle *handle = gwavi->handle;
 	return
 		write_chars_bin(handle, "LIST", 4) &&
 		tell(handle, &marker) &&
@@ -184,7 +184,7 @@ static bool write_avi_header_chunk(struct gwavi_t *gwavi) {
 		seek(handle, t);
 }
 
-static bool write_index(indigo_uni_handle handle, int count, unsigned int *offsets) {
+static bool write_index(indigo_uni_handle *handle, int count, unsigned int *offsets) {
 	long marker = 0, t;
 	unsigned int offset = 4;
 	bool result = (offsets != 0) &&
@@ -235,8 +235,8 @@ static bool write_index(indigo_uni_handle handle, int count, unsigned int *offse
  */
 struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned int height, const char *fourcc, unsigned int fps) {
 	struct gwavi_t *gwavi = NULL;
-	indigo_uni_handle handle = indigo_uni_create_file(filename);
-	if (!handle.opened) {
+	indigo_uni_handle *handle = indigo_uni_create_file(filename);
+	if (handle == NULL) {
 		INDIGO_ERROR(indigo_error("gwavi_open: failed to open file for writing"));
 		goto failure;
 	}
@@ -293,7 +293,7 @@ struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned in
 	gwavi->offsets_ptr = 0;
 	return gwavi;
 failure:
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	if (gwavi) {
 		if (gwavi->offsets) {
 			free(gwavi->offsets);
@@ -350,7 +350,7 @@ bool gwavi_close(struct gwavi_t *gwavi) {
 	long t;
 	if (!gwavi)
 		return false;
-	indigo_uni_handle handle = gwavi->handle;
+	indigo_uni_handle *handle = gwavi->handle;
 	if (!tell(handle, &t) || !seek(handle, gwavi->marker) || !write_int(handle, (unsigned int)(t - gwavi->marker - 4)))
 		goto failure;
 	if (!seek(handle, t) || !write_index(handle, gwavi->offset_count, gwavi->offsets))
@@ -362,14 +362,14 @@ bool gwavi_close(struct gwavi_t *gwavi) {
 		goto failure;
 	if (!seek(handle, 4) || !write_int(handle, (unsigned int)(t - 8)))
 		goto failure;
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	free(gwavi);
 	return true;
 failure:
 	if (gwavi->offsets) {
 		free(gwavi->offsets);
 	}
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	free(gwavi);
 	return false;
 }

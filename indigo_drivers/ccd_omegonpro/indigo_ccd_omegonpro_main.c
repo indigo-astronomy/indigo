@@ -35,7 +35,7 @@ int main(int argc, const char * argv[]) {
 	indigo_main_argv = argv;
 	/* Executable drivers use pipes - no HTTP */
 	indigo_use_blob_urls = false;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(INDIGO_STDIN_HANDLE, INDIGO_STDOUT_HANDLE);
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(&indigo_stdin_handle, &indigo_stdout_handle);
 	indigo_enable_blob_mode_record *record = (indigo_enable_blob_mode_record *)malloc(sizeof(indigo_enable_blob_mode_record));
 	memset(record, 0, sizeof(indigo_enable_blob_mode_record));
 	record->mode = INDIGO_ENABLE_BLOB_ALSO;

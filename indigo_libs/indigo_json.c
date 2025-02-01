@@ -46,7 +46,7 @@
 
 //#define PROPERTY_SIZE sizeof(indigo_property)+INDIGO_MAX_ITEMS*(sizeof(indigo_item))
 
-static long ws_read(indigo_uni_handle handle, char *buffer, long length) {
+static long ws_read(indigo_uni_handle *handle, char *buffer, long length) {
 	uint8_t header[14];
 	long bytes_read = indigo_uni_read(handle, (char *)header, 6);
 	if (bytes_read <= 0) {
@@ -298,7 +298,7 @@ static void *top_level_handler(parser_state state, char *name, char *value, indi
 
 void indigo_json_parse(indigo_device *device, indigo_client *client) {
 	indigo_adapter_context *context = (indigo_adapter_context*)client->client_context;
-	indigo_uni_handle handle = context->input;
+	indigo_uni_handle *handle = context->input;
 	char *buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *value_buffer = indigo_safe_malloc(JSON_BUFFER_SIZE);
 	char *name_buffer = indigo_safe_malloc(INDIGO_NAME_SIZE);
@@ -512,7 +512,7 @@ exit_loop:
 	indigo_safe_free(value_buffer);
 	indigo_safe_free(name_buffer);
 	indigo_safe_free(property);
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	indigo_log("JSON Parser: parser finished");
 }
 

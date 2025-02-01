@@ -69,11 +69,11 @@
 
 void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n);
 
-static int server_socket;
+static indigo_uni_handle *server_handle = NULL;
 static bool startup_initiated = true;
 static bool shutdown_initiated = false;
 static int client_count = 0;
-static indigo_server_tcp_callback server_callback;
+static void (*server_callback)(int);
 
 int indigo_server_tcp_port = 7624;
 bool indigo_use_bonjour = true;
@@ -89,24 +89,24 @@ static struct resource {
 	unsigned length;
 	const char *file_name;
 	char *content_type;
-	bool (*handler)(indigo_uni_handle handle, char *method, char *path, char *params);
+	bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params);
 	struct resource *next;
 } *resources = NULL;
 
 #define BUFFER_SIZE	1024
 
-static void start_worker_thread(int *client_socket) {
-	indigo_uni_handle handle = INDIGO_TCP_SOCKET(*client_socket);
-	INDIGO_TRACE(indigo_trace("%d <- // Worker thread started", socket));
+static void start_worker_thread(indigo_uni_worker_data *data) {
+	indigo_uni_handle *handle = data->handle;
+	INDIGO_TRACE(indigo_trace("%d <- // Worker thread started", handle->fd));
 	server_callback(++client_count);
 	long res = 0;
 	char c;
 	void *free_on_exit = NULL;
 	pthread_mutex_t *unlock_at_exit = NULL;
-	
-	if (recv(handle.fd, &c, 1, MSG_PEEK) == 1) {
+#warning: "TODO: Pending issue for migration to unified I/O"
+	if (recv(handle->fd, &c, 1, MSG_PEEK) == 1) {
 		if (c == '<') {
-			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", socket));
+			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", handle->fd));
 			indigo_client *protocol_adapter = indigo_xml_device_adapter(handle, handle);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
@@ -114,7 +114,7 @@ static void start_worker_thread(int *client_socket) {
 			indigo_detach_client(protocol_adapter);
 			indigo_release_xml_device_adapter(protocol_adapter);
 		} else if (c == '{') {
-			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON", socket));
+			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON", handle->fd));
 			indigo_client *protocol_adapter = indigo_json_device_adapter(handle, handle, false);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
@@ -164,7 +164,7 @@ static void start_worker_thread(int *client_socket) {
 							base64_encode((unsigned char *)websocket_key, shaHash, 20);
 							INDIGO_PRINTF(handle, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
 							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON-over-WebSockets", socket));
+							INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON-over-WebSockets", handle->fd));
 							indigo_client *protocol_adapter = indigo_json_device_adapter(handle, handle, true);
 							assert(protocol_adapter != NULL);
 							indigo_attach_client(protocol_adapter);
@@ -195,7 +195,7 @@ static void start_worker_thread(int *client_socket) {
 									working_size = entry->size = item_copy.blob.size;
 									entry->content = item_copy.blob.value;
 								} else {
-									indigo_error("%d <- // Failed to populate BLOB", socket);
+									indigo_error("%d <- // Failed to populate BLOB", handle->fd);
 								}
 							}
 							void *working_copy = indigo_use_blob_buffering ? (free_on_exit = malloc(working_size)) : entry->content;
@@ -227,10 +227,7 @@ static void start_worker_thread(int *client_socket) {
 									INDIGO_PRINTF(handle, "Connection: keep-alive\r\n");
 								INDIGO_PRINTF(handle, "Content-Length: %ld\r\n", working_size);
 								INDIGO_PRINTF(handle, "\r\n");
-								if (indigo_uni_write(handle, working_copy, working_size)) {
-									INDIGO_TRACE(indigo_trace("%d <- // %ld bytes", socket, working_size));
-								} else {
-									indigo_error("%d <- // %s", socket, strerror(errno));
+								if (indigo_uni_write(handle, working_copy, working_size) < 0) {
 									goto failure;
 								}
 								if (indigo_use_blob_buffering) {
@@ -247,7 +244,7 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(handle, "\r\n");
 								INDIGO_PRINTF(handle, "Out of buffer memory!\r\n");
-								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", socket));
+								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", handle->fd));
 								goto failure;
 							}
 						} else {
@@ -255,7 +252,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(handle, "\r\n");
 							INDIGO_PRINTF(handle, "BLOB not found!\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", socket));
+							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", handle->fd));
 							goto failure;
 						}
 					} else {
@@ -272,7 +269,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(handle, "\r\n");
 							INDIGO_PRINTF(handle, "%s not found!\r\n", path);
-							INDIGO_TRACE(indigo_trace("%d <- // %s not found", socket, path));
+							INDIGO_TRACE(indigo_trace("%d <- // %s not found", handle->fd, path));
 							goto failure;
 						} else if (resource->handler) {
 							keep_alive = resource->handler(handle, use_imagebytes ? "GET/IMAGEBYTES" : (use_gzip ? "GET/GZIP" : "GET"), path, params);
@@ -284,22 +281,22 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(handle, "Content-Encoding: gzip\r\n");
 							INDIGO_PRINTF(handle, "\r\n");
 							indigo_uni_write(handle, (const char *)resource->data, resource->length);
-							INDIGO_TRACE(indigo_trace("%d <- // %d bytes", socket, resource->length));
+							INDIGO_TRACE(indigo_trace("%d <- // %d bytes", handle->fd, resource->length));
 						} else if (resource->file_name) {
 							char file_name[256];
-							struct stat file_stat;
 							if (*resource->file_name == '/') {
 								strcpy(file_name, resource->file_name);
 							} else {
-								sprintf(file_name, "%s/%s", getenv("HOME"), resource->file_name);
+								sprintf(file_name, "%s%c%s", indigo_uni_config_folder(), INDIGO_PATH_SEPATATOR, resource->file_name);
 							}
-							indigo_uni_handle file_handle = { 0 };
-							if (stat(file_name, &file_stat) < 0 || !(file_handle = indigo_uni_open_file(file_name)).opened) {
+							indigo_uni_handle *file_handle = { 0 };
+							struct stat file_stat;
+							if (stat(file_name, &file_stat) < 0 || (file_handle = indigo_uni_open_file(file_name)) == NULL) {
 								INDIGO_PRINTF(file_handle, "HTTP/1.1 404 Not found\r\n");
 								INDIGO_PRINTF(file_handle, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(file_handle, "\r\n");
-								INDIGO_PRINTF(file_handle, "%s not found (%s)\r\n", file_name, strerror(errno));
-								INDIGO_TRACE(indigo_trace("%d <- // Failed to stat/open file (%s, %s)", socket, file_name, strerror(errno)));
+								INDIGO_PRINTF(file_handle, "%s not found\r\n", file_name);
+								INDIGO_TRACE(indigo_trace("%d <- // Failed to stat/open file %s", handle->fd, file_name));
 								goto failure;
 							} else {
 								const char *base_name = strrchr(file_name, '/');
@@ -322,7 +319,7 @@ static void start_worker_thread(int *client_socket) {
 									}
 									remaining -= count;
 								}
-								indigo_uni_close(file_handle);
+								indigo_uni_close(&file_handle);
 							}
 						}
 					}
@@ -359,7 +356,7 @@ static void start_worker_thread(int *client_socket) {
 								INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(handle, "\r\n");
 								INDIGO_PRINTF(handle, "Out of buffer memory!\r\n");
-								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", socket));
+								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", handle->fd));
 								goto failure;
 							}
 						} else {
@@ -367,7 +364,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(handle, "\r\n");
 							INDIGO_PRINTF(handle, "BLOB not found!\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", socket));
+							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", handle->fd));
 							goto failure;
 						}
 					} else {
@@ -384,7 +381,7 @@ static void start_worker_thread(int *client_socket) {
 							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
 							INDIGO_PRINTF(handle, "\r\n");
 							INDIGO_PRINTF(handle, "%s not found!\r\n", path);
-							INDIGO_TRACE(indigo_trace("%d <- // %s not found", socket, path));
+							INDIGO_TRACE(indigo_trace("%d <- // %s not found", handle->fd, path));
 							goto failure;
 						} else if (resource->handler) {
 							keep_alive = resource->handler(handle, "PUT", path, NULL);
@@ -396,27 +393,19 @@ static void start_worker_thread(int *client_socket) {
 				}
 			}
 		} else {
-			INDIGO_TRACE(indigo_trace("%d -> // Unrecognised protocol", socket));
+			INDIGO_TRACE(indigo_trace("%d -> // Unrecognised protocol", handle->fd));
 		}
 	}
 failure:
-	indigo_uni_close(handle);
+	INDIGO_TRACE(indigo_trace("%d <- // Worker thread finished", handle->fd));
+	indigo_uni_close(&handle);
 	server_callback(--client_count);
-	free(client_socket);
+	indigo_safe_free(data);
 	if (free_on_exit) {
-		free(free_on_exit);
+		indigo_safe_free(free_on_exit);
 	}
 	if (unlock_at_exit) {
 		pthread_mutex_unlock(unlock_at_exit);
-	}
-	INDIGO_TRACE(indigo_trace("%d <- // Worker thread finished", socket));
-}
-
-void indigo_server_shutdown() {
-	if (!shutdown_initiated) {
-		shutdown_initiated = true;
-		shutdown(server_socket, SHUT_RDWR);
-		close(server_socket);
 	}
 }
 
@@ -447,7 +436,7 @@ void indigo_server_add_file_resource(const char *path, const char *file_name, co
 	INDIGO_TRACE(indigo_trace("Resource %s (%s, %s) added", path, file_name, content_type));
 }
 
-void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle handle, char *method, char *path, char *params)) {
+void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params)) {
 	pthread_mutex_lock(&resource_list_mutex);
 	struct resource *resource = indigo_safe_malloc(sizeof(struct resource));
 	resource->path = path;
@@ -498,6 +487,7 @@ static void default_server_callback(int count) {
 	static DNSServiceRef sd_http;
 	static DNSServiceRef sd_indigo;
 	if (startup_initiated) {
+		startup_initiated = false;
 		if (indigo_use_bonjour) {
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
@@ -516,83 +506,23 @@ static void default_server_callback(int count) {
 	}
 }
 
-
-indigo_result indigo_server_start(indigo_server_tcp_callback callback) {
+indigo_result indigo_server_start(void (*callback)(int)) {
 	indigo_use_blob_caching = true;
-	startup_initiated = true;
-	shutdown_initiated = false;
 	server_callback = callback ? callback : default_server_callback;
-	int client_socket;
-	server_socket = socket(PF_INET, SOCK_STREAM, 0);
-	if (server_socket == -1) {
-		indigo_error("Can't open server socket (%s)", strerror(errno));
-		return INDIGO_CANT_START_SERVER;
-	}
-	int reuse = 1;
-	if (setsockopt(server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-		indigo_error("Can't setsockopt for server socket (%s)", strerror(errno));
-		return INDIGO_CANT_START_SERVER;
-	}
-	struct sockaddr_in client_name;
-	unsigned int name_len = sizeof(client_name);
-	struct sockaddr_in server_address;
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(indigo_server_tcp_port);
-	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(server_socket, (struct sockaddr *)&server_address, sizeof(server_address)) < 0) {
-		indigo_error("Can't bind server socket (%s)", strerror(errno));
-		return INDIGO_CANT_START_SERVER;
-	}
-	
-#ifdef INDIGO_LINUX
-	int val = 1;
-	if (setsockopt(server_socket, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) < 0) {
-		indigo_error("Can't setsockopt TCP_NODELAY, for server socket (%s)", strerror(errno));
-		return INDIGO_CANT_START_SERVER;
-	}
-#endif
-	
-	unsigned int length = sizeof(server_address);
-	if (getsockname(server_socket, (struct sockaddr *)&server_address, &length) == -1) {
-		close(server_socket);
-		return INDIGO_CANT_START_SERVER;
-	}
-	if (listen(server_socket, 64) < 0) {
-		indigo_error("Can't listen on server socket (%s)", strerror(errno));
-		close(server_socket);
-		return INDIGO_CANT_START_SERVER;
-	}
-	indigo_is_ephemeral_port = indigo_server_tcp_port == 0;
-	indigo_server_tcp_port = ntohs(server_address.sin_port);
-	INDIGO_LOG(indigo_log("Server started on port %d", indigo_server_tcp_port));
-	server_callback(0);
-	startup_initiated = false;
-	signal(SIGPIPE, SIG_IGN);
-	while (1) {
-		client_socket = accept(server_socket, (struct sockaddr *)&client_name, &name_len);
-		if (client_socket == -1) {
-			if (shutdown_initiated) {
-				break;
-			}
-			indigo_error("Can't accept connection (%s)", strerror(errno));
-		} else {
-			struct timeval timeout;
-			timeout.tv_sec = 0;
-			timeout.tv_usec = 0;
-			if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
-				indigo_error("Can't set recv() timeout (%s)", strerror(errno));
-			timeout.tv_sec = 5;
-			if (setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
-				indigo_error("Can't set send() timeout (%s)", strerror(errno));
-			int *pointer = indigo_safe_malloc(sizeof(int));
-			*pointer = client_socket;
-			if (!indigo_async((void *(*)(void *))&start_worker_thread, pointer))
-				indigo_error("Can't create worker thread for connection (%s)", strerror(errno));
-		}
-	}
 	shutdown_initiated = false;
+	startup_initiated = true;
+	indigo_is_ephemeral_port = indigo_server_tcp_port == 0;
+	signal(SIGPIPE, SIG_IGN);
+	indigo_uni_open_tcp_server_socket(&indigo_server_tcp_port, &server_handle, start_worker_thread, NULL, server_callback);
 	server_callback(0);
 	return INDIGO_OK;
+}
+
+void indigo_server_shutdown() {
+	if (!shutdown_initiated) {
+		shutdown_initiated = true;
+		indigo_uni_close(&server_handle);
+	}
 }
 
 /*

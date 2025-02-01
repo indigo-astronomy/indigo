@@ -33,7 +33,7 @@
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(INDIGO_STDIN_HANDLE, INDIGO_STDOUT_HANDLE);
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(&indigo_stdin_handle, &indigo_stdout_handle);
 	indigo_start();
 	indigo_aux_sqm(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);

@@ -30,7 +30,7 @@
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_ser.h>
 
-static bool write_int(indigo_uni_handle handle, uint32_t n) {
+static bool write_int(indigo_uni_handle *handle, uint32_t n) {
 	unsigned char buffer[4];
 	buffer[0] = n;
 	buffer[1] = n >> 8;
@@ -39,7 +39,7 @@ static bool write_int(indigo_uni_handle handle, uint32_t n) {
 	return indigo_uni_write(handle, (const char *)buffer, 4);
 }
 
-static bool write_long(indigo_uni_handle handle, uint64_t n) {
+static bool write_long(indigo_uni_handle *handle, uint64_t n) {
 	unsigned char buffer[8];
 	buffer[0] = n;
 	buffer[1] = n >> 8;
@@ -54,8 +54,8 @@ static bool write_long(indigo_uni_handle handle, uint64_t n) {
 
 indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	indigo_ser *ser = NULL;
-	indigo_uni_handle handle = indigo_uni_open_file(filename);
-	if (!handle.opened) {
+	indigo_uni_handle *handle = indigo_uni_open_file(filename);
+	if (handle == NULL) {
 		INDIGO_ERROR(indigo_error("indigo_ser: failed to open file for writing"));
 		goto failure;
 	}
@@ -103,7 +103,7 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 		goto failure;
 	return ser;
 failure:
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	indigo_safe_free(ser);
 	return NULL;
 }
@@ -114,9 +114,9 @@ bool indigo_ser_add_frame(indigo_ser *ser, void *buffer, size_t len) {
 }
 
 bool indigo_ser_close(indigo_ser *ser) {
-	indigo_uni_handle handle = ser->handle;
+	indigo_uni_handle *handle = ser->handle;
 	if (indigo_uni_seek(handle, 38, SEEK_SET) && write_int(handle, ser->count)) {
-		indigo_uni_close(handle);
+		indigo_uni_close(&handle);
 		free(ser);
 		return true;
 	}

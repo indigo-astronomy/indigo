@@ -1106,8 +1106,8 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	int port = 80;
 	char file[256];
 	sscanf(url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file);
-	indigo_uni_handle handle = indigo_uni_client_tcp_socket(host, port);
-	if (!handle.opened) {
+	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port);
+	if (handle == NULL) {
 		return false;
 	}
 	char line[256];
@@ -1131,7 +1131,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	/* On Raspberry Pi blob compression may take longer. Make sure we do not timeout prematurely */
 	struct timeval timeout = { .tv_sec = 15 };
-	setsockopt(handle.fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+	setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 	long uncompressed_content_len = 0;
 #endif
 	long content_len = 0;
@@ -1165,7 +1165,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 			unsigned out_size = (unsigned)uncompressed_content_len;
 			indigo_uni_decompress(compressed_buffer, (unsigned)content_len, *value, &out_size);
 			free(compressed_buffer);
-			indigo_uni_close(handle);
+			indigo_uni_close(&handle);
 			return true;
 		} else {
 			*size = content_len;
@@ -1173,7 +1173,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 			if (indigo_uni_read(handle, *value, *size) < 0) {
 				goto error_return;
 			}
-			indigo_uni_close(handle);
+			indigo_uni_close(&handle);
 			return true;
 		}
 #else
@@ -1182,14 +1182,14 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 		if (indigo_uni_read(handle, *value, *size) < 0) {
 			goto error_return;
 		}
-		indigo_uni_close(handle);
+		indigo_uni_close(&handle);
 		return true;
 #endif
 	} else {
 		INDIGO_TRACE(indigo_trace("%d -> // No data expected"));
 	}
 error_return:
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	return false;
 }
 
@@ -1210,8 +1210,8 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	int port = 80;
 	char file[256];
 	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file);
-	indigo_uni_handle handle = indigo_uni_client_tcp_socket(host, port);
-	if (!handle.opened) {
+	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port);
+	if (handle == NULL) {
 		return false;
 	}
 	char line[256];
@@ -1235,10 +1235,10 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 			goto error_return;
 		}
 	} while (line[0] != 0);
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	return true;
 error_return:
-	indigo_uni_close(handle);
+	indigo_uni_close(&handle);
 	return false;
 }
 

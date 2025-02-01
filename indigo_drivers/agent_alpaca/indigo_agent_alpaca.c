@@ -81,9 +81,9 @@ static void save_config(indigo_device *device) {
 		pthread_mutex_lock(&private_data->mutex);
 		indigo_save_property(device, NULL, AGENT_DEVICES_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_CAMERA_BAYERPAT_PROPERTY);
-		if (DEVICE_CONTEXT->property_save_file_handle.opened) {
+		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_uni_close(DEVICE_CONTEXT->property_save_file_handle);
+			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -179,7 +179,7 @@ static void parse_url_params(char *params, uint32_t *client_id, uint32_t *client
 	}
 }
 
-static void send_json_response(indigo_uni_handle handle, char *path, int status_code, const char *status_text, char *body) {
+static void send_json_response(indigo_uni_handle *handle, char *path, int status_code, const char *status_text, char *body) {
 	if (indigo_uni_printf(handle,
 			"HTTP/1.1 %3d %s\r\n"
 			"Content-Type: application/json\r\n"
@@ -197,7 +197,7 @@ static void send_json_response(indigo_uni_handle handle, char *path, int status_
 	}
 }
 
-static void send_text_response(indigo_uni_handle handle, char *path, int status_code, const char *status_text, char *body) {
+static void send_text_response(indigo_uni_handle *handle, char *path, int status_code, const char *status_text, char *body) {
 	if (indigo_uni_printf(handle,
 			"HTTP/1.1 %3d %s\r\n"
 			"Content-Type: text/plain\r\n"
@@ -215,7 +215,7 @@ static void send_text_response(indigo_uni_handle handle, char *path, int status_
 	}
 }
 
-static bool alpaca_setup_handler(indigo_uni_handle handle, char *method, char *path, char *params) {
+static bool alpaca_setup_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	if (indigo_uni_printf(handle,
 			"HTTP/1.1 301 Moved Permanently\r\n"
 			"Location: /mng.html\r\n"
@@ -230,7 +230,7 @@ static bool alpaca_setup_handler(indigo_uni_handle handle, char *method, char *p
 	return true;
 }
 
-static bool alpaca_apiversions_handler(indigo_uni_handle handle, char *method, char *path, char *params) {
+static bool alpaca_apiversions_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char buffer[128];
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
@@ -239,7 +239,7 @@ static bool alpaca_apiversions_handler(indigo_uni_handle handle, char *method, c
 	return true;
 }
 
-static bool alpaca_v1_description_handler(indigo_uni_handle handle, char *method, char *path, char *params) {
+static bool alpaca_v1_description_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char buffer[512];
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
@@ -248,7 +248,7 @@ static bool alpaca_v1_description_handler(indigo_uni_handle handle, char *method
 	return true;
 }
 
-static bool alpaca_v1_configureddevices_handler(indigo_uni_handle handle, char *method, char *path, char *params) {
+static bool alpaca_v1_configureddevices_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char *buffer = indigo_alloc_large_buffer();
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
@@ -277,7 +277,7 @@ int string_cmp(const void * a, const void * b) {
 	 return strncasecmp((char *)a, (char *)b, 128);
 }
 
-static bool alpaca_v1_api_handler(indigo_uni_handle handle, char *method, char *path, char *params) {
+static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s %s %s", method, path, params);
 	uint32_t client_id = 0, client_transaction_id = 0;
 	int id = 0;

@@ -264,7 +264,7 @@ typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_
 /** Device context structure.
  */
 typedef struct {
-	indigo_uni_handle property_save_file_handle;            ///< handle for property save
+	indigo_uni_handle *property_save_file_handle;            ///< handle for property save
 	pthread_mutex_t config_mutex;							///< mutex for configuration load/save synchronisation
 	pthread_mutex_t multi_device_mutex;				///< mutex for synchronising multi-device access over single low level connection
 	indigo_timer *timers;											///< active timer list
@@ -361,7 +361,7 @@ extern indigo_result indigo_device_detach(indigo_device *device);
 /** Open config file.
  */
 
-extern indigo_uni_handle indigo_open_config_file(char *device_name, int profile, bool create, const char *suffix);
+extern indigo_uni_handle *indigo_open_config_file(char *device_name, int profile, bool create, const char *suffix);
 
 /** Load properties.
  */
@@ -369,7 +369,7 @@ extern indigo_result indigo_load_properties(indigo_device *device, bool default_
 
 /** Save single property.
  */
-extern indigo_result indigo_save_property(indigo_device*device, indigo_uni_handle *file_handle, indigo_property *property);
+extern indigo_result indigo_save_property(indigo_device*device, indigo_uni_handle **file_handle, indigo_property *property);
 
 /** Save items of a property.
  */

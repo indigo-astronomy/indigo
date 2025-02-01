@@ -2043,7 +2043,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 			}
 		}
 		char *message = NULL;
-		indigo_uni_handle handle = { 0 };
+		indigo_uni_handle *handle = { 0 };
 		char file_name[INDIGO_VALUE_SIZE] = { 0 };
 		if (!(use_avi || use_ser) || CCD_CONTEXT->video_stream == NULL) {
 			if (indigo_is_sandboxed || !mkpath(CCD_LOCAL_MODE_DIR_ITEM->text.value)) {
@@ -2078,12 +2078,12 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					message = strerror(errno);
 				}
 			}
-		} else if (handle.opened) {
+		} else if (handle != NULL) {
 			if (!indigo_uni_write(handle, blob_value, blob_size)) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}
-			indigo_uni_close(handle);
+			indigo_uni_close(&handle);
 			if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
 				file_remove(file_name);
 			}
@@ -2178,13 +2178,13 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 					if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, ".raw", file_name)) {
 						indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_uni_handle handle = indigo_uni_open_file(file_name);
-						if (handle.opened) {
+						indigo_uni_handle *handle = indigo_uni_open_file(file_name);
+						if (handle != NULL) {
 							if (!indigo_uni_write(handle, image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
 								CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 								message = strerror(errno);
 							}
-							indigo_uni_close(handle);
+							indigo_uni_close(&handle);
 							if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
 								file_remove(file_name);
 							}
@@ -2252,7 +2252,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 	}
 	if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 		bool use_avi = false;
-		indigo_uni_handle handle = { 0 };
+		indigo_uni_handle *handle = { 0 };
 		char *message = NULL;
 		char file_name[INDIGO_VALUE_SIZE] = {0};
 		if (CCD_IMAGE_FORMAT_NATIVE_AVI_ITEM->sw.value && !strcmp(standard_suffix, ".jpeg") && streaming) {
@@ -2302,12 +2302,12 @@ void indigo_process_dslr_image(indigo_device *device, void *data, int data_size,
 					message = strerror(errno);
 				}
 			}
-		} else if (handle.opened) {
+		} else if (handle != NULL) {
 			if (!indigo_uni_write(handle, data, data_size)) {
 				CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 				message = strerror(errno);
 			}
-			indigo_uni_close(handle);
+			indigo_uni_close(&handle);
 			if (CCD_IMAGE_FILE_PROPERTY->state == INDIGO_ALERT_STATE) {
 				file_remove(file_name);
 			}

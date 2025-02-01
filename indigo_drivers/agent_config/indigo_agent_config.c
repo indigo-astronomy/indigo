@@ -106,9 +106,9 @@ static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		indigo_save_property(device, NULL, AGENT_CONFIG_SETUP_PROPERTY);
-		if (DEVICE_CONTEXT->property_save_file_handle.opened) {
+		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_uni_close(DEVICE_CONTEXT->property_save_file_handle);
+			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -217,8 +217,8 @@ static void load_configuration(indigo_device *device) {
 	for (int i = 0; i < AGENT_CONFIG_LOAD_PROPERTY->count; i++) {
 		indigo_item *item = AGENT_CONFIG_LOAD_PROPERTY->items + i;
 		if (item->sw.value) {
-			indigo_uni_handle handle = indigo_open_config_file(item->name, 0, false, EXTENSION);
-			if (handle.opened) {
+			indigo_uni_handle *handle = indigo_open_config_file(item->name, 0, false, EXTENSION);
+			if (handle != NULL) {
 				indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Loading configuration '%s', please wait...", item->name);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Loading saved configuration from %s%s", item->name, EXTENSION);
 				strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, item->name, INDIGO_NAME_SIZE);
@@ -231,7 +231,7 @@ static void load_configuration(indigo_device *device) {
 				client->version = INDIGO_VERSION_CURRENT;
 				DEVICE_PRIVATE_DATA->restore_count = 0;
 				indigo_xml_parse(NULL, client);
-				indigo_uni_close(handle);
+				indigo_uni_close(&handle);
 				free(context);
 				free(client);
 				// wait for all the changes to be applied
@@ -481,8 +481,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 				}
 			}
-			indigo_uni_handle handle = indigo_open_config_file(AGENT_CONFIG_SAVE_NAME_ITEM->text.value, 0, true, EXTENSION);
-			if (handle.opened) {
+			indigo_uni_handle *handle = indigo_open_config_file(AGENT_CONFIG_SAVE_NAME_ITEM->text.value, 0, true, EXTENSION);
+			if (handle != NULL) {
 				pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 				AGENT_CONFIG_DRIVERS_PROPERTY->perm = INDIGO_RW_PERM;
 				indigo_save_property(device, &handle, AGENT_CONFIG_DRIVERS_PROPERTY);
@@ -499,7 +499,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					}
 				}
 				pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
-				indigo_uni_close(handle);
+				indigo_uni_close(&handle);
 				snprintf(message, INDIGO_VALUE_SIZE, "Active configuration saved as '%s'", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Active configuration saved to %s%s", AGENT_CONFIG_SAVE_NAME_ITEM->text.value, EXTENSION);
 				AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_OK_STATE;

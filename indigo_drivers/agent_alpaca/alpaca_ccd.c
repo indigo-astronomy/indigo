@@ -1318,7 +1318,7 @@ long indigo_alpaca_ccd_set_command(indigo_alpaca_device *alpaca_device, int vers
 
 #define PRINTF(fmt, ...) if (use_gzip) gzprintf(gzf, fmt, ##__VA_ARGS__); else indigo_uni_printf(handle, fmt, ##__VA_ARGS__);
 
-void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle handle, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
+void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int version, indigo_uni_handle *handle, uint32_t client_transaction_id, uint32_t server_transaction_id, bool use_gzip, bool use_imagebytes) {
 	indigo_alpaca_error result = indigo_alpaca_error_OK;
 	indigo_blob_entry *entry;
 	if (use_imagebytes) {
@@ -1411,7 +1411,7 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 		if (use_gzip) {
 			indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Encoding: gzip\r\n\r\n");
 #warning: "TODO: Pending issue for migration to unified I/O"
-			gzf = gzdopen(handle.fd, "w");
+			gzf = gzdopen(handle->fd, "w");
 		} else {
 			indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\n\r\n");
 		}

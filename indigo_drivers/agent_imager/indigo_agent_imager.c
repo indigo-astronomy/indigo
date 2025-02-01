@@ -306,9 +306,9 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_PROCESS_FEATURES_PROPERTY);
 		char *selection_property_items[] = { AGENT_IMAGER_SELECTION_RADIUS_ITEM_NAME, AGENT_IMAGER_SELECTION_SUBFRAME_ITEM_NAME, AGENT_IMAGER_SELECTION_STAR_COUNT_ITEM_NAME };
 		indigo_save_property_items(device, NULL, AGENT_IMAGER_SELECTION_PROPERTY, 3, (const char **)selection_property_items);
-		if (DEVICE_CONTEXT->property_save_file_handle.opened) {
+		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			indigo_uni_close(DEVICE_CONTEXT->property_save_file_handle);
+			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -3214,12 +3214,12 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(malloc_size);
 					DEVICE_PRIVATE_DATA->image_buffer_size = malloc_size;
 				}
-				indigo_uni_handle handle = indigo_uni_open_file(file_name);
-				if (!handle.opened) {
+				indigo_uni_handle *handle = indigo_uni_open_file(file_name);
+				if (handle == NULL) {
 					break;
 				}
 				long result = indigo_uni_read(handle, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.value = DEVICE_PRIVATE_DATA->image_buffer, AGENT_IMAGER_DOWNLOAD_IMAGE_ITEM->blob.size = file_stat.st_size);
-				indigo_uni_close(handle);
+				indigo_uni_close(&handle);
 				if (result == -1) {
 					AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY->state = INDIGO_ALERT_STATE;
 					indigo_update_property(device, AGENT_IMAGER_DOWNLOAD_IMAGE_PROPERTY, NULL);

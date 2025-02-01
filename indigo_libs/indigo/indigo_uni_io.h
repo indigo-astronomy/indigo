@@ -38,6 +38,7 @@
 #include <winsock2.h>
 #define INDIGO_PATH_SEPATATOR	'\\'
 #define strcasecmp stricmp
+#define stat _stat
 #endif
 
 #ifdef __cplusplus
@@ -53,91 +54,97 @@ typedef enum {
 typedef struct {
 	indigo_uni_handle_type type;
 	int fd;
-	bool opened;
 	int last_error;
 } indigo_uni_handle;
 
-#define INDIGO_ERROR_HANDLE (indigo_uni_handle) { 0, -1, false, EINVAL }
+typedef struct {
+	indigo_uni_handle *handle;
+	void *data;
+} indigo_uni_worker_data;
 
-#define INDIGO_STDIN_HANDLE (indigo_uni_handle) { INDIGO_FILE_HANDLE, 0, true, 0 }
-#define INDIGO_STDOUT_HANDLE (indigo_uni_handle) { INDIGO_FILE_HANDLE, 1, true, 0 }
-#define INDIGO_STDERR_HANDLE (indigo_uni_handle) { INDIGO_FILE_HANDLE, 2, true, 0 }
+extern indigo_uni_handle indigo_stdin_handle;
+extern indigo_uni_handle indigo_stdout_handle;
+extern indigo_uni_handle indigo_stderr_handle;
 
-#define INDIGO_TCP_SOCKET(socket) (indigo_uni_handle) { INDIGO_TCP_HANDLE, socket, true, 0 }
-#define INDIGO_FILE(fd) (indigo_uni_handle) { INDIGO_FILE_HANDLE, fd, true, 0 }
+extern indigo_uni_handle *indigo_uni_create_handle(indigo_uni_handle_type type, int fd);
 
 /** Decode last error to string.
  */
-extern char *indigo_uni_strerror(indigo_uni_handle handle);
+extern char *indigo_uni_strerror(indigo_uni_handle *handle);
 
 /** Open existing file.
  */
-extern indigo_uni_handle indigo_uni_open_file(const char *path);
+extern indigo_uni_handle *indigo_uni_open_file(const char *path);
 
 /** Create new file.
  */
-extern indigo_uni_handle indigo_uni_create_file(const char *path);
+extern indigo_uni_handle *indigo_uni_create_file(const char *path);
 
 /** Open serial connection with configuration string of the form "9600-8N1".
  */
-extern indigo_uni_handle indigo_uni_open_serial_with_config(const char *path, const char *baudconfig);
+extern indigo_uni_handle *indigo_uni_open_serial_with_config(const char *path, const char *baudconfig);
 
 /** Open serial connection at speed XXXX-8N1.
  */
-extern indigo_uni_handle indigo_uni_open_serial_with_speed(const char *path, int speed);
+extern indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *path, int speed);
 
 /** Open serial connection at speed 9600-8N1.
  */
-extern indigo_uni_handle indigo_uni_open_serial(const char *path);
+extern indigo_uni_handle *indigo_uni_open_serial(const char *path);
 
 /** Open client socket.
  */
-extern indigo_uni_handle indigo_uni_open_client_socket(const char *host, int port, int type);
+extern indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type);
 
 #define indigo_uni_client_tcp_socket(host, port) indigo_uni_open_client_socket(host, port, SOCK_STREAM);
 #define indigo_uni_client_udp_socket(host, port) indigo_uni_open_client_socket(host, port, SOCK_DGRAM);
 
+/** Open server socket.
+ */
+
+extern void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int));
+
 /** Open TCP or UDP connection depending on the URL prefix tcp:// or udp:// for any other prefix protocol_hint is used.
     If no port is provided in the URL default port is used. protocol_hint will be set to actual protocol used for the connection.
  */
-extern indigo_uni_handle indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint);
+extern indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint);
 
 /** Read available data into buffer.
  */
-extern long indigo_uni_read_available(indigo_uni_handle handle, void *buffer, long length);
+extern long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long length);
 
 /** Read data into buffer.
  */
-extern long indigo_uni_read(indigo_uni_handle handle, void *buffer, long length);
+extern long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length);
 
 /** Read up to one of terminator characters optionally ignoring some characters (or NULL) into buffer with optional usecs timeout (or -1).
  */
-extern long indigo_uni_read_section(indigo_uni_handle handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout);
+extern long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout);
 
 #define indigo_uni_read_line(handle, buffer, length) indigo_uni_read_section(handle, buffer, length, "\n", "\r\n", -1)
 
 /** Read formatted.
  */
 
-extern int indigo_uni_scanf(indigo_uni_handle handle, const char *format, ...);
+extern int indigo_uni_scanf(indigo_uni_handle *handle, const char *format, ...);
 
 /** Write buffer.
  */
-extern long indigo_uni_write(indigo_uni_handle handle, const char *buffer, long length);
+extern long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length);
 
 /** Write formatted.
  */
 
-extern long indigo_uni_printf(indigo_uni_handle handle, const char *format, ...);
+extern long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...);
 
 /** Seek.
  */
 
-extern long indigo_uni_seek(indigo_uni_handle handle, long position, int whence);
+extern long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence);
 
 /** Close handle.
  */
-extern void indigo_uni_close(indigo_uni_handle handle);
+extern void indigo_uni_close(indigo_uni_handle **handle);
 
 /** INDIGO config folder (~/.indigo)
  */
