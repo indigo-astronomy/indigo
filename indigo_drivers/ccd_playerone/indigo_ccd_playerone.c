@@ -2005,8 +2005,6 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 
-	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-	indigo_device *master_device = device;
 	int index = find_index_by_device_id(id);
 	if (index < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
@@ -2021,6 +2019,8 @@ static void process_plug_event(indigo_device *unused) {
 		}
 	}
 	if (res == POA_OK) {
+		indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+		indigo_device *master_device = device;
 		device->master_device = master_device;
 		char name[256] = {0};
 		char suffix[16] = {0};
