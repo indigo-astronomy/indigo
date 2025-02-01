@@ -477,7 +477,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 		if (handle->type == INDIGO_FILE_HANDLE) {
 			bytes_read = read(handle->fd, buffer, remains);
 		} else {
-			bytes_read = recv(handle->, buffer, remains, 0);
+			bytes_read = recv(handle->fd, buffer, remains, 0);
 			handle->last_error = WSAGetLastError();
 			if (bytes_read == -1 && handle->last_error == WSAETIMEDOUT) {
 				Sleep(500);
@@ -498,7 +498,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 			INDIGO_TRACE(indigo_trace("%d -> // %ld bytes read", handle->fd, total_bytes));
 			return (int)total_bytes;
 		}
-		buffer += bytes_read;
+		(char *)buffer += bytes_read;
 		remains -= bytes_read;
 	}
 }

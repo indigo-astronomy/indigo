@@ -23,7 +23,7 @@
     <ProjectGuid>{5502C713-37D8-4FC1-95C6-D8A1BA1F1694}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
     <RootNamespace>indigoclient</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.18362.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -42,7 +42,7 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v142</PlatformToolset>
+    <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -172,6 +172,7 @@
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_config.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_io.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_service_discovery.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_uni_io.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_version.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_xml.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_token.h" />
@@ -193,6 +194,7 @@
     <ClCompile Include="..\..\..\indigo_libs\indigo_client_xml.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_io.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_service_discovery.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_uni_io.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_version.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_xml.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_token.c" />
@@ -210,4 +212,4 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
-  </Project>
+</Project>
