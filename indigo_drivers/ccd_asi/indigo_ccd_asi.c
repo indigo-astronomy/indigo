@@ -1888,8 +1888,6 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 
-	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-	indigo_device *master_device = device;
 	int index = find_index_by_device_id(id);
 	if (index < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
@@ -1897,6 +1895,9 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 	ASIGetCameraProperty(&info, index);
+
+	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+	indigo_device *master_device = device;
 
 	/* If more than one camera of the same type is connected
 	   SDK adds (CAM%d) to the name, we do not need it! */
