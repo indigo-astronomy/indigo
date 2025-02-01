@@ -75,8 +75,7 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 			
 			// Skip USB hubs
 			if (device_class == 0x09) {
-				IOObjectRelease(device);
-				continue;
+				goto cleanup;
 			}
 			
 			char vendor_str[256] = {0};
@@ -102,7 +101,7 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 			
 			kr = IORegistryEntryCreateIterator(device, kIOServicePlane, kIORegistryIterateRecursively, &serialIter);
 			if (kr != KERN_SUCCESS) {
-				continue;
+				goto cleanup;
 			}
 			
 			io_service_t serialService;
@@ -125,7 +124,8 @@ int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_
 			}
 			IOObjectRelease(serialIter);
 		}
-		
+
+	cleanup:
 		if (vendorIdAsCFNumber) {
 			CFRelease(vendorIdAsCFNumber);
 		}
