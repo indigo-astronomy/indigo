@@ -60,6 +60,12 @@ char *indigo_client_name = NULL;
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
+#if defined(INDIGO_MACOS)
+#define SO_NAME ".dylib"
+#elif defined(INDIGO_LINUX)
+#define SO_NAME ".so"
+#endif
+
 #if defined(INDIGO_WINDOWS)
 static bool is_pre_vista() {
 	char buffer[MAX_PATH];
@@ -185,12 +191,6 @@ indigo_result indigo_remove_driver(indigo_driver_entry *driver) {
 indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry **driver) {
 	return add_driver(entry_point, NULL, init, driver);
 }
-
-#if defined(INDIGO_MACOS)
-#define SO_NAME ".dylib"
-#elif defined(INDIGO_LINUX)
-#define SO_NAME ".so"
-#endif
 
 indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver) {
 	char driver_name[INDIGO_NAME_SIZE];
