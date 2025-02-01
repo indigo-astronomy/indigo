@@ -1892,8 +1892,7 @@ void indigo_usleep(unsigned int delay) {
 	if (ret < 0) {
 		indigo_error("%s(): nanosleep() failed with error: %s", __FUNCTION__, strerror(errno));
 	}
-#endif
-#if defined(INDIGO_WINDOWS)
+#elif defined(INDIGO_WINDOWS)
 	unsigned int s = delay / 1000;
 	Sleep(s);
 #endif

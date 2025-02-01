@@ -321,7 +321,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (server_socket == -1) {
-		indigo_error("Can't open server socket (%s)", strerror(errno));
+		indigo_error("Can't create server socket (%s)", strerror(errno));
 		return;
 	}
 	int reuse = 1;
@@ -364,7 +364,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
 	(*server_handle)->fd = server_socket;
-	INDIGO_LOG(indigo_log("Server started on port %d", *port));
+	INDIGO_LOG(indigo_log("Server started on TCP port %d", *port));
 	if (callback) {
 		callback(0);
 	}

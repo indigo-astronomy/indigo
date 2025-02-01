@@ -96,6 +96,7 @@ static void save_config(indigo_device *device) {
 // -------------------------------------------------------------------------------- ALPACA bridge implementation
 
 static void start_discovery_server(indigo_device *device) {
+#warning: "TODO: Pending issue for migration to unified I/O"
 	int port = (int)AGENT_DISCOVERY_PORT_ITEM->number.value;
 	discovery_server_socket = socket(PF_INET, SOCK_DGRAM, 0);
 	if (discovery_server_socket == -1) {
@@ -124,7 +125,6 @@ static void start_discovery_server(indigo_device *device) {
 	unsigned int client_address_length = sizeof(client_address);
 	char buffer[128];
 	struct timeval tv;
-
 	while (discovery_server_socket) {
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;

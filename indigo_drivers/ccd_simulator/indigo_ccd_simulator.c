@@ -36,7 +36,7 @@
 #include <fcntl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_align.h>
 
@@ -971,10 +971,10 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			} else if (device == PRIVATE_DATA->file) {
-				int fd = open(FILE_NAME_ITEM->text.value, O_RDONLY, 0);
-				if (fd == -1)
+				indigo_uni_handle *handle = indigo_uni_open_file(FILE_NAME_ITEM->text.value);
+				if (handle == NULL)
 					goto failure;
-				if (!indigo_read(fd, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
+				if (!indigo_uni_read(handle, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
 					goto failure;
 				CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_LEFT_ITEM->number.value = 0;
 				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.min = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->file_image_header.width;
@@ -1000,10 +1000,10 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 				PRIVATE_DATA->raw_file_image = indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE);
 				PRIVATE_DATA->file_image = indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE);
-				if (!indigo_read(fd, (char *)PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE, size)) {
+				if (!indigo_uni_read(handle, (char *)PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE, size)) {
 					goto failure;
 				}
-				close(fd);
+				indigo_uni_close(&handle);
 			} else if (device == PRIVATE_DATA->imager) {
 				indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			}
