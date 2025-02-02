@@ -345,7 +345,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 #if defined(INDIGO_LINUX)
 	int val = 1;
 	if (setsockopt(server_socket, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) < 0) {
-		close(fd);
+		close(server_socket);
 		indigo_error("Can't setsockopt TCP_NODELAY, for server socket (%s)", strerror(errno));
 		return;
 	}

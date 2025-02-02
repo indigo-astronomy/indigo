@@ -311,7 +311,7 @@ typedef struct indigo_device {
 
 #define INDIGO_DEVICE_INITIALIZER(name_str, attach_cb, enumerate_properties_cb, change_property_cb, enable_blob_cb, detach_cb) { \
 	name_str, \
-	-1, \
+	NULL, \
 	false, \
 	0, \
 	NULL, \

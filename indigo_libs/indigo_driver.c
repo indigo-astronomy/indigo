@@ -115,10 +115,10 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 #if defined(INDIGO_LINUX)
 static int port_type(char *path) {
 	int fd, res;
-	struct serial_struct serinfo = {0};
-
-	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) return -1;
-
+	struct serial_struct serinfo = { 0 };
+	if ((fd = open(path, O_RDWR | O_NONBLOCK)) == -1) {
+		return -1;
+	}
 	int sp_type = 0;
 	res = ioctl(fd, TIOCGSERIAL, &serinfo);
 	if (res != 0) {
@@ -651,7 +651,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				indigo_device *additional_device = indigo_safe_malloc_copy(sizeof(indigo_device), device);
 				void *private_data = indigo_safe_malloc(MALLOCED_SIZE(device->private_data));
 				snprintf(additional_device->name, INDIGO_NAME_SIZE, "%s #%d", device->name, i + 2);
-				additional_device->lock = -1;
+				additional_device->lock = NULL;
 				additional_device->is_remote = false;
 				additional_device->gp_bits = 0;
 				additional_device->last_result = 0;
@@ -671,7 +671,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 					indigo_device *slave_device = slave_devices[j];
 					indigo_device *additional_slave_device = indigo_safe_malloc_copy(sizeof(indigo_device), slave_device);
 					snprintf(additional_slave_device->name, INDIGO_NAME_SIZE, "%s #%d", slave_device->name, i + 2);
-					additional_slave_device->lock = -1;
+					additional_slave_device->lock = NULL;
 					additional_slave_device->is_remote = false;
 					additional_slave_device->gp_bits = 0;
 					additional_slave_device->last_result = 0;
