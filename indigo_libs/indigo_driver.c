@@ -43,7 +43,7 @@
 #include <libusb.h>
 #elif defined(INDIGO_LINUX)
 #include <unistd.h>
-#include <fnctl.h>
+#include <fcntl.h>
 #include <dirent.h>
 #include <sys/ioctl.h>
 #include <linux/serial.h>
