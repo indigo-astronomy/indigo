@@ -294,7 +294,7 @@ static void update_additional_instances(indigo_device *device) {
 		if (DEVICE_CONTEXT->additional_device_instances[i] == NULL) {
 			indigo_device *additional_device = indigo_safe_malloc_copy(sizeof(indigo_device), device);
 			snprintf(additional_device->name, INDIGO_NAME_SIZE, "%s #%d", device->name, i + 2);
-			additional_device->lock = -1;
+			additional_device->lock = NULL;
 			additional_device->is_remote = false;
 			additional_device->gp_bits = 0;
 			additional_device->master_device = NULL;
