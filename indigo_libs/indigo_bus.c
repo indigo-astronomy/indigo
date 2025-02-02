@@ -39,7 +39,6 @@
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <sys/time.h>
 #include <syslog.h>
-#include <unistd.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
 #pragma warning(disable:4996)

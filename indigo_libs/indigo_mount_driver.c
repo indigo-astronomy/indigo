@@ -25,13 +25,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
 #include <time.h>
 #include <math.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 
 #include <indigo/indigo_mount_driver.h>
@@ -283,7 +281,7 @@ indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name
 }
 
 void indigo_mount_load_alignment_points(indigo_device *device) {
-	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".alignment");
+	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, false, ".alignment");
 	if (handle != NULL) {
 		int count;
 		char buffer[1024], name[INDIGO_NAME_SIZE], label[INDIGO_VALUE_SIZE];

@@ -34,7 +34,6 @@
 #include <sys/stat.h>
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#include <unistd.h>
 #include <termios.h>
 #include <netdb.h>
 #include <sys/socket.h>
@@ -471,20 +470,21 @@ long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long len
 long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 	long remains = length;
 	long total_bytes = 0;
+	char *pnt = (char *)buffer;
 	while (true) {
 		long bytes_read;
 #if defined(INDIGO_WINDOWS)
 		if (handle->type == INDIGO_FILE_HANDLE) {
-			bytes_read = read(handle->fd, buffer, remains);
+			bytes_read = read(handle->fd, pnt, remains);
 		} else {
-			bytes_read = recv(handle->fd, buffer, remains, 0);
+			bytes_read = recv(handle->fd, pnt, remains, 0);
 			handle->last_error = WSAGetLastError();
 			if (bytes_read == -1 && handle->last_error == WSAETIMEDOUT) {
 				Sleep(500);
 			}
 		}
 #else
-		bytes_read = read(handle->fd, buffer, remains);
+		bytes_read = read(handle->fd, pnt, remains);
 		handle->last_error = errno;
 #endif
 		if (bytes_read <= 0) {
@@ -498,7 +498,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 			INDIGO_TRACE(indigo_trace("%d -> // %ld bytes read", handle->fd, total_bytes));
 			return (int)total_bytes;
 		}
-		(char *)buffer += bytes_read;
+		pnt += bytes_read;
 		remains -= bytes_read;
 	}
 }

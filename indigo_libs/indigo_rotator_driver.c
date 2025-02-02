@@ -25,13 +25,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
 #include <time.h>
 #include <math.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 
 #include <indigo/indigo_rotator_driver.h>
@@ -58,7 +56,7 @@ void indigo_rotator_load_calibration(indigo_device *device) {
 	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
 		return;
 	}
-	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, O_RDONLY, ".calibration");
+	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, false, ".calibration");
 	if (handle != NULL) {
 		double offset = 0;
 		char buffer[128];
@@ -74,7 +72,7 @@ void indigo_rotator_save_calibration(indigo_device *device) {
 	if (ROTATOR_POSITION_OFFSET_PROPERTY->hidden) {
 		return;
 	}
-	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, O_WRONLY | O_CREAT | O_TRUNC, ".calibration");
+	indigo_uni_handle *handle = indigo_open_config_file(device->name, 0, true, ".calibration");
 	if (handle != NULL) {
 		indigo_uni_printf(handle, "%f\n", ROTATOR_POSITION_OFFSET_ITEM->number.value);
 		indigo_uni_close(&handle);

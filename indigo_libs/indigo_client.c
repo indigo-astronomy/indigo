@@ -35,7 +35,6 @@
 #include <pthread.h>
 #include <math.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#include <unistd.h>
 #include <libgen.h>
 #include <dlfcn.h>
 #include <netdb.h>

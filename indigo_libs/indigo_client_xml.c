@@ -32,7 +32,6 @@
 #include <assert.h>
 
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#include <unistd.h>
 #include <libgen.h>
 #endif
 

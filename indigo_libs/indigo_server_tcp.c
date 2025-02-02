@@ -28,12 +28,10 @@
 #include <pthread.h>
 #include <errno.h>
 #include <netdb.h>
-#include <unistd.h>
 #include <string.h>
 #include <assert.h>
 #include <signal.h>
 #include <stdarg.h>
-#include <fcntl.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
