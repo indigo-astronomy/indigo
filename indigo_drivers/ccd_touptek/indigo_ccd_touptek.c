@@ -276,6 +276,10 @@ static bool get_blacklevel(indigo_device *device, int *blacklevel, double *scale
 	int pixel_format;
 	int blacklevel_raw;
 	int result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_PIXEL_FORMAT), &pixel_format);
+	if (result < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Option(OPTION_PIXEL_FORMAT, -> %d) = %d", pixel_format, result);
+		return false;
+	}
 	result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_BLACKLEVEL), &blacklevel_raw);
 	if (result < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "get_Option(OPTION_BLACKLEVEL, -> %d) = %d", blacklevel_raw, result);

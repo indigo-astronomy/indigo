@@ -638,8 +638,8 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 					}
 				}
 				if (indigo_detach_device(additional_device) != INDIGO_NOT_FOUND) {
-					free(additional_device);
 					free(additional_device->private_data);
+					free(additional_device);
 				}
 				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
 			}

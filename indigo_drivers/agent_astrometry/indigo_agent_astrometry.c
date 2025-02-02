@@ -421,6 +421,7 @@ static bool astrometry_solve(indigo_device *device, void *image, unsigned long i
 				if (rc != LIBRAW_SUCCESS) {
 					if (output_image.data != NULL) {
 						free(output_image.data);
+						output_image.data = NULL;
 					}
 					image = NULL;
 				}

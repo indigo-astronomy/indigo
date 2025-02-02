@@ -1216,7 +1216,7 @@ static bool meade_focus_abort(indigo_device *device) {
 }
 
 static void meade_update_site_items(indigo_device *device) {
-	double latitude, longitude;
+	double latitude = 0, longitude = 0;
 	meade_get_site(device, &latitude, &longitude);
 	MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = latitude;
 	MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.target = MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = longitude;
@@ -1575,7 +1575,7 @@ static void meade_init_zwo_mount(indigo_device *device) {
 	}
 	indigo_define_property(device, MOUNT_MODE_PROPERTY, NULL);
 	meade_update_site_items(device);
-	time_t secs;
+	time_t secs = 0;
 	int utc_offset;
 	meade_get_utc(device, &secs, &utc_offset);
 	// if date is before January 1, 2001 1:00:00 AM we consifer mount not initialized

@@ -76,16 +76,20 @@ static int add_service(const char *name) {
 static int remove_service(const char *name) {
 	pthread_mutex_lock(&mutex);
 	struct service_struct *service = services;
-	if (service && !strncmp(name, service->name, INDIGO_NAME_SIZE)) {
-			int count = --service->count;
-			if (count == 0) {
-				struct service_struct *buf = service;
-				services = buf->next;
-				indigo_safe_free(buf);
-			}
-			pthread_mutex_unlock(&mutex);
-			return count;
+	if (!service) {
+		pthread_mutex_unlock(&mutex);
+		return 0;
+	}
+	if (!strncmp(name, service->name, INDIGO_NAME_SIZE)) {
+		int count = --service->count;
+		if (count == 0) {
+			struct service_struct *buf = service;
+			services = buf->next;
+			indigo_safe_free(buf);
 		}
+		pthread_mutex_unlock(&mutex);
+		return count;
+	}
 	while (service->next) {
 		if (!strncmp(name, service->next->name, INDIGO_NAME_SIZE)) {
 			int count = --service->next->count;

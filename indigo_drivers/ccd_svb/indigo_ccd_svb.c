@@ -1709,14 +1709,14 @@ static void process_plug_event(indigo_device *unused) {
 		return;
 	}
 
-	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
-	indigo_device *master_device = device;
 	int index = find_index_by_device_id(id);
 	if (index < 0) {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "No index of plugged device found.");
 		pthread_mutex_unlock(&device_mutex);
 		return;
 	}
+	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
+	indigo_device *master_device = device;
 	SVB_ERROR_CODE res = SVBGetCameraInfo(&info, index);
 	if (res == SVB_SUCCESS) {
 		res = SVBOpenCamera(info.CameraID);
