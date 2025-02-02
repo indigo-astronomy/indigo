@@ -685,6 +685,22 @@ bool indigo_uni_mkdir(const char *path) {
 #endif
 }
 
+bool indigo_uni_is_readable(const char *path) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return access(path, R_OK) == 0;
+#else
+#warning "TODO: indigo_uni_mkdir()"
+#endif
+}
+
+bool indigo_uni_is_writable(const char *path) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return access(path, W_OK) == 0;
+#else
+#warning "TODO: indigo_uni_mkdir()"
+#endif
+}
+
 void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	z_stream defstream;

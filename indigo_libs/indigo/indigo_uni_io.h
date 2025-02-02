@@ -164,6 +164,14 @@ extern const char *indigo_uni_config_folder();
  */
 extern bool indigo_uni_mkdir(const char *path);
 
+/** Check if path is readable.
+ */
+extern bool indigo_uni_is_readable(const char *path);
+
+/** Check if path is writable.
+ */
+extern bool indigo_uni_is_writable(const char *path);
+
 /** Compress with gzip.
  */
 

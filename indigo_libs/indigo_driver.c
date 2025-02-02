@@ -397,7 +397,7 @@ indigo_result indigo_device_attach(indigo_device *device, const char* driver_nam
 			return INDIGO_FAILED;
 		DEVICE_PORT_PROPERTY->hidden = true;
 		indigo_init_text_item(DEVICE_PORT_ITEM, DEVICE_PORT_ITEM_NAME, "Device name or URL", USBSERIAL_AUTO_PREFIX);
-		if (*DEVICE_PORT_ITEM->text.value == '/' && access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+		if (*DEVICE_PORT_ITEM->text.value == '/' && !indigo_uni_is_readable(DEVICE_PORT_ITEM->text.value)) {
 			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		// -------------------------------------------------------------------------------- DEVICE_PORTS
@@ -547,7 +547,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		// -------------------------------------------------------------------------------- DEVICE_PORT
 		indigo_property_copy_values(DEVICE_PORT_PROPERTY, property, false);
 		if (*DEVICE_PORT_ITEM->text.value == '/') {
-			if (!access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+			if (indigo_uni_is_readable(DEVICE_PORT_ITEM->text.value)) {
 				DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
 				//indigo_save_property(device, NULL, DEVICE_PORT_PROPERTY);
 				indigo_update_property(device, DEVICE_PORT_PROPERTY, NULL);
@@ -585,7 +585,7 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 				}
 			}
 		}
-		if (*DEVICE_PORT_ITEM->text.value == '/' && access(DEVICE_PORT_ITEM->text.value, R_OK)) {
+		if (*DEVICE_PORT_ITEM->text.value == '/' && !indigo_uni_is_readable(DEVICE_PORT_ITEM->text.value)) {
 			DEVICE_PORT_PROPERTY->state = INDIGO_ALERT_STATE;
 		} else {
 			DEVICE_PORT_PROPERTY->state = INDIGO_OK_STATE;
