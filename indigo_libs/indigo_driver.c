@@ -42,10 +42,12 @@
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #elif defined(INDIGO_LINUX)
-#include <libusb-1.0/libusb.h>
-#include <linux/serial.h>
-#include <sys/ioctl.h>
+#include <unistd.h>
+#include <fnctl.h>
 #include <dirent.h>
+#include <sys/ioctl.h>
+#include <linux/serial.h>
+#include <libusb-1.0/libusb.h>
 #else
 #include <libusb-1.0/libusb.h>
 #endif

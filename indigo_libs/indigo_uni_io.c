@@ -45,6 +45,9 @@
 #else
 #warning "TODO: Unified I/O"
 #endif
+#ifdef INDIGO_LINUX
+#include <netinet/tcp.h>
+#endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
@@ -340,13 +343,11 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		return;
 	}
 #if defined(INDIGO_LINUX)
-	if (type == SOCK_STREAM) {
-		int val = 1;
-		if (setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) < 0) {
-			close(fd);
-			indigo_error("Can't setsockopt TCP_NODELAY, for server socket (%s)", strerror(errno));
-			return;
-		}
+	int val = 1;
+	if (setsockopt(server_socket, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val)) < 0) {
+		close(fd);
+		indigo_error("Can't setsockopt TCP_NODELAY, for server socket (%s)", strerror(errno));
+		return;
 	}
 #endif
 	if (getsockname(server_socket, (struct sockaddr *)&server_address, &length) == -1) {
