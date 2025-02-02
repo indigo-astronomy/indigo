@@ -854,7 +854,7 @@ indigo_result indigo_save_property(indigo_device *device, indigo_uni_handle **fi
 			if (!strcmp(property->name, PROFILE_NAME_PROPERTY_NAME)) {
 				common_property = true;
 			}
-			*file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, common_property ? ".common" : ".config");
+			*file_handle = handle = indigo_open_config_file(property->device, profile, true, common_property ? ".common" : ".config");
 			if (handle == NULL) {
 				if (DEVICE_CONTEXT) {
 					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
@@ -921,7 +921,7 @@ indigo_result indigo_save_property_items(indigo_device*device, indigo_uni_handle
 					}
 				}
 			}
-			file_handle = handle = indigo_open_config_file(property->device, profile, O_WRONLY | O_CREAT | O_TRUNC, ".config");
+			file_handle = handle = indigo_open_config_file(property->device, profile, true, ".config");
 			if (handle == NULL) {
 				if (DEVICE_CONTEXT) {
 					pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
