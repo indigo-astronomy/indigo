@@ -201,6 +201,7 @@
 #include "rotator_asi/indigo_rotator_asi.h"
 #include "focuser_astroasis/indigo_focuser_astroasis.h"
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
+#include "focuser_qhy/indigo_focuser_qhy.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -324,6 +325,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_optec,
 	indigo_focuser_optecfl,
 	indigo_focuser_primaluce,
+	indigo_focuser_qhy,
 	indigo_focuser_prodigy,
 	indigo_focuser_robofocus,
 	indigo_focuser_usbv3,
