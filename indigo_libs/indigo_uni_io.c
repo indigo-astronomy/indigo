@@ -489,7 +489,7 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 #endif
 		if (bytes_read <= 0) {
 			if (bytes_read < 0) {
-				INDIGO_ERROR(indigo_error("%d -> // %s", handle->fd, indigo_uni_strerror(handle)));
+				indigo_error("%d -> // %s", handle->fd, indigo_uni_strerror(handle));
 			}
 			return (int)bytes_read;
 		}
@@ -609,7 +609,7 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 		handle->last_error = errno;
 #endif
 		if (bytes_written < 0) {
-			INDIGO_ERROR(indigo_error("%d <- // %s", handle->fd, indigo_uni_strerror(handle)));
+			indigo_error("%d <- // %s", handle->fd, indigo_uni_strerror(handle));
 			return -1;
 		}
 		if (bytes_written == remains) {
@@ -646,6 +646,30 @@ long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {
 #endif
 }
 
+bool indigo_uni_lock_file(indigo_uni_handle *handle) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (handle->type == INDIGO_FILE_HANDLE) {
+		static struct flock lock;
+		lock.l_type = F_WRLCK;
+		lock.l_start = 0;
+		lock.l_whence = SEEK_SET;
+		lock.l_len = 0;
+		lock.l_pid = getpid();
+		int ret = fcntl(handle->fd, F_SETLK, &lock);
+		if (ret == -1) {
+			indigo_error("%d <- // %s", handle->fd, strerror(errno));
+			handle->last_error = errno;
+			return false;
+		}
+		return true;
+	}
+	return false;
+#else
+#warning "TODO: indigo_uni_lock_file()
+#endif
+}
+
+
 void indigo_uni_close(indigo_uni_handle **handle) {
 	if (*handle) {
 #if defined(INDIGO_WINDOWS)
@@ -677,6 +701,17 @@ const char *indigo_uni_config_folder() {
 bool indigo_uni_mkdir(const char *path) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (mkdir(path, 0777) == 0 || errno == EEXIST) {
+		return true;
+	}
+	return false;
+#else
+#warning "TODO: indigo_uni_mkdir()"
+#endif
+}
+
+bool indigo_uni_remove(const char *path) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (unlink(path) == 0) {
 		return true;
 	}
 	return false;

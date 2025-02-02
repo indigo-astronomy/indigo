@@ -151,6 +151,10 @@ extern long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...
 
 extern long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence);
 
+/** Lock file.
+ */
+extern bool indigo_uni_lock_file(indigo_uni_handle *handle);
+
 /** Close handle.
  */
 extern void indigo_uni_close(indigo_uni_handle **handle);
@@ -163,6 +167,10 @@ extern const char *indigo_uni_config_folder();
 /** Create folder.
  */
 extern bool indigo_uni_mkdir(const char *path);
+
+/** Remove file.
+ */
+extern bool indigo_uni_remove(const char *path);
 
 /** Check if path is readable.
  */

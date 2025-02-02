@@ -57,7 +57,6 @@ extern "C" {
 
 // forward definitions
 
-typedef int indigo_glock;
 typedef struct indigo_client indigo_client;
 typedef struct indigo_device indigo_device;
 
@@ -281,7 +280,7 @@ typedef struct {
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
-	indigo_glock lock;                  ///< device global lock
+	indigo_uni_handle *lock;             ///< device global lock
 	bool is_remote;                     ///< is remote device
 	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data

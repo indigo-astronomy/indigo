@@ -80,25 +80,14 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 		return INDIGO_FAILED;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
 	strncat(tmp_lock_file, device->name, 250);
-	int fd = open(tmp_lock_file, O_CREAT | O_WRONLY, 0600);
-	if (fd == -1)
-		return -1;
-	static struct flock lock;
-	lock.l_type = F_WRLCK;
-	lock.l_start = 0;
-	lock.l_whence = SEEK_SET;
-	lock.l_len = 0;
-	lock.l_pid = getpid();
-	int ret = fcntl(fd, F_SETLK, &lock);
-	if (ret == -1) {
-		int local_errno = errno;
-		close(fd);
-		fd = -1;
-		errno = local_errno;
+	indigo_uni_handle *handle = indigo_uni_create_file(tmp_lock_file);
+	if (handle == NULL)
+		return INDIGO_LOCK_ERROR;
+	if (!indigo_uni_lock_file(handle)) {
+		indigo_uni_close(&handle);
+		return INDIGO_LOCK_ERROR;
 	}
-	device->lock = fd;
-	if (fd > 0)
-		return INDIGO_OK;
+	device->lock = handle;
 	return INDIGO_LOCK_ERROR;
 #else
 	return INDIGO_OK;
@@ -111,13 +100,12 @@ indigo_result indigo_global_unlock(indigo_device *device) {
 		return INDIGO_OK;
 	if (device->master_device != NULL)
 		device = device->master_device;
-	if (device->lock <= 0)
+	if (device->lock == NULL)
 		return INDIGO_FAILED;
+	indigo_uni_close(&device->lock);
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
-	close(device->lock);
-	device->lock = -1;
 	strncat(tmp_lock_file, device->name, 250);
-	unlink(tmp_lock_file);
+	indigo_uni_remove(tmp_lock_file);
 #endif
 	return INDIGO_OK;
 }
