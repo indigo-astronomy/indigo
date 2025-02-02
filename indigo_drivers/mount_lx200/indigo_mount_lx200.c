@@ -656,6 +656,7 @@ static void meade_get_site(indigo_device *device, double *latitude, double *long
 		*longitude = indigo_stod(response);
 		if (*longitude < 0)
 			*longitude += 360;
+		// LX200 protocol returns negative longitude for the east
 		*longitude = 360 - *longitude;
 	}
 }
@@ -673,6 +674,7 @@ static bool meade_set_site(indigo_device *device, double latitude, double longit
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 		result = MOUNT_TYPE_STARGO_ITEM->sw.value; // ignore result for Avalon StarGO
 	}
+	// LX200 protocol expects negative longitude for the east
 	longitude = 360 - fmod(longitude + 360, 360);
 	if (MOUNT_TYPE_STARGO_ITEM->sw.value)
 		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%+04d*%02d:%02d"));
