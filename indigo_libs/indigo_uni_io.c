@@ -373,7 +373,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		unsigned int name_len = sizeof(client_name);
 		int client_socket = accept(server_socket, (struct sockaddr *)&client_name, &name_len);
 		if (client_socket == -1) {
-			if (*server_handle) {
+			if (*server_handle == NULL) {
 				break;
 			}
 			indigo_error("Can't accept connection (%s)", strerror(errno));
