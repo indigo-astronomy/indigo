@@ -121,9 +121,8 @@ typedef struct {
 	uint32_t connection_id;                 ///< client connection ID
 	pthread_t thread;                       ///< client thread ID
 	bool thread_started;                    ///< client thread started/stopped
-	int socket;                             ///< stream socket
+	indigo_uni_handle *handle;              ///< stream socket
 	indigo_device *protocol_adapter;        ///< server protocol adapter
-	char last_error[256];										///< last error reported within client thread
 	bool shutdown;													///< request shutdown
 } indigo_server_entry;
 

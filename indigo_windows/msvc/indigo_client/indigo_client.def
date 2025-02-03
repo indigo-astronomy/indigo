@@ -77,15 +77,6 @@ indigo_connection_status
 indigo_disconnect_server
 indigo_service_name
 indigo_xml_client_adapter
-indigo_is_device_url
-indigo_open_network_device
-indigo_open_tcp
-indigo_open_udp
-indigo_printf
-indigo_read
-indigo_read_line
-indigo_scanf
-indigo_write
 indigo_copy_item_name
 indigo_copy_property_name
 indigo_item_name
@@ -102,9 +93,6 @@ indigo_remove_device_token
 indigo_save_device_tokens_to_file
 indigo_set_master_token
 indigo_string_to_token
-base64_decode_fast
-base64_decode_fast_nl
-base64_encode
 indigo_resolve_service
 indigo_start_service_browser
 indigo_stop_service_browser

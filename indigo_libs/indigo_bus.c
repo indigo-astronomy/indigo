@@ -128,7 +128,7 @@ extern void indigo_get_version(int *major, int *minor, int *build) {
 	if (build) *build = atoi(INDIGO_BUILD);
 }
 
-static void free_log_buffers() {
+static void free_log_buffers(void) {
 	indigo_safe_free(indigo_last_message);
 }
 
@@ -1109,6 +1109,8 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	if (handle == NULL) {
 		return false;
 	}
+	indigo_uni_set_socket_read_timeout(handle, 15000000L);
+	indigo_uni_set_socket_write_timeout(handle, 5000000L);
 	char line[256];
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int length = snprintf(line, sizeof(line), "GET /%s HTTP/1.1\r\nAccept-Encoding: gzip\r\n\r\n", file);
@@ -1128,8 +1130,6 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	}
 	bool use_gzip = false;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	/* On Raspberry Pi blob compression may take longer. Make sure we do not timeout prematurely */
-	indigo_uni_set_socket_read_timeout(handle, 15000000L);
 	long uncompressed_content_len = 0;
 #endif
 	long content_len = 0;
@@ -1212,6 +1212,8 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	if (handle == NULL) {
 		return false;
 	}
+	indigo_uni_set_socket_read_timeout(handle, 5000000L);
+	indigo_uni_set_socket_write_timeout(handle, 5000000L);
 	char line[256];
 	int length = snprintf(line, sizeof(line), "PUT /%s HTTP/1.1\r\nContent-Length: %ld\r\n\r\n", file, blob_item->blob.size);
 	if (indigo_uni_write(handle, line, length) < 0) {
@@ -1493,7 +1495,7 @@ void indigo_set_text_item_value(indigo_item *item, const char *value) {
 		free(item->text.long_value);
 		item->text.long_value = NULL;
 	}
-	long length = strlen(value);
+	long length = (long)strlen(value);
 	indigo_copy_value(item->text.value, value);
 	item->text.length = length + 1;
 	if (length >= INDIGO_VALUE_SIZE) {

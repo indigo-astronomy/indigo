@@ -39,9 +39,6 @@
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_io.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_service_discovery.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -78,6 +75,9 @@
     <ClInclude Include="..\..\externals\pthreads4w\include\_ptw32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_uni_io.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -96,9 +96,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\indigo_libs\indigo_client_xml.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\indigo_libs\indigo_io.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\..\indigo_libs\indigo_service_discovery.c">
@@ -120,6 +117,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\externals\bonjour-sdk\dnssd_ipc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_uni_io.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

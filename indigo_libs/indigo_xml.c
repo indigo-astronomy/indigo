@@ -61,8 +61,13 @@ typedef enum PARSE_STATES {
 	HEADER1_STATE
 } parser_state;
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
+#else
+#pragma warning(push)
+#pragma warning(disable: 4101)
+#endif
 
 static char *parser_state_name[] = {
 	"ERROR",
@@ -84,7 +89,11 @@ static char *parser_state_name[] = {
 	"HEADER1"
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#else
+#pragma warning(pop)
+#endif
 
 static indigo_property_state parse_state(indigo_version version, char *value) {
 	if (!strcmp(value, "Ok"))
@@ -1729,7 +1738,7 @@ static char *escape_buffer[BUFFER_COUNT] = { NULL };
 static long escape_buffer_size[BUFFER_COUNT] =  { 0 };
 static bool free_escape_buffers_registered = false;
 
-static void free_escape_buffers() {
+static void free_escape_buffers(void) {
 	for (int i = 0; i < BUFFER_COUNT; i++)
 		if (escape_buffer[i]) {
 			free(escape_buffer[i]);
@@ -1742,7 +1751,7 @@ const char *indigo_xml_escape(const char *string) {
 			atexit(free_escape_buffers);
 			free_escape_buffers_registered = true;
 		}
-		long length = 5 * strlen(string);
+		long length = 5 * (long)strlen(string);
 		static int	buffer_index = 0;
 		int index = buffer_index = (buffer_index + 1) % BUFFER_COUNT;
 		char *buffer;

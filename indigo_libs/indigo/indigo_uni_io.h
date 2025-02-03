@@ -53,7 +53,11 @@ typedef enum {
 
 typedef struct {
 	indigo_uni_handle_type type;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int fd;
+#elif defined(INDIGO_WINDOWS)
+	uintptr_t fd;
+#endif
 	int last_error;
 } indigo_uni_handle;
 

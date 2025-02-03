@@ -101,8 +101,13 @@ typedef enum {
 } parser_state;
 
 
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-variable"
+#else
+#pragma warning(push)
+#pragma warning(disable: 4101)
+#endif
 
 static char *parser_state_name[] = {
 	"ERROR",
@@ -121,7 +126,11 @@ static char *parser_state_name[] = {
 	"END_ARRAY"
 };
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#else
+#pragma warning(pop)
+#endif
 
 typedef void *(* parser_handler)(parser_state state, char *name, char *value, indigo_property **property_ref, indigo_device *device, indigo_client *client, char *message);
 
