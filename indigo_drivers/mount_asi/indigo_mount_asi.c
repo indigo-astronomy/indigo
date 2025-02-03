@@ -23,7 +23,7 @@
  \file indigo_mount_asi.c
  */
 
-#define DRIVER_VERSION 0x000F
+#define DRIVER_VERSION 0x001A
 #define DRIVER_NAME	"indigo_mount_asi"
 
 #include <stdlib.h>
@@ -332,6 +332,7 @@ static void asi_get_site(indigo_device *device, double *latitude, double *longit
 	if (asi_command(device, ":Gt#", response, sizeof(response), 0)) {
 		*latitude = indigo_stod(response);
 	}
+	// LX200 protocol returns negative longitude for the east
 	if (asi_command(device, ":Gg#", response, sizeof(response), 0)) {
 		*longitude = indigo_stod(response);
 		if (*longitude < 0)
@@ -342,14 +343,13 @@ static void asi_get_site(indigo_device *device, double *latitude, double *longit
 
 static bool asi_set_site(indigo_device *device, double latitude, double longitude) {
 	char command[128], response[128];
-	if (longitude < 0)
-		longitude += 360;
 	sprintf(command, ":St%s#", indigo_dtos(latitude, "%+03d*%02d"));
 	if (!asi_command(device, command, response, 1, 0) || *response != '1') {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);
 		return false;
 	} else {
-		double longitude = fmod((360 - MOUNT_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value), 360);
+		// LX200 protocol expects negative longitude for the east
+		longitude = fmod((360 - longitude), 360);
 		sprintf(command, ":Sg%s#", indigo_dtos(longitude, "%03d*%02d"));
 		if (!asi_command(device, command, response, 1, 0) || *response != '1') {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s failed", command);

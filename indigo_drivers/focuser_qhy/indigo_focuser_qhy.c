@@ -530,7 +530,7 @@ static void focuser_timer_callback(indigo_device *device) {
 	}
 
 	FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
-	if ((PRIVATE_DATA->current_position == PRIVATE_DATA->target_position)) {
+	if (PRIVATE_DATA->current_position == PRIVATE_DATA->target_position) {
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_OK_STATE;
 		FOCUSER_STEPS_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
@@ -739,7 +739,7 @@ static indigo_result focuser_attach(indigo_device *device) {
 }
 
 static void focuser_connect_callback(indigo_device *device) {
-	uint32_t position;
+	int position;
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (!device->is_connected) {
 			pthread_mutex_lock(&PRIVATE_DATA->port_mutex);
@@ -947,8 +947,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
-			uint32_t position;
-
+			int position;
 			if (qhy_get_position(device, &position) < 0) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "qhy_get_position(%d) failed", PRIVATE_DATA->handle);
 			} else {

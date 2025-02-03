@@ -2,6 +2,94 @@
 
 All notable changes to INDIGO framework will be documented in this file.
 
+# [2.0-312] - 03 Feb Mon 2025
+## Overall:
+- indigo_property_copy_values() for BLOBs fixed
+
+- fix several potential leaks and memry management errors
+
+- indigo_raw_utils: fix division by zero
+
+- code cleanup and silence many warnings
+
+- DSO catalogue cleanup
+
+- if-match-define pattern replaced with indigo_define_matching_property()
+
+- indigo_ccd_driver:
+	- added CCD_LOCAL_MODE.OBJECT
+	- added object name placeholder (%o) to the filename pattern
+
+- indigo_docs: update CCD_DRIVER_SAVED_IMAGES.md
+
+## Driver fixes:
+- agent_imager:
+	- AGENT_IMAGER_CAPTURE property added to prevent deadlock with platesolvers
+
+- indigo_agent_scripting:
+	- Sequencer.js: add select_frame_type_by_label()
+	- Sequencer.js: add select_camera_mode_by_label()
+	- Sequencer.js: add select_image_format_by_label()
+	- Sequencer.js: add select_filter_by_label()
+	- Sequencer.js: add select_iso_by_laavel()
+	- Sequencer.js: add select_aperture_by_label()
+	- Sequencer.js: add select_shutter_by_label()
+	- Sequencer.js: add select_program_by_label()
+	- Sequencer.js: failure() fixed to send the provided message
+	- Sequencer.js: make name_template optional for capture_batch() and capture_stream()
+	- Sequencer.js: add set_file_template()
+	-  equencer.js: add set_object_name()
+	- Sequencer.js: fix current/total exposure time calculation
+	- Sequencer.js: SEQUENCE_RESET resets SEQUENCE_STATE state to Ok
+	- Sequencer.js: obsolete start_guiding_exposure() - added optional exposure paramter to start_guiding()
+	- Sequencer.js: obsolete calibrate_guiding_exposure() - added optional exposure paramter to calibrate_guiding()
+	- Sequencer.js: proeprty label changes
+
+- indigo_agent_astrometry & indigo_agent_astap:
+	- add AGENT_PLATESOLVER_MOUNT_SETTLE_TIME property
+	- mirrored image BLOB added
+	- Guider agent can be image source again (fixed regression)
+	- related agents handling cleanup
+
+- indigo_ccd_touptek & OEM:
+	- verify if pixel format retrieval was successful
+
+- indigo_ccd_asi:
+	- typo fixed
+
+- indigo_mount_lx200:
+	- use correct port 9999 for onstep tcp connection
+	- typo fixed
+
+- indigo_focuser_moonlite:
+	- typo fixed
+
+- indigo_guider_cgusbst4:
+	- typo fixed
+
+- indigo_mount_asi:
+	- code cleanup
+	- typo fixed
+
+- indigo_mount_ioptron:
+	- typo fixed
+
+- indigo_focuser_astroasis:
+	- typo fixed
+
+- indigo_rotator_asi:
+	- typo fixed
+
+- indigo_wheel_astroasis:
+	- typo fixed
+
+- indigo_aux_asiair:
+	- typo fixed
+
+- indigo_mount_synscan:
+	- Implement custom RA and Dec tracking
+	- code cleanup
+
 # [2.0-310] - 07 Jan Tue 2025
 ## Overall:
 - indigo_ccd driver: setting CCD_LOCAL_MODE with non-existent or non-writable folder raises alert
