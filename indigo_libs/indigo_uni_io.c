@@ -319,7 +319,7 @@ static indigo_uni_handle *open_tty(const char *tty_name, DCB *dcb) {
 	timeouts.ReadTotalTimeoutMultiplier = 10;
 	timeouts.WriteTotalTimeoutConstant = 50;
 	timeouts.WriteTotalTimeoutMultiplier = 10;
-	SetCommTimeouts(hComm, &timeouts);
+	SetCommTimeouts(com, &timeouts);
 	indigo_uni_handle *handle = (indigo_uni_handle *)malloc(sizeof(indigo_uni_handle));
 	handle->index = handle_index++;
 	handle->type = INDIGO_COM_HANDLE;
@@ -340,7 +340,7 @@ indigo_uni_handle *indigo_open_uni_serial_with_config(const char *serial, const 
 	memset(&dcb, 0, sizeof(DCB));
 	dcb.DCBlength = sizeof(DCB);
 	if (configure_tty_options(&dcb, baudconfig) != 0) {
-		return -1;
+		return NULL;
 	}
 	return open_tty(serial, &dcb);
 #else
@@ -599,11 +599,11 @@ long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long len
 			handle->last_error = 0;
 		}
 	} else if (handle->type == INDIGO_COM_HANDLE) {
-		if (ReadFile(handle->com, buffer, (DWORD)bufferSize, (DWORD *)&bytesRead, NULL)) {
+		if (ReadFile(handle->com, buffer, (DWORD)length, (DWORD *)&bytes_read, NULL)) {
 			handle->last_error = 0;
 		} else {
 			handle->last_error = GetLastError();
-			bytesRead = -1;
+			bytes_read = -1;
 		}
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		bytes_read = recv(handle->sock, buffer, length, 0);
@@ -668,11 +668,11 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 				handle->last_error = 0;
 			}
 		} else if (handle->type == INDIGO_COM_HANDLE) {
-			if (ReadFile(handle->com, buffer, (DWORD)bufferSize, (DWORD *)&bytesRead, NULL)) {
+			if (ReadFile(handle->com, buffer, (DWORD)length, (DWORD *)&bytes_read, NULL)) {
 				handle->last_error = 0;
 			} else {
 				handle->last_error = GetLastError();
-				bytesRead = -1;
+				bytes_read = -1;
 			}
 		} else if (handle->type == INDIGO_TCP_HANDLE) {
 			bytes_read = recv(handle->sock, pnt, remains, 0);
@@ -804,7 +804,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 						handle->last_error = GetLastError();
 						return -1;
 					}
-				} else if handle->type == INDIGO_TCP_HANDLE) {
+				} else if (handle->type == INDIGO_TCP_HANDLE) {
 					fd_set readout;
 					FD_ZERO(&readout);
 					FD_SET(handle->sock, &readout);
@@ -831,8 +831,8 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 				break;
 			}
 #elif defined(INDIGO_WINDOWS)
-			if handle->type == INDIGO_FILE_HANDLE) {
-				result = read(handle->fd, &c, 1);
+			if (handle->type == INDIGO_FILE_HANDLE) {
+				result = _read(handle->fd, &c, 1);
 				if (result < 1) {
 					handle->last_error = errno;
 					break;
@@ -842,8 +842,8 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 					handle->last_error = GetLastError();
 					break;
 				}
-			} else if handle->type == INDIGO_TCP_HANDLE) {
-				result = recv(handle->sock, &c, 1);
+			} else if (handle->type == INDIGO_TCP_HANDLE) {
+				result = recv(handle->sock, &c, 1, 0);
 				if (result < 1) {
 					handle->last_error = WSAGetLastError();
 					break;
@@ -919,7 +919,7 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 				handle->last_error = 0;
 			}
 		} else if (handle->type == INDIGO_COM_HANDLE) {
-			if (WriteFile(handle->com, &position, remains, &bytesWritten, NULL)) {
+			if (WriteFile(handle->com, &position, remains, &bytes_written, NULL)) {
 				handle->last_error = 0;
 			} else {
 				handle->last_error = GetLastError();
@@ -986,34 +986,33 @@ long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {
 
 bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 	if (handle->type == INDIGO_FILE_HANDLE) {
-		if (handle->type == INDIGO_FILE_HANDLE) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-			static struct flock lock;
-			lock.l_type = F_WRLCK;
-			lock.l_start = 0;
-			lock.l_whence = SEEK_SET;
-			lock.l_len = 0;
-			lock.l_pid = getpid();
-			int ret = fcntl(handle->fd, F_SETLK, &lock);
-			if (ret == -1) {
-				indigo_error("%d <- // %s", handle->index, strerror(errno));
-				handle->last_error = errno;
-				return false;
-			}
+		static struct flock lock;
+		lock.l_type = F_WRLCK;
+		lock.l_start = 0;
+		lock.l_whence = SEEK_SET;
+		lock.l_len = 0;
+		lock.l_pid = getpid();
+		int ret = fcntl(handle->fd, F_SETLK, &lock);
+		if (ret == -1) {
+			indigo_error("%d <- // %s", handle->index, strerror(errno));
+			handle->last_error = errno;
+			return false;
+		}
 #elif defined(INDIGO_WINDOWS)
-			if (hFile == INVALID_HANDLE_VALUE) {
-				handle->last_error = GetLastError();
-				return false;
-			}
-			if (!LockFile(hFile, 0, 0, MAXDWORD, MAXDWORD)) {
-				handle->last_error = GetLastError();
-				return false;
-			}
+		HANDLE hFile = (HANDLE)_get_osfhandle(handle->fd);
+		if (hFile == INVALID_HANDLE_VALUE) {
+			handle->last_error = GetLastError();
+			return false;
+		}
+		if (!LockFile(hFile, 0, 0, MAXDWORD, MAXDWORD)) {
+			handle->last_error = GetLastError();
+			return false;
+		}
 #else
 #pragma message ("TODO: indigo_uni_lock_file()")
 #endif
-			return true;
-		}
+		return true;
 	}
 	return false;
 }
@@ -1030,8 +1029,8 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #elif defined(INDIGO_WINDOWS)
 		if ((*handle)->type == INDIGO_FILE_HANDLE) {
 			_close((*handle)->fd);
-		} else if ((*handle)->type == INDIGO_COM_HANDLE)
-			CloseHandle(*handle)->com);
+		} else if ((*handle)->type == INDIGO_COM_HANDLE) {
+			CloseHandle((*handle)->com);
 		} else if ((*handle)->type == INDIGO_TCP_HANDLE || (*handle)->type == INDIGO_UDP_HANDLE) {
 			shutdown((*handle)->sock, SD_BOTH);
 			closesocket((*handle)->sock);
@@ -1061,7 +1060,7 @@ const char *indigo_uni_config_folder() {
 			}
 		}
 #else
-#pragma message ("TODO: indigo_uni_mkdir()")
+#pragma message ("TODO: indigo_uni_config_folder()")
 #endif
 	}
 	return config_folder;
@@ -1087,11 +1086,12 @@ bool indigo_uni_remove(const char *path) {
 	if (unlink(path) == 0) {
 		return true;
 	}
-#else
+#elif defined(INDIGO_WINDOWS)
 	if (_unlink(path) == 0) {
 		return true;
 	}
-#pragma message ("TODO: indigo_uni_mkdir()")
+#else
+#pragma message ("TODO: indigo_uni_remove()")
 #endif
 	return false;
 }
@@ -1102,11 +1102,11 @@ bool indigo_uni_is_readable(const char *path) {
 		return true;
 	}
 #elif defined(INDIGO_WINDOWS)
-	if (_access(path, R_OK) == 0) {
+	if (_access(path, 4) == 0) {
 		return true;
 	}
 #else
-#pragma message ("TODO: indigo_uni_mkdir()")
+#pragma message ("TODO: indigo_uni_is_readable()")
 #endif
 	return false;
 }
@@ -1117,11 +1117,11 @@ bool indigo_uni_is_writable(const char *path) {
 		return true;
 	}
 #elif defined(INDIGO_WINDOWS)
-	if (_access(path, W_OK) == 0) {
+	if (_access(path, 2) == 0) {
 		return true;
 	}
 #else
-#pragma message ("TODO: indigo_uni_mkdir()")
+#pragma message ("TODO: indigo_uni_is_writable()")
 #endif
 	return false;
 }
