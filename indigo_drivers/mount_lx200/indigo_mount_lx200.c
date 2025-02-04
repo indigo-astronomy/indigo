@@ -41,6 +41,7 @@
 #include <sys/ioctl.h>
 #include <sys/time.h>
 #include <sys/socket.h>
+#include <sys/param.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 
@@ -151,9 +152,25 @@
 
 #define AUX_INFO_PROPERTY								(PRIVATE_DATA->info_property)
 #define AUX_INFO_VOLTAGE_ITEM						(AUX_INFO_PROPERTY->items + 0)
-
+// Onstep has eight auxiliary device slots (1-indexed) which can have user defined purposes
+#define ONSTEP_AUX_DEVICE_COUNT					8
+#define AUX_GROUP												"Auxiliary Functions"
+#define AUX_POWER_OUTLET_PROPERTY				(PRIVATE_DATA->power_outlet_property)
+#define ONSTEP_AUX_HEATER_OUTLET_MAPPING (PRIVATE_DATA->onstep_aux_power_outlet_slot_mapping)
+#define ONSTEP_AUX_HEATER_OUTLET_COUNT 	(PRIVATE_DATA->onstep_aux_heater_outlet_count)
+#define AUX_HEATER_OUTLET_PROPERTY			(PRIVATE_DATA->heater_outlet_property)
+#define ONSTEP_AUX_POWER_OUTLET_COUNT		(PRIVATE_DATA->onstep_aux_power_outlet_count)
+#define ONSTEP_AUX_POWER_OUTLET_MAPPING	(PRIVATE_DATA->onstep_aux_heater_outlet_slot_mapping)
 
 #define IS_PARKED (!MOUNT_PARK_PROPERTY->hidden && MOUNT_PARK_PROPERTY->count == 2 && MOUNT_PARK_PARKED_ITEM->sw.value)
+
+typedef enum {
+	ONSTEP_AUX_NONE = 0, // Auxiliary slot is disabled
+	ONSTEP_AUX_SWITCH = 1, // Auxiliary slot is a on/off switch -> power outlet in indigo
+	ONSTEP_AUX_ANALOG = 2 // Auxiliary slot is an analog / pwm output -> heater outlet in indigo
+	//TODO implement Momentary Switch, Dew Heater and Intervalometer
+} onstep_aux_device_purpose;
+
 
 typedef struct {
 	int handle;
@@ -177,6 +194,8 @@ typedef struct {
 	indigo_property *nyx_leveler_property;
 	indigo_property *weather_property;
 	indigo_property *info_property;
+	indigo_property *power_outlet_property;
+	indigo_property *heater_outlet_property;
 	indigo_timer *focuser_timer;
 	indigo_timer *aux_timer;
 
@@ -190,6 +209,14 @@ typedef struct {
 	bool focus_aborted;
 	int prev_tracking_rate;
 	bool prev_home_state;
+	// maps power outlet property item index to onstep aux slot
+	int onstep_aux_power_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];
+	// the number of heater outlets defined in onstep
+	int onstep_aux_heater_outlet_count;
+	// maps heater outlet property item index to onstep aux slot
+	int onstep_aux_heater_outlet_slot_mapping[ONSTEP_AUX_DEVICE_COUNT];
+	// the number of power outlets defined in onstep
+	int onstep_aux_power_outlet_count;
 } lx200_private_data;
 
 static char *meade_error_string(indigo_device *device, unsigned int code) {
@@ -1504,7 +1531,6 @@ static void meade_init_onstep_mount(indigo_device *device) {
 	if (meade_command(device, ":$QZ?#", response, sizeof(response), 0)) {
 		indigo_set_switch(MOUNT_PEC_PROPERTY, response[0] == 'P' ? MOUNT_PEC_ENABLED_ITEM : MOUNT_PEC_DISABLED_ITEM, true);
 	}
-
 	time_t secs = time(NULL);
 	int utc_offset = indigo_get_utc_offset();
 	meade_set_utc(device, &secs, utc_offset);
@@ -3578,34 +3604,32 @@ static indigo_result aux_enumerate_properties(indigo_device *device, indigo_clie
 	return indigo_aux_enumerate_properties(device, NULL, NULL);
 }
 
-static void aux_timer_callback(indigo_device *device) {
+static void nyx_aux_timer_callback(indigo_device *device) {
 	if (!IS_CONNECTED) {
 		return;
 	}
 	char response[128];
 	bool updateWeather = false;
 	bool updateInfo = false;
-	if (MOUNT_TYPE_NYX_ITEM->sw.value) {
-		if (meade_command(device, ":GX9A#", response, sizeof(response), 0)) {
-			double temperature = atof(response);
-			if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != temperature) {
-				AUX_WEATHER_TEMPERATURE_ITEM->number.value = temperature;
-				updateWeather = true;
-			}
+	if (meade_command(device, ":GX9A#", response, sizeof(response), 0)) {
+		double temperature = atof(response);
+		if (AUX_WEATHER_TEMPERATURE_ITEM->number.value != temperature) {
+			AUX_WEATHER_TEMPERATURE_ITEM->number.value = temperature;
+			updateWeather = true;
 		}
-		if (meade_command(device, ":GX9B#", response, sizeof(response), 0)) {
-			double pressure = atof(response);
-			if (AUX_WEATHER_PRESSURE_ITEM->number.value != pressure) {
-				AUX_WEATHER_PRESSURE_ITEM->number.value = pressure;
-				updateWeather = true;
-			}
+	}
+	if (meade_command(device, ":GX9B#", response, sizeof(response), 0)) {
+		double pressure = atof(response);
+		if (AUX_WEATHER_PRESSURE_ITEM->number.value != pressure) {
+			AUX_WEATHER_PRESSURE_ITEM->number.value = pressure;
+			updateWeather = true;
 		}
-		if (meade_command(device, ":GX9V#", response, sizeof(response), 0)) {
-			double voltage = atof(response);
-			if (AUX_INFO_VOLTAGE_ITEM->number.value != voltage) {
-				AUX_INFO_VOLTAGE_ITEM->number.value = voltage;
-				updateInfo = true;
-			}
+	}
+	if (meade_command(device, ":GX9V#", response, sizeof(response), 0)) {
+		double voltage = atof(response);
+		if (AUX_INFO_VOLTAGE_ITEM->number.value != voltage) {
+			AUX_INFO_VOLTAGE_ITEM->number.value = voltage;
+			updateInfo = true;
 		}
 	}
 	if (updateWeather) {
@@ -3619,9 +3643,126 @@ static void aux_timer_callback(indigo_device *device) {
 	indigo_reschedule_timer(device, 10, &PRIVATE_DATA->aux_timer);
 }
 
+static void onstep_aux_timer_callback(indigo_device *device) {
+	
+	if (!IS_CONNECTED) {
+		return;
+	}
+
+	bool update_aux_heater_prop = false;
+	for (int i = 0; i < ONSTEP_AUX_HEATER_OUTLET_COUNT; i++) {
+		char command[7];
+		char response[4];
+		int onstep_slot = ONSTEP_AUX_HEATER_OUTLET_MAPPING[i];
+		snprintf(command, sizeof(command), ":GXX%d#", onstep_slot);
+		// responds with a number between 0 for fully off and 255 for fully on
+		meade_command(device, command, response, sizeof(response), 0);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received response %s for slot %d", response, onstep_slot);
+		indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
+		// convert to percent
+		int new_value = (int)(atoi(response) / 2.56 + 0.5);
+		if (new_value != (int) item->number.value) {
+			item->number.value = new_value;
+			update_aux_heater_prop = true;
+		}
+	}
+	if (update_aux_heater_prop) {
+			indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+	}
+
+	bool update_aux_power_prop = false;
+	for (int i = 0; i < ONSTEP_AUX_POWER_OUTLET_COUNT; i++) {
+		char command[7];
+		char response[4];
+		int onstep_slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
+		snprintf(command, sizeof(command), ":GXX%d#", onstep_slot);
+		// the response is 0 when disabled and 1 when the switch is enabled
+		meade_command(device, command, response, sizeof(response), 0);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "received response %s for slot %d", response, onstep_slot);
+		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+		bool active = response[0] - '0';
+		if (active != item->sw.value) {
+			item->sw.value = active;
+			update_aux_power_prop = true;
+		}
+	}
+	if (update_aux_power_prop) {
+		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+	}
+	
+	indigo_reschedule_timer(device, 2, &PRIVATE_DATA->aux_timer);
+	
+}
+
+static void onstep_aux_connect(indigo_device *device) {
+	char aux_device_str[ONSTEP_AUX_DEVICE_COUNT + 1];
+	// first we request Onstep to list active aux slots
+	meade_command(device, ":GXY0#", aux_device_str, sizeof(aux_device_str), 0);	
+	// Onstep responds with a string like "11000000" to indicate that the first and second aux device is enabled
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep active device string: %s", aux_device_str);
+
+	// in the first pass over the active devices we count how many auxiliary devices of each purpose we have
+	for (int i = 0; i < ONSTEP_AUX_DEVICE_COUNT; i++) {
+		bool active = aux_device_str[i] == '1';
+		if (active) {
+			char response[16];
+			char command[7];
+			// Now we get the name and purpose of each active aux device, it is one-indexed
+			snprintf(command, sizeof(command), ":GXY%d#", i + 1);
+			meade_command(device, command, response, sizeof(response), 0);
+			// Onstep responds with a string like "my switch,2" where the part before "," is the name and after the purpose as int
+			char *comma = strchr(response, ',');
+			if (comma == NULL) {
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Onstep AUX Device at slot %d invalid response", i + 1);
+				continue;
+			}
+			*comma++ = '\0';
+			char *name = response;
+			onstep_aux_device_purpose purpose = *comma - '0';
+			char property_name[32];
+			indigo_property *aux_property = NULL;
+			if (purpose == ONSTEP_AUX_ANALOG) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Heater Outlet at slot %d with name %s", i + 1, name);
+				ONSTEP_AUX_HEATER_OUTLET_MAPPING[ONSTEP_AUX_HEATER_OUTLET_COUNT] = i + 1;
+				ONSTEP_AUX_HEATER_OUTLET_COUNT++;
+			} else if (purpose == ONSTEP_AUX_SWITCH) {
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Power Outlet Device at slot %d with name %s and purpose switch", i + 1, name);
+				ONSTEP_AUX_POWER_OUTLET_MAPPING[ONSTEP_AUX_POWER_OUTLET_COUNT] = i + 1;
+				ONSTEP_AUX_POWER_OUTLET_COUNT++;
+			} else {	
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Onstep AUX Device at index %d not recognized", i + 1, name);
+			}
+		}
+	}
+	// after that we create the property and items for each type
+	for (int i = 0; i < ONSTEP_AUX_HEATER_OUTLET_COUNT; i++) {
+		AUX_HEATER_OUTLET_PROPERTY = indigo_init_number_property(NULL, device->name, AUX_HEATER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Heater outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, ONSTEP_AUX_HEATER_OUTLET_COUNT);
+		if (AUX_HEATER_OUTLET_PROPERTY == NULL)
+			return;
+		char heater_name[32];
+		char heater_label[32];
+		snprintf(heater_name, sizeof(heater_name), AUX_HEATER_OUTLET_ITEM_NAME, i + 1);
+		snprintf(heater_label, sizeof(heater_label), "Heater #%d [%%]", i + 1);
+		indigo_init_number_item(AUX_HEATER_OUTLET_PROPERTY->items, heater_name, heater_label, 0, 100, 1, 0);
+		indigo_define_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+	}
+	for (int i = 0; i < ONSTEP_AUX_POWER_OUTLET_COUNT; i++) {
+		AUX_POWER_OUTLET_PROPERTY = indigo_init_switch_property(NULL, device->name, AUX_POWER_OUTLET_PROPERTY_NAME, AUX_GROUP, "Power outlets", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ANY_OF_MANY_RULE, ONSTEP_AUX_POWER_OUTLET_COUNT);
+		if (AUX_POWER_OUTLET_PROPERTY == NULL)
+			return;
+		char power_name[32];
+		char power_label[32];
+		snprintf(power_name, sizeof(power_name), AUX_POWER_OUTLET_ITEM_NAME, i + 1);
+		snprintf(power_label, sizeof(power_label), "Outlet #%d", i + 1);
+		indigo_init_switch_item(AUX_POWER_OUTLET_PROPERTY->items, power_name, power_label, true);
+		indigo_define_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+	}
+}
+
 static void aux_connect_callback(indigo_device *device) {
 	indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
+
 		bool result = true;
 		if (PRIVATE_DATA->device_count++ == 0) {
 			CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
@@ -3635,9 +3776,15 @@ static void aux_connect_callback(indigo_device *device) {
 			if (MOUNT_TYPE_NYX_ITEM->sw.value) {
 				indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 				indigo_define_property(device, AUX_INFO_PROPERTY, NULL);
-				indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->aux_timer);
+				indigo_set_timer(device, 0, nyx_aux_timer_callback, &PRIVATE_DATA->aux_timer);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
-			} else {
+			} 
+			if (MOUNT_TYPE_ON_STEP_ITEM->sw.value) {
+				onstep_aux_connect(device);
+				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
+				indigo_set_timer(device, 0, onstep_aux_timer_callback, &PRIVATE_DATA->aux_timer);
+			}
+			else {
 				PRIVATE_DATA->device_count--;
 				CONNECTION_PROPERTY->state = INDIGO_ALERT_STATE;
 				indigo_set_switch(CONNECTION_PROPERTY, CONNECTION_DISCONNECTED_ITEM, true);
@@ -3651,6 +3798,9 @@ static void aux_connect_callback(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->aux_timer);
 		indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 		indigo_delete_property(device, AUX_INFO_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+		indigo_delete_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+
 		if (--PRIVATE_DATA->device_count == 0) {
 			if (PRIVATE_DATA->keep_alive_timer) {
 				indigo_cancel_timer_sync(device, &PRIVATE_DATA->keep_alive_timer);
@@ -3661,6 +3811,44 @@ static void aux_connect_callback(indigo_device *device) {
 	}
 	indigo_aux_change_property(device, NULL, CONNECTION_PROPERTY);
 	indigo_unlock_master_device(device);
+}
+
+static void onstep_aux_heater_outlet_handler(indigo_device *device) {
+	for (int i = 0; i < ONSTEP_AUX_HEATER_OUTLET_COUNT; i++) {
+		indigo_item *item = AUX_HEATER_OUTLET_PROPERTY->items + i;
+		int val = MIN((int) round(item->number.value * 2.56), 255);
+		char response[2];
+		char command[14];
+		int slot = ONSTEP_AUX_HEATER_OUTLET_MAPPING[i];
+		snprintf(command, sizeof(command), ":SXX%d,V%d#", slot, val);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "setting aux slot %d to %d", slot, val);
+		meade_command(device, command, response, sizeof(response), 0);
+		if (response[0] == '1') {
+			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+}
+
+static void onstep_aux_power_outlet_handler(indigo_device *device) {
+	for (int i = 0; i < ONSTEP_AUX_POWER_OUTLET_COUNT; i++) {
+		indigo_item *item = AUX_POWER_OUTLET_PROPERTY->items + i;
+		bool val = item->sw.value;
+		char response[2];
+		char command[14];
+		int slot = ONSTEP_AUX_POWER_OUTLET_MAPPING[i];
+		snprintf(command, sizeof(command), ":SXX%d,V%d#", slot, val);
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "setting aux slot %d to %d", slot, val);
+		meade_command(device, command, response, sizeof(response), 0);
+		if (response[0] == '1') {
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
+		} else {
+			AUX_POWER_OUTLET_PROPERTY->state = INDIGO_ALERT_STATE;
+		}
+	}
+	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 }
 
 static indigo_result aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property) {
@@ -3678,6 +3866,21 @@ static indigo_result aux_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 		// --------------------------------------------------------------------------------
 	}
+	if (indigo_property_match_changeable(AUX_HEATER_OUTLET_PROPERTY, property)) {
+		indigo_property_copy_values(AUX_HEATER_OUTLET_PROPERTY, property, false);
+		AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, onstep_aux_heater_outlet_handler, NULL);
+		return INDIGO_OK;
+	}
+	if (indigo_property_match_changeable(AUX_POWER_OUTLET_PROPERTY, property)) {
+		indigo_property_copy_values(AUX_POWER_OUTLET_PROPERTY, property, false);
+		AUX_POWER_OUTLET_PROPERTY->state = INDIGO_BUSY_STATE;
+		indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
+		indigo_set_timer(device, 0, onstep_aux_power_outlet_handler, NULL);
+		return INDIGO_OK;
+	}
+	
 	return indigo_aux_change_property(device, client, property);
 }
 
@@ -3689,6 +3892,8 @@ static indigo_result aux_detach(indigo_device *device) {
 	}
 	indigo_release_property(AUX_WEATHER_PROPERTY);
 	indigo_release_property(AUX_INFO_PROPERTY);
+	indigo_release_property(AUX_HEATER_OUTLET_PROPERTY);
+	indigo_release_property(AUX_POWER_OUTLET_PROPERTY);
 	INDIGO_DEVICE_DETACH_LOG(DRIVER_NAME, device->name);
 	return indigo_aux_detach(device);
 }
