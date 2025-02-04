@@ -47,8 +47,9 @@ extern "C" {
 
 typedef enum {
 	INDIGO_FILE_HANDLE = 0,
-	INDIGO_TCP_HANDLE = 1,
-	INDIGO_UDP_HANDLE = 2
+	INDIGO_COM_HANDLE = 1,
+	INDIGO_TCP_HANDLE = 2,
+	INDIGO_UDP_HANDLE = 3
 } indigo_uni_handle_type;
 
 typedef struct {
@@ -58,7 +59,9 @@ typedef struct {
 		int fd;
 #if defined(INDIGO_WINDOWS)
 		SOCKET sock;
+		HANDLE com;
 #endif
+		bool short_trace;
 	};
 	int last_error;
 } indigo_uni_handle;
@@ -72,7 +75,7 @@ extern indigo_uni_handle indigo_stdin_handle;
 extern indigo_uni_handle indigo_stdout_handle;
 extern indigo_uni_handle indigo_stderr_handle;
 
-extern indigo_uni_handle *indigo_uni_create_handle(indigo_uni_handle_type type, int fd);
+extern indigo_uni_handle *indigo_uni_create_file_handle(int fd);
 
 /** Decode last error to string.
  */
@@ -88,15 +91,15 @@ extern indigo_uni_handle *indigo_uni_create_file(const char *path);
 
 /** Open serial connection with configuration string of the form "9600-8N1".
  */
-extern indigo_uni_handle *indigo_uni_open_serial_with_config(const char *path, const char *baudconfig);
+extern indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig);
 
 /** Open serial connection at speed XXXX-8N1.
  */
-extern indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *path, int speed);
+extern indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *serial, int speed);
 
 /** Open serial connection at speed 9600-8N1.
  */
-extern indigo_uni_handle *indigo_uni_open_serial(const char *path);
+extern indigo_uni_handle *indigo_uni_open_serial(const char *serial);
 
 /** Open client socket.
  */
@@ -127,6 +130,10 @@ extern indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port,
 /** Read available data into buffer.
  */
 extern long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long length);
+
+/** Peek available data into buffer.
+ */
+extern long indigo_uni_peek_available(indigo_uni_handle *handle, void *buffer, long length);
 
 /** Read data into buffer.
  */

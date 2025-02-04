@@ -27,25 +27,13 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <errno.h>
-#include <netdb.h>
 #include <string.h>
 #include <assert.h>
-#include <signal.h>
 #include <stdarg.h>
 
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
 #include <sys/stat.h>
-#include <netinet/in.h>
 
-#ifdef INDIGO_LINUX
-#include <netinet/tcp.h>
-#endif
-
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <dns_sd.h>
-#endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>
@@ -54,7 +42,7 @@
 #include <indigo/indigo_driver_json.h>
 #include <indigo/indigo_client_xml.h>
 #include <indigo/indigo_base64.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #define SHA1_SIZE 20
 #if _MSC_VER
@@ -101,8 +89,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 	char c;
 	void *free_on_exit = NULL;
 	pthread_mutex_t *unlock_at_exit = NULL;
-#warning: "TODO: Pending issue for migration to unified I/O"
-	if (recv(handle->fd, &c, 1, MSG_PEEK) == 1) {
+	if (indigo_uni_peek_available(handle, &c, 1) == 1) {
 		if (c == '<') {
 			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", handle->index));
 			indigo_client *protocol_adapter = indigo_xml_device_adapter(handle, handle);
@@ -204,7 +191,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 								if (indigo_use_blob_buffering) {
 									if (use_gzip && indigo_use_blob_compression && strcmp(entry->format, ".jpeg")) {
 										unsigned compressed_size = (unsigned)working_size;
-										indigo_compress("image", entry->content, (unsigned)working_size, working_copy, &compressed_size);
+										indigo_uni_compress("image", entry->content, (unsigned)working_size, working_copy, &compressed_size);
 										INDIGO_PRINTF(handle, "Content-Encoding: gzip\r\n");
 										INDIGO_PRINTF(handle, "X-Uncompressed-Content-Length: %ld\r\n", working_size);
 										working_size = compressed_size;

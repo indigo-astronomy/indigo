@@ -1109,6 +1109,7 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	if (handle == NULL) {
 		return false;
 	}
+	handle->short_trace = true;
 	indigo_uni_set_socket_read_timeout(handle, 15000000L);
 	indigo_uni_set_socket_write_timeout(handle, 5000000L);
 	char line[256];
@@ -1212,6 +1213,7 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	if (handle == NULL) {
 		return false;
 	}
+	handle->short_trace = true;
 	indigo_uni_set_socket_read_timeout(handle, 5000000L);
 	indigo_uni_set_socket_write_timeout(handle, 5000000L);
 	char line[256];

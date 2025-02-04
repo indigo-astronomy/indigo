@@ -70,7 +70,6 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static int used_driver_slots = 0;
 static int used_subprocess_slots = 0;
 
-
 bool indigo_driver_initialized(char *driver_name) {
 	assert(driver_name != NULL);
 	for (int dc = 0; dc < used_driver_slots;  dc++) {
@@ -230,7 +229,7 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 			close(input[1]);
 			close(output[0]);
 			char *slash = strrchr(subprocess->executable, '/');
-			subprocess->protocol_adapter = indigo_xml_client_adapter(slash ? slash + 1 : subprocess->executable, "", indigo_uni_create_handle(INDIGO_FILE_HANDLE, input[0]), indigo_uni_create_handle(INDIGO_FILE_HANDLE, output[1]));
+			subprocess->protocol_adapter = indigo_xml_client_adapter(slash ? slash + 1 : subprocess->executable, "", indigo_uni_create_file_handle(input[0]), indigo_uni_create_file_handle(output[1]));
 			indigo_attach_device(subprocess->protocol_adapter);
 			indigo_xml_parse(subprocess->protocol_adapter, NULL);
 			indigo_detach_device(subprocess->protocol_adapter);

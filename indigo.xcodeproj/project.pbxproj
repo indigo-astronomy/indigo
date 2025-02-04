@@ -5014,29 +5014,7 @@
 		9DC7830321A6FDB6009859FD /* Makefile.inc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
 		9DC7830621A7072B009859FD /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		9DC7830921AC565B009859FD /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; usesTabs = 0; };
-		9DCB034A22E9D8D600A7A2E5 /* test.vcxproj.user */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = test.vcxproj.user; sourceTree = "<group>"; };
-		9DCB034B22E9D8D600A7A2E5 /* test.vcxproj.filters */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = test.vcxproj.filters; sourceTree = "<group>"; };
-		9DCB034C22E9D8D600A7A2E5 /* test.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = test.vcxproj; sourceTree = "<group>"; };
-		9DCB034E22E9D8D600A7A2E5 /* indigo_client.vcxproj.user */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_client.vcxproj.user; sourceTree = "<group>"; };
-		9DCB034F22E9D8D600A7A2E5 /* stdafx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stdafx.h; sourceTree = "<group>"; };
-		9DCB035022E9D8D600A7A2E5 /* dllmain.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = dllmain.cpp; sourceTree = "<group>"; };
-		9DCB035422E9D8D600A7A2E5 /* semaphore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = semaphore.h; sourceTree = "<group>"; };
-		9DCB035522E9D8D600A7A2E5 /* _ptw32.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = _ptw32.h; sourceTree = "<group>"; };
-		9DCB035622E9D8D600A7A2E5 /* sched.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sched.h; sourceTree = "<group>"; };
-		9DCB035722E9D8D600A7A2E5 /* pthread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pthread.h; sourceTree = "<group>"; };
-		9DCB035A22E9D8D600A7A2E5 /* libpthreadVC3.lib */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libpthreadVC3.lib; sourceTree = "<group>"; };
-		9DCB035B22E9D8D600A7A2E5 /* pthreadVC3.dll */ = {isa = PBXFileReference; lastKnownFileType = file; path = pthreadVC3.dll; sourceTree = "<group>"; };
-		9DCB035C22E9D8D600A7A2E5 /* pthreadVC3.lib */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = pthreadVC3.lib; sourceTree = "<group>"; };
-		9DCB035E22E9D8D600A7A2E5 /* libpthreadVC3.lib */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libpthreadVC3.lib; sourceTree = "<group>"; };
-		9DCB035F22E9D8D600A7A2E5 /* pthreadVC3.dll */ = {isa = PBXFileReference; lastKnownFileType = file; path = pthreadVC3.dll; sourceTree = "<group>"; };
-		9DCB036022E9D8D600A7A2E5 /* pthreadVC3.lib */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = pthreadVC3.lib; sourceTree = "<group>"; };
-		9DCB036122E9D8D600A7A2E5 /* indigo_client.vcxproj.filters */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_client.vcxproj.filters; sourceTree = "<group>"; };
-		9DCB036222E9D8D600A7A2E5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		9DCB036322E9D8D600A7A2E5 /* targetver.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = targetver.h; sourceTree = "<group>"; };
-		9DCB036422E9D8D600A7A2E5 /* indigo_client.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_client.vcxproj; sourceTree = "<group>"; };
-		9DCB036522E9D8D600A7A2E5 /* stdafx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = stdafx.cpp; sourceTree = "<group>"; };
 		9DCB036622E9D8D600A7A2E5 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
-		9DCB036722E9D8D600A7A2E5 /* indigo_windows.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_windows.sln; sourceTree = "<group>"; };
 		9DCBF26527E9CC6C00746580 /* indigo_fits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_fits.h; sourceTree = "<group>"; };
 		9DD01BE6298A63A50044FB3B /* indigo_build.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_build.c; sourceTree = "<group>"; };
 		9DD01BEA298A81DD0044FB3B /* make_indigo_build.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = make_indigo_build.sh; sourceTree = "<group>"; };
@@ -5051,6 +5029,33 @@
 		9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_dsd_main.c; sourceTree = "<group>"; };
 		9DE0E7B522C6465500289234 /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9DE0E7B622C6465500289234 /* indigo_focuser_dsd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_focuser_dsd.h; sourceTree = "<group>"; };
+		9DF147F72D52384D00049345 /* CommonServices.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CommonServices.h; sourceTree = "<group>"; };
+		9DF147F82D52384D00049345 /* DebugServices.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DebugServices.h; sourceTree = "<group>"; };
+		9DF147F92D52384D00049345 /* dns_sd.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dns_sd.h; sourceTree = "<group>"; };
+		9DF147FA2D52384D00049345 /* dnssd_clientlib.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dnssd_clientlib.c; sourceTree = "<group>"; };
+		9DF147FB2D52384D00049345 /* dnssd_clientstub.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dnssd_clientstub.c; sourceTree = "<group>"; };
+		9DF147FC2D52384D00049345 /* dnssd_ipc.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dnssd_ipc.h; sourceTree = "<group>"; };
+		9DF147FD2D52384D00049345 /* dnssd_ipc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = dnssd_ipc.c; sourceTree = "<group>"; };
+		9DF147FE2D52384D00049345 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9DF148002D52384D00049345 /* _ptw32.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = _ptw32.h; sourceTree = "<group>"; };
+		9DF148012D52384D00049345 /* pthread.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = pthread.h; sourceTree = "<group>"; };
+		9DF148022D52384D00049345 /* sched.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = sched.h; sourceTree = "<group>"; };
+		9DF148032D52384D00049345 /* semaphore.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = semaphore.h; sourceTree = "<group>"; };
+		9DF148102D52384D00049345 /* build_windows_sdk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = build_windows_sdk.sh; sourceTree = "<group>"; };
+		9DF148112D52384D00049345 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
+		9DF148122D52384D00049345 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DF148142D52384D00049345 /* dllmain.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = dllmain.cpp; sourceTree = "<group>"; };
+		9DF148152D52384D00049345 /* indigo_client.def */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_client.def; sourceTree = "<group>"; };
+		9DF148162D52384D00049345 /* indigo_client.vcxproj */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_client.vcxproj; sourceTree = "<group>"; };
+		9DF148172D52384D00049345 /* indigo_client.vcxproj.filters */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_client.vcxproj.filters; sourceTree = "<group>"; };
+		9DF148182D52384D00049345 /* indigo_client.vcxproj.user */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = indigo_client.vcxproj.user; sourceTree = "<group>"; };
+		9DF148192D52384D00049345 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		9DF1481A2D52384D00049345 /* stdafx.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = stdafx.h; sourceTree = "<group>"; };
+		9DF1481B2D52384D00049345 /* stdafx.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = stdafx.cpp; sourceTree = "<group>"; };
+		9DF1481C2D52384D00049345 /* targetver.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = targetver.h; sourceTree = "<group>"; };
+		9DF1481E2D52384D00049345 /* build_x64_release.bat */ = {isa = PBXFileReference; lastKnownFileType = text; path = build_x64_release.bat; sourceTree = "<group>"; };
+		9DF1481F2D52384D00049345 /* build_x86_release.bat */ = {isa = PBXFileReference; lastKnownFileType = text; path = build_x86_release.bat; sourceTree = "<group>"; };
+		9DF148202D52384D00049345 /* indigo_windows.sln */ = {isa = PBXFileReference; lastKnownFileType = text; path = indigo_windows.sln; sourceTree = "<group>"; };
 		9DF312B62C255D3800A35CE3 /* FocusLynx_Command_Processing_rev3.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = FocusLynx_Command_Processing_rev3.pdf; sourceTree = "<group>"; };
 		9DF312B72C255D3800A35CE3 /* indigo_focuser_optecfl_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optecfl_main.c; sourceTree = "<group>"; };
 		9DF312B82C255D3800A35CE3 /* indigo_focuser_optecfl.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_focuser_optecfl.c; sourceTree = "<group>"; wrapsLines = 0; };
@@ -14581,95 +14586,12 @@
 		9DCB034822E9D8D600A7A2E5 /* indigo_windows */ = {
 			isa = PBXGroup;
 			children = (
-				9DCB034922E9D8D600A7A2E5 /* test */,
-				9DCB034D22E9D8D600A7A2E5 /* indigo_client */,
+				9DF1480F2D52384D00049345 /* externals */,
+				9DF148132D52384D00049345 /* gcc */,
+				9DF148212D52384D00049345 /* msvc */,
 				9DCB036622E9D8D600A7A2E5 /* README.md */,
-				9DCB036722E9D8D600A7A2E5 /* indigo_windows.sln */,
 			);
 			path = indigo_windows;
-			sourceTree = "<group>";
-		};
-		9DCB034922E9D8D600A7A2E5 /* test */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB034A22E9D8D600A7A2E5 /* test.vcxproj.user */,
-				9DCB034B22E9D8D600A7A2E5 /* test.vcxproj.filters */,
-				9DCB034C22E9D8D600A7A2E5 /* test.vcxproj */,
-			);
-			path = test;
-			sourceTree = "<group>";
-		};
-		9DCB034D22E9D8D600A7A2E5 /* indigo_client */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB034E22E9D8D600A7A2E5 /* indigo_client.vcxproj.user */,
-				9DCB034F22E9D8D600A7A2E5 /* stdafx.h */,
-				9DCB035022E9D8D600A7A2E5 /* dllmain.cpp */,
-				9DCB035122E9D8D600A7A2E5 /* externals */,
-				9DCB036122E9D8D600A7A2E5 /* indigo_client.vcxproj.filters */,
-				9DCB036222E9D8D600A7A2E5 /* README.md */,
-				9DCB036322E9D8D600A7A2E5 /* targetver.h */,
-				9DCB036422E9D8D600A7A2E5 /* indigo_client.vcxproj */,
-				9DCB036522E9D8D600A7A2E5 /* stdafx.cpp */,
-			);
-			path = indigo_client;
-			sourceTree = "<group>";
-		};
-		9DCB035122E9D8D600A7A2E5 /* externals */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB035222E9D8D600A7A2E5 /* pthreads4w */,
-			);
-			path = externals;
-			sourceTree = "<group>";
-		};
-		9DCB035222E9D8D600A7A2E5 /* pthreads4w */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB035322E9D8D600A7A2E5 /* include */,
-				9DCB035822E9D8D600A7A2E5 /* lib */,
-			);
-			path = pthreads4w;
-			sourceTree = "<group>";
-		};
-		9DCB035322E9D8D600A7A2E5 /* include */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB035422E9D8D600A7A2E5 /* semaphore.h */,
-				9DCB035522E9D8D600A7A2E5 /* _ptw32.h */,
-				9DCB035622E9D8D600A7A2E5 /* sched.h */,
-				9DCB035722E9D8D600A7A2E5 /* pthread.h */,
-			);
-			path = include;
-			sourceTree = "<group>";
-		};
-		9DCB035822E9D8D600A7A2E5 /* lib */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB035922E9D8D600A7A2E5 /* x64 */,
-				9DCB035D22E9D8D600A7A2E5 /* x86 */,
-			);
-			path = lib;
-			sourceTree = "<group>";
-		};
-		9DCB035922E9D8D600A7A2E5 /* x64 */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB035A22E9D8D600A7A2E5 /* libpthreadVC3.lib */,
-				9DCB035B22E9D8D600A7A2E5 /* pthreadVC3.dll */,
-				9DCB035C22E9D8D600A7A2E5 /* pthreadVC3.lib */,
-			);
-			path = x64;
-			sourceTree = "<group>";
-		};
-		9DCB035D22E9D8D600A7A2E5 /* x86 */ = {
-			isa = PBXGroup;
-			children = (
-				9DCB035E22E9D8D600A7A2E5 /* libpthreadVC3.lib */,
-				9DCB035F22E9D8D600A7A2E5 /* pthreadVC3.dll */,
-				9DCB036022E9D8D600A7A2E5 /* pthreadVC3.lib */,
-			);
-			path = x86;
 			sourceTree = "<group>";
 		};
 		9DD11FE92CB56D8F00FC9855 /* obsoleted_drivers */ = {
@@ -14701,6 +14623,94 @@
 				9DE0E7B422C6465500289234 /* indigo_focuser_dsd_main.c */,
 			);
 			path = focuser_dsd;
+			sourceTree = "<group>";
+		};
+		9DF147FF2D52384D00049345 /* bonjour-sdk */ = {
+			isa = PBXGroup;
+			children = (
+				9DF147F72D52384D00049345 /* CommonServices.h */,
+				9DF147F82D52384D00049345 /* DebugServices.h */,
+				9DF147F92D52384D00049345 /* dns_sd.h */,
+				9DF147FA2D52384D00049345 /* dnssd_clientlib.c */,
+				9DF147FB2D52384D00049345 /* dnssd_clientstub.c */,
+				9DF147FC2D52384D00049345 /* dnssd_ipc.h */,
+				9DF147FD2D52384D00049345 /* dnssd_ipc.c */,
+				9DF147FE2D52384D00049345 /* Makefile */,
+			);
+			path = "bonjour-sdk";
+			sourceTree = "<group>";
+		};
+		9DF148042D52384D00049345 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				9DF148002D52384D00049345 /* _ptw32.h */,
+				9DF148012D52384D00049345 /* pthread.h */,
+				9DF148022D52384D00049345 /* sched.h */,
+				9DF148032D52384D00049345 /* semaphore.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		9DF1480D2D52384D00049345 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		9DF1480E2D52384D00049345 /* pthreads4w */ = {
+			isa = PBXGroup;
+			children = (
+				9DF148042D52384D00049345 /* include */,
+				9DF1480D2D52384D00049345 /* lib */,
+			);
+			path = pthreads4w;
+			sourceTree = "<group>";
+		};
+		9DF1480F2D52384D00049345 /* externals */ = {
+			isa = PBXGroup;
+			children = (
+				9DF147FF2D52384D00049345 /* bonjour-sdk */,
+				9DF1480E2D52384D00049345 /* pthreads4w */,
+			);
+			path = externals;
+			sourceTree = "<group>";
+		};
+		9DF148132D52384D00049345 /* gcc */ = {
+			isa = PBXGroup;
+			children = (
+				9DF148102D52384D00049345 /* build_windows_sdk.sh */,
+				9DF148112D52384D00049345 /* Makefile */,
+				9DF148122D52384D00049345 /* README.md */,
+			);
+			path = gcc;
+			sourceTree = "<group>";
+		};
+		9DF1481D2D52384D00049345 /* indigo_client */ = {
+			isa = PBXGroup;
+			children = (
+				9DF148142D52384D00049345 /* dllmain.cpp */,
+				9DF148152D52384D00049345 /* indigo_client.def */,
+				9DF148162D52384D00049345 /* indigo_client.vcxproj */,
+				9DF148172D52384D00049345 /* indigo_client.vcxproj.filters */,
+				9DF148182D52384D00049345 /* indigo_client.vcxproj.user */,
+				9DF148192D52384D00049345 /* README.md */,
+				9DF1481A2D52384D00049345 /* stdafx.h */,
+				9DF1481B2D52384D00049345 /* stdafx.cpp */,
+				9DF1481C2D52384D00049345 /* targetver.h */,
+			);
+			path = indigo_client;
+			sourceTree = "<group>";
+		};
+		9DF148212D52384D00049345 /* msvc */ = {
+			isa = PBXGroup;
+			children = (
+				9DF1481D2D52384D00049345 /* indigo_client */,
+				9DF1481E2D52384D00049345 /* build_x64_release.bat */,
+				9DF1481F2D52384D00049345 /* build_x86_release.bat */,
+				9DF148202D52384D00049345 /* indigo_windows.sln */,
+			);
+			path = msvc;
 			sourceTree = "<group>";
 		};
 		9DF312B52C255D3800A35CE3 /* optecfl_simulator */ = {
