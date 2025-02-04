@@ -53,6 +53,7 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
 
+static int handle_index = 0;
 
 indigo_uni_handle indigo_stdin_handle = { INDIGO_FILE_HANDLE, 0, 0 };
 indigo_uni_handle indigo_stdout_handle = { INDIGO_FILE_HANDLE, 1, 0 };
@@ -60,6 +61,7 @@ indigo_uni_handle indigo_stderr_handle = { INDIGO_FILE_HANDLE, 2, 0 };
 
 indigo_uni_handle *indigo_uni_create_handle(indigo_uni_handle_type type, int fd) {
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+	handle->index = handle_index++;
 	handle->type = type;
 	handle->fd = fd;
 	return handle;
@@ -92,6 +94,7 @@ indigo_uni_handle *indigo_uni_open_file(const char *path) {
 #endif
 	if (fd >= 0) {
 		indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+		handle->index = handle_index++;
 		handle->type = INDIGO_FILE_HANDLE;
 		handle->fd = fd;
 		return handle;
@@ -107,6 +110,7 @@ indigo_uni_handle *indigo_uni_create_file(const char *path) {
 #endif
 	if (fd >= 0) {
 		indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+		handle->index = handle_index++;
 		handle->type = INDIGO_FILE_HANDLE;
 		handle->fd = fd;
 	}
@@ -263,6 +267,7 @@ static indigo_uni_handle *open_tty(const char *tty_name, const struct termios *o
 		return NULL;
 	}
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+	handle->index = handle_index++;
 	handle->type = INDIGO_FILE_HANDLE;
 	handle->fd = fd;
 	return handle;
@@ -306,11 +311,12 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 			}
 			*(uint16_t *)(address->ai_addr->sa_data) = htons(port);
 			if (connect(fd, address->ai_addr, address->ai_addrlen) == 0) {
-				INDIGO_TRACE(indigo_trace("%d <- // %s socket connected to '%s:%d'", fd, type == SOCK_STREAM ? "TCP" : "UDP", host, port));
 				handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+				handle->index = handle_index++;
 				handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
 				handle->fd = fd;
 				freeaddrinfo(address_list);
+				INDIGO_TRACE(indigo_trace("%d <- // %s socket connected to '%s:%d'", handle->index, type == SOCK_STREAM ? "TCP" : "UDP", host, port));
 				return handle;
 			}
 			close(fd);
@@ -324,8 +330,8 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 	if (he == NULL) {
 		return NULL;
 	}
-	SOCKET fd = socket(AF_INET, type, 0);
-	if (fd == INVALID_SOCKET) {
+	SOCKET sock = socket(AF_INET, type, 0);
+	if (sock == INVALID_SOCKET) {
 		return NULL;
 	}
 	struct sockaddr_in address;
@@ -333,15 +339,16 @@ indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int
 	address.sin_family = AF_INET;
 	address.sin_port = htons(port);
 	address.sin_addr = *((struct in_addr *)he->h_addr);
-	if (connect(fd, (struct sockaddr *)&address, sizeof(struct sockaddr)) == 0) {
-		INDIGO_TRACE(indigo_trace("%d <- // %s socket connected to '%s:%d'", fd, type == SOCK_STREAM ? "TCP" : "UDP", host, port));
+	if (connect(sock, (struct sockaddr *)&address, sizeof(struct sockaddr)) == 0) {
 		handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+		handle->index = handle_index++;
 		handle->type = type == SOCK_STREAM ? INDIGO_TCP_HANDLE : INDIGO_UDP_HANDLE;
-		handle->fd = fd;
+		handle->sock = sock;
+		INDIGO_TRACE(indigo_trace("%d <- // %s socket connected to '%s:%d'", handle->index, type == SOCK_STREAM ? "TCP" : "UDP", host, port));
 		return handle;
 	}
 	indigo_error("Can't connect %s socket for '%s:%d'", type == SOCK_STREAM ? "TCP" : "UDP", host, port);
-	closesocket(fd);
+	closesocket(sock);
 	return NULL;
 #endif
 }
@@ -389,6 +396,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		return;
 	}
 	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+	(*server_handle)->index = handle_index++;
 	(*server_handle)->type = INDIGO_TCP_HANDLE;
 	(*server_handle)->fd = server_socket;
 	INDIGO_LOG(indigo_log("Server started on TCP port %d", *port));
@@ -420,6 +428,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		}
 		indigo_uni_worker_data *worker_data = indigo_safe_malloc(sizeof(indigo_uni_worker_data));
 		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+		worker_data->handle->index = handle_index++;
 		worker_data->handle->type = INDIGO_TCP_HANDLE;
 		worker_data->handle->fd = client_socket;
 		worker_data->data = data;
@@ -434,12 +443,36 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 
 void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout) {
 	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
-	setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv)) {
+		handle->last_error = errno;
+	} else {
+		handle->last_error = 0;
+	}
+#else
+	if (setsockopt(handle->sock, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv) == SOCKET_ERROR) {
+		handle->last_error = WSAGetLastError();
+	} else {
+		handle->last_error = 0;
+	}
+#endif
 }
 
 void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout) {
 	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
-	setsockopt(handle->fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (setsockopt(handle->fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv) != 0) {
+		handle->last_error = errno;
+	} else {
+		handle->last_error = 0;
+	}
+#else
+	if (setsockopt(handle->sock, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv) == SOCKET_ERROR) {
+		handle->last_error = WSAGetLastError();
+	} else {
+		handle->last_error = 0;
+	}
+#endif
 }
 
 indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint) {
@@ -482,13 +515,26 @@ long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long len
 	long bytes_read;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	bytes_read = read(handle->fd, buffer, length);
-	handle->last_error = errno;
+	if (bytes_read < 0) {
+		handle->last_error = errno;
+	} else {
+		handle->last_error = 0;
+	}
 #elif defined(INDIGO_WINDOWS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		bytes_read = _read((int)handle->fd, buffer, length);
+		if (bytes_read < 0) {
+			handle->last_error = errno;
+		} else {
+			handle->last_error = 0;
+		}
 	} else {
-		bytes_read = recv(handle->fd, buffer, length, 0);
-		handle->last_error = WSAGetLastError();
+		bytes_read = recv(handle->sock, buffer, length, 0);
+		if (bytes_read < 0) {
+			handle->last_error = WSAGetLastError();
+		} else {
+			handle->last_error = 0;
+		}
 	}
 #endif
 	return bytes_read;
@@ -503,13 +549,26 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 		long bytes_read;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		bytes_read = read(handle->fd, pnt, remains);
-		handle->last_error = errno;
+		if (bytes_read < 0) {
+			handle->last_error = errno;
+		} else {
+			handle->last_error = 0;
+		}
 #elif defined(INDIGO_WINDOWS)
 		if (handle->type == INDIGO_FILE_HANDLE) {
 			bytes_read = _read((int)handle->fd, pnt, remains);
+			if (bytes_read < 0) {
+				handle->last_error = errno;
+			} else {
+				handle->last_error = 0;
+			}
 		} else {
-			bytes_read = recv(handle->fd, pnt, remains, 0);
-			handle->last_error = WSAGetLastError();
+			bytes_read = recv(handle->sock, pnt, remains, 0);
+			if (bytes_read < 0) {
+				handle->last_error = WSAGetLastError();
+			} else {
+				handle->last_error = 0;
+			}
 			if (bytes_read == -1 && handle->last_error == WSAETIMEDOUT) {
 				Sleep(500);
 			}
@@ -532,8 +591,8 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 }
 
 long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	long bytes_read = 0;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	long result;
 	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
 	*buffer = 0;
@@ -601,10 +660,10 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 		}
 		buffer[bytes_read++] = 0;
 	}
-	return bytes_read - 1;
 #else
 #pragma message ("TODO: indigo_uni_create_file()")
 #endif
+	return bytes_read - 1;
 }
 
 int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...) {
@@ -632,7 +691,7 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 			bytes_written = _write((int)handle->fd, buffer, remains);
 			handle->last_error = errno;
 		} else {
-			bytes_written = send(handle->fd, buffer, remains, 0);
+			bytes_written = send(handle->sock, buffer, remains, 0);
 			handle->last_error = WSAGetLastError();
 		}
 #endif
@@ -665,6 +724,9 @@ long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...) {
 }
 
 long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {
+	if (handle->type != INDIGO_FILE_HANDLE) {
+		return -1;
+	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	long result = lseek(handle->fd, position, whence);
 #else
@@ -675,6 +737,9 @@ long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {
 }
 
 bool indigo_uni_lock_file(indigo_uni_handle *handle) {
+	if (handle->type != INDIGO_FILE_HANDLE) {
+		return -1;
+	}
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		static struct flock lock;
@@ -710,8 +775,8 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		if ((*handle)->type == INDIGO_FILE_HANDLE) {
 			_close((int)(*handle)->fd);
 		} else {
-			shutdown((*handle)->fd, SD_BOTH);
-			closesocket((*handle)->fd);
+			shutdown((*handle)->sock, SD_BOTH);
+			closesocket((*handle)->sock);
 		}
 #endif
 		*handle = NULL;

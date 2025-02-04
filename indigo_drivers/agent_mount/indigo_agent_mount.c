@@ -255,7 +255,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 	char buffer_out[128];
 	long result = 1;
 	indigo_uni_set_socket_read_timeout(handle, 500000);
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", handle->fd);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", handle->index);
 	while (true) {
 		*buffer_in = 0;
 		*buffer_out = 0;
@@ -399,13 +399,13 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 			}
 			if (*buffer_out) {
 				indigo_uni_write(handle, buffer_out, strlen(buffer_out));
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", handle->fd, buffer_in, buffer_out);
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", handle->index, buffer_in, buffer_out);
 			} else {
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", handle->fd, buffer_in);
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", handle->index, buffer_in);
 			}
 		}
 	}
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", handle->fd);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", handle->index);
 	indigo_uni_close(&handle);
 	free(data);
 }

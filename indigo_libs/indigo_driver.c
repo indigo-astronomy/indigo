@@ -783,7 +783,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	indigo_result result = INDIGO_FAILED;
 	indigo_uni_handle *handle = indigo_open_config_file(device->name, profile, false, ".common");
 	if (handle != NULL) {
-		INDIGO_TRACE(indigo_trace("%d -> // Common config file for '%s'", handle->fd, device->name));
+		INDIGO_TRACE(indigo_trace("%d -> // Common config file for '%s'", handle->index, device->name));
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
@@ -798,7 +798,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 	}
 	handle = indigo_open_config_file(device->name, profile, false, default_properties ? ".default" : ".config");
 	if (handle != NULL) {
-		INDIGO_TRACE(indigo_trace("%d -> // Config file for '%s'", handle->fd, device->name));
+		INDIGO_TRACE(indigo_trace("%d -> // Config file for '%s'", handle->index, device->name));
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));

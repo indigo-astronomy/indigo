@@ -52,12 +52,14 @@ typedef enum {
 } indigo_uni_handle_type;
 
 typedef struct {
+	int index;
 	indigo_uni_handle_type type;
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	int fd;
-#elif defined(INDIGO_WINDOWS)
-	uintptr_t fd;
+	union {
+		int fd;
+#if defined(INDIGO_WINDOWS)
+		SOCKET sock;
 #endif
+	};
 	int last_error;
 } indigo_uni_handle;
 
