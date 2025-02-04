@@ -808,28 +808,44 @@ extern bool indigo_use_strict_locking;
 static inline void *indigo_safe_malloc(size_t size) {
 	void *pointer = malloc(size);
 	assert(pointer != NULL);
-	memset(pointer, 0, size);
-	return pointer;
+	if (pointer != NULL) {
+		memset(pointer, 0, size);
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
 
-static inline void *indigo_safe_malloc_copy(size_t size, void *from) {
-	void *pointer = malloc(size);
+static inline void* indigo_safe_malloc_copy(size_t size, void* from) {
+	void* pointer = malloc(size);
 	assert(pointer != NULL);
-	memcpy(pointer, from, size);
-	return pointer;
+	if (pointer != NULL) {
+		memcpy(pointer, from, size);
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
 
 static inline void *indigo_safe_realloc(void *pointer, size_t size) {
 	pointer = realloc(pointer, size);
 	assert(pointer != NULL);
-	return pointer;
+	if (pointer != NULL) {
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
 
 static inline void *indigo_safe_realloc_copy(void *pointer, size_t size, void *from) {
 	pointer = realloc(pointer, size);
 	assert(pointer != NULL);
-	memcpy(pointer, from, size);
-	return pointer;
+	if (pointer != NULL) {
+		memcpy(pointer, from, size);
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
 
 static inline void indigo_safe_free(void *pointer) {

@@ -30,6 +30,7 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <pthread.h>
+#include <zlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 
@@ -39,7 +40,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-#include <zlib.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <direct.h>
@@ -142,8 +142,8 @@ static int map_str_baudrate(const char *baudrate) {
 
 static int configure_tty_options(struct termios *options, const char *baudrate) {
 	int cbits = CS8, cpar = 0, ipar = IGNPAR, bstop = 0, baudr = 0;
-	char copy[32];
-	strncpy(copy, baudrate, sizeof(copy));
+	char copy[32] = { 0 };
+	strncpy(copy, baudrate, sizeof(copy) - 1);
 	char *mode = strchr(copy, '-');
 	if (mode == NULL) {
 		errno = EINVAL;
@@ -240,8 +240,8 @@ static indigo_uni_handle *open_tty(const char *tty_name, const struct termios *o
 #elif defined(INDIGO_WINDOWS)
 
 static int configure_tty_options(DCB *dcb, const char *baudrate) {
-	char copy[32];
-	strncpy(copy, baudrate, sizeof(copy));
+	char copy[32] = { 0 };
+	strncpy(copy, baudrate, sizeof(copy) - 1);
 	char *mode = strchr(copy, '-');
 	if (mode == NULL) {
 		return -1;
@@ -320,7 +320,7 @@ static indigo_uni_handle *open_tty(const char *tty_name, DCB *dcb) {
 	timeouts.WriteTotalTimeoutConstant = 50;
 	timeouts.WriteTotalTimeoutMultiplier = 10;
 	SetCommTimeouts(com, &timeouts);
-	indigo_uni_handle *handle = (indigo_uni_handle *)malloc(sizeof(indigo_uni_handle));
+	indigo_uni_handle *handle = (indigo_uni_handle *)indigo_safe_malloc(sizeof(indigo_uni_handle));
 	handle->index = handle_index++;
 	handle->type = INDIGO_COM_HANDLE;
 	handle->com = com;
@@ -504,7 +504,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 }
 
 void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout) {
-	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_TCP_HANDLE) {
+	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv)) {
@@ -525,7 +525,7 @@ void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout)
 }
 
 void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout) {
-	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_TCP_HANDLE) {
+	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (setsockopt(handle->fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv) != 0) {
@@ -823,7 +823,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 #pragma message ("TODO: indigo_uni_read_section()")
 #endif
 			}
-			char c;
+			char c = 0;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 			result = read(handle->fd, &c, 1);
 			if (result < 1) {
@@ -924,7 +924,7 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 			} else {
 				handle->last_error = GetLastError();
 			}
-		} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_TCP_HANDLE) {
+		} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 			bytes_written = send(handle->sock, position, remains, 0);
 			if (bytes_written < 0) {
 				handle->last_error = WSAGetLastError();
@@ -1127,7 +1127,7 @@ bool indigo_uni_is_writable(const char *path) {
 }
 
 void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
 	z_stream defstream;
 	defstream.zalloc = Z_NULL;
 	defstream.zfree = Z_NULL;
@@ -1145,13 +1145,9 @@ void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned
 	r = deflate(&defstream, Z_FINISH);
 	r = deflateEnd(&defstream);
 	*out_size = (unsigned)((unsigned char *)defstream.next_out - (unsigned char *)out_buffer);
-#else
-#pragma message ("TODO: indigo_uni_compress()")
-#endif
 }
 
 void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	z_stream infstream;
 	infstream.zalloc = Z_NULL;
 	infstream.zfree = Z_NULL;
@@ -1164,7 +1160,4 @@ void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out
 	r = inflate(&infstream, Z_NO_FLUSH);
 	r = inflateEnd(&infstream);
 	*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
-#else
-#pragma message ("TODO: indigo_uni_decompress()")
-#endif
 }

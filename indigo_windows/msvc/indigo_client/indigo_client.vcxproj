@@ -142,13 +142,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;INDIGOCLIENT_EXPORTS;_WINDOWS;_USRDLL;INDIGO_WINDOWS;WIN32;NDEBUG;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>..\..\externals\pthreads4w\include\;..\..\externals\bonjour-sdk;..\..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\externals\zlib\include\;..\..\externals\pthreads4w\include\;..\..\externals\bonjour-sdk;..\..\..\indigo_libs\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>..\..\externals\pthreads4w\lib\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>..\..\externals\zlib\lib\x64\;..\..\externals\pthreads4w\lib\x64\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>zlib.lib;ws2_32.lib;pthreadVC3.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo_client.def</ModuleDefinitionFile>
     </Link>
   </ItemDefinitionGroup>
@@ -256,6 +256,17 @@
     <ClInclude Include="..\..\externals\pthreads4w\include\sched.h" />
     <ClInclude Include="..\..\externals\pthreads4w\include\semaphore.h" />
     <ClInclude Include="..\..\externals\pthreads4w\include\_ptw32.h" />
+    <ClInclude Include="..\..\externals\zlib\include\crc32.h" />
+    <ClInclude Include="..\..\externals\zlib\include\deflate.h" />
+    <ClInclude Include="..\..\externals\zlib\include\gzguts.h" />
+    <ClInclude Include="..\..\externals\zlib\include\inffast.h" />
+    <ClInclude Include="..\..\externals\zlib\include\inffixed.h" />
+    <ClInclude Include="..\..\externals\zlib\include\inflate.h" />
+    <ClInclude Include="..\..\externals\zlib\include\inftrees.h" />
+    <ClInclude Include="..\..\externals\zlib\include\trees.h" />
+    <ClInclude Include="..\..\externals\zlib\include\zconf.h" />
+    <ClInclude Include="..\..\externals\zlib\include\zlib.h" />
+    <ClInclude Include="..\..\externals\zlib\include\zutil.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
