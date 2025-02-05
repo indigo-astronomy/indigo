@@ -86,7 +86,6 @@ static INDIGO_DL_HANDLE load_library(const char* so_name) {
 		return NULL;
 	}
 	return dl_handle;
-}
 #elif defined(INDIGO_WINDOWS)
 	INDIGO_DL_HANDLE dl_handle = LoadLibraryA(so_name);
 	if (dl_handle == NULL) {
@@ -239,7 +238,7 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 	}
 	driver_entry_point entry_point = get_entry_point(dl_handle, entry_point_name);
 	if (entry_point == NULL) {
-		FreeLibrary(dl_handle);
+		unload_library(dl_handle);
 		return INDIGO_NOT_FOUND;
 	}
 	return add_driver(entry_point, dl_handle, init, driver);

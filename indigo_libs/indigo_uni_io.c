@@ -33,8 +33,8 @@
 #include <zlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#include <libgen.h>
 #include <termios.h>
 #include <netdb.h>
 #include <sys/socket.h>
