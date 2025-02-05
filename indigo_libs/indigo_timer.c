@@ -28,6 +28,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdint.h>
 
 #include <indigo/indigo_timer.h>
 #include <indigo/indigo_driver.h>
@@ -45,6 +46,28 @@
 //	ts->tv_nsec = mts.tv_nsec;
 //}
 //#endif
+
+#if defined(INDIGO_WINDOWS)
+#include <windows.h>
+
+#ifndef CLOCK_REALTIME
+#define CLOCK_REALTIME 0
+#endif
+
+int clock_gettime(int clk_id, struct timespec* tp) {
+	(void)clk_id;
+	FILETIME ft;
+	ULARGE_INTEGER uli;
+	GetSystemTimeAsFileTime(&ft);
+	uli.LowPart = ft.dwLowDateTime;
+	uli.HighPart = ft.dwHighDateTime;
+	const uint64_t EPOCH_DIFF_100NS = 116444736000000000ULL;
+	uint64_t time_100ns = uli.QuadPart - EPOCH_DIFF_100NS;
+	tp->tv_sec = (time_t)(time_100ns / 10000000ULL);
+	tp->tv_nsec = (long)((time_100ns % 10000000ULL) * 100);
+	return 0;
+}
+#endif
 
 #define utc_time(ts) clock_gettime(CLOCK_REALTIME, ts)
 
@@ -65,7 +88,7 @@ static void *timer_func(indigo_timer *timer) {
 				struct timespec end;
 				utc_time(&end);
 				end.tv_sec += (int)timer->delay;
-				end.tv_nsec += NANO * (timer->delay - (int)timer->delay);
+				end.tv_nsec += NANO * (long)(timer->delay - (int)timer->delay);
 				normalize_timespec(&end);
 				while (!timer->canceled) {
 					pthread_mutex_lock(&timer->mutex);

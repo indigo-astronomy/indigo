@@ -37,7 +37,9 @@
 #elif defined(INDIGO_WINDOWS)
 #include <winsock2.h>
 #define INDIGO_PATH_SEPATATOR	'\\'
-#define strcasecmp stricmp
+#define PATH_MAX MAX_PATH
+#define strcasecmp _stricmp
+#define strncasecmp _strnicmp
 #define stat _stat
 #endif
 
@@ -148,7 +150,7 @@ extern long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, lon
 /** Read formatted.
  */
 
-extern int indigo_uni_scanf(indigo_uni_handle *handle, const char *format, ...);
+extern int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...);
 
 /** Write buffer.
  */
@@ -192,6 +194,10 @@ extern bool indigo_uni_is_readable(const char *path);
 /** Check if path is writable.
  */
 extern bool indigo_uni_is_writable(const char *path);
+
+/** Make real path.
+ */
+extern char* indigo_uni_realpath(const char* path, char* resolved_path);
 
 /** Compress with gzip.
  */

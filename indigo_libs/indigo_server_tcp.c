@@ -53,7 +53,7 @@
 
 #define INDIGO_PRINTF(...) if (!indigo_uni_printf(__VA_ARGS__)) goto failure
 
-void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n);
+void sha1(unsigned char h[SHA1_SIZE], const void *_sha1_restrict p, size_t n);
 
 static indigo_uni_handle *server_handle = NULL;
 static bool startup_initiated = true;
@@ -474,8 +474,10 @@ static void default_server_callback(int count) {
 	if (startup_initiated) {
 		startup_initiated = false;
 		if (indigo_use_bonjour) {
+#if defined(INDIGO_LINUX)
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
+#endif
 			DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 			DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
 			INDIGO_LOG(indigo_log("Service registered as %s", indigo_local_service_name));
@@ -497,7 +499,9 @@ indigo_result indigo_server_start(void (*callback)(int)) {
 	shutdown_initiated = false;
 	startup_initiated = true;
 	indigo_is_ephemeral_port = indigo_server_tcp_port == 0;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	signal(SIGPIPE, SIG_IGN);
+#endif
 	indigo_uni_open_tcp_server_socket(&indigo_server_tcp_port, &server_handle, start_worker_thread, NULL, server_callback);
 	server_callback(0);
 	return INDIGO_OK;
@@ -583,7 +587,7 @@ a = t; \
 	r[4] += e;
 }
 
-void sha1(unsigned char h[static SHA1_SIZE], const void *_sha1_restrict p, size_t n) {
+void sha1(unsigned char h[SHA1_SIZE], const void *_sha1_restrict p, size_t n) {
 	size_t i = 0;
 	unsigned w[16], r[5] = {0x67452301, 0xefcdab89, 0x98badcfe, 0x10325476, 0xc3d2e1f0};
 

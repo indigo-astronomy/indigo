@@ -41,7 +41,6 @@
 #include <syslog.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
-#pragma warning(disable:4996)
 #endif
 
 #include <indigo/indigo_bus.h>
@@ -55,6 +54,14 @@
 
 #define isdigit(c) (c >= '0' && c <= '9')
 #define isspace(c) (c == ' ')
+
+#ifdef _MSC_VER
+#pragma warning(disable:4996)
+#pragma warning(disable:6054)
+#pragma warning(disable:6001)
+#pragma warning(disable:6387)
+#pragma warning(disable:6053)
+#endif
 
 static indigo_device *devices[MAX_DEVICES];
 static indigo_client *clients[MAX_CLIENTS];
@@ -1104,7 +1111,9 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	char host[256];
 	int port = 80;
 	char file[256];
-	sscanf(url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file);
+	if (sscanf(url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file) != 3) {
+		return false;
+	}
 	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port);
 	if (handle == NULL) {
 		return false;
@@ -1208,7 +1217,9 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	char host[256];
 	int port = 80;
 	char file[256];
-	sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file);
+	if (sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file) != 3) {
+		return false;
+	}
 	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port);
 	if (handle == NULL) {
 		return false;
@@ -1729,8 +1740,8 @@ bool indigo_async(void *fun(void *data), void *data) {
 }
 
 double indigo_stod(char *string) {
-	char copy[128];
-	strncpy(copy, string, 128);
+	char copy[128] = { 0 };
+	strncpy(copy, string, 127);
 	string = copy;
 	double value = 0;
 	char *separator = strpbrk(string, ":*'\xdf");

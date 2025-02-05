@@ -827,6 +827,10 @@ static inline void* indigo_safe_malloc_copy(size_t size, void* from) {
 	exit(0);
 }
 
+#ifdef _MSC_VER
+#pragma warning(disable: 6308)
+#endif
+
 static inline void *indigo_safe_realloc(void *pointer, size_t size) {
 	pointer = realloc(pointer, size);
 	assert(pointer != NULL);

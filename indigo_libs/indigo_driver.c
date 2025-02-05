@@ -36,20 +36,14 @@
 #include <sys/types.h>
 
 #if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
 #include <IOKit/IOKitLib.h>
 #include <IOKit/serial/IOSerialKeys.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
 #elif defined(INDIGO_LINUX)
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <sys/ioctl.h>
 #include <linux/serial.h>
-#include <libusb-1.0/libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
 #endif
 
 #if defined(INDIGO_MACOS)
@@ -69,6 +63,10 @@
 #include <indigo/indigo_usb_utils.h>
 
 #define MAX_SLAVE_DEVICES 10
+
+#ifdef _MSC_VER
+#pragma warning(disable: 6011)
+#endif
 
 pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -159,7 +157,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 	if (!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
 		char target[PATH_MAX] = {0};
 		char *path = DEVICE_PORT_ITEM->text.value + strlen(USBSERIAL_AUTO_PREFIX);
-		if (realpath(path, target)) {
+		if (indigo_uni_realpath(path, target)) {
 			INDIGO_DEBUG(indigo_debug("%s(): Selected port %s for '%s' resolves to %s", __FUNCTION__, path, device->name, target));
 			for (int i = 0; i < num_serial_info; i++) {
 				if (!strcmp(serial_info[i].path, target)) {
@@ -594,9 +592,9 @@ indigo_result indigo_device_change_property(indigo_device *device, indigo_client
 		assert(DEVICE_CONTEXT->base_device == NULL && (device->master_device == NULL || device->master_device == device));
 		indigo_device *slave_devices[MAX_SLAVE_DEVICES];
 		int slave_count = indigo_query_slave_devices(device, slave_devices, MAX_SLAVE_DEVICES);
-		int saved_count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
+		int saved_count = (int)ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
 		indigo_property_copy_values(ADDITIONAL_INSTANCES_PROPERTY, property, false);
-		int count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
+		int count = (int)ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
 		// remove all devices over 'count' -----------------------------------------
 		for (int i = count; i < MAX_ADDITIONAL_INSTANCES; i++) {
 			// make sure removed device is not connected
@@ -700,9 +698,9 @@ indigo_result indigo_device_detach(indigo_device *device) {
 			if (additional_device != NULL) {
 				if (indigo_detach_device(additional_device) != INDIGO_NOT_FOUND) {
 					if (additional_device->master_device == NULL || additional_device->master_device == additional_device) {
-						free(additional_device->private_data);
+						indigo_safe_free(additional_device->private_data);
 					}
-					free(additional_device);
+					indigo_safe_free(additional_device);
 				}
 				DEVICE_CONTEXT->additional_device_instances[i] = NULL;
 			}
@@ -983,7 +981,7 @@ indigo_result indigo_remove_properties(indigo_device *device) {
 	}
 	static char path[512];
 	if (make_config_file_name(device->name, profile, ".config", path, sizeof(path))) {
-		if (unlink(path) == 0) {
+		if (indigo_uni_remove(path) == 0) {
 			if (DEVICE_CONTEXT) {
   pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 }
@@ -1012,68 +1010,66 @@ void indigo_start_usb_event_handler() {
 	}
 }
 
-/* TO BE REMOVED!
-time_t indigo_utc(time_t *ltime) {
-	struct tm tm_now;
-	time_t now;
-
-	if (ltime != NULL) now = *ltime;
-	else time(&now);
-
-	gmtime_r(&now, &tm_now);
-	return timegm(&tm_now);
-}
-*/
-void indigo_timetoisogm(time_t tstamp, char *isotime, int isotime_len) {
+void indigo_timetoisogm(time_t tstamp, char* isotime, int isotime_len) {
 	struct tm tm_stamp;
-
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	gmtime_r(&tstamp, &tm_stamp);
+#elif defined(INDIGO_WINDOWS)
+	gmtime_s(&tm_stamp, &tstamp);
+#else
+#pragma message ("TODO: indigo_timetoisogm()")
+#endif
 	strftime(isotime, isotime_len, "%Y-%m-%dT%H:%M:%S", &tm_stamp);
 }
 
-time_t indigo_isogmtotime(char *isotime) {
+time_t indigo_isogmtotime(char* isotime) {
 	struct tm tm_ts;
-
 	memset(&tm_ts, 0, sizeof(tm_ts));
 	if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_ts.tm_year, &tm_ts.tm_mon, &tm_ts.tm_mday, &tm_ts.tm_hour, &tm_ts.tm_min, &tm_ts.tm_sec) == 6) {
-		tm_ts.tm_mon -= 1;             /* mon is 0..11 */
-		tm_ts.tm_year -= 1900;         /* year since 1900 */
-		return (timegm(&tm_ts));
+		tm_ts.tm_mon -= 1;
+		tm_ts.tm_year -= 1900;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		return timegm(&tm_ts);
+#elif defined(INDIGO_WINDOWS)
+		return _mkgmtime(&tm_ts);
+#else
+#pragma message ("TODO: indigo_isogmtotime()")
+#endif
 	}
-
 	return -1;
 }
 
-void indigo_timetoisolocal(time_t tstamp, char *isotime, int isotime_len) {
+void indigo_timetoisolocal(time_t tstamp, char* isotime, int isotime_len) {
 	struct tm tm_stamp;
-
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	localtime_r(&tstamp, &tm_stamp);
-	tm_stamp.tm_isdst = 0;
 	tm_stamp.tm_zone = 0;
+#elif defined(INDIGO_WINDOWS)
+	localtime_s(&tm_stamp, &tstamp);
+#else
+#pragma message ("TODO: indigo_timetoisolocal()")
+#endif
+	tm_stamp.tm_isdst = 0;
 	snprintf(isotime, isotime_len, "%04d-%02d-%02dT%02d:%02d:%02d", tm_stamp.tm_year + 1900, tm_stamp.tm_mon + 1, tm_stamp.tm_mday, tm_stamp.tm_hour, tm_stamp.tm_min, tm_stamp.tm_sec);
 }
 
-time_t indigo_isolocaltotime(char *isotime) {
+time_t indigo_isolocaltotime(char* isotime) {
 	struct tm tm_ts;
-
 	memset(&tm_ts, 0, sizeof(tm_ts));
 	if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_ts.tm_year, &tm_ts.tm_mon, &tm_ts.tm_mday, &tm_ts.tm_hour, &tm_ts.tm_min, &tm_ts.tm_sec) == 6) {
-		tm_ts.tm_mon -= 1;             /* mon is 0..11 */
-		tm_ts.tm_year -= 1900;         /* year since 1900 */
+		tm_ts.tm_mon -= 1;
+		tm_ts.tm_year -= 1900;
 		tm_ts.tm_isdst = -1;
 		return (mktime(&tm_ts));
 	}
-
 	return -1;
 }
 
 bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request) {
 	indigo_item *connected_item = NULL;
 	indigo_item *disconnected_item = NULL;
-
 	if (CONNECTION_PROPERTY->state == INDIGO_BUSY_STATE)
 		return true;
-
 	for (int i = 0; i < request->count; i++) {
 		indigo_item *item = request->items + i;
 		if (!strcmp(item->name, CONNECTION_CONNECTED_ITEM_NAME)) {
@@ -1082,7 +1078,6 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 			disconnected_item = item;
 		}
 	}
-
 	// if CONNECTED and DISCONNECTED are set
 	if (connected_item != NULL && disconnected_item != NULL) {
 		// ON & ON and OFF & OFF is not valid
@@ -1094,7 +1089,6 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 		if (connected_item->sw.value == CONNECTION_CONNECTED_ITEM->sw.value)
 			return true;
 	}
-
 	// if only CONNECTED is set
 	if (connected_item != NULL && disconnected_item == NULL) {
 		// CURRENT == REQUSTED is not a state change.
@@ -1107,7 +1101,6 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 		if (connected_item->sw.value == false)
 			return true;
 	}
-
 	// if only DISCONNECTED is set - analogous to CONNECTED
 	if (connected_item == NULL && disconnected_item != NULL) {
 		if (CONNECTION_DISCONNECTED_ITEM->sw.value == disconnected_item->sw.value)
@@ -1115,19 +1108,18 @@ bool indigo_ignore_connection_change(indigo_device *device, indigo_property *req
 		if (disconnected_item->sw.value == false)
 			return true;
 	}
-
 	/* reqquest is valid */
 	return false;
 }
 
-void indigo_lock_master_device(indigo_device *device) {
+void indigo_lock_master_device(indigo_device* device) {
 	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL) {
-  pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
-}
+		pthread_mutex_lock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	}
 }
 
-void indigo_unlock_master_device(indigo_device *device) {
+void indigo_unlock_master_device(indigo_device* device) {
 	if (device != NULL && device->master_device != NULL && device->master_device->device_context != NULL) {
-  pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
-}
+		pthread_mutex_unlock(&MASTER_DEVICE_CONTEXT->multi_device_mutex);
+	}
 }

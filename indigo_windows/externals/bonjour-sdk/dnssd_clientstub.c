@@ -61,6 +61,8 @@
 // Disable warning: Use inet_pton() or InetPton() instead or define _WINSOCK_DEPRECATED_NO_WARNINGS 
 		#pragma warning(disable:4996)
 
+		#pragma warning(disable:4133)
+
 extern BOOL IsSystemServiceDisabled();
 
     #define sleep(X) Sleep((X) * 1000)

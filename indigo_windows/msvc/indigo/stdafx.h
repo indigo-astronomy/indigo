@@ -1,4 +1,4 @@
-// Copyright (c) 2018 CloudMakers, s. r. o.
+// Copyright (c) 2016 CloudMakers, s. r. o.
 // All rights reserved.
 //
 // You can use this software under the terms of 'INDIGO Astronomy
@@ -16,34 +16,13 @@
 // NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 // SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// version history
-// 2.0 by Peter Polakovic <peter.polakovic@cloudmakers.eu>
+#pragma once
 
-/** INDIGO USB Utilities
- \file indigo_usb_utils.h
- */
+#include "targetver.h"
 
-#ifndef indigo_usb_utils_h
-#define indigo_usb_utils_h
-
-#include <stdio.h>
-
-#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD) || defined(INDIGO_WINDOWS)
-#include <libusb.h>
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
 #endif
+#include <windows.h>
 
-#include <indigo/indigo_bus.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-extern indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
-
-#ifdef __cplusplus
-}
-#endif
-
-#endif /* indigo_usb_utils_h */
+// reference additional headers your program requires here

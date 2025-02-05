@@ -341,7 +341,7 @@ static indigo_uni_handle *open_tty(const char *tty_name, DCB *dcb) {
 }
 #endif
 
-indigo_uni_handle *indigo_open_uni_serial_with_config(const char *serial, const char *baudconfig) {
+indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	struct termios to;
 	if (configure_tty_options(&to, baudconfig) != 0) {
@@ -364,11 +364,11 @@ indigo_uni_handle *indigo_open_uni_serial_with_config(const char *serial, const 
 indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *serial, int speed) {
 	char baud_str[32];
 	snprintf(baud_str, sizeof(baud_str), "%d-8N1", speed);
-	return indigo_open_uni_serial_with_config(serial, baud_str);
+	return indigo_uni_open_serial_with_config(serial, baud_str);
 }
 
 indigo_uni_handle *indigo_uni_open_serial(const char *serial) {
-	return indigo_open_uni_serial_with_config(serial, "9600-8N1");
+	return indigo_uni_open_serial_with_config(serial, "9600-8N1");
 }
 
 indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type) {
@@ -1216,8 +1216,18 @@ bool indigo_uni_is_writable(const char *path) {
 	return false;
 }
 
-void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
 
+char* indigo_uni_realpath(const char* path, char *resolved_path) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	return realpath(path, resolved_path);
+#elif defined(INDIGO_WINDOWS)
+	return _fullpath(resolved_path, path, MAX_PATH);
+#else
+#pragma message ("TODO: indigo_uni_realpath()")
+#endif
+}
+
+void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size) {
 	z_stream defstream;
 	defstream.zalloc = Z_NULL;
 	defstream.zfree = Z_NULL;
@@ -1251,3 +1261,4 @@ void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out
 	r = inflateEnd(&infstream);
 	*out_size = (unsigned)((unsigned char *)infstream.next_out - (unsigned char *)out_buffer);
 }
+
