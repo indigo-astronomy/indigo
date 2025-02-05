@@ -69,6 +69,19 @@ indigo_uni_handle *indigo_uni_create_file_handle(int fd) {
 	return handle;
 }
 
+#if defined(INDIGO_WINDOWS)
+char* last_wsa_error() {
+	static char buffer[128] = "";
+	char* msg = NULL;
+	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, WSAGetLastError(), 0, (LPWSTR)&msg, 0, NULL);
+	if (msg) {
+		strncpy(buffer, msg, sizeof(buffer));
+		LocalFree(msg);
+	}
+	return buffer;
+}
+#endif
+
 char *indigo_uni_strerror(indigo_uni_handle *handle) {
 	static char buffer[128] = "";
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -496,6 +509,83 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 		worker_data->data = data;
 		if (!indigo_async((void *(*)(void *))worker, worker_data)) {
 			indigo_error("Can't create worker thread for connection (%s)", strerror(errno));
+		}
+	}
+#elif defined(INDIGO_WINDOWS)
+	SOCKET server_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (server_socket == INVALID_SOCKET) {
+		indigo_error("Can't create server socket (%s)", last_wsa_error());
+		return;
+	}
+	int reuse = 1;
+	if (setsockopt(server_socket, SOL_SOCKET, SO_REUSEADDR,
+		(const char*)&reuse, sizeof(reuse)) == SOCKET_ERROR) {
+		indigo_error("Can't setsockopt for server socket (%d)",  last_wsa_error());
+		closesocket(server_socket);
+		return;
+	}
+	struct sockaddr_in server_address;
+	server_address.sin_family = AF_INET;
+	server_address.sin_port = htons((unsigned short)*port);
+	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
+	int addrlen = sizeof(server_address);
+	if (bind(server_socket, (struct sockaddr*)&server_address, addrlen) == SOCKET_ERROR) {
+		indigo_error("Can't bind server socket (%d)",  last_wsa_error());
+		closesocket(server_socket);
+		return;
+	}
+	if (getsockname(server_socket, (struct sockaddr*)&server_address, &addrlen) == SOCKET_ERROR) {
+		indigo_error("Can't get socket name (%d)",  last_wsa_error());
+		closesocket(server_socket);
+		return;
+	}
+	*port = ntohs(server_address.sin_port);
+	if (listen(server_socket, 64) == SOCKET_ERROR) {
+		indigo_error("Can't listen on server socket (%d)",  last_wsa_error());
+		closesocket(server_socket);
+		return;
+	}
+	*server_handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+	(*server_handle)->index = handle_index++;
+	(*server_handle)->type = INDIGO_TCP_HANDLE;
+	(*server_handle)->sock = server_socket;
+	INDIGO_LOG(indigo_log("Server started on TCP port %d", *port));
+	if (callback) {
+		callback(0);
+	}
+	while (1) {
+		struct sockaddr_in client_addr;
+		int client_addr_len = sizeof(client_addr);
+		SOCKET client_socket = accept(server_socket, (struct sockaddr*)&client_addr, &client_addr_len);
+		if (client_socket == INVALID_SOCKET) {
+			if (*server_handle == NULL) {
+				break;
+			}
+			indigo_error("Can't accept connection (%d)",  last_wsa_error());
+			continue;
+		}
+		DWORD recv_timeout = 0;
+		if (setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO,
+			(const char*)&recv_timeout, sizeof(recv_timeout)) == SOCKET_ERROR) {
+			indigo_error("Can't set recv() timeout (%d)",  last_wsa_error());
+			closesocket(client_socket);
+			break;
+		}
+		DWORD send_timeout = 5000;
+		if (setsockopt(client_socket, SOL_SOCKET, SO_SNDTIMEO,
+			(const char*)&send_timeout, sizeof(send_timeout)) == SOCKET_ERROR) {
+			indigo_error("Can't set send() timeout (%d)",  last_wsa_error());
+			closesocket(client_socket);
+			break;
+		}
+		indigo_uni_worker_data* worker_data = indigo_safe_malloc(sizeof(indigo_uni_worker_data));
+		worker_data->handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
+		worker_data->handle->index = handle_index++;
+		worker_data->handle->type = INDIGO_TCP_HANDLE;
+		worker_data->handle->fd = (int)client_socket;
+		worker_data->data = data;
+		if (!indigo_async((void* (*)(void*))worker, worker_data)) {
+			indigo_error("Can't create worker thread for connection (%d)",  last_wsa_error());
 		}
 	}
 #else
