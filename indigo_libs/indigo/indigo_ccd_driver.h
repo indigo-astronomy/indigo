@@ -44,10 +44,10 @@ typedef struct {
 } ccd_jpeg_stretch_params_t;
 
 static const ccd_jpeg_stretch_params_t ccd_jpeg_stretch_params_lut[] ={
-	{0.05, -2.8},
-	{0.15, -2.8},
-	{0.25, -2.8},
-	{0.40, -2.5}
+	{ 0.05f, -2.8f },
+	{ 0.15f, -2.8f },
+	{ 0.25f, -2.8f },
+	{ 0.40f, -2.5f }
 };
 
 #ifdef __cplusplus

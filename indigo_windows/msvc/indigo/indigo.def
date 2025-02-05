@@ -6,7 +6,16 @@ EXPORTS
     base64_decode_fast
     base64_decode_fast_nl
 ; indigo_bus
-    indigo_get_version
+		indigo_get_version
+    indigo_log_base
+    indigo_log_message
+    indigo_trace
+    indigo_debug
+    indigo_trace_bus
+    indigo_error
+    indigo_log
+    indigo_trace_property
+    indigo_start
     indigo_set_log_level
     indigo_get_log_level
     indigo_attach_device
@@ -20,15 +29,81 @@ EXPORTS
     indigo_enumerate_properties
     indigo_change_property
     indigo_enable_blob
-    indigo_start
     indigo_stop
+    indigo_init_text_property
+    indigo_init_number_property
+    indigo_init_switch_property
+    indigo_init_light_property
+    indigo_init_blob_property_p
+    indigo_init_blob_property
+    indigo_resize_property
+    indigo_copy_property
+    indigo_clear_property
+    indigo_alloc_blob_buffer
+    indigo_release_property
+    indigo_validate_blob
+    indigo_find_blob
+    indigo_init_text_item
+    indigo_init_text_item_raw
+    indigo_init_number_item
+    indigo_init_switch_item
+    indigo_init_light_item
+    indigo_init_blob_item
+    indigo_download_blob
+    indigo_populate_http_blob_item
+    indigo_upload_http_blob_item
+    indigo_get_property_hint
+    indigo_get_item_hint
+    indigo_property_match
+    indigo_property_match_defined
+    indigo_property_match_changeable
+    indigo_switch_match
+    indigo_set_switch
+    indigo_get_item
+    indigo_get_switch
+    indigo_property_copy_values
+    indigo_property_copy_targets
+    indigo_property_sort_items
+    indigo_change_text_property
+    indigo_change_text_property_with_token
+    indigo_change_text_property_1
+    indigo_change_text_property_1_raw
+    indigo_change_text_property_1_with_token
+    indigo_change_text_property_1_with_token_raw
+    indigo_change_number_property
+    indigo_change_number_property_with_token
+    indigo_change_number_property_1
+    indigo_change_number_property_1_with_token
+    indigo_change_switch_property
+    indigo_change_switch_property_with_token
+    indigo_change_switch_property_1
+    indigo_change_switch_property_1_with_token
+    indigo_change_blob_property
+    indigo_change_blob_property_with_token
+    indigo_change_blob_property_1
+    indigo_change_blob_property_1_with_token
+    indigo_device_connect
+    indigo_device_disconnect
+    indigo_query_slave_devices
+    indigo_trim_local_service
+    indigo_handle_property_async
+    indigo_async
+    indigo_stod
+    indigo_dtos
+    indigo_usleep
+    indigo_atod
+    indigo_dtoa
+    indigo_get_text_item_value
+    indigo_set_text_item_value
+    indigo_device_name_exists
+    indigo_make_name_unique
 ; indigo_client
 		indigo_use_blob_urls
     indigo_client_name
-;    indigo_add_driver
-;    indigo_driver_initialized
-;    indigo_remove_driver
-;    indigo_load_driver
+    indigo_add_driver
+    indigo_driver_initialized
+    indigo_remove_driver
+    indigo_load_driver
 ;    indigo_start_subprocess
 ;    indigo_kill_subprocess
     indigo_service_name
