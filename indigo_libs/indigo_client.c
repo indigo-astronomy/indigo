@@ -52,6 +52,7 @@
 #pragma warning(disable:4996)
 #endif
 
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_client_xml.h>
 #include <indigo/indigo_client.h>
 
@@ -63,12 +64,71 @@ static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 #define SO_NAME ".dylib"
 #elif defined(INDIGO_LINUX)
 #define SO_NAME ".so"
+#elif defined(INDIGO_WINDOWS)
+#define SO_NAME ".dll"
 #endif
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-
 static int used_driver_slots = 0;
-static int used_subprocess_slots = 0;
+
+indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+#define INDIGO_DL_HANDLE	void *
+#elif defined(INDIGO_WINDOWS)
+#define INDIGO_DL_HANDLE	HMODULE
+#endif
+
+static INDIGO_DL_HANDLE load_library(const char* so_name) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	INDIGO_DL_HANDLE dl_handle = dlopen(so_name, RTLD_LAZY);
+	if (dl_handle == NULL) {
+		indigo_error("Driver %s can't be loaded (%s)", so_name, dlerror());
+		return NULL;
+	}
+	return dl_handle;
+}
+#elif defined(INDIGO_WINDOWS)
+	INDIGO_DL_HANDLE dl_handle = LoadLibraryA(so_name);
+	if (dl_handle == NULL) {
+		indigo_error("Driver %s can't be loaded (%s)", so_name, indigo_last_windows_error());
+		return NULL;
+	}
+	return dl_handle;
+#else
+#pragma message ("TODO: load_library()")
+#endif
+}
+
+static driver_entry_point get_entry_point(INDIGO_DL_HANDLE dl_handle, const char* entry_point_name) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	driver_entry_point entry_point = dlsym(dl_handle, entry_point_name);
+	if (entry_point == NULL) {
+		INDIGO_ERROR(indigo_error("Can't load %s() (%s)", entry_point_name, dlerror()));
+		dlclose(dl_handle);
+		return NULL;
+	}
+	return entry_point;
+#elif defined(INDIGO_WINDOWS)
+	driver_entry_point entry_point = (driver_entry_point)GetProcAddress(dl_handle, entry_point_name);;
+	if (entry_point == NULL) {
+		INDIGO_ERROR(indigo_error("Can't load %s() (%s)", entry_point_name, indigo_last_windows_error()));
+		return NULL;
+	}
+	return entry_point;
+#else
+#pragma message ("TODO: get_entry_point()")
+#endif
+}
+
+void unload_library(INDIGO_DL_HANDLE dl_handle) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	dlclose(dl_handle);
+#elif defined(INDIGO_WINDOWS)
+	FreeLibrary(dl_handle);
+#else
+#pragma message ("TODO: get_entry_point()")
+#endif
+}
 
 bool indigo_driver_initialized(char *driver_name) {
 	assert(driver_name != NULL);
@@ -90,7 +150,7 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 		if (indigo_available_drivers[dc].driver == entry_point) {
 			INDIGO_LOG(indigo_log("Driver %s already loaded", indigo_available_drivers[dc].name));
 			if (dl_handle != NULL) {
-				dlclose(dl_handle);
+				unload_library(dl_handle);
 			}
 			if (driver != NULL)
 				*driver = &indigo_available_drivers[dc];
@@ -100,16 +160,14 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 			empty_slot = dc; /* if there is a gap - fill it */
 		}
 	}
-	
 	if (empty_slot > INDIGO_MAX_DRIVERS) {
 		if (dl_handle != NULL) {
-			dlclose(dl_handle);
+			unload_library(dl_handle);
 		}
 		pthread_mutex_unlock(&mutex);
 		indigo_error("[%s:%d] Max driver count reached", __FUNCTION__, __LINE__);
 		return INDIGO_TOO_MANY_ELEMENTS; /* no emty slot found, list is full */
 	}
-	
 	indigo_driver_info info;
 	entry_point(INDIGO_DRIVER_INFO, &info);
 	indigo_copy_name(indigo_available_drivers[empty_slot].description, info.description); //TO BE CHANGED - DRIVER SHOULD REPORT NAME!!!
@@ -117,15 +175,12 @@ static indigo_result add_driver(driver_entry_point entry_point, void *dl_handle,
 	indigo_available_drivers[empty_slot].driver = entry_point;
 	indigo_available_drivers[empty_slot].dl_handle = dl_handle;
 	INDIGO_LOG(indigo_log("Driver %s %d.%d.%d.%d loaded", info.name, INDIGO_VERSION_MAJOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MINOR(INDIGO_VERSION_CURRENT), INDIGO_VERSION_MAJOR(info.version), INDIGO_VERSION_MINOR(info.version)));
-	
 	if (empty_slot == used_driver_slots) {
 		used_driver_slots++;
 	} /* if we are not filling a gap - increase used_slots */
 	pthread_mutex_unlock(&mutex);
-	
 	if (driver != NULL)
 		*driver = &indigo_available_drivers[empty_slot];
-	
 	if (init) {
 		int result = entry_point(INDIGO_DRIVER_INIT, NULL);
 		indigo_available_drivers[empty_slot].initialized = result == INDIGO_OK;
@@ -151,7 +206,7 @@ indigo_result indigo_remove_driver(indigo_driver_entry *driver) {
 		return result;
 	}
 	if (driver->dl_handle) {
-		dlclose(driver->dl_handle);
+		unload_library(driver->dl_handle);
 	}
 	INDIGO_LOG(indigo_log("Driver %s unloaded", driver->name));
 	driver->description[0] = '\0';
@@ -170,36 +225,29 @@ indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entr
 	char driver_name[INDIGO_NAME_SIZE];
 	char so_name[INDIGO_NAME_SIZE];
 	char *entry_point_name, *cp;
-	void *dl_handle;
-	driver_entry_point entry_point;
-
 	strncpy(driver_name, name, sizeof(driver_name));
 	strncpy(so_name, name, sizeof(so_name));
-
-	entry_point_name = basename(driver_name);
+	entry_point_name = indigo_uni_basename(driver_name);
 	cp = strchr(entry_point_name, '.');
 	if (cp)
 		*cp = '\0';
 	else
 		strncat(so_name, SO_NAME, INDIGO_NAME_SIZE);
-
-	dl_handle = dlopen(so_name, RTLD_LAZY);
-	if (!dl_handle) {
-		const char* dlsym_error = dlerror();
-		INDIGO_ERROR(indigo_error("Driver %s can't be loaded (%s)", entry_point_name, dlsym_error));
+	INDIGO_DL_HANDLE dl_handle = load_library(so_name);
+	if (dl_handle == NULL) {
 		return INDIGO_FAILED;
 	}
-	entry_point = dlsym(dl_handle, entry_point_name);
-	const char* dlsym_error = dlerror();
-	if (dlsym_error) {
-		INDIGO_ERROR(indigo_error("Can't load %s() (%s)", entry_point_name, dlsym_error));
-		dlclose(dl_handle);
+	driver_entry_point entry_point = get_entry_point(dl_handle, entry_point_name);
+	if (entry_point == NULL) {
+		FreeLibrary(dl_handle);
 		return INDIGO_NOT_FOUND;
 	}
 	return add_driver(entry_point, dl_handle, init, driver);
 }
 
-indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
+static int used_subprocess_slots = 0;
 indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
 
 static void *subprocess_thread(indigo_subprocess_entry *subprocess) {

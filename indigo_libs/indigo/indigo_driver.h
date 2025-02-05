@@ -259,6 +259,7 @@ typedef struct {
 
 /** Device driver entry point prototype
  */
+
 typedef indigo_result (*driver_entry_point)(indigo_driver_action, indigo_driver_info*);
 
 /** Device context structure.

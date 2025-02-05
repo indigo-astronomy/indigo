@@ -30,12 +30,7 @@
 #include <stdbool.h>
 
 #include <indigo/indigo_bus.h>
-
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <indigo/indigo_driver.h>
-#else
-#include <indigo/indigo_names.h>
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -53,7 +48,6 @@ extern bool indigo_use_blob_urls;
 
 extern char *indigo_client_name;
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #define INDIGO_MAX_DRIVERS    256
 
 /** Driver entry type.
@@ -62,9 +56,36 @@ typedef struct {
 	char description[INDIGO_NAME_SIZE];     ///< driver description
 	char name[INDIGO_NAME_SIZE];            ///< driver name (entry point name)
 	driver_entry_point driver;              ///< driver entry point
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	void *dl_handle;                        ///< dynamic library handle (NULL for statically linked driver)
+#elif defined(INDIGO_WINDOWS)
+	HMODULE dl_handle;                        ///< dynamic library handle (NULL for statically linked driver)
+#endif
 	bool initialized;												///< driver is initialized
 } indigo_driver_entry;
+
+/** Array of all available drivers (statically & dynamically linked).
+ */
+extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
+
+/** Add statically linked driver.
+ */
+extern indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry** driver);
+
+/** Check if the driver is initialized, This function is not protected by mutex so it must be called in synchronized sections.
+		Its intended useage is in driver entrypoints.
+ */
+extern bool indigo_driver_initialized(char* driver_name);
+
+/** Remove statically linked driver or remove & unload dynamically linked driver
+ */
+extern indigo_result indigo_remove_driver(indigo_driver_entry* driver);
+
+/** Load & add dynamically linked driver.
+ */
+extern indigo_result indigo_load_driver(const char* name, bool init, indigo_driver_entry** driver);
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 /** Remote executable entry type.
  */
@@ -77,30 +98,9 @@ typedef struct {
 	char last_error[256];										///< last error reported within client thread
 } indigo_subprocess_entry;
 
-/** Array of all available drivers (statically & dynamically linked).
- */
-extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
-
 /** Array of all available subprocesses.
  */
 extern indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
-
-/** Add statically linked driver.
- */
-extern indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry **driver);
-
-/** Check if the driver is initialized, This function is not protected by mutex so it must be called in synchronized sections.
-    Its intended useage is in driver entrypoints.
- */
-extern bool indigo_driver_initialized(char *driver_name);
-
-/** Remove statically linked driver or remove & unload dynamically linked driver
- */
-extern indigo_result indigo_remove_driver(indigo_driver_entry *driver);
-
-/** Load & add dynamically linked driver.
- */
-extern indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver);
 
 /** Start thread for subprocess.
  */

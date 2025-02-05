@@ -79,6 +79,12 @@ extern indigo_uni_handle indigo_stderr_handle;
 
 extern indigo_uni_handle *indigo_uni_create_file_handle(int fd);
 
+#if defined(INDIGO_WINDOWS)
+char* indigo_last_wsa_error();
+char* indigo_last_windows_error();
+#endif
+
+
 /** Decode last error to string.
  */
 extern char *indigo_uni_strerror(indigo_uni_handle *handle);
@@ -199,6 +205,10 @@ extern bool indigo_uni_is_writable(const char *path);
  */
 extern char* indigo_uni_realpath(const char* path, char* resolved_path);
 
+/** Make base name.
+ */
+extern char* indigo_uni_basename(const char* path);
+
 /** Compress with gzip.
  */
 
@@ -208,6 +218,7 @@ extern void indigo_uni_compress(char *name, char *in_buffer, unsigned in_size, u
  */
 
 extern void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
+
 
 #ifdef __cplusplus
 }
