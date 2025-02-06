@@ -249,17 +249,16 @@ static void sync_process(indigo_device *device) {
 }
 
 static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
-	indigo_uni_handle *handle = data->handle;
 	indigo_device *device = data->data;
 	char buffer_in[128];
 	char buffer_out[128];
 	long result = 1;
-	indigo_uni_set_socket_read_timeout(handle, 500000);
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", handle->index);
+	indigo_uni_set_socket_read_timeout(data->handle, 500000);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", data->handle->index);
 	while (true) {
 		*buffer_in = 0;
 		*buffer_out = 0;
-		result = indigo_uni_read_available(handle, buffer_in, 1);
+		result = indigo_uni_read_available(data->handle, buffer_in, 1);
 		if (result <= 0) {
 			break;
 		}
@@ -270,7 +269,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 		} else if (*buffer_in == ':') {
 			int i = 0;
 			while (i < sizeof(buffer_in)) {
-				result = indigo_uni_read_available(handle, buffer_in + i, 1);
+				result = indigo_uni_read_available(data->handle, buffer_in + i, 1);
 				if (result <= 0) {
 					break;
 				}
@@ -398,15 +397,15 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 				strcpy(buffer_out, "1");
 			}
 			if (*buffer_out) {
-				indigo_uni_write(handle, buffer_out, strlen(buffer_out));
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", handle->index, buffer_in, buffer_out);
+				indigo_uni_write(data->handle, buffer_out, strlen(buffer_out));
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", data->handle->index, buffer_in, buffer_out);
 			} else {
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", handle->index, buffer_in);
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", data->handle->index, buffer_in);
 			}
 		}
 	}
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", handle->index);
-	indigo_uni_close(&handle);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", data->handle->index);
+	indigo_uni_close(&data->handle);
 	free(data);
 }
 

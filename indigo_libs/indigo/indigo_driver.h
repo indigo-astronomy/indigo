@@ -402,23 +402,33 @@ time_t indigo_utc(time_t *ltime);
 
 /** Convert time_t to UTC ISO 8601 string.
  */
-void indigo_timetoisogm(time_t tstamp, char *isotime, int isotime_len);
+INDIGO_EXTERN void indigo_timetoisogm(time_t tstamp, char *isotime, int isotime_len);
 
 /** Convert UTC ISO 8601 time string to time_t.
  */
-time_t indigo_isogmtotime(char *isotime);
+INDIGO_EXTERN time_t indigo_isogmtotime(char *isotime);
 
 /** Convert time_t to local time ISO 8601 string.
  */
-void indigo_timetoisolocal(time_t tstamp, char *isotime, int isotime_len);
+INDIGO_EXTERN void indigo_timetoisolocal(time_t tstamp, char *isotime, int isotime_len);
 
 /** Convert local time ISO 8601 string to time_t.
  */
-time_t indigo_isolocaltotime(char *isotime);
+INDIGO_EXTERN time_t indigo_isolocaltotime(char *isotime);
+
+/** Get host UTC offset
+ */
+
+INDIGO_EXTERN int indigo_get_utc_offset(void);
+
+/** Get host DST state
+ */
+
+INDIGO_EXTERN int indigo_get_dst_state(void);
 
 /** Enumerate serial ports.
  */
-void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
+INDIGO_EXTERN void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);
 
 /** Check for double connect/disconnect request.
  */

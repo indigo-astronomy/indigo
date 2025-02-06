@@ -217,7 +217,7 @@ static void load_configuration(indigo_device *device) {
 				indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 				strcpy(client->name, CONFIG_READER);
 				indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-				context->input = handle;
+				context->input = &handle;
 				client->client_context = context;
 				client->version = INDIGO_VERSION_CURRENT;
 				DEVICE_PRIVATE_DATA->restore_count = 0;

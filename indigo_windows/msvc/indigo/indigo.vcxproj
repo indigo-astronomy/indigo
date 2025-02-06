@@ -271,20 +271,33 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_agent.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_align.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_ao_driver.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_aux_driver.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_base64.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_base64_luts.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_bus.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_ccd_driver.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_client.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_client_xml.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_config.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_dome_azimuth.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_dome_driver.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_driver.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_driver_json.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_focuser_driver.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_gps_driver.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_guider_driver.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_json.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_mount_driver.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_rotator_driver.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_service_discovery.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_timer.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_uni_io.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_usbserial_utils.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_version.h" />
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_wheel_driver.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_xml.h" />
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_token.h" />
     <ClInclude Include="..\..\externals\bonjour-sdk\CommonServices.h" />
@@ -307,38 +320,40 @@
     <ClInclude Include="..\..\externals\zlib\include\zconf.h" />
     <ClInclude Include="..\..\externals\zlib\include\zlib.h" />
     <ClInclude Include="..\..\externals\zlib\include\zutil.h" />
-    <ClInclude Include="stdafx.h" />
-    <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_agent.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_align.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_ao_driver.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_aux_driver.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_base64.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_bus.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_client.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_client_xml.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_dome_azimuth.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_dome_driver.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_driver.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_driver_json.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_driver_xml.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_focuser_driver.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_gps_driver.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_guider_driver.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_json.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_mount_driver.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_rotator_driver.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_server_tcp.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_service_discovery.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_timer.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_uni_io.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_usbserial_utils.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_version.c" />
+    <ClCompile Include="..\..\..\indigo_libs\indigo_wheel_driver.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_xml.c" />
     <ClCompile Include="..\..\..\indigo_libs\indigo_token.c" />
     <ClCompile Include="dllmain.cpp" />
     <ClCompile Include="..\..\externals\bonjour-sdk\dnssd_clientlib.c" />
     <ClCompile Include="..\..\externals\bonjour-sdk\dnssd_clientstub.c" />
     <ClCompile Include="..\..\externals\bonjour-sdk\dnssd_ipc.c" />
-    <ClCompile Include="stdafx.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">Create</PrecompiledHeader>
-    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

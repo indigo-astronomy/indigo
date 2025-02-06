@@ -86,9 +86,9 @@ typedef struct {
 	void *data;
 } indigo_uni_worker_data;
 
-INDIGO_EXTERN indigo_uni_handle indigo_stdin_handle;
-INDIGO_EXTERN indigo_uni_handle indigo_stdout_handle;
-INDIGO_EXTERN indigo_uni_handle indigo_stderr_handle;
+INDIGO_EXTERN indigo_uni_handle *indigo_stdin_handle;
+INDIGO_EXTERN indigo_uni_handle *indigo_stdout_handle;
+INDIGO_EXTERN indigo_uni_handle *indigo_stderr_handle;
 
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file_handle(int fd);
 

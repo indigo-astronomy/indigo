@@ -47,7 +47,7 @@ indigo_result indigo_wheel_attach(indigo_device *device, const char* driver_name
 				return INDIGO_FAILED;
 			indigo_init_number_item(WHEEL_SLOT_ITEM, WHEEL_SLOT_ITEM_NAME, "Slot number", 1, 16, 1, 0);
 			// -------------------------------------------------------------------------------- WHEEL_SLOT_NAME
-			WHEEL_SLOT_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, WHEEL_SLOT_NAME_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot names", INDIGO_OK_STATE, INDIGO_RW_PERM, WHEEL_SLOT_ITEM->number.max);
+			WHEEL_SLOT_NAME_PROPERTY = indigo_init_text_property(NULL, device->name, WHEEL_SLOT_NAME_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot names", INDIGO_OK_STATE, INDIGO_RW_PERM, (int)WHEEL_SLOT_ITEM->number.max);
 			if (WHEEL_SLOT_NAME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			for (int i = 0; i < WHEEL_SLOT_NAME_PROPERTY->count; i++) {
@@ -58,7 +58,7 @@ indigo_result indigo_wheel_attach(indigo_device *device, const char* driver_name
 				indigo_init_text_item(WHEEL_SLOT_NAME_1_ITEM + i, name, label, "Filter #%d", i + 1);
 			}
 			// -------------------------------------------------------------------------------- WHEEL_SLOT_OFFSET
-			WHEEL_SLOT_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot focus offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, WHEEL_SLOT_ITEM->number.max);
+			WHEEL_SLOT_OFFSET_PROPERTY = indigo_init_number_property(NULL, device->name, WHEEL_SLOT_OFFSET_PROPERTY_NAME, WHEEL_MAIN_GROUP, "Slot focus offsets", INDIGO_OK_STATE, INDIGO_RW_PERM, (int)WHEEL_SLOT_ITEM->number.max);
 			if (WHEEL_SLOT_NAME_PROPERTY == NULL)
 				return INDIGO_FAILED;
 			for (int i = 0; i < WHEEL_SLOT_NAME_PROPERTY->count; i++) {

@@ -35,6 +35,8 @@
 #define INDIGO_EXTERN extern
 #endif
 
+#include <indigo/indigo_config.h>
+
 #ifndef indigo_dome_azimuth_h
  #define indigo_dome_azimuth_h
 

@@ -1238,26 +1238,3 @@ void indigo_update_coordinates(indigo_device *device, const char *message) {
 	indigo_update_property(device, MOUNT_LST_TIME_PROPERTY, NULL);
 	indigo_update_property(device, MOUNT_EQUATORIAL_COORDINATES_PROPERTY, message);
 }
-
-int indigo_get_utc_offset(void) {
-	static int offset = 25;
-	if (offset == 25) {
-		time_t secs = time(NULL);
-		struct tm tm;
-		localtime_r(&secs, &tm);
-		offset = (int)(-timezone / 3600) + tm.tm_isdst;
-	}
-	return offset;
-}
-
-
-int indigo_get_dst_state(void) {
-	static int dst = -1;
-	if (dst == -1) {
-		time_t secs = time(NULL);
-		struct tm tm;
-		localtime_r(&secs, &tm);
-		dst = tm.tm_isdst;
-	}
-	return dst;
-}

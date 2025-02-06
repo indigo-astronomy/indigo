@@ -604,16 +604,6 @@ INDIGO_EXTERN void indigo_mount_save_alignment_points(indigo_device *device);
 
 INDIGO_EXTERN void indigo_mount_update_alignment_points(indigo_device *device);
 
-/** Get host UTC offset
- */
-
-INDIGO_EXTERN int indigo_get_utc_offset(void);
-
-/** Get host DST state
- */
-
-INDIGO_EXTERN int indigo_get_dst_state(void);
-
 #ifdef __cplusplus
 }
 #endif

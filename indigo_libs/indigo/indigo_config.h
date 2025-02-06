@@ -36,6 +36,10 @@
 #define INDIGO_EXTERN extern
 #endif
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /** INDIGO Build number
  */
 #define INDIGO_BUILD "312"

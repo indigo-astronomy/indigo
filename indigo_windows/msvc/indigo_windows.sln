@@ -8,6 +8,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo", "indigo\indigo.vcx
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_server", "indigo_server\indigo_server.vcxproj", "{92C45E91-5D4C-4AD8-970C-975BA4141759}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_gps_simulator", "indigo_gps_simulator\indigo_gps_simulator.vcxproj", "{F2F7FD9B-918D-400F-B956-4B61DA9AC713}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -54,6 +56,18 @@ Global
 		{92C45E91-5D4C-4AD8-970C-975BA4141759}.Release|x64.Build.0 = Release|x64
 		{92C45E91-5D4C-4AD8-970C-975BA4141759}.Release|x86.ActiveCfg = Release|Win32
 		{92C45E91-5D4C-4AD8-970C-975BA4141759}.Release|x86.Build.0 = Release|Win32
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Debug|ARM64.Build.0 = Debug|ARM64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Debug|x64.ActiveCfg = Debug|x64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Debug|x64.Build.0 = Debug|x64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Debug|x86.ActiveCfg = Debug|Win32
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Debug|x86.Build.0 = Debug|Win32
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|ARM64.ActiveCfg = Release|ARM64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|ARM64.Build.0 = Release|ARM64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|x64.ActiveCfg = Release|x64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|x64.Build.0 = Release|x64
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|x86.ActiveCfg = Release|Win32
+		{F2F7FD9B-918D-400F-B956-4B61DA9AC713}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

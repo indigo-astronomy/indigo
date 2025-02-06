@@ -82,25 +82,25 @@ static struct resource {
 #define BUFFER_SIZE	1024
 
 static void start_worker_thread(indigo_uni_worker_data *data) {
-	indigo_uni_handle *handle = data->handle;
-	INDIGO_TRACE(indigo_trace("%d <- // Worker thread started", handle->index));
+	indigo_uni_handle **handle = &data->handle;
+	INDIGO_TRACE(indigo_trace("%d <- // Worker thread started", (*handle)->index));
 	server_callback(++client_count);
 	long res = 0;
 	char c;
 	void *free_on_exit = NULL;
 	pthread_mutex_t *unlock_at_exit = NULL;
-	if (indigo_uni_peek_available(handle, &c, 1) == 1) {
+	if (indigo_uni_peek_available(*handle, &c, 1) == 1) {
 		if (c == '<') {
-			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", handle->index));
-			indigo_client *protocol_adapter = indigo_xml_device_adapter(handle, handle);
+			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to XML", (*handle)->index));
+			indigo_client *protocol_adapter = indigo_xml_device_adapter(&data->handle, &data->handle);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
 			indigo_xml_parse(NULL, protocol_adapter);
 			indigo_detach_client(protocol_adapter);
 			indigo_release_xml_device_adapter(protocol_adapter);
 		} else if (c == '{') {
-			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON", handle->index));
-			indigo_client *protocol_adapter = indigo_json_device_adapter(handle, handle, false);
+			INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON", (*handle)->index));
+			indigo_client *protocol_adapter = indigo_json_device_adapter(&data->handle, &data->handle, false);
 			assert(protocol_adapter != NULL);
 			indigo_attach_client(protocol_adapter);
 			indigo_json_parse(NULL, protocol_adapter);
@@ -109,7 +109,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 		} else if (c == 'G' || c == 'P') {
 			char request[BUFFER_SIZE];
 			char header[BUFFER_SIZE];
-			while ((res = indigo_uni_read_line(handle, request, BUFFER_SIZE)) >= 0) {
+			while ((res = indigo_uni_read_line(*handle, request, BUFFER_SIZE)) >= 0) {
 				bool keep_alive = true;
 				if (!strncmp(request, "GET /", 5)) {
 					char *path = request + 4;
@@ -122,7 +122,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 					char websocket_key[256] = "";
 					bool use_gzip = false;
 					bool use_imagebytes = false;
-					while (indigo_uni_read_line(handle, header, BUFFER_SIZE) > 0) {
+					while (indigo_uni_read_line(*handle, header, BUFFER_SIZE) > 0) {
 						if (!strncasecmp(header, "Sec-WebSocket-Key: ", 19))
 							strncpy(websocket_key, header + 19, sizeof(websocket_key));
 						if (!strcasecmp(header, "Connection: close"))
@@ -142,14 +142,14 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							memset(shaHash, 0, sizeof(shaHash));
 							strcat(websocket_key, "258EAFA5-E914-47DA-95CA-C5AB0DC85B11");
 							sha1(shaHash, websocket_key, strlen(websocket_key));
-							INDIGO_PRINTF(handle, "HTTP/1.1 101 Switching Protocols\r\n");
-							INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							INDIGO_PRINTF(handle, "Upgrade: websocket\r\n");
-							INDIGO_PRINTF(handle, "Connection: upgrade\r\n");
+							INDIGO_PRINTF(*handle, "HTTP/1.1 101 Switching Protocols\r\n");
+							INDIGO_PRINTF(*handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							INDIGO_PRINTF(*handle, "Upgrade: websocket\r\n");
+							INDIGO_PRINTF(*handle, "Connection: upgrade\r\n");
 							base64_encode((unsigned char *)websocket_key, shaHash, 20);
-							INDIGO_PRINTF(handle, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON-over-WebSockets", handle->index));
+							INDIGO_PRINTF(*handle, "Sec-WebSocket-Accept: %s\r\n", websocket_key);
+							INDIGO_PRINTF(*handle, "\r\n");
+							INDIGO_TRACE(indigo_trace("%d <- // Protocol switched to JSON-over-WebSockets", (*handle)->index));
 							indigo_client *protocol_adapter = indigo_json_device_adapter(handle, handle, true);
 							assert(protocol_adapter != NULL);
 							indigo_attach_client(protocol_adapter);
@@ -157,12 +157,12 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							indigo_detach_client(protocol_adapter);
 							indigo_release_json_device_adapter(protocol_adapter);
 						} else {
-							INDIGO_PRINTF(handle, "HTTP/1.1 301 OK\r\n");
-							INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							INDIGO_PRINTF(handle, "Location: /mng.html\r\n");
-							INDIGO_PRINTF(handle, "Content-type: text/html\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_PRINTF(handle, "<a href='/mng.html'>INDIGO Server Manager</a>");
+							INDIGO_PRINTF(*handle, "HTTP/1.1 301 OK\r\n");
+							INDIGO_PRINTF(*handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							INDIGO_PRINTF(*handle, "Location: /mng.html\r\n");
+							INDIGO_PRINTF(*handle, "Content-type: text/html\r\n");
+							INDIGO_PRINTF(*handle, "\r\n");
+							INDIGO_PRINTF(*handle, "<a href='/mng.html'>INDIGO Server Manager</a>");
 						}
 						keep_alive = false;
 					} else if (!strncmp(path, "/blob/", 6)) {
@@ -180,20 +180,20 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 									working_size = entry->size = item_copy.blob.size;
 									entry->content = item_copy.blob.value;
 								} else {
-									indigo_error("%d <- // Failed to populate BLOB", handle->index);
+									indigo_error("%d <- // Failed to populate BLOB", (*handle)->index);
 								}
 							}
 							void *working_copy = indigo_use_blob_buffering ? (free_on_exit = malloc(working_size)) : entry->content;
 							if (working_copy) {
 								char working_format[INDIGO_NAME_SIZE];
 								strcpy(working_format, entry->format);
-								INDIGO_PRINTF(handle, "HTTP/1.1 200 OK\r\n");
+								INDIGO_PRINTF(*handle, "HTTP/1.1 200 OK\r\n");
 								if (indigo_use_blob_buffering) {
 									if (use_gzip && indigo_use_blob_compression && strcmp(entry->format, ".jpeg")) {
 										unsigned compressed_size = (unsigned)working_size;
 										indigo_uni_compress("image", entry->content, (unsigned)working_size, working_copy, &compressed_size);
-										INDIGO_PRINTF(handle, "Content-Encoding: gzip\r\n");
-										INDIGO_PRINTF(handle, "X-Uncompressed-Content-Length: %ld\r\n", working_size);
+										INDIGO_PRINTF(*handle, "Content-Encoding: gzip\r\n");
+										INDIGO_PRINTF(*handle, "X-Uncompressed-Content-Length: %ld\r\n", working_size);
 										working_size = compressed_size;
 									} else {
 										memcpy(working_copy, entry->content, working_size);
@@ -201,18 +201,18 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 									pthread_mutex_unlock(&entry->mutext);
 									unlock_at_exit = NULL;
 								}
-								INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								INDIGO_PRINTF(*handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
 								if (!strcmp(entry->format, ".jpeg")) {
-									INDIGO_PRINTF(handle, "Content-Type: image/jpeg\r\n");
+									INDIGO_PRINTF(*handle, "Content-Type: image/jpeg\r\n");
 								} else {
-									INDIGO_PRINTF(handle, "Content-Type: application/octet-stream\r\n");
-									INDIGO_PRINTF(handle, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, working_format);
+									INDIGO_PRINTF(*handle, "Content-Type: application/octet-stream\r\n");
+									INDIGO_PRINTF(*handle, "Content-Disposition: attachment; filename=\"%p%s\"\r\n", item, working_format);
 								}
 								if (keep_alive)
-									INDIGO_PRINTF(handle, "Connection: keep-alive\r\n");
-								INDIGO_PRINTF(handle, "Content-Length: %ld\r\n", working_size);
-								INDIGO_PRINTF(handle, "\r\n");
-								if (indigo_uni_write(handle, working_copy, working_size) < 0) {
+									INDIGO_PRINTF(*handle, "Connection: keep-alive\r\n");
+								INDIGO_PRINTF(*handle, "Content-Length: %ld\r\n", working_size);
+								INDIGO_PRINTF(*handle, "\r\n");
+								if (indigo_uni_write(*handle, working_copy, working_size) < 0) {
 									goto failure;
 								}
 								if (indigo_use_blob_buffering) {
@@ -225,19 +225,19 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							} else {
 								pthread_mutex_unlock(&entry->mutext);
 								unlock_at_exit = NULL;
-								INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-								INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-								INDIGO_PRINTF(handle, "\r\n");
-								INDIGO_PRINTF(handle, "Out of buffer memory!\r\n");
-								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", handle->index));
+								INDIGO_PRINTF(*handle, "HTTP/1.1 404 Not found\r\n");
+								INDIGO_PRINTF(*handle, "Content-Type: text/plain\r\n");
+								INDIGO_PRINTF(*handle, "\r\n");
+								INDIGO_PRINTF(*handle, "Out of buffer memory!\r\n");
+								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", (*handle)->index));
 								goto failure;
 							}
 						} else {
-							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_PRINTF(handle, "BLOB not found!\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", handle->index));
+							INDIGO_PRINTF(*handle, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(*handle, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(*handle, "\r\n");
+							INDIGO_PRINTF(*handle, "BLOB not found!\r\n");
+							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", (*handle)->index));
 							goto failure;
 						}
 					} else {
@@ -250,23 +250,23 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						}
 						pthread_mutex_unlock(&resource_list_mutex);
 						if (resource == NULL) {
-							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_PRINTF(handle, "%s not found!\r\n", path);
-							INDIGO_TRACE(indigo_trace("%d <- // %s not found", handle->index, path));
+							INDIGO_PRINTF(*handle, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(*handle, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(*handle, "\r\n");
+							INDIGO_PRINTF(*handle, "%s not found!\r\n", path);
+							INDIGO_TRACE(indigo_trace("%d <- // %s not found", (*handle)->index, path));
 							goto failure;
 						} else if (resource->handler) {
-							keep_alive = resource->handler(handle, use_imagebytes ? "GET/IMAGEBYTES" : (use_gzip ? "GET/GZIP" : "GET"), path, params);
+							keep_alive = resource->handler(*handle, use_imagebytes ? "GET/IMAGEBYTES" : (use_gzip ? "GET/GZIP" : "GET"), path, params);
 						} else if (resource->data) {
-							INDIGO_PRINTF(handle, "HTTP/1.1 200 OK\r\n");
-							INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-							INDIGO_PRINTF(handle, "Content-Type: %s\r\n", resource->content_type);
-							INDIGO_PRINTF(handle, "Content-Length: %d\r\n", resource->length);
-							INDIGO_PRINTF(handle, "Content-Encoding: gzip\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							indigo_uni_write(handle, (const char *)resource->data, resource->length);
-							INDIGO_TRACE(indigo_trace("%d <- // %d bytes", handle->index, resource->length));
+							INDIGO_PRINTF(*handle, "HTTP/1.1 200 OK\r\n");
+							INDIGO_PRINTF(*handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+							INDIGO_PRINTF(*handle, "Content-Type: %s\r\n", resource->content_type);
+							INDIGO_PRINTF(*handle, "Content-Length: %d\r\n", resource->length);
+							INDIGO_PRINTF(*handle, "Content-Encoding: gzip\r\n");
+							INDIGO_PRINTF(*handle, "\r\n");
+							indigo_uni_write(*handle, (const char *)resource->data, resource->length);
+							INDIGO_TRACE(indigo_trace("%d <- // %d bytes", (*handle)->index, resource->length));
 						} else if (resource->file_name) {
 							char file_name[256];
 							if (*resource->file_name == '/') {
@@ -281,7 +281,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 								INDIGO_PRINTF(file_handle, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(file_handle, "\r\n");
 								INDIGO_PRINTF(file_handle, "%s not found\r\n", file_name);
-								INDIGO_TRACE(indigo_trace("%d <- // Failed to stat/open file %s", handle->index, file_name));
+								INDIGO_TRACE(indigo_trace("%d <- // Failed to stat/open file %s", (*handle)->index, file_name));
 								goto failure;
 							} else {
 								const char *base_name = strrchr(file_name, '/');
@@ -299,7 +299,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 									if (count < 0) {
 										break;
 									}
-									if (indigo_uni_write(handle, buffer, count) < 0) {
+									if (indigo_uni_write(*handle, buffer, count) < 0) {
 										goto failure;
 									}
 									remaining -= count;
@@ -319,7 +319,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						if (sscanf(path, "/blob/%p.", &item) && (entry = indigo_validate_blob(item))) {
 							int content_length = 0;
 							char header[BUFFER_SIZE];
-							while (indigo_uni_read_line(handle, header, INDIGO_BUFFER_SIZE) > 0) {
+							while (indigo_uni_read_line(*handle, header, INDIGO_BUFFER_SIZE) > 0) {
 								if (!strncasecmp(header, "Content-Length:", 15)) {
 									content_length = atoi(header + 15);
 								}
@@ -327,29 +327,29 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							pthread_mutex_lock(unlock_at_exit = &entry->mutext);
 							entry->content = indigo_safe_realloc(entry->content, entry->size = content_length);
 							if (entry->content) {
-								if (!indigo_uni_read(handle, entry->content, content_length)) {
+								if (!indigo_uni_read(*handle, entry->content, content_length)) {
 									goto failure;
 								}
 								pthread_mutex_unlock(&entry->mutext);
 								unlock_at_exit = NULL;
-								INDIGO_PRINTF(handle, "HTTP/1.1 200 OK\r\n");
-								INDIGO_PRINTF(handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
-								INDIGO_PRINTF(handle, "Content-Length: 0\r\n");
-								INDIGO_PRINTF(handle, "\r\n");
+								INDIGO_PRINTF(*handle, "HTTP/1.1 200 OK\r\n");
+								INDIGO_PRINTF(*handle, "Server: INDIGO/%d.%d-%s\r\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD);
+								INDIGO_PRINTF(*handle, "Content-Length: 0\r\n");
+								INDIGO_PRINTF(*handle, "\r\n");
 							} else {
-								INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-								INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-								INDIGO_PRINTF(handle, "\r\n");
-								INDIGO_PRINTF(handle, "Out of buffer memory!\r\n");
-								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", handle->index));
+								INDIGO_PRINTF(*handle, "HTTP/1.1 404 Not found\r\n");
+								INDIGO_PRINTF(*handle, "Content-Type: text/plain\r\n");
+								INDIGO_PRINTF(*handle, "\r\n");
+								INDIGO_PRINTF(*handle, "Out of buffer memory!\r\n");
+								INDIGO_TRACE(indigo_trace("%d <- // Out of buffer memory", (*handle)->index));
 								goto failure;
 							}
 						} else {
-							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_PRINTF(handle, "BLOB not found!\r\n");
-							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", handle->index));
+							INDIGO_PRINTF(*handle, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(*handle, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(*handle, "\r\n");
+							INDIGO_PRINTF(*handle, "BLOB not found!\r\n");
+							INDIGO_TRACE(indigo_trace("%d <- // BLOB not found", (*handle)->index));
 							goto failure;
 						}
 					} else {
@@ -362,14 +362,14 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 						}
 						pthread_mutex_unlock(&resource_list_mutex);
 						if (resource == NULL) {
-							INDIGO_PRINTF(handle, "HTTP/1.1 404 Not found\r\n");
-							INDIGO_PRINTF(handle, "Content-Type: text/plain\r\n");
-							INDIGO_PRINTF(handle, "\r\n");
-							INDIGO_PRINTF(handle, "%s not found!\r\n", path);
-							INDIGO_TRACE(indigo_trace("%d <- // %s not found", handle->index, path));
+							INDIGO_PRINTF(*handle, "HTTP/1.1 404 Not found\r\n");
+							INDIGO_PRINTF(*handle, "Content-Type: text/plain\r\n");
+							INDIGO_PRINTF(*handle, "\r\n");
+							INDIGO_PRINTF(*handle, "%s not found!\r\n", path);
+							INDIGO_TRACE(indigo_trace("%d <- // %s not found", (*handle)->index, path));
 							goto failure;
 						} else if (resource->handler) {
-							keep_alive = resource->handler(handle, "PUT", path, NULL);
+							keep_alive = resource->handler(*handle, "PUT", path, NULL);
 						}
 					}
 				}
@@ -378,12 +378,14 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 				}
 			}
 		} else {
-			INDIGO_TRACE(indigo_trace("%d -> // Unrecognised protocol", handle->index));
+			INDIGO_TRACE(indigo_trace("%d -> // Unrecognised protocol", (*handle)->index));
 		}
 	}
 failure:
-	INDIGO_TRACE(indigo_trace("%d <- // Worker thread finished", handle->index));
-	indigo_uni_close(&handle);
+	if ((*handle) != NULL) {
+		INDIGO_TRACE(indigo_trace("%d <- // Worker thread finished", (*handle)->index));
+		indigo_uni_close(handle);
+	}
 	server_callback(--client_count);
 	indigo_safe_free(data);
 	if (free_on_exit) {

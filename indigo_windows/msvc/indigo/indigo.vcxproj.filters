@@ -4,9 +4,6 @@
     <ClCompile Include="dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\..\indigo_libs\indigo_base64.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
@@ -64,14 +61,44 @@
     <ClCompile Include="..\..\..\indigo_libs\indigo_usbserial_utils.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_agent.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_ao_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_aux_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_dome_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_focuser_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_gps_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_guider_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_mount_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_rotator_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_wheel_driver.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_dome_azimuth.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\indigo_libs\indigo_align.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="targetver.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="stdafx.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_base64.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
@@ -178,6 +205,45 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_usbserial_utils.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_agent.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_ao_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_aux_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_ccd_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_dome_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_focuser_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_gps_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_guider_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_mount_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_rotator_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_wheel_driver.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_dome_azimuth.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\..\indigo_libs\indigo\indigo_align.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>

@@ -290,7 +290,7 @@ typedef struct {
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
-	indigo_uni_handle *lock;             ///< device global lock
+	indigo_uni_handle *lock;            ///< device global lock
 	bool is_remote;                     ///< is remote device
 	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data
@@ -372,8 +372,8 @@ typedef struct indigo_client {
 /** Wire protocol adapter private data structure.
  */
 typedef struct {
-	indigo_uni_handle *input;						///< input handle
-	indigo_uni_handle *output;						///< output handle
+	indigo_uni_handle **input;						///< input handle
+	indigo_uni_handle **output;					///< output handle
 	bool web_socket;										///< connection over WebSocket (RFC6455)
 	char url_prefix[INDIGO_NAME_SIZE];	///< server url prefix (for BLOB download)
 } indigo_adapter_context;

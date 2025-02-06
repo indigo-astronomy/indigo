@@ -224,8 +224,8 @@ static void *get_properties_handler(parser_state state, parser_context *context,
 				version = INDIGO_VERSION_2_0;
 			if (version > client->version) {
 				assert(client->client_context != NULL);
-				indigo_uni_handle *handle = ((indigo_adapter_context *)(client->client_context))->output;
-				indigo_uni_printf(handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
+				indigo_uni_handle **handle = ((indigo_adapter_context *)(client->client_context))->output;
+				indigo_uni_printf(*handle, "<switchProtocol version='%d.%d'/>\n", (version >> 8) & 0xFF, version & 0xFF);
 				client->version = version;
 			}
 		} else if (!strcmp(name, "device")) {
@@ -1347,7 +1347,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 	context->property = indigo_safe_malloc(sizeof(indigo_property) + INDIGO_PREALLOCATED_COUNT * sizeof(indigo_item));
 	context->property->allocated_count = INDIGO_PREALLOCATED_COUNT;
 	
-	indigo_uni_handle *handle = { 0 };
+	indigo_uni_handle **handle = NULL;
 	if (device != NULL) {
 		handle = ((indigo_adapter_context *)device->device_context)->input;
 		device->enumerate_properties(device, client, NULL);
@@ -1364,7 +1364,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 			goto exit_loop;
 		}
 		while ((c = *pointer++) == 0) {
-			long count = indigo_uni_read_available(handle, buffer, BUFFER_SIZE);
+			long count = indigo_uni_read_available(*handle, buffer, BUFFER_SIZE);
 			if (count <= 0) {
 				goto exit_loop;
 			}
@@ -1551,7 +1551,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 					if (bytes_needed)
 						bytes_needed = 4 - bytes_needed;
 					while (bytes_needed) {
-						count = indigo_uni_read(handle, (void *)buffer_end, bytes_needed);
+						count = indigo_uni_read(*handle, (void *)buffer_end, bytes_needed);
 						if (count <= 0)
 							goto exit_loop;
 						len += count;
@@ -1566,7 +1566,7 @@ void indigo_xml_parse(indigo_device *device, indigo_client *client) {
 						long to_read = len;
 						char *ptr = buffer;
 						while(to_read) {
-							count = indigo_uni_read(handle, (void *)ptr, to_read);
+							count = indigo_uni_read(*handle, (void *)ptr, to_read);
 							if (count <= 0)
 								goto exit_loop;
 							ptr += count;
@@ -1728,7 +1728,7 @@ exit_loop:
 	free(context);
 	free(buffer);
 	free(value_buffer);
-	indigo_uni_close(&handle);
+	indigo_uni_close(handle);
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: parser finished"));
 }
 

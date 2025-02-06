@@ -59,9 +59,14 @@
 
 static int handle_index = 0;
 
-indigo_uni_handle indigo_stdin_handle = { INDIGO_FILE_HANDLE, 0, 0 };
-indigo_uni_handle indigo_stdout_handle = { INDIGO_FILE_HANDLE, 1, 0 };
-indigo_uni_handle indigo_stderr_handle = { INDIGO_FILE_HANDLE, 2, 0 };
+indigo_uni_handle _indigo_stdin_handle = { INDIGO_FILE_HANDLE, 0, 0 };
+indigo_uni_handle _indigo_stdout_handle = { INDIGO_FILE_HANDLE, 1, 0 };
+indigo_uni_handle _indigo_stderr_handle = { INDIGO_FILE_HANDLE, 2, 0 };
+
+indigo_uni_handle *indigo_stdin_handle = &_indigo_stdin_handle;
+indigo_uni_handle *indigo_stdout_handle = &_indigo_stdout_handle;
+indigo_uni_handle *indigo_stderr_handle = &_indigo_stderr_handle;
+
 
 indigo_uni_handle *indigo_uni_create_file_handle(int fd) {
 	indigo_uni_handle *handle = indigo_safe_malloc(sizeof(indigo_uni_handle));
@@ -1141,6 +1146,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #else
 #pragma message ("TODO: indigo_uni_close()")
 #endif
+		indigo_safe_free(*handle);
 		*handle = NULL;
 	}
 }
@@ -1276,13 +1282,13 @@ int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const ch
 	indigo_safe_free(entries);
 	return result;
 #elif defined(INDIGO_WINDOWS)
-	WIN32_FIND_DATA findFileData;
+	WIN32_FIND_DATAA findFileData;
 	HANDLE hFind = INVALID_HANDLE_VALUE;
 	char searchPath[MAX_PATH];
 	int result = 0;
 	*list = NULL;
 	snprintf(searchPath, MAX_PATH, "%s\\*", folder);
-	hFind = FindFirstFile((LPCWSTR)searchPath, &findFileData);
+	hFind = FindFirstFileA((LPCSTR)searchPath, &findFileData);
 	if (hFind == INVALID_HANDLE_VALUE) {
 		return -1;
 	}
@@ -1296,7 +1302,7 @@ int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const ch
 			}
 			(*list)[result++] = _strdup((const char *)findFileData.cFileName);
 		}
-	} while (FindNextFile(hFind, &findFileData) != 0);
+	} while (FindNextFileA(hFind, &findFileData) != 0);
 
 	FindClose(hFind);
 	return result;

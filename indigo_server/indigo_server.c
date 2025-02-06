@@ -35,13 +35,16 @@
 #endif
 
 #if defined(INDIGO_MACOS)
-  #define OS_NAME "macOS"
+#define OS_NAME "macOS"
+#define ADDITIONAL_DRIVERS "indigo_mac_drivers"
 #elif defined(INDIGO_LINUX)
-  #define OS_NAME "Linux"
+#define OS_NAME "Linux"
+#define ADDITIONAL_DRIVERS "indigo_linux_drivers"
 #elif defined(INDIGO_WINDOWS)
-  #define OS_NAME "Windows"
+#define OS_NAME "Windows"
+#define ADDITIONAL_DRIVERS "indigo_win_drivers"
 #else
-  #define OS_NAME "Unknown OS"
+#define OS_NAME "Unknown OS"
 #endif
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -1458,7 +1461,7 @@ static indigo_result detach(indigo_device *device) {
 }
 
 static bool driver_filter(const char *name) {
-	return strncmp(name, "indigo_", 7) == 0;
+	return strcmp(name, "indigo_drivers") == 0 || strcmp(name, ADDITIONAL_DRIVERS) == 0;
 }
 
 static void add_drivers(const char *folder) {
@@ -1760,7 +1763,7 @@ static void server_main() {
 		add_drivers("/usr/share/indigo");
 		add_drivers("/usr/local/share/indigo");
 #elif defined(INDIGO_WINDOWS)
-#pragma message ("TODO: decide about windows drivers location")
+		add_drivers(".");
 #endif
 	}
 	indigo_attach_device(&server_device);

@@ -75,7 +75,7 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 		return INDIGO_OK;
 	if (device->master_device != NULL)
 		device = device->master_device;
-	if (device->lock > 0)
+	if (device->lock != NULL)
 		return INDIGO_FAILED;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
 	strncat(tmp_lock_file, device->name, 250);
@@ -87,7 +87,7 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 		return INDIGO_LOCK_ERROR;
 	}
 	device->lock = handle;
-	return INDIGO_LOCK_ERROR;
+	return INDIGO_OK;
 #else
 	return INDIGO_OK;
 #endif
@@ -772,7 +772,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-		context->input = handle;
+		context->input = &handle;
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
 		indigo_xml_parse(NULL, client);
@@ -787,7 +787,7 @@ indigo_result indigo_load_properties(indigo_device *device, bool default_propert
 		indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 		strcpy(client->name, CONFIG_READER);
 		indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-		context->input = handle;
+		context->input = &handle;
 		client->client_context = context;
 		client->version = INDIGO_VERSION_CURRENT;
 		indigo_xml_parse(NULL, client);
@@ -1041,15 +1041,58 @@ void indigo_timetoisolocal(time_t tstamp, char* isotime, int isotime_len) {
 }
 
 time_t indigo_isolocaltotime(char* isotime) {
-	struct tm tm_ts;
-	memset(&tm_ts, 0, sizeof(tm_ts));
-	if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_ts.tm_year, &tm_ts.tm_mon, &tm_ts.tm_mday, &tm_ts.tm_hour, &tm_ts.tm_min, &tm_ts.tm_sec) == 6) {
-		tm_ts.tm_mon -= 1;
-		tm_ts.tm_year -= 1900;
-		tm_ts.tm_isdst = -1;
-		return (mktime(&tm_ts));
+	struct tm tm_stamp;
+	memset(&tm_stamp, 0, sizeof(tm_stamp));
+	if (sscanf(isotime, "%d-%d-%dT%d:%d:%d", &tm_stamp.tm_year, &tm_stamp.tm_mon, &tm_stamp.tm_mday, &tm_stamp.tm_hour, &tm_stamp.tm_min, &tm_stamp.tm_sec) == 6) {
+		tm_stamp.tm_mon -= 1;
+		tm_stamp.tm_year -= 1900;
+		tm_stamp.tm_isdst = -1;
+		return (mktime(&tm_stamp));
 	}
 	return -1;
+}
+
+#if defined(INDIGO_WINDOWS)
+int timezone() {
+	TIME_ZONE_INFORMATION tzInfo;
+	DWORD result = GetTimeZoneInformation(&tzInfo);
+	return tzInfo.Bias;
+}
+#endif
+
+int indigo_get_utc_offset(void) {
+	static int offset = 25;
+	if (offset == 25) {
+		time_t secs = time(NULL);
+		struct tm tm;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		localtime_r(&secs, &tm);
+		offset = (int)(-timezone / 3600) + tm.tm_isdst;
+#elif defined(INDIGO_WINDOWS)
+		localtime_s(&tm, &secs);
+		offset = (int)(-timezone() / 60) + tm.tm_isdst;
+#else
+#pragma message ("TODO: indigo_get_utc_offset()")
+#endif
+	}
+	return offset;
+}
+
+int indigo_get_dst_state(void) {
+	static int dst = -1;
+	if (dst == -1) {
+		time_t secs = time(NULL);
+		struct tm tm;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		localtime_r(&secs, &tm);
+#elif defined(INDIGO_WINDOWS)
+		localtime_s(&tm, &secs);
+#else
+#pragma message ("TODO: indigo_get_dst_state()")
+#endif
+		dst = tm.tm_isdst;
+	}
+	return dst;
 }
 
 bool indigo_ignore_connection_change(indigo_device *device, indigo_property *request) {

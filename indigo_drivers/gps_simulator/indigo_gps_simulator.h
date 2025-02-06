@@ -26,6 +26,16 @@
 #ifndef gps_simulator_h
 #define gps_simulator_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_gps_driver.h>
 
@@ -38,7 +48,7 @@ extern "C" {
 /** Create GPS Simulator device instance
  */
 
-extern indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info);
+INDIGO_EXTERN indigo_result indigo_gps_simulator(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }
