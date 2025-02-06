@@ -116,36 +116,20 @@ Sequence.prototype.set_gamma = function(value) {
 	this.sequence.push({ execute: 'set_gamma(' + value + ')', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_program = function(name) {
-	this.sequence.push({ execute: 'select_program("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.select_program = function(program) {
+	this.sequence.push({ execute: 'select_program("' + program + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_program_by_label = function(label) {
-	this.sequence.push({ execute: 'select_program_by_label("' + label + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.select_aperture = function(aperture) {
+	this.sequence.push({ execute: 'select_aperture("' + aperture + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_aperture = function(name) {
-	this.sequence.push({ execute: 'select_aperture("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.select_shutter = function(shutter) {
+	this.sequence.push({ execute: 'select_shutter("' + shutter + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
-Sequence.prototype.select_aperture_by_label = function(label) {
-	this.sequence.push({ execute: 'select_aperture_by_label("' + label + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-};
-
-Sequence.prototype.select_shutter = function(name) {
-	this.sequence.push({ execute: 'select_shutter("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-};
-
-Sequence.prototype.select_shutter_by_label = function(label) {
-	this.sequence.push({ execute: 'select_shutter_by_label("' + label + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-};
-
-Sequence.prototype.select_iso = function(name) {
-	this.sequence.push({ execute: 'select_iso("' + name + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
-};
-
-Sequence.prototype.select_iso_by_label = function(label) {
-	this.sequence.push({ execute: 'select_iso_by_label("' + label + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
+Sequence.prototype.select_iso = function(iso) {
+	this.sequence.push({ execute: 'select_iso("' + iso + '")', step: this.step++, progress: this.progress++, exposure: this.exposure });
 };
 
 Sequence.prototype.enable_cooler = function(temperature) {
@@ -1034,139 +1018,115 @@ var indigo_sequencer = {
 		}
 	},
 
-	select_program: function(name) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_PROGRAM;
-		if (property != null && property.items[name] != undefined) {
-			if (property.items[name]) {
-				this.warning("Program " + name + " is already selected");
-			} else {
-				this.select_switch(agent, "DSLR_PROGRAM", name);
-			}
-		} else {
-			this.failure("Can't select program " + name);
-		}
-	},
-
-	select_program_by_label: function(label) {
+	select_program: function(program) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].DSLR_PROGRAM;
 		if (property != null) {
 			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === label) {
+				if (property.item_defs[name].label === program) {
 					if (property.items[name]) {
-						this.warning("Program '" + label + "' is already selected");
+						this.warning("Program '" + program + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_PROGRAM", name);
 					}
 					return;
 				}
 			}
-			this.failure("Program '" + label + "' is not available");
-		} else {
-			this.failure("Can't select program '" + label + "'");
-		}
-	},
-
-	select_aperture: function(name) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_APERTURE;
-		if (property != null && property.items[name] != undefined) {
-			if (property.items[name]) {
-				this.warning("Aperture " + name + " is already selected");
+			if (property.items[program] != undefined) {
+				if (property.items[program]) {
+					this.warning("Program " + program + " is already selected");
+				} else {
+					this.select_switch(agent, "DSLR_PROGRAM", program);
+				}
 			} else {
-				this.select_switch(agent, "DSLR_APERTURE", name);
+				this.failure("Program '" + program + "' is not available");
 			}
 		} else {
-			this.failure("Can't select aperture " + name);
+			this.failure("Can't select program '" + program + "'");
 		}
 	},
 
-	select_aperture_by_label: function(label) {
+	select_aperture: function(aperture) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].DSLR_APERTURE;
 		if (property != null) {
 			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === label) {
+				if (property.item_defs[name].label === aperture) {
 					if (property.items[name]) {
-						this.warning("Aperture '" + label + "' is already selected");
+						this.warning("Aperture '" + aperture + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_APERTURE", name);
 					}
 					return;
 				}
 			}
-			this.failure("Aperture '" + label + "' is not available");
-		} else {
-			this.failure("Can't select aperture '" + label + "'");
-		}
-	},
-
-	select_shutter: function(name) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_SHUTTER;
-		if (property != null && property.items[name] != undefined) {
-			if (property.items[name]) {
-				this.warning("Shutter " + name + " is already selected");
+			if (property.items[aperture] != undefined) {
+				if (property.items[aperture]) {
+					this.warning("Aperture " + aperture + " is already selected");
+				} else {
+					this.select_switch(agent, "DSLR_APERTURE", aperture);
+				}
 			} else {
-				this.select_switch(agent, "DSLR_SHUTTER", name);
+				this.failure("Aperture '" + aperture + "' is not available");
 			}
 		} else {
-			this.failure("Can't select shutter speed " + name);
+			this.failure("Can't select aperture '" + aperture + "'");
 		}
 	},
 
-	select_shutter_by_label: function(label) {
+	select_shutter: function(shutter) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].DSLR_SHUTTER;
 		if (property != null) {
 			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === label) {
+				if (property.item_defs[name].label === shutter) {
 					if (property.items[name]) {
-						this.warning("Shutter '" + label + "' is already selected");
+						this.warning("Shutter '" + shutter + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_SHUTTER", name);
 					}
 					return;
 				}
 			}
-			this.failure("Shutter speed '" + label + "' is not available");
-		} else {
-			this.failure("Can't select shutter speed '" + label + "'");
-		}
-	},
-
-	select_iso: function(name) {
-		var agent = this.devices[2];
-		var property = indigo_devices[agent].DSLR_ISO;
-		if (property != null && property.items[name] != undefined) {
-			if (property.items[name]) {
-				this.warning("ISO '" + name + "' is already selected");
+			if (property.items[shutter] != undefined) {
+				if (property.items[shutter]) {
+					this.warning("Shutter " + shutter + " is already selected");
+				} else {
+					this.select_switch(agent, "DSLR_SHUTTER", shutter);
+				}
 			} else {
-				this.select_switch(agent, "DSLR_ISO", name);
+				this.failure("Shutter speed '" + shutter + "' is not available");
 			}
 		} else {
-			this.failure("Can't select ISO " + name);
+			this.failure("Can't select shutter speed '" + shutter + "'");
 		}
 	},
 
-	select_iso_by_label: function(label) {
+	select_iso: function(iso) {
 		var agent = this.devices[2];
 		var property = indigo_devices[agent].DSLR_ISO;
 		if (property != null) {
 			for (var name in property.item_defs) {
-				if (property.item_defs[name].label === label) {
+				if (property.item_defs[name].label === iso) {
 					if (property.items[name]) {
-						this.warning("ISO '" + label + "' is already selected");
+						this.warning("ISO '" + iso + "' is already selected");
 					} else {
 						this.select_switch(agent, "DSLR_ISO", name);
 					}
 					return;
 				}
 			}
-			this.failure("ISO '" + label + "' is not available");
+			if (property.items[iso] != undefined) {
+				if (property.items[iso]) {
+					this.warning("ISO " + iso + " is already selected");
+				} else {
+					this.select_switch(agent, "DSLR_ISO", iso);
+				}
+			} else {
+				this.failure("ISO '" + iso + "' is not available");
+			}
 		} else {
-			this.failure("Can't select ISO '" + label + "'");
+			this.failure("Can't select ISO '" + iso + "'");
 		}
 	},
 
