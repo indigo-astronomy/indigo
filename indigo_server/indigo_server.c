@@ -458,8 +458,8 @@ static bool runLoop = true;
 #define SERVER_WIFI_CHANNEL_PROPERTY							wifi_channel_property
 #define SERVER_WIFI_CHANNEL_ITEM									(SERVER_WIFI_CHANNEL_PROPERTY->items + 0)
 
-#define SERVER_WIFI_COUNTRY_CODE_PROPERTY				wifi_country_code_property
-#define SERVER_WIFI_COUNTRY_CODE_ITEM					(SERVER_WIFI_COUNTRY_CODE_PROPERTY->items + 0)
+#define SERVER_WIFI_COUNTRY_CODE_PROPERTY					wifi_country_code_property
+#define SERVER_WIFI_COUNTRY_CODE_ITEM							(SERVER_WIFI_COUNTRY_CODE_PROPERTY->items + 0)
 
 #define SERVER_INTERNET_SHARING_PROPERTY					internet_sharing_property
 #define SERVER_INTERNET_SHARING_DISABLED_ITEM			(SERVER_INTERNET_SHARING_PROPERTY->items + 0)
@@ -480,9 +480,13 @@ static bool runLoop = true;
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
 static bool use_sigkill = false;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 static bool use_ctrl_panel = true;
 static bool use_web_apps = true;
-
+#elif defined(INDIGO_WINDOWS)
+static bool use_ctrl_panel = false;
+static bool use_web_apps = false;
+#endif
 #ifdef RPI_MANAGEMENT
 static bool use_rpi_management = false;
 #endif /* RPI_MANAGEMENT */

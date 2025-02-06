@@ -76,8 +76,8 @@ typedef struct {
 		SOCKET sock;
 		HANDLE com;
 #endif
-		bool short_trace;
 	};
+	bool short_trace;
 	int last_error;
 } indigo_uni_handle;
 
