@@ -22,68 +22,57 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <errno.h>
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_dslr_raw.h>
 
 static int image_debayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *outout_image) {
 	int rc;
 	libraw_processed_image_t *processed_image = NULL;
-
 	rc = libraw_raw2image(raw_data);
 	if (rc != LIBRAW_SUCCESS) {
 		indigo_error("[rc:%d] libraw_raw2image failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
 	rc = libraw_dcraw_process(raw_data);
 	if (rc != LIBRAW_SUCCESS) {
 		indigo_error("[rc:%d] libraw_dcraw_process failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
 	processed_image = libraw_dcraw_make_mem_image(raw_data, &rc);
 	if (!processed_image) {
 		indigo_error("[rc:%d] libraw_dcraw_make_mem_image failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
 	if (processed_image->type != LIBRAW_IMAGE_BITMAP) {
 		indigo_error("input data is not of type LIBRAW_IMAGE_BITMAP");
 		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
-
 	if (processed_image->colors != 3) {
 		indigo_error("debayered data has not 3 colors");
 		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
-
 	if (processed_image->bits != 16) {
 		indigo_error("16 bit is supported only");
 		rc = LIBRAW_UNSPECIFIED_ERROR;
 		goto cleanup;
 	}
-
 	outout_image->width = processed_image->width;
 	outout_image->height = processed_image->height;
 	outout_image->size = processed_image->data_size;
 	outout_image->colors = processed_image->colors;
-
 	if (outout_image->data) {
 		free(outout_image->data);
 	}
-
 	outout_image->data = malloc(outout_image->size);
 	if (!outout_image->data) {
 		indigo_error("%s", strerror(errno));
 		rc = errno;
 		goto cleanup;
 	}
-
 	memcpy(outout_image->data, processed_image->data, outout_image->size);
-
 cleanup:
 	libraw_dcraw_clear_mem(processed_image);
 	return rc;
@@ -96,12 +85,10 @@ static int image_bayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *
 	uint32_t offset;
 	size_t size;
 	uint32_t i = 0;
-
 	if (raw_data->sizes.iheight > raw_data->sizes.raw_height) {
 		indigo_error("Images with raw_height < image_height are not supported");
 		return LIBRAW_UNSPECIFIED_ERROR;
 	}
-
 	if (binning) {
 		width = raw_data->sizes.iwidth % 2 == 0 ? raw_data->sizes.iwidth : raw_data->sizes.iwidth - 1;
 		height = raw_data->sizes.iheight % 2 == 0 ? raw_data->sizes.iheight : raw_data->sizes.iheight - 1;
@@ -114,7 +101,6 @@ static int image_bayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *
 	offset = raw_width * raw_data->rawdata.sizes.top_margin +
 		raw_data->rawdata.sizes.left_margin;
 	size = binning ? npixels / 4 * sizeof(uint16_t) : npixels * sizeof(uint16_t);
-
 	data = (uint16_t *)calloc(1, size);
 	if (!data) {
 		indigo_error("%s", strerror(errno));
@@ -123,7 +109,6 @@ static int image_bayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *
 	outout_image->width = binning ? width / 2 : width;
 	outout_image->height = binning ? height / 2 : height;
 	outout_image->size = size;
-
 	int c = binning ? 2 : 1;
 #ifdef FIT_FORMAT_AMATEUR_CCD
 	for (int row = 0; row < height; row += c) {
@@ -143,17 +128,14 @@ static int image_bayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s *
 			}
 		}
 	}
-
 	outout_image->data = data;
 	outout_image->colors = 1;
-
 	return 0;
 }
 
 int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_raw_image_s *outout_image) {
 	int rc;
 	libraw_data_t *raw_data;
-
 	outout_image->width = 0;
 	outout_image->height = 0;
 	outout_image->bits = 16;
@@ -162,13 +144,8 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 	memset(outout_image->bayer_pattern, 0, sizeof(outout_image->bayer_pattern));
 	outout_image->size = 0;
 	outout_image->data = NULL;
-
-#if !defined(INDIGO_WINDOWS)
 	clock_t start = clock();
-#endif
-
 	raw_data = libraw_init(0);
-
 	/* These work fine for astro - change with caution */
 	/* Linear 16-bit output. */
 	raw_data->params.output_bps = 16;
@@ -188,19 +165,16 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 	raw_data->params.use_camera_wb = 1;
 	/* Output colorspace raw*/
 	raw_data->params.output_color = 0;
-
 	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
 	if (rc != LIBRAW_SUCCESS) {
 		indigo_error("[rc:%d] libraw_open_buffer failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
 	rc = libraw_unpack(raw_data);
 	if (rc != LIBRAW_SUCCESS) {
 		indigo_error("[rc:%d] libraw_unpack failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
 	if (raw_data->idata.filters == 9) {
 		for (int r = 0; r < 6; r++) {
 			for (int c = 0; c < 6; c++) {
@@ -215,7 +189,6 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 		outout_image->bayer_pattern[3] = raw_data->idata.cdesc[libraw_COLOR(raw_data, 1, 1)];
 		outout_image->bayer_pattern[4] = 0;
 	}
-
 	indigo_debug("Maker       : %s, Model      : %s", raw_data->idata.make, raw_data->idata.model);
 	indigo_debug("Norm Maker  : %s, Norm Model : %s", raw_data->idata.normalized_make, raw_data->idata.normalized_model);
 	indigo_debug("width       = %d, height     = %d", raw_data->sizes.width, raw_data->sizes.height);
@@ -223,7 +196,6 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 	indigo_debug("raw_width   = %d, raw_height = %d", raw_data->sizes.raw_width, raw_data->sizes.raw_height);
 	indigo_debug("left_margin = %d, top_margin = %d", raw_data->sizes.left_margin, raw_data->sizes.top_margin);
 	indigo_debug("bayerpat    : %s", outout_image->bayer_pattern);
-
 	if (raw_data->params.user_qual > 20) {
 		rc = image_bayered_data(raw_data, outout_image, false);
 		if (rc) goto cleanup;
@@ -233,51 +205,28 @@ int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_
 		if (rc) goto cleanup;
 		outout_image->debayered = true;
 	}
-
-#if !defined(INDIGO_WINDOWS)
-	indigo_debug(
-		"libraw conversion in %g sec, input size: "
-		"%d bytes, unpacked + (de)bayered output size: "
-		"%d bytes, bayer pattern '%s', "
-		"dimension: %d x %d, "
-		"bits: %d, colors: %d",
-		(clock() - start) / (double)CLOCKS_PER_SEC,
-		buffer_size,
-		outout_image->size,
-		outout_image->bayer_pattern,
-		outout_image->width, outout_image->height,
-		outout_image->bits, outout_image->colors
-	);
-#endif
-
+	indigo_debug("libraw conversion in %g sec, input size: %d bytes, unpacked + (de)bayered output size: %d bytes, bayer pattern '%s', dimension: %d x %d, bits: %d, colors: %d", (clock() - start) / (double)CLOCKS_PER_SEC, buffer_size, outout_image->size, outout_image->bayer_pattern, outout_image->width, outout_image->height, outout_image->bits, outout_image->colors);
 cleanup:
 	libraw_free_image(raw_data);
 	libraw_recycle(raw_data);
 	libraw_close(raw_data);
-
 	return rc;
 }
 
 int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw_image_info_s *image_info) {
 	int rc;
 	libraw_data_t *raw_data;
-
 	if (image_info == NULL) {
 		indigo_error("No output data structure provided");
 		return LIBRAW_UNSPECIFIED_ERROR;
 	}
-
-#if !defined(INDIGO_WINDOWS)
 	clock_t start = clock();
-#endif
 	raw_data = libraw_init(0);
-
 	rc = libraw_open_buffer(raw_data, buffer, buffer_size);
 	if (rc != LIBRAW_SUCCESS) {
 		indigo_error("[rc:%d] libraw_open_buffer failed: '%s'", rc, libraw_strerror(rc));
 		goto cleanup;
 	}
-
 	strncpy(image_info->camera_make, raw_data->idata.make, sizeof(image_info->camera_make));
 	strncpy(image_info->camera_model, raw_data->idata.model, sizeof(image_info->camera_model));
 	strncpy(image_info->normalized_camera_make, raw_data->idata.normalized_make, sizeof(image_info->normalized_camera_make));
@@ -303,18 +252,10 @@ int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw
 	}
 	strncpy(image_info->desc, raw_data->other.desc, sizeof(image_info->desc));
 	strncpy(image_info->artist, raw_data->other.artist, sizeof(image_info->artist));
-
-#if !defined(INDIGO_WINDOWS)
-	indigo_debug(
-		"libraw got image info in %g sec",
-		(clock() - start) / (double)CLOCKS_PER_SEC
-	);
-#endif
-
+	indigo_debug("libraw got image info in %g sec", (clock() - start) / (double)CLOCKS_PER_SEC);
 cleanup:
 	libraw_free_image(raw_data);
 	libraw_recycle(raw_data);
 	libraw_close(raw_data);
-
 	return rc;
 }
