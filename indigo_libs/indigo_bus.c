@@ -131,10 +131,16 @@ int indigo_main_argc = 0;
 char *indigo_last_message = NULL;
 char indigo_log_name[255] = { 0 };
 
-extern void indigo_get_version(int *major, int *minor, int *build) {
-	if (major) *major = INDIGO_VERSION_CURRENT >> 8;
-	if (minor) *minor = INDIGO_VERSION_CURRENT & 0xFF;
-	if (build) *build = atoi(INDIGO_BUILD);
+void indigo_get_version(int *major, int *minor, int *build) {
+	if (major) {
+		*major = INDIGO_VERSION_CURRENT >> 8;
+	}
+	if (minor) {
+		*minor = INDIGO_VERSION_CURRENT & 0xFF;
+	}
+	if (build) {
+		*build = atoi(INDIGO_BUILD);
+	}
 }
 
 static void free_log_buffers(void) {

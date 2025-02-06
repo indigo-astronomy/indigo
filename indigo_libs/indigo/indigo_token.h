@@ -37,7 +37,6 @@ extern "C" {
 
 typedef long long unsigned indigo_token;
 
-
 /** Convert hex string to indigo_token, 0 for error or no token
  */
 indigo_token indigo_string_to_token(const char *token_string);

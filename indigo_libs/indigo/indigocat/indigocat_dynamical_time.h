@@ -22,10 +22,10 @@ extern "C" {
 #endif
 
 /* Calculate approximate dynamical time difference from julian day in seconds */
-double  indigocat_get_dynamical_time_diff(double JD);
+extern double  indigocat_get_dynamical_time_diff(double JD);
 
 /* brief Calculate julian ephemeris day (JDE) */
-double  indigocat_jd_to_jde(double JD);
+extern double  indigocat_jd_to_jde(double JD);
 
 #ifdef __cplusplus
 };
