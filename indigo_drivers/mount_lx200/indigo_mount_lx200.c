@@ -23,7 +23,7 @@
  \file indigo_mount_lx200.c
  */
 
-#define DRIVER_VERSION 0x002C
+#define DRIVER_VERSION 0x002D
 #define DRIVER_NAME	"indigo_mount_lx200"
 
 #include <stdlib.h>
@@ -2127,6 +2127,7 @@ static void meade_update_onstep_state(indigo_device *device) {
 				indigo_set_switch(MOUNT_PARK_PROPERTY, MOUNT_PARK_PARKED_ITEM, true);
 				MOUNT_PARK_PROPERTY->state = INDIGO_OK_STATE;
 				PRIVATE_DATA->park_changed = true;
+				indigo_send_message(device, "Parked");
 			}
 		} else if (strchr(response, 'p')) {
 			if (!MOUNT_PARK_UNPARKED_ITEM->sw.value || MOUNT_PARK_PROPERTY->state != INDIGO_OK_STATE) {
@@ -2156,6 +2157,7 @@ static void meade_update_onstep_state(indigo_device *device) {
 			MOUNT_HOME_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_set_switch(MOUNT_HOME_PROPERTY, MOUNT_HOME_ITEM, true);
 			PRIVATE_DATA->home_changed = true;
+			indigo_send_message(device, "At home");
 		}
 		PRIVATE_DATA->prev_home_state = true;
 	} else {
@@ -3045,9 +3047,14 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		bool parked = MOUNT_PARK_PARKED_ITEM->sw.value;
 		indigo_property_copy_values(MOUNT_PARK_PROPERTY, property, false);
 		if ((!parked && MOUNT_PARK_PARKED_ITEM->sw.value) || (parked && MOUNT_PARK_UNPARKED_ITEM->sw.value)) {
-			MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_park_callback, NULL);
+			if (MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE && !MOUNT_HOME_PROPERTY->hidden) {
+				MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, "Can not park while mount is homing!");
+			} else {
+				MOUNT_PARK_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, MOUNT_PARK_PROPERTY, NULL);
+				indigo_set_timer(device, 0, mount_park_callback, NULL);
+			}
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_PARK_SET_PROPERTY, property)) {
@@ -3061,9 +3068,22 @@ static indigo_result mount_change_property(indigo_device *device, indigo_client 
 		// -------------------------------------------------------------------------------- MOUNT_HOME
 		indigo_property_copy_values(MOUNT_HOME_PROPERTY, property, false);
 		if (MOUNT_HOME_ITEM->sw.value) {
-			MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
-			indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
-			indigo_set_timer(device, 0, mount_home_callback, NULL);
+			if(MOUNT_HOME_PROPERTY->state == INDIGO_BUSY_STATE) {
+				// Ignore the request if the mount is already homing
+			} else if (MOUNT_PARK_PROPERTY->state == INDIGO_BUSY_STATE && !MOUNT_PARK_PROPERTY->hidden) {
+				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_HOME_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_HOME_PROPERTY, "Can not go home while mount is being parked!");
+			} else if (IS_PARKED) {
+				MOUNT_HOME_PROPERTY->state = INDIGO_ALERT_STATE;
+				MOUNT_HOME_ITEM->sw.value = false;
+				indigo_update_property(device, MOUNT_HOME_PROPERTY, "Mount is parked!");
+			} else {
+				MOUNT_HOME_PROPERTY->state = INDIGO_BUSY_STATE;
+				indigo_update_property(device, MOUNT_HOME_PROPERTY, NULL);
+				indigo_set_timer(device, 0, mount_home_callback, NULL);
+			}
+			return INDIGO_OK;
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(MOUNT_HOME_SET_PROPERTY, property)) {

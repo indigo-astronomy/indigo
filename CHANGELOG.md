@@ -31,7 +31,7 @@ All notable changes to INDIGO framework will be documented in this file.
 	- Sequencer.js: add select_camera_mode_by_label()
 	- Sequencer.js: add select_image_format_by_label()
 	- Sequencer.js: add select_filter_by_label()
-	- Sequencer.js: add select_iso_by_laavel()
+	- Sequencer.js: add select_iso_by_label()
 	- Sequencer.js: add select_aperture_by_label()
 	- Sequencer.js: add select_shutter_by_label()
 	- Sequencer.js: add select_program_by_label()
