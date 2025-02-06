@@ -143,7 +143,7 @@ INDIGO_EXTERN indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 
 /** Create bonjour service name.
  */
-void indigo_service_name(const char *host, int port, char *name);
+INDIGO_EXTERN void indigo_service_name(const char *host, int port, char *name);
 
 /** Connect and start thread for remote server.
  */

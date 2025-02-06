@@ -75,7 +75,7 @@ indigo_uni_handle *indigo_uni_create_file_handle(int fd) {
 char* indigo_last_wsa_error() {
 	static char buffer[128] = "";
 	char* msg = NULL;
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, WSAGetLastError(), 0, (LPWSTR)&msg, 0, NULL);
+	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, WSAGetLastError(), 0, (LPSTR)&msg, 0, NULL);
 	if (msg) {
 		strncpy(buffer, msg, sizeof(buffer));
 		LocalFree(msg);
@@ -86,7 +86,7 @@ char* indigo_last_wsa_error() {
 char* indigo_last_windows_error() {
 	static char buffer[128] = "";
 	char* msg = NULL;
-	FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), 0, (LPWSTR)&msg, 0, NULL);
+	FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, GetLastError(), 0, (LPSTR)&msg, 0, NULL);
 	if (msg) {
 		strncpy(buffer, msg, sizeof(buffer));
 		LocalFree(msg);
@@ -1276,7 +1276,30 @@ int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const ch
 	indigo_safe_free(entries);
 	return result;
 #elif defined(INDIGO_WINDOWS)
-	
+	WIN32_FIND_DATA findFileData;
+	HANDLE hFind = INVALID_HANDLE_VALUE;
+	char searchPath[MAX_PATH];
+	int result = 0;
+	*list = NULL;
+	snprintf(searchPath, MAX_PATH, "%s\\*", folder);
+	hFind = FindFirstFile((LPCWSTR)searchPath, &findFileData);
+	if (hFind == INVALID_HANDLE_VALUE) {
+		return -1;
+	}
+	int list_size = 10;
+	*list = (char**)indigo_safe_malloc(sizeof(char*) * list_size);
+	do {
+		if (filter((const char *)findFileData.cFileName)) {
+			if (result >= list_size) {
+				list_size *= 2;
+				*list = (char**)indigo_safe_realloc(*list, sizeof(char*) * list_size);
+			}
+			(*list)[result++] = _strdup((const char *)findFileData.cFileName);
+		}
+	} while (FindNextFile(hFind, &findFileData) != 0);
+
+	FindClose(hFind);
+	return result;
 #else
 #pragma message ("TODO: indigo_uni_basename()")
 #endif

@@ -21,19 +21,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <syslog.h>
 #include <assert.h>
 #include <signal.h>
-#include <dns_sd.h>
-#include <libgen.h>
 #include <pthread.h>
-#include <errno.h>
+#include <dns_sd.h>
 
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #ifdef INDIGO_LINUX
 #include <sys/prctl.h>
 #endif
@@ -41,12 +34,12 @@
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
-#if defined(__APPLE__) || defined(__MACH__)
+#if defined(INDIGO_MACOS)
   #define OS_NAME "macOS"
-#elif defined(__linux__)
+#elif defined(INDIGO_LINUX)
   #define OS_NAME "Linux"
-#elif defined(__unix__)
-  #define OS_NAME "Unix"
+#elif defined(INDIGO_WINDOWS)
+  #define OS_NAME "Windows"
 #else
   #define OS_NAME "Unknown OS"
 #endif
@@ -511,6 +504,8 @@ static indigo_device server_device = INDIGO_DEVICE_INITIALIZER(
 	detach
 );
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+
 static double h2deg(double ra) {
 	return ra > 12 ? (ra - 24) * 15 : ra * 15;
 }
@@ -748,9 +743,9 @@ static void *indigo_add_constellations_lines_json_resource() {
 	indigo_server_add_resource("/data/constellations.lines.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;
 }
+#endif
 
 #ifdef RPI_MANAGEMENT
-
 static indigo_result execute_command(indigo_device *device, indigo_property *property, char *command, ...) {
 	char buffer[1024];
 	va_list args;
@@ -1216,7 +1211,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- LOAD
 		indigo_property_copy_values(SERVER_LOAD_PROPERTY, property, false);
 		if (*SERVER_LOAD_ITEM->text.value) {
-			char *name = basename(SERVER_LOAD_ITEM->text.value);
+			char *name = indigo_uni_basename(SERVER_LOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
 					SERVER_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1258,7 +1253,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- UNLOAD
 		indigo_property_copy_values(SERVER_UNLOAD_PROPERTY, property, false);
 		if (*SERVER_UNLOAD_ITEM->text.value) {
-			char *name = basename(SERVER_UNLOAD_ITEM->text.value);
+			char *name = indigo_uni_basename(SERVER_UNLOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
 					indigo_result result;
@@ -1465,7 +1460,7 @@ static bool driver_filter(const char *name) {
 static void add_drivers(const char *folder) {
 	char folder_path[PATH_MAX];
 	char line[256];
-	if (NULL == realpath(folder, folder_path)) {
+	if (NULL == indigo_uni_realpath(folder, folder_path)) {
 		INDIGO_DEBUG(indigo_debug("realpath(%s, folder_path): failed", folder));
 		return;
 	}
@@ -1765,10 +1760,9 @@ static void server_main() {
 #endif
 	}
 	indigo_attach_device(&server_device);
-#ifdef INDIGO_LINUX
+#if defined(INDIGO_LINUX) || defined(INDIGO_WINDOWS)
 	indigo_server_start(NULL);
-#endif
-#ifdef INDIGO_MACOS
+#elif defined(INDIGO_MACOS)
 	if (!indigo_async((void * (*)(void *))indigo_server_start, NULL)) {
 		INDIGO_ERROR(indigo_error("Error creating thread for server"));
 	}
@@ -1806,6 +1800,7 @@ static void server_main() {
 	exit(EXIT_SUCCESS);
 }
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 static void signal_handler(int signo) {
 	if (signo == SIGCHLD) {
 		int status;
@@ -1834,6 +1829,7 @@ static void signal_handler(int signo) {
 		use_sigkill = true;
 	}
 }
+#endif
 
 int main(int argc, const char * argv[]) {
 	bool do_fork = true;
@@ -1847,8 +1843,9 @@ int main(int argc, const char * argv[]) {
 			do_fork = false;
 		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use-syslog")) {
 			indigo_use_syslog = true;
+		} else
 #endif
-		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+			if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("INDIGO server v.%d.%d-%s %s/%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, OS_NAME, ARCH_NAME, __DATE__, __TIME__);
 			printf("usage: %s [-h | --help]\n", argv[0]);
 			printf("       %s [options] indigo_driver_name indigo_driver_name ...\n", argv[0]);
@@ -1943,6 +1940,11 @@ int main(int argc, const char * argv[]) {
 		server_main();
 	}
 #elif defined(INDIGO_WINDOWS)
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+		indigo_error("WSAStartup failed: %d", WSAGetLastError());
+		exit(0);
+	}
 	server_main();
 #endif
 }

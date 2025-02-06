@@ -49,7 +49,7 @@ typedef long long unsigned indigo_token;
 
 /** Convert hex string to indigo_token, 0 for error or no token
  */
-indigo_token indigo_string_to_token(const char *token_string);
+INDIGO_EXTERN indigo_token indigo_string_to_token(const char *token_string);
 
 /** Add device and token to the list, if the device exists, token will be updated
  */

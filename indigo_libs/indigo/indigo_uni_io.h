@@ -51,6 +51,8 @@
 #define NAME_MAX (_MAX_FNAME + _MAX_EXT + 1)
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
+#define strtok_r strtok_s
+#define strdup _strdup
 #define stat _stat
 #endif
 
