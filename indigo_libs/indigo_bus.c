@@ -110,7 +110,9 @@ char *indigo_switch_rule_text[] = {
 indigo_property INDIGO_ALL_PROPERTIES;
 
 static indigo_log_levels indigo_log_level = INDIGO_LOG_ERROR;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 bool indigo_use_syslog = false;
+#endif
 
 void (*indigo_log_message_handler)(indigo_log_levels level, const char *message) = NULL;
 

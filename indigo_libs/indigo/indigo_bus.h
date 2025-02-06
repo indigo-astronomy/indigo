@@ -770,9 +770,11 @@ extern int indigo_main_argc;
  */
 extern const char **indigo_main_argv;
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 /** Send logging messages to syslog instead of stderr.
  */
 extern bool indigo_use_syslog;
+#endif
 
 /** Ignore messages from remote devices containing local service name to avoid loops.
  */

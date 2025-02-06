@@ -37,7 +37,8 @@
 #elif defined(INDIGO_WINDOWS)
 #include <winsock2.h>
 #define INDIGO_PATH_SEPATATOR	'\\'
-#define PATH_MAX MAX_PATH
+#define PATH_MAX (_MAX_DRIVE + _MAX_DIR + _MAX_FNAME + _MAX_EXT + 1)
+#define NAME_MAX (_MAX_FNAME + _MAX_EXT + 1)
 #define strcasecmp _stricmp
 #define strncasecmp _strnicmp
 #define stat _stat
@@ -208,6 +209,11 @@ extern char* indigo_uni_realpath(const char* path, char* resolved_path);
 /** Make base name.
  */
 extern char* indigo_uni_basename(const char* path);
+
+/** Scan folder for files matching filter.
+ */
+
+extern int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const char *));
 
 /** Compress with gzip.
  */

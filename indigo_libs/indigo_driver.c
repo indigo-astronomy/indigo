@@ -41,7 +41,6 @@
 #elif defined(INDIGO_LINUX)
 #include <unistd.h>
 #include <fcntl.h>
-#include <dirent.h>
 #include <sys/ioctl.h>
 #include <linux/serial.h>
 #endif
@@ -221,65 +220,53 @@ void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *prope
 		DEVICE_PORTS_PROPERTY->count++;
 		indigo_usbserial_label(serial_info + i, label);
 		indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + i + 1, serial_info[i].path, label, false);
-		INDIGO_DEBUG(indigo_debug(
-			"%s(): Serial port #%d: %s %04X:%04X %s",
-			__FUNCTION__,
-			 i,
-			 serial_info[i].path,
-			 serial_info[i].vendor_id,
-			 serial_info[i].product_id,
-			 label
-		));
+		INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s %04X:%04X %s", __FUNCTION__, i, serial_info[i].path, serial_info[i].vendor_id, serial_info[i].product_id, label));
 	}
 #if defined(INDIGO_LINUX)
-	DIR *dir;
 	char target[PATH_MAX];
 	char path[PATH_MAX];
-	struct dirent *entry;
-
-	dir = opendir("/dev");
-	while ((entry = readdir(dir)) != NULL && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS) {
-		snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", entry->d_name);
-		if (!realpath(path, target)) continue;
-		bool found = false;
-		bool is_serial_link = false;
-		for (int i = 0; i < serial_count; i++) {
-			if (strcmp(serial_info[i].path, path) == 0) {
-				found = true;
-				break;
-			} else if (strcmp(serial_info[i].path, target) == 0) {
-				is_serial_link = true;
-				break;
-			}
-		}
-		if (!found) {
-			if (is_serial_link) {
-				int index = DEVICE_PORTS_PROPERTY->count++;
-				snprintf(label, INDIGO_VALUE_SIZE, "%s (link to %s)", path, target);
-				indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, label, false);
-				INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s link = %s", __FUNCTION__, index, path, target));
-			} else {
-				int ser_type = port_type(path);
-				if (ser_type > PORT_UNKNOWN) {
-					int index = DEVICE_PORTS_PROPERTY->count++;
-					indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, path, false);
-					INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s type = %d", __FUNCTION__, index, path, ser_type));
+	char **list;
+	int count = indigo_uni_scandir("/dev", &list, NULL);
+	if (count >= 0) {
+		for (int i = 0; i < count && DEVICE_PORTS_PROPERTY->count < MAX_DEVICE_PORTS; i++) {
+			snprintf(path, INDIGO_VALUE_SIZE, "/dev/%s", list[i]);
+			if (realpath(path, target)) {
+				bool found = false;
+				bool is_serial_link = false;
+				for (int i = 0; i < serial_count; i++) {
+					if (strcmp(serial_info[i].path, path) == 0) {
+						found = true;
+						break;
+					} else if (strcmp(serial_info[i].path, target) == 0) {
+						is_serial_link = true;
+						break;
+					}
+				}
+				if (!found) {
+					if (is_serial_link) {
+						int index = DEVICE_PORTS_PROPERTY->count++;
+						snprintf(label, INDIGO_VALUE_SIZE, "%s (link to %s)", path, target);
+						indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, label, false);
+						INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s link = %s", __FUNCTION__, index, path, target));
+					} else {
+						int ser_type = port_type(path);
+						if (ser_type > PORT_UNKNOWN) {
+							int index = DEVICE_PORTS_PROPERTY->count++;
+							indigo_init_switch_item(DEVICE_PORTS_PROPERTY->items + index, path, path, false);
+							INDIGO_DEBUG(indigo_debug("%s(): Serial port #%d: %s type = %d", __FUNCTION__, index, path, ser_type));
+						}
+					}
 				}
 			}
+			indigo_safe_free(list[i]);
 		}
+		indigo_safe_free(list);
 	}
-	closedir(dir);
 #endif
-	/* if there are no USB-Serial ports but there are regular serial ports and we waunt auto seleced port select the first one.
+	/* if there are no USB-Serial ports but there are regular serial ports and we want auto selected port, select the first one.
 	   Otherwise autoselect the matching port from the available USB-Serial ports.
 	*/
-	if (
-		DEVICE_PORTS_PROPERTY->count > 1 &&
-		serial_count == 0 && (
-			DEVICE_PORT_ITEM->text.value[0] == '\0' ||
-			!strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))
-		)
-	) {
+	if (DEVICE_PORTS_PROPERTY->count > 1 && serial_count == 0 && (DEVICE_PORT_ITEM->text.value[0] == '\0' || !strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX)))) {
 		snprintf(DEVICE_PORT_ITEM->text.value, INDIGO_VALUE_SIZE, "%s%s", USBSERIAL_AUTO_PREFIX, DEVICE_PORTS_PROPERTY->items[1].name);
 		INDIGO_DEBUG(indigo_debug("%s(): No USB-Serial ports found, selecting first tty port: %s", __FUNCTION__, DEVICE_PORT_ITEM->text.value));
 	} else {

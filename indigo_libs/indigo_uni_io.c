@@ -35,6 +35,7 @@
 #include <sys/stat.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <libgen.h>
+#include <dirent.h>
 #include <termios.h>
 #include <netdb.h>
 #include <sys/socket.h>
@@ -1241,17 +1242,41 @@ char* indigo_uni_realpath(const char* path, char *resolved_path) {
 
 char *indigo_uni_basename(const char *path) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	return basename(path);
+	return basename((char *)path);
 #elif defined(INDIGO_WINDOWS)
 	char drive[_MAX_DRIVE];
 	char dir[_MAX_DIR];
 	char fname[_MAX_FNAME];
 	char ext[_MAX_EXT];
-	static char result[_MAX_FNAME + _MAX_EXT + 1] = { 0 };
+	static char result[_MAX_FNAME + _MAX_EXT] = { 0 };
 	if (_splitpath_s(path, drive, sizeof(drive), dir, sizeof(dir), fname, sizeof(fname), ext, sizeof(ext)) == 0) {
 		snprintf(result, sizeof(result), "%s%s", fname, ext);
 	}
 	return result;
+#else
+#pragma message ("TODO: indigo_uni_basename()")
+#endif
+}
+
+int indigo_uni_scandir(const char* folder, char ***list, bool (*filter)(const char *)) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	int result = -1;
+	struct dirent **entries;
+	int count = scandir(folder, &entries, NULL, alphasort);
+	if (count >= 0) {
+		result = 0;
+		*list = (char **)indigo_safe_malloc(sizeof(const char *) * count);
+		for (int i = 0; i < count; i++) {
+			if (filter(entries[i]->d_name)) {
+				(*list)[result++] = strdup(entries[i]->d_name);
+			}
+			indigo_safe_free(entries[i]);
+		}
+	}
+	indigo_safe_free(entries);
+	return result;
+#elif defined(INDIGO_WINDOWS)
+	
 #else
 #pragma message ("TODO: indigo_uni_basename()")
 #endif

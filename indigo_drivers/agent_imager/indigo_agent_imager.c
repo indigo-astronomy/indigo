@@ -33,7 +33,6 @@
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -2189,82 +2188,36 @@ static void abort_process(indigo_device *device) {
 	indigo_change_switch_property_1(FILTER_DEVICE_CONTEXT->client, device->name, FOCUSER_ABORT_MOTION_PROPERTY_NAME, FOCUSER_ABORT_MOTION_ITEM_NAME, true);
 }
 
-static int image_filter(const struct dirent *entry) {
-	return strstr(entry->d_name, ".fits") || strstr(entry->d_name, ".xisf") || strstr(entry->d_name, ".raw") || strstr(entry->d_name, ".jpeg") || strstr(entry->d_name, ".tiff") || strstr(entry->d_name, ".avi") || strstr(entry->d_name, ".ser") || strstr(entry->d_name, ".nef") || strstr(entry->d_name, ".cr") || strstr(entry->d_name, ".sr") || strstr(entry->d_name, ".arw") || strstr(entry->d_name, ".raf");
-}
-
-static char *imagedir;
-
-static inline int datetimesort(const struct dirent **a, const struct dirent **b) {
-	int rc;
-	struct stat stat1, stat2;
-	char path1[INDIGO_VALUE_SIZE], path2[INDIGO_VALUE_SIZE];
-	snprintf(path1, INDIGO_VALUE_SIZE, "%s/%s", imagedir, (*a)->d_name);
-	snprintf(path2, INDIGO_VALUE_SIZE, "%s/%s", imagedir, (*b)->d_name);
-	rc = stat(path1, &stat1);
-	if (rc) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not stat %s", path1);
-		return 0;
-	}
-	rc = stat(path2, &stat2);
-	if (rc) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can not stat %s", path1);
-		return 0;
-	}
-	if (stat1.st_mtime > stat2.st_mtime) {
-		return 1;
-	}
-	if (stat1.st_mtime < stat2.st_mtime) {
-		return -1;
-	}
-	if (stat1.st_mtime == stat2.st_mtime) {
-#if defined(INDIGO_LINUX)
-		if (stat1.st_mtim.tv_nsec > stat2.st_mtim.tv_nsec) {
-			return 1;
-		}
-		if (stat1.st_mtim.tv_nsec < stat2.st_mtim.tv_nsec) {
-			return -1;
-		}
-#elif defined(INDIGO_MACOS)
-		if (stat1.st_mtimespec.tv_nsec > stat2.st_mtimespec.tv_nsec) {
-			return 1;
-		}
-		if (stat1.st_mtimespec.tv_nsec < stat2.st_mtimespec.tv_nsec) {
-			return -1;
-		}
-#endif
-	}
-	return 0;
+static bool image_filter(const char *name) {
+	return strstr(name, ".fits") || strstr(name, ".xisf") || strstr(name, ".raw") || strstr(name, ".jpeg") || strstr(name, ".tiff") || strstr(name, ".avi") || strstr(name, ".ser") || strstr(name, ".nef") || strstr(name, ".cr") || strstr(name, ".sr") || strstr(name, ".arw") || strstr(name, ".raf");
 }
 
 static void setup_download(indigo_device *device) {
 	if (*DEVICE_PRIVATE_DATA->current_folder) {
 		indigo_delete_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);
-		struct dirent **entries;
-		// TBD: This is not reetrant!
-		imagedir = DEVICE_PRIVATE_DATA->current_folder;
-		int count = scandir(DEVICE_PRIVATE_DATA->current_folder, &entries, image_filter, datetimesort);
+		char **list;
+		int count = indigo_uni_scandir(DEVICE_PRIVATE_DATA->current_folder, &list, image_filter);
 		if (count >= 0) {
 			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY = indigo_resize_property(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, count + 1);
 			char file_name[PATH_MAX], label[INDIGO_VALUE_SIZE];
 			struct stat file_stat;
 			int valid_count = 1; /* Refresh item is 0 */
 			for (int i = 0; i < count; i++) {
-				snprintf(file_name, sizeof(file_name), "%s%s", DEVICE_PRIVATE_DATA->current_folder, entries[i]->d_name);
+				snprintf(file_name, sizeof(file_name), "%s%s", DEVICE_PRIVATE_DATA->current_folder, list[i]);
 				if (stat(file_name, &file_stat) >= 0 && file_stat.st_size > 0) {
 					if (file_stat.st_size < 1024) {
-						snprintf(label, sizeof(label), "%s (%lldB)", entries[i]->d_name, file_stat.st_size);
+						snprintf(label, sizeof(label), "%s (%lldB)", list[i], file_stat.st_size);
 					} else if (file_stat.st_size < 1048576) {
-						snprintf(label, sizeof(label), "%s (%.1fKB)", entries[i]->d_name, file_stat.st_size / 1024.0);
+						snprintf(label, sizeof(label), "%s (%.1fKB)", list[i], file_stat.st_size / 1024.0);
 					} else {
-						snprintf(label, sizeof(label), "%s (%.1fMB)", entries[i]->d_name, file_stat.st_size / 1048576.0);
+						snprintf(label, sizeof(label), "%s (%.1fMB)", list[i], file_stat.st_size / 1048576.0);
 					}
-					indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + valid_count++, entries[i]->d_name, label, false);
+					indigo_init_switch_item(AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->items + valid_count++, list[i], label, false);
 				}
-				free(entries[i]);
+				indigo_safe_free(list[i]);
 			}
 			AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->count = valid_count;
-			free(entries);
+			indigo_safe_free(list);
 		}
 		AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_define_property(device, AGENT_IMAGER_DOWNLOAD_FILES_PROPERTY, NULL);

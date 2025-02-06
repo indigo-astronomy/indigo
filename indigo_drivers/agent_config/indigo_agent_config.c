@@ -33,7 +33,6 @@
 #include <assert.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <dirent.h>
 #include <ctype.h>
 #include <sys/stat.h>
 
@@ -117,34 +116,26 @@ static void save_config(indigo_device *device) {
 	}
 }
 
-static int configuration_filter(const struct dirent *entry) {
-	return strstr(entry->d_name, EXTENSION) != NULL;
+static bool configuration_filter(const char *name) {
+	return strstr(name, EXTENSION) != NULL;
 }
 
 static void populate_list(indigo_device *device) {
-	struct dirent **entries;
-	char folder[256];
-	snprintf(folder, sizeof(folder), "%s/.indigo/", getenv("HOME"));
-	int count = scandir(folder, &entries, configuration_filter, alphasort);
+	char **list;
+	int count = indigo_uni_scandir(indigo_uni_config_folder(), &list, configuration_filter);
 	if (count >= 0) {
 		AGENT_CONFIG_LOAD_PROPERTY = indigo_resize_property(AGENT_CONFIG_LOAD_PROPERTY, count);
-		char file_name[INDIGO_VALUE_SIZE + INDIGO_NAME_SIZE];
-		struct stat file_stat;
 		int valid_count = 0;
 		for (int i = 0; i < count; i++) {
-			strcpy(file_name, folder);
-			strcat(file_name, entries[i]->d_name);
-			if (stat(file_name, &file_stat) >= 0 && file_stat.st_size > 0) {
-				char *ext = strstr(entries[i]->d_name, EXTENSION);
-				if (ext)
-					*ext = 0;
-				indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + valid_count, entries[i]->d_name, entries[i]->d_name, false);
-				valid_count++;
-			}
-			free(entries[i]);
+			char *ext = strstr(list[i], EXTENSION);
+			if (ext)
+				*ext = 0;
+			indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + valid_count, list[i], list[i], false);
+			valid_count++;
+			free(list[i]);
 		}
 		AGENT_CONFIG_LOAD_PROPERTY->count = valid_count;
-		free(entries);
+		free(list);
 	}
 }
 
