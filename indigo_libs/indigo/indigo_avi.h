@@ -39,6 +39,16 @@
 #ifndef H_GWAVI
 #define H_GWAVI
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <stddef.h>
 
 #include "indigo_uni_io.h"
@@ -109,9 +119,9 @@ struct gwavi_t {
 	int offset_count;
 };
 
-extern struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned int height, const char *fourcc, unsigned int fps);
-extern bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len);
-extern bool gwavi_close(struct gwavi_t *gwavi);
+INDIGO_EXTERN struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned int height, const char *fourcc, unsigned int fps);
+INDIGO_EXTERN bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len);
+INDIGO_EXTERN bool gwavi_close(struct gwavi_t *gwavi);
 
 #ifdef __cplusplus
 }

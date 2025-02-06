@@ -22,6 +22,16 @@
 #ifndef _INDIGO_DSLR_RAW_H
 #define _INDIGO_DSLR_RAW_H
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <libraw.h>
 #include <stdbool.h>
 
@@ -65,8 +75,8 @@ extern "C" {
 
 #define FIT_FORMAT_AMATEUR_CCD
 
-int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_raw_image_s *output_image);
-int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw_image_info_s *image_info);
+INDIGO_EXTERN int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_raw_image_s *output_image);
+INDIGO_EXTERN int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw_image_info_s *image_info);
 
 #ifdef __cplusplus
 }

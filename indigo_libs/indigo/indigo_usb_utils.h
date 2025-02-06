@@ -23,6 +23,16 @@
  \file indigo_usb_utils.h
  */
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifndef indigo_usb_utils_h
 #define indigo_usb_utils_h
 
@@ -40,7 +50,7 @@
 extern "C" {
 #endif
 
-extern indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
+INDIGO_EXTERN indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
 
 #ifdef __cplusplus
 }

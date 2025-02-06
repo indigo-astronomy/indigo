@@ -17,15 +17,25 @@
 #ifndef __DYNAMICAL_TIME_H
 #define __DYNAMICAL_TIME_H
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /* Calculate approximate dynamical time difference from julian day in seconds */
-extern double  indigocat_get_dynamical_time_diff(double JD);
+INDIGO_EXTERN double  indigocat_get_dynamical_time_diff(double JD);
 
 /* brief Calculate julian ephemeris day (JDE) */
-extern double  indigocat_jd_to_jde(double JD);
+INDIGO_EXTERN double  indigocat_jd_to_jde(double JD);
 
 #ifdef __cplusplus
 };

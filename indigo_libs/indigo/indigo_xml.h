@@ -26,6 +26,16 @@
 #ifndef indigo_xml_h
 #define indigo_xml_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <stdio.h>
 #include <indigo/indigo_bus.h>
 
@@ -36,15 +46,15 @@ extern "C" {
 /** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
  */
 
-extern bool indigo_use_blob_urls;
+INDIGO_EXTERN bool indigo_use_blob_urls;
 
 /** XML wire protocol parser.
  */
-extern void indigo_xml_parse(indigo_device *device, indigo_client *client);
+INDIGO_EXTERN void indigo_xml_parse(indigo_device *device, indigo_client *client);
 
 /** Escape XML string.
  */
-extern const char *indigo_xml_escape(const char *string);
+INDIGO_EXTERN const char *indigo_xml_escape(const char *string);
 
 #ifdef __cplusplus
 }

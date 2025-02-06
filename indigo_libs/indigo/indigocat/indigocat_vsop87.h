@@ -17,6 +17,16 @@
 #ifndef __VSOP87_H
 #define __VSOP87_H
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigocat/indigocat_transform.h>
 
 #ifdef __cplusplus
@@ -29,8 +39,8 @@ struct vsop {
 	float C;
 };
 
-extern void indigocat_vsop87_to_fk5(heliocentric_coords_s * position, double JD);
-extern double indigocat_vsop87_calc_series(const struct vsop * data, int terms, double t);
+INDIGO_EXTERN void indigocat_vsop87_to_fk5(heliocentric_coords_s * position, double JD);
+INDIGO_EXTERN double indigocat_vsop87_calc_series(const struct vsop * data, int terms, double t);
 
 #ifdef __cplusplus
 };

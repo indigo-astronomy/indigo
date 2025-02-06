@@ -26,6 +26,16 @@
 #ifndef indigo_json_h
 #define indigo_json_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <stdio.h>
 #include <indigo/indigo_bus.h>
 
@@ -45,11 +55,11 @@ extern "C" {
 
 /** JSON wire protocol parser.
  */
-extern void indigo_json_parse(indigo_device *device, indigo_client *client);
+INDIGO_EXTERN void indigo_json_parse(indigo_device *device, indigo_client *client);
 
 /** Escape JSON string.
  */
-extern const char *indigo_json_escape(const char *string);
+INDIGO_EXTERN const char *indigo_json_escape(const char *string);
 
 #ifdef __cplusplus
 }

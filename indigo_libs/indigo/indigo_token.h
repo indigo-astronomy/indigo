@@ -26,6 +26,16 @@
 #ifndef indigo_token_h
 #define indigo_token_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #define MAX_TOKENS 256
 
 #include <stdint.h>
@@ -43,31 +53,31 @@ indigo_token indigo_string_to_token(const char *token_string);
 
 /** Add device and token to the list, if the device exists, token will be updated
  */
-extern bool indigo_add_device_token(const char *device, indigo_token token);
+INDIGO_EXTERN bool indigo_add_device_token(const char *device, indigo_token token);
 
 /** Remove device access token from the list
  */
-extern bool indigo_remove_device_token(const char *device);
+INDIGO_EXTERN bool indigo_remove_device_token(const char *device);
 
 /** Get device access token from the list or 0 if not set
  */
-extern indigo_token indigo_get_device_token(const char *device);
+INDIGO_EXTERN indigo_token indigo_get_device_token(const char *device);
 
 /** Get device token if set else get master access token or 0 if none set
  */
-extern indigo_token indigo_get_device_or_master_token(const char *device);
+INDIGO_EXTERN indigo_token indigo_get_device_or_master_token(const char *device);
 
 /** Get master token
  */
-extern indigo_token indigo_get_master_token();
+INDIGO_EXTERN indigo_token indigo_get_master_token();
 
 /** Set master token
  */
-extern void indigo_set_master_token(indigo_token token);
+INDIGO_EXTERN void indigo_set_master_token(indigo_token token);
 
 /** Clear token list
  */
-extern void indigo_clear_device_tokens();
+INDIGO_EXTERN void indigo_clear_device_tokens();
 
 /** Read device tokens from file
     NOTE: Existing list will not be removed read tokens will be added or uptaded.
@@ -78,11 +88,11 @@ extern void indigo_clear_device_tokens();
     # Set master token ('@' means master token)
     1232 @
  */
-extern bool indigo_load_device_tokens_from_file(const char *file_name);
+INDIGO_EXTERN bool indigo_load_device_tokens_from_file(const char *file_name);
 
 /** Save device tokens to file
  */
-extern bool indigo_save_device_tokens_to_file(const char *file_name);
+INDIGO_EXTERN bool indigo_save_device_tokens_to_file(const char *file_name);
 
 #ifdef __cplusplus
 }

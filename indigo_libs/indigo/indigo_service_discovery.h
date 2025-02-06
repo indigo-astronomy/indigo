@@ -25,6 +25,16 @@
 #include <stdbool.h>
 #include <indigo/indigo_bus.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -45,9 +55,9 @@ typedef enum {
 	INDIGO_SERVICE_END_OF_RECORD      /* no more visible services at this time */
 } indigo_service_discovery_event;
 
-extern indigo_result indigo_resolve_service(const char *name, uint32_t interface_index, void (*callback)(const char *name, uint32_t interface_index, const char *host, int port));
-extern indigo_result indigo_start_service_browser(void (*callback)(indigo_service_discovery_event event, const char *name, uint32_t interface_index));
-extern void indigo_stop_service_browser(void);
+INDIGO_EXTERN indigo_result indigo_resolve_service(const char *name, uint32_t interface_index, void (*callback)(const char *name, uint32_t interface_index, const char *host, int port));
+INDIGO_EXTERN indigo_result indigo_start_service_browser(void (*callback)(indigo_service_discovery_event event, const char *name, uint32_t interface_index));
+INDIGO_EXTERN void indigo_stop_service_browser(void);
 
 #ifdef __cplusplus
 }

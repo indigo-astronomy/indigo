@@ -26,6 +26,16 @@
 #ifndef indigo_platesolver_h
 #define indigo_platesolver_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_align.h>
@@ -172,22 +182,22 @@ typedef struct {
 	int saved_sync_mode;
 } platesolver_private_data;
 
-extern bool indigo_platesolver_validate_executable(const char *executable);
-extern void indigo_platesolver_save_config(indigo_device *device);
-extern void indigo_platesolver_sync(indigo_device *device);
+INDIGO_EXTERN bool indigo_platesolver_validate_executable(const char *executable);
+INDIGO_EXTERN void indigo_platesolver_save_config(indigo_device *device);
+INDIGO_EXTERN void indigo_platesolver_sync(indigo_device *device);
 
 /** Device attach callback function.
  */
-extern indigo_result indigo_platesolver_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface);
+INDIGO_EXTERN indigo_result indigo_platesolver_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_platesolver_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_platesolver_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_platesolver_device_detach(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_platesolver_device_detach(indigo_device *device);
 
 #define indigo_platesolver_client_attach indigo_filter_client_attach
 #define indigo_platesolver_delete_property indigo_filter_delete_property
@@ -195,11 +205,11 @@ extern indigo_result indigo_platesolver_device_detach(indigo_device *device);
 
 /** Client define property callback function.
  */
-extern indigo_result indigo_platesolver_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+INDIGO_EXTERN indigo_result indigo_platesolver_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 
 /** Client update property callback function.
  */
-extern indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+INDIGO_EXTERN indigo_result indigo_platesolver_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 
 #ifdef __cplusplus
 }

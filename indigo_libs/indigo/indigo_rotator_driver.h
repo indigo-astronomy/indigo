@@ -26,6 +26,16 @@
 #ifndef indigo_rotator_h
 #define indigo_rotator_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 
@@ -157,16 +167,16 @@ typedef struct {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_name, unsigned version);
+INDIGO_EXTERN indigo_result indigo_rotator_attach(indigo_device *device, const char* driver_name, unsigned version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_rotator_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_rotator_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_rotator_detach(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_rotator_detach(indigo_device *device);
 
 
 /**
@@ -178,7 +188,7 @@ extern indigo_result indigo_rotator_detach(indigo_device *device);
  * @param angle The angle to be normalized, in degrees.
  * @return The angle normalized to the range [0, 360) degrees.
  */
-extern double indigo_range360(double angle);
+INDIGO_EXTERN double indigo_range360(double angle);
 
 
 /**
@@ -193,14 +203,14 @@ extern double indigo_range360(double angle);
  * @param angle2 The second angle, in degrees.
  * @return The difference between angle1 and angle2, normalized to the range [-180, 180) degrees.
  */
-extern double indigo_angle_difference(double angle1, double angle2);
+INDIGO_EXTERN double indigo_angle_difference(double angle1, double angle2);
 
 
 /**
  * @brief save load rotator calibration
  */
-extern void indigo_rotator_save_calibration(indigo_device *device);
-extern void indigo_rotator_load_calibration(indigo_device *device);
+INDIGO_EXTERN void indigo_rotator_save_calibration(indigo_device *device);
+INDIGO_EXTERN void indigo_rotator_load_calibration(indigo_device *device);
 
 #ifdef __cplusplus
 }

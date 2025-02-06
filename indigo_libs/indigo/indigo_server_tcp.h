@@ -26,6 +26,16 @@
 #ifndef indigo_server_tcp_h
 #define indigo_server_tcp_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
@@ -37,51 +47,51 @@ extern "C" {
 
 /** TCP port to run on.
  */
-extern int indigo_server_tcp_port;
+INDIGO_EXTERN int indigo_server_tcp_port;
 
 /** Use bonjour.
  */
-extern bool indigo_use_bonjour;
+INDIGO_EXTERN bool indigo_use_bonjour;
 
 /** TCP port is ephemeral.
  */
-extern bool indigo_is_ephemeral_port;
+INDIGO_EXTERN bool indigo_is_ephemeral_port;
 
 /** Use BLOB double-buffering.
  */
-extern bool indigo_use_blob_buffering;
+INDIGO_EXTERN bool indigo_use_blob_buffering;
 
 /** Use BLOB compression (valid with indigo_use_blob_buffering only).
  */
-extern bool indigo_use_blob_compression;
+INDIGO_EXTERN bool indigo_use_blob_compression;
 
 /** Add static document.
  */
-extern void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type);
+INDIGO_EXTERN void indigo_server_add_resource(const char *path, unsigned char *data, unsigned length, const char *content_type);
 
 /** Add file document.
  */
-extern void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type);
+INDIGO_EXTERN void indigo_server_add_file_resource(const char *path, const char *file_name, const char *content_type);
 
 /** Add URI handler.
  */
-extern void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params));
+INDIGO_EXTERN void indigo_server_add_handler(const char *path, bool (*handler)(indigo_uni_handle *handle, char *method, char *path, char *params));
 
 /** Remove document.
  */
-extern void indigo_server_remove_resource(const char *path);
+INDIGO_EXTERN void indigo_server_remove_resource(const char *path);
 	
 /** Remove all documents.
  */
-extern void indigo_server_remove_resources(void);
+INDIGO_EXTERN void indigo_server_remove_resources(void);
 	
 /** Start network server (function will block until server is active).
  */
-extern indigo_result indigo_server_start(void (*callback)(int));
+INDIGO_EXTERN indigo_result indigo_server_start(void (*callback)(int));
 
 /** Shutdown network server (function will block until server is active).
  */
-extern void indigo_server_shutdown(void);
+INDIGO_EXTERN void indigo_server_shutdown(void);
 
 #ifdef __cplusplus
 }

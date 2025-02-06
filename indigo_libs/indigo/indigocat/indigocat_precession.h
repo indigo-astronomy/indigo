@@ -15,17 +15,27 @@
 #ifndef __PRECESSION_H
 #define __PRECESSION_H
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigocat/indigocat_transform.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern equatorial_coords_s indigocat_precess(const equatorial_coords_s *c0, const double eq0, const double eq1);
-extern equatorial_coords_s indigocat_apply_proper_motion(const equatorial_coords_s *c0, double pmra, double pmdec, double eq0, double eq1);
+INDIGO_EXTERN equatorial_coords_s indigocat_precess(const equatorial_coords_s *c0, const double eq0, const double eq1);
+INDIGO_EXTERN equatorial_coords_s indigocat_apply_proper_motion(const equatorial_coords_s *c0, double pmra, double pmdec, double eq0, double eq1);
 
-extern void indigocat_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec);
-extern void indigocat_jnow_to_j2k(double *ra, double *dec);
+INDIGO_EXTERN void indigocat_j2k_to_jnow_pm(double *ra, double *dec, double pmra, double pmdec);
+INDIGO_EXTERN void indigocat_jnow_to_j2k(double *ra, double *dec);
 
 #ifdef __cplusplus
 };

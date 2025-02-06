@@ -23,9 +23,18 @@
  \file indigocat_ss.h
  */
 
-
 #ifndef indigocat_ss_h
 #define indigocat_ss_h
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 typedef enum {
 	MERCURY = 1,
@@ -49,6 +58,6 @@ typedef struct {
 } indigocat_ss_entry;
 
 
-extern indigocat_ss_entry *indigocat_get_ss_data(void);
+INDIGO_EXTERN indigocat_ss_entry *indigocat_get_ss_data(void);
 
 #endif /* indigocat_dso_h */

@@ -15,45 +15,55 @@
 #ifndef __SOLAR_SYSTEM_H
 #define __SOLAR_SYSTEM_H
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigocat/indigocat_transform.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-extern void indigocat_mercury_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_mercury_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_mercury_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_mercury_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_venus_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_venus_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_venus_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_venus_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_earth_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_earth_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_mars_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_mars_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_mars_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_mars_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_jupiter_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_jupiter_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_jupiter_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_jupiter_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_saturn_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_saturn_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_saturn_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_saturn_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_uranus_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_uranus_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_uranus_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_uranus_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_neptune_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_neptune_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_neptune_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_neptune_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_pluto_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_pluto_heliocentric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_pluto_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_pluto_heliocentric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_sun_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_sun_geometric_coords(double JD, heliocentric_coords_s *position);
+INDIGO_EXTERN void indigocat_sun_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_sun_geometric_coords(double JD, heliocentric_coords_s *position);
 
-extern void indigocat_moon_equatorial_coords(double JD, equatorial_coords_s *position);
-extern void indigocat_moon_geocentric_coords(double JD, cartesian_coords_s *moon, double precision);
-extern void indigocat_moon_equatorial_coords_prec(double JD, equatorial_coords_s *position, double precision);
-extern void indigocat_moon_ecliptical_coords(double JD, lonlat_coords_s *position, double precision);
+INDIGO_EXTERN void indigocat_moon_equatorial_coords(double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_moon_geocentric_coords(double JD, cartesian_coords_s *moon, double precision);
+INDIGO_EXTERN void indigocat_moon_equatorial_coords_prec(double JD, equatorial_coords_s *position, double precision);
+INDIGO_EXTERN void indigocat_moon_ecliptical_coords(double JD, lonlat_coords_s *position, double precision);
 
 #ifdef __cplusplus
 };

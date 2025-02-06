@@ -23,9 +23,18 @@
  \file indigocat_star.h
  */
 
-
 #ifndef indigocat_star_h
 #define indigocat_star_h
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 typedef struct {
 	int hip;
@@ -35,6 +44,6 @@ typedef struct {
 	double ra_now, dec_now;
 } indigocat_star_entry;
 
-extern indigocat_star_entry *indigocat_get_star_data(void);
+INDIGO_EXTERN indigocat_star_entry *indigocat_get_star_data(void);
 
 #endif /* indigocat_star_h */

@@ -26,6 +26,16 @@
 #ifndef indigo_device_xml_h
 #define indigo_device_xml_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_xml.h>
 
@@ -35,7 +45,7 @@ extern "C" {
 
 /** Create initialized instance of XML wire protocol client side adapter.
  */
-extern indigo_client *indigo_xml_device_adapter(indigo_uni_handle *input, indigo_uni_handle *output);
+INDIGO_EXTERN indigo_client *indigo_xml_device_adapter(indigo_uni_handle *input, indigo_uni_handle *output);
 
 #ifdef __cplusplus
 }

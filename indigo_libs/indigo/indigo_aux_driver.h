@@ -26,6 +26,16 @@
 #ifndef indigo_aux_h
 #define indigo_aux_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 
@@ -43,26 +53,26 @@ extern "C" {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_aux_attach(indigo_device *device, const char* driver_name, unsigned version, int interface);
+INDIGO_EXTERN indigo_result indigo_aux_attach(indigo_device *device, const char* driver_name, unsigned version, int interface);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_aux_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_aux_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_aux_detach(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_aux_detach(indigo_device *device);
 
 /** Calculate dewpoint in degC from temperature in degC and relative humidity in % using Magnus formula
 */
-extern double indigo_aux_dewpoint(double temperature, double rh);
+INDIGO_EXTERN double indigo_aux_dewpoint(double temperature, double rh);
 
 /** Calculate approximate Bortle dark sky scale from sky brigthness in mag/arcsec^2
  * @param sky_brightness sky brigthness in mag/arcsec^2
  * @return Bortle dark sky scale (1, 2, 3, 4, 4.5, 5, 6, 7, 8 or 9)
  */
-extern float indigo_aux_sky_bortle(double sky_brightness);
+INDIGO_EXTERN float indigo_aux_sky_bortle(double sky_brightness);
 
 #ifdef __cplusplus
 }
