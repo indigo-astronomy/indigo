@@ -17,6 +17,8 @@
 #ifndef __VSOP87_H
 #define __VSOP87_H
 
+#include <indigo/indigocat/indigocat_transform.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -26,8 +28,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <indigo/indigocat/indigocat_transform.h>
 
 #ifdef __cplusplus
 extern "C" {

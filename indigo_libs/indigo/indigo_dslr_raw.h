@@ -22,16 +22,6 @@
 #ifndef _INDIGO_DSLR_RAW_H
 #define _INDIGO_DSLR_RAW_H
 
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
-
 #include <libraw.h>
 #include <stdbool.h>
 
@@ -68,6 +58,16 @@ typedef struct {
 	char desc[512];
 	char artist[64];
 } indigo_dslr_raw_image_info_s;
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 #ifdef __cplusplus
 extern "C" {

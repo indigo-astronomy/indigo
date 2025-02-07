@@ -21,7 +21,6 @@
 
 #ifndef indigo_service_discovery_h
 #define indigo_service_discovery_h
-
 #include <stdbool.h>
 #include <indigo/indigo_bus.h>
 

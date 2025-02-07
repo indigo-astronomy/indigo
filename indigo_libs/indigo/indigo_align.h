@@ -33,6 +33,12 @@
 #ifndef indigo_align_h
 #define indigo_align_h
 
+#include <stdio.h>
+#include <math.h>
+#include <time.h>
+#include <string.h>
+#include <stdbool.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -42,12 +48,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stdio.h>
-#include <math.h>
-#include <time.h>
-#include <string.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

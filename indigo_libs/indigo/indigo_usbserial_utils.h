@@ -26,16 +26,6 @@
 #ifndef indigo_usbserial_utils_h
 #define indigo_usbserial_utils_h
 
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
-
 #include <limits.h>
 #include <indigo/indigo_bus.h>
 
@@ -67,18 +57,23 @@ typedef struct {
 	device.match_patterns = patterns; \
 	device.match_patterns_count = count;
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 INDIGO_EXTERN int indigo_enumerate_usbserial_devices(indigo_serial_info *serial_info, int num_serial_info);
 INDIGO_EXTERN void indigo_usbserial_label(indigo_serial_info *serial_info, char *label);
-INDIGO_EXTERN indigo_serial_info *indigo_usbserial_match (
-	indigo_serial_info *serial_info,
-	const int num_serial_info,
-	indigo_device_match_pattern *patterns,
-	const int num_patterns
-);
+INDIGO_EXTERN indigo_serial_info *indigo_usbserial_match (indigo_serial_info *serial_info, const int num_serial_info, indigo_device_match_pattern *patterns, const int num_patterns);
 
 #ifdef __cplusplus
 }

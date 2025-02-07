@@ -26,6 +26,18 @@
 #ifndef indigo_bus_h
 #define indigo_bus_h
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdarg.h>
+#include <string.h>
+#include <pthread.h>
+#include <assert.h>
+#include <indigo/indigo_config.h>
+#include <indigo/indigo_token.h>
+#include <indigo/indigo_uni_io.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -35,19 +47,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdarg.h>
-#include <string.h>
-#include <pthread.h>
-#include <assert.h>
-
-#include <indigo/indigo_config.h>
-#include <indigo/indigo_token.h>
-#include <indigo/indigo_uni_io.h>
 
 #ifdef __cplusplus
 extern "C" {

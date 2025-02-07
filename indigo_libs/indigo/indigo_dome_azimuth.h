@@ -25,6 +25,11 @@
  \file indigo_dome_azimuth.h
  */
 
+#include <indigo/indigo_config.h>
+
+#ifndef indigo_dome_azimuth_h
+#define indigo_dome_azimuth_h
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -35,14 +40,9 @@
 #define INDIGO_EXTERN extern
 #endif
 
-#include <indigo/indigo_config.h>
-
-#ifndef indigo_dome_azimuth_h
- #define indigo_dome_azimuth_h
-
- #ifdef __cplusplus
- extern "C" {
- #endif
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 INDIGO_EXTERN double map24(double hour);
 

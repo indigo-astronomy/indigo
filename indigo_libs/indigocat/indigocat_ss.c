@@ -23,7 +23,6 @@
  \file indigo_cat_data.c
  */
 
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>

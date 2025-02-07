@@ -26,6 +26,11 @@
 #ifndef indigo_platesolver_h
 #define indigo_platesolver_h
 
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
+#include <indigo/indigo_align.h>
+#include <indigo/indigo_names.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -35,11 +40,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <indigo/indigo_bus.h>
-#include <indigo/indigo_driver.h>
-#include <indigo/indigo_align.h>
-#include <indigo/indigo_names.h>
 
 #ifdef __cplusplus
 extern "C" {

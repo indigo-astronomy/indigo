@@ -25,6 +25,10 @@
 
 #ifndef indigo_client_h
 #define indigo_client_h
+#include <pthread.h>
+#include <stdbool.h>
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -35,12 +39,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <pthread.h>
-#include <stdbool.h>
-
-#include <indigo/indigo_bus.h>
-#include <indigo/indigo_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

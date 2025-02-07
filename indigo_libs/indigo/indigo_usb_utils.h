@@ -23,6 +23,18 @@
  \file indigo_usb_utils.h
  */
 
+
+#ifndef indigo_usb_utils_h
+#define indigo_usb_utils_h
+#include <stdio.h>
+
+#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
+#include <libusb-1.0/libusb.h>
+#elif defined(INDIGO_FREEBSD) || defined(INDIGO_WINDOWS)
+#include <libusb.h>
+#endif
+#include <indigo/indigo_bus.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -32,19 +44,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#ifndef indigo_usb_utils_h
-#define indigo_usb_utils_h
-
-#include <stdio.h>
-
-#if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD) || defined(INDIGO_WINDOWS)
-#include <libusb.h>
-#endif
-
-#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {

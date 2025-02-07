@@ -25,6 +25,9 @@
 
 #ifndef indigo_timer_h
 #define indigo_timer_h
+#include <stdio.h>
+#include <pthread.h>
+#include <indigo/indigo_bus.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -35,11 +38,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stdio.h>
-#include <pthread.h>
-
-#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {

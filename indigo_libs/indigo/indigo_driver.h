@@ -25,20 +25,8 @@
 
 #ifndef indigo_device_h
 #define indigo_device_h
-
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
-
 #include <stdint.h>
 #include <pthread.h>
-
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_names.h>
@@ -64,6 +52,16 @@
 #define DELTA_UTC_UT1    (-0.477677 / 86400.0)
 #define UT2JD(t)         ((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
 #define JDNOW            UT2JD(time(NULL))
+#endif
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
 #endif
 
 #ifdef __cplusplus

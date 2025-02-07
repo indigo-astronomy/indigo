@@ -39,6 +39,9 @@
 #ifndef H_GWAVI
 #define H_GWAVI
 
+#include <stddef.h>
+#include "indigo_uni_io.h"
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -48,10 +51,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stddef.h>
-
-#include "indigo_uni_io.h"
 
 #ifdef __cplusplus
 extern "C" {

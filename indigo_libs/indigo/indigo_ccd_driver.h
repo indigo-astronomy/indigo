@@ -25,17 +25,6 @@
 
 #ifndef indigo_ccd_h
 #define indigo_ccd_h
-
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
-
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_fits.h>
@@ -59,6 +48,16 @@ static const ccd_jpeg_stretch_params_t ccd_jpeg_stretch_params_lut[] ={
 	{ 0.25f, -2.8f },
 	{ 0.40f, -2.5f }
 };
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -636,7 +635,6 @@ INDIGO_EXTERN indigo_result indigo_set_fits_header(indigo_client *client, char *
 /** Remove FITS header
  */
 INDIGO_EXTERN indigo_result indigo_remove_fits_header(indigo_client *client, char *device, char *name);
-
 
 
 #ifdef __cplusplus

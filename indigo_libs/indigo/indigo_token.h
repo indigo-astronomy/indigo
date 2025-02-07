@@ -26,6 +26,11 @@
 #ifndef indigo_token_h
 #define indigo_token_h
 
+
+#define MAX_TOKENS 256
+#include <stdint.h>
+#include <stdbool.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -35,11 +40,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#define MAX_TOKENS 256
-
-#include <stdint.h>
-#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {

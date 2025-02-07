@@ -94,7 +94,6 @@ INDIGO_EXTERN int indigo_polynomial_extremums(int coefficient_count, double *pol
  */
 INDIGO_EXTERN double indigo_polynomial_min_x(int coefficient_count, double* polynomial_coefficients, double low, double high, double tolerance);
 
-
 /**
  * Converts the polynomial coefficients into a string representation.
  *

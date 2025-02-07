@@ -26,6 +26,9 @@
 #ifndef indigo_json_h
 #define indigo_json_h
 
+#include <stdio.h>
+#include <indigo/indigo_bus.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -35,9 +38,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stdio.h>
-#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {

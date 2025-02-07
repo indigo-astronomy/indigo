@@ -23,6 +23,12 @@
  \file indigo_filter.h
  */
 
+
+#ifndef indigo_filter_h
+#define indigo_filter_h
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -32,12 +38,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#ifndef indigo_filter_h
-#define indigo_filter_h
-
-#include <indigo/indigo_bus.h>
-#include <indigo/indigo_driver.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -299,7 +299,6 @@ INDIGO_EXTERN int indigo_save_switch_state(indigo_device *device, char *name, ch
 /** Restore selected item on given switch to index.
  */
 INDIGO_EXTERN void indigo_restore_switch_state(indigo_device *device, char *name, int index);
-
 
 #ifdef __cplusplus
 }

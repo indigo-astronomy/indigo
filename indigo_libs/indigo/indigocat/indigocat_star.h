@@ -44,6 +44,14 @@ typedef struct {
 	double ra_now, dec_now;
 } indigocat_star_entry;
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 INDIGO_EXTERN indigocat_star_entry *indigocat_get_star_data(void);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* indigocat_star_h */

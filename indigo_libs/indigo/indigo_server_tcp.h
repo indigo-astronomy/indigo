@@ -26,6 +26,8 @@
 #ifndef indigo_server_tcp_h
 #define indigo_server_tcp_h
 
+#include <indigo/indigo_bus.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -35,8 +37,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <indigo/indigo_bus.h>
 
 #ifdef __cplusplus
 extern "C" {

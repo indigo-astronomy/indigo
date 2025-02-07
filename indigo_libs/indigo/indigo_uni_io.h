@@ -26,16 +26,6 @@
 #ifndef indigo_uni_io_h
 #define indigo_uni_io_h
 
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <string.h>
@@ -54,6 +44,16 @@
 #define strtok_r strtok_s
 #define strdup _strdup
 #define stat _stat
+#endif
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
 #endif
 
 #ifdef __cplusplus
@@ -236,7 +236,6 @@ INDIGO_EXTERN void indigo_uni_compress(char *name, char *in_buffer, unsigned in_
  */
 
 INDIGO_EXTERN void indigo_uni_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
-
 
 #ifdef __cplusplus
 }

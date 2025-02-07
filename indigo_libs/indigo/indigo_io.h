@@ -27,6 +27,10 @@
 #ifndef indigo_io_h
 #define indigo_io_h
 
+#include <stdio.h>
+#include <stdbool.h>
+#include <string.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -36,10 +40,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stdio.h>
-#include <stdbool.h>
-#include <string.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -130,7 +130,6 @@ INDIGO_EXTERN void indigo_compress(char *name, char *in_buffer, unsigned in_size
 INDIGO_EXTERN void indigo_decompress(char *in_buffer, unsigned in_size, unsigned char *out_buffer, unsigned *out_size);
 
 #endif
-
 #ifdef __cplusplus
 }
 #endif

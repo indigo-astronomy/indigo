@@ -24,6 +24,10 @@
 #ifndef indigo_stretch_h
 #define indigo_stretch_h
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -33,10 +37,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -74,7 +74,6 @@ INDIGO_EXTERN void indigo_debayer_8_rggb(const uint8_t *input_buffer, int width,
 INDIGO_EXTERN void indigo_debayer_8_gbrg(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer);
 INDIGO_EXTERN void indigo_debayer_8_grbg(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer);
 INDIGO_EXTERN void indigo_debayer_8_bggr(const uint8_t *input_buffer, int width, int height, uint8_t *output_buffer);
-
 
 #ifdef __cplusplus
 }

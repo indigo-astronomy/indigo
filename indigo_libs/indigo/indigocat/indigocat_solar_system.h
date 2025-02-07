@@ -14,6 +14,7 @@
 
 #ifndef __SOLAR_SYSTEM_H
 #define __SOLAR_SYSTEM_H
+#include <indigo/indigocat/indigocat_transform.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -24,8 +25,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <indigo/indigocat/indigocat_transform.h>
 
 #ifdef __cplusplus
 extern "C" {

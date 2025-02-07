@@ -25,6 +25,8 @@
 
 #ifndef indigo_rotator_h
 #define indigo_rotator_h
+#include <indigo/indigo_bus.h>
+#include <indigo/indigo_driver.h>
 
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
@@ -35,9 +37,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <indigo/indigo_bus.h>
-#include <indigo/indigo_driver.h>
 
 #ifdef __cplusplus
 extern "C" {

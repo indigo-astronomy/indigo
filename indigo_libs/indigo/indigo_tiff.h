@@ -22,6 +22,9 @@
 #ifndef indigo_tiff_h
 #define indigo_tiff_h
 
+#include <stdio.h>
+#include <tiffio.h>
+
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
@@ -31,9 +34,6 @@
 #else
 #define INDIGO_EXTERN extern
 #endif
-
-#include <stdio.h>
-#include <tiffio.h>
 
 #ifdef __cplusplus
 extern "C" {

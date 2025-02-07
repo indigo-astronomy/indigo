@@ -26,15 +26,6 @@
 #ifndef indigocat_dso_h
 #define indigocat_dso_h
 
-#if defined(INDIGO_WINDOWS)
-#if defined(INDIGO_WINDOWS_DLL)
-#define INDIGO_EXTERN __declspec(dllexport)
-#else
-#define INDIGO_EXTERN __declspec(dllimport)
-#endif
-#else
-#define INDIGO_EXTERN extern
-#endif
 
 typedef enum {
 	GALAXY,
@@ -63,8 +54,26 @@ typedef struct {
 	double ra_now, dec_now;
 } indigocat_dso_entry;
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 INDIGO_EXTERN char *indigocat_dso_type_description[];
 
 INDIGO_EXTERN indigocat_dso_entry *indigocat_get_dso_data(void);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* indigocat_dso_h */
