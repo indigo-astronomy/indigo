@@ -1,0 +1,516 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|ARM64">
+      <Configuration>Debug</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|ARM64">
+      <Configuration>Release</Configuration>
+      <Platform>ARM64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>15.0</VCProjectVersion>
+    <ProjectGuid>{AA10BE9E-6416-4F58-B821-2D0E479EB81B}</ProjectGuid>
+    <Keyword>Win32Proj</Keyword>
+    <RootNamespace>indigoclient</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <CharacterSet>Unicode</CharacterSet>
+    <PlatformToolset>v143</PlatformToolset>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <LinkIncremental>true</LinkIncremental>
+    <IncludePath>.;$(IncludePath)</IncludePath>
+    <OutDir>..\build\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\build\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <LinkIncremental>true</LinkIncremental>
+    <OutDir>..\build\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\build\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\build\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <LinkIncremental>false</LinkIncremental>
+    <OutDir>..\build\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(Configuration)\$(Platform)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;WIN32;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
+    </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
+    </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>Disabled</Optimization>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
+    </Link>
+    <PostBuildEvent>
+      <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;WIN32;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;__inline__=inline%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM64'">
+    <ClCompile>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <Optimization>MaxSpeed</Optimization>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;_USRDLL;INDIGO_WINDOWS;INDIGO_WINDOWS_DLL;MDNS_DEBUGMSGS=0;WIN32_LEAN_AND_MEAN;USE_TCP_LOOPBACK;_CRT_SECURE_NO_DEPRECATE;_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1;NOT_HAVE_SA_LEN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>bin_externals\pthreads4w\include\;externals\bonjour-sdk;bin_externals\zlib\include;bin_externals\libusb\include;externals\libjpeg;externals\libraw\libraw;externals\libtiff\libtiff;.;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
+    </Link>
+    <PreBuildEvent>
+      <Command>
+      </Command>
+    </PreBuildEvent>
+    <PostBuildEvent>
+      <Command>xcopy /Y /I "bin_externals\libusb\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\zlib\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\pthreads4w\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" &amp;&amp; xcopy /Y /I "bin_externals\libraw\lib\windows\$(Platform)\*.*" "..\build\$(Configuration)\$(Platform)" </Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClInclude Include="externals\libjpeg\jconfig.h" />
+    <ClInclude Include="externals\libraw\libraw\libraw.h" />
+    <ClInclude Include="externals\libraw\libraw\libraw_alloc.h" />
+    <ClInclude Include="externals\libraw\libraw\libraw_const.h" />
+    <ClInclude Include="externals\libraw\libraw\libraw_datastream.h" />
+    <ClInclude Include="externals\libraw\libraw\libraw_internal.h" />
+    <ClInclude Include="externals\libraw\libraw\libraw_types.h" />
+    <ClInclude Include="externals\libraw\libraw\libraw_version.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_dso.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_dynamical_time.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_nutation.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_precession.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_solar_system.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_ss.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_star.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_transform.h" />
+    <ClInclude Include="indigo\indigocat\indigocat_vsop87.h" />
+    <ClInclude Include="indigo\indigo_agent.h" />
+    <ClInclude Include="indigo\indigo_align.h" />
+    <ClInclude Include="indigo\indigo_ao_driver.h" />
+    <ClInclude Include="indigo\indigo_aux_driver.h" />
+    <ClInclude Include="indigo\indigo_avi.h" />
+    <ClInclude Include="indigo\indigo_base64.h" />
+    <ClInclude Include="indigo\indigo_base64_luts.h" />
+    <ClInclude Include="indigo\indigo_bus.h" />
+    <ClInclude Include="indigo\indigo_ccd_driver.h" />
+    <ClInclude Include="indigo\indigo_client.h" />
+    <ClInclude Include="indigo\indigo_client_xml.h" />
+    <ClInclude Include="indigo\indigo_config.h" />
+    <ClInclude Include="indigo\indigo_dome_azimuth.h" />
+    <ClInclude Include="indigo\indigo_dome_driver.h" />
+    <ClInclude Include="indigo\indigo_driver.h" />
+    <ClInclude Include="indigo\indigo_driver_json.h" />
+    <ClInclude Include="indigo\indigo_dslr_raw.h" />
+    <ClInclude Include="indigo\indigo_focuser_driver.h" />
+    <ClInclude Include="indigo\indigo_gps_driver.h" />
+    <ClInclude Include="indigo\indigo_guider_driver.h" />
+    <ClInclude Include="indigo\indigo_json.h" />
+    <ClInclude Include="indigo\indigo_md5.h" />
+    <ClInclude Include="indigo\indigo_mount_driver.h" />
+    <ClInclude Include="indigo\indigo_rotator_driver.h" />
+    <ClInclude Include="indigo\indigo_ser.h" />
+    <ClInclude Include="indigo\indigo_service_discovery.h" />
+    <ClInclude Include="indigo\indigo_tiff.h" />
+    <ClInclude Include="indigo\indigo_timer.h" />
+    <ClInclude Include="indigo\indigo_uni_io.h" />
+    <ClInclude Include="indigo\indigo_usbserial_utils.h" />
+    <ClInclude Include="indigo\indigo_version.h" />
+    <ClInclude Include="indigo\indigo_wheel_driver.h" />
+    <ClInclude Include="indigo\indigo_xml.h" />
+    <ClInclude Include="indigo\indigo_token.h" />
+    <ClInclude Include="externals\bonjour-sdk\CommonServices.h" />
+    <ClInclude Include="externals\bonjour-sdk\DebugServices.h" />
+    <ClInclude Include="externals\bonjour-sdk\dnssd_ipc.h" />
+    <ClInclude Include="externals\bonjour-sdk\dns_sd.h" />
+    <ClInclude Include="externals\libjpeg\cderror.h" />
+    <ClInclude Include="externals\libjpeg\cdjpeg.h" />
+    <ClInclude Include="externals\libjpeg\jdct.h" />
+    <ClInclude Include="externals\libjpeg\jerror.h" />
+    <ClInclude Include="externals\libjpeg\jinclude.h" />
+    <ClInclude Include="externals\libjpeg\jmemsys.h" />
+    <ClInclude Include="externals\libjpeg\jmorecfg.h" />
+    <ClInclude Include="externals\libjpeg\jpegint.h" />
+    <ClInclude Include="externals\libjpeg\jpeglib.h" />
+    <ClInclude Include="externals\libjpeg\jversion.h" />
+    <ClInclude Include="externals\libjpeg\transupp.h" />
+    <ClInclude Include="bin_externals\libusb\include\libusb.h" />
+    <ClInclude Include="bin_externals\pthreads4w\include\pthread.h" />
+    <ClInclude Include="bin_externals\pthreads4w\include\sched.h" />
+    <ClInclude Include="bin_externals\pthreads4w\include\semaphore.h" />
+    <ClInclude Include="bin_externals\pthreads4w\include\_ptw32.h" />
+    <ClInclude Include="bin_externals\zlib\include\crc32.h" />
+    <ClInclude Include="bin_externals\zlib\include\deflate.h" />
+    <ClInclude Include="bin_externals\zlib\include\gzguts.h" />
+    <ClInclude Include="bin_externals\zlib\include\inffast.h" />
+    <ClInclude Include="bin_externals\zlib\include\inffixed.h" />
+    <ClInclude Include="bin_externals\zlib\include\inflate.h" />
+    <ClInclude Include="bin_externals\zlib\include\inftrees.h" />
+    <ClInclude Include="bin_externals\zlib\include\trees.h" />
+    <ClInclude Include="bin_externals\zlib\include\zconf.h" />
+    <ClInclude Include="bin_externals\zlib\include\zlib.h" />
+    <ClInclude Include="bin_externals\zlib\include\zutil.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="externals\libjpeg\jaricom.c" />
+    <ClCompile Include="externals\libjpeg\jcarith.c" />
+    <ClCompile Include="externals\libjpeg\jdarith.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_aux.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_close.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_codec.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_color.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_compress.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_dir.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_dirinfo.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_dirread.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_dirwrite.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_dumpmode.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_error.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_extension.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_fax3.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_fax3sm.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_flush.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_getimage.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_jbig.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_jpeg.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_jpeg_12.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_luv.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_lzma.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_lzw.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_next.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_ojpeg.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_open.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_packbits.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_pixarlog.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_predict.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_print.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_read.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_strip.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_swab.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_thunder.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_tile.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_version.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_warning.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_webp.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_win32.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_write.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_zip.c" />
+    <ClCompile Include="externals\libtiff\libtiff\tif_zstd.c" />
+    <ClCompile Include="indigocat\indigocat_dso.c" />
+    <ClCompile Include="indigocat\indigocat_dynamical_time.c" />
+    <ClCompile Include="indigocat\indigocat_earth.c" />
+    <ClCompile Include="indigocat\indigocat_jupiter.c" />
+    <ClCompile Include="indigocat\indigocat_mars.c" />
+    <ClCompile Include="indigocat\indigocat_mercury.c" />
+    <ClCompile Include="indigocat\indigocat_moon.c" />
+    <ClCompile Include="indigocat\indigocat_neptune.c" />
+    <ClCompile Include="indigocat\indigocat_nutation.c" />
+    <ClCompile Include="indigocat\indigocat_pluto.c" />
+    <ClCompile Include="indigocat\indigocat_precession.c" />
+    <ClCompile Include="indigocat\indigocat_saturn.c" />
+    <ClCompile Include="indigocat\indigocat_ss.c" />
+    <ClCompile Include="indigocat\indigocat_star.c" />
+    <ClCompile Include="indigocat\indigocat_sun.c" />
+    <ClCompile Include="indigocat\indigocat_transform.c" />
+    <ClCompile Include="indigocat\indigocat_uranus.c" />
+    <ClCompile Include="indigocat\indigocat_venus.c" />
+    <ClCompile Include="indigocat\indigocat_vsop87.c" />
+    <ClCompile Include="indigo_agent.c" />
+    <ClCompile Include="indigo_align.c" />
+    <ClCompile Include="indigo_ao_driver.c" />
+    <ClCompile Include="indigo_aux_driver.c" />
+    <ClCompile Include="indigo_avi.c" />
+    <ClCompile Include="indigo_base64.c" />
+    <ClCompile Include="indigo_bus.c" />
+    <ClCompile Include="indigo_ccd_driver.c" />
+    <ClCompile Include="indigo_client.c" />
+    <ClCompile Include="indigo_client_xml.c" />
+    <ClCompile Include="indigo_dome_azimuth.c" />
+    <ClCompile Include="indigo_dome_driver.c" />
+    <ClCompile Include="indigo_driver.c" />
+    <ClCompile Include="indigo_driver_json.c" />
+    <ClCompile Include="indigo_driver_xml.c" />
+    <ClCompile Include="indigo_dslr_raw.c" />
+    <ClCompile Include="indigo_focuser_driver.c" />
+    <ClCompile Include="indigo_gps_driver.c" />
+    <ClCompile Include="indigo_guider_driver.c" />
+    <ClCompile Include="indigo_json.c" />
+    <ClCompile Include="indigo_md5.c" />
+    <ClCompile Include="indigo_mount_driver.c" />
+    <ClCompile Include="indigo_rotator_driver.c" />
+    <ClCompile Include="indigo_ser.c" />
+    <ClCompile Include="indigo_server_tcp.c" />
+    <ClCompile Include="indigo_service_discovery.c" />
+    <ClCompile Include="indigo_stretch.cpp" />
+    <ClCompile Include="indigo_tiff.c" />
+    <ClCompile Include="indigo_timer.c" />
+    <ClCompile Include="indigo_uni_io.c" />
+    <ClCompile Include="indigo_usbserial_utils.c" />
+    <ClCompile Include="indigo_version.c" />
+    <ClCompile Include="indigo_wheel_driver.c" />
+    <ClCompile Include="indigo_xml.c" />
+    <ClCompile Include="indigo_token.c" />
+    <ClCompile Include="externals\libjpeg\jcapimin.c" />
+    <ClCompile Include="externals\libjpeg\jcapistd.c" />
+    <ClCompile Include="externals\libjpeg\jccoefct.c" />
+    <ClCompile Include="externals\libjpeg\jccolor.c" />
+    <ClCompile Include="externals\libjpeg\jcdctmgr.c" />
+    <ClCompile Include="externals\libjpeg\jchuff.c" />
+    <ClCompile Include="externals\libjpeg\jcinit.c" />
+    <ClCompile Include="externals\libjpeg\jcmainct.c" />
+    <ClCompile Include="externals\libjpeg\jcmarker.c" />
+    <ClCompile Include="externals\libjpeg\jcmaster.c" />
+    <ClCompile Include="externals\libjpeg\jcomapi.c" />
+    <ClCompile Include="externals\libjpeg\jcparam.c" />
+    <ClCompile Include="externals\libjpeg\jcprepct.c" />
+    <ClCompile Include="externals\libjpeg\jcsample.c" />
+    <ClCompile Include="externals\libjpeg\jctrans.c" />
+    <ClCompile Include="externals\libjpeg\jdapimin.c" />
+    <ClCompile Include="externals\libjpeg\jdapistd.c" />
+    <ClCompile Include="externals\libjpeg\jdatadst.c" />
+    <ClCompile Include="externals\libjpeg\jdatasrc.c" />
+    <ClCompile Include="externals\libjpeg\jdcoefct.c" />
+    <ClCompile Include="externals\libjpeg\jdcolor.c" />
+    <ClCompile Include="externals\libjpeg\jddctmgr.c" />
+    <ClCompile Include="externals\libjpeg\jdhuff.c" />
+    <ClCompile Include="externals\libjpeg\jdinput.c" />
+    <ClCompile Include="externals\libjpeg\jdmainct.c" />
+    <ClCompile Include="externals\libjpeg\jdmarker.c" />
+    <ClCompile Include="externals\libjpeg\jdmaster.c" />
+    <ClCompile Include="externals\libjpeg\jdmerge.c" />
+    <ClCompile Include="externals\libjpeg\jdpostct.c" />
+    <ClCompile Include="externals\libjpeg\jdsample.c" />
+    <ClCompile Include="externals\libjpeg\jdtrans.c" />
+    <ClCompile Include="externals\libjpeg\jerror.c" />
+    <ClCompile Include="externals\libjpeg\jfdctflt.c" />
+    <ClCompile Include="externals\libjpeg\jfdctfst.c" />
+    <ClCompile Include="externals\libjpeg\jfdctint.c" />
+    <ClCompile Include="externals\libjpeg\jidctflt.c" />
+    <ClCompile Include="externals\libjpeg\jidctfst.c" />
+    <ClCompile Include="externals\libjpeg\jidctint.c" />
+    <ClCompile Include="externals\libjpeg\jmemmgr.c" />
+    <ClCompile Include="externals\libjpeg\jmemnobs.c" />
+    <ClCompile Include="externals\libjpeg\jquant1.c" />
+    <ClCompile Include="externals\libjpeg\jquant2.c" />
+    <ClCompile Include="externals\libjpeg\jutils.c" />
+    <ClCompile Include="..\indigo_windows\dllmain.cpp" />
+    <ClCompile Include="externals\bonjour-sdk\dnssd_clientlib.c" />
+    <ClCompile Include="externals\bonjour-sdk\dnssd_clientstub.c" />
+    <ClCompile Include="externals\bonjour-sdk\dnssd_ipc.c" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

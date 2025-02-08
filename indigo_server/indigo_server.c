@@ -71,11 +71,11 @@
 #include <indigo/indigocat/indigocat_dso.h>
 #include <indigo/indigocat/indigocat_ss.h>
 
+#ifdef STATIC_DRIVERS
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
 #include "gps_simulator/indigo_gps_simulator.h"
 #include "dome_simulator/indigo_dome_simulator.h"
-#ifdef STATIC_DRIVERS
 #include "ccd_sx/indigo_ccd_sx.h"
 #include "wheel_sx/indigo_wheel_sx.h"
 #include "ccd_ssag/indigo_ccd_ssag.h"

@@ -146,8 +146,7 @@ This is the list of requirements taken into the consideration:
 ## This is under development
 1. a-Box Adaptive optics driver
 
-------------------------------------------------------------------------------------------------
-## How to build INDIGO
+## How to build INDIGO on Unix systems
 
 ### Prerequisites
 #### Ubuntu / Debian / Raspbian
@@ -188,3 +187,7 @@ New linux distributions come with the latest glibc that does not provide pthread
 `make patchlib`
 
 and rerun the build
+
+## How to build INDIGO on Windows
+
+Open indigo_windows.sln in top level directory and build indigo_server target in Release configuration and x64 platform (support for Win32 and ARM64 platforms is very limited). The result binaries are placed in build/Release/x64.
