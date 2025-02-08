@@ -30,7 +30,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
@@ -68,8 +67,6 @@
 #define AGENT_SCRIPTING_SCRIPT_PROPERTY(i)				(PRIVATE_DATA->agent_scripts_property[i])
 #define AGENT_SCRIPTING_SCRIPT_NAME_ITEM(i)				(AGENT_SCRIPTING_SCRIPT_PROPERTY(i)->items+0)
 #define AGENT_SCRIPTING_SCRIPT_ITEM(i)						(AGENT_SCRIPTING_SCRIPT_PROPERTY(i)->items+1)
-
-static int AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME_LENGTH = strlen(AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME) - 2;
 
 static char boot_js[] = {
 #include "boot.js.dat"
@@ -307,7 +304,7 @@ static duk_ret_t save_blob(duk_context *ctx) {
 	duk_pop(ctx);
 	if (*item->blob.url != 0 && item->blob.size == 0) {
 		if (!indigo_populate_http_blob_item(item)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed", "");
 			return 0;
 		}
 		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
@@ -332,7 +329,7 @@ static duk_ret_t populate_blob(duk_context *ctx) {
 	duk_pop(ctx);
 	if (*item->blob.url != 0 && item->blob.size == 0) {
 		if (!indigo_populate_http_blob_item(item)) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_populate_blob() failed", "");
 			return 0;
 		}
 		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
@@ -925,7 +922,7 @@ static indigo_result agent_device_attach(indigo_device *device) {
 			if (duk_peval_string(PRIVATE_DATA->ctx, boot_js)) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s", duk_safe_to_string(PRIVATE_DATA->ctx, -1));
 			} else {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "boot.js executed");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "boot.js executed", "");
 			}
       pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		}
@@ -979,7 +976,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			for (int i = 1; i < AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->count; i++) {
 				indigo_item *item = AGENT_SCRIPTING_ON_LOAD_SCRIPT_PROPERTY->items + i;
 				if (item->sw.value) {
-					int j = atoi(item->name + AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME_LENGTH);
+					int j = atoi(item->name + strlen(AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME) - 2);
 					indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(j);
 					if (script_property) {
 						execute_script(script_property);
@@ -1066,7 +1063,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			indigo_item *item = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i;
 			if (item->sw.value) {
 				item->sw.value = false;
-				int j = atoi(item->name + AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME_LENGTH);
+				int j = atoi(item->name + strlen(AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME) - 2);
 				indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(j);
 				if (script_property) {
 					if (!execute_script(script_property)) {
@@ -1086,7 +1083,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		indigo_property_copy_values(AGENT_SCRIPTING_DELETE_SCRIPT_PROPERTY, property, false);
 		for (int i = 0; i < AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_SCRIPTING_EXECUTE_SCRIPT_PROPERTY->items + i;
-			int j = atoi(item->name + AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME_LENGTH);
+			int j = atoi(item->name + strlen(AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME) - 2);
 			indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(j);
 			if (script_property && !strcmp(AGENT_SCRIPTING_DELETE_SCRIPT_NAME_ITEM->text.value, AGENT_SCRIPTING_SCRIPT_NAME_ITEM(j)->text.value)) {
 				indigo_delete_property(device, script_property, NULL);
@@ -1194,7 +1191,7 @@ static indigo_result agent_device_detach(indigo_device *device) {
 		for (int i = 1; i < AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->count; i++) {
 			indigo_item *item = AGENT_SCRIPTING_ON_UNLOAD_SCRIPT_PROPERTY->items + i;
 			if (item->sw.value) {
-				int j = atoi(item->name + AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME_LENGTH);
+				int j = atoi(item->name + strlen(AGENT_SCRIPTING_SCRIPT_PROPERTY_NAME) - 2);
 				indigo_property *script_property = AGENT_SCRIPTING_SCRIPT_PROPERTY(j);
 				if (script_property) {
 					execute_script(script_property);

@@ -28,6 +28,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_guider", "indi
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_imager", "indigo_drivers\agent_imager\indigo_agent_imager.vcxproj", "{EA94F382-C7AB-4D8A-8EAA-5BEB01A0D112}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_scripting", "indigo_drivers\agent_scripting\indigo_agent_scripting.vcxproj", "{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -194,6 +196,18 @@ Global
 		{EA94F382-C7AB-4D8A-8EAA-5BEB01A0D112}.Release|x64.Build.0 = Release|x64
 		{EA94F382-C7AB-4D8A-8EAA-5BEB01A0D112}.Release|x86.ActiveCfg = Release|Win32
 		{EA94F382-C7AB-4D8A-8EAA-5BEB01A0D112}.Release|x86.Build.0 = Release|Win32
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Debug|ARM64.Build.0 = Debug|ARM64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Debug|x64.ActiveCfg = Debug|x64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Debug|x64.Build.0 = Debug|x64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Debug|x86.ActiveCfg = Debug|Win32
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Debug|x86.Build.0 = Debug|Win32
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Release|ARM64.ActiveCfg = Release|ARM64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Release|ARM64.Build.0 = Release|ARM64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Release|x64.ActiveCfg = Release|x64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Release|x64.Build.0 = Release|x64
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Release|x86.ActiveCfg = Release|Win32
+		{A7C0BBE9-E5F8-43D3-ADC1-7A0C04B4A9AD}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
