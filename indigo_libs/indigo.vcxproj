@@ -321,6 +321,8 @@
     <ClInclude Include="indigo\indigo_json.h" />
     <ClInclude Include="indigo\indigo_md5.h" />
     <ClInclude Include="indigo\indigo_mount_driver.h" />
+    <ClInclude Include="indigo\indigo_polynomial_fit.h" />
+    <ClInclude Include="indigo\indigo_raw_utils.h" />
     <ClInclude Include="indigo\indigo_rotator_driver.h" />
     <ClInclude Include="indigo\indigo_ser.h" />
     <ClInclude Include="indigo\indigo_service_discovery.h" />
@@ -451,6 +453,8 @@
     <ClCompile Include="indigo_json.c" />
     <ClCompile Include="indigo_md5.c" />
     <ClCompile Include="indigo_mount_driver.c" />
+    <ClCompile Include="indigo_polynomial_fit.c" />
+    <ClCompile Include="indigo_raw_utils.c" />
     <ClCompile Include="indigo_rotator_driver.c" />
     <ClCompile Include="indigo_ser.c" />
     <ClCompile Include="indigo_server_tcp.c" />

@@ -29,6 +29,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <indigo/indigo_bus.h>
+
 #include <indigo/indigo_polynomial_fit.h>
 
 /**
@@ -44,11 +46,11 @@ int indigo_polynomial_fit(int point_count, double *x_values, double *y_values, i
 
 	long double B[max_order + 1] = {0.0f};
 	long double P[((max_order + 1) * 2) + 1] = {0.0f};
-    long double A[(max_order + 1)*2*(max_order + 1)] = {0.0f};
+  long double A[(max_order + 1)*2*(max_order + 1)] = {0.0f};
 
 	const int order = coefficient_count - 1;
 	long double x, y, powx;
-	unsigned int ii, jj, kk;
+	int ii, jj, kk;
 
 	// This method requires that the point_count > (order+1)
 	if (point_count <= order) {
@@ -158,18 +160,21 @@ void indigo_polynomial_derivative(int coefficient_count, double *polynomial_coef
  NOTE: Works for polynomials of order 2 and 3 only
 */
 int indigo_polynomial_extremums(int coefficient_count, double *polynomial_coefficients, double *extremums) {
-	double derivative[coefficient_count - 1];
+	double *derivative = indigo_safe_malloc(coefficient_count - 1);
 	indigo_polynomial_derivative(coefficient_count, polynomial_coefficients, derivative);
 	if (coefficient_count == 3) {  // order = 2
 		extremums[0] = -derivative[0] / derivative[1];
+		indigo_safe_free(derivative);
 		return 0;
 	}
 	if (coefficient_count == 4) {  // order = 3
 		double det = sqrt(derivative[1] * derivative[1] - 4 * derivative[0] * derivative[2]);
 		extremums[0] = (-derivative[1] + det)/(2*derivative[2]);
 		extremums[1] = (-derivative[1] - det)/(2*derivative[2]);
+		indigo_safe_free(derivative);
 		return 0;
 	}
+	indigo_safe_free(derivative);
 	return 1;
 }
 

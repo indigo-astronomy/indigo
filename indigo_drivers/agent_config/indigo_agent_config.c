@@ -28,7 +28,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
@@ -501,7 +500,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 			}
 		} else {
 			snprintf(message, INDIGO_VALUE_SIZE, "Configuration name '%s' is not valid", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid name for active configuration");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Invalid name for active configuration", "");
 			AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
 		indigo_delete_property(device, AGENT_CONFIG_LOAD_PROPERTY, NULL);
@@ -542,7 +541,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		} else {
 			char path[256];
 			snprintf(path, sizeof(path), "%s/.indigo/%s%s", getenv("HOME"), AGENT_CONFIG_DELETE_NAME_ITEM->text.value, EXTENSION);
-			if (unlink(path)) {
+			if (indigo_uni_remove(path)) {
 				snprintf(message, INDIGO_VALUE_SIZE, "Failed to remove configuration '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't remove saved configuration %s", path);
 				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -663,7 +662,7 @@ static void add_device(indigo_device *device, indigo_property *property) {
 	}
 	if (agent == NULL) {
 		pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Too many agents detected");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Too many agents detected", "");
 		return;
 	}
 	indigo_item *filter = NULL;

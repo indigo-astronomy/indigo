@@ -480,8 +480,14 @@ static void default_server_callback(int count) {
 			/* UGLY but the only way to suppress compat mode warning messages on Linux */
 			setenv("AVAHI_COMPAT_NOWARN", "1", 1);
 #endif
-			DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
-			DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			int result = DNSServiceRegister(&sd_http, 0, 0, indigo_local_service_name, MDNS_HTTP_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			if (result != kDNSServiceErr_NoError) {
+				indigo_error("DNSServiceRegister -> %d", result);
+			}
+			result = DNSServiceRegister(&sd_indigo, 0, 0, indigo_local_service_name, MDNS_INDIGO_TYPE, NULL, NULL, htons(indigo_server_tcp_port), 0, NULL, NULL, NULL);
+			if (result != kDNSServiceErr_NoError) {
+				indigo_error("DNSServiceRegister -> %d", result);
+			}
 			INDIGO_LOG(indigo_log("Service registered as %s", indigo_local_service_name));
 		}
 	} else if (shutdown_initiated) {
