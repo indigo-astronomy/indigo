@@ -24,10 +24,9 @@ indigo_server/ctrl.data
 indigo_server/resource/*.data
 indigo_server/resource/data/*.data
 /Makefile.inc
-/indigo_windows/indigo_client/Debug/indigo_client.tlog
-/indigo_windows/indigo_client/Debug
 /indigo_windows/.vs/indigo_windows/v15
-/indigo_windows/Debug
+/indigo_windows/**/Debug
+/indigo_windows/**/Release
 /.vs
 indigo.xcodeproj/xcshareddata/
 /indigo_windows/test/Debug

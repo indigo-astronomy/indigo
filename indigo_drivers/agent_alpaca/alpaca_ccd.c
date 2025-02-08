@@ -1346,8 +1346,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					handle->short_trace = true;
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 4);
+					handle->short_trace = false;
 					break;
 				}
 				case INDIGO_RAW_MONO16: {
@@ -1359,8 +1361,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
+					handle->short_trace = true;
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 4);
+					handle->short_trace = false;
 					free(buffer);
 					break;
 				}
@@ -1377,14 +1381,15 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 1];
 						}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					handle->short_trace = true;
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 12);
+					handle->short_trace = false;
 					break;
 				}
 				case INDIGO_RAW_RGB48: {
 					metadata.dimension3 = 3;
 					metadata.rank = 3;
-					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					uint16_t *data = entry->content + sizeof(indigo_raw_header);
 					uint32_t *buffer = malloc(size * 12), *pnt = buffer;
 					for (int col = 0; col < width; col++)
@@ -1395,15 +1400,16 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 2];
 						}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
+					handle->short_trace = true;
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 12);
+					handle->short_trace = false;
 					break;
 				}
 			}
 			pthread_mutex_unlock(&entry->mutext);
 		} else {
 			metadata.error_number = result;
-			indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 			indigo_uni_printf(handle, "%s", indigo_alpaca_error_string(result));
 		}
 	} else {

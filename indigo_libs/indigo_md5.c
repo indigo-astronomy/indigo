@@ -250,9 +250,9 @@ void indigo_md5(char digest[33], const void *data, const long length) {
 
 void indigo_md5_partial(char digest[33], const void *data, const long data_length, const long use_length) {
 	if (data_length < use_length) {
-		return indigo_md5(digest, data, data_length);
+		indigo_md5(digest, data, data_length);
 	} else {
-		return indigo_md5(digest, data, use_length);
+		indigo_md5(digest, data, use_length);
 	}
 }
 

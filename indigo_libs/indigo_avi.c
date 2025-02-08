@@ -60,8 +60,8 @@ static bool write_int(indigo_uni_handle *handle, uint32_t n) {
 
 static bool write_short(indigo_uni_handle *handle, uint16_t n) {
 	unsigned char buffer[2];
-	buffer[0] = n;
-	buffer[1] = n >> 8;
+	buffer[0] = (uint8_t)n;
+	buffer[1] = (uint8_t)(n >> 8);
 	return indigo_uni_write(handle, (const char *)buffer, 2);
 }
 
@@ -238,6 +238,7 @@ struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned in
 		INDIGO_ERROR(indigo_error("gwavi_open: failed to open file for writing"));
 		goto failure;
 	}
+	handle->short_trace = true;
 	if ((gwavi = (struct gwavi_t *)malloc(sizeof(struct gwavi_t))) == NULL) {
 		INDIGO_ERROR(indigo_error("gwavi_open: could not allocate memory for gwavi structure"));
 		goto failure;
@@ -326,7 +327,7 @@ bool gwavi_add_frame(struct gwavi_t *gwavi, unsigned char *buffer, size_t len) {
 		gwavi->offsets = (unsigned int *)realloc(gwavi->offsets, (size_t)gwavi->offsets_len * sizeof(unsigned int));
 	}
 	gwavi->offsets[gwavi->offsets_ptr++] = (unsigned int)(len + maxi_pad);
-	if (!write_chars_bin(gwavi->handle, "00dc", 4) || !write_int(gwavi->handle, (unsigned int)(len + maxi_pad)) || !indigo_uni_write(gwavi->handle, (const char *)buffer, len))
+	if (!write_chars_bin(gwavi->handle, "00dc", 4) || !write_int(gwavi->handle, (unsigned int)(len + maxi_pad)) || !indigo_uni_write(gwavi->handle, (const char *)buffer, (long)len))
 		return false;
 	for (t = 0; t < maxi_pad; t++) {
 		if (!indigo_uni_write(gwavi->handle, &zero, 1))

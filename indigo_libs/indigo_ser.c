@@ -27,6 +27,7 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_io.h>
 #include <indigo/indigo_ser.h>
+#include <indigo/indigo_driver.h>
 
 static bool write_int(indigo_uni_handle *handle, uint32_t n) {
 	unsigned char buffer[4];
@@ -39,24 +40,25 @@ static bool write_int(indigo_uni_handle *handle, uint32_t n) {
 
 static bool write_long(indigo_uni_handle *handle, uint64_t n) {
 	unsigned char buffer[8];
-	buffer[0] = n;
-	buffer[1] = n >> 8;
-	buffer[2] = n >> 16;
-	buffer[3] = n >> 24;
-	buffer[4] = n >> 32;
-	buffer[5] = n >> 40;
-	buffer[6] = n >> 48;
-	buffer[7] = n >> 56;
+	buffer[0] = (uint8_t)n;
+	buffer[1] = (uint8_t)(n >> 8);
+	buffer[2] = (uint8_t)(n >> 16);
+	buffer[3] = (uint8_t)(n >> 24);
+	buffer[4] = (uint8_t)(n >> 32);
+	buffer[5] = (uint8_t)(n >> 40);
+	buffer[6] = (uint8_t)(n >> 48);
+	buffer[7] = (uint8_t)(n >> 56);
 	return indigo_uni_write(handle, (const char *)buffer, 8);
 }
 
 indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	indigo_ser *ser = NULL;
-	indigo_uni_handle *handle = indigo_uni_open_file(filename);
+	indigo_uni_handle *handle = indigo_uni_create_file(filename);
 	if (handle == NULL) {
 		INDIGO_ERROR(indigo_error("indigo_ser: failed to open file for writing"));
 		goto failure;
 	}
+	handle->short_trace = true;
 	if ((ser = (indigo_ser *)malloc(sizeof(indigo_ser))) == NULL) {
 		INDIGO_ERROR(indigo_error("indigo_ser: could not allocate memory for indigo_ser structure"));
 		goto failure;
@@ -92,9 +94,8 @@ indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	result = result && indigo_uni_write(handle, zero, 40); // 42
 	result = result && indigo_uni_write(handle, zero, 40); // 82
 	result = result && indigo_uni_write(handle, zero, 40); // 122
-	tzset();
-	long time_utc = (time(NULL) + 62135600400L) * 10000000L;
-	long timezone_diff =  (timezone - daylight ? 3600 : 0) * 10000000L;
+	long time_utc = (long)(time(NULL) + 62135600400L) * 10000000L;
+	long timezone_diff = (indigo_get_timezone() - indigo_get_dst_state() ? 3600 : 0) * 10000000L;
 	result = result && write_long(handle, time_utc); // 162
 	result = result && write_long(handle, time_utc + timezone_diff); // 170
 	if (!result)
@@ -108,7 +109,7 @@ failure:
 
 bool indigo_ser_add_frame(indigo_ser *ser, void *buffer, size_t len) {
 	ser->count++;
-	return indigo_uni_write(ser->handle, buffer + 12, len - 12);
+	return indigo_uni_write(ser->handle, (char *)buffer + 12, (long)len - 12);
 }
 
 bool indigo_ser_close(indigo_ser *ser) {

@@ -582,7 +582,7 @@ INDIGO_EXTERN indigo_result indigo_raw_to_translated_with_lst(indigo_device *dev
 
 /** Get mount UTC if available otherwise return host UTC.
  */
-time_t indigo_get_mount_utc(indigo_device *device);
+INDIGO_EXTERN time_t indigo_get_mount_utc(indigo_device *device);
 
 /** Translate coordinates from native.
  */

@@ -62,7 +62,7 @@ static int image_debayered_data(libraw_data_t *raw_data, indigo_dslr_raw_image_s
 	outout_image->width = processed_image->width;
 	outout_image->height = processed_image->height;
 	outout_image->size = processed_image->data_size;
-	outout_image->colors = processed_image->colors;
+	outout_image->colors = (uint8_t)processed_image->colors;
 	if (outout_image->data) {
 		free(outout_image->data);
 	}

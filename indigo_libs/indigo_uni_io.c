@@ -101,6 +101,10 @@ char* indigo_last_windows_error() {
 #endif
 
 char *indigo_uni_strerror(indigo_uni_handle *handle) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return "NULL handle";
+	}
 	static char buffer[128] = "";
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	snprintf(buffer, sizeof(buffer), "%s", strerror(handle->last_error));
@@ -690,6 +694,9 @@ indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo
 }
 
 long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long length) {
+	if (handle == NULL) {
+		return -1;
+	}
 	long bytes_read = -1;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	bytes_read = read(handle->fd, buffer, length);
@@ -728,6 +735,10 @@ long indigo_uni_read_available(indigo_uni_handle *handle, void *buffer, long len
 }
 
 long indigo_uni_peek_available(indigo_uni_handle *handle, void *buffer, long length) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	long bytes_read = -1;
 	if (handle->type == INDIGO_TCP_HANDLE) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -752,6 +763,10 @@ long indigo_uni_peek_available(indigo_uni_handle *handle, void *buffer, long len
 }
 
 long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	if (handle->type == INDIGO_UDP_HANDLE) {
 		return indigo_uni_read_available(handle, buffer, length);
 	}
@@ -819,6 +834,10 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 }
 
 long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	long bytes_read = 0;
 	long result;
 	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
@@ -994,6 +1013,10 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 }
 
 int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	char *buffer = indigo_alloc_large_buffer();
 	int count = 0;
 	if (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE) > 0) {
@@ -1007,6 +1030,10 @@ int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...) {
 }
 
 long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	const char *position = buffer;
 	long remains = length;
 	while (true) {
@@ -1063,6 +1090,10 @@ long indigo_uni_write(indigo_uni_handle *handle, const char *buffer, long length
 }
 
 long indigo_uni_printf(indigo_uni_handle *handle, const char *format, ...) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	if (strchr(format, '%')) {
 		char *buffer = indigo_alloc_large_buffer();
 		va_list args;
@@ -1093,6 +1124,10 @@ long indigo_uni_seek(indigo_uni_handle *handle, long position, int whence) {
 }
 
 bool indigo_uni_lock_file(indigo_uni_handle *handle) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
 	if (handle->type == INDIGO_FILE_HANDLE) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		static struct flock lock;
@@ -1127,6 +1162,10 @@ bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 
 
 void indigo_uni_close(indigo_uni_handle **handle) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return;
+	}
 	if (*handle) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if ((*handle)->type != INDIGO_FILE_HANDLE) {
@@ -1176,19 +1215,48 @@ const char *indigo_uni_config_folder() {
 }
 
 bool indigo_uni_mkdir(const char *path) {
+	char temp[PATH_MAX];
+	snprintf(temp, sizeof(temp), "%s", path);
+	char *p = temp;
+#if defined(INDIGO_WINDOWS)
+	if (strlen(p) > 2 && p[1] == ':') {
+		p += 2;
+	}
+#endif
+	if (*p == INDIGO_PATH_SEPATATOR || *p == '/') {
+		*p++ = INDIGO_PATH_SEPATATOR;
+	}
+	for (; *p; p++) {
+		if (*p == INDIGO_PATH_SEPATATOR || *p == '/') {
+			*p = '\0';
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-	if (mkdir(path, 0777) == 0 || errno == EEXIST) {
-		return true;
+			if (mkdir(temp, 0777) != 0 && errno != EEXIST) {
+				return false;
+			}
+#elif defined(INDIGO_WINDOWS)
+			if (_mkdir(temp) != 0 && errno != EEXIST) {
+				return false;
+			}
+#else
+#pragma message ("TODO: indigo_uni_mkdir()")
+#endif
+			*p++ = INDIGO_PATH_SEPATATOR;
+		}
+	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	if (mkdir(temp, 0777) != 0 && errno != EEXIST) {
+		return false;
 	}
 #elif defined(INDIGO_WINDOWS)
-	if (_mkdir(path) == 0 || errno == EEXIST) {
-		return true;
+	if (_mkdir(temp) != 0 && errno != EEXIST) {
+		return false;
 	}
 #else
 #pragma message ("TODO: indigo_uni_mkdir()")
 #endif
-	return false;
+	return true;
 }
+		
 
 bool indigo_uni_remove(const char *path) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)

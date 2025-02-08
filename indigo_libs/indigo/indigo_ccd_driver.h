@@ -606,11 +606,11 @@ INDIGO_EXTERN void indigo_process_image(indigo_device *device, void *data, int f
 
 /** Process DSLR image in image buffer (starting on data).
  */
-INDIGO_EXTERN void indigo_process_dslr_image(indigo_device *device, void *data, int blobsize, const char *suffix, bool streaming);
+INDIGO_EXTERN void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long blobsize, const char *suffix, bool streaming);
 
 /** Process DSLR preview image in image buffer (starting on data).
  */
-INDIGO_EXTERN void indigo_process_dslr_preview_image(indigo_device *device, void *data, int blobsize);
+INDIGO_EXTERN void indigo_process_dslr_preview_image(indigo_device *device, void *data, unsigned long blobsize);
 
 /** Finalize video stream.
  */

@@ -42,6 +42,10 @@
 #define RADIUS_R4 3
 #define RADIUS_R5 2
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop venus_longitude_l0[LONG_L0] = {
     {     3.17614666774,  0.00000000000,        0.00000000000},
     {     0.01353968419,  5.59313319619,    10213.28554621100},

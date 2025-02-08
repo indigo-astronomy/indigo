@@ -42,6 +42,10 @@
 #define RADIUS_R4 17
 #define RADIUS_R5 10
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop mercury_longitude_l0[LONG_L0] = {
     {     4.40250710144,  0.00000000000,        0.00000000000},
     {     0.40989414977,  1.48302034195,    26087.90314157420},

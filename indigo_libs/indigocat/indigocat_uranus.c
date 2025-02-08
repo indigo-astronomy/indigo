@@ -38,6 +38,10 @@
 #define RADIUS_R3 69
 #define RADIUS_R4 12
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop uranus_longitude_l0[LONG_L0] = {
     {     5.48129294297,  0.00000000000,        0.00000000000},
     {     0.09260408234,  0.89106421507,       74.78159856730},

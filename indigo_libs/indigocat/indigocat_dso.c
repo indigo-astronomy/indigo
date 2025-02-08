@@ -30,6 +30,10 @@
 
 #include <indigo/indigocat/indigocat_precession.h>
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static bool dso_data_updated = false;
 
 char *indigocat_dso_type_description[] = {

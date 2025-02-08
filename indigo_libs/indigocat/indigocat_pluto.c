@@ -20,6 +20,10 @@
 #include <indigo/indigocat/indigocat_vsop87.h>
 #include <indigo/indigocat/indigocat_transform.h>
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 #define PLUTO_COEFFS 43
 
 struct pluto_argument

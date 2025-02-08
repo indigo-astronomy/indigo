@@ -1052,13 +1052,17 @@ time_t indigo_isolocaltotime(char* isotime) {
 	return -1;
 }
 
-#if defined(INDIGO_WINDOWS)
-int timezone() {
+long indigo_get_timezone() {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+	tzset();
+	return timezone;
+#elif defined(INDIGO_WINDOWS)
+	_tzset();
 	TIME_ZONE_INFORMATION tzInfo;
 	DWORD result = GetTimeZoneInformation(&tzInfo);
-	return tzInfo.Bias;
-}
+	return tzInfo.Bias * 60;
 #endif
+}
 
 int indigo_get_utc_offset(void) {
 	static int offset = 25;
@@ -1067,13 +1071,12 @@ int indigo_get_utc_offset(void) {
 		struct tm tm;
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		localtime_r(&secs, &tm);
-		offset = (int)(-timezone / 3600) + tm.tm_isdst;
 #elif defined(INDIGO_WINDOWS)
 		localtime_s(&tm, &secs);
-		offset = (int)(-timezone() / 60) + tm.tm_isdst;
 #else
 #pragma message ("TODO: indigo_get_utc_offset()")
 #endif
+		offset = (int)(-indigo_get_timezone() / 3600) + tm.tm_isdst;
 	}
 	return offset;
 }

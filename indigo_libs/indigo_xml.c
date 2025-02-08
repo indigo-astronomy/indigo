@@ -1725,10 +1725,10 @@ exit_loop:
 	indigo_safe_free(context->properties);
 	pthread_mutex_unlock(&context->mutex);
 	pthread_mutex_destroy(&context->mutex);
+	indigo_uni_close(handle);
 	free(context);
 	free(buffer);
 	free(value_buffer);
-	indigo_uni_close(handle);
 	INDIGO_TRACE_PARSER(indigo_trace("XML Parser: parser finished"));
 }
 

@@ -424,6 +424,11 @@ INDIGO_EXTERN int indigo_get_utc_offset(void);
 
 INDIGO_EXTERN int indigo_get_dst_state(void);
 
+/** Get host timezone state
+ */
+
+INDIGO_EXTERN long indigo_get_timezone(void);
+
 /** Enumerate serial ports.
  */
 INDIGO_EXTERN void indigo_enumerate_serial_ports(indigo_device *device, indigo_property *property);

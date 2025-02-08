@@ -40,6 +40,7 @@
 #define H_GWAVI
 
 #include <stddef.h>
+
 #include "indigo_uni_io.h"
 
 #if defined(INDIGO_WINDOWS)

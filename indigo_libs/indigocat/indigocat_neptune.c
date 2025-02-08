@@ -37,6 +37,10 @@
 #define RADIUS_R3 23
 #define RADIUS_R4 7
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop neptune_longitude_l0[LONG_L0] = {
     {     5.31188633046,  0.00000000000,        0.00000000000},
     {     0.01798475530,  2.90101273890,       38.13303563780},

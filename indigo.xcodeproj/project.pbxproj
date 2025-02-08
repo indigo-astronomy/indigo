@@ -4485,7 +4485,6 @@
 		59E21BE12651940F00C1E912 /* indigo_raw_to_fits.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_raw_to_fits.c; sourceTree = "<group>"; };
 		59E2DA0E263837D600D3D4B5 /* jinclude.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = jinclude.h; path = externals/libjpeg/jinclude.h; sourceTree = "<group>"; };
 		59E2DA0F263837D600D3D4B5 /* cderror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = cderror.h; path = externals/libjpeg/cderror.h; sourceTree = "<group>"; };
-		59E2DA10263837D600D3D4B5 /* jconfig.cfg */ = {isa = PBXFileReference; lastKnownFileType = text; name = jconfig.cfg; path = externals/libjpeg/jconfig.cfg; sourceTree = "<group>"; };
 		59E2DA11263837D600D3D4B5 /* jmemsys.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = jmemsys.h; path = externals/libjpeg/jmemsys.h; sourceTree = "<group>"; };
 		59E2DA12263837D600D3D4B5 /* jmorecfg.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = jmorecfg.h; path = externals/libjpeg/jmorecfg.h; sourceTree = "<group>"; };
 		59E2DA13263837D600D3D4B5 /* jerror.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = jerror.h; path = externals/libjpeg/jerror.h; sourceTree = "<group>"; };
@@ -12867,7 +12866,6 @@
 			children = (
 				59E2DA0F263837D600D3D4B5 /* cderror.h */,
 				59E2DA18263837D600D3D4B5 /* cdjpeg.h */,
-				59E2DA10263837D600D3D4B5 /* jconfig.cfg */,
 				59E2DA19263837D600D3D4B5 /* jdct.h */,
 				59E2DA13263837D600D3D4B5 /* jerror.h */,
 				59E2DA0E263837D600D3D4B5 /* jinclude.h */,

@@ -44,6 +44,7 @@
 #else
 #define INDIGO_EXTERN __declspec(dllimport)
 #endif
+#pragma warning(disable:4200)
 #else
 #define INDIGO_EXTERN extern
 #endif
@@ -893,6 +894,12 @@ INDIGO_EXTERN bool indigo_device_name_exists(const char *name);
 /** Fix device name to be unique with #number suffix
  */
 INDIGO_EXTERN bool indigo_make_name_unique(char *name, const char *format, ...);
+
+#if defined(INDIGO_WINDOWS)
+
+INDIGO_EXTERN int gettimeofday(struct timeval * tp, struct timezone * tzp);
+
+#endif
 
 #ifdef __cplusplus
 }
