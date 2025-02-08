@@ -1476,7 +1476,7 @@ static void add_drivers(const char *folder) {
 	if (count >= 0) {
 		for (int i = 0; i < count; i++) {
 			char path[PATH_MAX];
-			sprintf(path, "%s/%s", folder_path, list[i]);
+			sprintf(path, "%s%c%s", folder_path, INDIGO_PATH_SEPATATOR, list[i]);
 			indigo_log("Loading driver list from %s", path);
 			indigo_uni_handle *file = indigo_uni_open_file(path);
 			if (file != NULL) {
