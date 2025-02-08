@@ -436,6 +436,9 @@
     <ClCompile Include="externals\libjpeg\jutils.c">
       <Filter>Source Files\libjpeg</Filter>
     </ClCompile>
+    <ClCompile Include="indigo_filter.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="indigo\indigo_base64.h">
@@ -683,6 +686,9 @@
     </ClInclude>
     <ClInclude Include="externals\libjpeg\jconfig.h">
       <Filter>Header Files\libjpeg</Filter>
+    </ClInclude>
+    <ClInclude Include="indigo\indigo_filter.h">
+      <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

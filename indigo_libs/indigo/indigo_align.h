@@ -127,7 +127,7 @@ INDIGO_EXTERN void indigo_j2k_to_eq(const double eq, double *ra, double *dec);
 	ra - right ascension of the object in decimal hours
 	lmst - local mean sidereal time in decimal degrees
 */
-double indigo_time_to_transit(const double ra, const double lmst);
+INDIGO_EXTERN double indigo_time_to_transit(const double ra, const double lmst);
 
 /** Calculate raise transit and set times for the nearest transit
 	jd - julian day
@@ -139,16 +139,7 @@ double indigo_time_to_transit(const double ra, const double lmst);
 	*transit_time - transit time (decinal hours)
 	*set_time - set time (decinal hours)
  */
-void indigo_raise_set(
-	const double jd,
-	const double latitude,
-	const double longitude,
-	const double ra,
-	const double dec,
-	double *raise_time,
-	double *transit_time,
-	double *set_time
-);
+INDIGO_EXTERN void indigo_raise_set(const double jd, const double latitude, const double longitude, const double ra, const double dec, double *raise_time, double *transit_time, double *set_time);
 
 /** Calculate the airmass for a given altitude
  */

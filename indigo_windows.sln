@@ -18,6 +18,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_simulator", "in
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "make_indigo_drivers", "indigo_windows\make_indigo_drivers\make_indigo_drivers.vcxproj", "{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_agent_mount", "indigo_drivers\agent_mount\indigo_agent_mount.vcxproj", "{D7058517-71DF-4F6B-865D-6038B2D6085C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -124,6 +126,18 @@ Global
 		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|x64.Build.0 = Release|x64
 		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|x86.ActiveCfg = Release|Win32
 		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|x86.Build.0 = Release|Win32
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Debug|ARM64.Build.0 = Debug|ARM64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Debug|x64.ActiveCfg = Debug|x64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Debug|x64.Build.0 = Debug|x64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Debug|x86.ActiveCfg = Debug|Win32
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Debug|x86.Build.0 = Debug|Win32
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Release|ARM64.ActiveCfg = Release|ARM64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Release|ARM64.Build.0 = Release|ARM64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Release|x64.ActiveCfg = Release|x64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Release|x64.Build.0 = Release|x64
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Release|x86.ActiveCfg = Release|Win32
+		{D7058517-71DF-4F6B-865D-6038B2D6085C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

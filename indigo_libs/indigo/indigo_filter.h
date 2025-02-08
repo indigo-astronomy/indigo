@@ -265,7 +265,6 @@ INDIGO_EXTERN indigo_result indigo_filter_change_property(indigo_device *device,
  */
 INDIGO_EXTERN indigo_result indigo_filter_device_detach(indigo_device *device);
 
-	
 /** Client attach callback function.
  */
 INDIGO_EXTERN indigo_result indigo_filter_client_attach(indigo_client *client);
@@ -283,7 +282,10 @@ INDIGO_EXTERN indigo_result indigo_filter_delete_property(indigo_client *client,
 INDIGO_EXTERN indigo_result indigo_filter_client_detach(indigo_client *client);
 /** Find remote cached properties.
  */
-__attribute__((deprecated)) INDIGO_EXTERN bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+__attribute__((deprecated))
+#endif
+INDIGO_EXTERN bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property);
 /** Forward property change to a different device.
  */
 INDIGO_EXTERN indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name, char *property_name);

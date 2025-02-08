@@ -24,12 +24,12 @@
     <ClCompile Include="..\..\indigo_windows\dllmain.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="indigo_mount_simulator.c">
+    <ClCompile Include="indigo_agent_mount.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="indigo_mount_simulator.h">
+    <ClInclude Include="indigo_agent_mount.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>

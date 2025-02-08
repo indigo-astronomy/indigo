@@ -314,6 +314,7 @@
     <ClInclude Include="indigo\indigo_driver.h" />
     <ClInclude Include="indigo\indigo_driver_json.h" />
     <ClInclude Include="indigo\indigo_dslr_raw.h" />
+    <ClInclude Include="indigo\indigo_filter.h" />
     <ClInclude Include="indigo\indigo_focuser_driver.h" />
     <ClInclude Include="indigo\indigo_gps_driver.h" />
     <ClInclude Include="indigo\indigo_guider_driver.h" />
@@ -443,6 +444,7 @@
     <ClCompile Include="indigo_driver_json.c" />
     <ClCompile Include="indigo_driver_xml.c" />
     <ClCompile Include="indigo_dslr_raw.c" />
+    <ClCompile Include="indigo_filter.c" />
     <ClCompile Include="indigo_focuser_driver.c" />
     <ClCompile Include="indigo_gps_driver.c" />
     <ClCompile Include="indigo_guider_driver.c" />

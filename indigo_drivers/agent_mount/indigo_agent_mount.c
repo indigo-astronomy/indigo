@@ -28,15 +28,11 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
@@ -397,7 +393,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 				strcpy(buffer_out, "1");
 			}
 			if (*buffer_out) {
-				indigo_uni_write(data->handle, buffer_out, strlen(buffer_out));
+				indigo_uni_write(data->handle, buffer_out, (long)strlen(buffer_out));
 				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", data->handle->index, buffer_in, buffer_out);
 			} else {
 				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", data->handle->index, buffer_in);
@@ -993,7 +989,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation started: initial_frame_rotation = %g, rotator_position = %g, parallactic_angle = %f", DEVICE_PRIVATE_DATA->initial_frame_rotation, DEVICE_PRIVATE_DATA->rotator_position, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value);
 			} else {
 				DEVICE_PRIVATE_DATA->initial_frame_rotation = 0;
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME,"Derotation stopped");
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation stopped", "");
 			}
 			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, NULL);

@@ -32,13 +32,14 @@ int main(int argc, char** argv) {
 	char **list;
 	int count = indigo_uni_scandir(".", &list, driver_filter);
 	indigo_uni_handle* out = indigo_uni_create_file("indigo_drivers");
-	fprintf(stderr, "building indigo_drivers...\n");
+	fprintf(stderr, "Building indigo_drivers...\n");
 	for (int i = 0; i < count; i++) {
 		indigo_driver_entry* driver;
 		indigo_load_driver(list[i], false, &driver);
 		indigo_available_drivers[i].driver(INDIGO_DRIVER_INFO, &info);
-		fprintf(stderr, "adding %s...\n", indigo_available_drivers[i].name);
+		fprintf(stderr, "%3d. %s\n", i + 1, indigo_available_drivers[i].name);
 		indigo_uni_printf(out, "\"%s\", \"%s\", %04x\n", indigo_available_drivers[i].name, indigo_available_drivers[i].description, info.version);
 	}
 	indigo_uni_close(&out);
+	fprintf(stderr, "Done\n");
 }

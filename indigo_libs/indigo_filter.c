@@ -289,7 +289,7 @@ indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_c
 }
 
 static void update_additional_instances(indigo_device *device) {
-	int count = ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
+	int count = (int)ADDITIONAL_INSTANCES_COUNT_ITEM->number.value;
 	for (int i = 0; i < count; i++) {
 		if (DEVICE_CONTEXT->additional_device_instances[i] == NULL) {
 			indigo_device *additional_device = indigo_safe_malloc_copy(sizeof(indigo_device), device);
@@ -640,9 +640,10 @@ static void remove_from_list(indigo_device *device, indigo_property *device_list
 			}
 			int size = (device_list->count - i - 1) * sizeof(indigo_item);
 			if (size > 0) {
-				char buffer[size];
+				char* buffer = indigo_safe_malloc(size);
 				memcpy(buffer, device_list->items + i + 1, size);
 				memcpy(device_list->items + i, buffer, size);
+				indigo_safe_free(buffer);
 			}
 			indigo_delete_property(device, device_list, NULL);
 			device_list->count--;
@@ -681,10 +682,10 @@ static void update_ccd_lens_info(indigo_device *device, indigo_property *propert
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, CCD_FRAME_WIDTH_ITEM_NAME)) {
-				FILTER_DEVICE_CONTEXT->frame_width = item->number.value;
+				FILTER_DEVICE_CONTEXT->frame_width = (int)item->number.value;
 			}
 			if (!strcmp(item->name, CCD_FRAME_HEIGHT_ITEM_NAME)) {
-				FILTER_DEVICE_CONTEXT->frame_height = item->number.value;
+				FILTER_DEVICE_CONTEXT->frame_height = (int)item->number.value;
 			}
 		}
 		update = true;
@@ -693,10 +694,10 @@ static void update_ccd_lens_info(indigo_device *device, indigo_property *propert
 		for (int i = 0; i < property->count; i++) {
 			indigo_item *item = property->items + i;
 			if (!strcmp(item->name, CCD_BIN_HORIZONTAL_ITEM_NAME)) {
-				FILTER_DEVICE_CONTEXT->bin_horizontal = item->number.value;
+				FILTER_DEVICE_CONTEXT->bin_horizontal = (int)item->number.value;
 			}
 			if (!strcmp(item->name, CCD_BIN_VERTICAL_ITEM_NAME)) {
-				FILTER_DEVICE_CONTEXT->bin_vertical = item->number.value;
+				FILTER_DEVICE_CONTEXT->bin_vertical = (int)item->number.value;
 			}
 		}
 		update = true;
@@ -1015,7 +1016,10 @@ indigo_result indigo_filter_client_detach(indigo_client *client) {
 	return INDIGO_OK;
 }
 
-__attribute__((deprecated)) bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+__attribute__((deprecated))
+#endif
+bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property) {
 	indigo_property **cache = FILTER_DEVICE_CONTEXT->device_property_cache;
 	char *device_name = FILTER_DEVICE_CONTEXT->device_name[index];
 	indigo_property *property;
@@ -1049,7 +1053,7 @@ indigo_result indigo_filter_forward_change_property(indigo_client *client, indig
 
 char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1) {
 	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	unsigned long base_name_len_1 = strlen(base_name_1);
+	int base_name_len_1 = (int)strlen(base_name_1);
 	for (int i = 0; i < related_agents_property->count; i++) {
 		indigo_item *item = related_agents_property->items + i;
 		if (item->sw.value && !strncmp(base_name_1, item->name, base_name_len_1)) {
@@ -1061,8 +1065,8 @@ char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1
 
 char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2) {
 	indigo_property *related_agents_property = FILTER_DEVICE_CONTEXT->filter_related_agent_list_property;
-	unsigned long base_name_len_1 = strlen(base_name_1);
-	unsigned long base_name_len_2 = strlen(base_name_2);
+	int base_name_len_1 = (int)strlen(base_name_1);
+	int base_name_len_2 = (int)strlen(base_name_2);
 	for (int i = 0; i < related_agents_property->count; i++) {
 		indigo_item *item = related_agents_property->items + i;
 		if (item->sw.value && (!strncmp(base_name_1, item->name, base_name_len_1) || !strncmp(base_name_2, item->name, base_name_len_2))) {

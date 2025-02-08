@@ -87,6 +87,7 @@ static void *timer_func(indigo_timer *timer) {
 			if (timer->delay > 0) {
 				struct timespec end;
 				utc_time(&end);
+				indigo_error("%ld %ld", end.tv_sec, end.tv_nsec);
 				end.tv_sec += (int)timer->delay;
 				end.tv_nsec += NANO * (long)(timer->delay - (int)timer->delay);
 				normalize_timespec(&end);
