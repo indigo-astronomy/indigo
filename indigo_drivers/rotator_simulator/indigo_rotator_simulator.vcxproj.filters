@@ -13,13 +13,24 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Header Files\indigo">
+      <UniqueIdentifier>{e1017ff9-5c7f-4430-927d-8cbaf114da5d}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Source Files\indigo">
-      <UniqueIdentifier>{d1475bdb-1e2e-4c4d-816e-d18600b89cff}</UniqueIdentifier>
+      <UniqueIdentifier>{99aba4d8-10c2-4af9-8cc0-fb6e6b82c8b3}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="indigo_server.c">
+    <ClCompile Include="..\..\indigo_windows\dllmain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="indigo_rotator_simulator.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="indigo_rotator_simulator.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

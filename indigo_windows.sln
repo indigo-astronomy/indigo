@@ -12,6 +12,12 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_mount_simulator", "i
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ccd_simulator", "indigo_drivers\ccd_simulator\indigo_ccd_simulator.vcxproj", "{1555B53F-7ADE-4751-888A-3A3549E3D3D9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_rotator_simulator", "indigo_drivers\rotator_simulator\indigo_rotator_simulator.vcxproj", "{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_dome_simulator", "indigo_drivers\dome_simulator\indigo_dome_simulator.vcxproj", "{BED3F6C7-D374-49BB-9004-EAF521129A8C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "make_indigo_drivers", "indigo_windows\make_indigo_drivers\make_indigo_drivers.vcxproj", "{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -82,6 +88,42 @@ Global
 		{1555B53F-7ADE-4751-888A-3A3549E3D3D9}.Release|x64.Build.0 = Release|x64
 		{1555B53F-7ADE-4751-888A-3A3549E3D3D9}.Release|x86.ActiveCfg = Release|Win32
 		{1555B53F-7ADE-4751-888A-3A3549E3D3D9}.Release|x86.Build.0 = Release|Win32
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Debug|ARM64.Build.0 = Debug|ARM64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Debug|x64.ActiveCfg = Debug|x64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Debug|x64.Build.0 = Debug|x64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Debug|x86.ActiveCfg = Debug|Win32
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Debug|x86.Build.0 = Debug|Win32
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Release|ARM64.ActiveCfg = Release|ARM64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Release|ARM64.Build.0 = Release|ARM64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Release|x64.ActiveCfg = Release|x64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Release|x64.Build.0 = Release|x64
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Release|x86.ActiveCfg = Release|Win32
+		{88BCDDEF-E256-437D-A5AD-9EF58E6752FA}.Release|x86.Build.0 = Release|Win32
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Debug|ARM64.Build.0 = Debug|ARM64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Debug|x64.ActiveCfg = Debug|x64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Debug|x64.Build.0 = Debug|x64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Debug|x86.ActiveCfg = Debug|Win32
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Debug|x86.Build.0 = Debug|Win32
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|ARM64.ActiveCfg = Release|ARM64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|ARM64.Build.0 = Release|ARM64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|x64.ActiveCfg = Release|x64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|x64.Build.0 = Release|x64
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|x86.ActiveCfg = Release|Win32
+		{BED3F6C7-D374-49BB-9004-EAF521129A8C}.Release|x86.Build.0 = Release|Win32
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|ARM64.Build.0 = Debug|ARM64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|x64.ActiveCfg = Debug|x64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|x64.Build.0 = Debug|x64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|x86.ActiveCfg = Debug|Win32
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Debug|x86.Build.0 = Debug|Win32
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|ARM64.ActiveCfg = Release|ARM64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|ARM64.Build.0 = Release|ARM64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|x64.ActiveCfg = Release|x64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|x64.Build.0 = Release|x64
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|x86.ActiveCfg = Release|Win32
+		{EE2D3F23-9A54-48C7-901C-5D71F3A7D19F}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
