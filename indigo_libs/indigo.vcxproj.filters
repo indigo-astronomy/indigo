@@ -445,6 +445,9 @@
     <ClCompile Include="indigo_polynomial_fit.c">
       <Filter>Source Files\indigo</Filter>
     </ClCompile>
+    <ClCompile Include="indigo_usb_utils.c">
+      <Filter>Source Files\indigo</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="indigo\indigo_base64.h">
@@ -700,6 +703,9 @@
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
     <ClInclude Include="indigo\indigo_polynomial_fit.h">
+      <Filter>Header Files\indigo</Filter>
+    </ClInclude>
+    <ClInclude Include="indigo\indigo_usb_utils.h">
       <Filter>Header Files\indigo</Filter>
     </ClInclude>
   </ItemGroup>

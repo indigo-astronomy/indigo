@@ -4,7 +4,7 @@
 ///	@brief Atik SDK C interface header
 
 #ifdef _WIN32
-#include <comdef.h>
+//#include <comdef.h>
 #else
 #include <stddef.h>
 /// Typedef for non windows builds

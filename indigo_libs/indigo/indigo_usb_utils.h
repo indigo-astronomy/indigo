@@ -30,7 +30,9 @@
 
 #if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
 #include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD) || defined(INDIGO_WINDOWS)
+#elif defined(INDIGO_FREEBSD)
+#include <libusb.h>
+#elif defined(INDIGO_WINDOWS)
 #include <libusb.h>
 #endif
 #include <indigo/indigo_bus.h>

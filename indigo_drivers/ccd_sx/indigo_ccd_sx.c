@@ -28,19 +28,9 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
-
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_usb_utils.h>
@@ -349,7 +339,7 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
 				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
 				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_start_exposure: is_icx453 setup");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_start_exposure: is_icx453 setup", "");
 			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %lu bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
@@ -516,8 +506,8 @@ static bool sx_read_pixels(indigo_device *device) {
 						unsigned char *buffer = PRIVATE_DATA->buffer + FITS_HEADER_SIZE;
 						int ww = frame_width * 2;
 						for (int i = 0, j = 0; i < frame_height; i += 2, j++) {
-							memcpy(buffer + i * ww, (void *)odd + (j * ww), ww);
-							memcpy(buffer + ((i + 1) * ww), (void *)even + (j * ww), ww);
+							memcpy(buffer + i * ww, (char *)odd + (j * ww), ww);
+							memcpy(buffer + ((i + 1) * ww), (char *)even + (j * ww), ww);
 						}
 					}
 				}
@@ -551,7 +541,7 @@ static bool sx_read_pixels(indigo_device *device) {
 				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
 				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
 				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_read_pixels: is_icx453 setup");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_read_pixels: is_icx453 setup", "");
 			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 		}
@@ -638,7 +628,7 @@ static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 	int transferred;
 	setup_data[REQ_TYPE ] = REQ_VENDOR | REQ_DATAOUT;
 	setup_data[REQ ] = CCD_SET_STAR2K;
-	setup_data[REQ_VALUE_L ] = relay_mask;
+	setup_data[REQ_VALUE_L ] = (uint8_t)relay_mask;
 	setup_data[REQ_VALUE_H ] = 0;
 	setup_data[REQ_INDEX_L ] = 0;
 	setup_data[REQ_INDEX_H ] = 0;
@@ -667,7 +657,7 @@ static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 static void sx_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	libusb_close(PRIVATE_DATA->handle);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close", "");
 	free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
 	if (PRIVATE_DATA->is_interlaced) {
@@ -759,7 +749,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			bool result = true;
 			if (PRIVATE_DATA->device_count++ == 0) {
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
 					result = false;
 				} else {
 					result = sx_open(device);
@@ -828,7 +818,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			return INDIGO_OK;
 		indigo_property_copy_values(CCD_EXPOSURE_PROPERTY, property, false);
 		indigo_use_shortest_exposure_if_bias(device);
-		sx_start_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value, CCD_BIN_VERTICAL_ITEM->number.value);
+		sx_start_exposure(device, (int)CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
 		if (CCD_UPLOAD_MODE_LOCAL_ITEM->sw.value || CCD_UPLOAD_MODE_BOTH_ITEM->sw.value) {
 			CCD_IMAGE_FILE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_FILE_PROPERTY, NULL);
@@ -874,8 +864,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
-		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int v = CCD_BIN_VERTICAL_ITEM->number.value;
+		int h = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int v = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		if (!(h == 1 || h == 2 || h == 4) || h != v) {
 			CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.value = h;
@@ -960,7 +950,7 @@ static void guider_connect_callback(indigo_device *device) {
 			bool result = true;
 			if (PRIVATE_DATA->device_count++ == 0) {
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
 					result = false;
 				} else {
 					result = sx_open(device);
@@ -1010,12 +1000,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_NORTH | SX_GUIDE_SOUTH);
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= SX_GUIDE_NORTH;
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				PRIVATE_DATA->relay_mask |= SX_GUIDE_SOUTH;
 				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
@@ -1030,12 +1020,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		PRIVATE_DATA->relay_mask &= ~(SX_GUIDE_EAST | SX_GUIDE_WEST);
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= SX_GUIDE_EAST;
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				PRIVATE_DATA->relay_mask |= SX_GUIDE_WEST;
 				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
@@ -1248,7 +1238,7 @@ indigo_result indigo_ccd_sx(indigo_driver_action action, indigo_driver_info *inf
 			VERIFY_NOT_CONNECTED(devices[i]);
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback", "");
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] != NULL) {
 				indigo_device *device = devices[j];

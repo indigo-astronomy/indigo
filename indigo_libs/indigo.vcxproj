@@ -330,6 +330,7 @@
     <ClInclude Include="indigo\indigo_timer.h" />
     <ClInclude Include="indigo\indigo_uni_io.h" />
     <ClInclude Include="indigo\indigo_usbserial_utils.h" />
+    <ClInclude Include="indigo\indigo_usb_utils.h" />
     <ClInclude Include="indigo\indigo_version.h" />
     <ClInclude Include="indigo\indigo_wheel_driver.h" />
     <ClInclude Include="indigo\indigo_xml.h" />
@@ -464,6 +465,7 @@
     <ClCompile Include="indigo_timer.c" />
     <ClCompile Include="indigo_uni_io.c" />
     <ClCompile Include="indigo_usbserial_utils.c" />
+    <ClCompile Include="indigo_usb_utils.c" />
     <ClCompile Include="indigo_version.c" />
     <ClCompile Include="indigo_wheel_driver.c" />
     <ClCompile Include="indigo_xml.c" />
