@@ -142,7 +142,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -164,7 +164,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -185,7 +185,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PostBuildEvent>
@@ -210,7 +210,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
@@ -239,7 +239,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>
@@ -268,7 +268,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>bin_externals\libusb\lib\windows\$(Platform)\;bin_externals\zlib\lib\windows\$(Platform)\;bin_externals\pthreads4w\lib\windows\$(Platform)\;bin_externals\libraw\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;setupAPI.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;libraw.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ModuleDefinitionFile>.\indigo.def</ModuleDefinitionFile>
     </Link>
     <PreBuildEvent>

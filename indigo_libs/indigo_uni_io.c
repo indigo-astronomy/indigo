@@ -925,7 +925,7 @@ long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
 				break;
 			}
 		} else if (handle->type == INDIGO_COM_HANDLE) {
-			if (!ReadFile(handle->com, buffer, (DWORD)1, (DWORD *)&result, NULL)) {
+			if (!ReadFile(handle->com, &c, (DWORD)1, (DWORD *)&result, NULL)) {
 				handle->last_error = GetLastError();
 				break;
 			}
@@ -1078,7 +1078,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 					break;
 				}
 			} else if (handle->type == INDIGO_COM_HANDLE) {
-				if (!ReadFile(handle->com, buffer, (DWORD)1, (DWORD *)&result, NULL)) {
+				if (!ReadFile(handle->com, &c, (DWORD)1, (DWORD *)&result, NULL)) {
 					handle->last_error = GetLastError();
 					break;
 				}
