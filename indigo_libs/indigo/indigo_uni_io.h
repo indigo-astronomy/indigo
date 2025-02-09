@@ -102,6 +102,10 @@ char* indigo_last_windows_error();
  */
 INDIGO_EXTERN char *indigo_uni_strerror(indigo_uni_handle *handle);
 
+/** Check if name is URL.
+ */
+INDIGO_EXTERN bool indigo_uni_is_url(const char *name, const char *prefix);
+
 /** Open existing file.
  */
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_file(const char *path);

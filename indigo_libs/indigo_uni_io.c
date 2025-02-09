@@ -125,6 +125,17 @@ char *indigo_uni_strerror(indigo_uni_handle *handle) {
 	return buffer;
 }
 
+bool indigo_uni_is_url(const char *name, const char *prefix) {
+	if (name == NULL || *name == '\0')
+		return false;
+	if (prefix) {
+		char prefix_full[INDIGO_NAME_SIZE];
+		sprintf(prefix_full, "%s://", prefix);
+		return ((!strncmp(name, "tcp://", 6)) || (!strncmp(name, "udp://", 6)) || (!strncmp(name, prefix_full, strlen(prefix_full))));
+	}
+	return ((!strncmp(name, "tcp://", 6)) || (!strncmp(name, "udp://", 6)));
+}
+
 indigo_uni_handle *indigo_uni_open_file(const char *path) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	int fd = open(path, O_RDONLY);
