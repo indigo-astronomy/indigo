@@ -844,6 +844,108 @@ long indigo_uni_read(indigo_uni_handle *handle, void *buffer, long length) {
 	}
 }
 
+long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
+	if (handle == NULL) {
+		indigo_error("%s used with NULL handle", __FUNCTION__);
+		return -1;
+	}
+	long bytes_read = 0;
+	long result;
+	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
+	while (true) {
+		if (timeout >= 0) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+			fd_set readout;
+			FD_ZERO(&readout);
+			FD_SET(handle->fd, &readout);
+			result = select(handle->fd + 1, &readout, NULL, NULL, &tv);
+			if (result == 0) {
+				handle->last_error = 0;
+				return bytes_read;
+			}
+			if (result < 0) {
+				handle->last_error = errno;
+				return -1;
+			}
+#elif defined(INDIGO_WINDOWS)
+			if (handle->type == INDIGO_FILE_HANDLE) {
+				HANDLE hFile = (HANDLE)_get_osfhandle(handle->fd);
+				if (hFile == INVALID_HANDLE_VALUE) {
+					handle->last_error = GetLastError();
+					return -1;
+				}
+				DWORD result = WaitForSingleObject(hFile, timeout * 1000);
+				if (result == WAIT_TIMEOUT) {
+					handle->last_error = 0;
+					return 0;
+				} if (result == WAIT_FAILED) {
+					handle->last_error = GetLastError();
+					return -1;
+				}
+			} else if (handle->type == INDIGO_COM_HANDLE) {
+				result = WaitForSingleObject(handle->com, timeout * 1000);
+				if (result == WAIT_TIMEOUT) {
+					handle->last_error = 0;
+					return 0;
+				} if (result == WAIT_FAILED) {
+					handle->last_error = GetLastError();
+					return -1;
+				}
+			} else if (handle->type == INDIGO_TCP_HANDLE) {
+				fd_set readout;
+				FD_ZERO(&readout);
+				FD_SET(handle->sock, &readout);
+				result = select(0, &readout, NULL, NULL, &tv);
+				if (result == 0) {
+					handle->last_error = 0;
+					return 0;
+				} else if (result == SOCKET_ERROR) {
+					handle->last_error = WSAGetLastError();
+					return -1;
+				}
+			} else {
+				return -1;
+			}
+#else
+#pragma message ("TODO: indigo_uni_read_section()")
+#endif
+		}
+		char c = 0;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+		result = read(handle->fd, &c, 1);
+		if (result < 1) {
+			handle->last_error = errno;
+			break;
+		}
+#elif defined(INDIGO_WINDOWS)
+		if (handle->type == INDIGO_FILE_HANDLE) {
+			result = _read(handle->fd, &c, 1);
+			if (result < 1) {
+				handle->last_error = errno;
+				break;
+			}
+		} else if (handle->type == INDIGO_COM_HANDLE) {
+			if (!ReadFile(handle->com, buffer, (DWORD)1, (DWORD *)&result, NULL)) {
+				handle->last_error = GetLastError();
+				break;
+			}
+		} else if (handle->type == INDIGO_TCP_HANDLE) {
+			result = recv(handle->sock, &c, 1, 0);
+			if (result < 1) {
+				handle->last_error = WSAGetLastError();
+				break;
+			}
+		} else {
+			return -1;
+		}
+#else
+#pragma message ("TODO: indigo_uni_read_section()")
+#endif
+		tv = (struct timeval) { .tv_sec = 0, .tv_usec = 100000 };
+	}
+	return bytes_read;
+}
+
 long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
 	if (handle == NULL) {
 		indigo_error("%s used with NULL handle", __FUNCTION__);
