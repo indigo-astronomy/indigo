@@ -28,17 +28,14 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
 
-#include <sys/time.h>
-
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_focuser_primaluce.h"
 
@@ -155,7 +152,7 @@
 #define X_CALIBRATE_R_START_ITEM							(X_CALIBRATE_R_PROPERTY->items+0)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int device_count;
 	indigo_timer *timer;
 	pthread_mutex_t mutex;
@@ -269,12 +266,12 @@ static char *GET_RUNPRESET_3_M1HOLD[] = { "res", "get", "RUNPRESET_3", "M1HOLD",
 static bool primaluce_command(indigo_device *device, char *command, char *response, int size, jsmntok_t *tokens, int count) {
 	long result;
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
-	if (!indigo_write(PRIVATE_DATA->handle, command, strlen(command))) {
+	if (!indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command))) {
 		pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 		return false;
 	}
 	while (true) {
-		result = indigo_read_line(PRIVATE_DATA->handle, response, size);
+		result = indigo_uni_read_line(PRIVATE_DATA->handle, response, size);
 		if (result < 1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -372,8 +369,8 @@ static double get_number(char *response, jsmntok_t *tokens, char *path[]) {
 
 static bool primaluce_open(indigo_device *device) {
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
-	if (PRIVATE_DATA->handle >= 0) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(name, 115200);
+	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		char response[1024];
 		jsmntok_t tokens[128];
@@ -396,8 +393,7 @@ static bool primaluce_open(indigo_device *device) {
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed");
 		}
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
 	}
@@ -406,8 +402,7 @@ static bool primaluce_open(indigo_device *device) {
 
 static void primaluce_close(indigo_device *device) {
 	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, "N/A");
 		indigo_copy_value(INFO_DEVICE_SERIAL_NUM_ITEM->text.value, "N/A");
 		indigo_copy_value(INFO_DEVICE_FW_REVISION_ITEM->text.value, "N/A");
