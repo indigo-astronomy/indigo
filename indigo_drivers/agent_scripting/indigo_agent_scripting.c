@@ -310,7 +310,7 @@ static duk_ret_t save_blob(duk_context *ctx) {
 		duk_push_number(PRIVATE_DATA->ctx, item->blob.size);
 		duk_put_prop_string(PRIVATE_DATA->ctx, 1, "size");
 	}
-	indigo_uni_handle *handle = indigo_uni_create_file(file_name);
+	indigo_uni_handle *handle = indigo_uni_create_file(file_name, -INDIGO_LOG_TRACE);
 	if (handle != NULL) {
 		indigo_uni_write(handle, item->blob.value, item->blob.size);
 		indigo_uni_close(&handle);

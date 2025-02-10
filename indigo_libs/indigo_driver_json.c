@@ -44,7 +44,7 @@ static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 static long ws_write(indigo_uni_handle *handle, const char *buffer, long length) {
 	uint8_t header[10] = { 0x81 };
 	long result;
-	handle->short_trace = true;
+	handle->log_level = -abs(handle->log_level);
 	if (length <= 0x7D) {
 		header[1] = (uint8_t)length;
 		result = indigo_uni_write(handle, (char *)header, 2);
@@ -60,7 +60,7 @@ static long ws_write(indigo_uni_handle *handle, const char *buffer, long length)
 		result = indigo_uni_write(handle, (char *)header, 10);
 	}
 	result = result + indigo_uni_write(handle, buffer, length);
-	handle->short_trace = false;
+	handle->log_level = -abs(handle->log_level);
 	return result;
 }
 

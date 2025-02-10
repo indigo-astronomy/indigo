@@ -3281,7 +3281,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					DEVICE_PRIVATE_DATA->image_buffer = indigo_safe_malloc(malloc_size);
 					DEVICE_PRIVATE_DATA->image_buffer_size = malloc_size;
 				}
-				indigo_uni_handle *handle = indigo_uni_open_file(file_name);
+				indigo_uni_handle *handle = indigo_uni_open_file(file_name, -INDIGO_LOG_TRACE);
 				if (handle == NULL) {
 					break;
 				}

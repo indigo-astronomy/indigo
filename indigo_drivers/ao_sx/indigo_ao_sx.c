@@ -52,12 +52,11 @@ static bool sx_flush(indigo_device *device) {
 
 static bool sx_command(indigo_device *device, char *command, char *response, int max) {
 	if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) < 0) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> // Failed to write (%s)", DEVICE_PORT_ITEM->text.value, indigo_uni_strerror(PRIVATE_DATA->handle));
+		return false;
 	}
 	if (response != NULL) {
 		int timeout = (*command == 'K' || *command == 'R') ? 15 : 1;
 		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", timeout * ONE_SECOND_DELAY) < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> // Failed to read (%s)", DEVICE_PORT_ITEM->text.value, indigo_uni_strerror(PRIVATE_DATA->handle));
 			return false;
 		}
 	}
@@ -68,17 +67,17 @@ static bool sx_open(indigo_device *device) {
 	if (PRIVATE_DATA->device_count++ > 0)
 		return true;
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_uni_open_serial(name);
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		char response[5];
-//		if (sx_flush(device)) {
+		if (sx_flush(device)) {
 			if (sx_command(device, "X", response, 1) && *response == 'Y') {
 				if (sx_command(device, "V", response, 4) && *response == 'V') {
 					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 					return true;
 				}
 			}
-//		}
+		}
 		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed on %s", name);
 	} else {

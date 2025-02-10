@@ -298,7 +298,7 @@ static void open_log(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->log_file != NULL) {
 		indigo_uni_close(&DEVICE_PRIVATE_DATA->log_file);
 	}
-	DEVICE_PRIVATE_DATA->log_file = indigo_uni_create_file(DEVICE_PRIVATE_DATA->log_file_name);
+	DEVICE_PRIVATE_DATA->log_file = indigo_uni_create_file(DEVICE_PRIVATE_DATA->log_file_name, INDIGO_LOG_TRACE);
 	if (DEVICE_PRIVATE_DATA->log_file == NULL) {
 		indigo_send_message(device, "Failed to create guiding log file (%s)", indigo_uni_strerror(DEVICE_PRIVATE_DATA->log_file));
 	}

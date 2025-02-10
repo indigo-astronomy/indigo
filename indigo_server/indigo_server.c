@@ -1478,7 +1478,7 @@ static void add_drivers(const char *folder) {
 			char path[PATH_MAX];
 			sprintf(path, "%s%c%s", folder_path, INDIGO_PATH_SEPATATOR, list[i]);
 			indigo_log("Loading driver list from %s", path);
-			indigo_uni_handle *file = indigo_uni_open_file(path);
+			indigo_uni_handle *file = indigo_uni_open_file(path, INDIGO_LOG_TRACE);
 			if (file != NULL) {
 				while (indigo_uni_read_line(file, line, sizeof(line)) > 0 && dynamic_drivers_count < INDIGO_MAX_DRIVERS) {
 					char *pnt, *token = strtok_r(line, ",", &pnt);

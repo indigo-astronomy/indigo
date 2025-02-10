@@ -409,7 +409,7 @@ static void start_lx200_server(indigo_device *device) {
 	int port = (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value;
 	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Starting server on %d", (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value);
-	indigo_uni_open_tcp_server_socket(&port, &DEVICE_PRIVATE_DATA->server_handle, lx200_server_worker_thread, device, NULL);
+	indigo_uni_open_tcp_server_socket(&port, &DEVICE_PRIVATE_DATA->server_handle, lx200_server_worker_thread, device, NULL, INDIGO_LOG_DEBUG);
 	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
 	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Server finished");

@@ -212,12 +212,13 @@ typedef enum {
 
 
 typedef enum {
-	INDIGO_LOG_PLAIN = -1,
+	INDIGO_LOG_PLAIN = 0,
 	INDIGO_LOG_ERROR,
 	INDIGO_LOG_INFO,
 	INDIGO_LOG_DEBUG,
 	INDIGO_LOG_TRACE_BUS,
-	INDIGO_LOG_TRACE
+	INDIGO_LOG_TRACE,
+	INDIGO_LOG_NONE = 9999
 } indigo_log_levels;
 
 /** Property item definition.
@@ -432,6 +433,10 @@ INDIGO_EXTERN void indigo_error(const char *format, ...);
 /** Print diagnostic messages on info level, wrap calls to INDIGO_LOG() macro.
  */
 INDIGO_EXTERN void indigo_log(const char *format, ...);
+
+/** Print diagnostic messages on given log level..
+ */
+INDIGO_EXTERN void indigo_log_on_level(indigo_log_levels log_level, const char *format, ...);
 
 /** Print diagnostic message on trace level with property value, full property definition and items dump can be requested.
  */

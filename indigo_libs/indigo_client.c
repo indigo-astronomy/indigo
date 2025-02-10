@@ -255,8 +255,8 @@ static void *subprocess_thread(indigo_subprocess_entry *subprocess) {
 	int sleep_interval = 5;
 	while (subprocess->pid >= 0) {
 		int input[2], output[2];
-		indigo_uni_handle *in = indigo_uni_create_file_handle(input[0]);
-		indigo_uni_handle *out = indigo_uni_create_file_handle(output[0]);
+		indigo_uni_handle *in = indigo_uni_create_file_handle(input[0], INDIGO_LOG_TRACE);
+		indigo_uni_handle *out = indigo_uni_create_file_handle(output[0], INDIGO_LOG_TRACE);
 		if (pipe(input) < 0 || pipe(output) < 0) {
 			INDIGO_ERROR(indigo_error("Can't create local pipe for subprocess %s (%s)", subprocess->executable, strerror(errno)));
 			strncpy(subprocess->last_error, strerror(errno), sizeof(subprocess->last_error));
@@ -376,7 +376,7 @@ static void *server_thread(indigo_server_entry *server) {
 	INDIGO_LOG(indigo_log("Server %s:%d thread started", server->host, server->port));
 	pthread_detach(pthread_self());
 	while (!server->shutdown) {
-		server->handle = indigo_uni_client_tcp_socket(server->host, server->port);
+		server->handle = indigo_uni_client_tcp_socket(server->host, server->port, INDIGO_LOG_TRACE);
 		if (server->handle != NULL) {
 			if (*server->name == 0) {
 				indigo_service_name(server->host, server->port, server->name);

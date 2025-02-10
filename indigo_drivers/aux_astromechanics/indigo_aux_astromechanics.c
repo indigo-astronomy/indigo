@@ -133,7 +133,7 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[16];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
 		if (PRIVATE_DATA->handle != NULL) {
 			if (astromechanics_command(device, "V#", response)) {
 				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);

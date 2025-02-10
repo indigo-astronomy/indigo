@@ -1346,10 +1346,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
-					handle->short_trace = true;
+					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 4);
-					handle->short_trace = false;
+					handle->log_level = abs(handle->log_level);
 					break;
 				}
 				case INDIGO_RAW_MONO16: {
@@ -1361,10 +1361,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 						for (int row = height - 1; row >= 0; row--)
 							*pnt++ = data[row * width + col];
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 4); // ASCOM BUG, should be + sizeof(metadata)
-					handle->short_trace = true;
+					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 4);
-					handle->short_trace = false;
+					handle->log_level = abs(handle->log_level);
 					free(buffer);
 					break;
 				}
@@ -1381,10 +1381,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 1];
 						}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
-					handle->short_trace = true;
+					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 12);
-					handle->short_trace = false;
+					handle->log_level = abs(handle->log_level);
 					break;
 				}
 				case INDIGO_RAW_RGB48: {
@@ -1400,10 +1400,10 @@ void indigo_alpaca_ccd_get_imagearray(indigo_alpaca_device *alpaca_device, int v
 							*pnt++ = data[base + 2];
 						}
 					indigo_uni_printf(handle, "HTTP/1.1 200 OK\r\nContent-Type: application/imagebytes\r\nContent-Length: %d\r\n\r\n", size * 12); // ASCOM BUG, should be + sizeof(metadata)
-					handle->short_trace = true;
+					handle->log_level = -abs(handle->log_level);
 					indigo_uni_write(handle, (const char *)&metadata, sizeof(metadata));
 					indigo_uni_write(handle, (const char *)buffer, size * 12);
-					handle->short_trace = false;
+					handle->log_level = abs(handle->log_level);
 					break;
 				}
 			}

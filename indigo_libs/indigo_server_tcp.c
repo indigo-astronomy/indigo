@@ -276,7 +276,7 @@ static void start_worker_thread(indigo_uni_worker_data *data) {
 							}
 							indigo_uni_handle *file_handle = { 0 };
 							struct stat file_stat;
-							if (stat(file_name, &file_stat) < 0 || (file_handle = indigo_uni_open_file(file_name)) == NULL) {
+							if (stat(file_name, &file_stat) < 0 || (file_handle = indigo_uni_open_file(file_name, INDIGO_LOG_DEBUG)) == NULL) {
 								INDIGO_PRINTF(file_handle, "HTTP/1.1 404 Not found\r\n");
 								INDIGO_PRINTF(file_handle, "Content-Type: text/plain\r\n");
 								INDIGO_PRINTF(file_handle, "\r\n");
@@ -510,7 +510,7 @@ indigo_result indigo_server_start(void (*callback)(int)) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	signal(SIGPIPE, SIG_IGN);
 #endif
-	indigo_uni_open_tcp_server_socket(&indigo_server_tcp_port, &server_handle, start_worker_thread, NULL, server_callback);
+	indigo_uni_open_tcp_server_socket(&indigo_server_tcp_port, &server_handle, start_worker_thread, NULL, server_callback, INDIGO_LOG_TRACE);
 	server_callback(0);
 	return INDIGO_OK;
 }

@@ -325,6 +325,15 @@ void indigo_trace_bus(const char *format, ...) {
 	}
 }
 
+void indigo_log_on_level(indigo_log_levels log_level, const char *format, ...) {
+	if (indigo_log_level >= log_level) {
+		va_list argList;
+		va_start(argList, format);
+		indigo_log_base(log_level, format, argList);
+		va_end(argList);
+	}
+}
+
 void indigo_set_log_level(indigo_log_levels level) {
 	indigo_log_level = level;
 }
@@ -1122,11 +1131,10 @@ bool indigo_download_blob(char *url, void **value, long *size, char *format) {
 	if (sscanf(url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file) != 3) {
 		return false;
 	}
-	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port);
+	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port, -INDIGO_LOG_TRACE);
 	if (handle == NULL) {
 		return false;
 	}
-	handle->short_trace = true;
 	indigo_uni_set_socket_read_timeout(handle, 15000000L);
 	indigo_uni_set_socket_write_timeout(handle, 5000000L);
 	char line[256];
@@ -1228,11 +1236,10 @@ bool indigo_upload_http_blob_item(indigo_item *blob_item) {
 	if (sscanf(blob_item->blob.url, "http://%255[^:]:%5d/%255[^\n]", host, &port, file) != 3) {
 		return false;
 	}
-	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port);
+	indigo_uni_handle *handle = indigo_uni_client_tcp_socket(host, port, -INDIGO_LOG_TRACE);
 	if (handle == NULL) {
 		return false;
 	}
-	handle->short_trace = true;
 	indigo_uni_set_socket_read_timeout(handle, 5000000L);
 	indigo_uni_set_socket_write_timeout(handle, 5000000L);
 	char line[256];

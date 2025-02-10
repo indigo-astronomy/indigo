@@ -77,7 +77,7 @@ typedef struct {
 		HANDLE com;
 #endif
 	};
-	bool short_trace;
+	int log_level;
 	int last_error;
 } indigo_uni_handle;
 
@@ -90,7 +90,7 @@ INDIGO_EXTERN indigo_uni_handle *indigo_stdin_handle;
 INDIGO_EXTERN indigo_uni_handle *indigo_stdout_handle;
 INDIGO_EXTERN indigo_uni_handle *indigo_stderr_handle;
 
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file_handle(int fd);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level);
 
 #if defined(INDIGO_WINDOWS)
 char* indigo_last_wsa_error();
@@ -108,30 +108,30 @@ INDIGO_EXTERN bool indigo_uni_is_url(const char *name, const char *prefix);
 
 /** Open existing file.
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_file(const char *path);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_file(const char *path, int log_level);
 
 /** Create new file.
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file(const char *path);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file(const char *path, int log_level);
 
 /** Open serial connection with configuration string of the form "9600-8N1".
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig, int log_level);
 
 /** Open serial connection at speed XXXX-8N1.
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *serial, int speed);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial_with_speed(const char *serial, int speed, int log_level);
 
 /** Open serial connection at speed 9600-8N1.
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial(const char *serial);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_serial(const char *serial, int log_level);
 
 /** Open client socket.
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_client_socket(const char *host, int port, int type, int log_level);
 
-#define indigo_uni_client_tcp_socket(host, port) indigo_uni_open_client_socket(host, port, SOCK_STREAM);
-#define indigo_uni_client_udp_socket(host, port) indigo_uni_open_client_socket(host, port, SOCK_DGRAM);
+#define indigo_uni_client_tcp_socket(host, port, log_level) indigo_uni_open_client_socket(host, port, SOCK_STREAM, log_level);
+#define indigo_uni_client_udp_socket(host, port, log_level) indigo_uni_open_client_socket(host, port, SOCK_DGRAM, log_level);
 
 /** Set read timeout.
  */
@@ -145,12 +145,12 @@ INDIGO_EXTERN void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle
 /** Open server socket.
  */
 
-INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int));
+INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level);
 
 /** Open TCP or UDP connection depending on the URL prefix tcp:// or udp:// for any other prefix protocol_hint is used.
     If no port is provided in the URL default port is used. protocol_hint will be set to actual protocol used for the connection.
  */
-INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint);
+INDIGO_EXTERN indigo_uni_handle *indigo_uni_open_url(const char *url, int default_port, indigo_uni_handle_type protocol_hint, int log_level);
 
 /** Read available data into buffer.
  */

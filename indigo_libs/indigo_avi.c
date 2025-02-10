@@ -233,12 +233,11 @@ static bool write_index(indigo_uni_handle *handle, int count, unsigned int *offs
  */
 struct gwavi_t *gwavi_open(const char *filename, unsigned int width, unsigned int height, const char *fourcc, unsigned int fps) {
 	struct gwavi_t *gwavi = NULL;
-	indigo_uni_handle *handle = indigo_uni_create_file(filename);
+	indigo_uni_handle *handle = indigo_uni_create_file(filename, -INDIGO_LOG_TRACE);
 	if (handle == NULL) {
 		INDIGO_ERROR(indigo_error("gwavi_open: failed to open file for writing"));
 		goto failure;
 	}
-	handle->short_trace = true;
 	if ((gwavi = (struct gwavi_t *)malloc(sizeof(struct gwavi_t))) == NULL) {
 		INDIGO_ERROR(indigo_error("gwavi_open: could not allocate memory for gwavi structure"));
 		goto failure;

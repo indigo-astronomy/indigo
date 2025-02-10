@@ -79,7 +79,7 @@ indigo_result indigo_try_global_lock(indigo_device *device) {
 		return INDIGO_FAILED;
 	char tmp_lock_file[255] = "/tmp/indigo_lock_";
 	strncat(tmp_lock_file, device->name, 250);
-	indigo_uni_handle *handle = indigo_uni_create_file(tmp_lock_file);
+	indigo_uni_handle *handle = indigo_uni_create_file(tmp_lock_file, INDIGO_LOG_DEBUG);
 	if (handle == NULL)
 		return INDIGO_LOCK_ERROR;
 	if (!indigo_uni_lock_file(handle)) {
@@ -142,12 +142,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 
 	/* If the device port is not empty and is not prefixed with "auto://", do nothing */
 	if (DEVICE_PORT_ITEM->text.value[0] != '\0' && strncmp(DEVICE_PORT_ITEM->text.value, USBSERIAL_AUTO_PREFIX, strlen(USBSERIAL_AUTO_PREFIX))) {
-		INDIGO_DEBUG(indigo_debug(
-			"%s(): Selected port for '%s' is not empty and is not prefixed with 'auto://', keeping selected: %s",
-			__FUNCTION__,
-			device->name,
-			DEVICE_PORT_ITEM->text.value
-		));
+		INDIGO_DEBUG(indigo_debug("%s(): Selected port for '%s' is not empty and is not prefixed with 'auto://', keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
 		return true;
 	}
 
@@ -162,12 +157,7 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 				if (!strcmp(serial_info[i].path, target)) {
 					port_exists = true;
 					if (indigo_usbserial_match(serial_info + i, 1, patterns, patterns_count)) {
-						INDIGO_DEBUG(indigo_debug(
-							"%s(): Selected port for '%s' matches the pattern, keeping selected: %s",
-							__FUNCTION__,
-							device->name,
-							DEVICE_PORT_ITEM->text.value
-						));
+						INDIGO_DEBUG(indigo_debug( "%s(): Selected port for '%s' matches the pattern, keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
 						return true;
 					}
 				}
@@ -180,18 +170,10 @@ static bool indigo_select_matching_usbserial_device(indigo_device *device, indig
 	/* if nothing is matched select first USB-Serial port */
 	if (matching == NULL) {
 		if (port_exists) {
-			INDIGO_DEBUG(indigo_debug(
-				"%s(): No matching port found for '%s', keeping selected: %s",
-				__FUNCTION__,
-				device->name, DEVICE_PORT_ITEM->text.value
-			));
+			INDIGO_DEBUG(indigo_debug("%s(): No matching port found for '%s', keeping selected: %s", __FUNCTION__, device->name, DEVICE_PORT_ITEM->text.value));
 			return true;
 		}
-		INDIGO_DEBUG(indigo_debug(
-			"%s(): Selected port does not exist and no matching port found for '%s', selecting first USB-Serial port",
-			__FUNCTION__,
-			device->name
-		));
+		INDIGO_DEBUG(indigo_debug("%s(): Selected port does not exist and no matching port found for '%s', selecting first USB-Serial port", __FUNCTION__, device->name));
 		matching = &serial_info[0];
 	}
 	if (matching) {
@@ -742,7 +724,7 @@ static bool make_config_file_name(char *device_name, int profile, const char *su
 indigo_uni_handle *indigo_open_config_file(char *device_name, int profile, bool create, const char *suffix) {
 	static char path[512];
 	if (make_config_file_name(device_name, profile, suffix, path, sizeof(path))) {
-		indigo_uni_handle *handle = create ? indigo_uni_create_file(path) : indigo_uni_open_file(path);
+		indigo_uni_handle *handle = create ? indigo_uni_create_file(path, INDIGO_LOG_DEBUG) : indigo_uni_open_file(path, INDIGO_LOG_DEBUG);
 		if (handle == NULL) {
 			INDIGO_TRACE(indigo_trace("Can't %s %s", create ? "create" : "open", path));
 		}

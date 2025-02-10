@@ -2027,10 +2027,7 @@ void indigo_process_image(indigo_device *device, void *data, int frame_width, in
 					} else if (use_ser) {
 						CCD_CONTEXT->video_stream = indigo_ser_open(file_name, (char*)data + FITS_HEADER_SIZE - sizeof(indigo_raw_header));
 					} else {
-						handle = indigo_uni_create_file(file_name);
-						if (handle != NULL) {
-							handle->short_trace = true;
-						}
+						handle = indigo_uni_create_file(file_name, -INDIGO_LOG_TRACE);
 					}
 				} else {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -2153,9 +2150,8 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 					if (create_file_name(device, data, data_size, CCD_LOCAL_MODE_DIR_ITEM->text.value, CCD_LOCAL_MODE_PREFIX_ITEM->text.value, ".raw", file_name)) {
 						indigo_copy_value(CCD_IMAGE_FILE_ITEM->text.value, file_name);
 						CCD_IMAGE_FILE_PROPERTY->state = INDIGO_OK_STATE;
-						indigo_uni_handle *handle = indigo_uni_create_file(file_name);
+						indigo_uni_handle *handle = indigo_uni_create_file(file_name, -INDIGO_LOG_TRACE);
 						if (handle != NULL) {
-							handle->short_trace = true;
 							if (!indigo_uni_write(handle, (char*)image + FITS_HEADER_SIZE - sizeof(indigo_raw_header), image_size + sizeof(indigo_raw_header))) {
 								CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;
 								message = strerror(errno);
@@ -2260,10 +2256,7 @@ void indigo_process_dslr_image(indigo_device *device, void *data, unsigned long 
 						jpeg_destroy_decompress(&cinfo.pub);
 						CCD_CONTEXT->video_stream = gwavi_open(file_name, cinfo.pub.image_width, cinfo.pub.image_height, "MJPG", 5);
 					} else {
-						handle = indigo_uni_create_file(file_name);
-						if (handle != NULL) {
-							handle->short_trace = true;
-						}
+						handle = indigo_uni_create_file(file_name, -INDIGO_LOG_TRACE);
 					}
 				} else {
 					CCD_IMAGE_FILE_PROPERTY->state = INDIGO_ALERT_STATE;

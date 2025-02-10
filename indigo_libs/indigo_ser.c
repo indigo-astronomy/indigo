@@ -53,12 +53,11 @@ static bool write_long(indigo_uni_handle *handle, uint64_t n) {
 
 indigo_ser *indigo_ser_open(const char *filename, void *buffer) {
 	indigo_ser *ser = NULL;
-	indigo_uni_handle *handle = indigo_uni_create_file(filename);
+	indigo_uni_handle *handle = indigo_uni_create_file(filename, -INDIGO_LOG_DEBUG);
 	if (handle == NULL) {
 		INDIGO_ERROR(indigo_error("indigo_ser: failed to open file for writing"));
 		goto failure;
 	}
-	handle->short_trace = true;
 	if ((ser = (indigo_ser *)malloc(sizeof(indigo_ser))) == NULL) {
 		INDIGO_ERROR(indigo_error("indigo_ser: could not allocate memory for indigo_ser structure"));
 		goto failure;

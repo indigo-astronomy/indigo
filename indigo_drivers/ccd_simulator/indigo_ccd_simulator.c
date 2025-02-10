@@ -970,7 +970,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			} else if (device == PRIVATE_DATA->file) {
-				indigo_uni_handle *handle = indigo_uni_open_file(FILE_NAME_ITEM->text.value);
+				indigo_uni_handle *handle = indigo_uni_open_file(FILE_NAME_ITEM->text.value, -INDIGO_LOG_TRACE);
 				if (handle == NULL)
 					goto failure;
 				if (!indigo_uni_read(handle, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
