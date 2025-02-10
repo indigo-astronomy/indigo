@@ -23,7 +23,7 @@
  \file indigo_ao_sx.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_ao_sx"
 
 #include <stdlib.h>

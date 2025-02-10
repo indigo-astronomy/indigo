@@ -23,7 +23,7 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
