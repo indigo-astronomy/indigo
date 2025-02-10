@@ -53,14 +53,16 @@ typedef struct {
 } arteskyflat_private_data;
 
 static bool artesky_command(indigo_device *device, char *command, char *response) {
-	long result = indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- %s", PRIVATE_DATA->handle->index, command, result ? "OK" : indigo_uni_strerror(PRIVATE_DATA->handle));
-	if (result) {
-		*response = 0;
-		result = indigo_uni_read_line(PRIVATE_DATA->handle, response, 10) > 0;
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> %s", PRIVATE_DATA->handle->index, response, result ? "OK" : indigo_uni_strerror(PRIVATE_DATA->handle));
+	indigo_uni_discard(PRIVATE_DATA->handle, 1000);
+	if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) < 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- // Failed to read (%s)", PRIVATE_DATA->handle->index, indigo_uni_strerror(PRIVATE_DATA->handle));
+		return false;
 	}
-	return result;
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "\n", "\r\n", 1000000) < 0) {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d -> // Failed to write (%s)", PRIVATE_DATA->handle->index, response, indigo_uni_strerror(PRIVATE_DATA->handle));
+		return false;
+	}
+	return true;
 }
 
 // -------------------------------------------------------------------------------- INDIGO aux device implementation

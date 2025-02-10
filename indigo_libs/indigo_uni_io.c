@@ -1268,8 +1268,10 @@ bool indigo_uni_lock_file(indigo_uni_handle *handle) {
 #else
 #pragma message ("TODO: indigo_uni_lock_file()")
 #endif
+		INDIGO_TRACE(indigo_trace("%d <- // locked", handle->index));
 		return true;
 	}
+	INDIGO_TRACE(indigo_trace("%d <- // invalid handle type", handle->index));
 	return false;
 }
 
@@ -1298,6 +1300,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #else
 #pragma message ("TODO: indigo_uni_close()")
 #endif
+		INDIGO_TRACE(indigo_trace("%d <- // closed", (*handle)->index));
 		indigo_safe_free(*handle);
 		*handle = NULL;
 	}

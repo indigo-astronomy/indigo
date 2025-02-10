@@ -51,15 +51,16 @@ static bool sx_flush(indigo_device *device) {
 }
 
 static bool sx_command(indigo_device *device, char *command, char *response, int max) {
-	indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command));
+	if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) < 0) {
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> // Failed to write (%s)", DEVICE_PORT_ITEM->text.value, indigo_uni_strerror(PRIVATE_DATA->handle));
+	}
 	if (response != NULL) {
 		int timeout = (*command == 'K' || *command == 'R') ? 15 : 1;
 		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", timeout * ONE_SECOND_DELAY) < 0) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s", DEVICE_PORT_ITEM->text.value, indigo_uni_strerror(PRIVATE_DATA->handle));
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> // Failed to read (%s)", DEVICE_PORT_ITEM->text.value, indigo_uni_strerror(PRIVATE_DATA->handle));
 			return false;
 		}
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
 	return true;
 }
 
