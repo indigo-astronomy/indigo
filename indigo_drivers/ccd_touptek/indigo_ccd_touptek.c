@@ -24,16 +24,14 @@
  \file indigo_ccd_touptek.c
  */
 
-#define DRIVER_VERSION 0x0026
+#define DRIVER_VERSION 0x0027
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <ctype.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
@@ -372,7 +370,7 @@ static void finish_streaming_async(indigo_device *device) {
 }
 
 static void exposure_watchdog_callback(indigo_device *device) {
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time", "");
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed, pull callback was not called");
 }
@@ -555,16 +553,18 @@ static void setup_exposure(indigo_device *device) {
 		}
 	}
 	if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_ROI_HARDWARE)) {
-		unsigned left = ROUND_BIN(CCD_FRAME_LEFT_ITEM->number.value, 1);
-		unsigned top = ROUND_BIN(CCD_FRAME_TOP_ITEM->number.value, 1);
-		unsigned width = ROUND_BIN(CCD_FRAME_WIDTH_ITEM->number.value, 1);
-		if (width < 16)
+		int left = ROUND_BIN(CCD_FRAME_LEFT_ITEM->number.value, 1);
+		int top = ROUND_BIN(CCD_FRAME_TOP_ITEM->number.value, 1);
+		int width = ROUND_BIN(CCD_FRAME_WIDTH_ITEM->number.value, 1);
+		if (width < 16) {
 			width = 16;
-		unsigned height = ROUND_BIN(CCD_FRAME_HEIGHT_ITEM->number.value, 1);
-		if (height < 16)
+		}
+		int height = ROUND_BIN(CCD_FRAME_HEIGHT_ITEM->number.value, 1);
+		if (height < 16) {
 			height = 16;
-		int max_width = CCD_INFO_WIDTH_ITEM->number.value;
-		int max_height = CCD_INFO_HEIGHT_ITEM->number.value;
+		}
+		int max_width = (int)CCD_INFO_WIDTH_ITEM->number.value;
+		int max_height = (int)CCD_INFO_HEIGHT_ITEM->number.value;
 		if (left + width > max_width || top + height > max_height) {
 			left = top = 0;
 			width = max_width;
@@ -604,7 +604,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		CCD_INFO_WIDTH_ITEM->number.value = 0;
 		CCD_INFO_HEIGHT_ITEM->number.value = 0;
 		CCD_INFO_BITS_PER_PIXEL_ITEM->number.value = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.min = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.max = CCD_FRAME_BITS_PER_PIXEL_ITEM->number.value = 8;
-		for (int i = 0; i < PRIVATE_DATA->cam.model->preview; i++) {
+		for (unsigned i = 0; i < PRIVATE_DATA->cam.model->preview; i++) {
 			int frame_width = PRIVATE_DATA->cam.model->res[i].width;
 			int frame_height = PRIVATE_DATA->cam.model->res[i].height;
 			if (frame_width > CCD_INFO_WIDTH_ITEM->number.value) {
@@ -811,7 +811,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -821,7 +821,7 @@ static void ccd_connect_callback(indigo_device *device) {
 		}
 		device->gp_bits = 1;
 		if (PRIVATE_DATA->handle) {
-			PRIVATE_DATA->buffer = (unsigned char *)indigo_alloc_blob_buffer(3 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+			PRIVATE_DATA->buffer = (char *)indigo_alloc_blob_buffer(3 * (int)CCD_INFO_WIDTH_ITEM->number.value * (int)CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
 			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_GETTEMPERATURE)) {
 				if (CCD_TEMPERATURE_PROPERTY->perm == INDIGO_RW_PERM) {
 					int value;
@@ -966,7 +966,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			in between. For the next calls this does not seem to cause a problem.
 			*/
 			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_USB30)) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB 3.0 Camera - exposure cludge executed");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB 3.0 Camera - exposure cludge executed", "");
 				result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback_dummy, device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 				result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
@@ -1006,7 +1006,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CCD_LED_PROPERTY, NULL);
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera", "");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1069,17 +1069,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		/* Touptek (& family) cameras work with binx = biny for we force it here */
 		if (prev_h_bin != horizontal_bin) {
-			vertical_bin =
-			CCD_BIN_HORIZONTAL_ITEM->number.target =
-			CCD_BIN_HORIZONTAL_ITEM->number.value =
-			CCD_BIN_VERTICAL_ITEM->number.target =
-			CCD_BIN_VERTICAL_ITEM->number.value = horizontal_bin;
+			vertical_bin = (int)(CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = horizontal_bin);
 		} else if (prev_v_bin != vertical_bin) {
-			horizontal_bin =
-			CCD_BIN_HORIZONTAL_ITEM->number.target =
-			CCD_BIN_HORIZONTAL_ITEM->number.value =
-			CCD_BIN_VERTICAL_ITEM->number.target =
-			CCD_BIN_VERTICAL_ITEM->number.value = vertical_bin;
+			horizontal_bin = (int)(CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = vertical_bin);
 		}
 		char *selected_name = CCD_MODE_PROPERTY->items[0].name;
 		for (int k = 0; k < CCD_MODE_PROPERTY->count; k++) {
@@ -1450,7 +1442,7 @@ static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -1480,7 +1472,7 @@ static void guider_connect_callback(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera", "");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1695,7 +1687,7 @@ static void wheel_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -1742,7 +1734,7 @@ static void wheel_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel", "");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1966,13 +1958,13 @@ static void temperature_timer_callback(indigo_device *device) {
 	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETAMBIENTTEMP), 0, &temp10));
 	if (FAILED(res)) {
 		if (has_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected (using internal sensor).");
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected (using internal sensor).", "");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected (using internal sensor).");
 		}
 		has_sensor = false;
 	} else {
 		if (!has_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor connected.");
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor connected.", "");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor connected.");
 		}
 		has_sensor = true;
@@ -2077,7 +2069,7 @@ indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -2162,7 +2154,7 @@ indigo_lock_master_device(device);
 		indigo_delete_property(device, X_BEEP_PROPERTY, NULL);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser", "");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -2229,7 +2221,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
+			PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -2341,16 +2333,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			}
 
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - (int)FOCUSER_STEPS_ITEM->number.value;
 			} else {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + (int)FOCUSER_STEPS_ITEM->number.value;
 			}
 
 			/* Make sure we do not attempt to go beyond the limits */
 			if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+				PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.max;
 			} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+				PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.min;
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -2759,7 +2751,7 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback", "");
 			remove_all_devices();
 			break;
 

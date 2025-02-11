@@ -36,6 +36,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ccd_atik", "indigo_d
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ao_sx", "indigo_drivers\ao_sx\indigo_ao_sx.vcxproj", "{96D12488-1B9B-4CAD-B128-86ED0CDE5DBE}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "indigo_ccd_touptek", "indigo_drivers\ccd_touptek\indigo_ccd_touptek.vcxproj", "{EA4A6814-7826-40BB-8F43-DCACE07FC586}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|ARM64 = Debug|ARM64
@@ -250,6 +252,18 @@ Global
 		{96D12488-1B9B-4CAD-B128-86ED0CDE5DBE}.Release|x64.Build.0 = Release|x64
 		{96D12488-1B9B-4CAD-B128-86ED0CDE5DBE}.Release|x86.ActiveCfg = Release|Win32
 		{96D12488-1B9B-4CAD-B128-86ED0CDE5DBE}.Release|x86.Build.0 = Release|Win32
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Debug|ARM64.Build.0 = Debug|ARM64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Debug|x64.ActiveCfg = Debug|x64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Debug|x64.Build.0 = Debug|x64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Debug|x86.ActiveCfg = Debug|Win32
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Debug|x86.Build.0 = Debug|Win32
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Release|ARM64.ActiveCfg = Release|ARM64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Release|ARM64.Build.0 = Release|ARM64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Release|x64.ActiveCfg = Release|x64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Release|x64.Build.0 = Release|x64
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Release|x86.ActiveCfg = Release|Win32
+		{EA4A6814-7826-40BB-8F43-DCACE07FC586}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
