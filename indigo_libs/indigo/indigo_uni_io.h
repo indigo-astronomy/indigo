@@ -79,8 +79,10 @@ typedef struct {
 	};
 	int log_level;
 	int last_error;
-	double read_timeout;
-	double write_timeout;
+#if defined(INDIGO_WINDOWS)
+	OVERLAPPED ov_read;
+	OVERLAPPED ov_write;
+#endif
 } indigo_uni_handle;
 
 typedef struct {

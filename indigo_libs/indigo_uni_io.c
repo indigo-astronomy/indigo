@@ -379,6 +379,11 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 		CloseHandle(com);
 		return NULL;
 	}
+	if (!SetCommMask(com, EV_RXCHAR)) {
+		indigo_error("Failed to open %s (%s)", serial, indigo_last_windows_error());
+		CloseHandle(com);
+		return NULL;
+	}
 	COMMTIMEOUTS timeouts = { 0 };
 	timeouts.ReadIntervalTimeout = 50;
 	timeouts.ReadTotalTimeoutConstant = 50;
@@ -391,9 +396,12 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 	handle->type = INDIGO_COM_HANDLE;
 	handle->com = com;
 	handle->log_level = log_level;
+	handle->ov_read.hEvent = CreateEvent(0, true, false, 0);
+	handle->ov_write.hEvent = CreateEvent(0, true, false, 0);
 	indigo_log_on_level(log_level, "%d <- // %s opened", handle->index, serial);
 	return handle;
 }
+
 #endif
 
 indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const char *baudconfig, int log_level) {
@@ -742,13 +750,10 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 	}
 }
 
-static int wait_for_data(indigo_uni_handle *handle, long timeout) {
-	// +1 - data available
-	//  0 - timeout
-	// -1 = error
+static bool wait_for_data(indigo_uni_handle *handle, long timeout) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
-		return 1;
+		return true;
 	} else {
 		fd_set readout;
 		FD_ZERO(&readout);
@@ -758,61 +763,57 @@ static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 			case -1:
 				handle->last_error = errno;
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return -1;
+				return false;
 			case 0:
 				handle->last_error = 0;
 				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
-				return 0;
+				return false;
 			default:
 				handle->last_error = 0;
-				return 1;
+				return true;
 		}
 	}
 #elif defined(INDIGO_WINDOWS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
-		return 1;
+		return true;
 	} else if (handle->type == INDIGO_COM_HANDLE) {
-		// https://stackoverflow.com/questions/25364525/win32-api-how-to-read-the-serial-or-exit-within-a-timeout-if-wasnt-a-data
-		unsigned long occured;
-		OVERLAPPED event = { 0 };
-		event.hEvent = CreateEvent(0, true, false, 0);
-		if (!WaitCommEvent(handle->com, &occured, &event)){
+		unsigned long mask;
+		ResetEvent(handle->ov_read.hEvent);
+		if (!WaitCommEvent(handle->com, &mask, &handle->ov_read)){
 			if (GetLastError() != ERROR_IO_PENDING) {
 				handle->last_error = GetLastError();
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return -1;
+				return false;
 			}
 		}
-		switch (WaitForSingleObject(event.hEvent, timeout * 1000)) {
+		switch (WaitForSingleObject(handle->ov_read.hEvent, timeout / 1000)) {
 			case WAIT_OBJECT_0:
-				CloseHandle(FileEvent.hEvent);
-				return 1;
-			case WAIT_TIMEOUT://time out
+				return true;
+			case WAIT_TIMEOUT:
 				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
-				CloseHandle(FileEvent.hEvent);
-				return 0;
+				return false;
 			default:
 				handle->last_error = GetLastError();
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				CloseHandle(FileEvent.hEvent);
-				return -1;
+				return false;
 		}
-	} else if (handle == INDIGO_TCP_HANDLE || handle == INDIGO_UDP_HANDLE) {
+	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		fd_set readout;
 		FD_ZERO(&readout);
 		FD_SET(handle->sock, &readout);
-		result = select(0, &readout, NULL, NULL, &tv);
+		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
+		int result = select(0, &readout, NULL, NULL, &tv);
 		if (result == 0) {
 			handle->last_error = 0;
-			return 0;
+			return false;
 		} else if (result == SOCKET_ERROR) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-			return -1;
-		} else {
-			return -1;
+			return false;
 		}
+		return true;
 	}
+	return false;
 #else
 #pragma message ("TODO: wait_for_com_data()")
 #endif
@@ -833,7 +834,7 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 	return bytes_read;
 #elif defined(INDIGO_WINDOWS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
-		bytes_read = _read((int)handle->fd, buffer, length);
+		long bytes_read = _read((int)handle->fd, buffer, length);
 		if (bytes_read < 0) {
 			handle->last_error = errno;
 			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
@@ -841,17 +842,34 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 			handle->last_error = 0;
 		}
 	} else if (handle->type == INDIGO_COM_HANDLE) {
+		ResetEvent(handle->ov_read.hEvent);
 		long bytes_read = 0;
-		OVERLAPPED state = { 0 };
-		state.hEvent = CreateEvent(0, true, false, 0);
-		if (!GetOverlappedResult(handle->com, &state, &bytes_read, false) || !ReadFile(handle->com, buffer, (bytes_read <= length) ? bytes_read : length, 0, &state) == 0) {
-			handle->last_error = GetLastError();
-			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
-			CloseHandle(state.hEvent);
-			return -1;
+		if (!ReadFile(handle->com, buffer, length, &bytes_read, &handle->ov_read)) {
+			if (GetLastError() == ERROR_IO_PENDING) {
+				DWORD waitResult = WaitForSingleObject(handle->ov_read.hEvent, INFINITE);
+				if (waitResult == WAIT_OBJECT_0) {
+					if (!GetOverlappedResult(handle->com, &handle->ov_read, &bytes_read, FALSE)) {
+						handle->last_error = GetLastError();
+						indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+						return -1;
+					}
+				} else if (waitResult == WAIT_TIMEOUT) {
+					handle->last_error = GetLastError();
+					indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+					CancelIo(handle->com);
+					return -1;
+				} else {
+					handle->last_error = GetLastError();
+					indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+					return -1;
+				}
+			} else {
+				handle->last_error = GetLastError();
+				indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+				return -1;
+			}
 		}
 		handle->last_error = 0;
-		CloseHandle(state.hEvent);
 		return bytes_read;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
 		long bytes_read = recv(handle->sock, buffer, length, 0);
@@ -862,9 +880,8 @@ static long read_data(indigo_uni_handle *handle, void *buffer, long length) {
 		}
 		handle->last_error = 0;
 		return bytes_read;
-	} else {
-		return -1;
 	}
+	return -1;
 #else
 #pragma message ("TODO: read_com_data()")
 #endif
@@ -886,7 +903,7 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 	return bytes_written;
 #elif defined(INDIGO_WINDOWS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
-		bytes_written = _write((int)handle->fd, position, remains);
+		long bytes_written = _write(handle->fd, buffer, length);
 		if (bytes_written < 0) {
 			handle->last_error = errno;
 			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
@@ -896,35 +913,29 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 		return bytes_written;
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		long bytes_written = 0;
-		OVERLAPPED state = { 0 };
-		state.hEvent = CreateEvent(0, true, false, 0);
-		if (!WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, &ov)) {
+		if (!WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, &handle->ov_write)) {
 			handle->last_error = GetLastError();
 			if (handle->last_error == ERROR_IO_PENDING) {
-				if (WaitForSingleObject(state.hEvent, INFINITE) == WAIT_OBJECT_0) {
-					if (!GetOverlappedResult(handle->com, &ov, &bytes_written, FALSE)) {
+				if (WaitForSingleObject(handle->ov_write.hEvent, INFINITE) == WAIT_OBJECT_0) {
+					if (!GetOverlappedResult(handle->com, &handle->ov_write, &bytes_written, FALSE)) {
 						handle->last_error = GetLastError();
-						CloseHandle(state.hEvent);
 						indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 						return -1;
 					}
 				} else {
 					handle->last_error = GetLastError();
-					CloseHandle(state.hEvent);
 					indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 					return -1;
 				}
 			} else {
 				handle->last_error = GetLastError();
-				CloseHandle(state.hEvent);
 				indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 				return -1;
 			}
 		}
-		CloseHandle(state.hEvent);
 		return bytes_written;
 	} else if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		long bytes_written = send(handle->sock, position, remains, 0);
+		long bytes_written = send(handle->sock, buffer, length, 0);
 		if (bytes_written < 0) {
 			handle->last_error = WSAGetLastError();
 			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
@@ -932,9 +943,8 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 		}
 		handle->last_error = 0;
 		return bytes_written;
-	} else {
-		return -1;
 	}
+	return -1;
 #else
 #pragma message ("TODO: indigo_uni_write()")
 #endif
@@ -1022,20 +1032,17 @@ long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
 	char c;
 	long bytes_read = 0;
 	while (true) {
-		switch (wait_for_data(handle, timeout)) {
-			case -1:
-				return -1;
-			case 0:
-				indigo_log_on_level(handle->log_level, "%d -> // %ld bytes discarded", handle->index, bytes_read);
-				return bytes_read;
-			default:
-				if (read_data(handle, &c, 1) <= 0) {
-					return -1;
-				}
-				bytes_read++;
-				continue;
+		if (!wait_for_data(handle, timeout)) {
+			break;
 		}
+		if (read_data(handle, &c, 1) <= 0) {
+			indigo_error("%d -> // Failed to discard (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
+		}
+		bytes_read++;
 	}
+	indigo_log_on_level(handle->log_level, "%d -> // %ld bytes discarded", handle->index, bytes_read);
+	return bytes_read;
 }
 
 long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long length, const char *terminators, const char *ignore, long timeout) {
@@ -1047,22 +1054,18 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 	bool terminated = false;
 	while (bytes_read < length) {
 		char c = 0;
-		switch (wait_for_data(handle, timeout)) {
-			case -1:
-				return -1;
-			case 0:
-				if (handle->log_level < 0) {
-					indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
-				} else {
-					indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read - 1, buffer);
-				}
-				buffer[bytes_read] = 0;
-				return bytes_read;
-			default:
-				if (read_data(handle, &c, 1) <= 0) {
-					return -1;
-				}
-				break;
+		if (!wait_for_data(handle, timeout)) {
+			if (handle->log_level < 0) {
+				indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
+			} else {
+				indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read - 1, buffer);
+			}
+			buffer[bytes_read] = 0;
+			return bytes_read;
+		}
+		if (read_data(handle, &c, 1) <= 0) {
+			indigo_error("%d -> // Failed to read (%s)", handle->index, indigo_uni_strerror(handle));
+			return -1;
 		}
 		bool ignored = false;
 		for (const char *s = ignore; *s; s++) {
@@ -1240,6 +1243,8 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 		if ((*handle)->type == INDIGO_FILE_HANDLE) {
 			_close((*handle)->fd);
 		} else if ((*handle)->type == INDIGO_COM_HANDLE) {
+			CloseHandle((*handle)->ov_read.hEvent);
+			CloseHandle((*handle)->ov_write.hEvent);
 			CloseHandle((*handle)->com);
 		} else if ((*handle)->type == INDIGO_TCP_HANDLE || (*handle)->type == INDIGO_UDP_HANDLE) {
 			shutdown((*handle)->sock, SD_BOTH);
