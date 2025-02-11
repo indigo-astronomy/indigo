@@ -434,7 +434,7 @@ static bool capture_frame(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return false;
 		if (state != INDIGO_OK_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK", "");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 			indigo_sleep(1);
 			continue;
 		}
@@ -456,12 +456,12 @@ static bool capture_frame(indigo_device *device) {
 		}
 		/* This is potentially bayered image, if so we need to equalize the channels */
 		if (indigo_is_bayered_image(header, DEVICE_PRIVATE_DATA->last_image_size)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels", "");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels");
 			indigo_equalize_bayer_channels(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height);
 		}
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed", "");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 	return false;
 }
 
@@ -509,7 +509,7 @@ static bool capture_plain_frame(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return false;
 		if (state != INDIGO_OK_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK", "");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 			indigo_sleep(1);
 			continue;
 		}
@@ -531,12 +531,12 @@ static bool capture_plain_frame(indigo_device *device) {
 		}
 		/* This is potentially bayered image, if so we need to equalize the channels */
 		if (indigo_is_bayered_image(header, DEVICE_PRIVATE_DATA->last_image_size)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels", "");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels");
 			indigo_equalize_bayer_channels(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height);
 		}
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed", "");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 	return false;
 }
 
@@ -814,7 +814,7 @@ static inline void set_backlash_if_overshoot(indigo_device *device, double backl
 
 static bool move_focuser(indigo_device *device, bool moving_out, double steps) {
 	if (steps == 0) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not moving", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Not moving");
 		return true;
 	}
 	indigo_property_state state = INDIGO_ALERT_STATE;
@@ -836,7 +836,7 @@ static bool move_focuser(indigo_device *device, bool moving_out, double steps) {
 	}
 	if (state != INDIGO_OK_STATE) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state != INDIGO_BUSY_STATE)
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become OK", "");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "FOCUSER_STEPS_PROPERTY didn't become OK");
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
 	}
@@ -966,7 +966,7 @@ static void check_breakpoint(indigo_device *device, indigo_item *breakpoint) {
 static bool do_dither(indigo_device *device) {
 	char *related_agent_name = indigo_filter_first_related_agent(device, "Guider Agent");
 	if (!related_agent_name) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed, no guider agent selected", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed, no guider agent selected");
 		indigo_send_message(device, "Error: Dithering failed, no guider agent selected");
 		return true; // do not fail batch if dithering fails - let us keep it for a while
 	}
@@ -985,11 +985,11 @@ static bool do_dither(indigo_device *device) {
 	if (DEVICE_PRIVATE_DATA->dithering_started) {
 		AGENT_IMAGER_STATS_PHASE_ITEM->number.value = INDIGO_IMAGER_PHASE_DITHERING;
 		indigo_update_property(device, AGENT_IMAGER_STATS_PROPERTY, NULL);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
 		double time_limit = 300 * 5; // 300 * 5 * 200ms = 300s
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (DEVICE_PRIVATE_DATA->dithering_finished) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
 				break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -998,7 +998,7 @@ static bool do_dither(indigo_device *device) {
 			indigo_usleep(200000);
 		}
 		if (!DEVICE_PRIVATE_DATA->dithering_finished) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed to settle down", "");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering failed to settle down");
 			indigo_send_message(device, "Error: Dithering failed to settle down");
 			indigo_usleep(200000);
 		}
@@ -1109,7 +1109,7 @@ static bool exposure_batch(indigo_device *device) {
 				return false;
 			}
 			if (state != INDIGO_OK_STATE) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 				indigo_sleep(1);
 				continue;
 			}
@@ -1302,7 +1302,7 @@ static bool bracketing_batch(indigo_device *device) {
 				return false;
 			}
 			if (state != INDIGO_OK_STATE) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 				indigo_sleep(1);
 				continue;
 			}
@@ -1667,7 +1667,7 @@ static double reduce_ucurve_best_focus(double *best_focuses, int count) {
 	avg_best_focus /= count;
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Average best focus = %f", avg_best_focus);
 	if (count < 4) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Not enough stars to calculate standard deviation using average best focus", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Not enough stars to calculate standard deviation using average best focus");
 		return avg_best_focus;
 	}
 	double best_focus_stddev = indigo_stddev(best_focuses, count);
@@ -1774,7 +1774,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		min_est = (min_est > AGENT_IMAGER_STATS_HFD_ITEM->number.value) ? AGENT_IMAGER_STATS_HFD_ITEM->number.value : min_est;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: sample = %d : Focus Quality = %g (Previous %g)", sample, quality[0], prev_quality[0]);
 		if (sample == 0) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving OUT to detect best focus direction", "");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Moving OUT to detect best focus direction");
 			moving_out = true;
 			if (!move_focuser_with_overshoot_if_needed(device, moving_out, steps, DEVICE_PRIVATE_DATA->saved_backlash, true)) break;
 			current_offset += (int)steps;
@@ -1796,7 +1796,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 			moving_out = !moving_out;
 		} else {
 			if (sample == 2) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Starting to collect samples", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Starting to collect samples");
 				sample_index = 0;
 			}
 			/* Copy sample to the U-Curve data */
@@ -1846,7 +1846,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 					}
 				}
 				sample_index --;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Crossed the mid-point and did not reach best focus - shifting samples to the left", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Crossed the mid-point and did not reach best focus - shifting samples to the left");
 			}
 			if (sample_index == ucurve_samples - 1) {
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: Collected all %d samples", ucurve_samples);
@@ -1891,7 +1891,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 		int res = indigo_polynomial_fit(DEVICE_PRIVATE_DATA->ucurve_samples_number, focus_pos, hfds[n], UCURVE_ORDER + 1, polynomial);
 		if (res < 0) {
 			indigo_send_message(device, "U-Curve failed to fit data points with polynomial");
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to fit polynomial", "");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to fit polynomial");
 			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 			focus_failed = true;
 			goto ucurve_finish;
@@ -1915,14 +1915,14 @@ static bool autofocus_ucurve(indigo_device *device) {
 		stars_used++;
 		if (focus_failed) {
 			indigo_send_message(device, "U-Curve failed to find best focus position in the acceptable range");
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to find best focus position in the acceptable range", "");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to find best focus position in the acceptable range");
 			set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 			goto ucurve_finish;
 		}
 	}
 	if (stars_used == 0) {
 		indigo_send_message(device, "U-Curve failed to find the best focus position for any of the selected stars");
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to find the best focus position for any of the selected stars", "");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "UC: Failed to find the best focus position for any of the selected stars");
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		focus_failed = true;
 		goto ucurve_finish;
@@ -1935,7 +1935,7 @@ static bool autofocus_ucurve(indigo_device *device) {
 	indigo_send_message(device, "U-Curve found best focus at position %.3f", best_focus);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "UC: U-Curve found best focus at position %.3f, steps_to_focus = %g", best_focus, steps_to_focus);
 	if (!move_focuser_with_overshoot_if_needed(device, !moving_out, steps_to_focus, DEVICE_PRIVATE_DATA->saved_backlash, true)) {
-		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move to best focus position", "");
+		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to move to best focus position");
 		set_backlash_if_overshoot(device, DEVICE_PRIVATE_DATA->saved_backlash);
 		return false;
 	}

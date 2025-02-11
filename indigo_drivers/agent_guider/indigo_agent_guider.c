@@ -379,7 +379,7 @@ static inline double get_rotation_angle(indigo_device *device) {
 
 static inline double get_dec_speed(indigo_device *device) {
 	if (after_meridian_flip(device) && AGENT_GUIDER_FLIP_REVERSES_DEC_ENABLED_ITEM->sw.value) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Declination speed reversed", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Declination speed reversed");
 		return -AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value;
 	}
 	return AGENT_GUIDER_SETTINGS_SPEED_DEC_ITEM->number.value;
@@ -423,7 +423,7 @@ static void do_dither(indigo_device *device) {
 		AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
 		AGENT_GUIDER_DITHER_PROPERTY->state = INDIGO_ALERT_STATE;
 		indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dither request igored, not guiding", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dither request igored, not guiding");
 		return;
 	}
 	AGENT_GUIDER_DITHER_RESET_ITEM->sw.value = false;
@@ -458,11 +458,11 @@ static void do_dither(indigo_device *device) {
 		indigo_usleep(200000);
 	}
 	if (IS_DITHERING) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering started");
 		double time_limit = AGENT_GUIDER_SETTINGS_DITHERING_TIME_LIMIT_ITEM->number.value * 5;
 		for (int i = 0; i < time_limit; i++) { // wait up to time limit to finish dithering
 			if (NOT_DITHERING) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Dithering finished");
 				break;
 			}
 			if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE) {
@@ -481,7 +481,7 @@ static void do_dither(indigo_device *device) {
 			AGENT_GUIDER_STATS_DITHERING_ITEM->number.value = 0;
 			indigo_update_property(device, AGENT_GUIDER_STATS_PROPERTY, NULL);
 			indigo_update_property(device, AGENT_GUIDER_DITHER_PROPERTY, NULL);
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering failed", "");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Dithering failed");
 			indigo_send_message(device, "Dithering failed to settle down, maybe the timeout is too short");
 			indigo_usleep(200000);
 			return;
@@ -527,7 +527,7 @@ static bool capture_frame(indigo_device *device) {
 		if (AGENT_ABORT_PROCESS_PROPERTY->state == INDIGO_BUSY_STATE)
 			return false;
 		if (state != INDIGO_OK_STATE) {
-			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK", "");
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK");
 			indigo_sleep(1);
 			continue;
 		}
@@ -549,12 +549,12 @@ static bool capture_frame(indigo_device *device) {
 		}
 		/* This is potentially bayered image, if so we need to equalize the channels */
 		if (indigo_is_bayered_image(header, DEVICE_PRIVATE_DATA->last_image_size)) {
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels", "");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Bayered image detected, equalizing channels");
 			indigo_equalize_bayer_channels(header->signature, (char *)header + sizeof(indigo_raw_header), header->width, header->height);
 		}
 		return true;
 	}
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed", "");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure failed");
 	return false;
 }
 

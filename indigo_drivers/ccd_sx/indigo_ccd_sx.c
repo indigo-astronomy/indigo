@@ -339,7 +339,7 @@ static bool sx_start_exposure(indigo_device *device, double exposure, bool dark,
 				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
 				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
 				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_start_exposure: is_icx453 setup", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_start_exposure: is_icx453 setup");
 			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 14, &transferred, BULK_COMMAND_TIMEOUT);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_bulk_transfer -> %lu bytes %s", transferred, rc < 0 ? libusb_error_name(rc) : "OK");
@@ -541,7 +541,7 @@ static bool sx_read_pixels(indigo_device *device) {
 				setup_data[REQ_DATA + 5] = (frame_width * 2) >> 8;
 				setup_data[REQ_DATA + 6] = (frame_height / 2) & 0xFF;
 				setup_data[REQ_DATA + 7] = (frame_height / 2) >> 8;
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_read_pixels: is_icx453 setup", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "sx_read_pixels: is_icx453 setup");
 			}
 			rc = libusb_bulk_transfer(handle, BULK_OUT, setup_data, REQ_DATA + 10, &transferred, BULK_COMMAND_TIMEOUT);
 		}
@@ -657,7 +657,7 @@ static bool sx_guide_relays(indigo_device *device, unsigned short relay_mask) {
 static void sx_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 	libusb_close(PRIVATE_DATA->handle);
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close", "");
+	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_close");
 	free(PRIVATE_DATA->buffer);
 	PRIVATE_DATA->buffer = NULL;
 	if (PRIVATE_DATA->is_interlaced) {
@@ -749,7 +749,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			bool result = true;
 			if (PRIVATE_DATA->device_count++ == 0) {
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					result = false;
 				} else {
 					result = sx_open(device);
@@ -950,7 +950,7 @@ static void guider_connect_callback(indigo_device *device) {
 			bool result = true;
 			if (PRIVATE_DATA->device_count++ == 0) {
 				if (indigo_try_global_lock(device) != INDIGO_OK) {
-					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+					INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 					result = false;
 				} else {
 					result = sx_open(device);
@@ -1238,7 +1238,7 @@ indigo_result indigo_ccd_sx(indigo_driver_action action, indigo_driver_info *inf
 			VERIFY_NOT_CONNECTED(devices[i]);
 		last_action = action;
 		libusb_hotplug_deregister_callback(NULL, callback_handle);
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback", "");
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 		for (int j = 0; j < MAX_DEVICES; j++) {
 			if (devices[j] != NULL) {
 				indigo_device *device = devices[j];

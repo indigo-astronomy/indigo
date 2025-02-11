@@ -295,10 +295,10 @@ typedef struct {
 /** log macros
 */
 
-#define INDIGO_DRIVER_LOG(driver_name, fmt, ...) INDIGO_LOG(indigo_log("%s: " fmt, driver_name, ##__VA_ARGS__))
-#define INDIGO_DRIVER_ERROR(driver_name, fmt, ...) INDIGO_ERROR(indigo_error("%s[%s:%d]: " fmt, driver_name, __FUNCTION__, __LINE__, ##__VA_ARGS__))
-#define INDIGO_DRIVER_DEBUG(driver_name, fmt, ...) INDIGO_DEBUG_DRIVER(indigo_debug("%s[%s:%d]: " fmt, driver_name, __FUNCTION__, __LINE__, ##__VA_ARGS__))
-#define INDIGO_DRIVER_TRACE(driver_name, fmt, ...) INDIGO_TRACE_DRIVER(indigo_trace("%s[%s:%d]: " fmt, driver_name,__FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define INDIGO_DRIVER_LOG(driver_name, ...) INDIGO_LOG(indigo_driver_log(INDIGO_LOG_INFO, driver_name, __FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define INDIGO_DRIVER_ERROR(driver_name, ...) INDIGO_ERROR(indigo_driver_log(INDIGO_LOG_ERROR, driver_name, __FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define INDIGO_DRIVER_DEBUG(driver_name, ...) INDIGO_DEBUG_DRIVER(indigo_driver_log(INDIGO_LOG_DEBUG, driver_name, __FUNCTION__, __LINE__, ##__VA_ARGS__))
+#define INDIGO_DRIVER_TRACE(driver_name, ...) INDIGO_TRACE_DRIVER(indigo_driver_log(INDIGO_LOG_TRACE, driver_name, __FUNCTION__, __LINE__, ##__VA_ARGS__))
 
 #define INDIGO_DEVICE_ATTACH_LOG(driver_name, device_name) INDIGO_DRIVER_LOG(driver_name, "'%s' attached", device_name)
 #define INDIGO_DEVICE_DETACH_LOG(driver_name, device_name) INDIGO_DRIVER_LOG(driver_name, "'%s' detached", device_name)

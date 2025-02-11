@@ -766,7 +766,7 @@ static bool wait_for_data(indigo_uni_handle *handle, long timeout) {
 				return false;
 			case 0:
 				handle->last_error = 0;
-				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
+				indigo_log_on_level(handle->log_level, "%d <- // timeout", handle->index);
 				return false;
 			default:
 				handle->last_error = 0;
@@ -791,7 +791,7 @@ static bool wait_for_data(indigo_uni_handle *handle, long timeout) {
 				return true;
 			case WAIT_TIMEOUT:
 				CancelIo(handle->com);
-				indigo_log_on_level(handle->log_level, "%d -> // timeout", handle->index);
+				indigo_log_on_level(handle->log_level, "%d <- // timeout", handle->index);
 				return false;
 			default:
 				handle->last_error = GetLastError();
@@ -1026,7 +1026,7 @@ long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
 		}
 		bytes_read++;
 	}
-	indigo_log_on_level(handle->log_level, "%d -> // %ld bytes discarded", handle->index, bytes_read);
+	indigo_log_on_level(handle->log_level, "%d <- // %ld bytes discarded", handle->index, bytes_read);
 	return bytes_read;
 }
 
@@ -1043,7 +1043,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 			if (handle->log_level < 0) {
 				indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
 			} else {
-				indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read - 1, buffer);
+				indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
 			}
 			buffer[bytes_read] = 0;
 			return bytes_read;
@@ -1075,11 +1075,11 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 		timeout = 10000;
 	}
 	if (handle->log_level < 0) {
-		indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
+		indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read);
 	} else {
-		indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read - 1, buffer);
+		indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
 	}
-	return bytes_read - 1;
+	return bytes_read;
 }
 
 int indigo_uni_scanf_line(indigo_uni_handle *handle, const char *format, ...) {

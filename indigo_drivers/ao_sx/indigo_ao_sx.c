@@ -46,11 +46,10 @@ typedef struct {
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
-static bool sx_flush(indigo_device *device) {
-	return indigo_uni_discard(PRIVATE_DATA->handle, 1000) >= 0;
-}
-
 static bool sx_command(indigo_device *device, char *command, char *response, int max) {
+	if (indigo_uni_discard(PRIVATE_DATA->handle, 1000) < 0) {
+		return false;
+	}
 	if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) < 0) {
 		return false;
 	}
@@ -70,12 +69,10 @@ static bool sx_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
 	if (PRIVATE_DATA->handle != NULL) {
 		char response[5];
-		if (sx_flush(device)) {
-			if (sx_command(device, "X", response, 1) && *response == 'Y') {
-				if (sx_command(device, "V", response, 4) && *response == 'V') {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-					return true;
-				}
+		if (sx_command(device, "X", response, 1) && *response == 'Y') {
+			if (sx_command(device, "V", response, 4) && *response == 'V') {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
+				return true;
 			}
 		}
 		indigo_uni_close(&PRIVATE_DATA->handle);

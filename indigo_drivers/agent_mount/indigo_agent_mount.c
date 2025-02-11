@@ -989,7 +989,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation started: initial_frame_rotation = %g, rotator_position = %g, parallactic_angle = %f", DEVICE_PRIVATE_DATA->initial_frame_rotation, DEVICE_PRIVATE_DATA->rotator_position, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value);
 			} else {
 				DEVICE_PRIVATE_DATA->initial_frame_rotation = 0;
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation stopped", "");
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation stopped");
 			}
 			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, NULL);

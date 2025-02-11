@@ -129,6 +129,7 @@ int indigo_main_argc = 0;
 #define LOG_MESSAGE_SIZE	(128 * 1024)
 
 char *indigo_last_message = NULL;
+char *indigo_temp_log_buffer = NULL;
 char indigo_log_name[255] = { 0 };
 
 void indigo_get_version(int *major, int *minor, int *build) {
@@ -145,6 +146,7 @@ void indigo_get_version(int *major, int *minor, int *build) {
 
 static void free_log_buffers(void) {
 	indigo_safe_free(indigo_last_message);
+	indigo_safe_free(indigo_temp_log_buffer);
 }
 
 #if defined(INDIGO_WINDOWS)
@@ -331,6 +333,23 @@ void indigo_log_on_level(indigo_log_levels log_level, const char *format, ...) {
 		va_start(argList, format);
 		indigo_log_base(log_level, format, argList);
 		va_end(argList);
+	}
+}
+
+void indigo_driver_log(indigo_log_levels log_level, const char *driver, const char *function, int line, const char *format, ...) {
+	static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+	if (indigo_log_level >= log_level) {
+		pthread_mutex_lock(&log_mutex);
+		if (indigo_temp_log_buffer == NULL) {
+			indigo_temp_log_buffer = indigo_safe_malloc(LOG_MESSAGE_SIZE);
+			atexit(free_log_buffers);
+		}
+		va_list args;
+		va_start(args, format);
+		vsnprintf(indigo_temp_log_buffer, LOG_MESSAGE_SIZE, format, args);
+		va_end(args);
+		indigo_log_on_level(log_level, "%s[%s:%d]: %s", driver, function, line, indigo_temp_log_buffer);
+		pthread_mutex_unlock(&log_mutex);
 	}
 }
 

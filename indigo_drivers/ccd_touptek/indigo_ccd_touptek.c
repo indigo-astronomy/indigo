@@ -370,7 +370,7 @@ static void finish_streaming_async(indigo_device *device) {
 }
 
 static void exposure_watchdog_callback(indigo_device *device) {
-	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time", "");
+	INDIGO_DRIVER_ERROR(DRIVER_NAME, "pull_callback() was not called in time");
 	CCD_EXPOSURE_PROPERTY->state = INDIGO_ALERT_STATE;
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, "Exposure failed, pull callback was not called");
 }
@@ -811,7 +811,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -966,7 +966,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			in between. For the next calls this does not seem to cause a problem.
 			*/
 			if (PRIVATE_DATA->cam.model->flag & SDK_DEF(FLAG_USB30)) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB 3.0 Camera - exposure cludge executed", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "USB 3.0 Camera - exposure cludge executed");
 				result = SDK_CALL(StartPullModeWithCallback)(PRIVATE_DATA->handle, pull_callback_dummy, device);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "StartPullModeWithCallback() -> %08x", result);
 				result = SDK_CALL(Trigger)(PRIVATE_DATA->handle, 1);
@@ -1006,7 +1006,7 @@ static void ccd_connect_callback(indigo_device *device) {
 			indigo_delete_property(device, X_CCD_LED_PROPERTY, NULL);
 		if (PRIVATE_DATA->guider && PRIVATE_DATA->guider->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1442,7 +1442,7 @@ static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -1472,7 +1472,7 @@ static void guider_connect_callback(indigo_device *device) {
 		indigo_cancel_timer_sync(device, &PRIVATE_DATA->guider_timer_dec);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits == 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing camera");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1687,7 +1687,7 @@ static void wheel_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -1734,7 +1734,7 @@ static void wheel_connect_callback(indigo_device *device) {
 		indigo_delete_property(device, X_CALIBRATE_PROPERTY, NULL);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing wheel");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1958,13 +1958,13 @@ static void temperature_timer_callback(indigo_device *device) {
 	res = (SDK_CALL(AAF)(PRIVATE_DATA->handle, SDK_DEF(AAF_GETAMBIENTTEMP), 0, &temp10));
 	if (FAILED(res)) {
 		if (has_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected (using internal sensor).", "");
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor is not connected (using internal sensor).");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor is not connected (using internal sensor).");
 		}
 		has_sensor = false;
 	} else {
 		if (!has_sensor) {
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor connected.", "");
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "The temperature sensor connected.");
 			indigo_update_property(device, FOCUSER_TEMPERATURE_PROPERTY, "The temperature sensor connected.");
 		}
 		has_sensor = true;
@@ -2069,7 +2069,7 @@ indigo_lock_master_device(device);
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->handle == NULL) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
 				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
@@ -2154,7 +2154,7 @@ indigo_lock_master_device(device);
 		indigo_delete_property(device, X_BEEP_PROPERTY, NULL);
 		if (PRIVATE_DATA->camera && PRIVATE_DATA->camera->gp_bits != 0) {
 			if (PRIVATE_DATA->handle != NULL) {
-				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser", "");
+				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Closing focuser");
 				pthread_mutex_lock(&PRIVATE_DATA->mutex);
 				SDK_CALL(Close)(PRIVATE_DATA->handle);
 				pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -2751,7 +2751,7 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 			}
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback", "");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 			remove_all_devices();
 			break;
 

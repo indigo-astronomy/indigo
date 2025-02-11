@@ -434,9 +434,13 @@ INDIGO_EXTERN void indigo_error(const char *format, ...);
  */
 INDIGO_EXTERN void indigo_log(const char *format, ...);
 
-/** Print diagnostic messages on given log level..
+/** Print diagnostic messages on given log level.
  */
 INDIGO_EXTERN void indigo_log_on_level(indigo_log_levels log_level, const char *format, ...);
+
+/** Internal use only
+ */
+INDIGO_EXTERN void indigo_driver_log(indigo_log_levels log_level, const char *driver, const char *function, int line, const char *format, ...);
 
 /** Print diagnostic message on trace level with property value, full property definition and items dump can be requested.
  */

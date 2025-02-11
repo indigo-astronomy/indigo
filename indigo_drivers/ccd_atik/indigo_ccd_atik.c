@@ -147,7 +147,7 @@ static void ccd_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				PRIVATE_DATA->handle = NULL;
 			} else {
 				PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
@@ -589,7 +589,7 @@ static void guider_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				PRIVATE_DATA->handle = NULL;
 			} else {
 				PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
@@ -730,7 +730,7 @@ static void wheel_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		if (PRIVATE_DATA->device_count++ == 0) {
 			if (indigo_try_global_lock(device) != INDIGO_OK) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 				PRIVATE_DATA->handle = NULL;
 			} else {
 				PRIVATE_DATA->handle = ArtemisConnect(PRIVATE_DATA->index);
@@ -745,7 +745,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				if (target_pos >= num_filters)
 					target_pos = 0;
 				if (moving) {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Wheel is moving!", "");
+					INDIGO_DRIVER_LOG(DRIVER_NAME, "Wheel is moving!");
 					WHEEL_SLOT_ITEM->number.value = current_pos + 1;
 					WHEEL_SLOT_ITEM->number.target = target_pos + 1;
 					indigo_set_timer(device, 0.5, wheel_timer_callback, NULL);
@@ -992,7 +992,7 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 		case INDIGO_DRIVER_INIT:
 			last_action = action;
 			if (indigo_driver_initialized((char *)"indigo_ccd_atik2")) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver indigo_ccd_atik2 is already loaded", "");
+				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Conflicting driver indigo_ccd_atik2 is already loaded");
 				last_action = INDIGO_DRIVER_SHUTDOWN;
 				return INDIGO_FAILED;
 			}
@@ -1013,7 +1013,7 @@ indigo_result indigo_ccd_atik(indigo_driver_action action, indigo_driver_info *i
 			last_action = action;
 			libusb_hotplug_deregister_callback(NULL, callback_handle1);
 			libusb_hotplug_deregister_callback(NULL, callback_handle2);
-			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback", "");
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_hotplug_deregister_callback");
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
 				if (device && device->master_device != device) {
