@@ -862,7 +862,7 @@ static void check_versions(indigo_device *device) {
 			if (redefine)
 				indigo_define_property(device, SERVER_INSTALL_PROPERTY, NULL);
 		}
-		indigo_usleep(10 * 60 * ONE_SECOND_DELAY);
+		indigo_sleep(10 * 60);
 	}
 }
 
@@ -1938,7 +1938,7 @@ int main(int argc, const char * argv[]) {
 				use_sigkill = false;
 				if (keep_server_running) {
 					INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
-					indigo_usleep(2 * ONE_SECOND_DELAY);
+					indigo_sleep(2);
 				}
 			}
 		}

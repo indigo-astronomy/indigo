@@ -663,7 +663,7 @@ static void streaming_timer_callback(indigo_device *device) {
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		indigo_usleep((int)CCD_STREAMING_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
+		indigo_sleep(CCD_STREAMING_EXPOSURE_ITEM->number.target);
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			if (device != PRIVATE_DATA->dslr || !CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 				create_frame(device);

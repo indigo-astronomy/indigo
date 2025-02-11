@@ -1194,7 +1194,7 @@ bool ptp_open(indigo_device *device) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_claim_interface(%d) -> %s", interface_number, rc < 0 ? libusb_error_name(rc) : "OK");
 			if (rc == LIBUSB_ERROR_ACCESS) {
 				indigo_send_message(device, "Failed to connect, the camera is probably used by another program!");
-				indigo_usleep((i + 1) * ONE_SECOND_DELAY);
+				indigo_sleep(i + 1);
 			} else {
 				break;
 			}

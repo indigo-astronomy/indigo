@@ -97,7 +97,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);
 	if (remaining > 0)
-		indigo_usleep((unsigned)remaining * ONE_SECOND_DELAY);
+		indigo_sleep(remaining);
 	PRIVATE_DATA->can_check_temperature = false;
 	while (!ArtemisImageReady(PRIVATE_DATA->handle)) {
 		do_log = false;

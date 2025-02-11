@@ -122,7 +122,7 @@ static void wheel_goto_handler(indigo_device *device) {
 		while (true) {
 			if (indigo_command(device, "WF", response, sizeof(response)) && !strncmp(response, "WF:", 3)) {
 				if (!strcmp(response, "WF:-1")) {
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					continue;
 				}
 				WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;

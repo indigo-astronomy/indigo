@@ -985,7 +985,7 @@ int main(int argc, const char * argv[]) {
 	} else if (discover_requested) {
 		indigo_start();
 		indigo_start_service_browser(discover_callback);
-		indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
+		indigo_sleep(time_to_wait);
 		indigo_stop_service_browser();
 		indigo_stop();
 		return 0;
@@ -1014,7 +1014,7 @@ int main(int argc, const char * argv[]) {
 		}
 	}
 	if (connected) {
-		indigo_usleep(time_to_wait * ONE_SECOND_DELAY);
+		indigo_sleep(time_to_wait);
 	} else {
 		fprintf(stderr, "Connection failed: %s\n", error_message);
 	}

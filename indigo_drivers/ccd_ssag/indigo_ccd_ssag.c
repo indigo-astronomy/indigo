@@ -144,7 +144,7 @@ static void ssag_firmware(libusb_device *dev) {
 		rc = rc < 0 ? rc : ssag_upload(handle, bootloader);
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x00);
 		if (rc >=0) {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 		}
 		rc = rc < 0 ? rc : ssag_reset_mode(handle, 0x01);
 		rc = rc < 0 ? rc : ssag_upload(handle, firmware);
@@ -402,7 +402,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 		ssag_start_exposure(device, CCD_EXPOSURE_ITEM->number.target);
 		if (CCD_EXPOSURE_ITEM->number.target < 0.1) {
-			indigo_usleep(CCD_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
+			indigo_sleep(CCD_EXPOSURE_ITEM->number.target);
 			indigo_set_timer(device, 0, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 		} else
 			indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
@@ -424,7 +424,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 //		}
 //		ssag_start_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target);
 //		if (CCD_STREAMING_EXPOSURE_ITEM->number.target < 0.1) {
-//			indigo_usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
+//			indigo_sleep(CCD_STREAMING_EXPOSURE_ITEM->number.target);
 //			indigo_set_timer(device, 0, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);
 //		} else
 //			indigo_set_timer(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, streaming_timer_callback, &PRIVATE_DATA->exposure_timer);

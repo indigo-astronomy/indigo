@@ -469,7 +469,7 @@ int main() {
 	   it may work while the application is working
 	   to get imediate updates on the available services.
 	*/
-	indigo_usleep(10 * ONE_SECOND_DELAY);
+	indigo_sleep(10);
 
 	/* stop the service browser and cleanuo the memory it used,
 	   as we do not need it any more
@@ -640,7 +640,7 @@ int main(int argc, const char * argv[]) {
 	indigo_attach_client(&client);
 	indigo_connect_server("indigosky", "indigosky.local", 7624, &server); // Check correct host name in 2nd arg!!!
 	while (count > 0) {
-		  indigo_usleep(ONE_SECOND_DELAY);
+		  indigo_sleep(1);
 	}
 	indigo_disconnect_server(server);
 	indigo_detach_client(&client);

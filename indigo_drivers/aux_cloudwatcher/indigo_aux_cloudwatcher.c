@@ -1716,7 +1716,7 @@ static void handle_aux_connect_property(indigo_device *device) {
 				char firmware[MAX_LEN] = "N/A";
 				char serial_number[MAX_LEN] = "N/A";
 				/* Pocket CW needs ~2sec after connect, maybe arduino based which resets at connect?!? */
-				indigo_usleep(ONE_SECOND_DELAY*2);
+				indigo_sleep(2);
 				if (aag_is_cloudwatcher(device, board)) {
 					indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, board);
 					aag_get_firmware_version(device, firmware);

@@ -201,7 +201,7 @@ static void load_configuration(indigo_device *device) {
 		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Can't deselect active devices before loading new configuration");
 		return;
 	}
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	// load saved configuration
 	DEVICE_PRIVATE_DATA->failure = false;
 	for (int i = 0; i < AGENT_CONFIG_LOAD_PROPERTY->count; i++) {

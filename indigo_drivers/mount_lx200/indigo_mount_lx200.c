@@ -2898,7 +2898,7 @@ static void nyx_cl_callback(indigo_device *device) {
 				NYX_WIFI_CL_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_update_property(device, NYX_WIFI_CL_PROPERTY, NULL);
 				for (int i = 0; i < 10; i++) {
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					if (meade_command(device, ":WLI#", response, sizeof(response), 0) && !strncmp(response, NYX_WIFI_CL_SSID_ITEM->text.value, strlen(NYX_WIFI_CL_SSID_ITEM->text.value))) {
 						indigo_send_message(device, "Connected to %s", NYX_WIFI_CL_SSID_ITEM->text.value);
 						NYX_WIFI_CL_PROPERTY->state = INDIGO_OK_STATE;
@@ -2917,7 +2917,7 @@ static void nyx_cl_callback(indigo_device *device) {
 static void nyx_reset_callback(indigo_device *device) {
 	char response[64];
 	NYX_WIFI_RESET_PROPERTY->state = INDIGO_ALERT_STATE;
-	if (meade_command(device, ":WLZ#", response, sizeof(response), 5 * ONE_SECOND_DELAY) && *response == '1') {
+	if (meade_command(device, ":WLZ#", response, sizeof(response), INDIGO_DELAY(5)) && *response == '1') {
 		indigo_send_message(device, "WiFi reset!");
 	NYX_WIFI_RESET_PROPERTY->state = INDIGO_OK_STATE;
 	}

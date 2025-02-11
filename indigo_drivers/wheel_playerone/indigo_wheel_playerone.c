@@ -162,7 +162,7 @@ static void wheel_connect_callback(indigo_device *device) {
 					const float retry_delay = 0.5;
 					int count = 0;
 					do {
-						indigo_usleep(retry_delay * ONE_SECOND_DELAY);
+						indigo_sleep(retry_delay);
 						PWErrors res = POAGetPWState(PRIVATE_DATA->dev_handle, &state);
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWState(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, state, res);
 						count++;
@@ -449,7 +449,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_usleep(ONE_SECOND_DELAY);
+		indigo_sleep(1);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 	char name[256] = {0};

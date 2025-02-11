@@ -836,7 +836,7 @@ static void process_plug_event(indigo_device *unused) {
 	char desc[INDIGO_NAME_SIZE];
 	int count;
 	pthread_mutex_lock(&device_mutex);
-	indigo_usleep(1 * ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	try {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {
@@ -883,7 +883,7 @@ static void process_unplug_event(indigo_device *unused) {
 	char serial[INDIGO_NAME_SIZE];
 	int count;
 	pthread_mutex_lock(&device_mutex);
-	indigo_usleep(1 * ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	try {
 		cam.get_AvailableCameras(camSerial, camDesc, count);
 	} catch (std::runtime_error err) {

@@ -239,7 +239,7 @@ static void focuser_mode_handler(indigo_device *device) {
 				indigo_define_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 				break;
 			}
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 		}
 	}
 	indigo_update_property(device, FOCUSER_MODE_PROPERTY, NULL);

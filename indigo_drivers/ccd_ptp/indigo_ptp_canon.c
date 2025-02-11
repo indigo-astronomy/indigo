@@ -1453,12 +1453,12 @@ bool ptp_canon_exposure(indigo_device *device) {
 			if (result) {
 				while (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 1) {
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					CCD_EXPOSURE_ITEM->number.value -= 1;
 				}
 				if (!PRIVATE_DATA->abort_capture && CCD_EXPOSURE_ITEM->number.value > 0) {
 					indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
-					indigo_usleep(ONE_SECOND_DELAY * CCD_EXPOSURE_ITEM->number.value);
+					indigo_sleep(CCD_EXPOSURE_ITEM->number.value);
 				}
 				CCD_EXPOSURE_ITEM->number.value = 0;
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);

@@ -184,7 +184,7 @@ static bool pmc8_open(indigo_device *device) {
 				return true;
 			} else {
 				indigo_send_message(device, "Retrying connection in 10 seconds...");
-				indigo_usleep(10 * ONE_SECOND_DELAY);
+				indigo_sleep(10);
 			}
 		}
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to initialize to %s", name);

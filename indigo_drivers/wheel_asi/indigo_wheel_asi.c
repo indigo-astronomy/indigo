@@ -104,7 +104,7 @@ static void calibrate_callback(indigo_device *device) {
 	if (res == EFW_SUCCESS) {
 		int pos = 0;
 		do {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = EFWGetPosition(PRIVATE_DATA->dev_id, &pos);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, pos, res);
@@ -478,7 +478,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		  indigo_usleep(ONE_SECOND_DELAY);
+		  indigo_sleep(1);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 	char name[64] = {0};

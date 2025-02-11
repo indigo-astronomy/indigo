@@ -1183,7 +1183,7 @@ static void ethernet_discover(char *network, bool cam_found) {
 	pthread_mutex_lock(&ethernet_mutex);
 	if (network == NULL) { // NULL - Remove devices
 		// if the camera is just added it is not removed. we need some small waing time.
-		  indigo_usleep(ONE_SECOND_DELAY);
+		  indigo_sleep(1);
 		msg = std::string("");
 	} else {
 		try {

@@ -224,7 +224,7 @@ static void focuser_connection_handler(indigo_device *device) {
 					break;
 				} else if (i < 5) {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "No reply from RoboFocus focuser - retrying");
-					indigo_usleep(2 * ONE_SECOND_DELAY);
+					indigo_sleep(2);
 				} else {
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "RoboFocus focuser not detected");
 					close(PRIVATE_DATA->handle);

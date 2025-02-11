@@ -845,7 +845,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		  indigo_usleep(ONE_SECOND_DELAY);
+		  indigo_sleep(1);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 	char name[64] = {0};

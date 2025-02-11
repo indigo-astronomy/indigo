@@ -155,7 +155,7 @@ static bool camera_read_pixels(indigo_device *device) {
 		if (res == EWOULDBLOCK) {
 			double time_left = dsi_get_exposure_time_left(PRIVATE_DATA->dsi);
 			INDIGO_DRIVER_DEBUG(stderr, "Image not ready, sleeping for %.3fs...\n", time_left);
-			indigo_usleep((int)(time_left * ONE_SECOND_DELAY));
+			indigo_sleep(time_left);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure Failed! dsi_read_image(%s) = %d", PRIVATE_DATA->dev_sid, res);
 			dsi_abort_exposure(PRIVATE_DATA->dsi);

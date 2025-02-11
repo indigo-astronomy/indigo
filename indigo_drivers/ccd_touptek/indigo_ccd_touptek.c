@@ -1627,7 +1627,7 @@ static void calibrate_callback(indigo_device *device) {
 	if (SUCCEEDED(result)) {
 		int pos = 0;
 		do {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
 			HRESULT result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_POSITION), &pos);
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -1724,7 +1724,7 @@ static void wheel_connect_callback(indigo_device *device) {
 			pthread_mutex_unlock(&PRIVATE_DATA->mutex);
 			int value = 0;
 			do {
-				indigo_usleep(ONE_SECOND_DELAY);
+				indigo_sleep(1);
 				result = SDK_CALL(get_Option)(PRIVATE_DATA->handle, SDK_DEF(OPTION_FILTERWHEEL_POSITION), &value);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "get_Option(OPTION_FILTERWHEEL_POSITION) -> %08x, %d", result, value + 1);
 			} while (value == -1);

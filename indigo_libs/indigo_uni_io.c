@@ -275,7 +275,7 @@ static int configure_tty_options(struct termios *options, const char *baudrate) 
 	return 0;
 }
 
-static indigo_uni_handle *open_tty(const char *serial, const struct termios *options, struct termios *old_options, int log_level) {
+static indigo_uni_handle *open_tty(const char *serial, const struct termios *options, int log_level) {
 	const char auto_prefix[] = "auto://";
 	const int auto_prefix_len = sizeof(auto_prefix) - 1;
 	const char *serial_buf = serial;
@@ -286,13 +286,6 @@ static indigo_uni_handle *open_tty(const char *serial, const struct termios *opt
 	if (fd < 0) {
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		return NULL;
-	}
-	if (old_options) {
-		if (tcgetattr(fd, old_options) == -1) {
-			indigo_error("Failed to open %s (%s)", serial, strerror(errno));
-			close(fd);
-			return NULL;
-		}
 	}
 	if (tcsetattr(fd, TCSANOW, options) == -1) {
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
@@ -412,7 +405,7 @@ indigo_uni_handle *indigo_uni_open_serial_with_config(const char *serial, const 
 		indigo_error("Failed to open %s (%s)", serial, strerror(errno));
 		return NULL;
 	}
-	return open_tty(serial, &to, NULL, log_level);
+	return open_tty(serial, &to, log_level);
 #elif defined(INDIGO_WINDOWS)
 	DCB dcb;
 	memset(&dcb, 0, sizeof(DCB));
@@ -667,7 +660,7 @@ void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_han
 
 void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout) {
 	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
+		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (setsockopt(handle->fd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv)) {
 			handle->last_error = errno;
@@ -692,7 +685,7 @@ void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle, long timeout)
 
 void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout) {
 	if (handle->type == INDIGO_TCP_HANDLE || handle->type == INDIGO_UDP_HANDLE) {
-		struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
+		struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (setsockopt(handle->fd, SOL_SOCKET, SO_SNDTIMEO, (const char*)&tv, sizeof tv) != 0) {
 			handle->last_error = errno;
@@ -936,7 +929,7 @@ long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
 	}
 	long bytes_read = 0;
 	long result;
-	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
+	struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 	while (true) {
 		if (timeout >= 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -1030,7 +1023,7 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 	}
 	long bytes_read = 0;
 	long result;
-	struct timeval tv = { .tv_sec = timeout / ONE_SECOND_DELAY, .tv_usec = timeout % ONE_SECOND_DELAY };
+	struct timeval tv = { .tv_sec = timeout / 1000000L, .tv_usec = timeout % 1000000L };
 	if (handle->type == INDIGO_UDP_HANDLE) {
 		if (timeout >= 0) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
@@ -1369,7 +1362,7 @@ void indigo_uni_close(indigo_uni_handle **handle) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if ((*handle)->type != INDIGO_FILE_HANDLE) {
 			shutdown((*handle)->fd, SHUT_RDWR);
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 		}
 		close((*handle)->fd);
 #elif defined(INDIGO_WINDOWS)

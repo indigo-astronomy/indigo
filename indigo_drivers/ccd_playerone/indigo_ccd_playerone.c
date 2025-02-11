@@ -448,7 +448,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					break;
 				}
 				PRIVATE_DATA->can_check_temperature = true;
-				indigo_usleep(ONE_SECOND_DELAY);
+				indigo_sleep(1);
 				CCD_EXPOSURE_ITEM->number.value--;
 				if (CCD_EXPOSURE_ITEM->number.value < 0) {
 					CCD_EXPOSURE_ITEM->number.value = 0;
@@ -583,7 +583,7 @@ static void streaming_timer_callback(indigo_device *device) {
 						break;
 					}
 					PRIVATE_DATA->can_check_temperature = true;
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					CCD_STREAMING_EXPOSURE_ITEM->number.value--;
 					if (CCD_STREAMING_EXPOSURE_ITEM->number.value < 0) {
 						CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;

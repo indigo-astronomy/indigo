@@ -746,9 +746,10 @@ INDIGO_EXTERN char* indigo_dtos(double value, const char *format);
 
 /** Sleeps for specified number of microseconds.
  */
-INDIGO_EXTERN void indigo_usleep(unsigned int delay);
+INDIGO_EXTERN void indigo_usleep(long delay);
 
-#define ONE_SECOND_DELAY	1000000
+#define INDIGO_DELAY(fraction) ((long)(1000000L * fraction))
+#define indigo_sleep(fraction) indigo_usleep(INDIGO_DELAY(fraction))
 
 /** Locale independent atod()
  */

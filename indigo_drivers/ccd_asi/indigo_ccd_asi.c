@@ -584,7 +584,7 @@ static void streaming_timer_callback(indigo_device *device) {
 					if (CCD_STREAMING_COUNT_ITEM->number.value < 0) {
 						CCD_STREAMING_COUNT_ITEM->number.value = 0;
 					}
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					indigo_update_property(device, CCD_STREAMING_PROPERTY, NULL);
 				}
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);

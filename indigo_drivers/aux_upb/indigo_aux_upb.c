@@ -216,7 +216,7 @@ static void upb_open(indigo_device *device) {
 				PRIVATE_DATA->handle = 0;
 				break;
 			}
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 		}
 	}
 }

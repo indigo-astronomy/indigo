@@ -155,7 +155,7 @@ static void calibrate_callback(indigo_device *device) {
 
 		OFWStatus status = { 0 };
 		do {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			int res = OFWGetStatus(PRIVATE_DATA->dev_id, &status);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWGetStatus(%d, -> .filterPosition = %d .filterStatus = %d) = %d", PRIVATE_DATA->dev_id, status.filterPosition, status.filterStatus, res);
 		} while (status.filterStatus != STATUS_IDLE);

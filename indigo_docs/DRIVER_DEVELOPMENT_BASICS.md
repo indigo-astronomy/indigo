@@ -672,7 +672,7 @@ static indigo_result wheel_change_property(indigo_device *device,
 						  PRIVATE_DATA->slot_count <= 9) {
 							break;
 						}
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 				}
 				WHEEL_SLOT_ITEM->number.max =
 				WHEEL_SLOT_NAME_PROPERTY->count =

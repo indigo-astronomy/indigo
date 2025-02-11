@@ -56,7 +56,7 @@ static bool sx_command(indigo_device *device, char *command, char *response, int
 	}
 	if (response != NULL) {
 		int timeout = (*command == 'K' || *command == 'R') ? 15 : 1;
-		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", timeout * ONE_SECOND_DELAY) < 0) {
+		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", INDIGO_DELAY(timeout)) < 0) {
 			return false;
 		}
 	}

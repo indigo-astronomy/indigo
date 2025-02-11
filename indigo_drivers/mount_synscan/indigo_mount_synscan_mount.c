@@ -1147,7 +1147,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 			}
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait 3s");
-		indigo_usleep(3 * ONE_SECOND_DELAY);
+		indigo_sleep(3);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop RA slewing");
 		synscan_stop_axis(device, kAxisRA);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until RA stops");
@@ -1171,7 +1171,7 @@ static void mount_autohome_timer_callback(indigo_device* device) {
 			}
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait 3s");
-		indigo_usleep(3 * ONE_SECOND_DELAY);
+		indigo_sleep(3);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Stop DEC slewing");
 		synscan_stop_axis(device, kAxisDEC);
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Wait until DEC stops");

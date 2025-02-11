@@ -90,7 +90,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
 					break;
 				}
-				indigo_usleep(ONE_SECOND_DELAY);
+				indigo_sleep(1);
 			}
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;

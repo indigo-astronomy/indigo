@@ -511,7 +511,7 @@ static bool capture_frame(indigo_device *device) {
 			return false;
 		if (state != INDIGO_BUSY_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE didn't become busy in %d second(s)", BUSY_TIMEOUT);
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			continue;
 		}
 		double remaining_exposure_time = DEVICE_PRIVATE_DATA->remaining_exposure_time;
@@ -528,7 +528,7 @@ static bool capture_frame(indigo_device *device) {
 			return false;
 		if (state != INDIGO_OK_STATE) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "CCD_EXPOSURE_PROPERTY didn't become OK", "");
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			continue;
 		}
 		pthread_mutex_lock(&DEVICE_PRIVATE_DATA->last_image_mutex);
@@ -1004,7 +1004,7 @@ static void restore_subframe(indigo_device *device) {
 		/* capture_frame() should be here in order to have the correct frame and correct selection */
 		indigo_property_state state = AGENT_ABORT_PROCESS_PROPERTY->state;
 		AGENT_ABORT_PROCESS_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_usleep((unsigned)(0.5 * ONE_SECOND_DELAY));
+		indigo_sleep(0.5);
 		capture_frame(device);
 		AGENT_ABORT_PROCESS_PROPERTY->state = state;
 		indigo_update_property(device, AGENT_GUIDER_SELECTION_PROPERTY, NULL);

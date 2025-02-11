@@ -152,7 +152,7 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			indigo_error("AGENT_START_PROCESS didn't become OK in 60s");
 			return false;
 		}
-		indigo_usleep(ONE_SECOND_DELAY * settle_time);
+		indigo_sleep(settle_time);
 		return true;
 	}
 	indigo_send_message(device, "No mount agent selected");

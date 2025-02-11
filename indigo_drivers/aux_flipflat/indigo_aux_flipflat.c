@@ -148,7 +148,7 @@ static void aux_connection_handler(indigo_device *device) {
 				bits = TIOCM_RTS;
 				result = ioctl(PRIVATE_DATA->handle, TIOCMBIC, &bits);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%d <- RTS %s", PRIVATE_DATA->handle, result < 0 ? strerror(errno) : "cleared");
-				indigo_usleep(2 * ONE_SECOND_DELAY);
+				indigo_sleep(2);
 				if (flipflat_command(PRIVATE_DATA->handle, ">P000", response) && *response == '*') {
 					if (sscanf(response, "*P%02d000", &PRIVATE_DATA->type) != 1)
 						PRIVATE_DATA->type = 0;
@@ -273,7 +273,7 @@ static void aux_cover_handler(indigo_device *device) {
 		indigo_update_property(device, AUX_COVER_PROPERTY, NULL);
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 		for (int i = 0; i < 10; i++) {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			if (flipflat_command(PRIVATE_DATA->handle, ">S000", response) && *response == '*') {
 				int type, q, r, s;
 				if (sscanf(response, "*S%02d%1d%1d%1d", &type, &q, &r, &s) == 4) {

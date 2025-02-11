@@ -1909,13 +1909,10 @@ char* indigo_dtos(double value, const char *format) { // circular use of 4 stati
 	return string;
 }
 
-void indigo_usleep(unsigned int delay) {
+void indigo_usleep(long delay) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	struct timespec remaining;
-	struct timespec requested = {
-		(int)(delay / ONE_SECOND_DELAY),
-		(delay % ONE_SECOND_DELAY) * 1000
-	};
+	struct timespec requested = { delay / 1000000, (delay % 1000000) * 1000 };
 	int ret = nanosleep(&requested, &remaining);
 	if (ret < 0) {
 		indigo_error("%s(): nanosleep() failed with error: %s", __FUNCTION__, strerror(errno));

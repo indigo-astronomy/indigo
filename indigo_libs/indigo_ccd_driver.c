@@ -104,7 +104,7 @@ static void countdown_timer_callback(indigo_device *device) {
 				indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 			}
 		}
-		indigo_usleep((int)step * ONE_SECOND_DELAY);
+		indigo_sleep(step);
 	}
 }
 

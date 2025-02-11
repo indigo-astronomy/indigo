@@ -83,7 +83,7 @@ static bool qhy_command(indigo_device *device, char *command, char *reply, int r
 			if (result > 0) {
 				break;
 			} else {
-				indigo_usleep(ONE_SECOND_DELAY);
+				indigo_sleep(1);
 			}
 		}
 	}

@@ -254,7 +254,7 @@ static void rotator_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_usleep(2 * ONE_SECOND_DELAY); // wait for the rotator to initialize after opening the serial port
+			indigo_sleep(2); // wait for the rotator to initialize after opening the serial port
 			if (wa_command(device, "1500001", response, sizeof(response))) {
 				wr_status_t status;
 				if (wr_parse_status(response, &status)) {
