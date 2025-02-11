@@ -150,6 +150,22 @@
 #include <ogmacam.h>
 #include "../ccd_ogma/indigo_ccd_ogma.h"
 
+#elif defined(SVBONY)
+
+#define ENTRY_POINT						indigo_ccd_svb2
+#define CAMERA_NAME_PREFIX		"SvBony"
+#define DRIVER_LABEL					"SVBONY (OEM) Camera"
+#define DRIVER_NAME						"indigo_ccd_svb2"
+#define DRIVER_PRIVATE_DATA		svb2_private_data
+
+#define SDK_CALL(x)						Svbonycam_##x
+#define SDK_DEF(x)						SVBONYCAM_##x
+#define SDK_TYPE(x)						Svbonycam##x
+#define SDK_HANDLE						HSvbonycam
+
+#include <svbonycam.h>
+#include "../ccd_svb2/indigo_ccd_svb2.h"
+
 #else
 
 #define TOUPTEK
