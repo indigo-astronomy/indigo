@@ -79,6 +79,8 @@ typedef struct {
 	};
 	int log_level;
 	int last_error;
+	double read_timeout;
+	double write_timeout;
 } indigo_uni_handle;
 
 typedef struct {
@@ -141,10 +143,8 @@ INDIGO_EXTERN void indigo_uni_set_socket_read_timeout(indigo_uni_handle *handle,
  */
 INDIGO_EXTERN void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout);
 
-
 /** Open server socket.
  */
-
 INDIGO_EXTERN void indigo_uni_open_tcp_server_socket(int *port, indigo_uni_handle **server_handle, void (*worker)(indigo_uni_worker_data *), void *data, void (*callback)(int), int log_level);
 
 /** Open TCP or UDP connection depending on the URL prefix tcp:// or udp:// for any other prefix protocol_hint is used.

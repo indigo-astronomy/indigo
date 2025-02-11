@@ -249,7 +249,7 @@ static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
 	char buffer_in[128];
 	char buffer_out[128];
 	long result = 1;
-	indigo_uni_set_socket_read_timeout(data->handle, 500000);
+	indigo_uni_set_socket_read_timeout(data->handle, INDIGO_DELAY(5));
 	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", data->handle->index);
 	while (true) {
 		*buffer_in = 0;
