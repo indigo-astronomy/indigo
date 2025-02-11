@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Bressercam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 57.27250.20241216</li></ul>
+<hr/><ul><li>Version: 57.27650.20250209</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -764,6 +764,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
 #define BRESSERCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define BRESSERCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
 #define BRESSERCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
+#define BRESSERCAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
 typedef struct {
     unsigned            width;      /* image width, always available */
@@ -1676,7 +1677,13 @@ BRESSERCAM_PIXELFORMAT_HDR14HL (HDR, Bitdepth: 14, Conversion Gain: High + Low)<
       	<td>NA</td><td>NA</td></tr><tr>
       	<td>BRESSERCAM_OPTION_UPTIME</td><td>RO</td>
       	<td>device uptime in millisecond</td>
-      	<td>NA</td><td>NA</td></tr>
+      	<td>NA</td><td>NA</td></tr><tr>
+      	<td>BRESSERCAM_OPTION_LINE_TIME</td><td>RO</td>
+      	<td>Line-time of sensor in nanosecond</td>
+      	<td>NA</td><td>NA</td></tr><tr>
+      	<td>BRESSERCAM_OPTION_BITRANGE</td><td>RO</td>
+      	<td>Bit range: [0, 8], see: <a href="./images/bitrange.png">snapshot</a></td>
+      	<td>0</td><td>Yes</td></tr>
 </table></div></blockquote><blockquote>
 <p><strong>Important:</strong></p>
 <p>a. RW = <strong>R</strong>ead/<strong>W</strong>rite; RO = <strong>R</strong>ead <strong>O</strong>nly; WO = <strong>W</strong>rite <strong>O</strong>nly</p>
@@ -1720,7 +1727,7 @@ Bressercam_get_MaxAutoExpoTimeAGain<br/>Bressercam_put_MinAutoExpoTimeAGain<br/>
       <p>unsigned Time: exposure time, unit: microsecond</p>
       <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
     </blockquote>
-  <p><strong>Remarks:</strong> exposure time related. Bressercam_get_RealExpoTime get the real exposure time based on 50HZ/60HZ.</p>
+  <p><strong>Remarks:</strong> exposure time related. Bressercam_get_RealExpoTime get the actual exposure time (The actual exposure time and the set exposure time may not be exactly the same, such as 50HZ/60HZ adjustment, sensor exposure time accuracy, etc).</p>
 </li></ul><ul><li><h2><font color="#0000FF">Bressercam_get_ExpoAGain<br/>Bressercam_put_ExpoAGain<br/>Bressercam_get_ExpoAGainRange</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
@@ -1923,7 +1930,7 @@ Bressercam_put_Brightness<br/>Bressercam_get_Brightness<br/>Bressercam_get_Contr
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HBressercam h: camera handle</p>
-    <p>unsigned ioLineNumber:</p>
+    <p>unsigned ioLine:</p>
 	<blockquote>0 =&gt; Opto-isolated input<br/>
     1 =&gt; Opto-isolated output<br/>
     2 =&gt; GPIO0<br/>

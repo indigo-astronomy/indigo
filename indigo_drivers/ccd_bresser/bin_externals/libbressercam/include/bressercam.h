@@ -1,7 +1,7 @@
 #ifndef __bressercam_h__
 #define __bressercam_h__
 
-/* Version: 57.27250.20241216 */
+/* Version: 57.27650.20250209 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -294,7 +294,7 @@ typedef struct {
 } BressercamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.27250.20241216
+    get the version of this dll/so/dylib, which is: 57.27650.20250209
 */
 #if defined(_WIN32)
 BRESSERCAM_API(const wchar_t*)   Bressercam_Version();
@@ -382,6 +382,7 @@ BRESSERCAM_API(HRESULT)  Bressercam_StartPullModeWithCallback(HBressercam h, PBR
 #define BRESSERCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define BRESSERCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
 #define BRESSERCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
+#define BRESSERCAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
 typedef struct {
     unsigned            width;
@@ -629,7 +630,7 @@ BRESSERCAM_API(HRESULT)  Bressercam_get_MinAutoExpoTimeAGain(HBressercam h, unsi
 
 BRESSERCAM_API(HRESULT)  Bressercam_get_ExpoTime(HBressercam h, unsigned* Time); /* in microseconds */
 BRESSERCAM_API(HRESULT)  Bressercam_put_ExpoTime(HBressercam h, unsigned Time); /* in microseconds */
-BRESSERCAM_API(HRESULT)  Bressercam_get_RealExpoTime(HBressercam h, unsigned* Time); /* in microseconds, based on 50HZ/60HZ/DC */
+BRESSERCAM_API(HRESULT)  Bressercam_get_RealExpoTime(HBressercam h, unsigned* Time); /* actual exposure time */
 BRESSERCAM_API(HRESULT)  Bressercam_get_ExpTimeRange(HBressercam h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 BRESSERCAM_API(HRESULT)  Bressercam_get_ExpoAGain(HBressercam h, unsigned short* Gain); /* percent, such as 300 */
@@ -1150,6 +1151,7 @@ BRESSERCAM_API(HRESULT)  Bressercam_feed_Pipe(HBressercam h, unsigned pipeId);
 #define BRESSERCAM_OPTION_LINE_TIME              0x77       /* Line-time of sensor in nanosecond */
 #define BRESSERCAM_OPTION_ZERO_PADDING           0x78       /* Zero padding: 0 => high, 1 => low; default: 0 */
 #define BRESSERCAM_OPTION_UPTIME                 0x79       /* device uptime in millisecond */
+#define BRESSERCAM_OPTION_BITRANGE               0x7a       /* Bit range: [0, 8] */
 
 /* pixel format */
 #define BRESSERCAM_PIXELFORMAT_RAW8              0x00
@@ -1196,6 +1198,16 @@ BRESSERCAM_API(HRESULT)  Bressercam_get_Roi(HBressercam h, unsigned* pxOffset, u
 
 /* multiple Roi */
 BRESSERCAM_API(HRESULT)  Bressercam_put_RoiN(HBressercam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
+
+/* Hardware Binning
+* Value: 1x1, 2x2, etc
+* Method: Average, Add, Skip
+*/
+BRESSERCAM_API(HRESULT)  Bressercam_put_Binning(HBressercam h, const char* pValue, const char* pMethod);
+BRESSERCAM_API(HRESULT)  Bressercam_get_Binning(HBressercam h, const char** ppValue, const char** ppMethod);
+BRESSERCAM_API(HRESULT)  Bressercam_get_BinningNumber(HBressercam h);
+BRESSERCAM_API(HRESULT)  Bressercam_get_BinningValue(HBressercam h, unsigned index, const char** ppValue);
+BRESSERCAM_API(HRESULT)  Bressercam_get_BinningMethod(HBressercam h, unsigned index, const char** ppMethod);
 
 BRESSERCAM_API(HRESULT)  Bressercam_put_XY(HBressercam h, int x, int y);
 
@@ -1295,13 +1307,13 @@ BRESSERCAM_API(HRESULT)  Bressercam_put_XY(HBressercam h, int x, int y);
 #define BRESSERCAM_IOCONTROL_DELAYTIME_MAX                    (5 * 1000 * 1000)
 
 /*
-  ioLineNumber:
+  ioLine:
     0 => Opto-isolated input
     1 => Opto-isolated output
     2 => GPIO0
     3 => GPIO1
 */
-BRESSERCAM_API(HRESULT)  Bressercam_IoControl(HBressercam h, unsigned ioLineNumber, unsigned nType, int outVal, int* inVal);
+BRESSERCAM_API(HRESULT)  Bressercam_IoControl(HBressercam h, unsigned ioLine, unsigned nType, int outVal, int* inVal);
 
 #ifndef __BRESSERCAMSELFTRIGGER_DEFINED__
 #define __BRESSERCAMSELFTRIGGER_DEFINED__

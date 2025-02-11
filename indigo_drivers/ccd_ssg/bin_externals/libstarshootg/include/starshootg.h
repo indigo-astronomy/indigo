@@ -1,7 +1,7 @@
 #ifndef __starshootg_h__
 #define __starshootg_h__
 
-/* Version: 57.27348.20241224 */
+/* Version: 57.27650.20250209 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -294,7 +294,7 @@ typedef struct {
 } StarshootgDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.27348.20241224
+    get the version of this dll/so/dylib, which is: 57.27650.20250209
 */
 #if defined(_WIN32)
 STARSHOOTG_API(const wchar_t*)   Starshootg_Version();
@@ -382,6 +382,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_StartPullModeWithCallback(HStarshootg h, PST
 #define STARSHOOTG_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define STARSHOOTG_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
 #define STARSHOOTG_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
+#define STARSHOOTG_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
 typedef struct {
     unsigned            width;
@@ -629,7 +630,7 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_MinAutoExpoTimeAGain(HStarshootg h, unsi
 
 STARSHOOTG_API(HRESULT)  Starshootg_get_ExpoTime(HStarshootg h, unsigned* Time); /* in microseconds */
 STARSHOOTG_API(HRESULT)  Starshootg_put_ExpoTime(HStarshootg h, unsigned Time); /* in microseconds */
-STARSHOOTG_API(HRESULT)  Starshootg_get_RealExpoTime(HStarshootg h, unsigned* Time); /* in microseconds, based on 50HZ/60HZ/DC */
+STARSHOOTG_API(HRESULT)  Starshootg_get_RealExpoTime(HStarshootg h, unsigned* Time); /* actual exposure time */
 STARSHOOTG_API(HRESULT)  Starshootg_get_ExpTimeRange(HStarshootg h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 STARSHOOTG_API(HRESULT)  Starshootg_get_ExpoAGain(HStarshootg h, unsigned short* Gain); /* percent, such as 300 */
@@ -1198,6 +1199,16 @@ STARSHOOTG_API(HRESULT)  Starshootg_get_Roi(HStarshootg h, unsigned* pxOffset, u
 /* multiple Roi */
 STARSHOOTG_API(HRESULT)  Starshootg_put_RoiN(HStarshootg h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
+/* Hardware Binning
+* Value: 1x1, 2x2, etc
+* Method: Average, Add, Skip
+*/
+STARSHOOTG_API(HRESULT)  Starshootg_put_Binning(HStarshootg h, const char* pValue, const char* pMethod);
+STARSHOOTG_API(HRESULT)  Starshootg_get_Binning(HStarshootg h, const char** ppValue, const char** ppMethod);
+STARSHOOTG_API(HRESULT)  Starshootg_get_BinningNumber(HStarshootg h);
+STARSHOOTG_API(HRESULT)  Starshootg_get_BinningValue(HStarshootg h, unsigned index, const char** ppValue);
+STARSHOOTG_API(HRESULT)  Starshootg_get_BinningMethod(HStarshootg h, unsigned index, const char** ppMethod);
+
 STARSHOOTG_API(HRESULT)  Starshootg_put_XY(HStarshootg h, int x, int y);
 
 #define STARSHOOTG_IOCONTROLTYPE_GET_SUPPORTEDMODE            0x01 /* 0x01 => Input, 0x02 => Output, (0x01 | 0x02) => support both Input and Output */
@@ -1296,13 +1307,13 @@ STARSHOOTG_API(HRESULT)  Starshootg_put_XY(HStarshootg h, int x, int y);
 #define STARSHOOTG_IOCONTROL_DELAYTIME_MAX                    (5 * 1000 * 1000)
 
 /*
-  ioLineNumber:
+  ioLine:
     0 => Opto-isolated input
     1 => Opto-isolated output
     2 => GPIO0
     3 => GPIO1
 */
-STARSHOOTG_API(HRESULT)  Starshootg_IoControl(HStarshootg h, unsigned ioLineNumber, unsigned nType, int outVal, int* inVal);
+STARSHOOTG_API(HRESULT)  Starshootg_IoControl(HStarshootg h, unsigned ioLine, unsigned nType, int outVal, int* inVal);
 
 #ifndef __STARSHOOTGSELFTRIGGER_DEFINED__
 #define __STARSHOOTGSELFTRIGGER_DEFINED__
