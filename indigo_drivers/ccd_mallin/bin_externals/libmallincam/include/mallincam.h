@@ -1,7 +1,7 @@
 #ifndef __mallincam_h__
 #define __mallincam_h__
 
-/* Version: 57.27348.20241224 */
+/* Version: 57.27650.20250209 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -294,7 +294,7 @@ typedef struct {
 } MallincamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.27348.20241224
+    get the version of this dll/so/dylib, which is: 57.27650.20250209
 */
 #if defined(_WIN32)
 MALLINCAM_API(const wchar_t*)   Mallincam_Version();
@@ -382,6 +382,7 @@ MALLINCAM_API(HRESULT)  Mallincam_StartPullModeWithCallback(HMallincam h, PMALLI
 #define MALLINCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define MALLINCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
 #define MALLINCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
+#define MALLINCAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
 typedef struct {
     unsigned            width;
@@ -629,7 +630,7 @@ MALLINCAM_API(HRESULT)  Mallincam_get_MinAutoExpoTimeAGain(HMallincam h, unsigne
 
 MALLINCAM_API(HRESULT)  Mallincam_get_ExpoTime(HMallincam h, unsigned* Time); /* in microseconds */
 MALLINCAM_API(HRESULT)  Mallincam_put_ExpoTime(HMallincam h, unsigned Time); /* in microseconds */
-MALLINCAM_API(HRESULT)  Mallincam_get_RealExpoTime(HMallincam h, unsigned* Time); /* in microseconds, based on 50HZ/60HZ/DC */
+MALLINCAM_API(HRESULT)  Mallincam_get_RealExpoTime(HMallincam h, unsigned* Time); /* actual exposure time */
 MALLINCAM_API(HRESULT)  Mallincam_get_ExpTimeRange(HMallincam h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 MALLINCAM_API(HRESULT)  Mallincam_get_ExpoAGain(HMallincam h, unsigned short* Gain); /* percent, such as 300 */
@@ -1198,6 +1199,16 @@ MALLINCAM_API(HRESULT)  Mallincam_get_Roi(HMallincam h, unsigned* pxOffset, unsi
 /* multiple Roi */
 MALLINCAM_API(HRESULT)  Mallincam_put_RoiN(HMallincam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
+/* Hardware Binning
+* Value: 1x1, 2x2, etc
+* Method: Average, Add, Skip
+*/
+MALLINCAM_API(HRESULT)  Mallincam_put_Binning(HMallincam h, const char* pValue, const char* pMethod);
+MALLINCAM_API(HRESULT)  Mallincam_get_Binning(HMallincam h, const char** ppValue, const char** ppMethod);
+MALLINCAM_API(HRESULT)  Mallincam_get_BinningNumber(HMallincam h);
+MALLINCAM_API(HRESULT)  Mallincam_get_BinningValue(HMallincam h, unsigned index, const char** ppValue);
+MALLINCAM_API(HRESULT)  Mallincam_get_BinningMethod(HMallincam h, unsigned index, const char** ppMethod);
+
 MALLINCAM_API(HRESULT)  Mallincam_put_XY(HMallincam h, int x, int y);
 
 #define MALLINCAM_IOCONTROLTYPE_GET_SUPPORTEDMODE            0x01 /* 0x01 => Input, 0x02 => Output, (0x01 | 0x02) => support both Input and Output */
@@ -1296,13 +1307,13 @@ MALLINCAM_API(HRESULT)  Mallincam_put_XY(HMallincam h, int x, int y);
 #define MALLINCAM_IOCONTROL_DELAYTIME_MAX                    (5 * 1000 * 1000)
 
 /*
-  ioLineNumber:
+  ioLine:
     0 => Opto-isolated input
     1 => Opto-isolated output
     2 => GPIO0
     3 => GPIO1
 */
-MALLINCAM_API(HRESULT)  Mallincam_IoControl(HMallincam h, unsigned ioLineNumber, unsigned nType, int outVal, int* inVal);
+MALLINCAM_API(HRESULT)  Mallincam_IoControl(HMallincam h, unsigned ioLine, unsigned nType, int outVal, int* inVal);
 
 #ifndef __MALLINCAMSELFTRIGGER_DEFINED__
 #define __MALLINCAMSELFTRIGGER_DEFINED__

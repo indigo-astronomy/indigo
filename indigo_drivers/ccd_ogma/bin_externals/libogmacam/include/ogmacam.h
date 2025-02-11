@@ -1,7 +1,7 @@
 #ifndef __ogmacam_h__
 #define __ogmacam_h__
 
-/* Version: 57.27348.20241224 */
+/* Version: 57.27650.20250209 */
 /*
    Platform & Architecture:
        (1) Win32:
@@ -294,7 +294,7 @@ typedef struct {
 } OgmacamDeviceV2; /* device instance for enumerating */
 
 /*
-    get the version of this dll/so/dylib, which is: 57.27348.20241224
+    get the version of this dll/so/dylib, which is: 57.27650.20250209
 */
 #if defined(_WIN32)
 OGMACAM_API(const wchar_t*)   Ogmacam_Version();
@@ -382,6 +382,7 @@ OGMACAM_API(HRESULT)  Ogmacam_StartPullModeWithCallback(HOgmacam h, POGMACAM_EVE
 #define OGMACAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define OGMACAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
 #define OGMACAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
+#define OGMACAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
 typedef struct {
     unsigned            width;
@@ -629,7 +630,7 @@ OGMACAM_API(HRESULT)  Ogmacam_get_MinAutoExpoTimeAGain(HOgmacam h, unsigned* min
 
 OGMACAM_API(HRESULT)  Ogmacam_get_ExpoTime(HOgmacam h, unsigned* Time); /* in microseconds */
 OGMACAM_API(HRESULT)  Ogmacam_put_ExpoTime(HOgmacam h, unsigned Time); /* in microseconds */
-OGMACAM_API(HRESULT)  Ogmacam_get_RealExpoTime(HOgmacam h, unsigned* Time); /* in microseconds, based on 50HZ/60HZ/DC */
+OGMACAM_API(HRESULT)  Ogmacam_get_RealExpoTime(HOgmacam h, unsigned* Time); /* actual exposure time */
 OGMACAM_API(HRESULT)  Ogmacam_get_ExpTimeRange(HOgmacam h, unsigned* nMin, unsigned* nMax, unsigned* nDef);
 
 OGMACAM_API(HRESULT)  Ogmacam_get_ExpoAGain(HOgmacam h, unsigned short* Gain); /* percent, such as 300 */
@@ -1198,6 +1199,16 @@ OGMACAM_API(HRESULT)  Ogmacam_get_Roi(HOgmacam h, unsigned* pxOffset, unsigned* 
 /* multiple Roi */
 OGMACAM_API(HRESULT)  Ogmacam_put_RoiN(HOgmacam h, unsigned xOffset[], unsigned yOffset[], unsigned xWidth[], unsigned yHeight[], unsigned Num);
 
+/* Hardware Binning
+* Value: 1x1, 2x2, etc
+* Method: Average, Add, Skip
+*/
+OGMACAM_API(HRESULT)  Ogmacam_put_Binning(HOgmacam h, const char* pValue, const char* pMethod);
+OGMACAM_API(HRESULT)  Ogmacam_get_Binning(HOgmacam h, const char** ppValue, const char** ppMethod);
+OGMACAM_API(HRESULT)  Ogmacam_get_BinningNumber(HOgmacam h);
+OGMACAM_API(HRESULT)  Ogmacam_get_BinningValue(HOgmacam h, unsigned index, const char** ppValue);
+OGMACAM_API(HRESULT)  Ogmacam_get_BinningMethod(HOgmacam h, unsigned index, const char** ppMethod);
+
 OGMACAM_API(HRESULT)  Ogmacam_put_XY(HOgmacam h, int x, int y);
 
 #define OGMACAM_IOCONTROLTYPE_GET_SUPPORTEDMODE            0x01 /* 0x01 => Input, 0x02 => Output, (0x01 | 0x02) => support both Input and Output */
@@ -1296,13 +1307,13 @@ OGMACAM_API(HRESULT)  Ogmacam_put_XY(HOgmacam h, int x, int y);
 #define OGMACAM_IOCONTROL_DELAYTIME_MAX                    (5 * 1000 * 1000)
 
 /*
-  ioLineNumber:
+  ioLine:
     0 => Opto-isolated input
     1 => Opto-isolated output
     2 => GPIO0
     3 => GPIO1
 */
-OGMACAM_API(HRESULT)  Ogmacam_IoControl(HOgmacam h, unsigned ioLineNumber, unsigned nType, int outVal, int* inVal);
+OGMACAM_API(HRESULT)  Ogmacam_IoControl(HOgmacam h, unsigned ioLine, unsigned nType, int outVal, int* inVal);
 
 #ifndef __OGMACAMSELFTRIGGER_DEFINED__
 #define __OGMACAMSELFTRIGGER_DEFINED__

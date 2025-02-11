@@ -294,9 +294,9 @@ bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer) {
 			(*timer)->scheduled = false;
       timer_buffer = *timer;
       must_wait = true;
-			pthread_mutex_lock(&(*timer)->mutex);
-			pthread_cond_signal(&(*timer)->cond);
-			pthread_mutex_unlock(&(*timer)->mutex);
+			pthread_mutex_lock(&(timer_buffer)->mutex);
+			pthread_cond_signal(&(timer_buffer)->cond);
+			pthread_mutex_unlock(&(timer_buffer)->mutex);
 			/* Save a local copy of the timer instance as *timer can be set
 			 to NULL by *timer_func() after cancel_timer_mutex is released */
 		}

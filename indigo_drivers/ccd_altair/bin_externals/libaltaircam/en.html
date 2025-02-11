@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Altaircam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 57.27348.20241224</li></ul>
+<hr/><ul><li>Version: 57.27650.20250209</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -764,6 +764,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
 #define ALTAIRCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define ALTAIRCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
 #define ALTAIRCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
+#define ALTAIRCAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
 typedef struct {
     unsigned            width;      /* image width, always available */
@@ -1726,7 +1727,7 @@ Altaircam_get_MaxAutoExpoTimeAGain<br/>Altaircam_put_MinAutoExpoTimeAGain<br/>Al
       <p>unsigned Time: exposure time, unit: microsecond</p>
       <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
     </blockquote>
-  <p><strong>Remarks:</strong> exposure time related. Altaircam_get_RealExpoTime get the real exposure time based on 50HZ/60HZ.</p>
+  <p><strong>Remarks:</strong> exposure time related. Altaircam_get_RealExpoTime get the actual exposure time (The actual exposure time and the set exposure time may not be exactly the same, such as 50HZ/60HZ adjustment, sensor exposure time accuracy, etc).</p>
 </li></ul><ul><li><h2><font color="#0000FF">Altaircam_get_ExpoAGain<br/>Altaircam_put_ExpoAGain<br/>Altaircam_get_ExpoAGainRange</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
@@ -1929,7 +1930,7 @@ Altaircam_put_Brightness<br/>Altaircam_get_Brightness<br/>Altaircam_get_Contrast
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HAltaircam h: camera handle</p>
-    <p>unsigned ioLineNumber:</p>
+    <p>unsigned ioLine:</p>
 	<blockquote>0 =&gt; Opto-isolated input<br/>
     1 =&gt; Opto-isolated output<br/>
     2 =&gt; GPIO0<br/>

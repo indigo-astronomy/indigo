@@ -7,7 +7,7 @@
 <body>
 <h1 align="center">Nncam API Manual</h1>
 <hr/><h1><font color="#0000FF">1. Version &amp; Platform</font></h1>
-<hr/><ul><li>Version: 57.27348.20241224</li></ul>
+<hr/><ul><li>Version: 57.27650.20250209</li></ul>
 <ul><li>Platform<ul>
       <li>Win32:<ul>
           <li>x64: Win7 or above</li>
@@ -764,6 +764,7 @@ for (UsbDevice usbDevice : deviceList.values()) {
 #define NNCAM_FRAMEINFO_FLAG_COUNT              0x00000100 /* timecount, framecount, tricount */
 #define NNCAM_FRAMEINFO_FLAG_MECHANICALSHUTTER  0x00000200 /* Mechanical shutter: closed */
 #define NNCAM_FRAMEINFO_FLAG_STILL              0x00008000 /* still image */
+#define NNCAM_FRAMEINFO_FLAG_CG                 0x00010000 /* Conversion Gain: High */
 
 typedef struct {
     unsigned            width;      /* image width, always available */
@@ -1726,7 +1727,7 @@ Nncam_get_MaxAutoExpoTimeAGain<br/>Nncam_put_MinAutoExpoTimeAGain<br/>Nncam_get_
       <p>unsigned Time: exposure time, unit: microsecond</p>
       <p>unsigned* nMin, unsigned* nMax, unsigned* nDef: the minimum, maximum and default value of exposure time.</p>
     </blockquote>
-  <p><strong>Remarks:</strong> exposure time related. Nncam_get_RealExpoTime get the real exposure time based on 50HZ/60HZ.</p>
+  <p><strong>Remarks:</strong> exposure time related. Nncam_get_RealExpoTime get the actual exposure time (The actual exposure time and the set exposure time may not be exactly the same, such as 50HZ/60HZ adjustment, sensor exposure time accuracy, etc).</p>
 </li></ul><ul><li><h2><font color="#0000FF">Nncam_get_ExpoAGain<br/>Nncam_put_ExpoAGain<br/>Nncam_get_ExpoAGainRange</font></h2>
     <p><strong>Return value: </strong><a href="#hresult">HRESULT</a> type means success or failure</p>
     <p><strong>Parameters:</strong></p>
@@ -1929,7 +1930,7 @@ Nncam_put_Brightness<br/>Nncam_get_Brightness<br/>Nncam_get_Contrast<br/>Nncam_p
   <p><strong>Parameters:</strong></p>
   <blockquote>
     <p>HNncam h: camera handle</p>
-    <p>unsigned ioLineNumber:</p>
+    <p>unsigned ioLine:</p>
 	<blockquote>0 =&gt; Opto-isolated input<br/>
     1 =&gt; Opto-isolated output<br/>
     2 =&gt; GPIO0<br/>
