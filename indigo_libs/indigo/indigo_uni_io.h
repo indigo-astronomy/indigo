@@ -97,8 +97,19 @@ INDIGO_EXTERN indigo_uni_handle *indigo_stderr_handle;
 INDIGO_EXTERN indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level);
 
 #if defined(INDIGO_WINDOWS)
-char* indigo_last_wsa_error();
-char* indigo_last_windows_error();
+INDIGO_EXTERN char *indigo_last_wsa_error();
+INDIGO_EXTERN char *indigo_last_windows_error();
+INDIGO_EXTERN const char *indigo_wchar_to_char(const wchar_t *string);
+INDIGO_EXTERN const wchar_t *indigo_char_to_wchar(const char *string);
+#define INDIGO_WCHAR_TO_CHAR(string) indigo_wchar_to_char(string)
+#define INDIGO_CHAR_TO_WCHAR(string) indigo_char_to_wchar(string)
+#define INDIGO_SNPRINTFW(buf, len, fmt, ...) swprintf(buf, len, L##fmt, __VA_ARGS__)
+#define INDIGO_STRCPYW(dest, src) wcscpy(dest, src)
+#else
+#define INDIGO_WCHAR_TO_CHAR(string) (string)
+#define INDIGO_CHAR_TO_WCHAR(string) (string)
+#define INDIGO_SNPRINTFW(buf, len, fmt, ...) snprintf(buf, len, fmt, __VA_ARGS__)
+#define INDIGO_STRCPYW(dest, src) strcpy(dest, src)
 #endif
 
 

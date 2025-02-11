@@ -78,6 +78,7 @@ indigo_uni_handle *indigo_uni_create_file_handle(int fd, int log_level) {
 }
 
 #if defined(INDIGO_WINDOWS)
+
 char* indigo_last_wsa_error() {
 	static char buffer[128] = "";
 	char* msg = NULL;
@@ -107,6 +108,19 @@ char* indigo_last_windows_error() {
 	}
 	return buffer;
 }
+
+const char *indigo_wchar_to_char(const wchar_t *string) {
+	static char tmp[1024];
+	WideCharToMultiByte(CP_UTF8, 0, string, -1, tmp, sizeof(tmp), NULL, NULL);
+	return tmp;
+}
+
+const wchar_t *indigo_char_to_wchar(const char *string) {
+	static wchar_t tmp[2 * 1024];
+	MultiByteToWideChar(CP_UTF8, 0, string, -1, tmp, sizeof(tmp) / 2);
+	return tmp;
+}
+
 #endif
 
 char *indigo_uni_strerror(indigo_uni_handle *handle) {

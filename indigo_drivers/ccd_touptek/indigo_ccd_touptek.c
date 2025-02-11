@@ -218,7 +218,7 @@ typedef struct {
 	indigo_device *guider;
 	indigo_timer *exposure_watchdog_timer, *temperature_timer, *guider_timer_ra, *guider_timer_dec;
 	double current_temperature;
-	unsigned char *buffer;
+	char *buffer;
 	unsigned bin_mode;
 	int bits;
 	int mode;
@@ -595,7 +595,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "flags = %0LX", flags);
 		char name[128], label[128];
 		INFO_PROPERTY->count = 8;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.model->name));
 		CCD_INFO_PIXEL_WIDTH_ITEM->number.value = PRIVATE_DATA->cam.model->xpixsz;
 		CCD_INFO_PIXEL_HEIGHT_ITEM->number.value = PRIVATE_DATA->cam.model->ypixsz;
 		CCD_INFO_PIXEL_SIZE_ITEM->number.value = (CCD_INFO_PIXEL_WIDTH_ITEM->number.value + CCD_INFO_PIXEL_HEIGHT_ITEM->number.value) / 2.0;
@@ -814,8 +814,8 @@ static void ccd_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
-				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
-				PRIVATE_DATA->handle = SDK_CALL(Open)(id);
+				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 			}
 		}
@@ -1430,7 +1430,7 @@ static indigo_result guider_attach(indigo_device *device) {
 	assert(PRIVATE_DATA != NULL);
 	if (indigo_guider_attach(device, DRIVER_NAME, DRIVER_VERSION) == INDIGO_OK) {
 		INFO_PROPERTY->count = 8;
-		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, PRIVATE_DATA->cam.model->name);
+		indigo_copy_value(INFO_DEVICE_MODEL_ITEM->text.value, INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.model->name));
 		INDIGO_DEVICE_ATTACH_LOG(DRIVER_NAME, device->name);
 		return indigo_guider_enumerate_properties(device, NULL, NULL);
 	}
@@ -1445,8 +1445,8 @@ static void guider_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
-				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
-				PRIVATE_DATA->handle = SDK_CALL(Open)(id);
+				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 			}
 		}
@@ -1690,8 +1690,8 @@ static void wheel_connect_callback(indigo_device *device) {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
-				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
-				PRIVATE_DATA->handle = SDK_CALL(Open)(id);
+				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 			}
 		}
@@ -1771,7 +1771,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+			PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			int slot = ((int)WHEEL_SLOT_ITEM->number.target-1) + (1<< 8);
 			pthread_mutex_lock(&PRIVATE_DATA->mutex);
@@ -1925,9 +1925,9 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 	// Make sure we do not attempt to go beyond the limits
 	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+		PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.max;
 	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+		PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.min;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
@@ -2072,8 +2072,8 @@ indigo_lock_master_device(device);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "indigo_try_global_lock(): failed to get lock.");
 			} else {
 				char id[66];
-				sprintf(id, "@%s", PRIVATE_DATA->cam.id);
-				PRIVATE_DATA->handle = SDK_CALL(Open)(id);
+				sprintf(id, "@%s", INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id));
+				PRIVATE_DATA->handle = SDK_CALL(Open)(INDIGO_CHAR_TO_WCHAR(id));
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Open(%s) -> %p", id, PRIVATE_DATA->handle);
 			}
 		}
@@ -2515,8 +2515,8 @@ int OEMCamEnum(ToupcamDeviceV2 *cams, int max_count) {
 		for (int j = 0; oem_2_toupcam[j].name != NULL; j++) {
 			if (oem_2_toupcam[j].oem_vid == desc.idVendor && oem_2_toupcam[j].oem_pid == desc.idProduct) {
 				cams[oem_count].model = Toupcam_get_Model(TOUPTEK_VID, oem_2_toupcam[j].toupcam_pid);
-				strcpy(cams[oem_count].displayname, oem_2_toupcam[j].name);
-				sprintf(cams[oem_count].id, "tp-%d-%d-%d-%d", libusb_get_bus_number(dev), libusb_get_device_address(dev),TOUPTEK_VID, oem_2_toupcam[j].toupcam_pid);
+				INDIGO_STRCPYW(cams[oem_count].displayname, INDIGO_CHAR_TO_WCHAR(oem_2_toupcam[j].name));
+				INDIGO_SNPRINTFW(cams[oem_count].id, sizeof(cams[oem_count].id) / 2, "tp-%d-%d-%d-%d", libusb_get_bus_number(dev), libusb_get_device_address(dev),TOUPTEK_VID, oem_2_toupcam[j].toupcam_pid);
 				oem_count++;
 			}
 		}
@@ -2546,7 +2546,7 @@ static void process_plug_event(indigo_device *unusued) {
 		bool found = false;
 		for (int i = 0; i < SDK_DEF(MAX); i++) {
 			indigo_device *device = devices[i];
-			if (device && !strncmp(PRIVATE_DATA->cam.id, cam.id, sizeof(cam.id))) {
+			if (device && !strcmp(INDIGO_WCHAR_TO_CHAR(PRIVATE_DATA->cam.id), INDIGO_WCHAR_TO_CHAR(cam.id))) {
 				found = true;
 				PRIVATE_DATA->present = true;
 				break;
@@ -2584,7 +2584,7 @@ static void process_plug_event(indigo_device *unusued) {
 #ifdef INDIGO_MACOS
 				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
 #else
-				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
+				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, INDIGO_WCHAR_TO_CHAR(cam.displayname));
 				indigo_make_name_unique(camera->name, NULL);
 #endif
 				camera->private_data = private_data;
@@ -2609,7 +2609,7 @@ static void process_plug_event(indigo_device *unusued) {
 #ifdef INDIGO_MACOS
 					snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider) #%s", CAMERA_NAME_PREFIX, cam.displayname, camera_id);
 #else
-					snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider)", CAMERA_NAME_PREFIX, cam.displayname);
+					snprintf(guider->name, INDIGO_NAME_SIZE, "%s %s (guider)", CAMERA_NAME_PREFIX, INDIGO_WCHAR_TO_CHAR(cam.displayname));
 					indigo_make_name_unique(guider->name, NULL);
 #endif
 					guider->private_data = private_data;
@@ -2633,7 +2633,7 @@ static void process_plug_event(indigo_device *unusued) {
 				private_data->cam = cam;
 				private_data->present = true;
 				indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
-				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
+				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, INDIGO_WCHAR_TO_CHAR(cam.displayname));
 				indigo_make_name_unique(camera->name, NULL);
 				camera->private_data = private_data;
 				camera->master_device = camera;
@@ -2660,7 +2660,7 @@ static void process_plug_event(indigo_device *unusued) {
 				private_data->cam = cam;
 				private_data->present = true;
 				indigo_device *camera = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
-				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, cam.displayname);
+				snprintf(camera->name, INDIGO_NAME_SIZE, "%s %s", CAMERA_NAME_PREFIX, INDIGO_WCHAR_TO_CHAR(cam.displayname));
 				indigo_make_name_unique(camera->name, NULL);
 				camera->private_data = private_data;
 				camera->master_device = camera;

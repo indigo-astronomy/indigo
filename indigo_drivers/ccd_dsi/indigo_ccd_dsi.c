@@ -154,7 +154,7 @@ static bool camera_read_pixels(indigo_device *device) {
 	while ((res = dsi_read_image(PRIVATE_DATA->dsi, (unsigned char*)(PRIVATE_DATA->buffer + FITS_HEADER_SIZE), O_NONBLOCK)) != 0) {
 		if (res == EWOULDBLOCK) {
 			double time_left = dsi_get_exposure_time_left(PRIVATE_DATA->dsi);
-			INDIGO_DRIVER_DEBUG(stderr, "Image not ready, sleeping for %.3fs...\n", time_left);
+			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Image not ready, sleeping for %.3fs...\n", time_left);
 			indigo_sleep(time_left);
 		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "Exposure Failed! dsi_read_image(%s) = %d", PRIVATE_DATA->dev_sid, res);
