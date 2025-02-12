@@ -17,7 +17,9 @@ Sequence.prototype.repeat = function(count, block) {
 		this.sequence.push({ execute: 'increment_loop(' + i + ')', step: loop, progress: this.progress, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'exit_loop()', step: loop, progress: this.progress, exposure: this.exposure });
-	//this.step++;
+	if (count <= 0) {
+		this.step++;
+	}
 };
 
 Sequence.prototype.wait = function(seconds) {
