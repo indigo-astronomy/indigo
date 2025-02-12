@@ -53,13 +53,13 @@ typedef struct {
 } arteskyflat_private_data;
 
 static bool artesky_command(indigo_device *device, char *command, char *response) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle, 1000) < 0) {
+	if (indigo_uni_discard(PRIVATE_DATA->handle, INDIGO_DELAY(0.001)) < 0) {
 		return false;
 	}
 	if (indigo_uni_printf(PRIVATE_DATA->handle, "%s\n", command) < 0) {
 		return false;
 	}
-	if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "\n", "\r\n", 1000000) < 0) {
+	if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "\n", "\r\n", INDIGO_DELAY(1)) < 0) {
 		return false;
 	}
 	return true;

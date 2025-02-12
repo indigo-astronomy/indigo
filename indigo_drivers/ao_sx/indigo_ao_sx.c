@@ -47,15 +47,14 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool sx_command(indigo_device *device, char *command, char *response, int max) {
-	if (indigo_uni_discard(PRIVATE_DATA->handle, 1000) < 0) {
+	if (indigo_uni_discard(PRIVATE_DATA->handle, INDIGO_DELAY(0.001)) < 0) {
 		return false;
 	}
 	if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) < 0) {
 		return false;
 	}
 	if (response != NULL) {
-		int timeout = (*command == 'K' || *command == 'R') ? 15 : 1;
-		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", INDIGO_DELAY(timeout)) < 0) {
+		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1)) < 0) {
 			return false;
 		}
 	}
