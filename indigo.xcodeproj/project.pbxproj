@@ -955,6 +955,14 @@
 		9D8D9EAA2D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
 		9D8D9EAB2D4B9FBD007A5BA3 /* indigo_uni_io.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D8D9EA72D4B9FBD007A5BA3 /* indigo_uni_io.c */; };
 		9D9691DA23687C0C00E0CACE /* indigo_aux_fbc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */; };
+		9D9696C42D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */; };
+		9D9696C52D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */; };
+		9D9696C62D5C83AF0051F9E3 /* indigo_ccd_svb2.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696BD2D5C83710051F9E3 /* indigo_ccd_svb2.h */; };
+		9D9696C72D5C83AF0051F9E3 /* indigo_ccd_svb2.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696BD2D5C83710051F9E3 /* indigo_ccd_svb2.h */; };
+		9D9696C82D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9696B62D5C83710051F9E3 /* libsvbonycam.dylib */; };
+		9D9696C92D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9696B62D5C83710051F9E3 /* libsvbonycam.dylib */; };
+		9D9696CA2D5C83D80051F9E3 /* svbonycam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696AB2D5C83710051F9E3 /* svbonycam.h */; };
+		9D9696CB2D5C83D80051F9E3 /* svbonycam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696AB2D5C83710051F9E3 /* svbonycam.h */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
 		9D976FD91DD0C4CF00782B32 /* indigo_ccd_iidc.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */; };
 		9D97F81B1D9A8A5D00582EAF /* indigo_server.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D97F81A1D9A8A5D00582EAF /* indigo_server.c */; };
@@ -4922,6 +4930,18 @@
 		9D9691D723687AD800E0CACE /* lacertafbc.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = lacertafbc.rules; sourceTree = "<group>"; };
 		9D9691D823687AD800E0CACE /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D9691D923687AD800E0CACE /* indigo_aux_fbc.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_aux_fbc.c; sourceTree = "<group>"; };
+		9D9696AB2D5C83710051F9E3 /* svbonycam.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = svbonycam.h; sourceTree = "<group>"; };
+		9D9696AD2D5C83710051F9E3 /* libsvbonycam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libsvbonycam.so; sourceTree = "<group>"; };
+		9D9696AF2D5C83710051F9E3 /* libsvbonycam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libsvbonycam.so; sourceTree = "<group>"; };
+		9D9696B12D5C83710051F9E3 /* libsvbonycam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libsvbonycam.so; sourceTree = "<group>"; };
+		9D9696B32D5C83710051F9E3 /* libsvbonycam.so */ = {isa = PBXFileReference; lastKnownFileType = file; path = libsvbonycam.so; sourceTree = "<group>"; };
+		9D9696B62D5C83710051F9E3 /* libsvbonycam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; path = libsvbonycam.dylib; sourceTree = "<group>"; };
+		9D9696B92D5C83710051F9E3 /* 99-svbonycam.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = "99-svbonycam.rules"; sourceTree = "<group>"; };
+		9D9696BA2D5C83710051F9E3 /* en.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = en.html; sourceTree = "<group>"; };
+		9D9696BD2D5C83710051F9E3 /* indigo_ccd_svb2.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_svb2.h; sourceTree = "<group>"; };
+		9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_svb2.c; sourceTree = "<group>"; };
+		9D9696C02D5C83710051F9E3 /* indigo_ccd_svb2_main.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_svb2_main.c; sourceTree = "<group>"; };
+		9D9696C22D5C83710051F9E3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		9D976FD41DD0C4CF00782B32 /* indigo_ccd_iidc_main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = indigo_ccd_iidc_main.c; sourceTree = "<group>"; };
 		9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; lineEnding = 0; path = indigo_ccd_iidc.c; sourceTree = "<group>"; xcLanguageSpecificationIdentifier = xcode.lang.c; };
 		9D976FD61DD0C4CF00782B32 /* indigo_ccd_iidc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = indigo_ccd_iidc.h; sourceTree = "<group>"; };
@@ -5146,6 +5166,7 @@
 				9D74A5532D4B64C800A31003 /* liboasisfilterwheel.a in Frameworks */,
 				59118C432996EDA30004BEC8 /* libogmacam.dylib in Frameworks */,
 				598A1C05259BA94A00C0B34C /* libtiff.a in Frameworks */,
+				9D9696C92D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */,
 				596FCA962BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */,
 				597320552D13468A0048BC5C /* libEFWFilter.a in Frameworks */,
@@ -5196,6 +5217,7 @@
 				598786462540C69E00CE8B48 /* libtiff.a in Frameworks */,
 				9DDEFBFF21EE358F00657C8F /* libUSB2ST4Conv.a in Frameworks */,
 				9D74A5132D4B641600A31003 /* libCAA.a in Frameworks */,
+				9D9696C82D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
 				591CD0F629805E31003243AE /* libnncam.dylib in Frameworks */,
 				597C7224293CFC2B0016D45A /* libASICamera2.a in Frameworks */,
@@ -10358,6 +10380,7 @@
 				59519D421DB422E3008BAF29 /* ccd_ssag */,
 				591CD0AF29803FFF003243AE /* ccd_ssg */,
 				59A68E03277DC3D0000439CC /* ccd_svb */,
+				9D9696C32D5C83710051F9E3 /* ccd_svb2 */,
 				5999FB651DA40B380084BBF8 /* ccd_sx */,
 				9D48B79B215E570600CF757E /* ccd_touptek */,
 				9D73E5F721FF36C4003CEC15 /* ccd_uvc */,
@@ -14329,6 +14352,105 @@
 			path = aux_fbc;
 			sourceTree = "<group>";
 		};
+		9D9696AC2D5C83710051F9E3 /* include */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696AB2D5C83710051F9E3 /* svbonycam.h */,
+			);
+			path = include;
+			sourceTree = "<group>";
+		};
+		9D9696AE2D5C83710051F9E3 /* arm */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696AD2D5C83710051F9E3 /* libsvbonycam.so */,
+			);
+			path = arm;
+			sourceTree = "<group>";
+		};
+		9D9696B02D5C83710051F9E3 /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696AF2D5C83710051F9E3 /* libsvbonycam.so */,
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		9D9696B22D5C83710051F9E3 /* x64 */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696B12D5C83710051F9E3 /* libsvbonycam.so */,
+			);
+			path = x64;
+			sourceTree = "<group>";
+		};
+		9D9696B42D5C83710051F9E3 /* x86 */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696B32D5C83710051F9E3 /* libsvbonycam.so */,
+			);
+			path = x86;
+			sourceTree = "<group>";
+		};
+		9D9696B52D5C83710051F9E3 /* Linux */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696AE2D5C83710051F9E3 /* arm */,
+				9D9696B02D5C83710051F9E3 /* arm64 */,
+				9D9696B22D5C83710051F9E3 /* x64 */,
+				9D9696B42D5C83710051F9E3 /* x86 */,
+			);
+			path = Linux;
+			sourceTree = "<group>";
+		};
+		9D9696B72D5C83710051F9E3 /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696B62D5C83710051F9E3 /* libsvbonycam.dylib */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		9D9696B82D5C83710051F9E3 /* lib */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696B52D5C83710051F9E3 /* Linux */,
+				9D9696B72D5C83710051F9E3 /* macOS */,
+			);
+			path = lib;
+			sourceTree = "<group>";
+		};
+		9D9696BB2D5C83710051F9E3 /* libsvbonycam */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696AC2D5C83710051F9E3 /* include */,
+				9D9696B82D5C83710051F9E3 /* lib */,
+				9D9696B92D5C83710051F9E3 /* 99-svbonycam.rules */,
+				9D9696BA2D5C83710051F9E3 /* en.html */,
+			);
+			path = libsvbonycam;
+			sourceTree = "<group>";
+		};
+		9D9696BC2D5C83710051F9E3 /* bin_externals */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696BB2D5C83710051F9E3 /* libsvbonycam */,
+			);
+			path = bin_externals;
+			sourceTree = "<group>";
+		};
+		9D9696C32D5C83710051F9E3 /* ccd_svb2 */ = {
+			isa = PBXGroup;
+			children = (
+				9D9696C22D5C83710051F9E3 /* README.md */,
+				9D9696BD2D5C83710051F9E3 /* indigo_ccd_svb2.h */,
+				9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */,
+				9D9696C02D5C83710051F9E3 /* indigo_ccd_svb2_main.c */,
+				9D9696BC2D5C83710051F9E3 /* bin_externals */,
+			);
+			path = ccd_svb2;
+			sourceTree = "<group>";
+		};
 		9D976FD21DD0C46E00782B32 /* ccd_iidc */ = {
 			isa = PBXGroup;
 			children = (
@@ -14958,6 +15080,7 @@
 				598A1C1B259BA94A00C0B34C /* libdsusb.h in Headers */,
 				591CD0CD298042C1003243AE /* starshootg.h in Headers */,
 				598A1C1C259BA94A00C0B34C /* duk_config.h in Headers */,
+				9D9696CB2D5C83D80051F9E3 /* svbonycam.h in Headers */,
 				9D7FC6202C4906B2004496F2 /* indigo_focuser_fc3.h in Headers */,
 				9D0829512C198614002166E1 /* indigo_ccd_bresser.h in Headers */,
 				598A1C1D259BA94A00C0B34C /* DDHidUsageTables.h in Headers */,
@@ -15077,6 +15200,7 @@
 				598A1C70259BA94A00C0B34C /* indigo_focuser_wemacro.h in Headers */,
 				598A1C71259BA94A00C0B34C /* indigo_mount_nexstaraux.h in Headers */,
 				598A1C72259BA94A00C0B34C /* indigo_ccd_qhy.h in Headers */,
+				9D9696C72D5C83AF0051F9E3 /* indigo_ccd_svb2.h in Headers */,
 				596FCA902BD0320E00F5BACB /* gxccd.h in Headers */,
 				591CD0EB29805CBF003243AE /* nncam.h in Headers */,
 				598A1C73259BA94A00C0B34C /* indigo_mount_synscan_protocol.h in Headers */,
@@ -15167,6 +15291,7 @@
 				595AA1CE1FC5ED8A00350E7B /* indigo_agent_snoop.h in Headers */,
 				9DC4968822BA7B810052AB3E /* indigo_agent_auxiliary.h in Headers */,
 				9DAD52582126FFC2002FCC79 /* indigo_wheel_xagyl.h in Headers */,
+				9D9696C62D5C83AF0051F9E3 /* indigo_ccd_svb2.h in Headers */,
 				59111D14285F53D500E57194 /* indigocat_solar_system.h in Headers */,
 				595F291B211E211100380EF4 /* DDHidKeyboard.h in Headers */,
 				595F2928211E211200380EF4 /* DDHidEvent.h in Headers */,
@@ -15241,6 +15366,7 @@
 				591CD0AA2980396B003243AE /* indigo_ccd_omegonpro.h in Headers */,
 				59B348A529E85E2F0062C2EA /* jsmn.h in Headers */,
 				595567C624B882DD00DF303D /* config.h in Headers */,
+				9D9696CA2D5C83D80051F9E3 /* svbonycam.h in Headers */,
 				59A413362971E54C00F0A80B /* indigo_wheel_playerone.h in Headers */,
 				59F7E5ED245878C700EF273A /* indigo_token.h in Headers */,
 				59111D12285F53D500E57194 /* indigocat_nutation.h in Headers */,
@@ -15651,6 +15777,7 @@
 				598A1B6A259BA94A00C0B34C /* indigo_mount_temma.c in Sources */,
 				596FCAB32BD0328000F5BACB /* indigo_rotator_wa.c in Sources */,
 				598A1B6C259BA94A00C0B34C /* DDHidElement.m in Sources */,
+				9D9696C52D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */,
 				598A1B6D259BA94A00C0B34C /* indigo_focuser_moonlite.c in Sources */,
 				59111CF4285F504200E57194 /* indigocat_uranus.c in Sources */,
 				598A1B6E259BA94A00C0B34C /* indigo_focuser_efa.c in Sources */,
@@ -16032,6 +16159,7 @@
 				594122A11FD2DE7800D792FF /* indigo_dome_azimuth.c in Sources */,
 				595567D824BA00DA00DF303D /* indigo_mount_pmc8_main.c in Sources */,
 				59D62CDB1E731B62004DDD9C /* indigo_focuser_usbv3.c in Sources */,
+				9D9696C42D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */,
 				59FE347C2187B7DD004FB5D4 /* indigo_guider_gpusb.c in Sources */,
 				599C9A511DA022E3008BBCC1 /* indigo_driver_xml.c in Sources */,
 				5910D9B7258008190015D915 /* indigo_agent_scripting.c in Sources */,
@@ -16458,6 +16586,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_astroasis/bin_externals/liboasisfocuser/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_astroasis/bin_externals/OasisFilterWheel/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_svb2/bin_externals/libsvbonycam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -16548,6 +16677,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_astroasis/bin_externals/liboasisfocuser/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_astroasis/bin_externals/OasisFilterWheel/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_svb2/bin_externals/libsvbonycam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -16708,6 +16838,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_astroasis/bin_externals/liboasisfocuser/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_astroasis/bin_externals/OasisFilterWheel/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_svb2/bin_externals/libsvbonycam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";
@@ -16790,6 +16921,7 @@
 					"$(PROJECT_DIR)/indigo_drivers/rotator_asi/bin_externals/libCAA/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/focuser_astroasis/bin_externals/liboasisfocuser/lib/macOS",
 					"$(PROJECT_DIR)/indigo_drivers/wheel_astroasis/bin_externals/OasisFilterWheel/lib/macOS",
+					"$(PROJECT_DIR)/indigo_drivers/ccd_svb2/bin_externals/libsvbonycam/lib/macOS",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MACOSX_DEPLOYMENT_TARGET = "$(RECOMMENDED_MACOSX_DEPLOYMENT_TARGET)";

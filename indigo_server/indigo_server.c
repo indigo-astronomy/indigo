@@ -168,6 +168,7 @@
 #include "aux_astromechanics/indigo_aux_astromechanics.h"
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #include "ccd_svb/indigo_ccd_svb.h"
+#include "ccd_svb2/indigo_ccd_svb2.h"
 #include "agent_astap/indigo_agent_astap.h"
 #include "rotator_optec/indigo_rotator_optec.h"
 #include "mount_starbook/indigo_mount_starbook.h"
@@ -284,6 +285,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ssag,
 	indigo_ccd_ssg,
 	indigo_ccd_svb,
+	indigo_ccd_svb2,
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
