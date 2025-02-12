@@ -7,7 +7,7 @@ function Sequence(name) {
 }
 
 Sequence.prototype.repeat = function(count, block) {
-	var loop = this.step++;
+	var loop = this.step;
 	var i = 0;
 	this.sequence.push({ execute: 'enter_loop()', step: loop, progress: this.progress, exposure: this.exposure });
 	while (i < count) {
@@ -17,7 +17,7 @@ Sequence.prototype.repeat = function(count, block) {
 		this.sequence.push({ execute: 'increment_loop(' + i + ')', step: loop, progress: this.progress, exposure: this.exposure });
 	}
 	this.sequence.push({ execute: 'exit_loop()', step: loop, progress: this.progress, exposure: this.exposure });
-	this.step++;
+	//this.step++;
 };
 
 Sequence.prototype.wait = function(seconds) {
