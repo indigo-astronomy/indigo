@@ -270,7 +270,11 @@ static bool meade_open(indigo_device *device) {
 						PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 115200);
 						if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
 							close(PRIVATE_DATA->handle);
-							PRIVATE_DATA->handle = -1;
+							PRIVATE_DATA->handle = indigo_open_serial_with_speed(name, 230400);
+							if (!meade_command(device, ":GR#", response, sizeof(response), 0) || strlen(response) < 6) {
+								close(PRIVATE_DATA->handle);
+								PRIVATE_DATA->handle = -1;
+							}
 						}
 					}
 				}
