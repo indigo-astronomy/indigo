@@ -332,6 +332,7 @@ static int configure_tty_options(DCB *dcb, const char *baudrate) {
 	dcb->ByteSize = 8;
 	dcb->Parity = NOPARITY;
 	dcb->StopBits = ONESTOPBIT;
+	dcb->fDtrControl = DTR_CONTROL_ENABLE;
 	switch (mode[0]) {
 		case '8':
 			dcb->ByteSize = 8;
