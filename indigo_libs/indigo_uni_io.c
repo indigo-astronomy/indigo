@@ -399,11 +399,11 @@ static indigo_uni_handle *open_tty(const char *serial, DCB *dcb, int log_level) 
 		return NULL;
 	}
 	COMMTIMEOUTS timeouts = { 0 };
-	timeouts.ReadIntervalTimeout = 50;
-	timeouts.ReadTotalTimeoutConstant = 50;
-	timeouts.ReadTotalTimeoutMultiplier = 10;
-	timeouts.WriteTotalTimeoutConstant = 50;
-	timeouts.WriteTotalTimeoutMultiplier = 10;
+	timeouts.ReadIntervalTimeout = INFINITE;
+	timeouts.ReadTotalTimeoutConstant = 0;
+	timeouts.ReadTotalTimeoutMultiplier = 0;
+	timeouts.WriteTotalTimeoutConstant = INFINITE;
+	timeouts.WriteTotalTimeoutMultiplier = 0;
 	SetCommTimeouts(com, &timeouts);
 	indigo_uni_handle *handle = (indigo_uni_handle *)indigo_safe_malloc(sizeof(indigo_uni_handle));
 	handle->index = handle_index++;
@@ -918,13 +918,14 @@ static long write_data(indigo_uni_handle *handle, const char *buffer, long lengt
 		return bytes_written;
 	} else if (handle->type == INDIGO_COM_HANDLE) {
 		long bytes_written = 0;
+		ResetEvent(handle->ov_write.hEvent);
 		bool write_result = WriteFile(handle->com, buffer, (DWORD)length, &bytes_written, &handle->ov_write);
 		handle->last_error = GetLastError();
 		if (!write_result && handle->last_error != ERROR_IO_PENDING) {
 			indigo_error("%d <- // Failed to write (%s)", handle->index, indigo_uni_strerror(handle));
 			return -1;
 		}
-		if (WaitForSingleObject(handle->ov_write.hEvent, INFINITE) == WAIT_OBJECT_0) {
+		if (WaitForSingleObject(handle->ov_write.hEvent, 15000) == WAIT_OBJECT_0) {
 			if (GetOverlappedResult(handle->com, &handle->ov_write, &bytes_written, FALSE)) {
 				handle->last_error = 0;
 				return bytes_written;
