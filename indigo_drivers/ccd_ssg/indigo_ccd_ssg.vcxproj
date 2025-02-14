@@ -137,7 +137,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootgcam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -155,7 +155,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootgcam\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -164,7 +164,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootgcam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -180,14 +180,14 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootgcam\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootgcam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -205,7 +205,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootgcam\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -214,7 +214,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootgcam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -237,7 +237,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootgcam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
@@ -255,7 +255,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <PrecompiledHeaderFile>
       </PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootgcam\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>..\..\indigo_libs\bin_externals\pthreads4w\include\;..\..\indigo_libs\bin_externals\zlib\include;..\..\indigo_libs\bin_externals\libusb\include;..\..\indigo_libs\;bin_externals\libstarshootg\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -264,7 +264,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;starshootgcam.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootgcam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libstarshootg\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
       <Command>
