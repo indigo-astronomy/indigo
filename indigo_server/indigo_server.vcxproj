@@ -281,8 +281,32 @@
     <ProjectReference Include="..\indigo_drivers\ao_sx\indigo_ao_sx.vcxproj">
       <Project>{96d12488-1b9b-4cad-b128-86ed0cde5dbe}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_altair\indigo_ccd_altair.vcxproj">
+      <Project>{72e231d8-8732-41c6-a813-bf061fd9083d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_bresser\indigo_ccd_bresser.vcxproj">
+      <Project>{028c4593-58b9-4523-af0a-f5ac7d4fba13}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_mallin\indigo_ccd_mallin.vcxproj">
+      <Project>{b3a3b858-0016-43f5-b4d2-703289885b5b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_ogma\indigo_ccd_ogma.vcxproj">
+      <Project>{8dd6949a-dcab-4dd2-8c81-cf3f82a654c8}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_omegonpro\indigo_ccd_omegonpro.vcxproj">
+      <Project>{f10ee54d-fa61-46db-9586-efb35c735209}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_rising\indigo_ccd_rising.vcxproj">
+      <Project>{ad38f44e-9b0a-4003-b654-393de71dfed7}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_ssg\indigo_ccd_ssg.vcxproj">
+      <Project>{2ec31342-35cd-4620-96fe-a37342685ac1}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\ccd_sx\indigo_ccd_sx.vcxproj">
       <Project>{fe4c6f8b-8358-404e-9b8b-422d2005bdd0}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\indigo_drivers\ccd_touptek\indigo_ccd_touptek.vcxproj">
+      <Project>{ea4a6814-7826-40bb-8f43-dcace07fc586}</Project>
     </ProjectReference>
     <ProjectReference Include="..\indigo_drivers\dome_simulator\indigo_dome_simulator.vcxproj">
       <Project>{bed3f6c7-d374-49bb-9004-eaf521129a8c}</Project>
