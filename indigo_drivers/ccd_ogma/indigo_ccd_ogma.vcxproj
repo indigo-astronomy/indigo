@@ -136,7 +136,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -163,7 +163,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -186,7 +186,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -213,7 +213,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -236,7 +236,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
@@ -263,7 +263,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>ws2_32.lib;pthreadVC3.lib;libusb-1.0.lib;zlib.lib;indigo.lib;ogmacam.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>..\..\build\$(Configuration)\$(Platform)\;bin_externals\libogmacam\lib\windows\$(Platform)\;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
     <PostBuildEvent>
