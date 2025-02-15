@@ -42,7 +42,7 @@
 
 #if defined(INDIGO_MACOS)
 #include <CoreFoundation/CoreFoundation.h>
-#elif defined(INDIG_LINUX)
+#elif defined(INDIGO_LINUX)
 #include <unistd.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
