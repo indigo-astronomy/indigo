@@ -375,7 +375,9 @@ driver_entry_point static_drivers[] = {
 static struct {
 	char *name;
 	char *description;
-} dynamic_drivers[INDIGO_MAX_DRIVERS] = {
+}
+
+dynamic_drivers[INDIGO_MAX_DRIVERS] = {
 	NULL
 };
 
@@ -1487,6 +1489,7 @@ static void add_drivers(const char *folder) {
 								}
 								if (token) {
 									for (int i = 0; i < dynamic_drivers_count; i++) {
+										//indigo_error("dynamic_drivers[%d].name = %s", i, dynamic_drivers[i].name);
 										if (!strcmp(dynamic_drivers[i].name, token)) {
 											token = NULL;
 											break;
