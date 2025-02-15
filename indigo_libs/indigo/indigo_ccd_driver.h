@@ -626,7 +626,7 @@ INDIGO_EXTERN indigo_result indigo_ccd_failure_cleanup(indigo_device *device);
 
 /** Set corect states to related proeprties upon aborting exposure.
  */
-indigo_result indigo_ccd_abort_exposure_cleanup(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_ccd_abort_exposure_cleanup(indigo_device *device);
 
 /** Set FITS header
  */
