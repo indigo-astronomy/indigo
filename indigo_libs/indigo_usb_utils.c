@@ -40,3 +40,184 @@ indigo_result indigo_get_usb_path(libusb_device* handle, char *path) {
 	}
 	return INDIGO_OK;
 }
+
+#if defined(INDIGO_USB_HOTPLUG_POLLING)
+
+typedef struct hotplug_callback_info {
+	libusb_hotplug_callback_handle handle;
+	libusb_hotplug_event events;
+	libusb_hotplug_flag flags;
+	int vendor_id;
+	int product_id;
+	int dev_class;
+	libusb_hotplug_callback_fn cb_fn;
+	void *user_data;
+	struct hotplug_callback_info *next;
+} hotplug_callback_info;
+
+static hotplug_callback_info *hotplug_callback_list = NULL;
+static pthread_mutex_t hotplug_callback_list_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+
+static bool device_matches(libusb_device *device, hotplug_callback_info *info, char *format, int handle) {
+	struct libusb_device_descriptor desc;
+	int ret = libusb_get_device_descriptor(device, &desc);
+	if (ret < 0) {
+		return false;
+	}
+	if (info->vendor_id != LIBUSB_HOTPLUG_MATCH_ANY && info->vendor_id != desc.idVendor) {
+		return false;
+	}
+	if (info->product_id != LIBUSB_HOTPLUG_MATCH_ANY && info->product_id != desc.idProduct) {
+		return false;
+	}
+	if (info->dev_class != LIBUSB_HOTPLUG_MATCH_ANY) {
+		uint8_t dev_class;
+		libusb_get_device_descriptor(device, &desc);
+		dev_class = desc.bDeviceClass;
+		if (info->dev_class != dev_class) {
+			return false;
+		}
+	}
+	INDIGO_DEBUG(indigo_debug(format, handle, desc.idVendor, desc.idProduct));
+	return true;
+}
+
+static void check_device_list(libusb_device ***hotplug_device_list, int *hotplug_device_count) {
+	pthread_mutex_lock(&hotplug_callback_list_mutex);
+	libusb_device **new_list = NULL;
+	int new_count = (int)libusb_get_device_list(NULL, &new_list);
+	if (new_count < 0) {
+		indigo_error("Error getting device list: %s", libusb_error_name(new_count));
+		pthread_mutex_unlock(&hotplug_callback_list_mutex);
+		return;
+	}
+	bool differ = new_count != *hotplug_device_count;
+	if (!differ) {
+		for (int i = 0; i < new_count; i++) {
+			if (new_list[i] != (*hotplug_device_list)[i]) {
+				differ = true;
+				break;
+			}
+		}
+	}
+	if (differ) {
+		for (int i = 0; i < new_count; i++) {
+			bool found = false;
+			for (int j = 0; j < *hotplug_device_count; j++) {
+				if (new_list[i] == (*hotplug_device_list)[j]) {
+					found = true;
+					break;
+				}
+			}
+			hotplug_callback_info *callback_info = hotplug_callback_list;
+			while (callback_info != NULL) {
+				if (!found && device_matches(new_list[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED to %d for %d:%d", callback_info->handle)) {
+					callback_info->cb_fn(NULL, new_list[i], LIBUSB_HOTPLUG_EVENT_DEVICE_ARRIVED, callback_info->user_data);
+				}
+				callback_info = callback_info->next;
+			}
+		}
+		for (int i = 0; i < *hotplug_device_count; i++) {
+			bool found = false;
+			for (int j = 0; j < new_count; j++) {
+				if (new_list[j] == (*hotplug_device_list)[i]) {
+					found = true;
+					break;
+				}
+			}
+			hotplug_callback_info *callback_info = hotplug_callback_list;
+			while (callback_info != NULL) {
+				if (!found && device_matches((*hotplug_device_list)[i], callback_info, "Reporting LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT to %d for %d:%d", callback_info->handle)) {
+					callback_info->cb_fn(NULL, (*hotplug_device_list)[i], LIBUSB_HOTPLUG_EVENT_DEVICE_LEFT, callback_info->user_data);
+				}
+				callback_info = callback_info->next;
+			}
+		}
+		if (hotplug_device_list) {
+			libusb_free_device_list((*hotplug_device_list), 1);
+		}
+		(*hotplug_device_list) = new_list;
+		*hotplug_device_count = new_count;
+	} else {
+		libusb_free_device_list(new_list, 1);
+	}
+	pthread_mutex_unlock(&hotplug_callback_list_mutex);
+}
+
+void *indigo_usb_hotplug_thread(void *arg) {
+	static int hotplug_device_count = 0;
+	static libusb_device **hotplug_device_list = NULL;
+	while (true) {
+		if (hotplug_callback_list != NULL) {
+			check_device_list(&hotplug_device_list, &hotplug_device_count);
+		}
+		indigo_usleep(INDIGO_DELAY(3));
+	}
+	return NULL;
+}
+
+int libusb_hotplug_register_callback_sim(libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vendor_id, int product_id, int dev_class, libusb_hotplug_callback_fn cb_fn, void *user_data, libusb_hotplug_callback_handle *handle) {
+	static libusb_hotplug_callback_handle last_handle = 0;
+	hotplug_callback_info *callback_info = indigo_safe_malloc(sizeof(hotplug_callback_info));
+	callback_info->handle = ++last_handle;
+	callback_info->events = events;
+	callback_info->flags = flags;
+	callback_info->vendor_id = vendor_id;
+	callback_info->product_id = product_id;
+	callback_info->dev_class = dev_class;
+	callback_info->cb_fn = cb_fn;
+	callback_info->user_data = user_data;
+	callback_info->next = hotplug_callback_list;
+	pthread_mutex_lock(&hotplug_callback_list_mutex);
+	hotplug_callback_list = callback_info;
+	pthread_mutex_unlock(&hotplug_callback_list_mutex);
+	INDIGO_DEBUG(indigo_debug("Registered USB hotplug callback %d for %d:%d", last_handle, vendor_id, product_id));
+	int hotplug_device_count = 0;
+	libusb_device **hotplug_device_list = NULL;
+	check_device_list(&hotplug_device_list, &hotplug_device_count);
+	if (hotplug_device_list) {
+		libusb_free_device_list(hotplug_device_list, 1);
+	}
+	
+	return LIBUSB_SUCCESS;
+}
+
+int libusb_hotplug_deregister_callback_poll(libusb_context *ctx, libusb_hotplug_callback_handle handle) {
+	pthread_mutex_lock(&hotplug_callback_list_mutex);
+	if (hotplug_callback_list != NULL) {
+		hotplug_callback_info *callback_info = hotplug_callback_list;
+		if (hotplug_callback_list->handle == handle) {
+			hotplug_callback_list = hotplug_callback_list->next;
+			INDIGO_DEBUG(indigo_debug("Deregistered USB hotplug callback %d for %d:%d", hotplug_callback_list->handle, hotplug_callback_list->vendor_id, hotplug_callback_list->product_id));
+			indigo_safe_free(callback_info);
+			pthread_mutex_unlock(&hotplug_callback_list_mutex);
+			return LIBUSB_SUCCESS;
+		}
+		hotplug_callback_info *callback_next = callback_info->next;
+		pthread_mutex_lock(&hotplug_callback_list_mutex);
+		while (callback_next != NULL) {
+			if (callback_next->handle == handle) {
+				callback_info->next = callback_next->next;
+				indigo_safe_free(callback_info);
+				INDIGO_DEBUG(indigo_debug("Deregistered USB hotplug callback %d for %d:%d", hotplug_callback_list->handle, hotplug_callback_list->vendor_id, hotplug_callback_list->product_id));
+				pthread_mutex_unlock(&hotplug_callback_list_mutex);
+				return LIBUSB_SUCCESS;
+			}
+			callback_next = callback_next->next;
+		}
+	}
+	indigo_error("Deregistered USB hotplug callback %d", hotplug_callback_list->handle);
+	pthread_mutex_unlock(&hotplug_callback_list_mutex);
+	return LIBUSB_ERROR_INVALID_PARAM;
+}
+
+#else
+
+void *indigo_usb_hotplug_thread(void *arg) {
+	while (true) {
+		libusb_handle_events(NULL);
+	}
+	return NULL;
+}
+#endif
+

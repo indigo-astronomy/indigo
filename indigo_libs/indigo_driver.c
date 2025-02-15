@@ -724,7 +724,7 @@ static bool make_config_file_name(char *device_name, int profile, const char *su
 indigo_uni_handle *indigo_open_config_file(char *device_name, int profile, bool create, const char *suffix) {
 	static char path[512];
 	if (make_config_file_name(device_name, profile, suffix, path, sizeof(path))) {
-		indigo_uni_handle *handle = create ? indigo_uni_create_file(path, INDIGO_LOG_DEBUG) : indigo_uni_open_file(path, INDIGO_LOG_DEBUG);
+		indigo_uni_handle *handle = create ? indigo_uni_create_file(path, INDIGO_LOG_TRACE) : indigo_uni_open_file(path, INDIGO_LOG_TRACE);
 		if (handle == NULL) {
 			INDIGO_TRACE(indigo_trace("Can't %s %s", create ? "create" : "open", path));
 		}
@@ -963,18 +963,11 @@ indigo_result indigo_remove_properties(indigo_device *device) {
 	return INDIGO_FAILED;
 }
 
-static void *hotplug_thread(void *arg) {
-	while (true) {
-		libusb_handle_events(NULL);
-	}
-	return NULL;
-}
-
 void indigo_start_usb_event_handler() {
 	static bool thread_started = false;
 	if (!thread_started) {
 		libusb_init(NULL);
-		indigo_async(hotplug_thread, NULL);
+		indigo_async(indigo_usb_hotplug_thread, NULL);
 		thread_started = true;
 	}
 }

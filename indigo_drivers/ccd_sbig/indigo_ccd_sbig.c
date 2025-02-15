@@ -37,20 +37,13 @@
 #include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
+
 #include "indigo_ccd_sbig.h"
 
 #if !(defined(__APPLE__) && defined(__arm64__))
 
 #include <sbigudrv.h>
-
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#include <dlfcn.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include <netdb.h>
 #include <sys/types.h>

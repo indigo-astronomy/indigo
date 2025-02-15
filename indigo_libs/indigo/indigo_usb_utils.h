@@ -27,6 +27,7 @@
 #ifndef indigo_usb_utils_h
 #define indigo_usb_utils_h
 #include <stdio.h>
+#include <sys/types.h>
 
 #if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
 #include <libusb-1.0/libusb.h>
@@ -34,7 +35,9 @@
 #include <libusb.h>
 #elif defined(INDIGO_WINDOWS)
 #include <libusb.h>
+#define INDIGO_USB_HOTPLUG_POLLING
 #endif
+
 #include <indigo/indigo_bus.h>
 
 #if defined(INDIGO_WINDOWS)
@@ -47,11 +50,24 @@
 #define INDIGO_EXTERN extern
 #endif
 
+#ifdef INDIGO_USB_HOTPLUG_POLLING
+#define libusb_hotplug_register_callback libusb_hotplug_register_callback_sim
+#define libusb_hotplug_deregister_callback libusb_hotplug_deregister_callback_poll
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 INDIGO_EXTERN indigo_result indigo_get_usb_path(libusb_device* handle, char *path);
+
+INDIGO_EXTERN void *indigo_usb_hotplug_thread(void *arg);
+
+
+#ifdef INDIGO_USB_HOTPLUG_POLLING
+INDIGO_EXTERN int libusb_hotplug_register_callback_sim(libusb_context *ctx, libusb_hotplug_event events, libusb_hotplug_flag flags, int vendor_id, int product_id, int dev_class, libusb_hotplug_callback_fn cb_fn, void *user_data, libusb_hotplug_callback_handle *handle);
+INDIGO_EXTERN int libusb_hotplug_deregister_callback_poll(libusb_context *ctx, libusb_hotplug_callback_handle handle);
+#endif
 
 #ifdef __cplusplus
 }

@@ -46,14 +46,6 @@
 
 #if !(defined(__APPLE__) && defined(__arm64__)) || defined(QHY2)
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include "qhyccd.h"
 
 #ifdef USE_LOG4Z

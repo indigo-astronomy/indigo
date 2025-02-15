@@ -34,11 +34,11 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include <libusb-1.0/libusb.h>
-
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_guider_gpusb.h"
+
 #include <libgpusb.h>
 
 #define PRIVATE_DATA													((gpusb_private_data *)device->private_data)

@@ -31,19 +31,16 @@
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_names.h>
 #include <indigo/indigo_timer.h>
+
 #include <indigo/indigo_usbserial_utils.h>
 
-#ifdef INDIGO_LINUX
+#if defined(INDIGO_LINUX)
 #include <malloc.h>
 #define MALLOCED_SIZE malloc_usable_size
-#endif
-
-#ifdef INDIGO_MACOS
+#elif defined(INDIGO_MACOS)
 #include <malloc/malloc.h>
 #define MALLOCED_SIZE malloc_size
-#endif
-
-#ifdef INDIGO_WINDOWS
+#elif defined(INDIGO_WINDOWS)
 #include <malloc.h>
 #define MALLOCED_SIZE _msize
 #endif

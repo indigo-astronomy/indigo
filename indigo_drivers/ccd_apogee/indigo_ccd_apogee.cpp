@@ -39,14 +39,6 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <libapogee/ApogeeCam.h>
 #include <libapogee/FindDeviceEthernet.h>
 #include <libapogee/FindDeviceUsb.h>
@@ -60,6 +52,7 @@
 #include <libapogee/versionNo.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ccd_apogee.h"
 

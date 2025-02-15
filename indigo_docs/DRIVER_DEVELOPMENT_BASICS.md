@@ -597,15 +597,10 @@ Main driver source file **indigo_wheel_atik.c**:
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <libatik.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_wheel_atik.h"
 

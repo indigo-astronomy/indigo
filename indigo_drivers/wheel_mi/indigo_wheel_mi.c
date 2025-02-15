@@ -41,12 +41,6 @@
 
 #include "indigo_wheel_mi.h"
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <gxccd.h>
 
 #define MI_VID						0x1347

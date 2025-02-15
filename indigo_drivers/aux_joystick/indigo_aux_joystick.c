@@ -34,12 +34,6 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #ifdef INDIGO_MACOS
 #import <Cocoa/Cocoa.h>
 #import "DDHidJoystick.h"

@@ -36,15 +36,11 @@
 #include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
+
 #include "indigo_rotator_asi.h"
 
 #if !(defined(__APPLE__) && defined(__arm64__))
-
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include <CAA_API.h>
 

@@ -36,13 +36,9 @@
 #include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include "indigo_wheel_asi.h"
+#include <indigo/indigo_usb_utils.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
+#include "indigo_wheel_asi.h"
 
 #include <EFW_filter.h>
 

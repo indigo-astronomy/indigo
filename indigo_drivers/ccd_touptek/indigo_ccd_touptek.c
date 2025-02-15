@@ -2748,12 +2748,12 @@ indigo_result ENTRY_POINT(indigo_driver_action action, indigo_driver_info *info)
 			last_action = action;
 			for (int i = 0; i < SDK_DEF(MAX); i++)
 				devices[i] = NULL;
-			INDIGO_DRIVER_LOG(DRIVER_NAME, "SDK version %s", SDK_CALL(Version)());
+			INDIGO_DRIVER_LOG(DRIVER_NAME, "SDK version %s", INDIGO_WCHAR_TO_CHAR(SDK_CALL(Version)()));
 //	dump cameras supported by SDK
 //			for (int i = 0; i < 0xFFFF; i++) {
 //				SDK_TYPE(ModelV2) *model = SDK_CALL(get_Model)(0x0547, i);
 //				if (model) {
-//					printf("%04x %s\n", i, model->name);
+//					printf("%04x %s\n", i, INDIGO_WCHAR_TO_CHAR(model->name));
 //				}
 //			}
 			indigo_start_usb_event_handler();

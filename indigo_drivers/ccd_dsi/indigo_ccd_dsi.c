@@ -36,15 +36,6 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
-
 #define MAX_CCD_TEMP         45     /* Max CCD temperature */
 #define MIN_CCD_TEMP        -55     /* Min CCD temperature */
 
@@ -54,6 +45,7 @@
 #define TEMP_CHECK_TIME       3     /* Time between teperature checks (seconds) */
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ccd_dsi.h"
 #include "libdsi.h"

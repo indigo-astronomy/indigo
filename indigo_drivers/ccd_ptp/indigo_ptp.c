@@ -32,9 +32,9 @@
 #include <float.h>
 #include <math.h>
 #include <sys/time.h>
-#include <libusb-1.0/libusb.h>
 
 #include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ptp.h"
 

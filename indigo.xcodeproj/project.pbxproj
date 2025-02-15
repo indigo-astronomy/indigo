@@ -621,6 +621,10 @@
 		598A1CFB259BADCE00C0B34C /* libgps.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 598A1CFA259BADCE00C0B34C /* libgps.a */; };
 		598A1D02259BAE0800C0B34C /* libatik.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 59A5301721A3514E000B6F27 /* libatik.a */; };
 		598A1D15259BAE3B00C0B34C /* libindigo_m1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 598A1C9D259BA94A00C0B34C /* libindigo_m1.dylib */; };
+		598CB7802D6092A200B7211A /* libsvbonycam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 598CB77F2D6092A200B7211A /* libsvbonycam.dylib */; };
+		598CB7812D6092A200B7211A /* libsvbonycam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 598CB77F2D6092A200B7211A /* libsvbonycam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		598CB7822D6092B700B7211A /* libsvbonycam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 598CB77F2D6092A200B7211A /* libsvbonycam.dylib */; };
+		598CB7832D6092B700B7211A /* libsvbonycam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 598CB77F2D6092A200B7211A /* libsvbonycam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		598FE2752614F91A00E0DA21 /* indigo_dome_talon6ror.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBEF2613B4A200B904EE /* indigo_dome_talon6ror.c */; };
 		598FE27D2614F91B00E0DA21 /* indigo_dome_talon6ror.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBEF2613B4A200B904EE /* indigo_dome_talon6ror.c */; };
 		599150D329EF2AC900E63C3B /* libstarshootg.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; };
@@ -959,8 +963,6 @@
 		9D9696C52D5C83A40051F9E3 /* indigo_ccd_svb2.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D9696BE2D5C83710051F9E3 /* indigo_ccd_svb2.c */; };
 		9D9696C62D5C83AF0051F9E3 /* indigo_ccd_svb2.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696BD2D5C83710051F9E3 /* indigo_ccd_svb2.h */; };
 		9D9696C72D5C83AF0051F9E3 /* indigo_ccd_svb2.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696BD2D5C83710051F9E3 /* indigo_ccd_svb2.h */; };
-		9D9696C82D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9696B62D5C83710051F9E3 /* libsvbonycam.dylib */; };
-		9D9696C92D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D9696B62D5C83710051F9E3 /* libsvbonycam.dylib */; };
 		9D9696CA2D5C83D80051F9E3 /* svbonycam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696AB2D5C83710051F9E3 /* svbonycam.h */; };
 		9D9696CB2D5C83D80051F9E3 /* svbonycam.h in Headers */ = {isa = PBXBuildFile; fileRef = 9D9696AB2D5C83710051F9E3 /* svbonycam.h */; };
 		9D976FD81DD0C4CF00782B32 /* indigo_ccd_iidc.c in Sources */ = {isa = PBXBuildFile; fileRef = 9D976FD51DD0C4CF00782B32 /* indigo_ccd_iidc.c */; };
@@ -1100,6 +1102,7 @@
 				59989A7C2A1BCEB200665AB7 /* libmallincam.dylib in Embed Libraries */,
 				59B95B892C6295450027AD80 /* libsbig.dylib in Embed Libraries */,
 				9D0829582C1986A9002166E1 /* libdc1394.dylib in Embed Libraries */,
+				598CB7812D6092A200B7211A /* libsvbonycam.dylib in Embed Libraries */,
 				9D08295A2C1986B1002166E1 /* libPlayerOneCamera.dylib in Embed Libraries */,
 				9D08295F2C1986BA002166E1 /* libtoupcam.dylib in Embed Libraries */,
 				9D08295B2C1986B1002166E1 /* libPlayerOnePW.dylib in Embed Libraries */,
@@ -1117,6 +1120,7 @@
 				59118C442996EDA30004BEC8 /* libogmacam.dylib in Embed Libraries */,
 				59B348AD29E85F8A0062C2EA /* libomegonprocam.dylib in Embed Libraries */,
 				599150D429EF2AC900E63C3B /* libstarshootg.dylib in Embed Libraries */,
+				598CB7832D6092B700B7211A /* libsvbonycam.dylib in Embed Libraries */,
 				9D0829542C19869D002166E1 /* libusb-1.0.0.dylib in Embed Libraries */,
 				59B348B229E85FA80062C2EA /* libSVBCameraSDK.dylib in Embed Libraries */,
 				59B348A829E85F8A0062C2EA /* libaltaircam.dylib in Embed Libraries */,
@@ -2295,6 +2299,7 @@
 		598C583E21A890B5001CA8C0 /* Makefile */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		598C584021A9A3C9001CA8C0 /* ASICamera2.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ASICamera2.h; sourceTree = "<group>"; };
 		598C584221A9A886001CA8C0 /* Makefile.inc */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.pascal; path = Makefile.inc; sourceTree = "<group>"; };
+		598CB77F2D6092A200B7211A /* libsvbonycam.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsvbonycam.dylib; path = build/lib/libsvbonycam.dylib; sourceTree = "<group>"; };
 		598FE2862615037000E0DA21 /* talon6ror_simulator.ino */ = {isa = PBXFileReference; lastKnownFileType = text; path = talon6ror_simulator.ino; sourceTree = "<group>"; };
 		599145E624C89AF800304F22 /* Pocket_Powerbox_Advance_Serial_Command_Table.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = Pocket_Powerbox_Advance_Serial_Command_Table.pdf; sourceTree = "<group>"; };
 		5992351E22A82685006E98B4 /* dsusb.rules */ = {isa = PBXFileReference; lastKnownFileType = text; path = dsusb.rules; sourceTree = "<group>"; };
@@ -5166,7 +5171,7 @@
 				9D74A5532D4B64C800A31003 /* liboasisfilterwheel.a in Frameworks */,
 				59118C432996EDA30004BEC8 /* libogmacam.dylib in Frameworks */,
 				598A1C05259BA94A00C0B34C /* libtiff.a in Frameworks */,
-				9D9696C92D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */,
+				598CB7822D6092B700B7211A /* libsvbonycam.dylib in Frameworks */,
 				596FCA962BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				59B348A929E85F8A0062C2EA /* libnncam.dylib in Frameworks */,
 				597320552D13468A0048BC5C /* libEFWFilter.a in Frameworks */,
@@ -5217,7 +5222,7 @@
 				598786462540C69E00CE8B48 /* libtiff.a in Frameworks */,
 				9DDEFBFF21EE358F00657C8F /* libUSB2ST4Conv.a in Frameworks */,
 				9D74A5132D4B641600A31003 /* libCAA.a in Frameworks */,
-				9D9696C82D5C83BA0051F9E3 /* libsvbonycam.dylib in Frameworks */,
+				598CB7802D6092A200B7211A /* libsvbonycam.dylib in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
 				591CD0F629805E31003243AE /* libnncam.dylib in Frameworks */,
 				597C7224293CFC2B0016D45A /* libASICamera2.a in Frameworks */,
@@ -14696,6 +14701,7 @@
 		9DBC346F1DCB26E400588DB9 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				598CB77F2D6092A200B7211A /* libsvbonycam.dylib */,
 				59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */,
 				59B95B872C6295450027AD80 /* libsbig.dylib */,
 				59B348AE29E85F8B0062C2EA /* libmallincam.dylib */,
