@@ -465,6 +465,8 @@
 #define DEVICETYPE_QHY1920M_OI1920M        4153
 #define DEVICETYPE_QHY1920C_OI1920C        4154
 
+#define DEVICETYPE_QHY811M                 4155
+
 /**
  * Type define for QHY5IIIEND*/
 #define DEVICETYPE_QHY5IIIEND   	4999
@@ -1055,8 +1057,8 @@
 
 /**
  * Type define for QHY-DevelopDev*/
-#define QHY5IIICOMMON_MAX_WIDTH      14304//6280//5336//4144//3864//5680//2712//3864// 2712// 1408    //8432  	
-#define QHY5IIICOMMON_MAX_HEIGHT     10748//4210//4908//3064//2192//3710//1538//2180// 1538// 1052    //5648	  
+#define QHY5IIICOMMON_MAX_WIDTH      19776//14304//6280//5336//4144//3864//5680//2712//3864// 2712// 1408    //8432  	
+#define QHY5IIICOMMON_MAX_HEIGHT     13124//10748//4210//4908//3064//2192//3710//1538//2180// 1538// 1052    //5648	  
 
 /**
  * Type define for QHY247*/
@@ -1140,8 +1142,11 @@
 #define QHY411_MAX_WIDTH        	14304
 #define QHY411_MAX_HEIGHT        	10748
 
-#define QHY661_MAX_WIDTH        	13960
+#define QHY661_MAX_WIDTH        	13968
 #define QHY661_MAX_HEIGHT        	9696
+
+#define QHY811_MAX_WIDTH        	19776
+#define QHY811_MAX_HEIGHT        	13120
 
 // 10802-92-54=10656 max_y-topBlank-bottomBlank=imageHeight
 // 14304-48-48=14208 max_x-leftBlank-rightBlank=imageWidth
