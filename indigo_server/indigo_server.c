@@ -28,9 +28,10 @@
 #include <dns_sd.h>
 
 #ifdef INDIGO_LINUX
+#include <unistd.h>
+#include <sys/wait.h>
 #include <sys/prctl.h>
-#endif
-#ifdef INDIGO_MACOS
+#elif defined(INDIGO_MACOS)
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 

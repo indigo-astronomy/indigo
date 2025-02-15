@@ -23,9 +23,6 @@
  \file indigo_client.c
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -42,15 +39,24 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #endif
-#ifdef INDIGO_MACOS
+#if defined(INDIGO_MACOS)
 #include <CoreFoundation/CoreFoundation.h>
+#elif defined(INDIGO_LINUX)
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+#else
+#define htonll(x) (x)
+#define ntohll(x) (x)
 #endif
-#if defined(INDIGO_WINDOWS)
+#elif defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma warning(disable:4996)
 #endif
+
+
 
 #include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_client_xml.h>
