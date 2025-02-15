@@ -23,9 +23,6 @@
  \file indigo_client.c
  */
 
-#include <stdio.h>
-#include <string.h>
-#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -42,10 +39,12 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #endif
-#ifdef INDIGO_MACOS
+
+#if defined(INDIGO_MACOS)
 #include <CoreFoundation/CoreFoundation.h>
-#endif
-#if defined(INDIGO_WINDOWS)
+#elif defined(INDIGO_LINUX)
+#include <unistd.h>
+#elif defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>

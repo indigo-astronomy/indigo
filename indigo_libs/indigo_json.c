@@ -36,13 +36,17 @@
 #include <indigo/indigo_json.h>
 #include <indigo/indigo_io.h>
 
- //#undef INDIGO_TRACE_PARSER
- //#define INDIGO_TRACE_PARSER(c) c
- //
- //#undef INDIGO_DEBUG_PROTOCOL
- //#define INDIGO_DEBUG_PROTOCOL(c) c
+#if defined(INDIGO_LINUX)
+#include <arpa/inet.h>
+#endif
 
- //#define PROPERTY_SIZE sizeof(indigo_property)+INDIGO_MAX_ITEMS*(sizeof(indigo_item))
+#ifndef ntohll
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+#else
+#define ntohll(x) (x)
+#endif
+#endif
 
 static long ws_read(indigo_uni_handle* handle, char* buffer, long length) {
 	uint8_t header[14];

@@ -30,10 +30,14 @@
 #include <string.h>
 #include <assert.h>
 #include <stdarg.h>
-
+#include <dns_sd.h>
 #include <sys/stat.h>
 
-#include <dns_sd.h>
+#if defined(INDIGO_LINUX)
+#include <signal.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#endif
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_client.h>

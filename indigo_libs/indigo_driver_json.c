@@ -32,12 +32,20 @@
 #include <assert.h>
 #include <stdint.h>
 
-
 #include <indigo/indigo_json.h>
 #include <indigo/indigo_io.h>
 
-//#undef INDIGO_TRACE_PROTOCOL
-//#define INDIGO_TRACE_PROTOCOL(c) c
+#if defined(INDIGO_LINUX)
+#include <arpa/inet.h>
+#endif
+
+#ifndef htonll
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#else
+#define htonll(x) (x)
+#endif
+#endif
 
 static pthread_mutex_t json_mutex = PTHREAD_MUTEX_INITIALIZER;
 

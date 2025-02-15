@@ -25,12 +25,14 @@
 #include <assert.h>
 #include <signal.h>
 #include <pthread.h>
+#include <errno.h>
 #include <dns_sd.h>
 
 #ifdef INDIGO_LINUX
+#include <unistd.h>
+#include <sys/wait.h>
 #include <sys/prctl.h>
-#endif
-#ifdef INDIGO_MACOS
+#elif defined(INDIGO_MACOS)
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
