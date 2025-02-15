@@ -25,6 +25,7 @@
 #include <assert.h>
 #include <signal.h>
 #include <pthread.h>
+#include <errno.h>
 #include <dns_sd.h>
 
 #ifdef INDIGO_LINUX
