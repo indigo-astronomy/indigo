@@ -1,0 +1,84 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=Image
+ClassGuid={6bdd1fc6-810f-11d0-bec7-08002be2092f}
+provider=%MFG%
+DriverVer=09/12/2021,1.0.0.19561
+CatalogFile=starshootg.cat
+
+[Manufacturer]
+%MFG%=MFG, NTamd64
+
+[MFG.NTamd64]
+"StarShootG10Color"=USBCAM.Dev, USB\VID_0547&PID_11FD
+"StarShootG10Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_11FE
+"StarShootG10Color"=USBCAM.Dev, USB\VID_0547&PID_121A
+"StarShootG10Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_121B
+"StarShootG16Color"=USBCAM.Dev, USB\VID_0547&PID_106B
+"StarShootG16Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_1075
+"StarShootG16Color"=USBCAM.Dev, USB\VID_0547&PID_11EA
+"StarShootG16Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_11EB
+"StarShootG16Mono"=USBCAM.Dev, USB\VID_0547&PID_106D
+"StarShootG16Mono(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_1076
+"StarShootG16Mono"=USBCAM.Dev, USB\VID_0547&PID_11F6
+"StarShootG16Mono(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_11F7
+"StarShootMini6.3Color"=USBCAM.Dev, USB\VID_0547&PID_115A
+"StarShootMini6.3Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_115B
+"StarShootMini6.3Color"=USBCAM.Dev, USB\VID_0547&PID_11CA
+"StarShootMini6.3Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_11CB
+"StarShootMini6.3Mono"=USBCAM.Dev, USB\VID_0547&PID_115C
+"StarShootMini6.3Mono(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_115D
+"StarShootMini6.3Mono"=USBCAM.Dev, USB\VID_0547&PID_11CC
+"StarShootMini6.3Mono(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_11CD
+"StarShootG21Color"=USBCAM.Dev, USB\VID_0547&PID_1258
+"StarShootG21Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_1259
+"StarShootG26Color"=USBCAM.Dev, USB\VID_0547&PID_12B7
+"StarShootG26Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_12B8
+"StarShootG24Color"=USBCAM.Dev, USB\VID_0547&PID_12E4
+"StarShootG24Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_12E5
+"StarShootG26Mono"=USBCAM.Dev, USB\VID_0547&PID_12BF
+"StarShootG26Mono(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_12C0
+"StarShootG10Mono"=USBCAM.Dev, USB\VID_0547&PID_12CF
+"StarShootG10Mono(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_12D0
+"StarShootMini2.0Mono"=USBCAM.Dev, USB\VID_0547&PID_10FF
+"StarShootG24Color"=USBCAM.Dev, USB\VID_0547&PID_15D1
+"StarShootG24Color(USB2.0)"=USBCAM.Dev, USB\VID_0547&PID_15D2
+
+[DestinationDirs]
+USBCAM.Files.Ext = 10,System32\Drivers
+
+[SourceDisksNames]
+1 = %USBCAM.SvcDesc%
+
+[SourceDisksFiles]
+starshootg.sys = 1
+
+[USBCAM.Dev]
+CopyFiles=USBCAM.Files.Ext
+AddReg=USBCAM.AddReg
+
+[USBCAM.Dev.NT]
+CopyFiles=USBCAM.Files.Ext
+AddReg=USBCAM.AddReg
+
+[USBCAM.Dev.NT.Services]
+Addservice = USBCAM, 0x00000002, USBCAM.AddService
+
+[USBCAM.AddService]
+DisplayName    = %USBCAM.SvcDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\starshootg.sys
+LoadOrderGroup = Base
+
+[USBCAM.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,starshootg.sys
+
+[USBCAM.Files.Ext]
+starshootg.sys
+
+[Strings]
+MFG="Orion; https://www.telescope.com"
+USBCAM.SvcDesc="Orion Camera Driver"

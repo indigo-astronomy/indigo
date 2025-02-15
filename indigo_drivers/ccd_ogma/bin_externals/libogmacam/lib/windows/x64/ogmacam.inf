@@ -1,0 +1,59 @@
+[Version]
+Signature="$WINDOWS NT$"
+Class=Image
+ClassGuid={6bdd1fc6-810f-11d0-bec7-08002be2092f}
+provider=%MFG%
+DriverVer=08/20/2023,1.0.0.23207
+CatalogFile=ogmacam.cat
+
+[Manufacturer]
+%MFG%=MFG, NTamd64
+
+[MFG.NTamd64]
+"AP26CC"=USBCAM.Dev, USB\VID_9745&PID_92B7
+"AP26CC(USB2.0)"=USBCAM.Dev, USB\VID_9745&PID_92B8
+"AP26CC"=USBCAM.Dev, USB\VID_9745&PID_93DA
+"AP26CC(USB2.0)"=USBCAM.Dev, USB\VID_9745&PID_93DB
+"AP26MC"=USBCAM.Dev, USB\VID_9745&PID_92BF
+"AP26MC(USB2.0)"=USBCAM.Dev, USB\VID_9745&PID_92C0
+"AP26MC"=USBCAM.Dev, USB\VID_9745&PID_9428
+"AP26MC(USB2.0)"=USBCAM.Dev, USB\VID_9745&PID_9429
+
+[DestinationDirs]
+USBCAM.Files.Ext = 10,System32\Drivers
+
+[SourceDisksNames]
+1 = %USBCAM.SvcDesc%
+
+[SourceDisksFiles]
+ogmacam.sys = 1
+
+[USBCAM.Dev]
+CopyFiles=USBCAM.Files.Ext
+AddReg=USBCAM.AddReg
+
+[USBCAM.Dev.NT]
+CopyFiles=USBCAM.Files.Ext
+AddReg=USBCAM.AddReg
+
+[USBCAM.Dev.NT.Services]
+Addservice = USBCAM, 0x00000002, USBCAM.AddService
+
+[USBCAM.AddService]
+DisplayName    = %USBCAM.SvcDesc%
+ServiceType    = 1                  ; SERVICE_KERNEL_DRIVER
+StartType      = 3                  ; SERVICE_DEMAND_START
+ErrorControl   = 1                  ; SERVICE_ERROR_NORMAL
+ServiceBinary  = %10%\System32\Drivers\ogmacam.sys
+LoadOrderGroup = Base
+
+[USBCAM.AddReg]
+HKR,,DevLoader,,*ntkern
+HKR,,NTMPDriver,,ogmacam.sys
+
+[USBCAM.Files.Ext]
+ogmacam.sys
+
+[Strings]
+MFG="OGMAVision LLC"
+USBCAM.SvcDesc="OGMAVision Camera Driver"
