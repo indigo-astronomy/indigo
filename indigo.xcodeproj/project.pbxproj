@@ -263,7 +263,6 @@
 		595F2933211E211200380EF4 /* DDHidKeyboardBarcodeScanner.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2916211E211100380EF4 /* DDHidKeyboardBarcodeScanner.m */; };
 		595F2934211E211200380EF4 /* DDHidQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2917211E211100380EF4 /* DDHidQueue.m */; };
 		595F2936211E22CC00380EF4 /* indigo_aux_joystick.m in Sources */ = {isa = PBXBuildFile; fileRef = 595F2935211E22CC00380EF4 /* indigo_aux_joystick.m */; };
-		5964F6F72B77ED2100E28F4C /* libqhyccd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 5964F6F62B77ED2100E28F4C /* libqhyccd.dylib */; };
 		5967BB1929B3D83B0003BF22 /* indigo_service_discovery.c in Sources */ = {isa = PBXBuildFile; fileRef = 59790B2F29B2798A00F73B1D /* indigo_service_discovery.c */; };
 		59689AA3245DE40D00F950CE /* indigo_wheel_manual.c in Sources */ = {isa = PBXBuildFile; fileRef = 59689AA2245DE3E100F950CE /* indigo_wheel_manual.c */; };
 		596FCA8F2BD0320E00F5BACB /* gxccd.h in Headers */ = {isa = PBXBuildFile; fileRef = 596FCA772BD0320E00F5BACB /* gxccd.h */; };
@@ -625,6 +624,8 @@
 		598CB7812D6092A200B7211A /* libsvbonycam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 598CB77F2D6092A200B7211A /* libsvbonycam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		598CB7822D6092B700B7211A /* libsvbonycam.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 598CB77F2D6092A200B7211A /* libsvbonycam.dylib */; };
 		598CB7832D6092B700B7211A /* libsvbonycam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 598CB77F2D6092A200B7211A /* libsvbonycam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		598CB7842D61314F00B7211A /* libqhyccd.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */; };
+		598CB7852D61314F00B7211A /* libqhyccd.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59CC444C2CD64E3C00F21E17 /* libqhyccd.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		598FE2752614F91A00E0DA21 /* indigo_dome_talon6ror.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBEF2613B4A200B904EE /* indigo_dome_talon6ror.c */; };
 		598FE27D2614F91B00E0DA21 /* indigo_dome_talon6ror.c in Sources */ = {isa = PBXBuildFile; fileRef = 59D8BBEF2613B4A200B904EE /* indigo_dome_talon6ror.c */; };
 		599150D329EF2AC900E63C3B /* libstarshootg.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; };
@@ -880,7 +881,6 @@
 		9D0829592C1986B1002166E1 /* libomegonprocam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0F029805E30003243AE /* libomegonprocam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D08295A2C1986B1002166E1 /* libPlayerOneCamera.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5947BB8E2990270000040E99 /* libPlayerOneCamera.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D08295B2C1986B1002166E1 /* libPlayerOnePW.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5947BB8F2990270000040E99 /* libPlayerOnePW.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
-		9D08295C2C1986B1002166E1 /* libqhyccd.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 5964F6F62B77ED2100E28F4C /* libqhyccd.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D08295D2C1986BA002166E1 /* libstarshootg.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591CD0EF29805E30003243AE /* libstarshootg.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D08295E2C1986BA002166E1 /* libSVBCameraSDK.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 59A68E37277DF2B0000439CC /* libSVBCameraSDK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		9D08295F2C1986BA002166E1 /* libtoupcam.dylib in Embed Libraries */ = {isa = PBXBuildFile; fileRef = 591B017221A49F4A006A1CD8 /* libtoupcam.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
@@ -1089,6 +1089,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
+				598CB7852D61314F00B7211A /* libqhyccd.dylib in Embed Libraries */,
 				59989A7A2A1BCEA200665AB7 /* libnncam.dylib in Embed Libraries */,
 				9D0829572C1986A8002166E1 /* libbressercam.dylib in Embed Libraries */,
 				9D08295E2C1986BA002166E1 /* libSVBCameraSDK.dylib in Embed Libraries */,
@@ -1098,7 +1099,6 @@
 				9D0829602C1986BA002166E1 /* libusb-1.0.0.dylib in Embed Libraries */,
 				9D0829592C1986B1002166E1 /* libomegonprocam.dylib in Embed Libraries */,
 				9D08295D2C1986BA002166E1 /* libstarshootg.dylib in Embed Libraries */,
-				9D08295C2C1986B1002166E1 /* libqhyccd.dylib in Embed Libraries */,
 				59989A7C2A1BCEB200665AB7 /* libmallincam.dylib in Embed Libraries */,
 				59B95B892C6295450027AD80 /* libsbig.dylib in Embed Libraries */,
 				9D0829582C1986A9002166E1 /* libdc1394.dylib in Embed Libraries */,
@@ -5213,7 +5213,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5964F6F72B77ED2100E28F4C /* libqhyccd.dylib in Frameworks */,
 				596FCA992BD0320E00F5BACB /* libgxccd.a in Frameworks */,
 				597C7223293CFBD80016D45A /* libjpeg.a in Frameworks */,
 				5903560F25A8CA49001DC5DB /* libgps.a in Frameworks */,
@@ -5224,6 +5223,7 @@
 				9D74A5132D4B641600A31003 /* libCAA.a in Frameworks */,
 				598CB7802D6092A200B7211A /* libsvbonycam.dylib in Frameworks */,
 				59A52F2C21A341B0000B6F27 /* libfcusb.a in Frameworks */,
+				598CB7842D61314F00B7211A /* libqhyccd.dylib in Frameworks */,
 				591CD0F629805E31003243AE /* libnncam.dylib in Frameworks */,
 				597C7224293CFC2B0016D45A /* libASICamera2.a in Frameworks */,
 				59A52F1921A34181000B6F27 /* libgpusb.a in Frameworks */,
@@ -16859,6 +16859,7 @@
 					indigo_drivers/ccd_apogee/bin_externals,
 					"indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include",
 					indigo_drivers/gps_gpsd/externals/libgps,
+					indigo_drivers/rotator_asi/bin_externals/libCAA/include,
 					"${inherited}",
 				);
 				USER_HEADER_SEARCH_PATHS = (
@@ -16940,6 +16941,7 @@
 					indigo_drivers/ccd_apogee/bin_externals,
 					"indigo_drivers/ccd_qsi/bin_externals/qsiapi-7.6.0/build/include",
 					indigo_drivers/gps_gpsd/externals/libgps,
+					indigo_drivers/rotator_asi/bin_externals/libCAA/include,
 					"${inherited}",
 				);
 				USER_HEADER_SEARCH_PATHS = (

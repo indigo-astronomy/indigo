@@ -172,6 +172,7 @@ int libusb_hotplug_register_callback_sim(libusb_context *ctx, libusb_hotplug_eve
 	callback_info->cb_fn = cb_fn;
 	callback_info->user_data = user_data;
 	callback_info->next = hotplug_callback_list;
+	*handle = last_handle;
 	INDIGO_DEBUG(indigo_debug("Registered USB hotplug callback %d for %d:%d", last_handle, vendor_id, product_id));
 	pthread_mutex_lock(&hotplug_callback_list_mutex);
 	hotplug_callback_list = callback_info;
@@ -192,25 +193,25 @@ int libusb_hotplug_deregister_callback_poll(libusb_context *ctx, libusb_hotplug_
 		hotplug_callback_info *callback_info = hotplug_callback_list;
 		if (hotplug_callback_list->handle == handle) {
 			hotplug_callback_list = hotplug_callback_list->next;
-			INDIGO_DEBUG(indigo_debug("Deregistered USB hotplug callback %d", hotplug_callback_list->handle));
 			indigo_safe_free(callback_info);
+			INDIGO_DEBUG(indigo_debug("Deregistered USB hotplug callback %d", handle));
 			pthread_mutex_unlock(&hotplug_callback_list_mutex);
 			return LIBUSB_SUCCESS;
 		}
 		hotplug_callback_info *callback_next = callback_info->next;
-		pthread_mutex_lock(&hotplug_callback_list_mutex);
 		while (callback_next != NULL) {
 			if (callback_next->handle == handle) {
 				callback_info->next = callback_next->next;
-				indigo_safe_free(callback_info);
-				INDIGO_DEBUG(indigo_debug("Deregistered USB hotplug callback %d", hotplug_callback_list->handle));
+				indigo_safe_free(callback_next);
+				INDIGO_DEBUG(indigo_debug("Deregistered USB hotplug callback %d", handle));
 				pthread_mutex_unlock(&hotplug_callback_list_mutex);
 				return LIBUSB_SUCCESS;
 			}
+			callback_info = callback_next;
 			callback_next = callback_next->next;
 		}
 	}
-	indigo_error("Deregistered USB hotplug callback %d", hotplug_callback_list->handle);
+	indigo_error("Deregistered USB hotplug callback %d", handle);
 	pthread_mutex_unlock(&hotplug_callback_list_mutex);
 	return LIBUSB_ERROR_INVALID_PARAM;
 }

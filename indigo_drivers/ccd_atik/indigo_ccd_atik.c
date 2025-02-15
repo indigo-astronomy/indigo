@@ -73,7 +73,7 @@
 typedef struct {
 	ArtemisHandle handle;
 	int index;
-	libusb_device *dev;
+	char serial[64];
 	int device_count;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	unsigned short relay_mask;
@@ -854,30 +854,30 @@ static void plug_handler(indigo_device *device) {
 			PRIVATE_DATA->index = -1;
 	}
 	int count = ArtemisDeviceCount();
+	bool found = false;
 	for (int j = 0; j < count; j++) {
-		libusb_device *dev;
-		if (ArtemisDeviceGetLibUSBDevice(j, &dev) == ARTEMIS_OK) {
+		char serial[64] = "";
+		if (ArtemisDeviceSerial(j, serial) == ARTEMIS_OK) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
-				if (device && PRIVATE_DATA->dev == dev) {
+				if (device && !strcpy(PRIVATE_DATA->serial, serial)) {
 					PRIVATE_DATA->index = j;
-					dev = NULL;
+					found = true;
 					break;
 				}
 			}
 		}
-		if (dev) {
+		if (!found) {
 			atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
 			private_data->index = j;
-			private_data->dev = dev;
+			strcpy(private_data->serial, serial);
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
 			device->master_device = master_device;
-			char name[INDIGO_NAME_SIZE], usb_path[INDIGO_NAME_SIZE];
+			char name[INDIGO_NAME_SIZE];
 			ArtemisDeviceName(j, name);
-			indigo_get_usb_path(dev, usb_path);
 			snprintf(device->name, INDIGO_NAME_SIZE, "%s", name);
-			indigo_make_name_unique(device->name, "%s", usb_path);
+			indigo_make_name_unique(device->name, "%s", serial);
 			device->private_data = private_data;
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] == NULL) {
@@ -889,7 +889,7 @@ static void plug_handler(indigo_device *device) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				device->master_device = master_device;
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider)", name);
-				indigo_make_name_unique(device->name, "%s", usb_path);
+				indigo_make_name_unique(device->name, "%s", serial);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -902,7 +902,7 @@ static void plug_handler(indigo_device *device) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				device->master_device = master_device;
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel)", name);
-				indigo_make_name_unique(device->name, "%s", usb_path);
+				indigo_make_name_unique(device->name, "%s", serial);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -925,13 +925,12 @@ static void unplug_handler(indigo_device *device) {
 	}
 	int count = ArtemisDeviceCount();
 	for (int j = 0; j < count; j++) {
-		libusb_device *dev;
-		if (ArtemisDeviceGetLibUSBDevice(j, &dev) == ARTEMIS_OK) {
+		char serial[64];
+		if (ArtemisDeviceSerial(j, serial) == ARTEMIS_OK) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
-				if (device && PRIVATE_DATA->dev == dev) {
+				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {
 					device->gp_bits = 1;
-					dev = NULL;
 					break;
 				}
 			}

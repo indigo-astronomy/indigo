@@ -190,4 +190,4 @@ and rerun the build
 
 ## How to build INDIGO on Windows
 
-Open indigo_windows.sln in top level directory and build indigo_server target in Release configuration and x64 platform (support for Win32 and ARM64 platforms is very limited). The result binaries are placed in build/Release/x64.
+`msbuild indigo_windows.sln /t:Build /p:Configuration=Release`
