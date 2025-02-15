@@ -1133,7 +1133,7 @@ static void process_plug_event(libusb_device *dev) {
 	INDIGO_DEBUG_DRIVER(int rc =) libusb_get_device_descriptor(dev, &descriptor);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "libusb_get_device_descriptor ->  %s", rc < 0 ? libusb_error_name(rc) : "OK");
 	for (int i = 0; SX_PRODUCTS[i].name; i++) {
-		if (descriptor.idVendor == SX_VENDOR_ID && SX_PRODUCTS[i].product == descriptor.idProduct) {
+		if (SX_PRODUCTS[i].product == descriptor.idProduct) {
 			sx_private_data *private_data = indigo_safe_malloc(sizeof(sx_private_data));
 			private_data->dev = dev;
 			libusb_ref_device(dev);

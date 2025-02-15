@@ -31,6 +31,7 @@
 
 #if defined(INDIGO_MACOS) || defined(INDIGO_LINUX)
 #include <libusb-1.0/libusb.h>
+#define INDIGO_USB_HOTPLUG_POLLING
 #elif defined(INDIGO_FREEBSD)
 #include <libusb.h>
 #elif defined(INDIGO_WINDOWS)
