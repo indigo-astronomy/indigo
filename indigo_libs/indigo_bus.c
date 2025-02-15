@@ -23,6 +23,11 @@
  \file indigo_bus.c
  */
 
+#if defined(INDIGO_LINUX)
+#define _GNU_SOURCE
+#define PTHREAD_RECURSIVE_MUTEX_INITIALIZER PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -36,11 +41,6 @@
 #include <syslog.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
-#endif
-
-#if defined(INDIGO_LINUX)
-#define _GNU_SOURCE
-#define PTHREAD_RECURSIVE_MUTEX_INITIALIZER PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
 #endif
 
 #include <indigo/indigo_bus.h>
