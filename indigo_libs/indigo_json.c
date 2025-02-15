@@ -36,6 +36,10 @@
 #include <indigo/indigo_json.h>
 #include <indigo/indigo_io.h>
 
+#if defined(INDIGO_LINUX)
+#include <arpa/inet.h>
+#endif
+
 #ifndef ntohll
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define ntohll(x) (((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))

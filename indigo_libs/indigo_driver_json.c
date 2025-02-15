@@ -35,6 +35,10 @@
 #include <indigo/indigo_json.h>
 #include <indigo/indigo_io.h>
 
+#if defined(INDIGO_LINUX)
+#include <arpa/inet.h>
+#endif
+
 #ifndef htonll
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 #define htonll(x) (((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))

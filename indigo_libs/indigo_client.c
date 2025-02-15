@@ -39,8 +39,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #endif
+
 #if defined(INDIGO_MACOS)
 #include <CoreFoundation/CoreFoundation.h>
+#elif defined(INDIG_LINUX)
+#include <unistd.h>
 #elif defined(INDIGO_WINDOWS)
 #include <io.h>
 #include <winsock2.h>
