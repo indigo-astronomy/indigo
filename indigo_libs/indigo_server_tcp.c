@@ -36,6 +36,7 @@
 #if defined(INDIGO_LINUX)
 #include <signal.h>
 #include <unistd.h>
+#include <arpa/inet.h>
 #endif
 
 #include <indigo/indigo_bus.h>
