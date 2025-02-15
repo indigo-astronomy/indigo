@@ -7,6 +7,8 @@
 #if __CPP_MODE__
 #include <functional>
 #include <string>
+#include <algorithm>
+#include <array>
 #endif
 
 
@@ -489,8 +491,7 @@ EXPORTC uint32_t STDCALL OSXInitQHYCCDFirmwareArray();
 
 
 
-EXPORTC uint32_t STDCALL OSXInitQHYCCDAndroidFirmwareArray(int idVendor,int idProduct,
-    qhyccd_handle *handle);
+EXPORTC uint32_t STDCALL OSXInitQHYCCDAndroidFirmwareArray(int idVendor,int idProduct, int fileDescriptor);
 
 
 
