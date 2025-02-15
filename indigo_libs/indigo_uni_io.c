@@ -765,7 +765,7 @@ void indigo_uni_set_socket_write_timeout(indigo_uni_handle *handle, long timeout
 	}
 }
 
-static bool wait_for_data(indigo_uni_handle *handle, long timeout) {
+static int wait_for_data(indigo_uni_handle *handle, long timeout) {
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (handle->type == INDIGO_FILE_HANDLE) {
 		return true;
@@ -778,14 +778,14 @@ static bool wait_for_data(indigo_uni_handle *handle, long timeout) {
 			case -1:
 				handle->last_error = errno;
 				indigo_error("%d -> // Failed to wait for (%s)", handle->index, indigo_uni_strerror(handle));
-				return false;
+				return -1;
 			case 0:
 				handle->last_error = 0;
 				indigo_log_on_level(handle->log_level, "%d <- // timeout", handle->index);
-				return false;
+				return 0;
 			default:
 				handle->last_error = 0;
-				return true;
+				return 1;
 		}
 	}
 #elif defined(INDIGO_WINDOWS)
@@ -1034,7 +1034,7 @@ long indigo_uni_discard(indigo_uni_handle *handle, long timeout) {
 	char c;
 	long bytes_read = 0;
 	while (true) {
-		if (!wait_for_data(handle, timeout)) {
+		if (wait_for_data(handle, timeout) <= 0) {
 			break;
 		}
 		if (read_data(handle, &c, 1) <= 0) {
@@ -1056,14 +1056,21 @@ long indigo_uni_read_section(indigo_uni_handle *handle, char *buffer, long lengt
 	bool terminated = false;
 	while (bytes_read < length) {
 		char c = 0;
-		if (!wait_for_data(handle, timeout)) {
-			if (handle->log_level < 0) {
-				indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
-			} else {
-				indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+		if (timeout >= 0) {
+			switch (wait_for_data(handle, timeout)) {
+				case -1:
+					return -1;
+				case 0:
+					if (handle->log_level < 0) {
+						indigo_log_on_level(-handle->log_level, "%d -> // %ld bytes read", handle->index, bytes_read - 1);
+					} else {
+						indigo_log_on_level(handle->log_level, "%d -> %.*s", handle->index, bytes_read, buffer);
+					}
+					buffer[bytes_read] = 0;
+					return bytes_read;
+				default:
+					break;
 			}
-			buffer[bytes_read] = 0;
-			return bytes_read;
 		}
 		switch (read_data(handle, &c, 1)) {
 			case -1:
