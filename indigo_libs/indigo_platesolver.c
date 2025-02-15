@@ -25,13 +25,11 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <assert.h>
 #include <string.h>
 #include <errno.h>
 #include <time.h>
 #include <math.h>
-#include <fcntl.h>
 #include <sys/stat.h>
 
 #include <indigo/indigo_agent.h>
@@ -79,10 +77,9 @@ void indigo_platesolver_save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_SYNC_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_PA_SETTINGS_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_PLATESOLVER_EXPOSURE_SETTINGS_PROPERTY);
-		if (DEVICE_CONTEXT->property_save_file_handle) {
+		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			close(DEVICE_CONTEXT->property_save_file_handle);
-			DEVICE_CONTEXT->property_save_file_handle = 0;
+			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -155,7 +152,7 @@ static bool mount_control(indigo_device *device, char *operation, double ra, dou
 			indigo_error("AGENT_START_PROCESS didn't become OK in 60s");
 			return false;
 		}
-		indigo_usleep(ONE_SECOND_DELAY * settle_time);
+		indigo_sleep(settle_time);
 		return true;
 	}
 	indigo_send_message(device, "No mount agent selected");

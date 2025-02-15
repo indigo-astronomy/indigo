@@ -351,7 +351,7 @@ static void aux_connection_handler(indigo_device *device) {
 		wcv4ec_status_t wc_stat = {0};
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			if (wcv4ec_read_status(device, &wc_stat)) {
 				if (!strcmp(wc_stat.model_id, DEVICE_ID)) {
 					strcpy(INFO_DEVICE_MODEL_ITEM->text.value, wc_stat.model_id);
@@ -470,7 +470,7 @@ static void aux_cover_handler(indigo_device *device) {
 		PRIVATE_DATA->operation_start_time = time(NULL);
 		PRIVATE_DATA->operation_running = true;
 		AUX_COVER_PROPERTY->state = INDIGO_BUSY_STATE;
-		indigo_usleep(ONE_SECOND_DELAY);
+		indigo_sleep(1);
 	} else {
 		AUX_COVER_PROPERTY->state = INDIGO_ALERT_STATE;
 	}
@@ -529,7 +529,7 @@ static void aux_set_open_close_handler(indigo_device *device) {
 	sprintf(command, "%d", 10000 + (int)(AUX_SET_OPEN_CLOSE_CLOSE_ITEM->number.target * 100));
 	success = wcv4ec_command(device, command);
 	if (success) {
-		indigo_usleep(ONE_SECOND_DELAY);
+		indigo_sleep(1);
 		AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_OK_STATE;
 	} else {
 		AUX_SET_OPEN_CLOSE_PROPERTY->state = INDIGO_ALERT_STATE;

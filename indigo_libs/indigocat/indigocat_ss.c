@@ -23,7 +23,6 @@
  \file indigo_cat_data.c
  */
 
-
 #include <stdio.h>
 #include <stdbool.h>
 #include <time.h>
@@ -35,6 +34,10 @@
 #define DELTA_UTC_UT1	( -0.477677 / 86400.0)
 #define UT2JD(t) 			((t) / 86400.0 + 2440587.5 + DELTA_UTC_UT1)
 #define JDNOW 				UT2JD(time(NULL))
+
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
 
 static indigocat_ss_entry indigo_ss_data[] = {
 	{ MERCURY, 0.0, 0.0, -1, "Mercury", 0.0, 0.0 },

@@ -36,15 +36,11 @@
 #include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
+
 #include "indigo_wheel_astroasis.h"
 
 #if !defined(__i386__)
-
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include <OasisFilterWheel.h>
 
@@ -155,7 +151,7 @@ static void calibrate_callback(indigo_device *device) {
 
 		OFWStatus status = { 0 };
 		do {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			int res = OFWGetStatus(PRIVATE_DATA->dev_id, &status);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "OFWGetStatus(%d, -> .filterPosition = %d .filterStatus = %d) = %d", PRIVATE_DATA->dev_id, status.filterPosition, status.filterStatus, res);
 		} while (status.filterStatus != STATUS_IDLE);
@@ -554,6 +550,8 @@ out:
 
 	return device;
 }
+
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void wheel_refresh(void) {
 	WHEEL_LIST wheels = { {}, 0 };

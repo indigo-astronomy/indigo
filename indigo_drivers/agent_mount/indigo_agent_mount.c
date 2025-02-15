@@ -23,24 +23,20 @@
  \file indigo_agent_mount.c
  */
 
-#define DRIVER_VERSION 0x0011
+#define DRIVER_VERSION 0x0012
 #define DRIVER_NAME	"indigo_agent_mount"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include <netinet/in.h>
 
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_filter.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_mount_driver.h>
 #include <indigo/indigo_ccd_driver.h>
 #include <indigo/indigo_rotator_driver.h>
@@ -146,14 +142,14 @@ typedef struct {
 	indigo_property_state rotator_position_state;
 	double rotator_position;
 	double initial_frame_rotation;
-	int server_socket;
+	indigo_uni_handle *server_handle;
 	bool mount_unparked;
 	bool dome_unparked;
 	pthread_mutex_t mutex;
 } mount_agent_private_data;
 
 typedef struct {
-	int client_socket;
+	indigo_uni_handle *handle;
 	indigo_device *device;
 } handler_data;
 
@@ -175,10 +171,9 @@ static void save_config(indigo_device *device) {
 		indigo_save_property(device, NULL, AGENT_LIMITS_PROPERTY);
 		AGENT_HA_TRACKING_LIMIT_ITEM->number.value = tmp_ha_tracking_limit;
 		 AGENT_LOCAL_TIME_LIMIT_ITEM->number.value = tmp_local_time_limit;
-		if (DEVICE_CONTEXT->property_save_file_handle) {
+		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			close(DEVICE_CONTEXT->property_save_file_handle);
-			DEVICE_CONTEXT->property_save_file_handle = 0;
+			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -249,21 +244,17 @@ static void sync_process(indigo_device *device) {
 	mount_control(device, MOUNT_ON_COORDINATES_SET_SYNC_ITEM_NAME);
 }
 
-static void lx200_server_worker_thread(handler_data *data) {
-	indigo_device *device = data->device;
-	int client_socket = data->client_socket;
+static void lx200_server_worker_thread(indigo_uni_worker_data *data) {
+	indigo_device *device = data->data;
 	char buffer_in[128];
 	char buffer_out[128];
 	long result = 1;
-	struct timeval tv;
-	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
-	setsockopt(client_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof tv);
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", client_socket);
+	indigo_uni_set_socket_read_timeout(data->handle, INDIGO_DELAY(5));
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: CONNECTED", data->handle->index);
 	while (true) {
 		*buffer_in = 0;
 		*buffer_out = 0;
-		result = read(client_socket, buffer_in, 1);
+		result = indigo_uni_read_available(data->handle, buffer_in, 1);
 		if (result <= 0) {
 			break;
 		}
@@ -274,7 +265,7 @@ static void lx200_server_worker_thread(handler_data *data) {
 		} else if (*buffer_in == ':') {
 			int i = 0;
 			while (i < sizeof(buffer_in)) {
-				result = read(client_socket, buffer_in + i, 1);
+				result = indigo_uni_read_available(data->handle, buffer_in + i, 1);
 				if (result <= 0) {
 					break;
 				}
@@ -402,97 +393,33 @@ static void lx200_server_worker_thread(handler_data *data) {
 				strcpy(buffer_out, "1");
 			}
 			if (*buffer_out) {
-				indigo_write(client_socket, buffer_out, strlen(buffer_out));
-				if (*buffer_in == 'G')
-					INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
-				else
-					INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", client_socket, buffer_in, buffer_out);
+				indigo_uni_write(data->handle, buffer_out, (long)strlen(buffer_out));
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> '%s'", data->handle->index, buffer_in, buffer_out);
 			} else {
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", client_socket, buffer_in);
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "%d: '%s' -> ", data->handle->index, buffer_in);
 			}
 		}
 	}
-	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", client_socket);
-	close(client_socket);
+	INDIGO_DRIVER_TRACE(MOUNT_AGENT_NAME, "%d: DISCONNECTED", data->handle->index);
+	indigo_uni_close(&data->handle);
 	free(data);
 }
 
 static void start_lx200_server(indigo_device *device) {
-	struct sockaddr_in client_name;
-	unsigned int name_len = sizeof(client_name);
-
 	int port = (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value;
-	int server_socket = socket(PF_INET, SOCK_STREAM, 0);
-	if (server_socket == -1) {
-		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: socket() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
-		return;
-	}
-	int reuse = 1;
-	if (setsockopt(server_socket, SOL_SOCKET,SO_REUSEADDR, &reuse, sizeof(reuse)) < 0) {
-		close(server_socket);
-		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
-		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: setsockopt() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
-		return;
-	}
-	struct sockaddr_in server_address;
-	unsigned int server_address_length = sizeof(server_address);
-	server_address.sin_family = AF_INET;
-	server_address.sin_port = htons(port);
-	server_address.sin_addr.s_addr = htonl(INADDR_ANY);
-	if (bind(server_socket, (struct sockaddr *)&server_address, server_address_length) < 0) {
-		close(server_socket);
-		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
-		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: bind() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
-		return;
-	}
-	if (getsockname(server_socket, (struct sockaddr *)&(server_address), &server_address_length) < 0) {
-		close(server_socket);
-		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
-		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: getsockname() failed (%s)", MOUNT_AGENT_NAME, strerror(errno));
-		return;
-	}
-	if (listen(server_socket, 5) < 0) {
-		close(server_socket);
-		indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
-		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_ALERT_STATE;
-		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "%s: Can't listen on server socket (%s)", MOUNT_AGENT_NAME, strerror(errno));
-		return;
-	}
-	if (port == 0) {
-		AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value = port = ntohs(server_address.sin_port);
-		AGENT_LX200_CONFIGURATION_PROPERTY->state = INDIGO_OK_STATE;
-		indigo_update_property(device, AGENT_LX200_CONFIGURATION_PROPERTY, NULL);
-	}
-	DEVICE_PRIVATE_DATA->server_socket = server_socket;
 	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
-	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Server started on %d", (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value);
-	while (DEVICE_PRIVATE_DATA->server_socket) {
-		int client_socket = accept(DEVICE_PRIVATE_DATA->server_socket, (struct sockaddr *)&client_name, &name_len);
-		if (client_socket != -1) {
-			handler_data *data = indigo_safe_malloc(sizeof(handler_data));
-			data->client_socket = client_socket;
-			data->device = device;
-			if (!indigo_async((void *(*)(void *))lx200_server_worker_thread, data))
-				INDIGO_DRIVER_ERROR(MOUNT_AGENT_NAME, "Can't create worker thread for connection (%s)", strerror(errno));
-		}
-	}
+	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Starting server on %d", (int)AGENT_LX200_CONFIGURATION_PORT_ITEM->number.value);
+	indigo_uni_open_tcp_server_socket(&port, &DEVICE_PRIVATE_DATA->server_handle, lx200_server_worker_thread, device, NULL, INDIGO_LOG_DEBUG);
 	AGENT_LX200_SERVER_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_set_switch(AGENT_LX200_SERVER_PROPERTY, AGENT_LX200_SERVER_STOPPED_ITEM, true);
 	indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, "Server finished");
 }
 
 static void stop_lx200_server(indigo_device *device) {
-	int server_socket = DEVICE_PRIVATE_DATA->server_socket;
-	if (server_socket) {
+	if (DEVICE_PRIVATE_DATA->server_handle != NULL) {
 		AGENT_LX200_SERVER_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, AGENT_LX200_SERVER_PROPERTY, NULL);
-		DEVICE_PRIVATE_DATA->server_socket = 0;
-		shutdown(server_socket, SHUT_RDWR);
-		close(server_socket);
+		indigo_uni_close(&DEVICE_PRIVATE_DATA->server_handle);
 	}
 }
 
@@ -1062,7 +989,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation started: initial_frame_rotation = %g, rotator_position = %g, parallactic_angle = %f", DEVICE_PRIVATE_DATA->initial_frame_rotation, DEVICE_PRIVATE_DATA->rotator_position, AGENT_MOUNT_DISPLAY_COORDINATES_PARALLACTIC_ANGLE_ITEM->number.value);
 			} else {
 				DEVICE_PRIVATE_DATA->initial_frame_rotation = 0;
-				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME,"Derotation stopped");
+				INDIGO_DRIVER_DEBUG(MOUNT_AGENT_NAME, "Derotation stopped");
 			}
 			AGENT_FIELD_DEROTATION_PROPERTY->state = INDIGO_OK_STATE;
 			indigo_update_property(device, AGENT_FIELD_DEROTATION_PROPERTY, NULL);

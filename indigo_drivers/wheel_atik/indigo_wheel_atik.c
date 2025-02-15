@@ -34,15 +34,10 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <libatik.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_wheel_atik.h"
 
@@ -90,7 +85,7 @@ static void wheel_connect_callback(indigo_device *device) {
 				if (PRIVATE_DATA->slot_count > 0 && PRIVATE_DATA->slot_count <= 9) {
 					break;
 				}
-				indigo_usleep(ONE_SECOND_DELAY);
+				indigo_sleep(1);
 			}
 			WHEEL_SLOT_ITEM->number.max = WHEEL_SLOT_NAME_PROPERTY->count = WHEEL_SLOT_OFFSET_PROPERTY->count = PRIVATE_DATA->slot_count;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;

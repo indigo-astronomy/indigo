@@ -32,6 +32,16 @@
 #include <indigo/indigo_wheel_driver.h>
 #include <indigo/indigo_focuser_driver.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -39,7 +49,7 @@ extern "C" {
 /** Register Bresser CCD hot-plug callback
  */
 
-extern indigo_result indigo_ccd_bresser(indigo_driver_action action, indigo_driver_info *info);
+INDIGO_EXTERN indigo_result indigo_ccd_bresser(indigo_driver_action action, indigo_driver_info *info);
 
 #ifdef __cplusplus
 }

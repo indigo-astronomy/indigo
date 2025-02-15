@@ -29,9 +29,9 @@
 #include <unistd.h>
 #include <assert.h>
 #include <stdarg.h>
-#include <libusb-1.0/libusb.h>
 
 #include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ptp.h"
 #include "indigo_ptp_sony.h"
@@ -1365,7 +1365,7 @@ bool ptp_sony_initialise(indigo_device *device) {
 				INDIGO_LOG(indigo_log("  %04x %s", *property, ptp_property_sony_code_label(*property)));
 			}
 			// SONY a7II and a7S need to wait to boot
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			ptp_transaction_3_0(device, ptp_operation_sony_SDIOConnect, 3, 0, 0);
 			if (ptp_transaction_0_0_i(device, ptp_operation_sony_GetAllDevicePropData, &buffer, &size)) {
 				uint8_t *source = buffer;

@@ -42,6 +42,10 @@
 #define RADIUS_R4 65
 #define RADIUS_R5 27
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop saturn_longitude_l0[LONG_L0] = {
     {     0.87401354025,  0.00000000000,        0.00000000000},
     {     0.11107659762,  3.96205090159,      213.29909543800},

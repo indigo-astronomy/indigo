@@ -25,16 +25,19 @@
 
 #ifndef indigo_client_h
 #define indigo_client_h
-
 #include <pthread.h>
 #include <stdbool.h>
-
 #include <indigo/indigo_bus.h>
-
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #include <indigo/indigo_driver.h>
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
 #else
-#include <indigo/indigo_names.h>
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
 #endif
 
 #ifdef __cplusplus
@@ -46,14 +49,13 @@ extern "C" {
 /** Use <enableBLOB>URL</enableBLOB> for remote INDIGO servers;
  *  defined in indigo_xml.c
  */
-extern bool indigo_use_blob_urls;
+INDIGO_EXTERN bool indigo_use_blob_urls;
 
 /** Client name used for enumeration requests to set adapter name on server side for client identification in trace logs. Defaults to argv[0]
  */
 
-extern char *indigo_client_name;
+INDIGO_EXTERN char *indigo_client_name;
 
-#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 #define INDIGO_MAX_DRIVERS    256
 
 /** Driver entry type.
@@ -62,9 +64,36 @@ typedef struct {
 	char description[INDIGO_NAME_SIZE];     ///< driver description
 	char name[INDIGO_NAME_SIZE];            ///< driver name (entry point name)
 	driver_entry_point driver;              ///< driver entry point
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	void *dl_handle;                        ///< dynamic library handle (NULL for statically linked driver)
+#elif defined(INDIGO_WINDOWS)
+	HMODULE dl_handle;                        ///< dynamic library handle (NULL for statically linked driver)
+#endif
 	bool initialized;												///< driver is initialized
 } indigo_driver_entry;
+
+/** Array of all available drivers (statically & dynamically linked).
+ */
+INDIGO_EXTERN indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
+
+/** Add statically linked driver.
+ */
+INDIGO_EXTERN indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry** driver);
+
+/** Check if the driver is initialized, This function is not protected by mutex so it must be called in synchronized sections.
+		Its intended useage is in driver entrypoints.
+ */
+INDIGO_EXTERN bool indigo_driver_initialized(char* driver_name);
+
+/** Remove statically linked driver or remove & unload dynamically linked driver
+ */
+INDIGO_EXTERN indigo_result indigo_remove_driver(indigo_driver_entry* driver);
+
+/** Load & add dynamically linked driver.
+ */
+INDIGO_EXTERN indigo_result indigo_load_driver(const char* name, bool init, indigo_driver_entry** driver);
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 /** Remote executable entry type.
  */
@@ -77,38 +106,17 @@ typedef struct {
 	char last_error[256];										///< last error reported within client thread
 } indigo_subprocess_entry;
 
-/** Array of all available drivers (statically & dynamically linked).
- */
-extern indigo_driver_entry indigo_available_drivers[INDIGO_MAX_DRIVERS];
-
 /** Array of all available subprocesses.
  */
-extern indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
-
-/** Add statically linked driver.
- */
-extern indigo_result indigo_add_driver(driver_entry_point entry_point, bool init, indigo_driver_entry **driver);
-
-/** Check if the driver is initialized, This function is not protected by mutex so it must be called in synchronized sections.
-    Its intended useage is in driver entrypoints.
- */
-extern bool indigo_driver_initialized(char *driver_name);
-
-/** Remove statically linked driver or remove & unload dynamically linked driver
- */
-extern indigo_result indigo_remove_driver(indigo_driver_entry *driver);
-
-/** Load & add dynamically linked driver.
- */
-extern indigo_result indigo_load_driver(const char *name, bool init, indigo_driver_entry **driver);
+INDIGO_EXTERN indigo_subprocess_entry indigo_available_subprocesses[INDIGO_MAX_SERVERS];
 
 /** Start thread for subprocess.
  */
-extern indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess);
+INDIGO_EXTERN indigo_result indigo_start_subprocess(const char *executable, indigo_subprocess_entry **subprocess);
 
 /** Stop thread for subprocess.
  */
-extern indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess);
+INDIGO_EXTERN indigo_result indigo_kill_subprocess(indigo_subprocess_entry *subprocess);
 
 #endif
 
@@ -121,38 +129,37 @@ typedef struct {
 	uint32_t connection_id;                 ///< client connection ID
 	pthread_t thread;                       ///< client thread ID
 	bool thread_started;                    ///< client thread started/stopped
-	int socket;                             ///< stream socket
+	indigo_uni_handle *handle;              ///< stream socket
 	indigo_device *protocol_adapter;        ///< server protocol adapter
-	char last_error[256];										///< last error reported within client thread
 	bool shutdown;													///< request shutdown
 } indigo_server_entry;
 
 
 /** Array of all available servers.
  */
-extern indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
+INDIGO_EXTERN indigo_server_entry indigo_available_servers[INDIGO_MAX_SERVERS];
 
 /** Create bonjour service name.
  */
-void indigo_service_name(const char *host, int port, char *name);
+INDIGO_EXTERN void indigo_service_name(const char *host, int port, char *name);
 
 /** Connect and start thread for remote server.
  */
-extern indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server);
-extern indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server);
+INDIGO_EXTERN indigo_result indigo_connect_server(const char *name, const char *host, int port, indigo_server_entry **server);
+INDIGO_EXTERN indigo_result indigo_connect_server_id(const char *name, const char *host, int port, uint32_t connection_id, indigo_server_entry **server);
 
 /** If connected to the server returns true else returns false and last_error (if not NULL) will contain the last error
     reported within client thread. Last_error should have length of 256.
  */
-extern bool indigo_connection_status(indigo_server_entry *server, char *last_error);
+INDIGO_EXTERN bool indigo_connection_status(indigo_server_entry *server, char *last_error);
 
 /** Disconnect and stop thread for remote server.
  */
-extern indigo_result indigo_disconnect_server(indigo_server_entry *server);
+INDIGO_EXTERN indigo_result indigo_disconnect_server(indigo_server_entry *server);
 
 /** Format item to string.
  */
-extern indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, double value);
+INDIGO_EXTERN indigo_result indigo_format_number(char *buffer, int buffer_size, char *format, double value);
 
 #ifdef __cplusplus
 }

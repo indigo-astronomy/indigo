@@ -25,16 +25,28 @@
  \file indigo_dome_azimuth.h
  */
 
- #ifndef indigo_dome_azimuth_h
- #define indigo_dome_azimuth_h
+#include <indigo/indigo_config.h>
 
- #ifdef __cplusplus
- extern "C" {
- #endif
+#ifndef indigo_dome_azimuth_h
+#define indigo_dome_azimuth_h
 
-extern double map24(double hour);
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
-extern double indigo_dome_solve_azimuth (
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+INDIGO_EXTERN double map24(double hour);
+
+INDIGO_EXTERN double indigo_dome_solve_azimuth (
 	double ha,
 	double dec,
 	double site_latitude,
@@ -45,7 +57,7 @@ extern double indigo_dome_solve_azimuth (
 	double mount_dec_offset_EW
 );
 
-extern double indigo_azimuth_distance(double az1, double az2);
+INDIGO_EXTERN double indigo_azimuth_distance(double az1, double az2);
 
 #ifdef __cplusplus
 }

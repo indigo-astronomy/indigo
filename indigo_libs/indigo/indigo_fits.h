@@ -22,6 +22,16 @@
 #ifndef indigo_fits_h
 #define indigo_fits_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -47,7 +57,7 @@ typedef struct {
 	const char *comment;
 } indigo_fits_keyword;
 
-extern indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fits_size, indigo_fits_keyword *keywords);
+INDIGO_EXTERN indigo_result indigo_raw_to_fits(char *image, int in_size, char **fits, int *fits_size, indigo_fits_keyword *keywords);
 
 #ifdef __cplusplus
 }

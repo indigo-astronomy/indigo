@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <indigo/indigo_dome_azimuth.h>
 
 double map24(double hour) {
 	double hour24;

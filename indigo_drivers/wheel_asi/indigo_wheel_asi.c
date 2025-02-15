@@ -28,21 +28,15 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include "indigo_wheel_asi.h"
+#include <indigo/indigo_usb_utils.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
+#include "indigo_wheel_asi.h"
 
 #include <EFW_filter.h>
 
@@ -104,7 +98,7 @@ static void calibrate_callback(indigo_device *device) {
 	if (res == EFW_SUCCESS) {
 		int pos = 0;
 		do {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = EFWGetPosition(PRIVATE_DATA->dev_id, &pos);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "EFWGetPosition(%d, -> %d) = %d", PRIVATE_DATA->dev_id, pos, res);
@@ -256,7 +250,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+			PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = EFWSetPosition(PRIVATE_DATA->dev_id, PRIVATE_DATA->target_slot-1);
@@ -434,6 +428,7 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	strncpy(suffix, suffix_start, 9);
 }
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void process_plug_event(indigo_device *unused) {
 	EFW_INFO info;
@@ -478,7 +473,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		  indigo_usleep(ONE_SECOND_DELAY);
+		  indigo_sleep(1);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 	char name[64] = {0};

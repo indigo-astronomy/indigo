@@ -373,6 +373,8 @@ static int find_unplugged_device_id() {
 	return id;
 }
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void process_plug_event(indigo_device *unused) {
 	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(
 		 "",

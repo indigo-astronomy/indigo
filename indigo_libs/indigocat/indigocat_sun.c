@@ -21,6 +21,10 @@
 #include <indigo/indigocat/indigocat_transform.h>
 #include <indigo/indigocat/indigocat_nutation.h>
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 void indigocat_sun_geometric_coords(double JD, heliocentric_coords_s * position) {
 	indigocat_earth_heliocentric_coords(JD, position);
 

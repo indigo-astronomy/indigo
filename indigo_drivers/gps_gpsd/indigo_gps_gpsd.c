@@ -136,7 +136,7 @@ static void gps_refresh_callback(indigo_device *device) {
 		if (rc == -1) {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "gps_read(): %s", gps_errstr(rc));
 			GPS_STATUS_PROPERTY->state = INDIGO_ALERT_STATE;
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			continue;
 		}
 

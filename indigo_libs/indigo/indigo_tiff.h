@@ -25,6 +25,16 @@
 #include <stdio.h>
 #include <tiffio.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -36,11 +46,11 @@ typedef struct {
 		toff_t file_offset;
 } indigo_tiff_memory_handle;
 
-extern tsize_t indigo_tiff_read(thandle_t handle, tdata_t data, tsize_t size);
-extern tsize_t indigo_tiff_write(thandle_t handle, tdata_t data, tsize_t size);
-extern toff_t indigo_tiff_seek(thandle_t handle, toff_t off, int whence);
-extern int indigo_tiff_close(thandle_t handle);
-extern toff_t indigo_tiff_size(thandle_t handle);
+INDIGO_EXTERN tsize_t indigo_tiff_read(thandle_t handle, tdata_t data, tsize_t size);
+INDIGO_EXTERN tsize_t indigo_tiff_write(thandle_t handle, tdata_t data, tsize_t size);
+INDIGO_EXTERN toff_t indigo_tiff_seek(thandle_t handle, toff_t off, int whence);
+INDIGO_EXTERN int indigo_tiff_close(thandle_t handle);
+INDIGO_EXTERN toff_t indigo_tiff_size(thandle_t handle);
 
 #ifdef __cplusplus
 }

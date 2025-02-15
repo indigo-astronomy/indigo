@@ -29,14 +29,13 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <fcntl.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_align.h>
 #include <indigo/indigo_align.h>
 
@@ -202,8 +201,8 @@ static void search_stars(indigo_device *device) {
 			double y = ppr_cos * sy - ppr_sin * sx + GUIDER_IMAGE_HEIGHT_ITEM->number.target / 2;
 			if (x >= 0 && x < GUIDER_IMAGE_WIDTH_ITEM->number.target && y >= 0 && y < GUIDER_IMAGE_HEIGHT_ITEM->number.target) {
 				//printf("HIP%5d %6.4f %+7.4f %6.1f %6.1f\n", star_data->hip, star_data->ra, star_data->dec, x, y);
-				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = x;
-				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = y;
+				PRIVATE_DATA->star_x[PRIVATE_DATA->star_count] = (int)x;
+				PRIVATE_DATA->star_y[PRIVATE_DATA->star_count] = (int)y;
 				PRIVATE_DATA->star_a[PRIVATE_DATA->star_count] = mags[(int)star_data->mag];
 				if (PRIVATE_DATA->star_count++ == GUIDER_MAX_STARS) {
 					break;
@@ -264,21 +263,21 @@ static void box_blur_h(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	}
 	double iarr = 1 / (r + r + 1);
 	for (int i = 0; i < h; i++) {
-		int ti = i * w, li = ti, ri = ti + r;
-		int fv = scl[ti], lv = scl[ti + w - 1], val = (r + 1) * fv;
+		int ti = i * w, li = ti, ri = (int)(ti + r);
+		int fv = scl[ti], lv = scl[ti + w - 1], val = (int)((r + 1) * fv);
 		for (int j = 0; j < r; j++)
 			val += scl[ti + j];
 		for (int j = 0  ; j <= r ; j++) {
 			val += scl[ri++] - fv;
-			tcl[ti++] = round(val * iarr);
+			tcl[ti++] = (uint16_t)round(val * iarr);
 		}
-		for (int j = r + 1; j < w-r; j++) {
+		for (int j = (int)(r + 1); j < w - r; j++) {
 			val += scl[ri++] - scl[li++];
-			tcl[ti++] = round(val * iarr);
+			tcl[ti++] = (uint16_t)round(val * iarr);
 		}
-		for (int j = w - r; j < w  ; j++) {
+		for (int j = (int)(w - r); j < w  ; j++) {
 			val += lv - scl[li++];
-			tcl[ti++] = round(val * iarr);
+			tcl[ti++] = (uint16_t)round(val * iarr);
 		}
 	}
 }
@@ -292,26 +291,26 @@ static void box_blur_t(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	}
 	double iarr = 1 / (r + r + 1);
 	for (int i = 0; i < w; i++) {
-		int ti = i, li = ti, ri = ti + r * w;
-		int fv = scl[ti], lv = scl[ti + w * (h - 1)], val = (r + 1) * fv;
+		int ti = i, li = ti, ri = (int)(ti + r * w);
+		int fv = scl[ti], lv = scl[ti + w * (h - 1)], val = (int)((r + 1) * fv);
 		for (int j = 0; j < r; j++)
 			val += scl[ti + j * w];
 		for (int j = 0  ; j <= r ; j++) {
 			val += scl[ri] - fv;
-			tcl[ti] = round(val * iarr);
+			tcl[ti] = (uint16_t)round(val * iarr);
 			ri += w;
 			ti += w;
 		}
-		for (int j = r + 1; j<h-r; j++) {
+		for (int j = (int)(r + 1); j < h - r; j++) {
 			val += scl[ri] - scl[li];
-			tcl[ti] = round(val*iarr);
+			tcl[ti] = (uint16_t)round(val*iarr);
 			li += w;
 			ri += w;
 			ti += w;
 		}
-		for (int j = h - r; j < h  ; j++) {
+		for (int j = (int)(h - r); j < h  ; j++) {
 			val += lv - scl[li];
-			tcl[ti] = round(val * iarr);
+			tcl[ti] = (uint16_t)round(val * iarr);
 			li += w;
 			ti += w;
 		}
@@ -328,13 +327,13 @@ static void box_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 
 static void gauss_blur(uint16_t *scl, uint16_t *tcl, int w, int h, double r) {
 	double ideal = sqrt((12 * r * r / 3) + 1);
-	int wl = floor(ideal);
+	int wl = (int)floor(ideal);
 	if (wl % 2 == 0) {
 		wl--;
 	}
 	int wu = wl + 2;
 	ideal = (12 * r * r - 3 * wl * wl - 12 * wl - 9)/(-4 * wl - 4);
-	int m = round(ideal);
+	int m = (int)round(ideal);
 	int sizes[3];
 	for (int i = 0; i < 3; i++)
 		sizes[i] = i < m ? wl : wu;
@@ -488,7 +487,7 @@ static void create_frame(indigo_device *device) {
 			for (int j = 0; j < frame_height; j++) {
 				int jj = j * j;
 				for (int i = 0; i < frame_width; i++) {
-					raw[j * frame_width + i] = GUIDER_IMAGE_GRADIENT_ITEM->number.target * sqrt(i * i + jj);
+					raw[j * frame_width + i] = (uint16_t)(GUIDER_IMAGE_GRADIENT_ITEM->number.target * sqrt(i * i + jj));
 				}
 			}
 		} else {
@@ -598,7 +597,7 @@ static void create_frame(indigo_device *device) {
 			}
 		} else if (device == PRIVATE_DATA->guider) {
 			for (int i = 0; i < size; i++) {
-				value = raw[i] + (rand() % (int)GUIDER_IMAGE_NOISE_VAR_ITEM->number.target) + GUIDER_IMAGE_NOISE_FIX_ITEM->number.target;
+				value = raw[i] + (rand() % (int)GUIDER_IMAGE_NOISE_VAR_ITEM->number.target) + (int)GUIDER_IMAGE_NOISE_FIX_ITEM->number.target;
 				raw[i] = (value > 65535) ? 65535 : value;
 			}
 		} else {
@@ -607,16 +606,16 @@ static void create_frame(indigo_device *device) {
 		}
 		
 		for (int i = 0; i <= GUIDER_IMAGE_HOTPIXELS_ITEM->number.target; i++) {
-			unsigned x = PRIVATE_DATA->hotpixel_x[i] / horizontal_bin - frame_left;
-			unsigned y = PRIVATE_DATA->hotpixel_y[i] / vertical_bin - frame_top;
+			int x = PRIVATE_DATA->hotpixel_x[i] / horizontal_bin - frame_left;
+			int y = PRIVATE_DATA->hotpixel_y[i] / vertical_bin - frame_top;
 			if (x < 0 || x >= frame_width || y < 0 || y > frame_height) {
 				continue;
 			}
 			if (i) {
 				raw[y * frame_width + x] = 0xFFFF;
 			} else {
-				int col_length = fmin(frame_height, GUIDER_IMAGE_HOTCOL_ITEM->number.target);
-				int row_length = fmin(frame_width, GUIDER_IMAGE_HOTROW_ITEM->number.target);
+				int col_length = (int)fmin(frame_height, GUIDER_IMAGE_HOTCOL_ITEM->number.target);
+				int row_length = (int)fmin(frame_width, GUIDER_IMAGE_HOTROW_ITEM->number.target);
 				for (int j = 0; j < col_length; j++) {
 					raw[j * frame_width + x] = 0xFFFF;
 				}
@@ -664,7 +663,7 @@ static void streaming_timer_callback(indigo_device *device) {
 			CCD_IMAGE_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_update_property(device, CCD_IMAGE_PROPERTY, NULL);
 		}
-		indigo_usleep(CCD_STREAMING_EXPOSURE_ITEM->number.target * ONE_SECOND_DELAY);
+		indigo_sleep(CCD_STREAMING_EXPOSURE_ITEM->number.target);
 		if (CCD_STREAMING_PROPERTY->state == INDIGO_BUSY_STATE && CCD_STREAMING_COUNT_ITEM->number.value != 0) {
 			if (device != PRIVATE_DATA->dslr || !CCD_UPLOAD_MODE_NONE_ITEM->sw.value) {
 				create_frame(device);
@@ -865,7 +864,7 @@ static indigo_result ccd_attach(indigo_device *device) {
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = GUIDER_IMAGE_WIDTH_ITEM->number.target;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = GUIDER_IMAGE_HEIGHT_ITEM->number.target;
 				PRIVATE_DATA->ra = PRIVATE_DATA->dec = -1000;
-				PRIVATE_DATA->guider_image = indigo_safe_malloc(FITS_HEADER_SIZE + 2 * GUIDER_IMAGE_WIDTH_ITEM->number.value * GUIDER_IMAGE_HEIGHT_ITEM->number.value + 2880);
+				PRIVATE_DATA->guider_image = indigo_safe_malloc((size_t)(FITS_HEADER_SIZE + 2 * GUIDER_IMAGE_WIDTH_ITEM->number.value * GUIDER_IMAGE_HEIGHT_ITEM->number.value + 2880));
 			} else {
 				CCD_INFO_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.max = CCD_FRAME_LEFT_ITEM->number.max = CCD_FRAME_WIDTH_ITEM->number.value = IMAGER_WIDTH;
 				CCD_INFO_HEIGHT_ITEM->number.value = CCD_FRAME_HEIGHT_ITEM->number.max = CCD_FRAME_TOP_ITEM->number.max = CCD_FRAME_HEIGHT_ITEM->number.value = IMAGER_HEIGHT;
@@ -971,10 +970,10 @@ static void ccd_connect_callback(indigo_device *device) {
 				indigo_define_property(device, DSLR_ISO_PROPERTY, NULL);
 				indigo_define_property(device, DSLR_BATTERY_LEVEL_PROPERTY, NULL);
 			} else if (device == PRIVATE_DATA->file) {
-				int fd = open(FILE_NAME_ITEM->text.value, O_RDONLY, 0);
-				if (fd == -1)
+				indigo_uni_handle *handle = indigo_uni_open_file(FILE_NAME_ITEM->text.value, -INDIGO_LOG_TRACE);
+				if (handle == NULL)
 					goto failure;
-				if (!indigo_read(fd, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
+				if (!indigo_uni_read(handle, (char *)&PRIVATE_DATA->file_image_header, sizeof(PRIVATE_DATA->file_image_header)))
 					goto failure;
 				CCD_FRAME_TOP_ITEM->number.value = CCD_FRAME_LEFT_ITEM->number.value = 0;
 				CCD_FRAME_WIDTH_ITEM->number.value = CCD_FRAME_WIDTH_ITEM->number.min = CCD_FRAME_WIDTH_ITEM->number.max = PRIVATE_DATA->file_image_header.width;
@@ -1000,10 +999,10 @@ static void ccd_connect_callback(indigo_device *device) {
 				}
 				PRIVATE_DATA->raw_file_image = indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE);
 				PRIVATE_DATA->file_image = indigo_alloc_blob_buffer(size + FITS_HEADER_SIZE);
-				if (!indigo_read(fd, (char *)PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE, size)) {
+				if (!indigo_uni_read(handle, (char *)PRIVATE_DATA->raw_file_image + FITS_HEADER_SIZE, size)) {
 					goto failure;
 				}
-				close(fd);
+				indigo_uni_close(&handle);
 			} else if (device == PRIVATE_DATA->imager) {
 				indigo_set_timer(device, TEMP_UPDATE, ccd_temperature_callback, &PRIVATE_DATA->temperature_timer);
 			}
@@ -1131,8 +1130,8 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_cancel_timer(device, &PRIVATE_DATA->file_exposure_timer);
 	} else if (indigo_property_match_changeable(CCD_BIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_BIN
-		int h = CCD_BIN_HORIZONTAL_ITEM->number.value;
-		int v = CCD_BIN_VERTICAL_ITEM->number.value;
+		int h = (int)CCD_BIN_HORIZONTAL_ITEM->number.value;
+		int v = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		indigo_property_copy_values(CCD_BIN_PROPERTY, property, false);
 		if (!(CCD_BIN_HORIZONTAL_ITEM->number.value == 1 || CCD_BIN_HORIZONTAL_ITEM->number.value == 2 || CCD_BIN_HORIZONTAL_ITEM->number.value == 4) || CCD_BIN_HORIZONTAL_ITEM->number.value != CCD_BIN_VERTICAL_ITEM->number.value) {
 			CCD_BIN_HORIZONTAL_ITEM->number.value = h;
@@ -1223,7 +1222,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			indigo_define_property(device, CCD_MODE_PROPERTY, NULL);
 		}
 		PRIVATE_DATA->lst = 0;
-		PRIVATE_DATA->guider_image = indigo_safe_realloc(PRIVATE_DATA->guider_image, FITS_HEADER_SIZE + 2 * GUIDER_IMAGE_WIDTH_ITEM->number.value * GUIDER_IMAGE_HEIGHT_ITEM->number.value + 2880);
+		PRIVATE_DATA->guider_image = indigo_safe_realloc(PRIVATE_DATA->guider_image, (size_t)(FITS_HEADER_SIZE + 2 * GUIDER_IMAGE_WIDTH_ITEM->number.value * GUIDER_IMAGE_HEIGHT_ITEM->number.value + 2880));
 		GUIDER_SETTINGS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GUIDER_SETTINGS_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -1364,12 +1363,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_cancel_timer(device, &PRIVATE_DATA->dec_guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, duration/1000.0, guider_dec_timer_callback, &PRIVATE_DATA->dec_guider_timer);
@@ -1382,12 +1381,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_cancel_timer(device, &PRIVATE_DATA->ra_guider_timer);
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 			indigo_set_timer(device, duration/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 				indigo_set_timer(device, duration/1000.0, guider_ra_timer_callback, &PRIVATE_DATA->ra_guider_timer);
@@ -1600,11 +1599,11 @@ static void focuser_timer_callback(indigo_device *device) {
 	} else {
 		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value && PRIVATE_DATA->current_position < PRIVATE_DATA->target_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			int steps = FOCUSER_SPEED_ITEM->number.value;
+			int steps = (int)FOCUSER_SPEED_ITEM->number.value;
 			if (PRIVATE_DATA->target_position - PRIVATE_DATA->current_position < steps) {
 				steps = PRIVATE_DATA->target_position - PRIVATE_DATA->current_position;
 			}
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = round(PRIVATE_DATA->current_position + steps);
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (int)round(PRIVATE_DATA->current_position + steps);
 			if (PRIVATE_DATA->backlash_out > steps) {
 				PRIVATE_DATA->backlash_out -= steps;
 			} else {
@@ -1619,11 +1618,11 @@ static void focuser_timer_callback(indigo_device *device) {
 			indigo_set_timer(device, 0.1, focuser_timer_callback, NULL);
 		} else if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value && PRIVATE_DATA->current_position > PRIVATE_DATA->target_position) {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
-			int steps = FOCUSER_SPEED_ITEM->number.value;
+			int steps = (int)FOCUSER_SPEED_ITEM->number.value;
 			if (PRIVATE_DATA->current_position - PRIVATE_DATA->target_position < steps) {
 				steps = PRIVATE_DATA->current_position - PRIVATE_DATA->target_position;
 			}
-			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = round(PRIVATE_DATA->current_position - steps);
+			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position = (int)round(PRIVATE_DATA->current_position - steps);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
 			if (PRIVATE_DATA->backlash_in > steps) {
@@ -1709,10 +1708,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 	} else if (indigo_property_match_changeable(FOCUSER_POSITION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- FOCUSER_POSITION
 		indigo_property_copy_values(FOCUSER_POSITION_PROPERTY, property, false);
-		PRIVATE_DATA->target_position = round(FOCUSER_POSITION_ITEM->number.target);
+		PRIVATE_DATA->target_position = (int)round(FOCUSER_POSITION_ITEM->number.target);
 		if (PRIVATE_DATA->target_position < PRIVATE_DATA->current_position) {
 			if (!FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				PRIVATE_DATA->backlash_in = FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out ? (FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out) : 0;
+				PRIVATE_DATA->backlash_in = FOCUSER_SETTINGS_BL_ITEM->number.value < PRIVATE_DATA->backlash_out ? (int)(FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out) : 0;
 				PRIVATE_DATA->backlash_out = 0;
 			}
 			indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_MOVE_INWARD_ITEM, true);
@@ -1720,7 +1719,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 			indigo_update_property(device, FOCUSER_DIRECTION_PROPERTY, NULL);
 		} else {
 			if (!FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-				PRIVATE_DATA->backlash_out = FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_in ? (FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_in) : 0;
+				PRIVATE_DATA->backlash_out = FOCUSER_SETTINGS_BL_ITEM->number.value > PRIVATE_DATA->backlash_in ? (int)(FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_in) : 0;
 				PRIVATE_DATA->backlash_in = 0;
 			}
 			indigo_set_switch(FOCUSER_DIRECTION_PROPERTY, FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM, true);
@@ -1739,9 +1738,9 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		// -------------------------------------------------------------------------------- FOCUSER_STEPS
 		indigo_property_copy_values(FOCUSER_STEPS_PROPERTY, property, false);
 		if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = round(PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value);
+			PRIVATE_DATA->target_position = (int)round(PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value);
 		} else if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value) {
-			PRIVATE_DATA->target_position = round(PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value);
+			PRIVATE_DATA->target_position = (int)round(PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value);
 		}
 		FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 		FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -1779,10 +1778,10 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		bool was_outward = FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value;
 		indigo_property_copy_values(FOCUSER_DIRECTION_PROPERTY, property, false);
 		if (FOCUSER_DIRECTION_MOVE_OUTWARD_ITEM->sw.value && !was_outward) {
-			PRIVATE_DATA->backlash_out = FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_in ? (FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_in) : 0;
+			PRIVATE_DATA->backlash_out = FOCUSER_SETTINGS_BL_ITEM->number.value > PRIVATE_DATA->backlash_in ? (int)(FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_in) : 0;
 			PRIVATE_DATA->backlash_in = 0;
 		} else if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value && was_outward) {
-			PRIVATE_DATA->backlash_in = FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out ? (FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out) : 0;
+			PRIVATE_DATA->backlash_in = FOCUSER_SETTINGS_BL_ITEM->number.value > PRIVATE_DATA->backlash_out ? (int)(FOCUSER_SETTINGS_BL_ITEM->number.value - PRIVATE_DATA->backlash_out) : 0;
 			PRIVATE_DATA->backlash_out = 0;
 		}
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "backlash_in = %d, backlash_out = %d", PRIVATE_DATA->backlash_in, PRIVATE_DATA->backlash_out);

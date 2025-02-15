@@ -527,7 +527,7 @@ static indigo_result focuser_detach(indigo_device *device) {
 
 -(void)cameraConnected:(PTPCamera*)camera {
   [camera requestEnableTethering];
-   indigo_usleep(ONE_SECOND_DELAY);
+   indigo_sleep(1);
 	indigo_log("%s connected", [camera.name cStringUsingEncoding:NSUTF8StringEncoding]);
 	indigo_device *device = [(NSValue *)camera.userData pointerValue];
 	if (device) {

@@ -30,42 +30,41 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <math.h>
 #include <assert.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_gps_nmea.h"
 
 #define GPS_SELECTED_SYSTEM_PROPERTY  (PRIVATE_DATA->selected_system_property)
-#define AUTOMATIC_SYSTEM_ITEM (GPS_SELECTED_SYSTEM_PROPERTY->items+0)
-#define MULTIPLE_SYSTEM_ITEM  (GPS_SELECTED_SYSTEM_PROPERTY->items+1)
-#define GPS_SYSTEM_ITEM       (GPS_SELECTED_SYSTEM_PROPERTY->items+2)
-#define GALILEO_SYSTEM_ITEM   (GPS_SELECTED_SYSTEM_PROPERTY->items+3)
-#define GLONASS_SYSTEM_ITEM   (GPS_SELECTED_SYSTEM_PROPERTY->items+4)
-#define BEIDOU_SYSTEM_ITEM    (GPS_SELECTED_SYSTEM_PROPERTY->items+5)
-#define NAVIC_SYSTEM_ITEM     (GPS_SELECTED_SYSTEM_PROPERTY->items+6)
-#define QZSS_SYSTEM_ITEM      (GPS_SELECTED_SYSTEM_PROPERTY->items+7)
+#define AUTOMATIC_SYSTEM_ITEM 				(GPS_SELECTED_SYSTEM_PROPERTY->items+0)
+#define MULTIPLE_SYSTEM_ITEM  				(GPS_SELECTED_SYSTEM_PROPERTY->items+1)
+#define GPS_SYSTEM_ITEM       				(GPS_SELECTED_SYSTEM_PROPERTY->items+2)
+#define GALILEO_SYSTEM_ITEM  				 	(GPS_SELECTED_SYSTEM_PROPERTY->items+3)
+#define GLONASS_SYSTEM_ITEM   				(GPS_SELECTED_SYSTEM_PROPERTY->items+4)
+#define BEIDOU_SYSTEM_ITEM    				(GPS_SELECTED_SYSTEM_PROPERTY->items+5)
+#define NAVIC_SYSTEM_ITEM     				(GPS_SELECTED_SYSTEM_PROPERTY->items+6)
+#define QZSS_SYSTEM_ITEM      				(GPS_SELECTED_SYSTEM_PROPERTY->items+7)
 
 #define GPS_SELECTED_SYSTEM_PROPERTY_NAME   "X_GPS_SELECTED_SYSTEM"
-#define AUTOMATIC_SYSTEM_ITEM_NAME "AUTO"
-#define MULTIPLE_SYSTEM_ITEM_NAME  "MULTIPLE"
-#define GPS_SYSTEM_ITEM_NAME       "GPS"
-#define GALILEO_SYSTEM_ITEM_NAME   "GALILEO"
-#define GLONASS_SYSTEM_ITEM_NAME   "GLONASS"
-#define BEIDOU_SYSTEM_ITEM_NAME    "BEIDOU"
-#define NAVIC_SYSTEM_ITEM_NAME     "NAVIC"
-#define QZSS_SYSTEM_ITEM_NAME      "QZSS"
+#define AUTOMATIC_SYSTEM_ITEM_NAME 					"AUTO"
+#define MULTIPLE_SYSTEM_ITEM_NAME  					"MULTIPLE"
+#define GPS_SYSTEM_ITEM_NAME       					"GPS"
+#define GALILEO_SYSTEM_ITEM_NAME   					"GALILEO"
+#define GLONASS_SYSTEM_ITEM_NAME   					"GLONASS"
+#define BEIDOU_SYSTEM_ITEM_NAME    					"BEIDOU"
+#define NAVIC_SYSTEM_ITEM_NAME    					"NAVIC"
+#define QZSS_SYSTEM_ITEM_NAME      					"QZSS"
 
 #define MAX_NB_OF_SYSTEMS 26 // Overkill, but not memory expensive, and it is future proof
 
 #define PRIVATE_DATA        ((nmea_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	pthread_mutex_t serial_mutex;
 	indigo_timer *timer_callback;
 	int satellites_in_view[MAX_NB_OF_SYSTEMS];
@@ -78,15 +77,14 @@ typedef struct {
 static bool gps_open(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 	char *name = DEVICE_PORT_ITEM->text.value;
-	if (!indigo_is_device_url(name, "gps")) {
-		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %s", DEVICE_PORT_ITEM->text.value, DEVICE_BAUDRATE_ITEM->text.value);
-		PRIVATE_DATA->handle = indigo_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value);
-	} else {
+	if (indigo_uni_is_url(name, "gps")) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening netwotk device on host: %s", DEVICE_PORT_ITEM->text.value);
-		indigo_network_protocol proto = INDIGO_PROTOCOL_TCP;
-		PRIVATE_DATA->handle = indigo_open_network_device(name, 9999, &proto);
+		PRIVATE_DATA->handle = indigo_uni_client_tcp_socket(name, 9999, INDIGO_LOG_DEBUG);
+	} else {
+		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Opening local device on port: '%s', baudrate = %s", DEVICE_PORT_ITEM->text.value, DEVICE_BAUDRATE_ITEM->text.value);
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_config(name, DEVICE_BAUDRATE_ITEM->text.value, INDIGO_LOG_DEBUG);
 	}
-	if (PRIVATE_DATA->handle >= 0) {
+	if (PRIVATE_DATA->handle != NULL) {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		return true;
@@ -99,26 +97,28 @@ static bool gps_open(indigo_device *device) {
 
 static void gps_close(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
-	close(PRIVATE_DATA->handle);
-	PRIVATE_DATA->handle = -1;
+	indigo_uni_close(&PRIVATE_DATA->handle);
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 }
 
 static char **parse(char *buffer) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s", buffer);
-	if (strncmp("$G", buffer, 2)) // Disregard "non positioning" sentences
+	if (strncmp("$G", buffer, 2)) {// Disregard "non positioning" sentences
 		return NULL;
+	}
 	char *index = strchr(buffer, '*');
 	if (index) {
 		*index++ = 0;
 		int c1 = (int)strtol(index, NULL, 16);
 		int c2 = 0;
 		index = buffer + 1;
-		while (*index)
+		while (*index) {
 			c2 ^= *index++;
-		if (c1 != c2)
+		}
+		if (c1 != c2) {
 			return NULL;
+		}
 	}
 	char **tokens = indigo_safe_malloc(32 * sizeof(char *));
 	int token = 0;
@@ -127,8 +127,9 @@ static char **parse(char *buffer) {
 	while (index) {
 		tokens[token++] = index;
 		index = strchr(index, ',');
-		if (index)
+		if (index) {
 			*index++ = 0;
+		}
 	}
 	return tokens;
 }
@@ -136,8 +137,9 @@ static char **parse(char *buffer) {
 static void select_nmea_system(indigo_device *device, char ident) {
 	PRIVATE_DATA->selected_system = ident;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA system '%c' has been selected", ident);
-	if (ident != 'N')
+	if (ident != 'N') {
 		memset(PRIVATE_DATA->satellites_in_view, 0, sizeof(int)*MAX_NB_OF_SYSTEMS);
+	}
 }
 
 static void reset_system_selection(indigo_device *device) {
@@ -182,16 +184,15 @@ static void gps_connect_callback(indigo_device *device);
 
 static void gps_refresh_callback(indigo_device *device) {
 	char buffer[128];
-	int length;
+	long length;
 	char **tokens;
 	INDIGO_DRIVER_LOG(DRIVER_NAME, "NMEA reader started");
 	while (IS_CONNECTED && PRIVATE_DATA->handle >= 0) {
 		//pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		tokens = NULL;
-		if ((length = indigo_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer))) > 0 && (tokens = parse(buffer))) {
+		if ((length = indigo_uni_read_line(PRIVATE_DATA->handle, buffer, sizeof(buffer))) > 0 && (tokens = parse(buffer))) {
 			char nmea_system = buffer[2];
-			if (!strcmp(tokens[0], "RMC")
-			    && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
+			if (!strcmp(tokens[0], "RMC") && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
 				// Recommended Minimum sentence C
 				bool hasFix = (*tokens[2] == 'A');
 				int time = atoi(tokens[1]);
@@ -201,13 +202,15 @@ static void gps_refresh_callback(indigo_device *device) {
 				indigo_update_property(device, GPS_UTC_TIME_PROPERTY, NULL);
 				double lat = indigo_atod(tokens[3]);
 				lat = floor(lat / 100) + fmod(lat, 100) / 60;
-				if (!strcmp(tokens[4], "S"))
+				if (!strcmp(tokens[4], "S")) {
 					lat = -lat;
+				}
 				lat = round(lat * 10000) / 10000;
 				double lon = indigo_atod(tokens[5]);
 				lon = floor(lon / 100) + fmod(lon, 100) / 60;
-				if (!strcmp(tokens[6], "W"))
+				if (!strcmp(tokens[6], "W")) {
 					lon = -lon;
+				}
 				lon = round(lon * 10000) / 10000;
 				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
@@ -219,19 +222,20 @@ static void gps_refresh_callback(indigo_device *device) {
 					// This system has a fix, select it
 					select_nmea_system(device, nmea_system);
 				}
-			} else if (!strcmp(tokens[0], "GGA")
-			           && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
+			} else if (!strcmp(tokens[0], "GGA") && (PRIVATE_DATA->selected_system == 0 ||  PRIVATE_DATA->selected_system == nmea_system)) {
 				// Global Positioning System Fix Data
 				bool hasFix = (*tokens[6] != 0 && *tokens[6] != '0');
 				double lat = indigo_atod(tokens[2]);
 				lat = floor(lat / 100) + fmod(lat, 100) / 60;
-				if (!strcmp(tokens[3], "S"))
+				if (!strcmp(tokens[3], "S")) {
 					lat = -lat;
+				}
 				lat = round(lat * 10000) / 10000;
 				double lon = indigo_atod(tokens[4]);
 				lon = floor(lon / 100) + fmod(lon, 100) / 60;
-				if (!strcmp(tokens[5], "W"))
+				if (!strcmp(tokens[5], "W")) {
 					lon = -lon;
+				}
 				lon = round(lon * 10000) / 10000;
 				if (GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value != lon || GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value != lat) {
 					GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = lon;
@@ -255,9 +259,7 @@ static void gps_refresh_callback(indigo_device *device) {
 					// This system has a fix, select it
 					select_nmea_system(device, nmea_system);
 				}
-			} else if (!strcmp(tokens[0], "GSV")
-			           && (PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N'
-						      || PRIVATE_DATA->selected_system == nmea_system)) {
+			} else if (!strcmp(tokens[0], "GSV") && (PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N' || PRIVATE_DATA->selected_system == nmea_system)) {
 				// Satellites in view
 				int in_view = atoi(tokens[3]), total_in_view = 0;
 				if ((PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N') && nmea_system != 'N') {
@@ -266,8 +268,8 @@ static void gps_refresh_callback(indigo_device *device) {
 					// As an exception, if the GSV is sent with the GNSS talker id 'N', it is assumed to comprise all SVs
 					if (nmea_system >= 'A' && nmea_system <= 'Z') {
 						PRIVATE_DATA->satellites_in_view[nmea_system - 'A'] = in_view;
-					for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++)
-						total_in_view += PRIVATE_DATA->satellites_in_view[i];
+						for (int i = 0; i < MAX_NB_OF_SYSTEMS; i++)
+							total_in_view += PRIVATE_DATA->satellites_in_view[i];
 					}
 				} else {
 					// Otherwise, count only satellites from the selected system
@@ -280,11 +282,8 @@ static void gps_refresh_callback(indigo_device *device) {
 						indigo_update_property(device, GPS_ADVANCED_STATUS_PROPERTY, NULL);
 					}
 				}
-			} else if (!strcmp(tokens[0], "GSA")
-			           && (PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N'
-						      || PRIVATE_DATA->selected_system == nmea_system)) {
+			} else if (!strcmp(tokens[0], "GSA") && (PRIVATE_DATA->selected_system == 0 || PRIVATE_DATA->selected_system == 'N' || PRIVATE_DATA->selected_system == nmea_system)) {
 				// Satellite status
-
 				// When providing a multiple GNSS fix, the receiver may provide a GSA for each constellation, and none with 'N' id
 				// As the fix is a combined fix, the values should be the same in each GSA, as observed with the receiver I have in hand.
 				// We therefore process equally all GSA in this specific case
@@ -381,12 +380,10 @@ static indigo_result gps_attach(indigo_device *device) {
 		GPS_UTC_TIME_PROPERTY->hidden = false;
 		GPS_UTC_TIME_PROPERTY->count = 1;
 		// -------------------------------------------------------------------------------- SELECTED_SYSTEM
-		GPS_SELECTED_SYSTEM_PROPERTY = indigo_init_switch_property(NULL, device->name,
-		                                                           GPS_SELECTED_SYSTEM_PROPERTY_NAME, MAIN_GROUP,
-																					  "Selected positioning system", INDIGO_OK_STATE,
-																					   INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
-		if (GPS_SELECTED_SYSTEM_PROPERTY == NULL)
+		GPS_SELECTED_SYSTEM_PROPERTY = indigo_init_switch_property(NULL, device->name, GPS_SELECTED_SYSTEM_PROPERTY_NAME, MAIN_GROUP, "Selected positioning system", INDIGO_OK_STATE, INDIGO_RW_PERM, INDIGO_ONE_OF_MANY_RULE, 8);
+		if (GPS_SELECTED_SYSTEM_PROPERTY == NULL) {
 			return INDIGO_FAILED;
+		}
 		indigo_init_switch_item(AUTOMATIC_SYSTEM_ITEM, AUTOMATIC_SYSTEM_ITEM_NAME, "Autodetect", true);
 		indigo_init_switch_item(MULTIPLE_SYSTEM_ITEM, MULTIPLE_SYSTEM_ITEM_NAME, "Multiple", false);
 		indigo_init_switch_item(GPS_SYSTEM_ITEM, GPS_SYSTEM_ITEM_NAME, "Navstar GPS", false);
@@ -415,13 +412,12 @@ static indigo_result gps_attach(indigo_device *device) {
 
 static indigo_result gps_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property) {
 	indigo_define_matching_property(GPS_SELECTED_SYSTEM_PROPERTY);
-
 	return indigo_gps_enumerate_properties(device, NULL, NULL);
 }
 
 static void gps_connect_callback(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		if (PRIVATE_DATA->handle == -1) {
+		if (PRIVATE_DATA->handle == NULL) {
 			if (gps_open(device)) {
 				GPS_GEOGRAPHIC_COORDINATES_LONGITUDE_ITEM->number.value = 0;
 				GPS_GEOGRAPHIC_COORDINATES_LATITUDE_ITEM->number.value = 0;
@@ -436,7 +432,7 @@ static void gps_connect_callback(indigo_device *device) {
 			}
 		}
 	} else {
-		if (PRIVATE_DATA->handle != -1) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
 			gps_close(device);
 			CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
@@ -451,8 +447,9 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 	// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
+		if (indigo_ignore_connection_change(device, property)) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -460,8 +457,9 @@ static indigo_result gps_change_property(indigo_device *device, indigo_client *c
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(GPS_SELECTED_SYSTEM_PROPERTY, property)) {
 		// ----------------------------------------------------------------------------- GPS_SELECTED_SYSTEM
-		if (indigo_ignore_connection_change(device, property))
+		if (indigo_ignore_connection_change(device, property)) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(GPS_SELECTED_SYSTEM_PROPERTY, property, false);
 		GPS_SELECTED_SYSTEM_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, GPS_SELECTED_SYSTEM_PROPERTY, NULL);
@@ -512,14 +510,14 @@ indigo_result indigo_gps_nmea(indigo_driver_action action, indigo_driver_info *i
 
 	SET_DRIVER_INFO(info, GPS_NMEA_NAME, __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 	case INDIGO_DRIVER_INIT:
 		last_action = action;
 		private_data = indigo_safe_malloc(sizeof(nmea_private_data));
-		private_data->handle = -1;
 		gps = indigo_safe_malloc_copy(sizeof(indigo_device), &gps_template);
 		gps->private_data = private_data;
 		indigo_attach_device(gps);

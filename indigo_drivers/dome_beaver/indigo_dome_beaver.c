@@ -1055,7 +1055,7 @@ static void dome_steps_callback(indigo_device *device) {
 		return;
 	}
 
-	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	indigo_sleep(0.5);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
@@ -1108,7 +1108,7 @@ static void dome_horizontal_coordinates_callback(indigo_device *device) {
 		}
 	}
 
-	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	indigo_sleep(0.5);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
@@ -1132,7 +1132,7 @@ static void dome_shutter_callback(indigo_device *device) {
 		return;
 	}
 
-	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	indigo_sleep(0.5);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
@@ -1161,7 +1161,7 @@ static void dome_park_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_PARK_PROPERTY, NULL);
 	}
 
-	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	indigo_sleep(0.5);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
@@ -1195,7 +1195,7 @@ static void dome_gohome_callback(indigo_device *device) {
 		indigo_update_property(device, DOME_HOME_PROPERTY, NULL);
 	}
 
-	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	indigo_sleep(0.5);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
@@ -1224,7 +1224,7 @@ static void dome_calibrate_rotator_callback(indigo_device *device) {
 		indigo_update_property(device, X_ROTATOR_CALIBRATE_PROPERTY, NULL);
 	}
 
-	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	indigo_sleep(0.5);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 
@@ -1246,7 +1246,7 @@ static void dome_calibrate_shutter_callback(indigo_device *device) {
 		indigo_update_property(device, X_SHUTTER_CALIBRATE_PROPERTY, NULL);
 	}
 
-	indigo_usleep(0.5*ONE_SECOND_DELAY);
+	indigo_sleep(0.5);
 	pthread_mutex_unlock(&PRIVATE_DATA->move_mutex);
 }
 

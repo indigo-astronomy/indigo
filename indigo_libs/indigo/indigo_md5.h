@@ -30,15 +30,25 @@
 
 #include <stdint.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define INDIGO_PARTIAL_MD5_LEN 4096
 
-void indigo_md5(char digest[33], const void *data, const long length);
-void indigo_md5_partial(char digest[33], const void *data, const long data_length, const long use_length);
-void indigo_md5_file_partial(char digest[33], FILE *file, const long use_length);
+INDIGO_EXTERN void indigo_md5(char digest[33], const void *data, const long length);
+INDIGO_EXTERN void indigo_md5_partial(char digest[33], const void *data, const long data_length, const long use_length);
+INDIGO_EXTERN void indigo_md5_file_partial(char digest[33], FILE *file, const long use_length);
 
 #ifdef __cplusplus
 }

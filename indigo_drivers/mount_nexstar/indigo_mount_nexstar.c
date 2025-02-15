@@ -348,7 +348,7 @@ static void mount_handle_connect(indigo_device *device) {
 				TRACKING_MODE_PROPERTY->state = INDIGO_OK_STATE;
 				int mode = tc_get_tracking_mode(dev_id);
 				if (mode < 0) { /* hack: sometimes "t" returns garbage at connect if so we repeat it */
-					indigo_usleep(ONE_SECOND_DELAY*0.1);
+					indigo_sleep(0.1);
 					mode = tc_get_tracking_mode(dev_id);
 				}
 				if (mode < 0) {

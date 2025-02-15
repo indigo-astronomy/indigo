@@ -28,7 +28,6 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
@@ -171,7 +170,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 				}
 				return INDIGO_OK;
 			}
-			PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az;
+			PRIVATE_DATA->target_position = (int)(DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target = az);
 			int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
 			if (dif < 180) {
 				indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);
@@ -200,7 +199,7 @@ static indigo_result dome_change_property(indigo_device *device, indigo_client *
 			return INDIGO_OK;
 		}
 
-		PRIVATE_DATA->target_position = DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
+		PRIVATE_DATA->target_position = (int)DOME_HORIZONTAL_COORDINATES_AZ_ITEM->number.target;
 		int dif = (int)(PRIVATE_DATA->target_position - PRIVATE_DATA->current_position + 360) % 360;
 		if (dif < 180) {
 			indigo_set_switch(DOME_DIRECTION_PROPERTY, DOME_DIRECTION_MOVE_CLOCKWISE_ITEM, true);

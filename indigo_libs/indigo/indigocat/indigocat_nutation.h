@@ -14,8 +14,17 @@
 
 #ifndef __NUTATION_H
 #define __NUTATION_H
-
 #include <indigo/indigocat/indigocat_transform.h>
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -27,7 +36,7 @@ typedef struct {
 	double ecliptic;	/* Mean obliquity of the ecliptic, in degrees */
 } nutation_s;
 
-extern void indigocat_get_nutation(double JD, nutation_s *nutation);
+INDIGO_EXTERN void indigocat_get_nutation(double JD, nutation_s *nutation);
 
 #ifdef __cplusplus
 };

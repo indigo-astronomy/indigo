@@ -59,14 +59,24 @@ typedef struct {
 	char artist[64];
 } indigo_dslr_raw_image_info_s;
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define FIT_FORMAT_AMATEUR_CCD
 
-int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_raw_image_s *output_image);
-int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw_image_info_s *image_info);
+INDIGO_EXTERN int indigo_dslr_raw_process_image(void *buffer, size_t buffer_size, indigo_dslr_raw_image_s *output_image);
+INDIGO_EXTERN int indigo_dslr_raw_image_info(void *buffer, size_t buffer_size, indigo_dslr_raw_image_info_s *image_info);
 
 #ifdef __cplusplus
 }

@@ -123,7 +123,7 @@ static bool ioptron_open(indigo_device *device) {
 	PRIVATE_DATA->handle = indigo_open_serial(name);
 	if (PRIVATE_DATA->handle >= 0) {
 		int pos, model;
-		indigo_usleep(2 * ONE_SECOND_DELAY);
+		indigo_sleep(2);
 		if (ioptron_command(device, ":MountInfo#", response, sizeof(response)) && sscanf(response, "%6d%2d", &pos, &model) == 2 && model == 2) {
 			FOCUSER_POSITION_ITEM->number.value = FOCUSER_POSITION_ITEM->number.target = pos;
 		} else {

@@ -33,7 +33,6 @@
 #include <pthread.h>
 #include <sys/types.h>
 #if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
-#include <unistd.h>
 #include <termios.h>
 #include <netdb.h>
 #include <sys/socket.h>

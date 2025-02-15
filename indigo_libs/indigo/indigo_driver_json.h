@@ -29,14 +29,24 @@
 #include <stdio.h>
 #include <indigo/indigo_json.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 /** Create initialized instance of JSON wire protocol device side adapter.
  */
-extern indigo_client *indigo_json_device_adapter(int input, int ouput, bool web_socket);
-extern void indigo_release_json_device_adapter(indigo_client *client);
+INDIGO_EXTERN indigo_client *indigo_json_device_adapter(indigo_uni_handle **input, indigo_uni_handle **output, bool web_socket);
+INDIGO_EXTERN void indigo_release_json_device_adapter(indigo_client *client);
 
 #ifdef __cplusplus
 }

@@ -23,11 +23,21 @@
  \file indigo_filter.h
  */
 
+
 #ifndef indigo_filter_h
 #define indigo_filter_h
-
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -244,52 +254,53 @@ typedef struct {
 
 /** Device attach callback function.
  */
-extern indigo_result indigo_filter_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface);
+INDIGO_EXTERN indigo_result indigo_filter_device_attach(indigo_device *device, const char* driver_name, unsigned version, indigo_device_interface device_interface);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_filter_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_filter_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_filter_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_filter_device_detach(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_filter_device_detach(indigo_device *device);
 
-	
 /** Client attach callback function.
  */
-extern indigo_result indigo_filter_client_attach(indigo_client *client);
+INDIGO_EXTERN indigo_result indigo_filter_client_attach(indigo_client *client);
 /** Client define property callback function.
  */
-extern indigo_result indigo_filter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+INDIGO_EXTERN indigo_result indigo_filter_define_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 /** Client update property callback function.
  */
-extern indigo_result indigo_filter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+INDIGO_EXTERN indigo_result indigo_filter_update_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 /** Client delete property callback function.
  */
-extern indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
+INDIGO_EXTERN indigo_result indigo_filter_delete_property(indigo_client *client, indigo_device *device, indigo_property *property, const char *message);
 /** Client attach callback function.
  */
-extern indigo_result indigo_filter_client_detach(indigo_client *client);
+INDIGO_EXTERN indigo_result indigo_filter_client_detach(indigo_client *client);
 /** Find remote cached properties.
  */
-__attribute__((deprecated)) extern bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+__attribute__((deprecated))
+#endif
+INDIGO_EXTERN bool indigo_filter_cached_property(indigo_device *device, int index, char *name, indigo_property **device_property, indigo_property **agent_property);
 /** Forward property change to a different device.
  */
-extern indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name, char *property_name);
+INDIGO_EXTERN indigo_result indigo_filter_forward_change_property(indigo_client *client, indigo_property *property, char *device_name, char *property_name);
 /** Find the full name of the first related agent starting with a given base name.
  */
-extern char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1);
+INDIGO_EXTERN char *indigo_filter_first_related_agent(indigo_device *device, char *base_name_1);
 /** Find the full name of the first related agent starting with any of given base names.
  */
-extern char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2);
+INDIGO_EXTERN char *indigo_filter_first_related_agent_2(indigo_device *device, char *base_name_1, char *base_name_2);
 /** Return index of selected item on given switch and select the new one (or none for NULL).
  */
-extern int indigo_save_switch_state(indigo_device *device, char *name, char *new_state);
+INDIGO_EXTERN int indigo_save_switch_state(indigo_device *device, char *name, char *new_state);
 /** Restore selected item on given switch to index.
  */
-extern void indigo_restore_switch_state(indigo_device *device, char *name, int index);
-
+INDIGO_EXTERN void indigo_restore_switch_state(indigo_device *device, char *name, int index);
 
 #ifdef __cplusplus
 }

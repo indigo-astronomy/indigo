@@ -945,7 +945,7 @@ static void mount_park_callback(indigo_device *device) {
 			/* Wait 1s to make sure the mount reports moving. We use moving flag to detect
 			   when finished because fs a firmware bug mount never reports parked.
 			*/
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			PRIVATE_DATA->park_requested = true;
 		} else {
 			MOUNT_PARK_PROPERTY->state = INDIGO_ALERT_STATE;

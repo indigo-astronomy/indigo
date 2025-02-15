@@ -24,22 +24,18 @@
  */
 
 
-#define DRIVER_VERSION 0x0003
+#define DRIVER_VERSION 0x0004
 #define DRIVER_NAME "indigo_aux_astromechanics"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
 #include <stdarg.h>
 
-#include <sys/time.h>
-
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_aux_astromechanics.h"
 
@@ -50,7 +46,7 @@
 #define AUX_WEATHER_SKY_BORTLE_CLASS_ITEM           (AUX_WEATHER_PROPERTY->items + 1)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	indigo_timer *timer;
 	indigo_property *weather_property;
 	indigo_timer *timer_callback;
@@ -60,40 +56,17 @@ typedef struct {
 // -------------------------------------------------------------------------------- Low level communication routines
 
 static bool astromechanics_command(indigo_device *device, char *command, char *response) {
-	char c;
-	struct timeval tv;
 	if (command != NULL) {
-		if (!indigo_write(PRIVATE_DATA->handle, command, strlen(command)))
+		if (indigo_uni_write(PRIVATE_DATA->handle, command, strlen(command)) < 0)
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s <- // Failed to write (%s)", PRIVATE_DATA->handle->index, indigo_uni_strerror(PRIVATE_DATA->handle));
 			return false;
 	}
 	if (response != NULL) {
-		int index = 0;
-		while (index < 10) {
-			fd_set readout;
-			tv.tv_sec = 1;
-			tv.tv_usec = 0;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				return false;
-			}
-			if (c <= ' ') {
-				continue;
-			}
-			if (c < 0 || c == '#') {
-				break;
-			}
-			response[index++] = c;
+		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, 10, "#", "#", 1000000) < 0) {
+			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> // Failed to read (%s)", PRIVATE_DATA->handle->index, indigo_uni_strerror(PRIVATE_DATA->handle));
+			return false;
 		}
-		response[index] = 0;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command '%s' -> '%s'", command, response != NULL ? response : "NULL");
 	return true;
 }
 
@@ -160,18 +133,17 @@ static void aux_connection_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	char response[16];
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
-		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400);
-		if (PRIVATE_DATA->handle > 0) {
+		PRIVATE_DATA->handle = indigo_uni_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 38400, INDIGO_LOG_DEBUG);
+		if (PRIVATE_DATA->handle != NULL) {
 			if (astromechanics_command(device, "V#", response)) {
 				AUX_WEATHER_SKY_BRIGHTNESS_ITEM->number.value = indigo_atod(response);
 				INDIGO_DRIVER_LOG(DRIVER_NAME, "ASTROMECHANICS Light Pollution Meter detected");
 			} else {
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "ASTROMECHANICS Light Pollution Meter not detected");
-				close(PRIVATE_DATA->handle);
-				PRIVATE_DATA->handle = 0;
+				indigo_uni_close(&PRIVATE_DATA->handle);
 			}
 		}
-		if (PRIVATE_DATA->handle > 0) {
+		if (PRIVATE_DATA->handle != NULL) {
 			indigo_define_property(device, AUX_WEATHER_PROPERTY, NULL);
 			indigo_set_timer(device, 0, aux_timer_callback, &PRIVATE_DATA->timer_callback);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", DEVICE_PORT_ITEM->text.value);
@@ -186,8 +158,7 @@ static void aux_connection_handler(indigo_device *device) {
 			indigo_cancel_timer_sync(device, &PRIVATE_DATA->timer_callback);
 			indigo_delete_property(device, AUX_WEATHER_PROPERTY, NULL);
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected");
-			close(PRIVATE_DATA->handle);
-			PRIVATE_DATA->handle = 0;
+			indigo_uni_close(&PRIVATE_DATA->handle);
 		}
 		CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 	}

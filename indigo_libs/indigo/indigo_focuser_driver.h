@@ -29,6 +29,16 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -193,16 +203,16 @@ typedef struct {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_focuser_attach(indigo_device *device, const char* driver_name, unsigned version);
+INDIGO_EXTERN indigo_result indigo_focuser_attach(indigo_device *device, const char* driver_name, unsigned version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_focuser_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_focuser_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_focuser_detach(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_focuser_detach(indigo_device *device);
 
 #ifdef __cplusplus
 }

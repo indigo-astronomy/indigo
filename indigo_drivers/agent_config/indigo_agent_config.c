@@ -23,17 +23,15 @@
  \file indigo_agent_config.c
  */
 
-#define DRIVER_VERSION 0x0005
+#define DRIVER_VERSION 0x0006
 #define DRIVER_NAME	"indigo_agent_config"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <fcntl.h>
-#include <dirent.h>
 #include <ctype.h>
 #include <sys/stat.h>
 
@@ -47,8 +45,8 @@
 #define CLIENT_PRIVATE_DATA												private_data
 
 #define AGENT_CONFIG_SETUP_PROPERTY								(DEVICE_PRIVATE_DATA->setup)
-#define AGENT_CONFIG_SETUP_AUTOSAVE_ITEM			(AGENT_CONFIG_SETUP_PROPERTY->items+0)
-#define AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM				(AGENT_CONFIG_SETUP_PROPERTY->items+1)
+#define AGENT_CONFIG_SETUP_AUTOSAVE_ITEM					(AGENT_CONFIG_SETUP_PROPERTY->items+0)
+#define AGENT_CONFIG_SETUP_UNLOAD_DRIVERS_ITEM		(AGENT_CONFIG_SETUP_PROPERTY->items+1)
 
 #define AGENT_CONFIG_SAVE_PROPERTY								(DEVICE_PRIVATE_DATA->save_config)
 #define AGENT_CONFIG_SAVE_NAME_ITEM			    			(AGENT_CONFIG_SAVE_PROPERTY->items+0)
@@ -106,10 +104,9 @@ static void save_config(indigo_device *device) {
 	if (pthread_mutex_trylock(&DEVICE_CONTEXT->config_mutex) == 0) {
 		pthread_mutex_unlock(&DEVICE_CONTEXT->config_mutex);
 		indigo_save_property(device, NULL, AGENT_CONFIG_SETUP_PROPERTY);
-		if (DEVICE_CONTEXT->property_save_file_handle) {
+		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			close(DEVICE_CONTEXT->property_save_file_handle);
-			DEVICE_CONTEXT->property_save_file_handle = 0;
+			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -118,34 +115,26 @@ static void save_config(indigo_device *device) {
 	}
 }
 
-static int configuration_filter(const struct dirent *entry) {
-	return strstr(entry->d_name, EXTENSION) != NULL;
+static bool configuration_filter(const char *name) {
+	return strstr(name, EXTENSION) != NULL;
 }
 
 static void populate_list(indigo_device *device) {
-	struct dirent **entries;
-	char folder[256];
-	snprintf(folder, sizeof(folder), "%s/.indigo/", getenv("HOME"));
-	int count = scandir(folder, &entries, configuration_filter, alphasort);
+	char **list;
+	int count = indigo_uni_scandir(indigo_uni_config_folder(), &list, configuration_filter);
 	if (count >= 0) {
 		AGENT_CONFIG_LOAD_PROPERTY = indigo_resize_property(AGENT_CONFIG_LOAD_PROPERTY, count);
-		char file_name[INDIGO_VALUE_SIZE + INDIGO_NAME_SIZE];
-		struct stat file_stat;
 		int valid_count = 0;
 		for (int i = 0; i < count; i++) {
-			strcpy(file_name, folder);
-			strcat(file_name, entries[i]->d_name);
-			if (stat(file_name, &file_stat) >= 0 && file_stat.st_size > 0) {
-				char *ext = strstr(entries[i]->d_name, EXTENSION);
-				if (ext)
-					*ext = 0;
-				indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + valid_count, entries[i]->d_name, entries[i]->d_name, false);
-				valid_count++;
-			}
-			free(entries[i]);
+			char *ext = strstr(list[i], EXTENSION);
+			if (ext)
+				*ext = 0;
+			indigo_init_switch_item(AGENT_CONFIG_LOAD_PROPERTY->items + valid_count, list[i], list[i], false);
+			valid_count++;
+			free(list[i]);
 		}
 		AGENT_CONFIG_LOAD_PROPERTY->count = valid_count;
-		free(entries);
+		free(list);
 	}
 }
 
@@ -212,14 +201,14 @@ static void load_configuration(indigo_device *device) {
 		indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Can't deselect active devices before loading new configuration");
 		return;
 	}
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	// load saved configuration
 	DEVICE_PRIVATE_DATA->failure = false;
 	for (int i = 0; i < AGENT_CONFIG_LOAD_PROPERTY->count; i++) {
 		indigo_item *item = AGENT_CONFIG_LOAD_PROPERTY->items + i;
 		if (item->sw.value) {
-			int handle = indigo_open_config_file(item->name, 0, O_RDONLY, EXTENSION);
-			if (handle > 0) {
+			indigo_uni_handle *handle = indigo_open_config_file(item->name, 0, false, EXTENSION);
+			if (handle != NULL) {
 				indigo_update_property(device, AGENT_CONFIG_LOAD_PROPERTY, "Loading configuration '%s', please wait...", item->name);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Loading saved configuration from %s%s", item->name, EXTENSION);
 				strncpy(AGENT_CONFIG_LAST_CONFIG_NAME_ITEM->text.value, item->name, INDIGO_NAME_SIZE);
@@ -227,12 +216,12 @@ static void load_configuration(indigo_device *device) {
 				indigo_client *client = indigo_safe_malloc(sizeof(indigo_client));
 				strcpy(client->name, CONFIG_READER);
 				indigo_adapter_context *context = indigo_safe_malloc(sizeof(indigo_adapter_context));
-				context->input = handle;
+				context->input = &handle;
 				client->client_context = context;
 				client->version = INDIGO_VERSION_CURRENT;
 				DEVICE_PRIVATE_DATA->restore_count = 0;
 				indigo_xml_parse(NULL, client);
-				close(handle);
+				indigo_uni_close(&handle);
 				free(context);
 				free(client);
 				// wait for all the changes to be applied
@@ -482,8 +471,8 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
 				}
 			}
-			int handle = indigo_open_config_file(AGENT_CONFIG_SAVE_NAME_ITEM->text.value, 0, O_WRONLY | O_CREAT | O_TRUNC, EXTENSION);
-			if (handle > 0) {
+			indigo_uni_handle *handle = indigo_open_config_file(AGENT_CONFIG_SAVE_NAME_ITEM->text.value, 0, true, EXTENSION);
+			if (handle != NULL) {
 				pthread_mutex_lock(&DEVICE_PRIVATE_DATA->data_mutex);
 				AGENT_CONFIG_DRIVERS_PROPERTY->perm = INDIGO_RW_PERM;
 				indigo_save_property(device, &handle, AGENT_CONFIG_DRIVERS_PROPERTY);
@@ -500,7 +489,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 					}
 				}
 				pthread_mutex_unlock(&DEVICE_PRIVATE_DATA->data_mutex);
-				close(handle);
+				indigo_uni_close(&handle);
 				snprintf(message, INDIGO_VALUE_SIZE, "Active configuration saved as '%s'", AGENT_CONFIG_SAVE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Active configuration saved to %s%s", AGENT_CONFIG_SAVE_NAME_ITEM->text.value, EXTENSION);
 				AGENT_CONFIG_SAVE_PROPERTY->state = INDIGO_OK_STATE;
@@ -552,7 +541,7 @@ static indigo_result agent_change_property(indigo_device *device, indigo_client 
 		} else {
 			char path[256];
 			snprintf(path, sizeof(path), "%s/.indigo/%s%s", getenv("HOME"), AGENT_CONFIG_DELETE_NAME_ITEM->text.value, EXTENSION);
-			if (unlink(path)) {
+			if (indigo_uni_remove(path)) {
 				snprintf(message, INDIGO_VALUE_SIZE, "Failed to remove configuration '%s'", AGENT_CONFIG_DELETE_NAME_ITEM->text.value);
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Can't remove saved configuration %s", path);
 				AGENT_CONFIG_DELETE_PROPERTY->state = INDIGO_ALERT_STATE;

@@ -41,6 +41,10 @@
 #define RADIUS_R4 9
 #define RADIUS_R5 2
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop earth_longitude_l0[LONG_L0] = {
     {     1.75347045673,  0.00000000000,        0.00000000000},
     {     0.03341656453,  4.66925680415,     6283.07584999140},

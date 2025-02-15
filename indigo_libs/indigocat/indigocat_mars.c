@@ -42,6 +42,10 @@
 #define RADIUS_R4 57
 #define RADIUS_R5 17
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop mars_longitude_l0[LONG_L0] = {
     {     6.20347711581,  0.00000000000,        0.00000000000},
     {     0.18656368093,  5.05037100270,     3340.61242669980},

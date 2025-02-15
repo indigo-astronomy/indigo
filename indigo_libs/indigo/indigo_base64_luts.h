@@ -21,7 +21,6 @@
 
 #ifndef __BASE64_LUTS_H
 #define __BASE64_LUTS_H
-
 #include <stdint.h>
 
 static const char base64digits[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";

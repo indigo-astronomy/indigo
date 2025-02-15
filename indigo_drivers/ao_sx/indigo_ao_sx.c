@@ -23,88 +23,41 @@
  \file indigo_ao_sx.c
  */
 
-#define DRIVER_VERSION 0x0008
+#define DRIVER_VERSION 0x0009
 #define DRIVER_NAME	"indigo_ao_sx"
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
-#include <time.h>
-#include <math.h>
 #include <assert.h>
-#include <errno.h>
 #include <pthread.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 
 #include "indigo_ao_sx.h"
 
 #define PRIVATE_DATA        ((sx_private_data *)device->private_data)
 
 typedef struct {
-	int handle;
+	indigo_uni_handle *handle;
 	int device_count;
 	pthread_mutex_t mutex;
 } sx_private_data;
 
 // -------------------------------------------------------------------------------- Low level communication routines
 
-static bool sx_flush(indigo_device *device) {
-	char c;
-	struct timeval tv;
-	while (true) {
-		fd_set readout;
-		FD_ZERO(&readout);
-		FD_SET(PRIVATE_DATA->handle, &readout);
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000;
-		long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-		if (result == 0)
-			return true;
-		if (result < 0) {
-			return false;
-		}
-		result = read(PRIVATE_DATA->handle, &c, 1);
-		if (result < 1) {
-			return false;
-		}
-	}
-}
-
 static bool sx_command(indigo_device *device, char *command, char *response, int max) {
-	char c;
-	struct timeval tv;
-	indigo_write(PRIVATE_DATA->handle, command, strlen(command));
-	if (response != NULL) {
-		int index = 0;
-		int timeout = *command == 'K' || *command == 'R' ? 15 : 1;
-		*response = 0;
-		while (index < max) {
-			fd_set readout;
-			FD_ZERO(&readout);
-			FD_SET(PRIVATE_DATA->handle, &readout);
-			tv.tv_sec = timeout;
-			tv.tv_usec = 100000;
-			long result = select(PRIVATE_DATA->handle+1, &readout, NULL, NULL, &tv);
-			if (result <= 0) {
-				break;
-			}
-			result = read(PRIVATE_DATA->handle, &c, 1);
-			if (result < 1) {
-				INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to read from %s -> %s (%d)", DEVICE_PORT_ITEM->text.value, strerror(errno), errno);
-				return false;
-			}
-			response[index++] = c;
-		}
-		response[index] = 0;
+	if (indigo_uni_discard(PRIVATE_DATA->handle, INDIGO_DELAY(0.001)) < 0) {
+		return false;
 	}
-	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command %s -> %s", command, response != NULL ? response : "NULL");
+	if (indigo_uni_write(PRIVATE_DATA->handle, command, (long)strlen(command)) < 0) {
+		return false;
+	}
+	if (response != NULL) {
+		if (indigo_uni_read_section(PRIVATE_DATA->handle, response, max, "", "", INDIGO_DELAY((*command == 'K' || *command == 'R') ? 15 : 1)) < 0) {
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -112,19 +65,16 @@ static bool sx_open(indigo_device *device) {
 	if (PRIVATE_DATA->device_count++ > 0)
 		return true;
 	char *name = DEVICE_PORT_ITEM->text.value;
-	PRIVATE_DATA->handle = indigo_open_serial(name);
-	if (PRIVATE_DATA->handle >= 0) {
+	PRIVATE_DATA->handle = indigo_uni_open_serial(name, INDIGO_LOG_DEBUG);
+	if (PRIVATE_DATA->handle != NULL) {
 		char response[5];
-		if (sx_flush(device)) {
-			if (sx_command(device, "X", response, 1) && *response == 'Y') {
-				if (sx_command(device, "V", response, 4) && *response == 'V') {
-					INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
-					return true;
-				}
+		if (sx_command(device, "X", response, 1) && *response == 'Y') {
+			if (sx_command(device, "V", response, 4) && *response == 'V') {
+				INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
+				return true;
 			}
 		}
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Handshake failed on %s", name);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "Failed to connect to %s", name);
@@ -138,8 +88,7 @@ static void sx_close(indigo_device *device) {
 		return;
 	}
 	if (PRIVATE_DATA->handle > 0) {
-		close(PRIVATE_DATA->handle);
-		PRIVATE_DATA->handle = 0;
+		indigo_uni_close(&PRIVATE_DATA->handle);
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "Disconnected from %s", DEVICE_PORT_ITEM->text.value);
 	}
 	PRIVATE_DATA->device_count = 0;
@@ -250,8 +199,9 @@ static indigo_result ao_change_property(indigo_device *device, indigo_client *cl
 	assert(property != NULL);
 	if (indigo_property_match_changeable(CONNECTION_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CONNECTION
-		if (indigo_ignore_connection_change(device, property))
+		if (indigo_ignore_connection_change(device, property)) {
 			return INDIGO_OK;
+		}
 		indigo_property_copy_values(CONNECTION_PROPERTY, property, false);
 		CONNECTION_PROPERTY->state = INDIGO_BUSY_STATE;
 		indigo_update_property(device, CONNECTION_PROPERTY, NULL);
@@ -425,8 +375,9 @@ indigo_result indigo_ao_sx(indigo_driver_action action, indigo_driver_info *info
 
 	SET_DRIVER_INFO(info, "StarlightXpress AO", __FUNCTION__, DRIVER_VERSION, false, last_action);
 
-	if (action == last_action)
+	if (action == last_action) {
 		return INDIGO_OK;
+	}
 
 	switch (action) {
 		case INDIGO_DRIVER_INIT:

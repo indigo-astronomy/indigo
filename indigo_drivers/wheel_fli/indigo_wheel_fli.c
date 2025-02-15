@@ -35,17 +35,13 @@
 #include <stdbool.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #define MAX_PATH 255
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_wheel_fli.h"
+
 #include <libfli.h>
 
 #define FLI_VENDOR_ID                   0x0f18
@@ -366,6 +362,8 @@ static int find_unplugged_device(char *fname) {
 	}
 	return -1;
 }
+
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void process_plug_event(indigo_device *unused) {
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(

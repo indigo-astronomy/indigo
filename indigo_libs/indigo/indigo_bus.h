@@ -34,9 +34,20 @@
 #include <string.h>
 #include <pthread.h>
 #include <assert.h>
-
 #include <indigo/indigo_config.h>
 #include <indigo/indigo_token.h>
+#include <indigo/indigo_uni_io.h>
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#pragma warning(disable:4200)
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -56,7 +67,6 @@ extern "C" {
 
 // forward definitions
 
-typedef int indigo_glock;
 typedef struct indigo_client indigo_client;
 typedef struct indigo_device indigo_device;
 
@@ -122,7 +132,7 @@ typedef enum {
 
 /** Textual representations of indigo_property_type values.
  */
-extern char *indigo_property_type_text[];
+INDIGO_EXTERN char *indigo_property_type_text[];
 
 /** Property state.
  */
@@ -135,7 +145,7 @@ typedef enum {
 
 /** Textual representations of indigo_property_state values.
  */
-extern char *indigo_property_state_text[];
+INDIGO_EXTERN char *indigo_property_state_text[];
 
 /** Property access permission.
  */
@@ -147,7 +157,7 @@ typedef enum {
 
 /** Textual representation of indigo_property_perm values.
  */
-extern char *indigo_property_perm_text[];
+INDIGO_EXTERN char *indigo_property_perm_text[];
 
 /** Switch behaviour rule.
  */
@@ -159,7 +169,7 @@ typedef enum {
 
 /** Textual representation of indigo_rule values.
  */
-extern char *indigo_switch_rule_text[];
+INDIGO_EXTERN char *indigo_switch_rule_text[];
 
 typedef enum {
 	INDIGO_ENABLE_BLOB_ALSO,
@@ -202,12 +212,13 @@ typedef enum {
 
 
 typedef enum {
-	INDIGO_LOG_PLAIN = -1,
+	INDIGO_LOG_PLAIN = 0,
 	INDIGO_LOG_ERROR,
 	INDIGO_LOG_INFO,
 	INDIGO_LOG_DEBUG,
 	INDIGO_LOG_TRACE_BUS,
-	INDIGO_LOG_TRACE
+	INDIGO_LOG_TRACE,
+	INDIGO_LOG_NONE = 9999
 } indigo_log_levels;
 
 /** Property item definition.
@@ -280,7 +291,7 @@ typedef struct {
  */
 typedef struct indigo_device {
 	char name[INDIGO_NAME_SIZE];        ///< device name
-	indigo_glock lock;                  ///< device global lock
+	indigo_uni_handle *lock;            ///< device global lock
 	bool is_remote;                     ///< is remote device
 	uint16_t gp_bits;                   ///< general purpose bits for driver specific usage
 	void *device_context;               ///< any device specific data
@@ -311,7 +322,7 @@ typedef struct indigo_device {
 
 #define INDIGO_DEVICE_INITIALIZER(name_str, attach_cb, enumerate_properties_cb, change_property_cb, enable_blob_cb, detach_cb) { \
 	name_str, \
-	-1, \
+	NULL, \
 	false, \
 	0, \
 	NULL, \
@@ -362,8 +373,8 @@ typedef struct indigo_client {
 /** Wire protocol adapter private data structure.
  */
 typedef struct {
-	int input;													///< input handle
-	int output;													///< output handle
+	indigo_uni_handle **input;						///< input handle
+	indigo_uni_handle **output;					///< output handle
 	bool web_socket;										///< connection over WebSocket (RFC6455)
 	char url_prefix[INDIGO_NAME_SIZE];	///< server url prefix (for BLOB download)
 } indigo_adapter_context;
@@ -381,334 +392,342 @@ typedef struct {
 
 /** Last diagnostic messages.
  */
-extern char *indigo_last_message;
+INDIGO_EXTERN char *indigo_last_message;
 
 /** Name to be used in log (if not changed ot will be filled with executable name).
  */
-extern char indigo_log_name[];
+INDIGO_EXTERN char indigo_log_name[];
 
 /** If set, handler is used to print message instead of stderr/syslog output.
  */
-extern void (*indigo_log_message_handler)(indigo_log_levels level, const char *message);
+INDIGO_EXTERN void (*indigo_log_message_handler)(indigo_log_levels level, const char *message);
 
 /** Get INDIGO version major.minor-build.
  */
-extern void indigo_get_version(int *major, int *minor, int *build);
+INDIGO_EXTERN void indigo_get_version(int *major, int *minor, int *build);
 
 /** Print diagnostic messages - low level.
  */
-extern void indigo_log_base(indigo_log_levels level, const char *format, va_list args);
+INDIGO_EXTERN void indigo_log_base(indigo_log_levels level, const char *format, va_list args);
 
 /** Print diagnostic messages - plain.
  */
-extern void indigo_log_message(const char *format, va_list args);
+INDIGO_EXTERN void indigo_log_message(const char *format, va_list args);
 
 /** Print diagnostic messages on trace level, wrap calls to INDIGO_TRACE() macro.
  */
-extern void indigo_trace(const char *format, ...);
+INDIGO_EXTERN void indigo_trace(const char *format, ...);
 
 /** Print diagnostic messages on debug level, wrap calls to INDIGO_DEBUG() macro.
  */
 
-extern void indigo_debug(const char *format, ...);
+INDIGO_EXTERN void indigo_debug(const char *format, ...);
 /** Print diagnostic messages on debug_bus level, wrap calls to INDIGO_DEBUG() macro.
  */
 
-extern void indigo_trace_bus(const char *format, ...);
+INDIGO_EXTERN void indigo_trace_bus(const char *format, ...);
 /** Print diagnostic messages on error level, wrap calls to INDIGO_ERROR() macro.
  */
 
-extern void indigo_error(const char *format, ...);
+INDIGO_EXTERN void indigo_error(const char *format, ...);
 /** Print diagnostic messages on info level, wrap calls to INDIGO_LOG() macro.
  */
-extern void indigo_log(const char *format, ...);
+INDIGO_EXTERN void indigo_log(const char *format, ...);
+
+/** Print diagnostic messages on given log level.
+ */
+INDIGO_EXTERN void indigo_log_on_level(indigo_log_levels log_level, const char *format, ...);
+
+/** Internal use only
+ */
+INDIGO_EXTERN void indigo_driver_log(indigo_log_levels log_level, const char *driver, const char *function, int line, const char *format, ...);
 
 /** Print diagnostic message on trace level with property value, full property definition and items dump can be requested.
  */
-extern void indigo_trace_property(const char *message, indigo_client *client, indigo_property *property, bool defs, bool items);
+INDIGO_EXTERN void indigo_trace_property(const char *message, indigo_client *client, indigo_property *property, bool defs, bool items);
 
 /** Start bus operation.
  Call has no effect, if bus is already started.
  */
-extern indigo_result indigo_start(void);
+INDIGO_EXTERN indigo_result indigo_start(void);
 
 /** Set log level; see enum indigo_log_levels
 */
-extern void indigo_set_log_level(indigo_log_levels level);
+INDIGO_EXTERN void indigo_set_log_level(indigo_log_levels level);
 
 /** Get log level; see enum indigo_log_levels
  */
-extern indigo_log_levels indigo_get_log_level(void);
+INDIGO_EXTERN indigo_log_levels indigo_get_log_level(void);
 
 /** Attach device to bus.
  Return value of attach() callback function is assigned to last_result in device structure.
  */
-extern indigo_result indigo_attach_device(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_attach_device(indigo_device *device);
 
 /** Detach device from bus.
  Return value of detach() callback function is assigned to last_result in device structure.
  */
-extern indigo_result indigo_detach_device(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_detach_device(indigo_device *device);
 
 /** Attach client to bus.
  Return value of attach() callback function is assigned to last_result in client structure.
  */
-extern indigo_result indigo_attach_client(indigo_client *client);
+INDIGO_EXTERN indigo_result indigo_attach_client(indigo_client *client);
 
 /** Detach client from bus.
  Return value of detach() callback function is assigned to last_result in client structure.
  */
-extern indigo_result indigo_detach_client(indigo_client *client);
+INDIGO_EXTERN indigo_result indigo_detach_client(indigo_client *client);
 
 /** Broadcast property definition.
  */
-extern indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...);
+INDIGO_EXTERN indigo_result indigo_define_property(indigo_device *device, indigo_property *property, const char *format, ...);
 
 /** Broadcast property value change.
  */
-extern indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...);
+INDIGO_EXTERN indigo_result indigo_update_property(indigo_device *device, indigo_property *property, const char *format, ...);
 
 /** Broadcast property removal.
  */
-extern indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...);
+INDIGO_EXTERN indigo_result indigo_delete_property(indigo_device *device, indigo_property *property, const char *format, ...);
 
 /** Broadcast message.
  */
-extern indigo_result indigo_send_message(indigo_device *device, const char *format, ...);
+INDIGO_EXTERN indigo_result indigo_send_message(indigo_device *device, const char *format, ...);
 
 /** Broadcast property enumeration request.
  */
-extern indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_enumerate_properties(indigo_client *client, indigo_property *property);
 
 /** Broadcast property change request.
  */
-extern indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_change_property(indigo_client *client, indigo_property *property);
 
 /** Broadcast enableBLOB request.
  */
-extern indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
+INDIGO_EXTERN indigo_result indigo_enable_blob(indigo_client *client, indigo_property *property, indigo_enable_blob_mode mode);
 
 /** Stop bus operation.
  Call has no effect if bus is already stopped.
  */
-extern indigo_result indigo_stop(void);
+INDIGO_EXTERN indigo_result indigo_stop(void);
 
 /** Initialize text property.
  */
-extern indigo_property *indigo_init_text_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
+INDIGO_EXTERN indigo_property *indigo_init_text_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
 /** Initialize number property.
  */
-extern indigo_property *indigo_init_number_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
+INDIGO_EXTERN indigo_property *indigo_init_number_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
 /** Initialize switch property.
  */
-extern indigo_property *indigo_init_switch_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, indigo_rule rule, int count);
+INDIGO_EXTERN indigo_property *indigo_init_switch_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, indigo_rule rule, int count);
 /** Initialize light property.
  */
-extern indigo_property *indigo_init_light_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
+INDIGO_EXTERN indigo_property *indigo_init_light_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
 /** Initialize BLOB property.
  */
-extern indigo_property *indigo_init_blob_property_p(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
+INDIGO_EXTERN indigo_property *indigo_init_blob_property_p(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, indigo_property_perm perm, int count);
 /** Initialize read only BLOB property.
  */
-extern indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
+INDIGO_EXTERN indigo_property *indigo_init_blob_property(indigo_property *property, const char *device, const char *name, const char *group, const char *label, indigo_property_state state, int count);
 /** Resize property.
  */
-extern indigo_property *indigo_resize_property(indigo_property *property, int count);
+INDIGO_EXTERN indigo_property *indigo_resize_property(indigo_property *property, int count);
 /** Copy "property" to "copy". Allocate, if copy is NULL.
  */
-extern indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *property);
+INDIGO_EXTERN indigo_property *indigo_copy_property(indigo_property *copy, indigo_property *property);
 /** Clear property.
  */
-extern indigo_property *indigo_clear_property(indigo_property *property);
+INDIGO_EXTERN indigo_property *indigo_clear_property(indigo_property *property);
 /** Allocate blob buffer (rounded up to 2880 bytes).
  */
-extern void *indigo_alloc_blob_buffer(long size);
+INDIGO_EXTERN void *indigo_alloc_blob_buffer(long size);
 /** Resize property.
  */
-extern void indigo_release_property(indigo_property *property);
+INDIGO_EXTERN void indigo_release_property(indigo_property *property);
 
 /** Validate address of item of registered BLOB property.
  */
-extern indigo_blob_entry *indigo_validate_blob(indigo_item *item);
+INDIGO_EXTERN indigo_blob_entry *indigo_validate_blob(indigo_item *item);
 
 /** Find BLOB entry.
  */
-extern indigo_blob_entry *indigo_find_blob(indigo_property *other_property, indigo_item *other_item);
+INDIGO_EXTERN indigo_blob_entry *indigo_find_blob(indigo_property *other_property, indigo_item *other_item);
 
 /** Initialize text item.
  */
-extern void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...);
+INDIGO_EXTERN void indigo_init_text_item(indigo_item *item, const char *name, const char *label, const char *format, ...);
 /** Initialize raw text item.
  */
-extern void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *label, const char *value);
+INDIGO_EXTERN void indigo_init_text_item_raw(indigo_item *item, const char *name, const char *label, const char *value);
 /** Initialize number item.
  */
-extern void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value);
+INDIGO_EXTERN void indigo_init_number_item(indigo_item *item, const char *name, const char *label, double min, double max, double step, double value);
 
 #define indigo_init_sexagesimal_number_item(item, name, label, min, max, step, value) { indigo_init_number_item(item, name, label, min, max, step, value); strcpy(item->number.format, "%12.9m"); }
 
 /** Initialize switch item.
  */
-extern void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value);
+INDIGO_EXTERN void indigo_init_switch_item(indigo_item *item, const char *name, const char *label, bool value);
 /** Initialize light item.
  */
-extern void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value);
+INDIGO_EXTERN void indigo_init_light_item(indigo_item *item, const char *name, const char *label, indigo_property_state value);
 /** Initialize BLOB item.
  */
-extern void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
+INDIGO_EXTERN void indigo_init_blob_item(indigo_item *item, const char *name, const char *label);
 
 /** download BLOB for given url.
  */
-extern bool indigo_download_blob(char *url, void **value, long *size, char *format);
+INDIGO_EXTERN bool indigo_download_blob(char *url, void **value, long *size, char *format);
 
 /** populate BLOB item if url is given.
  */
-extern bool indigo_populate_http_blob_item(indigo_item *blob_item);
+INDIGO_EXTERN bool indigo_populate_http_blob_item(indigo_item *blob_item);
 
 /** upload BLOB item if url is given.
  */
-extern bool indigo_upload_http_blob_item(indigo_item *blob_item);
+INDIGO_EXTERN bool indigo_upload_http_blob_item(indigo_item *blob_item);
 
 /** get property hint value by key, returns false if key is not found, if the key has no value empty string is returned
  */
-extern bool indigo_get_property_hint(indigo_property *property, const char *key, char *value);
+INDIGO_EXTERN bool indigo_get_property_hint(indigo_property *property, const char *key, char *value);
 
 /** get item hint value by key, returns false if key is not found, if the key has no value empty string is returned
  */
-extern bool indigo_get_item_hint(indigo_item *item, const char *key, char *value);
+INDIGO_EXTERN bool indigo_get_item_hint(indigo_item *item, const char *key, char *value);
 
 /** Test, if property matches other property.
  */
-extern bool indigo_property_match(indigo_property *property, indigo_property *other);
+INDIGO_EXTERN bool indigo_property_match(indigo_property *property, indigo_property *other);
 
 /** Test, if property matches other property and is defined.
  */
-extern bool indigo_property_match_defined(indigo_property *property, indigo_property *other);
+INDIGO_EXTERN bool indigo_property_match_defined(indigo_property *property, indigo_property *other);
 
 /** Test, if property matches other property and is defined and RW.
  */
-extern bool indigo_property_match_changeable(indigo_property *property, indigo_property *other);
+INDIGO_EXTERN bool indigo_property_match_changeable(indigo_property *property, indigo_property *other);
 
 /** Test, if switch item matches other switch item.
  */
-extern bool indigo_switch_match(indigo_item *item, indigo_property *other);
+INDIGO_EXTERN bool indigo_switch_match(indigo_item *item, indigo_property *other);
 
 /** Set switch item on (and reset other if needed).
  */
-extern void indigo_set_switch(indigo_property *property, indigo_item *item, bool value);
+INDIGO_EXTERN void indigo_set_switch(indigo_property *property, indigo_item *item, bool value);
 
 /** Get item.
  */
-extern indigo_item *indigo_get_item(indigo_property *property, const char *item_name);
+INDIGO_EXTERN indigo_item *indigo_get_item(indigo_property *property, const char *item_name);
 
 /** Get switch item value.
  */
-extern bool indigo_get_switch(indigo_property *property, const char *item_name);
+INDIGO_EXTERN bool indigo_get_switch(indigo_property *property, const char *item_name);
 
 /** Copy item values from other property into property (optionally including property state).
  */
-extern void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state);
+INDIGO_EXTERN void indigo_property_copy_values(indigo_property *property, indigo_property *other, bool with_state);
 
 /** Copy item values into target from other number property into property (optionally including property state).
  */
-extern void indigo_property_copy_targets(indigo_property *property, indigo_property *other, bool with_state);
+INDIGO_EXTERN void indigo_property_copy_targets(indigo_property *property, indigo_property *other, bool with_state);
 
 /** Sort item values on description
  */
 
-extern void indigo_property_sort_items(indigo_property *property, int first);
+INDIGO_EXTERN void indigo_property_sort_items(indigo_property *property, int first);
 
 /** Request text property change.
  */
-extern indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
+INDIGO_EXTERN indigo_result indigo_change_text_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const char **values);
 
 /** Request text property change with access token.
  */
-extern indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values);
+INDIGO_EXTERN indigo_result indigo_change_text_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const char **values);
 
 /** Request text property change.
  */
-extern indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...);
+INDIGO_EXTERN indigo_result indigo_change_text_property_1(indigo_client *client, const char *device, const char *name, const char *item, const char *format, ...);
 
 /** Request raw text property change.
  */
-extern indigo_result indigo_change_text_property_1_raw(indigo_client *client, const char *device, const char *name, const char *item, const char *value);
+INDIGO_EXTERN indigo_result indigo_change_text_property_1_raw(indigo_client *client, const char *device, const char *name, const char *item, const char *value);
 
 /** Request text property change with access token.
  */
-extern indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...);
+INDIGO_EXTERN indigo_result indigo_change_text_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *format, ...);
 
 /** Request raw text property change with access token.
  */
-extern indigo_result indigo_change_text_property_1_with_token_raw(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *value);
+INDIGO_EXTERN indigo_result indigo_change_text_property_1_with_token_raw(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const char *value);
 
 /** Request number property change.
  */
-extern indigo_result indigo_change_number_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const double *values);
+INDIGO_EXTERN indigo_result indigo_change_number_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const double *values);
 
 /** Request number property change with access token.
  */
-extern indigo_result indigo_change_number_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const double *values);
+INDIGO_EXTERN indigo_result indigo_change_number_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const double *values);
 
 /** Request number property change.
  */
-extern indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value);
+INDIGO_EXTERN indigo_result indigo_change_number_property_1(indigo_client *client, const char *device, const char *name, const char *item, const double value);
 
 /** Request number property change with access token.
  */
-extern indigo_result indigo_change_number_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const double value);
+INDIGO_EXTERN indigo_result indigo_change_number_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const double value);
 
 /** Request switch property change.
  */
-extern indigo_result indigo_change_switch_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const bool *values);
+INDIGO_EXTERN indigo_result indigo_change_switch_property(indigo_client *client, const char *device, const char *name, int count, const char **items, const bool *values);
 
 /** Request switch property change with access token.
  */
-extern indigo_result indigo_change_switch_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const bool *values);
+INDIGO_EXTERN indigo_result indigo_change_switch_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, const bool *values);
 
 /** Request switch property change.
  */
-extern indigo_result indigo_change_switch_property_1(indigo_client *client, const char *device, const char *name, const char *item, const bool value);
+INDIGO_EXTERN indigo_result indigo_change_switch_property_1(indigo_client *client, const char *device, const char *name, const char *item, const bool value);
 
 /** Request switch property change with access_token.
  */
-extern indigo_result indigo_change_switch_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const bool value);
+INDIGO_EXTERN indigo_result indigo_change_switch_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, const bool value);
 
 /** Request BLOB property change.
  */
-extern indigo_result indigo_change_blob_property(indigo_client *client, const char *device, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **url);
+INDIGO_EXTERN indigo_result indigo_change_blob_property(indigo_client *client, const char *device, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **url);
 
 /** Request BLOB property change with access_token.
  */
-extern indigo_result indigo_change_blob_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **urls);
+INDIGO_EXTERN indigo_result indigo_change_blob_property_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, int count, const char **items, void **values, const long *sizes, const char **formats, const char **urls);
 
 /** Request BLOB property change.
  */
-extern indigo_result indigo_change_blob_property_1(indigo_client *client, const char *device, const char *name, const char *item, void *value, const long size, const char *format, const char *url);
+INDIGO_EXTERN indigo_result indigo_change_blob_property_1(indigo_client *client, const char *device, const char *name, const char *item, void *value, const long size, const char *format, const char *url);
 
 /** Request BLOB property change with access_token.
  */
-extern indigo_result indigo_change_blob_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, void *value, const long size, const char *format, const char *url);
+INDIGO_EXTERN indigo_result indigo_change_blob_property_1_with_token(indigo_client *client, const char *device, indigo_token token, const char *name, const char *item, void *value, const long size, const char *format, const char *url);
 
 /** Send connect message.
  */
-extern indigo_result indigo_device_connect(indigo_client *client, char *device);
+INDIGO_EXTERN indigo_result indigo_device_connect(indigo_client *client, char *device);
 
 /** Send disconnect message.
  */
-extern indigo_result indigo_device_disconnect(indigo_client *client, char *device);
+INDIGO_EXTERN indigo_result indigo_device_disconnect(indigo_client *client, char *device);
 
 /** Query slave devices of given master device.
  */
-extern int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int max);
+INDIGO_EXTERN int indigo_query_slave_devices(indigo_device *master, indigo_device **slaves, int max);
 
 /** Trim " @ local_service_name" from the string.
  */
-extern void indigo_trim_local_service(char *device_name);
+INDIGO_EXTERN void indigo_trim_local_service(char *device_name);
 
 /** Asynchronous handle property change in sepatate thread
 */
-extern bool indigo_handle_property_async(
+INDIGO_EXTERN bool indigo_handle_property_async(
 	void (*handler)(indigo_device *device, indigo_client *client, indigo_property *property),
 	indigo_device *device,
 	indigo_client *client,
@@ -717,39 +736,40 @@ extern bool indigo_handle_property_async(
 
 /** Asynchronous execution in thread.
  */
-extern bool indigo_async(void *fun(void *data), void *data);
+INDIGO_EXTERN bool indigo_async(void *fun(void *data), void *data);
 
 #define INDIGO_ASYNC(call, data) (indigo_async((void*(*)(void *))call, (void*)data))
 
 /** Convert sexagesimal string to double.
  */
-extern double indigo_stod(char *string);
+INDIGO_EXTERN double indigo_stod(char *string);
 
 /** Convert double to sexagesimal string.
  */
-extern char* indigo_dtos(double value, const char *format);
+INDIGO_EXTERN char* indigo_dtos(double value, const char *format);
 
 /** Sleeps for specified number of microseconds.
  */
-extern void indigo_usleep(unsigned int delay);
+INDIGO_EXTERN void indigo_usleep(long delay);
 
-#define ONE_SECOND_DELAY	1000000
+#define INDIGO_DELAY(fraction) ((long)(1000000L * (fraction)))
+#define indigo_sleep(fraction) indigo_usleep(INDIGO_DELAY(fraction))
 
 /** Locale independent atod()
  */
-extern double indigo_atod(const char *str);
+INDIGO_EXTERN double indigo_atod(const char *str);
 
 /** Locale independent dtoa()
  */
-extern char *indigo_dtoa(double value, char *str);
+INDIGO_EXTERN char *indigo_dtoa(double value, char *str);
 
 /** Get size independent text item value
  */
-extern char *indigo_get_text_item_value(indigo_item *item);
+INDIGO_EXTERN char *indigo_get_text_item_value(indigo_item *item);
 
 /** Set size independent text item value
  */
-extern void indigo_set_text_item_value(indigo_item *item, const char *value);
+INDIGO_EXTERN void indigo_set_text_item_value(indigo_item *item, const char *value);
 
 #define indigo_fix_locale(s) { char *fc = strchr(s, ','); if (fc) *fc = '.'; }
 
@@ -760,47 +780,49 @@ extern void indigo_set_text_item_value(indigo_item *item, const char *value);
 
 /** Property representing all properties of all devices (used for enumeration broadcast).
  */
-extern indigo_property INDIGO_ALL_PROPERTIES;
+INDIGO_EXTERN indigo_property INDIGO_ALL_PROPERTIES;
 
 /** Variable used to store main() argc argument for loging purposes.
  */
-extern int indigo_main_argc;
+INDIGO_EXTERN int indigo_main_argc;
 
 /** Variable used to store main() argv argument for loging purposes.
  */
-extern const char **indigo_main_argv;
+INDIGO_EXTERN const char **indigo_main_argv;
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 /** Send logging messages to syslog instead of stderr.
  */
-extern bool indigo_use_syslog;
+INDIGO_EXTERN bool indigo_use_syslog;
+#endif
 
 /** Ignore messages from remote devices containing local service name to avoid loops.
  */
-extern char indigo_local_service_name[INDIGO_NAME_SIZE];
+INDIGO_EXTERN char indigo_local_service_name[INDIGO_NAME_SIZE];
 
 /** Reshare remote devices. Set to true with care, can create loops.
  */
-extern bool indigo_reshare_remote_devices;
+INDIGO_EXTERN bool indigo_reshare_remote_devices;
 
 /** Do not add @ host:port suffix to remote devices - for case with single remote server and no local devices only.
  */
-extern bool indigo_use_host_suffix;
+INDIGO_EXTERN bool indigo_use_host_suffix;
 
 /** Is sandboxed environment (macOS only).
  */
-extern bool indigo_is_sandboxed;
+INDIGO_EXTERN bool indigo_is_sandboxed;
 
 /** Cache BLOB content
  */
-extern bool indigo_use_blob_caching;
+INDIGO_EXTERN bool indigo_use_blob_caching;
 
 /** Proxy BLOB content
  */
-extern bool indigo_proxy_blob;
+INDIGO_EXTERN bool indigo_proxy_blob;
 
 /** Use recursive locks for dispaching all bus messages
  */
-extern bool indigo_use_strict_locking;
+INDIGO_EXTERN bool indigo_use_strict_locking;
 
 /** Allocate, assert and zero
  */
@@ -808,28 +830,48 @@ extern bool indigo_use_strict_locking;
 static inline void *indigo_safe_malloc(size_t size) {
 	void *pointer = malloc(size);
 	assert(pointer != NULL);
-	memset(pointer, 0, size);
-	return pointer;
+	if (pointer != NULL) {
+		memset(pointer, 0, size);
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
 
-static inline void *indigo_safe_malloc_copy(size_t size, void *from) {
-	void *pointer = malloc(size);
+static inline void* indigo_safe_malloc_copy(size_t size, void* from) {
+	void* pointer = malloc(size);
 	assert(pointer != NULL);
-	memcpy(pointer, from, size);
-	return pointer;
+	if (pointer != NULL) {
+		memcpy(pointer, from, size);
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
+
+#ifdef _MSC_VER
+#pragma warning(disable: 6308)
+#endif
 
 static inline void *indigo_safe_realloc(void *pointer, size_t size) {
 	pointer = realloc(pointer, size);
 	assert(pointer != NULL);
-	return pointer;
+	if (pointer != NULL) {
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
 
 static inline void *indigo_safe_realloc_copy(void *pointer, size_t size, void *from) {
 	pointer = realloc(pointer, size);
 	assert(pointer != NULL);
-	memcpy(pointer, from, size);
-	return pointer;
+	if (pointer != NULL) {
+		memcpy(pointer, from, size);
+		return pointer;
+	}
+	fprintf(stderr, "Failed to allocate memory");
+	exit(0);
 }
 
 static inline void indigo_safe_free(void *pointer) {
@@ -848,20 +890,26 @@ static inline char *indigo_safe_strncpy(char *dst, const char *src, size_t size)
 
 #define INDIGO_BUFFER_SIZE (128 * 1024)
 
-extern void *indigo_alloc_large_buffer(void);
-extern void indigo_free_large_buffer(void *large_buffer);
+INDIGO_EXTERN void *indigo_alloc_large_buffer(void);
+INDIGO_EXTERN void indigo_free_large_buffer(void *large_buffer);
 
 /** Calculate pixel scale in arcsec/pixel
  */
-extern double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
+INDIGO_EXTERN double indigo_pixel_scale(double focal_length_cm, double pixel_size_um);
 
 /** Check for duplicate device name
  */
-extern bool indigo_device_name_exists(const char *name);
+INDIGO_EXTERN bool indigo_device_name_exists(const char *name);
 
 /** Fix device name to be unique with #number suffix
  */
-extern bool indigo_make_name_unique(char *name, const char *format, ...);
+INDIGO_EXTERN bool indigo_make_name_unique(char *name, const char *format, ...);
+
+#if defined(INDIGO_WINDOWS)
+
+INDIGO_EXTERN int gettimeofday(struct timeval * tp, struct timezone * tzp);
+
+#endif
 
 #ifdef __cplusplus
 }

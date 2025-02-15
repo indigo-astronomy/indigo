@@ -30,21 +30,15 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include "indigo_wheel_playerone.h"
+#include <indigo/indigo_usb_utils.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
+#include "indigo_wheel_playerone.h"
 
 #include <PlayerOnePW.h>
 
@@ -162,7 +156,7 @@ static void wheel_connect_callback(indigo_device *device) {
 					const float retry_delay = 0.5;
 					int count = 0;
 					do {
-						indigo_usleep(retry_delay * ONE_SECOND_DELAY);
+						indigo_sleep(retry_delay);
 						PWErrors res = POAGetPWState(PRIVATE_DATA->dev_handle, &state);
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetPWState(%d, -> %d) = %d", PRIVATE_DATA->dev_handle, state, res);
 						count++;
@@ -239,7 +233,7 @@ static indigo_result wheel_change_property(indigo_device *device, indigo_client 
 			WHEEL_SLOT_PROPERTY->state = INDIGO_OK_STATE;
 		} else {
 			WHEEL_SLOT_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_slot = WHEEL_SLOT_ITEM->number.value;
+			PRIVATE_DATA->target_slot = (int)WHEEL_SLOT_ITEM->number.value;
 			WHEEL_SLOT_ITEM->number.value = PRIVATE_DATA->current_slot;
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 			int res = POAGotoPosition(PRIVATE_DATA->dev_handle, PRIVATE_DATA->target_slot-1);
@@ -406,6 +400,8 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	strncpy(suffix, suffix_start, 16);
 }
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void process_plug_event(indigo_device *unused) {
 	PWProperties info;
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(
@@ -449,7 +445,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		indigo_usleep(ONE_SECOND_DELAY);
+		indigo_sleep(1);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 	char name[256] = {0};

@@ -40,12 +40,11 @@
 
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_server_tcp.h>
 
 #include "indigo_agent_alpaca.h"
 #include "alpaca_common.h"
-
-//#define INDIGO_PRINTF(...) if (!indigo_printf(__VA_ARGS__)) goto failure
 
 #define PRIVATE_DATA													private_data
 
@@ -82,10 +81,9 @@ static void save_config(indigo_device *device) {
 		pthread_mutex_lock(&private_data->mutex);
 		indigo_save_property(device, NULL, AGENT_DEVICES_PROPERTY);
 		indigo_save_property(device, NULL, AGENT_CAMERA_BAYERPAT_PROPERTY);
-		if (DEVICE_CONTEXT->property_save_file_handle) {
+		if (DEVICE_CONTEXT->property_save_file_handle != NULL) {
 			CONFIG_PROPERTY->state = INDIGO_OK_STATE;
-			close(DEVICE_CONTEXT->property_save_file_handle);
-			DEVICE_CONTEXT->property_save_file_handle = 0;
+			indigo_uni_close(&DEVICE_CONTEXT->property_save_file_handle);
 		} else {
 			CONFIG_PROPERTY->state = INDIGO_ALERT_STATE;
 		}
@@ -98,6 +96,7 @@ static void save_config(indigo_device *device) {
 // -------------------------------------------------------------------------------- ALPACA bridge implementation
 
 static void start_discovery_server(indigo_device *device) {
+#warning: "TODO: Pending issue for migration to unified I/O"
 	int port = (int)AGENT_DISCOVERY_PORT_ITEM->number.value;
 	discovery_server_socket = socket(PF_INET, SOCK_DGRAM, 0);
 	if (discovery_server_socket == -1) {
@@ -126,7 +125,6 @@ static void start_discovery_server(indigo_device *device) {
 	unsigned int client_address_length = sizeof(client_address);
 	char buffer[128];
 	struct timeval tv;
-
 	while (discovery_server_socket) {
 		tv.tv_sec = 1;
 		tv.tv_usec = 0;
@@ -181,73 +179,76 @@ static void parse_url_params(char *params, uint32_t *client_id, uint32_t *client
 	}
 }
 
-static void send_json_response(int socket, char *path, int status_code, const char *status_text, char *body) {
-	if (indigo_printf(socket,
+static void send_json_response(indigo_uni_handle *handle, char *path, int status_code, const char *status_text, char *body) {
+	if (indigo_uni_printf(handle,
 			"HTTP/1.1 %3d %s\r\n"
 			"Content-Type: application/json\r\n"
 			"Content-Length: %d\r\n"
 			"\r\n"
 			"%s", status_code, status_text, strlen(body), body)) {
-		if (status_code == 200)
+		if (status_code == 200) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> 200 %s", path, status_text);
-		else
+		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %3d %s", path, status_code, status_text);
+		}
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%s", body);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "% -> Failed", path);
 	}
 }
 
-static void send_text_response(int socket, char *path, int status_code, const char *status_text, char *body) {
-	if (indigo_printf(socket,
+static void send_text_response(indigo_uni_handle *handle, char *path, int status_code, const char *status_text, char *body) {
+	if (indigo_uni_printf(handle,
 			"HTTP/1.1 %3d %s\r\n"
 			"Content-Type: text/plain\r\n"
 			"Content-Length: %d\r\n"
 			"\r\n"
 			"%s", status_code, status_text, strlen(body), body)) {
-		if (status_code == 200)
+		if (status_code == 200) {
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "%s -> 200 %s", path, status_text);
-		else
+		} else {
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "%s -> %3d %s", path, status_code, status_text);
+		}
 		INDIGO_DRIVER_TRACE(DRIVER_NAME, "%s", body);
 	} else {
 		INDIGO_DRIVER_ERROR(DRIVER_NAME, "% -> Failed", path);
 	}
 }
 
-static bool alpaca_setup_handler(int socket, char *method, char *path, char *params) {
-	if (indigo_printf(socket,
+static bool alpaca_setup_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
+	if (indigo_uni_printf(handle,
 			"HTTP/1.1 301 Moved Permanently\r\n"
 			"Location: /mng.html\r\n"
 			"Content-Type: text/plain\r\n"
 			"Content-Length: 0\r\n"
 			"\r\n"
-		))
+												)) {
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "% -> OK", path);
-	else
+	} else {
 		INDIGO_DRIVER_LOG(DRIVER_NAME, "% -> Failed", path);
+	}
 	return true;
 }
 
-static bool alpaca_apiversions_handler(int socket, char *method, char *path, char *params) {
+static bool alpaca_apiversions_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char buffer[128];
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	snprintf(buffer, sizeof(buffer), "{ \"Value\": [ 1 ], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
-	send_json_response(socket, path, 200, "OK", buffer);
+	send_json_response(handle, path, 200, "OK", buffer);
 	return true;
 }
 
-static bool alpaca_v1_description_handler(int socket, char *method, char *path, char *params) {
+static bool alpaca_v1_description_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char buffer[512];
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
 	snprintf(buffer, sizeof(buffer), "{ \"Value\": { \"ServerName\": \"INDIGO-Alpaca Bridge\", \"ServerVersion\": \"%d.%d-%s\", \"Manufacturer\": \"The INDIGO Initiative\", \"ManufacturerURL\": \"https://www.indigo-astronomy.org\" }, \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, client_transaction_id, server_transaction_id++);
-	send_json_response(socket, path, 200, "OK", buffer);
+	send_json_response(handle, path, 200, "OK", buffer);
 	return true;
 }
 
-static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *path, char *params) {
+static bool alpaca_v1_configureddevices_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	uint32_t client_id = 0, client_transaction_id = 0;
 	char *buffer = indigo_alloc_large_buffer();
 	parse_url_params(params, &client_id, &client_transaction_id, NULL);
@@ -267,7 +268,7 @@ static bool alpaca_v1_configureddevices_handler(int socket, char *method, char *
 		alpaca_device = alpaca_device->next;
 	}
 	snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, "], \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
-	send_json_response(socket, path, 200, "OK", buffer);
+	send_json_response(handle, path, 200, "OK", buffer);
 	indigo_free_large_buffer(buffer);
 	return true;
 }
@@ -276,25 +277,25 @@ int string_cmp(const void * a, const void * b) {
 	 return strncasecmp((char *)a, (char *)b, 128);
 }
 
-static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *params) {
+static bool alpaca_v1_api_handler(indigo_uni_handle *handle, char *method, char *path, char *params) {
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s %s %s", method, path, params);
 	uint32_t client_id = 0, client_transaction_id = 0;
 	int id = 0;
 	char *device_type = strstr(path, "/api/v1/");
 	if (device_type == NULL) {
-		send_text_response(socket, path, 400, "Bad Request", "Wrong API prefix");
+		send_text_response(handle, path, 400, "Bad Request", "Wrong API prefix");
 		return true;
 	}
 	device_type += 8;
 	char *device_number = strchr(device_type, '/');
 	if (device_number == NULL) {
-		send_text_response(socket, path, 400, "Bad Request", "Missing device type");
+		send_text_response(handle, path, 400, "Bad Request", "Missing device type");
 		return true;
 	}
 	*device_number++ = 0;
 	char *command = strchr(device_number, '/');
 	if (command == NULL) {
-		send_text_response(socket, path, 400, "Bad Request", "Missing device number");
+		send_text_response(handle, path, 400, "Bad Request", "Missing device number");
 		return true;
 	}
 	*command++ = 0;
@@ -306,19 +307,19 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 			if (alpaca_device->device_type && !strcasecmp(alpaca_device->device_type, device_type)) {
 				break;
 			}
-			send_text_response(socket, path, 400, "Bad Request", "Device type doesn't match");
+			send_text_response(handle, path, 400, "Bad Request", "Device type doesn't match");
 			return true;
 		}
 		alpaca_device = alpaca_device->next;
 	}
 	if (alpaca_device == NULL) {
-		send_text_response(socket, path, 400, "Bad Request", "No such device");
+		send_text_response(handle, path, 400, "Bad Request", "No such device");
 		return true;
 	}
 	if (!strncmp(method, "GET", 3)) {
 		parse_url_params(params, &client_id, &client_transaction_id, &id);
 		if (!strncmp(command, "imagearray", 10)) {
-			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, socket, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
+			indigo_alpaca_ccd_get_imagearray(alpaca_device, 1, handle, client_transaction_id, server_transaction_id++, !strcmp(method, "GET/GZIP"), !strcmp(method, "GET/IMAGEBYTES"));
 			return false;
 		} else {
 			buffer = indigo_alloc_large_buffer();
@@ -328,20 +329,20 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 				index += length;
 				snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
 				INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
-				send_json_response(socket, path, 200, "OK", buffer);
+				send_json_response(handle, path, 200, "OK", buffer);
 			} else {
-				send_text_response(socket, path, 400, "Bad Request", "Unrecognised command");
+				send_text_response(handle, path, 400, "Bad Request", "Unrecognised command");
 			}
 		}
 	} else if (!strcmp(method, "PUT")) {
 		int content_length = 0;
 		buffer = indigo_alloc_large_buffer();
-		while (indigo_read_line(socket, buffer, INDIGO_BUFFER_SIZE) > 0) {
+		while (indigo_uni_read_line(handle, buffer, INDIGO_BUFFER_SIZE) > 0) {
 			if (!strncasecmp(buffer, "Content-Length:", 15)) {
 				content_length = atoi(buffer + 15);
 			}
 		}
-		indigo_read_line(socket, buffer, content_length);
+		indigo_uni_read_line(handle, buffer, content_length);
 		buffer[content_length] = 0;
 		INDIGO_DRIVER_DEBUG(DRIVER_NAME, "< %s", buffer);
 		char *params = buffer;
@@ -372,13 +373,13 @@ static bool alpaca_v1_api_handler(int socket, char *method, char *path, char *pa
 			index += length;
 			snprintf(buffer + index, INDIGO_BUFFER_SIZE - index, ", \"ClientTransactionID\": %u, \"ServerTransactionID\": %u }", client_transaction_id, server_transaction_id++);
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "> %s", buffer);
-			send_json_response(socket, path, 200, "OK", buffer);
+			send_json_response(handle, path, 200, "OK", buffer);
 		} else {
-			send_text_response(socket, path, 400, "Bad Request", "Unrecognised command");
+			send_text_response(handle, path, 400, "Bad Request", "Unrecognised command");
 		}
 		
 	} else {
-		send_text_response(socket, path, 400, "Bad Request", "Invalid method");
+		send_text_response(handle, path, 400, "Bad Request", "Invalid method");
 	}
 	if (buffer) {
 		indigo_free_large_buffer(buffer);

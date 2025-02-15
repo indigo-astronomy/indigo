@@ -41,12 +41,6 @@
 
 #include "indigo_wheel_mi.h"
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <gxccd.h>
 
 #define MI_VID						0x1347
@@ -261,6 +255,8 @@ static void callback(int eid) {
 	}
 	new_eid = eid;
 }
+
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void process_plug_event(libusb_device *dev) {
 	static indigo_device wheel_template = INDIGO_DEVICE_INITIALIZER(

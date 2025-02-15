@@ -36,23 +36,14 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ccd_playerone.h"
-
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include "PlayerOneCamera.h"
 
@@ -375,7 +366,7 @@ static bool playerone_set_cooler(indigo_device *device, bool status, double targ
 		else
 			INDIGO_DRIVER_DEBUG(DRIVER_NAME, "POAGetConfig(%d, POA_TARGET_TEMP, > %d)", id, value.intValue);
 		if ((int)target != value.intValue) {
-			value.intValue = target;
+			value.intValue = (int)target;
 			res = POASetConfig(id, POA_TARGET_TEMP, value, false);
 			if (res)
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "POASetConfig(%d, POA_TARGET_TEMP, %d) > %d", id, value.intValue, res);
@@ -428,7 +419,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	bool exposure_failed = false;
 	POACameraState state;
 	PRIVATE_DATA->can_check_temperature = false;
-	if (playerone_setup_exposure(device, CCD_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+	if (playerone_setup_exposure(device, (int)CCD_EXPOSURE_ITEM->number.target, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = POAStartExposure(id, false); // Single exposure mode.
 		/* Single exposure mode Does not work for Saturn-C, due to a bug in the POAImageReady() function. Have to set video mode here as a workaround */
@@ -448,7 +439,7 @@ static void exposure_timer_callback(indigo_device *device) {
 					break;
 				}
 				PRIVATE_DATA->can_check_temperature = true;
-				indigo_usleep(ONE_SECOND_DELAY);
+				indigo_sleep(1);
 				CCD_EXPOSURE_ITEM->number.value--;
 				if (CCD_EXPOSURE_ITEM->number.value < 0) {
 					CCD_EXPOSURE_ITEM->number.value = 0;
@@ -554,7 +545,7 @@ static void streaming_timer_callback(indigo_device *device) {
 	bool exposure_failed = false;
 	POACameraState state;
 	PRIVATE_DATA->can_check_temperature = false;
-	if (playerone_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, CCD_FRAME_LEFT_ITEM->number.value, CCD_FRAME_TOP_ITEM->number.value, CCD_FRAME_WIDTH_ITEM->number.value, CCD_FRAME_HEIGHT_ITEM->number.value, CCD_BIN_HORIZONTAL_ITEM->number.value)) {
+	if (playerone_setup_exposure(device, CCD_STREAMING_EXPOSURE_ITEM->number.target, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value, (int)CCD_BIN_HORIZONTAL_ITEM->number.value)) {
 		pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 		res = POAStartExposure(id, false); // Streaming exposure mode
 		pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -583,7 +574,7 @@ static void streaming_timer_callback(indigo_device *device) {
 						break;
 					}
 					PRIVATE_DATA->can_check_temperature = true;
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					CCD_STREAMING_EXPOSURE_ITEM->number.value--;
 					if (CCD_STREAMING_EXPOSURE_ITEM->number.value < 0) {
 						CCD_STREAMING_EXPOSURE_ITEM->number.value = 0;
@@ -933,7 +924,7 @@ static void handle_advanced_property(indigo_device *device) {
 				else if (ctrl_caps.valueType == VAL_FLOAT)
 					value.floatValue = item->number.value;
 				else
-					value.intValue = item->number.value;
+					value.intValue = (long)item->number.value;
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POASetConfig(id, ctrl_caps.configID, value, POA_FALSE);
 				pthread_mutex_unlock(&PRIVATE_DATA->usb_mutex);
@@ -1449,7 +1440,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 			offset = PRIVATE_DATA->offset_lowest_rn;
 		} else if (POA_GAIN_HCG_ITEM->sw.value) {
 			gain = PRIVATE_DATA->gain_hcg;
-			offset = CCD_OFFSET_ITEM->number.value;
+			offset = (int)CCD_OFFSET_ITEM->number.value;
 		}
 		CCD_GAIN_PROPERTY->state = INDIGO_OK_STATE;
 		CCD_OFFSET_PROPERTY->state = INDIGO_OK_STATE;
@@ -1662,17 +1653,9 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		int vertical_bin = (int)CCD_BIN_VERTICAL_ITEM->number.value;
 		/* Player One cameras work with binx = biny for we force it here */
 		if (prev_h_bin != horizontal_bin) {
-			vertical_bin =
-			CCD_BIN_HORIZONTAL_ITEM->number.target =
-			CCD_BIN_HORIZONTAL_ITEM->number.value =
-			CCD_BIN_VERTICAL_ITEM->number.target =
-			CCD_BIN_VERTICAL_ITEM->number.value = horizontal_bin;
+			vertical_bin = (int)(CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = horizontal_bin);
 		} else if (prev_v_bin != vertical_bin) {
-			horizontal_bin =
-			CCD_BIN_HORIZONTAL_ITEM->number.target =
-			CCD_BIN_HORIZONTAL_ITEM->number.value =
-			CCD_BIN_VERTICAL_ITEM->number.target =
-			CCD_BIN_VERTICAL_ITEM->number.value = vertical_bin;
+			horizontal_bin = (int)(CCD_BIN_HORIZONTAL_ITEM->number.target = CCD_BIN_HORIZONTAL_ITEM->number.value = CCD_BIN_VERTICAL_ITEM->number.target = CCD_BIN_VERTICAL_ITEM->number.value = vertical_bin);
 		}
 		char name[32] = "";
 		for (int i = 0; i < PIXEL_FORMAT_PROPERTY->count; i++) {
@@ -1783,7 +1766,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_dec);
 		GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 		POAConfigValue value = { .boolValue = true };
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1796,7 +1779,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback_dec, &PRIVATE_DATA->guider_timer_dec);
 			GUIDER_GUIDE_DEC_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POASetConfig(id, POA_GUIDE_SOUTH, value, false);
@@ -1816,7 +1799,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer_ra);
 		GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_OK_STATE;
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 		POAConfigValue value = { .boolValue = true };
 		if (duration > 0) {
 			pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
@@ -1829,7 +1812,7 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback_ra, &PRIVATE_DATA->guider_timer_ra);
 			GUIDER_GUIDE_RA_PROPERTY->state = INDIGO_BUSY_STATE;
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				pthread_mutex_lock(&PRIVATE_DATA->usb_mutex);
 				res = POASetConfig(id, POA_GUIDE_WEST, value, false);

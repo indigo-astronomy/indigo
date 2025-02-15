@@ -29,6 +29,16 @@
 #include <indigo/indigo_bus.h>
 #include <indigo/indigo_driver.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -547,62 +557,52 @@ typedef struct {
 
 /** Attach callback function.
  */
-extern indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name, unsigned version);
+INDIGO_EXTERN indigo_result indigo_mount_attach(indigo_device *device, const char* driver_name, unsigned version);
 /** Enumerate properties callback function.
  */
-extern indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_mount_enumerate_properties(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Change property callback function.
  */
-extern indigo_result indigo_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
+INDIGO_EXTERN indigo_result indigo_mount_change_property(indigo_device *device, indigo_client *client, indigo_property *property);
 /** Detach callback function.
  */
-extern indigo_result indigo_mount_detach(indigo_device *device);
+INDIGO_EXTERN indigo_result indigo_mount_detach(indigo_device *device);
 
 /** Translate coordinates to native.
  */
 
-extern indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double dec, double *raw_ra, double *raw_dec);
-extern indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double lst, double ra, double dec, int side_of_pier, double *raw_ra, double *raw_dec);
+INDIGO_EXTERN indigo_result indigo_translated_to_raw(indigo_device *device, double ra, double dec, double *raw_ra, double *raw_dec);
+INDIGO_EXTERN indigo_result indigo_translated_to_raw_with_lst(indigo_device *device, double lst, double ra, double dec, int side_of_pier, double *raw_ra, double *raw_dec);
 
 /** Translate coordinates from native.
  */
 
-extern indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
-extern indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double lst, double raw_ra, double raw_dec, int side_of_pier, double *ra, double *dec);
+INDIGO_EXTERN indigo_result indigo_raw_to_translated(indigo_device *device, double raw_ra, double raw_dec, double *ra, double *dec);
+INDIGO_EXTERN indigo_result indigo_raw_to_translated_with_lst(indigo_device *device, double lst, double raw_ra, double raw_dec, int side_of_pier, double *ra, double *dec);
 
 /** Get mount UTC if available otherwise return host UTC.
  */
-time_t indigo_get_mount_utc(indigo_device *device);
+INDIGO_EXTERN time_t indigo_get_mount_utc(indigo_device *device);
 
 /** Translate coordinates from native.
  */
 
-extern void indigo_update_coordinates(indigo_device *device, const char *message);
+INDIGO_EXTERN void indigo_update_coordinates(indigo_device *device, const char *message);
 
 /** Load alignment points.
  */
 
-extern void indigo_mount_load_alignment_points(indigo_device *device);
+INDIGO_EXTERN void indigo_mount_load_alignment_points(indigo_device *device);
 
 /** Save alignment points.
  */
 
-extern void indigo_mount_save_alignment_points(indigo_device *device);
+INDIGO_EXTERN void indigo_mount_save_alignment_points(indigo_device *device);
 
 /** Update alignment points.
  */
 
-extern void indigo_mount_update_alignment_points(indigo_device *device);
-
-/** Get host UTC offset
- */
-
-extern int indigo_get_utc_offset(void);
-
-/** Get host DST state
- */
-
-extern int indigo_get_dst_state(void);
+INDIGO_EXTERN void indigo_mount_update_alignment_points(indigo_device *device);
 
 #ifdef __cplusplus
 }

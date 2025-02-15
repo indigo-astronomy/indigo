@@ -29,27 +29,29 @@
 #include <stdio.h>
 #include <indigo/indigo_bus.h>
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #define JSON_BUFFER_SIZE	(256 * 1024)
 
-#ifndef htonll
-#define htonll(x) ((1==htonl(1)) ? (x) : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-#endif
-
-#ifndef ntohll
-#define ntohll(x) ((1==ntohl(1)) ? (x) : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
-#endif
-
 /** JSON wire protocol parser.
  */
-extern void indigo_json_parse(indigo_device *device, indigo_client *client);
+INDIGO_EXTERN void indigo_json_parse(indigo_device *device, indigo_client *client);
 
 /** Escape JSON string.
  */
-extern const char *indigo_json_escape(const char *string);
+INDIGO_EXTERN const char *indigo_json_escape(const char *string);
 
 #ifdef __cplusplus
 }

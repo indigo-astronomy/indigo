@@ -38,15 +38,8 @@
 #include <sys/time.h>
 #include <sys/termios.h>
 
-#if defined(INDIGO_MACOS)
-#include <libusb-1.0/libusb.h>
-#elif defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_io.h>
 
 #include "indigo_aux_uch.h"
@@ -290,7 +283,7 @@ static void aux_connection_handler(indigo_device *device) {
 						PRIVATE_DATA->handle = 0;
 						break;
 					}
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					INDIGO_DRIVER_ERROR(DRIVER_NAME, "UCH not detected - retrying...");
 				}
 			}

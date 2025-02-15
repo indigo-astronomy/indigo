@@ -364,7 +364,7 @@ typedef union {
 float
 _TIFFUInt64ToFloat(uint64 ui64)
 {
-	_Int64 i;
+	_Int64 i = { 0 };
 
 	i.value = ui64;
 	if (i.part.high >= 0) {
@@ -380,7 +380,7 @@ _TIFFUInt64ToFloat(uint64 ui64)
 double
 _TIFFUInt64ToDouble(uint64 ui64)
 {
-	_Int64 i;
+	_Int64 i = { 0 };
 
 	i.value = ui64;
 	if (i.part.high >= 0) {

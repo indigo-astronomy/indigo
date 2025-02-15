@@ -30,8 +30,6 @@
 #include <stdarg.h>
 #include <pthread.h>
 
-#include <libusb-1.0/libusb.h>
-
 #include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ptp.h"

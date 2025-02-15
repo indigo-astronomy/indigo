@@ -17,6 +17,16 @@
 #ifndef __TRANSFORM_H
 #define __TRANSFORM_H
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,11 +61,11 @@ typedef struct {
 	double Z;	/* Rectangular Z coordinate */
 } cartesian_coords_s;
 
-extern void indigocat_ecliptical_to_equatorial_coords(lonlat_coords_s * object, double JD, equatorial_coords_s *position);
-extern void indigocat_heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_coords_s *position);
+INDIGO_EXTERN void indigocat_ecliptical_to_equatorial_coords(lonlat_coords_s * object, double JD, equatorial_coords_s *position);
+INDIGO_EXTERN void indigocat_heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_coords_s *position);
 
-extern double indigocat_range_degrees(double angle);
-extern double range_radians2(double angle);
+INDIGO_EXTERN double indigocat_range_degrees(double angle);
+INDIGO_EXTERN double range_radians2(double angle);
 
 #ifdef __cplusplus
 };

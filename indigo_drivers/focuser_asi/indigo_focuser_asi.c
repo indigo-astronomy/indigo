@@ -28,21 +28,15 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
 #include <stdbool.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
-#include "indigo_focuser_asi.h"
+#include <indigo/indigo_usb_utils.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
+#include "indigo_focuser_asi.h"
 
 #include <EAF_focuser.h>
 
@@ -207,9 +201,9 @@ static void compensate_focus(indigo_device *device, double new_temp) {
 
 	/* Make sure we do not attempt to go beyond the limits */
 	if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+		PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.max;
 	} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-		PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+		PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.min;
 	}
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Compensating: Corrected PRIVATE_DATA->target_position = %d", PRIVATE_DATA->target_position);
 
@@ -447,7 +441,7 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 		} else {
 			FOCUSER_POSITION_PROPERTY->state = INDIGO_BUSY_STATE;
 			FOCUSER_STEPS_PROPERTY->state = INDIGO_BUSY_STATE;
-			PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.target;
+			PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.target;
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
 			indigo_update_property(device, FOCUSER_STEPS_PROPERTY, NULL);
 			indigo_update_property(device, FOCUSER_POSITION_PROPERTY, NULL);
@@ -544,16 +538,16 @@ static indigo_result focuser_change_property(indigo_device *device, indigo_clien
 				INDIGO_DRIVER_ERROR(DRIVER_NAME, "EAFGetPosition(%d) = %d", PRIVATE_DATA->dev_id, res);
 			}
 			if (FOCUSER_DIRECTION_MOVE_INWARD_ITEM->sw.value) {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position - FOCUSER_STEPS_ITEM->number.value);
 			} else {
-				PRIVATE_DATA->target_position = PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value;
+				PRIVATE_DATA->target_position = (int)(PRIVATE_DATA->current_position + FOCUSER_STEPS_ITEM->number.value);
 			}
 
 			/* Make sure we do not attempt to go beyond the limits */
 			if (FOCUSER_POSITION_ITEM->number.max < PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.max;
+				PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.max;
 			} else if (FOCUSER_POSITION_ITEM->number.min > PRIVATE_DATA->target_position) {
-				PRIVATE_DATA->target_position = FOCUSER_POSITION_ITEM->number.min;
+				PRIVATE_DATA->target_position = (int)FOCUSER_POSITION_ITEM->number.min;
 			}
 
 			FOCUSER_POSITION_ITEM->number.value = PRIVATE_DATA->current_position;
@@ -801,6 +795,7 @@ static void split_device_name(const char *fill_device_name, char *device_name, c
 	strncpy(suffix, suffix_start, 9);
 }
 
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void process_plug_event(indigo_device *unused) {
 	EAF_INFO info;
@@ -845,7 +840,7 @@ static void process_plug_event(indigo_device *unused) {
 			pthread_mutex_unlock(&indigo_device_enumeration_mutex);
 			return;
 		}
-		  indigo_usleep(ONE_SECOND_DELAY);
+		  indigo_sleep(1);
 	}
 	indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &focuser_template);
 	char name[64] = {0};

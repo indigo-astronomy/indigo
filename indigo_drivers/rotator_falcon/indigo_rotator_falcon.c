@@ -203,7 +203,7 @@ static void rotator_position_handler(indigo_device *device) {
 			}
 			if (falcon_command(device, "FR", response, sizeof(response)) && !strncmp(response, "FR:", 3)) {
 				if (!strcmp(response, "FR:1")) {
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 					continue;
 				}
 			} else {

@@ -612,7 +612,7 @@ static void aux_connection_handler(indigo_device *device) {
 	if (CONNECTION_CONNECTED_ITEM->sw.value) {
 		PRIVATE_DATA->handle = indigo_open_serial_with_speed(DEVICE_PORT_ITEM->text.value, 19200);
 		if (PRIVATE_DATA->handle > 0) {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			wbprov3_status_t wb_stat;
 			if (wbprov3_read_status(device, &wb_stat)) {
 				if (!strcmp(wb_stat.model_id, DEVICE_ID)) {
@@ -682,7 +682,7 @@ static void aux_power_outlet_handler(indigo_device *device) {
 	wbprov3_command(device, AUX_POWER_OUTLET_1_ITEM->sw.value ? "101" : "100");
 	wbprov3_command(device, AUX_POWER_OUTLET_2_ITEM->sw.value ? "201" : "200");
 	wbprov3_command(device, AUX_POWER_OUTLET_3_ITEM->sw.value ? "211" : "210");
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	AUX_POWER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_POWER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -695,7 +695,7 @@ static void aux_usb_port_handler(indigo_device *device) {
 	wbprov3_command(device, AUX_USB_PORT_3_ITEM->sw.value ? "131" : "130");
 	wbprov3_command(device, AUX_USB_PORT_4_ITEM->sw.value ? "141" : "140");
 	wbprov3_command(device, AUX_USB_PORT_5_ITEM->sw.value ? "151" : "150");
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	AUX_USB_PORT_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_USB_PORT_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -706,7 +706,7 @@ static void aux_power_outlet_voltage_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	sprintf(command, "%d", 20000 + (int)(AUX_POWER_OUTLET_VOLTAGE_1_ITEM->number.target * 10));
 	wbprov3_command(device, command);
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	AUX_POWER_OUTLET_VOLTAGE_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_POWER_OUTLET_VOLTAGE_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -721,7 +721,7 @@ static void aux_heater_outlet_handler(indigo_device *device) {
 	wbprov3_command(device, command);
 	sprintf(command, "%d", 7000 + (int)(AUX_HEATER_OUTLET_3_ITEM->number.target * 255.0 / 100.0));
 	wbprov3_command(device, command);
-	indigo_usleep(ONE_SECOND_DELAY);
+	indigo_sleep(1);
 	AUX_HEATER_OUTLET_PROPERTY->state = INDIGO_OK_STATE;
 	indigo_update_property(device, AUX_HEATER_OUTLET_PROPERTY, NULL);
 	pthread_mutex_unlock(&PRIVATE_DATA->mutex);
@@ -731,7 +731,7 @@ static void aux_calibrate_handler(indigo_device *device) {
 	pthread_mutex_lock(&PRIVATE_DATA->mutex);
 	if (X_AUX_CALIBRATE_ITEM->sw.value) {
 		wbprov3_command(device, "66300744");
-		indigo_usleep(ONE_SECOND_DELAY);
+		indigo_sleep(1);
 		X_AUX_CALIBRATE_ITEM->sw.value = false;
 		X_AUX_CALIBRATE_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, X_AUX_CALIBRATE_PROPERTY, "Seensors recallibrated");

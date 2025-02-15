@@ -23,9 +23,9 @@
  \file indigocat_ss.h
  */
 
-
 #ifndef indigocat_ss_h
 #define indigocat_ss_h
+
 
 typedef enum {
 	MERCURY = 1,
@@ -49,6 +49,14 @@ typedef struct {
 } indigocat_ss_entry;
 
 
-extern indigocat_ss_entry *indigocat_get_ss_data(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+INDIGO_EXTERN indigocat_ss_entry *indigocat_get_ss_data(void);
+
+#ifdef __cplusplus
+};
+#endif
 
 #endif /* indigocat_dso_h */

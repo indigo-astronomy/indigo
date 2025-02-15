@@ -30,9 +30,9 @@
 #include <unistd.h>
 #include <assert.h>
 #include <stdarg.h>
-#include <libusb-1.0/libusb.h>
 
 #include <indigo/indigo_ccd_driver.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_ptp.h"
 #include "indigo_ptp_fuji.h"

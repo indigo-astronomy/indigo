@@ -34,12 +34,6 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #ifdef INDIGO_MACOS
 #import <Cocoa/Cocoa.h>
 #import "DDHidJoystick.h"
@@ -880,7 +874,7 @@ static void rescan() {
 	pthread_mutex_unlock(&mutex);
 }
 
-static void shutdown() {
+static void shutdown_joystick() {
 	pthread_mutex_lock(&mutex);
 	for (int i = 0; i < MAX_DEVICES; i++) {
 		if (devices[i]) {
@@ -955,7 +949,7 @@ indigo_result indigo_aux_joystick(indigo_driver_action action, indigo_driver_inf
 		[DDHidJoystickWrapper shutdown];
 #endif
 #ifdef INDIGO_LINUX
-			shutdown();
+			shutdown_joystick();
 #endif
 		break;
 

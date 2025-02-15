@@ -21,35 +21,32 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <syslog.h>
 #include <assert.h>
 #include <signal.h>
-#include <dns_sd.h>
-#include <libgen.h>
 #include <pthread.h>
-#include <dirent.h>
 #include <errno.h>
+#include <dns_sd.h>
 
-#include <arpa/inet.h>
-#include <sys/types.h>
-#include <sys/wait.h>
 #ifdef INDIGO_LINUX
+#include <unistd.h>
+#include <sys/wait.h>
 #include <sys/prctl.h>
-#endif
-#ifdef INDIGO_MACOS
+#elif defined(INDIGO_MACOS)
 #include <CoreFoundation/CoreFoundation.h>
 #endif
 
-#if defined(__APPLE__) || defined(__MACH__)
-  #define OS_NAME "macOS"
-#elif defined(__linux__)
-  #define OS_NAME "Linux"
-#elif defined(__unix__)
-  #define OS_NAME "Unix"
+#if defined(INDIGO_MACOS)
+#define OS_NAME "macOS"
+#define ADDITIONAL_DRIVERS "indigo_mac_drivers"
+#elif defined(INDIGO_LINUX)
+#define OS_NAME "Linux"
+#define ADDITIONAL_DRIVERS "indigo_linux_drivers"
+#elif defined(INDIGO_WINDOWS)
+#define OS_NAME "Windows"
+#define ADDITIONAL_DRIVERS "indigo_win_drivers"
 #else
-  #define OS_NAME "Unknown OS"
+#define OS_NAME "Unknown OS"
 #endif
 
 #if defined(__x86_64__) || defined(_M_X64)
@@ -65,7 +62,7 @@
 #endif
 
 #include <indigo/indigo_bus.h>
-#include <indigo/indigo_io.h>
+#include <indigo/indigo_uni_io.h>
 #include <indigo/indigo_server_tcp.h>
 #include <indigo/indigo_driver.h>
 #include <indigo/indigo_client.h>
@@ -76,11 +73,11 @@
 #include <indigo/indigocat/indigocat_dso.h>
 #include <indigo/indigocat/indigocat_ss.h>
 
+#ifdef STATIC_DRIVERS
 #include "ccd_simulator/indigo_ccd_simulator.h"
 #include "mount_simulator/indigo_mount_simulator.h"
 #include "gps_simulator/indigo_gps_simulator.h"
 #include "dome_simulator/indigo_dome_simulator.h"
-#ifdef STATIC_DRIVERS
 #include "ccd_sx/indigo_ccd_sx.h"
 #include "wheel_sx/indigo_wheel_sx.h"
 #include "ccd_ssag/indigo_ccd_ssag.h"
@@ -173,6 +170,7 @@
 #include "aux_astromechanics/indigo_aux_astromechanics.h"
 #include "aux_geoptikflat/indigo_aux_geoptikflat.h"
 #include "ccd_svb/indigo_ccd_svb.h"
+#include "ccd_svb2/indigo_ccd_svb2.h"
 #include "agent_astap/indigo_agent_astap.h"
 #include "rotator_optec/indigo_rotator_optec.h"
 #include "mount_starbook/indigo_mount_starbook.h"
@@ -201,6 +199,7 @@
 #include "rotator_asi/indigo_rotator_asi.h"
 #include "focuser_astroasis/indigo_focuser_astroasis.h"
 #include "wheel_astroasis/indigo_wheel_astroasis.h"
+#include "focuser_qhy/indigo_focuser_qhy.h"
 #ifndef __aarch64__
 #include "ccd_sbig/indigo_ccd_sbig.h"
 #endif
@@ -288,6 +287,7 @@ driver_entry_point static_drivers[] = {
 	indigo_ccd_ssag,
 	indigo_ccd_ssg,
 	indigo_ccd_svb,
+	indigo_ccd_svb2,
 	indigo_ccd_sx,
 	indigo_ccd_touptek,
 	indigo_ccd_uvc,
@@ -324,6 +324,7 @@ driver_entry_point static_drivers[] = {
 	indigo_focuser_optec,
 	indigo_focuser_optecfl,
 	indigo_focuser_primaluce,
+	indigo_focuser_qhy,
 	indigo_focuser_prodigy,
 	indigo_focuser_robofocus,
 	indigo_focuser_usbv3,
@@ -466,8 +467,8 @@ static bool runLoop = true;
 #define SERVER_WIFI_CHANNEL_PROPERTY							wifi_channel_property
 #define SERVER_WIFI_CHANNEL_ITEM									(SERVER_WIFI_CHANNEL_PROPERTY->items + 0)
 
-#define SERVER_WIFI_COUNTRY_CODE_PROPERTY				wifi_country_code_property
-#define SERVER_WIFI_COUNTRY_CODE_ITEM					(SERVER_WIFI_COUNTRY_CODE_PROPERTY->items + 0)
+#define SERVER_WIFI_COUNTRY_CODE_PROPERTY					wifi_country_code_property
+#define SERVER_WIFI_COUNTRY_CODE_ITEM							(SERVER_WIFI_COUNTRY_CODE_PROPERTY->items + 0)
 
 #define SERVER_INTERNET_SHARING_PROPERTY					internet_sharing_property
 #define SERVER_INTERNET_SHARING_DISABLED_ITEM			(SERVER_INTERNET_SHARING_PROPERTY->items + 0)
@@ -488,9 +489,13 @@ static bool runLoop = true;
 static pid_t server_pid = 0;
 static bool keep_server_running = true;
 static bool use_sigkill = false;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 static bool use_ctrl_panel = true;
 static bool use_web_apps = true;
-
+#elif defined(INDIGO_WINDOWS)
+static bool use_ctrl_panel = false;
+static bool use_web_apps = false;
+#endif
 #ifdef RPI_MANAGEMENT
 static bool use_rpi_management = false;
 #endif /* RPI_MANAGEMENT */
@@ -511,6 +516,8 @@ static indigo_device server_device = INDIGO_DEVICE_INITIALIZER(
 	NULL,
 	detach
 );
+
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 
 static double h2deg(double ra) {
 	return ra > 12 ? (ra - 24) * 15 : ra * 15;
@@ -560,7 +567,7 @@ static void *indigo_add_star_json_resource(int max_mag) {
 	size += sprintf(buffer + size, "]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
-	indigo_compress("stars.json", buffer, size, data, &data_size);
+	indigo_uni_compress("stars.json", buffer, size, data, &data_size);
 	free(buffer);
 	indigo_server_add_resource("/data/stars.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;
@@ -590,7 +597,7 @@ static void *indigo_add_dso_json_resource(int max_mag) {
 	size += sprintf(buffer + size, "]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
-	indigo_compress("stars.json", buffer, size, data, &data_size);
+	indigo_uni_compress("stars.json", buffer, size, data, &data_size);
 	free(buffer);
 	indigo_server_add_resource("/data/dsos.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;
@@ -744,14 +751,14 @@ static void *indigo_add_constellations_lines_json_resource() {
 	size += sprintf(buffer + size, "]}}]}");
 	unsigned char *data = indigo_safe_malloc(buffer_size);
 	unsigned data_size = buffer_size;
-	indigo_compress("constellations.lines.json", buffer, size, data, &data_size);
+	indigo_uni_compress("constellations.lines.json", buffer, size, data, &data_size);
 	free(buffer);
 	indigo_server_add_resource("/data/constellations.lines.json", data, (int)data_size, "application/json; charset=utf-8");
 	return data;
 }
+#endif
 
 #ifdef RPI_MANAGEMENT
-
 static indigo_result execute_command(indigo_device *device, indigo_property *property, char *command, ...) {
 	char buffer[1024];
 	va_list args;
@@ -861,7 +868,7 @@ static void check_versions(indigo_device *device) {
 			if (redefine)
 				indigo_define_property(device, SERVER_INSTALL_PROPERTY, NULL);
 		}
-		indigo_usleep(10 * 60 * ONE_SECOND_DELAY);
+		indigo_sleep(10 * 60);
 	}
 }
 
@@ -984,12 +991,14 @@ static indigo_result attach(indigo_device *device) {
 			indigo_init_light_item(&SERVER_SERVERS_PROPERTY->items[SERVER_SERVERS_PROPERTY->count++], buf, buf, INDIGO_OK_STATE);
 		}
 	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		indigo_subprocess_entry *entry = indigo_available_subprocesses + i;
 		if (*entry->executable) {
 			indigo_init_light_item(&SERVER_SERVERS_PROPERTY->items[SERVER_SERVERS_PROPERTY->count++], entry->executable, entry->executable, INDIGO_OK_STATE);
 		}
 	}
+#endif
 	indigo_property_sort_items(SERVER_SERVERS_PROPERTY, 0);
 	SERVER_LOAD_PROPERTY = indigo_init_text_property(NULL, server_device.name, SERVER_LOAD_PROPERTY_NAME, MAIN_GROUP, "Load driver", INDIGO_OK_STATE, INDIGO_RW_PERM, 1);
 	indigo_init_text_item(SERVER_LOAD_ITEM, SERVER_LOAD_ITEM_NAME, "Load driver", "");
@@ -1205,17 +1214,17 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		}
 		SERVER_DRIVERS_PROPERTY->state = INDIGO_OK_STATE;
 		indigo_update_property(device, SERVER_DRIVERS_PROPERTY, NULL);
-		int handle = 0;
+		indigo_uni_handle *handle = { 0 };
 		if (!command_line_drivers) {
 			indigo_save_property(device, &handle, SERVER_DRIVERS_PROPERTY);
-			close(handle);
+			indigo_uni_close(&handle);
 		}
 		return INDIGO_OK;
 	} else if (indigo_property_match(SERVER_LOAD_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- LOAD
 		indigo_property_copy_values(SERVER_LOAD_PROPERTY, property, false);
 		if (*SERVER_LOAD_ITEM->text.value) {
-			char *name = basename(SERVER_LOAD_ITEM->text.value);
+			char *name = indigo_uni_basename(SERVER_LOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
 					SERVER_LOAD_PROPERTY->state = INDIGO_ALERT_STATE;
@@ -1257,7 +1266,7 @@ static indigo_result change_property(indigo_device *device, indigo_client *clien
 		// -------------------------------------------------------------------------------- UNLOAD
 		indigo_property_copy_values(SERVER_UNLOAD_PROPERTY, property, false);
 		if (*SERVER_UNLOAD_ITEM->text.value) {
-			char *name = basename(SERVER_UNLOAD_ITEM->text.value);
+			char *name = indigo_uni_basename(SERVER_UNLOAD_ITEM->text.value);
 			for (int i = 0; i < INDIGO_MAX_DRIVERS; i++)
 				if (!strcmp(name, indigo_available_drivers[i].name)) {
 					indigo_result result;
@@ -1457,32 +1466,41 @@ static indigo_result detach(indigo_device *device) {
 	return INDIGO_OK;
 }
 
+static bool driver_filter(const char *name) {
+	return strcmp(name, "indigo_drivers") == 0 || strcmp(name, ADDITIONAL_DRIVERS) == 0;
+}
+
 static void add_drivers(const char *folder) {
 	char folder_path[PATH_MAX];
-	if(NULL == realpath(folder, folder_path)) {
+	char line[256];
+	if (NULL == indigo_uni_realpath(folder, folder_path)) {
 		INDIGO_DEBUG(indigo_debug("realpath(%s, folder_path): failed", folder));
 		return;
 	}
-	DIR *dir = opendir(folder_path);
-	if (dir) {
-		struct dirent *ent;
-		char *line = NULL;
-		size_t len = 0;
-		while ((ent = readdir (dir)) != NULL) {
-			if (!strncmp(ent->d_name, "indigo_", 7)) {
-				char path[PATH_MAX];
-				sprintf(path, "%s/%s", folder_path, ent->d_name);
-				indigo_log("Loading driver list from %s", path);
-				FILE *list = fopen(path, "r");
-				if (list) {
-					while (getline(&line, &len, list) > 0 && dynamic_drivers_count < INDIGO_MAX_DRIVERS) {
-						char *pnt, *token = strtok_r(line, ",", &pnt);
-						if (token && (token = strchr(token, '"'))) {
-							char *end = strchr(++token, '"');
-							if (end) {
-								*end = 0;
-								for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
-									if (!strcmp(indigo_available_drivers[i].name, token)) {
+	char **list;
+	int count = indigo_uni_scandir(folder_path, &list, driver_filter);
+	if (count >= 0) {
+		for (int i = 0; i < count; i++) {
+			char path[PATH_MAX];
+			sprintf(path, "%s%c%s", folder_path, INDIGO_PATH_SEPATATOR, list[i]);
+			indigo_log("Loading driver list from %s", path);
+			indigo_uni_handle *file = indigo_uni_open_file(path, INDIGO_LOG_TRACE);
+			if (file != NULL) {
+				while (indigo_uni_read_line(file, line, sizeof(line)) > 0 && dynamic_drivers_count < INDIGO_MAX_DRIVERS) {
+					char *pnt, *token = strtok_r(line, ",", &pnt);
+					if (token && (token = strchr(token, '"'))) {
+						char *end = strchr(++token, '"');
+						if (end) {
+							*end = 0;
+							for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
+								if (!strcmp(indigo_available_drivers[i].name, token)) {
+									token = NULL;
+									break;
+								}
+							}
+							if (token) {
+								for (int i = 0; i < dynamic_drivers_count; i++) {
+									if (!strcmp(dynamic_drivers[i].name, token)) {
 										token = NULL;
 										break;
 									}
@@ -1502,24 +1520,28 @@ static void add_drivers(const char *folder) {
 									continue;
 								}
 							}
-						}
-						token = strtok_r(NULL, ",", &pnt);
-						if (token && (token = strchr(token, '"'))) {
-							char *end = strchr(token + 1, '"');
-							if (end) {
-								*end = 0;
-								dynamic_drivers[dynamic_drivers_count].description = strdup(token + 1);
+							if (token) {
+								dynamic_drivers[dynamic_drivers_count].name = strdup(token);
+							} else {
+								continue;
 							}
 						}
-						dynamic_drivers_count++;
 					}
-					fclose(list);
+					token = strtok_r(NULL, ",", &pnt);
+					if (token && (token = strchr(token, '"'))) {
+						char *end = strchr(token + 1, '"');
+						if (end) {
+							*end = 0;
+							dynamic_drivers[dynamic_drivers_count].description = strdup(token + 1);
+						}
+					}
+					dynamic_drivers_count++;
 				}
+				indigo_uni_close(&file);
 			}
+			indigo_safe_free(list[i]);
 		}
-		closedir(dir);
-		if (line)
-			free(line);
+		indigo_safe_free(list);
 	}
 }
 
@@ -1527,9 +1549,7 @@ static void server_main() {
 	indigo_start_usb_event_handler();
 	indigo_start();
 	indigo_log("INDIGO server %d.%d-%s %s/%s built on %s %s", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, OS_NAME, ARCH_NAME, INDIGO_BUILD_TIME, INDIGO_BUILD_COMMIT);
-
 	indigo_use_blob_caching = true;
-
 	/* Make sure master token and ACL are loaded before drivers */
 	for (int i = 1; i < server_argc; i++) {
 		if ((!strcmp(server_argv[i], "-T") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {
@@ -1556,12 +1576,14 @@ static void server_main() {
 			indigo_reshare_remote_devices = true;
 			indigo_connect_server(NULL, host, port, NULL);
 			i++;
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		} else if ((!strcmp(server_argv[i], "-i") || !strcmp(server_argv[i], "--indi-driver")) && i < server_argc - 1) {
 			char executable[INDIGO_NAME_SIZE];
 			indigo_copy_name(executable, server_argv[i + 1]);
 			indigo_reshare_remote_devices = true;
 			indigo_start_subprocess(executable, NULL);
 			i++;
+#endif
 		} else if ((!strcmp(server_argv[i], "-T") || !strcmp(server_argv[i], "--master-token")) && i < server_argc - 1) {
 			/* just skip it - handled above */
 			i++;
@@ -1606,9 +1628,8 @@ static void server_main() {
 			command_line_drivers = true;
 		}
 	}
-
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	use_ctrl_panel |= use_web_apps;
-
 	if (use_ctrl_panel) {
 		// INDIGO Server Manager
 		static unsigned char mng_html[] = {
@@ -1741,14 +1762,16 @@ static void server_main() {
 		};
 		indigo_server_add_resource("/script.png", script_png, sizeof(script_png), "image/png");
 	}
-
+#ifdef RPI_MANAGEMENT
 	indigo_server_add_file_resource("/log", "indigo.log", "text/plain; charset=UTF-8");
-
+#endif
+#endif
 	if (!command_line_drivers) {
 		for (static_drivers_count = 0; static_drivers[static_drivers_count]; static_drivers_count++) {
 			indigo_add_driver(static_drivers[static_drivers_count], false, NULL);
 		}
-		char *last = strrchr(server_argv[0], '/');
+		char *last = strrchr(server_argv[0], INDIGO_PATH_SEPATATOR);
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (last) {
 			char path[PATH_MAX];
 			long len = last - server_argv[0];
@@ -1759,13 +1782,14 @@ static void server_main() {
 		}
 		add_drivers("/usr/share/indigo");
 		add_drivers("/usr/local/share/indigo");
+#elif defined(INDIGO_WINDOWS)
+		add_drivers(".");
+#endif
 	}
 	indigo_attach_device(&server_device);
-
-#ifdef INDIGO_LINUX
+#if defined(INDIGO_LINUX) || defined(INDIGO_WINDOWS)
 	indigo_server_start(NULL);
-#endif
-#ifdef INDIGO_MACOS
+#elif defined(INDIGO_MACOS)
 	if (!indigo_async((void * (*)(void *))indigo_server_start, NULL)) {
 		INDIGO_ERROR(indigo_error("Error creating thread for server"));
 	}
@@ -1774,25 +1798,28 @@ static void server_main() {
 		CFRunLoopRunInMode(kCFRunLoopDefaultMode, 1, true);
 	}
 #endif
-
 	for (int i = 0; i < INDIGO_MAX_DRIVERS; i++) {
 		if (indigo_available_drivers[i].driver) {
 			indigo_remove_driver(&indigo_available_drivers[i]);
 		}
 	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		if (indigo_available_subprocesses[i].thread_started)
 			indigo_kill_subprocess(&indigo_available_subprocesses[i]);
 	}
+#endif
 	indigo_detach_device(&server_device);
 	indigo_stop();
 	indigo_server_remove_resources();
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	if (star_data)
 		free(star_data);
 	if (dso_data)
 		free(dso_data);
 	if (constellation_data)
 		free(constellation_data);
+#endif
 	for (int i = 0; i < INDIGO_MAX_SERVERS; i++) {
 		if (indigo_available_servers[i].thread_started)
 			indigo_disconnect_server(&indigo_available_servers[i]);
@@ -1800,6 +1827,7 @@ static void server_main() {
 	exit(EXIT_SUCCESS);
 }
 
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 static void signal_handler(int signo) {
 	if (signo == SIGCHLD) {
 		int status;
@@ -1828,51 +1856,62 @@ static void signal_handler(int signo) {
 		use_sigkill = true;
 	}
 }
+#endif
 
 int main(int argc, const char * argv[]) {
 	bool do_fork = true;
 	server_argv[0] = argv[0];
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-
+	
 	for (int i = 1; i < argc; i++) {
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 		if (!strcmp(argv[i], "--") || !strcmp(argv[i], "--do-not-fork")) {
 			do_fork = false;
 		} else if (!strcmp(argv[i], "-l") || !strcmp(argv[i], "--use-syslog")) {
 			indigo_use_syslog = true;
-		} else if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
+		} else
+#endif
+			if (!strcmp(argv[i], "-h") || !strcmp(argv[i], "--help")) {
 			printf("INDIGO server v.%d.%d-%s %s/%s built on %s %s.\n", (INDIGO_VERSION_CURRENT >> 8) & 0xFF, INDIGO_VERSION_CURRENT & 0xFF, INDIGO_BUILD, OS_NAME, ARCH_NAME, __DATE__, __TIME__);
 			printf("usage: %s [-h | --help]\n", argv[0]);
 			printf("       %s [options] indigo_driver_name indigo_driver_name ...\n", argv[0]);
 			printf("options:\n"
-			       "       --  | --do-not-fork\n"
-			       "       -l  | --use-syslog\n"
-			       "       -p  | --port port                     (default: 7624)\n"
-			       "       -b  | --bonjour name                  (default: hostname)\n"
-			       "       -T  | --master-token token            (master token for devce access default: 0 = none)\n"
-			       "       -a  | --acl-file file\n"
-			       "       -b- | --disable-bonjour\n"
-			       "       -u- | --disable-blob-urls\n"
-			       "       -d- | --disable-blob-buffering\n"
-			       "       -C  | --enable-blob-compression\n"
-			       "       -w- | --disable-web-apps\n"
-			       "       -c- | --disable-control-panel\n"
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+						 "       --  | --do-not-fork\n"
+						 "       -l  | --use-syslog\n"
+#endif
+						 "       -p  | --port port                     (default: 7624)\n"
+						 "       -b  | --bonjour name                  (default: hostname)\n"
+						 "       -T  | --master-token token            (master token for devce access default: 0 = none)\n"
+						 "       -a  | --acl-file file\n"
+						 "       -b- | --disable-bonjour\n"
+						 "       -u- | --disable-blob-urls\n"
+						 "       -d- | --disable-blob-buffering\n"
+						 "       -C  | --enable-blob-compression\n"
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+						 "       -w- | --disable-web-apps\n"
+						 "       -c- | --disable-control-panel\n"
 #ifdef RPI_MANAGEMENT
-			       "       -f  | --enable-rpi-management\n"
+						 "       -f  | --enable-rpi-management\n"
 #endif /* RPI_MANAGEMENT */
-			       "       -v  | --enable-info\n"
-			       "       -vv | --enable-debug\n"
+#endif
+						 "       -v  | --enable-info\n"
+						 "       -vv | --enable-debug\n"
 						 "       -vvb| --enable-trace-bus\n"
-			       "       -vvv| --enable-trace\n"
-			       "       -r  | --remote-server host[:port]     (default port: 7624)\n"
-			       "       -x  | --enable-blob-proxy\n"
-			       "       -i  | --indi-driver driver_executable\n"
-			);
+						 "       -vvv| --enable-trace\n"
+						 "       -r  | --remote-server host[:port]     (default port: 7624)\n"
+						 "       -x  | --enable-blob-proxy\n"
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
+						 "       -i  | --indi-driver driver_executable\n"
+#endif
+						 );
 			return 0;
 		} else {
 			server_argv[server_argc++] = argv[i];
 		}
 	}
+#if defined(INDIGO_LINUX) || defined(INDIGO_MACOS)
 	signal(SIGINT, signal_handler);
 	signal(SIGTERM, signal_handler);
 	signal(SIGHUP, signal_handler);
@@ -1893,7 +1932,7 @@ int main(int argc, const char * argv[]) {
 					name = (char *)server_argv[0];
 				}
 				strncpy(indigo_log_name, name, 255);
-
+				
 				/* Change process name for user convinience */
 				char *server_string = strstr(server_argv[0], "indigo_server");
 				if (server_string) {
@@ -1919,7 +1958,7 @@ int main(int argc, const char * argv[]) {
 				use_sigkill = false;
 				if (keep_server_running) {
 					INDIGO_LOG(indigo_log("Shutdown complete! Starting up..."));
-					indigo_usleep(2 * ONE_SECOND_DELAY);
+					indigo_sleep(2);
 				}
 			}
 		}
@@ -1927,4 +1966,12 @@ int main(int argc, const char * argv[]) {
 	} else {
 		server_main();
 	}
+#elif defined(INDIGO_WINDOWS)
+	WSADATA wsaData;
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+		indigo_error("WSAStartup failed: %d", WSAGetLastError());
+		exit(0);
+	}
+	server_main();
+#endif
 }

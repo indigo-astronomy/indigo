@@ -23,6 +23,18 @@
 #include <indigo/indigocat/indigocat_vsop87.h>
 #include <indigo/indigocat/indigocat_transform.h>
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
+#ifndef M_PI_2
+#define M_PI_2 (M_PI / 2)
+#endif
+
 /* AU in KM */
 #define AU			149597870
 

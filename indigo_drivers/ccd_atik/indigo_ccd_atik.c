@@ -28,11 +28,9 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <math.h>
 #include <assert.h>
 #include <pthread.h>
-#include <sys/time.h>
 
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
@@ -41,12 +39,6 @@
 #include "indigo_ccd_atik.h"
 
 #if !(defined(__APPLE__) && defined(__arm64__))
-
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include "AtikCameras.h"
 
@@ -81,7 +73,7 @@
 typedef struct {
 	ArtemisHandle handle;
 	int index;
-	libusb_device *dev;
+	char serial[64];
 	int device_count;
 	indigo_timer *exposure_timer, *temperature_timer, *guider_timer;
 	unsigned short relay_mask;
@@ -105,7 +97,7 @@ static void exposure_timer_callback(indigo_device *device) {
 	indigo_update_property(device, CCD_EXPOSURE_PROPERTY, NULL);
 	double remaining = ArtemisExposureTimeRemaining(PRIVATE_DATA->handle);
 	if (remaining > 0)
-		indigo_usleep(remaining * ONE_SECOND_DELAY);
+		indigo_sleep(remaining);
 	PRIVATE_DATA->can_check_temperature = false;
 	while (!ArtemisImageReady(PRIVATE_DATA->handle)) {
 		do_log = false;
@@ -178,7 +170,7 @@ static void ccd_connect_callback(indigo_device *device) {
 				CCD_BIN_HORIZONTAL_ITEM->number.max = CCD_INFO_MAX_HORIZONAL_BIN_ITEM->number.value = max_x_bin;
 				CCD_BIN_VERTICAL_ITEM->number.max = CCD_INFO_MAX_VERTICAL_BIN_ITEM->number.value = max_y_bin;
 				CCD_MODE_PROPERTY->perm = INDIGO_RW_PERM;
-				CCD_MODE_PROPERTY->count = log2(max_x_bin) + 1;
+				CCD_MODE_PROPERTY->count = (int)log2(max_x_bin) + 1;
 				char name[32], label[32];
 				int pw = 1;
 				for (int i = 1; i <= CCD_MODE_PROPERTY->count; i++) {
@@ -187,7 +179,7 @@ static void ccd_connect_callback(indigo_device *device) {
 					indigo_init_switch_item(CCD_MODE_ITEM + (i - 1), name, label, i == 1);
 					pw *= 2;
 				}
-				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE);
+				PRIVATE_DATA->buffer = indigo_alloc_blob_buffer((long)(2 * CCD_INFO_WIDTH_ITEM->number.value * CCD_INFO_HEIGHT_ITEM->number.value + FITS_HEADER_SIZE));
 				assert(PRIVATE_DATA->buffer != NULL);
 				CONNECTION_PROPERTY->state = INDIGO_OK_STATE;
 // Temporary workaround for SDK_2020_06_23 +++++
@@ -426,14 +418,14 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 	} else if (indigo_property_match_changeable(CCD_GAIN_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_GAIN
 		indigo_property_copy_values(CCD_GAIN_PROPERTY, property, false);
-		uint16_t value = CCD_GAIN_ITEM->number.target;
+		int value = (int)CCD_GAIN_ITEM->number.target;
 		CCD_GAIN_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 5, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_GAIN_PROPERTY, NULL);
 		return INDIGO_OK;
 	} else if (indigo_property_match_changeable(CCD_OFFSET_PROPERTY, property)) {
 		// -------------------------------------------------------------------------------- CCD_OFFSET
 		indigo_property_copy_values(CCD_OFFSET_PROPERTY, property, false);
-		uint16_t value = CCD_OFFSET_ITEM->number.target;
+		int value = (int)CCD_OFFSET_ITEM->number.target;
 		CCD_OFFSET_PROPERTY->state = ArtemisCameraSpecificOptionSetData(PRIVATE_DATA->handle, 6, (unsigned char *)&value, sizeof(value)) == ARTEMIS_OK ? INDIGO_OK_STATE : INDIGO_ALERT_STATE;
 		indigo_update_property(device, CCD_OFFSET_PROPERTY, NULL);
 		return INDIGO_OK;
@@ -461,7 +453,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 				ArtemisSetDarkMode(PRIVATE_DATA->handle, CCD_FRAME_TYPE_DARK_ITEM->sw.value || CCD_FRAME_TYPE_DARKFLAT_ITEM->sw.value || CCD_FRAME_TYPE_BIAS_ITEM->sw.value);
 				ArtemisBin(PRIVATE_DATA->handle, (int)CCD_BIN_HORIZONTAL_ITEM->number.value, (int)CCD_BIN_VERTICAL_ITEM->number.value);
 				ArtemisSubframe(PRIVATE_DATA->handle, (int)CCD_FRAME_LEFT_ITEM->number.value, (int)CCD_FRAME_TOP_ITEM->number.value, (int)CCD_FRAME_WIDTH_ITEM->number.value, (int)CCD_FRAME_HEIGHT_ITEM->number.value);
-				if (ArtemisStartExposure(PRIVATE_DATA->handle, CCD_EXPOSURE_ITEM->number.target) == ARTEMIS_OK) {
+				if (ArtemisStartExposure(PRIVATE_DATA->handle, (float)CCD_EXPOSURE_ITEM->number.target) == ARTEMIS_OK) {
 					indigo_set_timer(device, CCD_EXPOSURE_ITEM->number.target, exposure_timer_callback, &PRIVATE_DATA->exposure_timer);
 				} else {
 					indigo_ccd_failure_cleanup(device);
@@ -505,7 +497,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_COOLER_PROPERTY, property, false);
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
 			if (CCD_COOLER_ON_ITEM->sw.value) {
-				ArtemisSetCooling(PRIVATE_DATA->handle, CCD_TEMPERATURE_ITEM->number.target * 100);
+				ArtemisSetCooling(PRIVATE_DATA->handle, (int)(CCD_TEMPERATURE_ITEM->number.target * 100));
 			} else {
 				ArtemisCoolerWarmUp(PRIVATE_DATA->handle);
 				CCD_COOLER_POWER_ITEM->number.value = 0;
@@ -532,7 +524,7 @@ static indigo_result ccd_change_property(indigo_device *device, indigo_client *c
 		indigo_property_copy_values(CCD_TEMPERATURE_PROPERTY, property, false);
 		CCD_TEMPERATURE_ITEM->number.value = temperature;
 		if (CONNECTION_CONNECTED_ITEM->sw.value && !CCD_COOLER_PROPERTY->hidden) {
-			ArtemisSetCooling(PRIVATE_DATA->handle, CCD_TEMPERATURE_ITEM->number.target * 100);
+			ArtemisSetCooling(PRIVATE_DATA->handle, (int)(CCD_TEMPERATURE_ITEM->number.target * 100));
 			if (CCD_COOLER_OFF_ITEM->sw.value) {
 				indigo_set_switch(CCD_COOLER_PROPERTY, CCD_COOLER_ON_ITEM, true);
 				CCD_COOLER_PROPERTY->state = INDIGO_OK_STATE;
@@ -646,12 +638,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_DEC_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		PRIVATE_DATA->relay_mask &= ~(ATIK_GUIDE_NORTH | ATIK_GUIDE_SOUTH);
-		int duration = GUIDER_GUIDE_NORTH_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_NORTH_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= ATIK_GUIDE_NORTH;
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
 		} else {
-			int duration = GUIDER_GUIDE_SOUTH_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_SOUTH_ITEM->number.value;
 			if (duration > 0) {
 				PRIVATE_DATA->relay_mask |= ATIK_GUIDE_SOUTH;
 				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
@@ -666,12 +658,12 @@ static indigo_result guider_change_property(indigo_device *device, indigo_client
 		indigo_property_copy_values(GUIDER_GUIDE_RA_PROPERTY, property, false);
 		indigo_cancel_timer(device, &PRIVATE_DATA->guider_timer);
 		PRIVATE_DATA->relay_mask &= ~(ATIK_GUIDE_EAST | ATIK_GUIDE_WEST);
-		int duration = GUIDER_GUIDE_EAST_ITEM->number.value;
+		int duration = (int)GUIDER_GUIDE_EAST_ITEM->number.value;
 		if (duration > 0) {
 			PRIVATE_DATA->relay_mask |= ATIK_GUIDE_EAST;
 			indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
 		} else {
-			int duration = GUIDER_GUIDE_WEST_ITEM->number.value;
+			int duration = (int)GUIDER_GUIDE_WEST_ITEM->number.value;
 			if (duration > 0) {
 				PRIVATE_DATA->relay_mask |= ATIK_GUIDE_WEST;
 				indigo_set_timer(device, duration/1000.0, guider_timer_callback, &PRIVATE_DATA->guider_timer);
@@ -862,30 +854,30 @@ static void plug_handler(indigo_device *device) {
 			PRIVATE_DATA->index = -1;
 	}
 	int count = ArtemisDeviceCount();
+	bool found = false;
 	for (int j = 0; j < count; j++) {
-		libusb_device *dev;
-		if (ArtemisDeviceGetLibUSBDevice(j, &dev) == ARTEMIS_OK) {
+		char serial[64] = "";
+		if (ArtemisDeviceSerial(j, serial) == ARTEMIS_OK) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
-				if (device && PRIVATE_DATA->dev == dev) {
+				if (device && !strcpy(PRIVATE_DATA->serial, serial)) {
 					PRIVATE_DATA->index = j;
-					dev = NULL;
+					found = true;
 					break;
 				}
 			}
 		}
-		if (dev) {
+		if (!found) {
 			atik_private_data *private_data = indigo_safe_malloc(sizeof(atik_private_data));
 			private_data->index = j;
-			private_data->dev = dev;
+			strcpy(private_data->serial, serial);
 			indigo_device *device = indigo_safe_malloc_copy(sizeof(indigo_device), &ccd_template);
 			indigo_device *master_device = device;
 			device->master_device = master_device;
-			char name[INDIGO_NAME_SIZE], usb_path[INDIGO_NAME_SIZE];
+			char name[INDIGO_NAME_SIZE];
 			ArtemisDeviceName(j, name);
-			indigo_get_usb_path(dev, usb_path);
 			snprintf(device->name, INDIGO_NAME_SIZE, "%s", name);
-			indigo_make_name_unique(device->name, "%s", usb_path);
+			indigo_make_name_unique(device->name, "%s", serial);
 			device->private_data = private_data;
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				if (devices[i] == NULL) {
@@ -897,7 +889,7 @@ static void plug_handler(indigo_device *device) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &guider_template);
 				device->master_device = master_device;
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s (guider)", name);
-				indigo_make_name_unique(device->name, "%s", usb_path);
+				indigo_make_name_unique(device->name, "%s", serial);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -910,7 +902,7 @@ static void plug_handler(indigo_device *device) {
 				device = indigo_safe_malloc_copy(sizeof(indigo_device), &wheel_template);
 				device->master_device = master_device;
 				snprintf(device->name, INDIGO_NAME_SIZE, "%s (wheel)", name);
-				indigo_make_name_unique(device->name, "%s", usb_path);
+				indigo_make_name_unique(device->name, "%s", serial);
 				device->private_data = private_data;
 				for (int j = 0; j < MAX_DEVICES; j++) {
 					if (devices[j] == NULL) {
@@ -933,13 +925,12 @@ static void unplug_handler(indigo_device *device) {
 	}
 	int count = ArtemisDeviceCount();
 	for (int j = 0; j < count; j++) {
-		libusb_device *dev;
-		if (ArtemisDeviceGetLibUSBDevice(j, &dev) == ARTEMIS_OK) {
+		char serial[64];
+		if (ArtemisDeviceSerial(j, serial) == ARTEMIS_OK) {
 			for (int i = 0; i < MAX_DEVICES; i++) {
 				indigo_device *device = devices[i];
-				if (device && PRIVATE_DATA->dev == dev) {
+				if (device && !strcmp(PRIVATE_DATA->serial, serial)) {
 					device->gp_bits = 1;
-					dev = NULL;
 					break;
 				}
 			}

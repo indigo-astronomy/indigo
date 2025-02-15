@@ -188,7 +188,7 @@ static void upb_open(indigo_device *device) {
 				break;
 			}
 			INDIGO_DRIVER_ERROR(DRIVER_NAME, "UPB not detected - retrying in 1 second...");
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 		}
 	}
 }

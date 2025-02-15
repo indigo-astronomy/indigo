@@ -36,15 +36,11 @@
 #include <sys/time.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
+
 #include "indigo_focuser_astroasis.h"
 
 #if !defined(__i386__)
-
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
 
 #include <AOFocus.h>
 
@@ -860,6 +856,8 @@ static int focuser_get_index(int id) {
 
 	return -1;
 }
+
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static indigo_device *focuser_create(int id) {
 	AOFocuserVersion version;

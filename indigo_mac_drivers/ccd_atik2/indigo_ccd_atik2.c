@@ -34,8 +34,6 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include <libusb-1.0/libusb.h>
-
 #include <indigo/indigo_usb_utils.h>
 #include <indigo/indigo_driver_xml.h>
 #include <indigo/indigo_client.h>

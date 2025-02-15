@@ -234,7 +234,7 @@ The main function for the **executable driver** is pretty much a boiler plate co
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(&indigo_stdin_handle, &indigo_stdout_handle);
 	indigo_start();
 	indigo_wheel_atik(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);
@@ -597,15 +597,10 @@ Main driver source file **indigo_wheel_atik.c**:
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <libatik.h>
 
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_wheel_atik.h"
 
@@ -672,7 +667,7 @@ static indigo_result wheel_change_property(indigo_device *device,
 						  PRIVATE_DATA->slot_count <= 9) {
 							break;
 						}
-					indigo_usleep(ONE_SECOND_DELAY);
+					indigo_sleep(1);
 				}
 				WHEEL_SLOT_ITEM->number.max =
 				WHEEL_SLOT_NAME_PROPERTY->count =
@@ -841,7 +836,7 @@ File containg main fuction needed only for the executable driver  **indigo_wheel
 int main(int argc, const char * argv[]) {
 	indigo_main_argc = argc;
 	indigo_main_argv = argv;
-	indigo_client *protocol_adapter = indigo_xml_device_adapter(0, 1);
+	indigo_client *protocol_adapter = indigo_xml_device_adapter(&indigo_stdin_handle, &indigo_stdout_handle);
 	indigo_start();
 	indigo_wheel_atik(INDIGO_DRIVER_INIT, NULL);
 	indigo_attach_client(protocol_adapter);

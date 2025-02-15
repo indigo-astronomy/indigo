@@ -34,11 +34,11 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#include <libusb-1.0/libusb.h>
-
 #include <indigo/indigo_driver_xml.h>
+#include <indigo/indigo_usb_utils.h>
 
 #include "indigo_guider_gpusb.h"
+
 #include <libgpusb.h>
 
 #define PRIVATE_DATA													((gpusb_private_data *)device->private_data)
@@ -182,6 +182,8 @@ static indigo_result guider_detach(indigo_device *device) {
 #define MAX_DEVICES                   3
 
 static indigo_device *devices[MAX_DEVICES];
+
+static pthread_mutex_t indigo_device_enumeration_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static void process_plug_event(libusb_device *dev) {
 	static indigo_device guider_template = INDIGO_DEVICE_INITIALIZER(

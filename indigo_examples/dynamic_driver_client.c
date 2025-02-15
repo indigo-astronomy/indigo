@@ -164,7 +164,7 @@ int main(int argc, const char * argv[]) {
 	indigo_attach_client(&client);
 	if (indigo_load_driver("indigo_ccd_simulator", true, &driver) == INDIGO_OK) {
 		while (count > 0) {
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 		}
 	}
 	indigo_remove_driver(driver);

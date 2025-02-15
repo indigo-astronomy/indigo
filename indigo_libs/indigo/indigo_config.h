@@ -26,6 +26,20 @@
 #ifndef indigo_config_h
 #define indigo_config_h
 
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 /** INDIGO Build number
  */
 #define INDIGO_BUILD "313"
@@ -36,7 +50,7 @@
 #define INDIGO_BUILD_COMMIT ""
 #else
 #define INDIGO_BUILD_COMMIT indigo_build_commit
-extern char *indigo_build_commit;
+INDIGO_EXTERN char *indigo_build_commit;
 #endif
 
 /** INDIGO Build time
@@ -45,7 +59,7 @@ extern char *indigo_build_commit;
 #define INDIGO_BUILD_TIME __DATE__
 #else
 #define INDIGO_BUILD_TIME indigo_build_time
-extern char *indigo_build_time;
+INDIGO_EXTERN char *indigo_build_time;
 #endif
 /** Conditional compilation wrapper for TRACE log level
  */

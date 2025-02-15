@@ -19,6 +19,10 @@
 #include <indigo/indigocat/indigocat_transform.h>
 #include <indigo/indigocat/indigocat_nutation.h>
 
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+
 void indigocat_heliocentric_to_cartesian_coords(heliocentric_coords_s *object, cartesian_coords_s * position) {
 	double sin_e, cos_e;
 	double cos_B, sin_B, sin_L, cos_L;

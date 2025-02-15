@@ -176,7 +176,7 @@ static char **parse(char *buffer) {
 
 static void mg_send_command(int handle, char *command) {
 	/* This device does not respond to frequent commands, so wait 1/2 seconds */
-	indigo_usleep(ONE_SECOND_DELAY / 2);
+	indigo_sleep(0.5);
 	INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Command -> %s", command);
 	indigo_write(handle, command, strlen(command));
 }
@@ -426,7 +426,7 @@ static bool mgbox_open(indigo_device *device) {
 			INDIGO_DRIVER_LOG(DRIVER_NAME, "Connected to %s", name);
 			indigo_set_timer(gps, 0, data_refresh_callback, &global_timer);
 			// To be on the safe side wait a bit after connect some arduino devices reset at connect
-			indigo_usleep(ONE_SECOND_DELAY);
+			indigo_sleep(1);
 			// request devicetype (the device is reluctant to answer commands for some reason so try 3 times)
 			int retry = 3;
 			while (retry--) {
@@ -434,7 +434,7 @@ static bool mgbox_open(indigo_device *device) {
 				mg_send_command(PRIVATE_DATA->handle, ":devicetype*");
 				// wait for 2.5 seconds for a response, handled in data_refresh_callback()
 				for (int i=1; i <= 25; i++) {
-					indigo_usleep(ONE_SECOND_DELAY / 10);
+					indigo_sleep(0.1);
 					if (PRIVATE_DATA->device_type[0] != '\0') {
 						INDIGO_DRIVER_DEBUG(DRIVER_NAME, "Device identified as '%s' in %.1f sec.", PRIVATE_DATA->device_type, i / 10.0);
 						retry = 0;
@@ -486,7 +486,7 @@ static void mg_reset_gps(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 		mg_send_command(PRIVATE_DATA->handle, ":rebootgps*");
-		indigo_usleep(2 * ONE_SECOND_DELAY);
+		indigo_sleep(2);
 		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		X_REBOOT_GPS_ITEM->sw.value = false;
@@ -690,7 +690,7 @@ static void mg_reset_device(indigo_device *device) {
 		pthread_mutex_lock(&PRIVATE_DATA->serial_mutex);
 		pthread_mutex_lock(&PRIVATE_DATA->reset_mutex);
 		mg_send_command(PRIVATE_DATA->handle, ":reboot*");
-		indigo_usleep(2 * ONE_SECOND_DELAY);
+		indigo_sleep(2);
 		pthread_mutex_unlock(&PRIVATE_DATA->reset_mutex);
 		pthread_mutex_unlock(&PRIVATE_DATA->serial_mutex);
 		X_REBOOT_ITEM->sw.value = false;

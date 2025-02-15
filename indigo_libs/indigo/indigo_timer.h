@@ -25,11 +25,19 @@
 
 #ifndef indigo_timer_h
 #define indigo_timer_h
-
 #include <stdio.h>
 #include <pthread.h>
-
 #include <indigo/indigo_bus.h>
+
+#if defined(INDIGO_WINDOWS)
+#if defined(INDIGO_WINDOWS_DLL)
+#define INDIGO_EXTERN __declspec(dllexport)
+#else
+#define INDIGO_EXTERN __declspec(dllimport)
+#endif
+#else
+#define INDIGO_EXTERN extern
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -86,31 +94,31 @@ static inline void normalize_timespec(struct timespec *ts) {
 
 /** Set timer.
  */
-extern bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
+INDIGO_EXTERN bool indigo_set_timer(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
 
 /** Set timer with arbitrary data.
  */
-extern bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
+INDIGO_EXTERN bool indigo_set_timer_with_data(indigo_device *device, double delay, indigo_timer_with_data_callback callback, indigo_timer **timer, void *data);
 
 /** Rescheduled timer (if not null).
  */
-extern bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer);
+INDIGO_EXTERN bool indigo_reschedule_timer(indigo_device *device, double delay, indigo_timer **timer);
 
 /** Rescheduled timer (if not null) with different handler.
  */
-extern bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
+INDIGO_EXTERN bool indigo_reschedule_timer_with_callback(indigo_device *device, double delay, indigo_timer_callback callback, indigo_timer **timer);
 
 /** Cancel timer.
  */
-extern bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);
+INDIGO_EXTERN bool indigo_cancel_timer(indigo_device *device, indigo_timer **timer);
 
 /** Cancel timer and wait to cancel.
  */
-extern bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer);
+INDIGO_EXTERN bool indigo_cancel_timer_sync(indigo_device *device, indigo_timer **timer);
 
 /** Cancel all timers for given device.
  */
-extern void indigo_cancel_all_timers(indigo_device *device);
+INDIGO_EXTERN void indigo_cancel_all_timers(indigo_device *device);
 
 #ifdef __cplusplus
 }

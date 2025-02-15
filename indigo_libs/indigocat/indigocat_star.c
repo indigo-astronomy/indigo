@@ -23,15 +23,17 @@
  \file indigo_cat_data.c
  */
 
-
 #include <stdio.h>
 #include <stdbool.h>
 
 #include <indigo/indigocat/indigocat_star.h>
-
 #include <indigo/indigocat/indigocat_precession.h>
 
 static bool star_data_updated = false;
+
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
 
 static indigocat_star_entry indigo_star_data[] = {
 	{ 3, 0.0003, 38.8593, 5.24, -2.91, 2.81, 3e-06, 6.61, NULL },

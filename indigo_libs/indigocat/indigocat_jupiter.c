@@ -42,6 +42,10 @@
 #define RADIUS_R4 45
 #define RADIUS_R5 9
 
+#if defined(INDIGO_WINDOWS)
+#pragma warning(disable:4305)
+#endif
+
 static const struct vsop jupiter_longitude_l0[LONG_L0] = {
     {     0.59954691494,  0.00000000000,        0.00000000000},
     {     0.09695898719,  5.06191793158,      529.69096509460},

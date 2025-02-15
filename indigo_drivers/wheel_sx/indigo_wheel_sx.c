@@ -34,12 +34,6 @@
 #include <pthread.h>
 #include <sys/time.h>
 
-#if defined(INDIGO_FREEBSD)
-#include <libusb.h>
-#else
-#include <libusb-1.0/libusb.h>
-#endif
-
 #include <hidapi/hidapi.h>
 
 #include <indigo/indigo_driver_xml.h>
