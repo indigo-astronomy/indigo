@@ -56,7 +56,7 @@ typedef struct hotplug_callback_info {
 } hotplug_callback_info;
 
 static hotplug_callback_info *hotplug_callback_list = NULL;
-static pthread_mutex_t hotplug_callback_list_mutex = PTHREAD_RECURSIVE_MUTEX_INITIALIZER;
+static pthread_mutex_t hotplug_callback_list_mutex = PTHREAD_MUTEX_INITIALIZER;
 static int hotplug_device_count = 0;
 static libusb_device **hotplug_device_list = NULL;
 

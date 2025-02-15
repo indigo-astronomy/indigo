@@ -38,11 +38,6 @@
 #include <indigo/indigo_token.h>
 #include <indigo/indigo_uni_io.h>
 
-#if defined(INDIGO_LINUX)
-#define _GNU_SOURCE
-#define PTHREAD_RECURSIVE_MUTEX_INITIALIZER PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP
-#endif
-
 #if defined(INDIGO_WINDOWS)
 #if defined(INDIGO_WINDOWS_DLL)
 #define INDIGO_EXTERN __declspec(dllexport)
